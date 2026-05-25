@@ -12,6 +12,7 @@
     "sql:allow-select",
     "updater:default",
     "process:default",
+    "autostart:default",
     {
       "identifier": "http:default",
       "allow": [

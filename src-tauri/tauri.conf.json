@@ -43,6 +43,7 @@
   },
   "bundle": {
     "active": true,
+    "createUpdaterArtifacts": true,
     "targets": ["deb", "rpm", "appimage", "nsis", "msi", "dmg"],
     "category": "Business",
     "shortDescription": "ERP platform for Kenyan SMEs",
@@ -74,10 +75,16 @@
         "language": "en-US"
       },
       "nsis": {
-        "installMode": "perMachine",
+        "installMode": "currentUser",
         "languages": ["English"],
         "installerIcon": "icons/icon.ico",
-        "displayLanguageSelector": false
+        "displayLanguageSelector": false,
+        "headerImage": "installer/header.bmp",
+        "sidebarImage": "installer/sidebar.bmp",
+        "compression": "lzma"
+      },
+      "webviewInstallMode": {
+        "type": "embedBootstrapper"
       }
     },
     "macOS": {

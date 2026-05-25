@@ -42,3 +42,9 @@ desktop.ini
 # Public key (license-public.pem) IS committed and embedded in the app.
 keys/license-private.pem
 keys/updater.key
+
+# Local dev artifacts
+brand/node_modules
+brand/preview.mjs
+brand/build.mjs
+

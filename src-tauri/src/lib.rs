@@ -93,6 +93,16 @@ pub fn run() {
                 .add_migrations("sqlite:sokoos.db", migrations)
                 .build(),
         )
+        .setup(|app| {
+            #[cfg(desktop)]
+            {
+                app.handle().plugin(tauri_plugin_autostart::init(
+                    tauri_plugin_autostart::MacosLauncher::LaunchAgent,
+                    None,
+                ))?;
+            }
+            Ok(())
+        })
         .invoke_handler(tauri::generate_handler![
             commands::hash_password,
             commands::verify_password,

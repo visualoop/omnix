@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useAuthStore } from "@/stores/auth";
 import { runSetup } from "@/services/auth";
+import { setAutostartEnabled } from "@/services/autostart";
 import { SokoLogo } from "@/components/soko-logo";
 
 interface SetupData {
@@ -15,6 +16,7 @@ interface SetupData {
   username: string;
   password: string;
   confirmPassword: string;
+  autostart: boolean;
 }
 
 export function SetupWizard() {
@@ -28,12 +30,13 @@ export function SetupWizard() {
     username: "",
     password: "",
     confirmPassword: "",
+    autostart: true,
   });
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { setSetupComplete, setUser } = useAuthStore();
 
-  const update = (field: keyof SetupData, value: string) => {
+    const update = (field: keyof SetupData, value: string | boolean) => {
     setData((d) => ({ ...d, [field]: value }));
     if (error) setError(null);
   };
@@ -66,6 +69,14 @@ export function SetupWizard() {
         username: data.username,
         password: data.password,
       });
+
+      // Apply autostart preference (best-effort; don't fail setup if it errors)
+      try {
+        await setAutostartEnabled(data.autostart);
+      } catch (e) {
+        console.warn("Could not set autostart:", e);
+      }
+
       setSetupComplete(true);
       setUser(user);
     } catch (e) {
@@ -198,10 +209,76 @@ export function SetupWizard() {
           Back
         </Button>
         <Button
-          onClick={finish}
+          onClick={() => {
+            // Validate before going to next step
+            if (data.password !== data.confirmPassword) {
+              setError("Passwords don't match");
+              return;
+            }
+            if (data.password.length < 4) {
+              setError("Password must be at least 4 characters");
+              return;
+            }
+            if (!data.username.match(/^[a-zA-Z0-9_]+$/)) {
+              setError("Username can only contain letters, numbers, and underscores");
+              return;
+            }
+            setError(null);
+            setStep(3);
+          }}
           className="flex-1"
           disabled={submitting || !data.ownerName || !data.username || !data.password || !data.confirmPassword}
         >
+          Continue
+        </Button>
+      </div>
+    </div>,
+
+    // Step 3: Preferences (autostart)
+    <div key="prefs" className="space-y-4">
+      <div>
+        <h2 className="text-lg font-semibold">Almost done</h2>
+        <p className="text-xs text-muted-foreground mt-0.5">
+          A few preferences before we finish
+        </p>
+      </div>
+
+      <label className="flex items-start gap-3 border border-border rounded-lg p-4 cursor-pointer hover:bg-accent/30 transition-colors">
+        <input
+          type="checkbox"
+          checked={data.autostart}
+          onChange={(e) => update("autostart", e.target.checked)}
+          className="mt-0.5 rounded"
+        />
+        <div className="flex-1">
+          <p className="text-sm font-medium">Start SokoOS when Windows boots</p>
+          <p className="text-xs text-muted-foreground mt-1">
+            Recommended for the master device. SokoOS will launch automatically every time
+            this PC turns on, so the LAN server is always reachable from cashier stations.
+            You can change this later in Settings.
+          </p>
+        </div>
+      </label>
+
+      <div className="border border-border rounded-md p-3 bg-muted/20">
+        <p className="text-xs text-muted-foreground">
+          <strong>Note:</strong> If this is a cashier client station (not the main device),
+          uncheck this — the staff will open SokoOS manually when they start their shift.
+        </p>
+      </div>
+
+      {error && (
+        <div className="border border-red-500/50 bg-red-500/5 rounded-md p-2.5 flex items-start gap-2">
+          <AlertCircle className="h-4 w-4 text-red-600 shrink-0 mt-0.5" />
+          <p className="text-xs text-red-700">{error}</p>
+        </div>
+      )}
+
+      <div className="flex gap-2">
+        <Button variant="outline" onClick={() => setStep(2)} className="flex-1" disabled={submitting}>
+          Back
+        </Button>
+        <Button onClick={finish} className="flex-1" disabled={submitting}>
           {submitting ? (
             <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Setting up...</>
           ) : (
@@ -217,7 +294,7 @@ export function SetupWizard() {
       <div className="w-full max-w-[440px] space-y-6">
         {/* Progress */}
         <div className="flex gap-1">
-          {[0, 1, 2].map((i) => (
+          {[0, 1, 2, 3].map((i) => (
             <div
               key={i}
               className={`h-1 flex-1 rounded-full transition-colors ${

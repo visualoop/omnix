@@ -14,6 +14,7 @@ import {
   Activity,
   Network,
   Boxes,
+  Power,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -223,6 +224,65 @@ export function SettingsPage() {
 
       {/* Software updates */}
       <UpdateChecker />
+
+      {/* Auto-start preference */}
+      <AutostartToggle />
+    </div>
+  );
+}
+
+function AutostartToggle() {
+  const [enabled, setEnabled] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [updating, setUpdating] = useState(false);
+
+  useEffect(() => {
+    import("@/services/autostart").then(({ getAutostartEnabled }) =>
+      getAutostartEnabled().then((v) => {
+        setEnabled(v);
+        setLoading(false);
+      })
+    );
+  }, []);
+
+  const toggle = async (next: boolean) => {
+    setUpdating(true);
+    try {
+      const { setAutostartEnabled } = await import("@/services/autostart");
+      await setAutostartEnabled(next);
+      setEnabled(next);
+      toast.success(next ? "Will start with Windows" : "Auto-start disabled");
+    } catch (e) {
+      toast.error("Failed to update auto-start: " + e);
+    } finally {
+      setUpdating(false);
+    }
+  };
+
+  return (
+    <div className="border border-border rounded-lg p-4">
+      <div className="flex items-center gap-2 mb-2">
+        <Power className="h-4 w-4 text-primary" />
+        <h3 className="text-sm font-medium">Start with Windows</h3>
+      </div>
+      <p className="text-xs text-muted-foreground mb-3">
+        Recommended for the master device. SokoOS will launch automatically when this PC boots,
+        so the LAN server is always reachable from cashier stations.
+      </p>
+      {loading ? (
+        <p className="text-xs text-muted-foreground">Checking…</p>
+      ) : (
+        <label className="flex items-center justify-between text-sm cursor-pointer">
+          <span>{enabled ? "Enabled" : "Disabled"}</span>
+          <input
+            type="checkbox"
+            checked={enabled}
+            onChange={(e) => toggle(e.target.checked)}
+            disabled={updating}
+            className="rounded"
+          />
+        </label>
+      )}
     </div>
   );
 }

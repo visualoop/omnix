@@ -63,6 +63,9 @@ jobs:
       - name: Install frontend dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Rebuild installer BMPs from SVG sources
+        run: pnpm build:installer-images
+
       - name: Type-check frontend
         run: pnpm exec tsc --noEmit
 
@@ -93,12 +96,14 @@ jobs:
           if-no-files-found: error
           retention-days: 30
 
-      - name: Upload updater signature files
+      - name: Upload updater artifacts (zip + sig)
         uses: actions/upload-artifact@v4
         with:
-          name: SokoOS-Updater-Signatures
+          name: SokoOS-Updater-Artifacts
           path: |
-            src-tauri/target/release/bundle/msi/*.sig
-            src-tauri/target/release/bundle/nsis/*.sig
+            src-tauri/target/release/bundle/nsis/*.zip
+            src-tauri/target/release/bundle/nsis/*.zip.sig
+            src-tauri/target/release/bundle/msi/*.zip
+            src-tauri/target/release/bundle/msi/*.zip.sig
           if-no-files-found: warn
           retention-days: 30
