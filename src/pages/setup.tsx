@@ -83,7 +83,7 @@ export function SetupWizard() {
       <div>
         <h2 className="text-xl font-semibold">Welcome to SokoOS</h2>
         <p className="text-sm text-muted-foreground mt-1">
-          The operating system for your pharmacy. Let's get you set up.
+          The operating system for your business. Let's get you set up.
         </p>
       </div>
       <Button onClick={() => setStep(1)} className="w-full h-10">
@@ -96,7 +96,7 @@ export function SetupWizard() {
       <div>
         <h2 className="text-lg font-semibold">Your Business</h2>
         <p className="text-xs text-muted-foreground mt-0.5">
-          Tell us about your pharmacy
+          Tell us about your business
         </p>
       </div>
       <div className="space-y-3">

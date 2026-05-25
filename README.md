@@ -2,25 +2,53 @@
 
 [![Build (Windows)](https://github.com/justinelut/sokoOS/actions/workflows/build.yml/badge.svg)](https://github.com/justinelut/sokoOS/actions/workflows/build.yml)
 
-**Offline-first ERP for Kenyan SMEs.** Started with the **Dawa** module for pharmacies — KRA eTIMS compliant, SHA insurance integrated, M-Pesa via Paystack, single-tier pricing.
+**Offline-first ERP platform for Kenyan SMEs.**
 
-## Features
+SokoOS is built as a modular platform. Each business vertical is delivered as a module that
+plugs into the same core (inventory, sales, customers, suppliers, accounting, payments, tax,
+licensing, multi-device sync).
 
-- **POS** with M-Pesa STK push (Paystack), insurance copay split, drug interaction warnings
-- **Pharmacy module:** prescriptions, expiry alerts, controlled substances log, patient profiles with allergies
-- **KRA eTIMS** auto-signing of every sale + VAT3 return generation
-- **SHA + private insurance** (Jubilee, AAR, CIC, Madison, Britam, APA, UAP) — verify members, generate claims, batch submission
-- **Procurement** — suppliers, purchase orders, goods received notes
-- **Stock take** with variance and adjustment
-- **Returns/refunds** with restock workflow
-- **Multi-device LAN** sync (master/client mode with mDNS discovery)
-- **Per-machine licensing** with RSA-signed keys
-- **Auto-backup** with restore + audit log
-- **Auto-update** signed via GitHub Releases
+## Modules
+
+| Module | Status | Description |
+|--------|--------|-------------|
+| **Core** | ✅ Built | Inventory, POS, customers, suppliers, purchases, accounting, reports |
+| **Dawa** (Pharmacy) | ✅ Built | Prescriptions, expiry, drug interactions, controlled substances, patient profiles |
+| **Hardware Store** | 🗓️ Planned | Bulk pricing tiers, parts catalog, contractor accounts |
+| **Electronics** | 🗓️ Planned | IMEI/serial tracking, warranty, repairs |
+| **Salon / Spa** | 🗓️ Planned | Appointments, services, staff commissions |
+| **Restaurant** | 🗓️ Planned | KOT, table management, recipe costing |
+
+The first module shipping is **Dawa** because pharmacy compliance (KRA eTIMS + SHA insurance)
+is the most demanding regulatory load in Kenya — get that right and other verticals fall out
+of the same engine.
+
+## Core features (every module)
+
+- POS with M-Pesa STK push (Paystack), cash, bank, and per-customer credit
+- Full procurement: suppliers, purchase orders, goods received notes
+- Inventory with batches, expiry, stock take, sale returns
+- Customer management with credit limits and lifetime stats
+- Accounting: expenses, P&L, cash register, receivables
+- KRA eTIMS auto-signing of every sale + VAT3 return generation
+- SHA + private insurance claims with member verification and copay split
+- Per-machine RSA-signed licensing
+- Auto-backup with restore + audit log
+- Auto-update via signed GitHub Releases
+- LAN multi-device sync (master/client)
+- Real auth (Argon2), users with roles
+- Drug interaction checks (Dawa module)
+- Patient profiles with allergies (Dawa module)
+
+## Pricing
+
+KES 30,000 one-time license + KES 12,000/year for compliance updates.
+Buy at [sokoos.co.ke](https://sokoos.co.ke).
 
 ## Tech
 
-Tauri v2 + React 19 + TypeScript + Tailwind v4 + shadcn/ui + SQLite (via tauri-plugin-sql) + Rust (axum, sqlx, argon2, rsa)
+Tauri v2 · React 19 · TypeScript · Tailwind v4 · shadcn/ui · SQLite (tauri-plugin-sql) ·
+Rust (axum, sqlx, argon2, rsa).
 
 ## Development
 
@@ -29,24 +57,16 @@ pnpm install
 pnpm tauri dev
 ```
 
-Frontend dev (no Tauri): `pnpm dev` (DB calls won't work — Tauri bridge required).
-
 ## Build
 
-CI builds Windows installers on every push. See [docs/CI_SECRETS.md](docs/CI_SECRETS.md) for the
+CI builds Windows installers on every push. See [docs/CI_SECRETS.md](docs/CI_SECRETS.md) for
 required GitHub Actions secrets.
 
 To cut a release:
-
 ```bash
 git tag v0.1.0
 git push origin v0.1.0
 ```
 
-The release workflow will build, sign, and publish a GitHub Release with the MSI/EXE installers.
-
-## License
-
-Proprietary. Pricing: KES 30,000 one-time license + KES 12,000/year for compliance updates.
-
-Visit [sokoos.co.ke](https://sokoos.co.ke) for purchase.
+The release workflow builds, signs, and publishes a GitHub Release with the MSI/EXE installers
+plus the `latest.json` manifest the in-app updater reads.

@@ -13,6 +13,7 @@ import {
   Database,
   Activity,
   Network,
+  Boxes,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -66,6 +67,12 @@ const SETTINGS_LINKS: SettingsLink[] = [
     label: "Network",
     description: "LAN multi-device: master/client mode",
     icon: Network,
+  },
+  {
+    to: "/settings/modules",
+    label: "Modules",
+    description: "Installed business modules (Core, Dawa) and roadmap",
+    icon: Boxes,
   },
   {
     to: "/settings/backup",

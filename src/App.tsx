@@ -39,6 +39,7 @@ import { CustomersPage } from "@/pages/customers";
 import { ReturnsPage, NewReturnPage } from "@/pages/returns";
 import { StockTakesPage, StockTakeDetailPage } from "@/pages/stock-take";
 import { PatientProfilePage } from "@/pages/patient-profile";
+import { ModulesPage } from "@/pages/modules";
 
 function App() {
   return (
@@ -123,6 +124,7 @@ function AppContent() {
           <Route path="/stock-take" element={<StockTakesPage />} />
           <Route path="/stock-take/:id" element={<StockTakeDetailPage />} />
           <Route path="/patients/:id" element={<PatientProfilePage />} />
+          <Route path="/settings/modules" element={<ModulesPage />} />
           <Route path="/settings/payments" element={<PaymentSettingsPage />} />
           <Route path="/settings/etims" element={<EtimsSettingsPage />} />
           <Route path="/settings/insurance" element={<InsuranceSettingsPage />} />
