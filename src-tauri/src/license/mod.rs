@@ -42,8 +42,6 @@ pub enum LicenseError {
     SignatureInvalid,
     #[error("Failed to load public key: {0}")]
     PublicKeyError(String),
-    #[error("Machine fingerprint mismatch")]
-    MachineMismatch,
 }
 
 /// Verify a license key string and return the decoded payload.
