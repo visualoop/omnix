@@ -1,18 +1,26 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { Search, Minus, Plus, Trash2 } from "lucide-react";
+import { Search, Minus, Plus, Trash2, Pause, Tag } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useCartStore } from "@/stores/cart";
 import { getProducts, type Product } from "@/services/inventory";
 import { PaymentModal } from "@/components/pos/payment-modal";
 import { InteractionAlerts } from "@/components/pos/interaction-alerts";
+import { HeldSalesDialog } from "@/components/pos/held-sales";
+import { DiscountDialog } from "@/components/pos/discount-dialog";
+import { countHeldSales } from "@/services/held-sales";
 
 export function POSPage() {
   const [search, setSearch] = useState("");
   const [results, setResults] = useState<Product[]>([]);
   const [payOpen, setPayOpen] = useState(false);
+  const [heldOpen, setHeldOpen] = useState(false);
+  const [discountOpen, setDiscountOpen] = useState(false);
+  const [heldCount, setHeldCount] = useState(0);
   const searchRef = useRef<HTMLInputElement>(null);
-  const { items, addItem, removeItem, updateQty, clear, subtotal, taxTotal, grandTotal, discount } = useCartStore();
+  const { items, addItem, removeItem, updateQty, clear, subtotal, taxTotal, grandTotal, discount, discountType, cartDiscountAmount } = useCartStore();
+
+  useEffect(() => { countHeldSales().then(setHeldCount); }, [heldOpen, payOpen]);
 
   // Search products
   useEffect(() => {
@@ -95,8 +103,21 @@ export function POSPage() {
 
       {/* Right: Cart */}
       <div className="w-[340px] flex flex-col bg-sidebar">
-        <div className="p-3 border-b border-border">
+        <div className="p-3 border-b border-border flex items-center justify-between">
           <h2 className="text-sm font-semibold">Cart</h2>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setHeldOpen(true)}
+            className="text-xs h-7"
+          >
+            <Pause className="h-3 w-3 mr-1" /> Park
+            {heldCount > 0 && (
+              <span className="ml-1.5 bg-primary text-primary-foreground rounded-full text-[10px] px-1.5 py-0.5 font-semibold">
+                {heldCount}
+              </span>
+            )}
+          </Button>
         </div>
 
         {/* Drug interaction warnings */}
@@ -150,8 +171,10 @@ export function POSPage() {
           </div>
           {discount > 0 && (
             <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">Discount</span>
-              <span className="font-mono text-green-600">-{discount.toFixed(2)}</span>
+              <span className="text-muted-foreground">
+                Discount {discountType === "percent" && `(${discount}%)`}
+              </span>
+              <span className="font-mono text-green-600">-{cartDiscountAmount().toFixed(2)}</span>
             </div>
           )}
           <div className="flex justify-between text-sm">
@@ -165,7 +188,18 @@ export function POSPage() {
         </div>
 
         {/* Pay button */}
-        <div className="p-3 border-t border-border">
+        <div className="p-3 border-t border-border space-y-2">
+          <Button
+            variant="outline"
+            className="w-full h-9"
+            onClick={() => setDiscountOpen(true)}
+            disabled={items.length === 0}
+          >
+            <Tag className="h-3.5 w-3.5 mr-1.5" />
+            {discount > 0
+              ? `Discount: ${discountType === "percent" ? discount + "%" : "KES " + discount}`
+              : "Add Discount"}
+          </Button>
           <Button
             className="w-full h-11 text-base"
             disabled={items.length === 0}
@@ -178,6 +212,8 @@ export function POSPage() {
 
       {/* Payment modal */}
       <PaymentModal open={payOpen} onClose={() => setPayOpen(false)} />
+      <HeldSalesDialog open={heldOpen} onClose={() => setHeldOpen(false)} />
+      <DiscountDialog open={discountOpen} onClose={() => setDiscountOpen(false)} />
     </div>
   );
 }

@@ -36,7 +36,7 @@ export function PaymentModal({ open, onClose }: Props) {
   const [showInsuranceVerify, setShowInsuranceVerify] = useState(false);
   const [insurance, setInsurance] = useState<InsuranceState | null>(null);
 
-  const { items, customerId, discount, grandTotal, clear } = useCartStore();
+  const { items, customerId, cartDiscountAmount, grandTotal, clear } = useCartStore();
   const user = useAuthStore((s) => s.user);
   const total = grandTotal();
   const paidSoFar = payments.reduce((s, p) => s + p.amount, 0);
@@ -97,7 +97,7 @@ export function PaymentModal({ open, onClose }: Props) {
 
     setProcessing(true);
     try {
-      const saleId = await completeSale(items, finalPayments, customerId, user!.id, discount);
+      const saleId = await completeSale(items, finalPayments, customerId, user!.id, cartDiscountAmount());
 
       // Create insurance claim if applicable
       if (insurance) {

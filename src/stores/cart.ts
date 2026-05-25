@@ -5,14 +5,18 @@ interface CartState {
   items: CartItem[];
   customerId: string | null;
   discount: number;
+  discountType: "amount" | "percent";
   addItem: (product: { id: string; name: string; selling_price: number; tax_rate: number }) => void;
   removeItem: (id: string) => void;
   updateQty: (id: string, qty: number) => void;
-  setDiscount: (amount: number) => void;
+  setLineDiscount: (id: string, discount: number) => void;
+  setDiscount: (amount: number, type?: "amount" | "percent") => void;
   setCustomer: (id: string | null) => void;
+  loadSnapshot: (items: CartItem[], discount: number, customerId: string | null) => void;
   clear: () => void;
   subtotal: () => number;
   taxTotal: () => number;
+  cartDiscountAmount: () => number;
   grandTotal: () => number;
 }
 
@@ -20,6 +24,7 @@ export const useCartStore = create<CartState>((set, get) => ({
   items: [],
   customerId: null,
   discount: 0,
+  discountType: "amount",
 
   addItem: (product) => {
     const items = get().items;
@@ -59,15 +64,47 @@ export const useCartStore = create<CartState>((set, get) => ({
     });
   },
 
-  setDiscount: (amount) => set({ discount: amount }),
+  setLineDiscount: (id, discount) => {
+    set({
+      items: get().items.map((i) => {
+        if (i.id !== id) return i;
+        const lineSubtotal = i.unit_price * i.quantity;
+        const cappedDiscount = Math.max(0, Math.min(lineSubtotal, discount));
+        return { ...i, discount: cappedDiscount, total: lineSubtotal - cappedDiscount };
+      }),
+    });
+  },
+
+  setDiscount: (amount, type = "amount") => set({ discount: amount, discountType: type }),
   setCustomer: (id) => set({ customerId: id }),
-  clear: () => set({ items: [], customerId: null, discount: 0 }),
+  loadSnapshot: (items, discount, customerId) => set({ items, discount, customerId }),
+  clear: () => set({ items: [], customerId: null, discount: 0, discountType: "amount" }),
 
   subtotal: () => get().items.reduce((s, i) => s + i.unit_price * i.quantity, 0),
-  taxTotal: () => get().items.reduce((s, i) => s + (i.unit_price * i.quantity * i.tax_rate / 100), 0),
+  taxTotal: () => {
+    return get().items.reduce((s, i) => {
+      const lineNet = (i.unit_price * i.quantity) - i.discount;
+      return s + (lineNet * i.tax_rate / 100);
+    }, 0);
+  },
+  cartDiscountAmount: () => {
+    const lineSubtotal = get().items.reduce((s, i) => s + (i.unit_price * i.quantity - i.discount), 0);
+    if (get().discountType === "percent") {
+      return Math.min(lineSubtotal, lineSubtotal * (get().discount / 100));
+    }
+    return Math.min(lineSubtotal, get().discount);
+  },
   grandTotal: () => {
-    const st = get().subtotal();
-    const tax = get().taxTotal();
-    return st - get().discount + tax;
+    const items = get().items;
+    const lineSub = items.reduce((s, i) => s + (i.unit_price * i.quantity - i.discount), 0);
+    const cartDisc = get().cartDiscountAmount();
+    const taxableBase = lineSub - cartDisc;
+    const tax = items.reduce((s, i) => {
+      const lineNet = i.unit_price * i.quantity - i.discount;
+      const lineShare = lineSub > 0 ? lineNet / lineSub : 0;
+      const lineAfterCartDisc = lineNet - cartDisc * lineShare;
+      return s + (lineAfterCartDisc * i.tax_rate / 100);
+    }, 0);
+    return taxableBase + tax;
   },
 }));
