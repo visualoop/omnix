@@ -1,0 +1,88 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "SokoOS",
+  "version": "0.1.0",
+  "identifier": "ke.co.sokoos.app",
+  "build": {
+    "beforeDevCommand": "pnpm dev",
+    "devUrl": "http://localhost:1420",
+    "beforeBuildCommand": "pnpm build",
+    "frontendDist": "../dist"
+  },
+  "app": {
+    "windows": [
+      {
+        "title": "SokoOS",
+        "width": 1280,
+        "height": 800,
+        "minWidth": 1024,
+        "minHeight": 600,
+        "decorations": true,
+        "resizable": true,
+        "fullscreen": false
+      }
+    ],
+    "security": {
+      "csp": null
+    }
+  },
+  "plugins": {
+    "sql": {
+      "preload": {
+        "db": "sqlite:sokoos.db"
+      }
+    },
+    "updater": {
+      "active": true,
+      "endpoints": [
+        "https://github.com/justinelut/sokoOS/releases/latest/download/latest.json"
+      ],
+      "dialog": true,
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEIzNDQ1QzNDN0ZBNEIzQ0MKUldUTXM2Ui9QRnhFczgzZTZybVduQjNOUmFuODdWR3FWajRNd1Q3NWErT1lYandKRGNrRUxFVkEK"
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": ["deb", "rpm", "appimage", "nsis", "msi", "dmg"],
+    "category": "Business",
+    "shortDescription": "Pharmacy management system for Kenyan SMEs",
+    "longDescription": "SokoOS Dawa is an offline-first pharmacy ERP with KRA eTIMS compliance, SHA insurance claims, M-Pesa payments via Paystack, and complete inventory management.",
+    "copyright": "© 2026 SokoOS",
+    "publisher": "SokoOS",
+    "homepage": "https://sokoos.co.ke",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ],
+    "linux": {
+      "deb": {
+        "depends": ["libwebkit2gtk-4.1-0", "libgtk-3-0"],
+        "section": "office"
+      },
+      "rpm": {
+        "depends": ["webkit2gtk4.1", "gtk3"]
+      },
+      "appimage": {
+        "bundleMediaFramework": false
+      }
+    },
+    "windows": {
+      "wix": {
+        "language": "en-US"
+      },
+      "nsis": {
+        "installMode": "perMachine",
+        "languages": ["English"],
+        "installerIcon": "icons/icon.ico",
+        "displayLanguageSelector": false
+      }
+    },
+    "macOS": {
+      "minimumSystemVersion": "10.15",
+      "exceptionDomain": "sokoos.co.ke"
+    }
+  }
+}

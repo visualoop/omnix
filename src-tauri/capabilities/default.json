@@ -1,0 +1,27 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "Capability for the main window",
+  "windows": ["main"],
+  "permissions": [
+    "core:default",
+    "opener:default",
+    "sql:default",
+    "sql:allow-execute",
+    "sql:allow-load",
+    "sql:allow-select",
+    "updater:default",
+    "process:default",
+    {
+      "identifier": "http:default",
+      "allow": [
+        { "url": "https://api.paystack.co/*" },
+        { "url": "https://etims-api.kra.go.ke/*" },
+        { "url": "https://etims-api-sbx.kra.go.ke/*" },
+        { "url": "https://sokoos.co.ke/*" },
+        { "url": "https://github.com/*" },
+        { "url": "https://objects.githubusercontent.com/*" }
+      ]
+    }
+  ]
+}
