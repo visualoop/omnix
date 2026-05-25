@@ -1,9 +1,5 @@
 name: Build (Windows)
 
-# Builds Windows installers (.msi and .exe) on every push to main and PR.
-# For tagged releases (e.g. v0.1.0), use the release.yml workflow which
-# also publishes a GitHub Release.
-
 on:
   push:
     branches: [main]
@@ -28,29 +24,17 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: "20"
-
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
         with:
           version: 9
           run_install: false
 
-      - name: Get pnpm store directory
-        id: pnpm-cache
-        shell: bash
-        run: echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_OUTPUT
-
-      - name: Cache pnpm store
-        uses: actions/cache@v4
+      - name: Setup Node (with pnpm cache)
+        uses: actions/setup-node@v4
         with:
-          path: ${{ steps.pnpm-cache.outputs.STORE_PATH }}
-          key: ${{ runner.os }}-pnpm-${{ hashFiles('**/pnpm-lock.yaml') }}
-          restore-keys: |
-            ${{ runner.os }}-pnpm-
+          node-version: "20"
+          cache: pnpm
 
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
@@ -75,7 +59,6 @@ jobs:
 
       - name: Build Tauri app
         env:
-          # Updater signing (set via repo secrets — see docs/CI_SECRETS.md)
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         run: pnpm exec tauri build --bundles msi,nsis
@@ -101,8 +84,8 @@ jobs:
         with:
           name: SokoOS-Updater-Artifacts
           path: |
-            src-tauri/target/release/bundle/nsis/*.zip
-            src-tauri/target/release/bundle/nsis/*.zip.sig
+            src-tauri/target/release/bundle/nsis/*.nsis.zip
+            src-tauri/target/release/bundle/nsis/*.nsis.zip.sig
             src-tauri/target/release/bundle/msi/*.zip
             src-tauri/target/release/bundle/msi/*.zip.sig
           if-no-files-found: warn

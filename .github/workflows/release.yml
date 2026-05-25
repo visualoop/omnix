@@ -1,10 +1,5 @@
 name: Release
 
-# Triggered when you push a version tag (e.g., v0.1.0).
-# Builds Windows installers, signs them for the auto-updater,
-# creates a GitHub Release, and uploads the artifacts + latest.json
-# manifest that the in-app updater reads from sokoos.co.ke.
-
 on:
   push:
     tags:
@@ -25,7 +20,7 @@ jobs:
     runs-on: windows-latest
     timeout-minutes: 60
     permissions:
-      contents: write   # needed to create releases
+      contents: write
 
     steps:
       - name: Checkout
@@ -40,16 +35,10 @@ jobs:
           else
             VERSION="${GITHUB_REF#refs/tags/}"
           fi
-          # Strip leading v
           VERSION_NUM="${VERSION#v}"
           echo "tag=$VERSION" >> $GITHUB_OUTPUT
           echo "version=$VERSION_NUM" >> $GITHUB_OUTPUT
           echo "Building $VERSION (version $VERSION_NUM)"
-
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: "20"
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
@@ -57,18 +46,11 @@ jobs:
           version: 9
           run_install: false
 
-      - name: Get pnpm store directory
-        id: pnpm-cache
-        shell: bash
-        run: echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_OUTPUT
-
-      - name: Cache pnpm store
-        uses: actions/cache@v4
+      - name: Setup Node (with pnpm cache)
+        uses: actions/setup-node@v4
         with:
-          path: ${{ steps.pnpm-cache.outputs.STORE_PATH }}
-          key: ${{ runner.os }}-pnpm-${{ hashFiles('**/pnpm-lock.yaml') }}
-          restore-keys: |
-            ${{ runner.os }}-pnpm-
+          node-version: "20"
+          cache: pnpm
 
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
@@ -95,9 +77,6 @@ jobs:
         run: |
           mkdir -p release-assets
 
-          # Tauri produces updater artifacts: <name>.nsis.zip + <name>.nsis.zip.sig
-          # (when createUpdaterArtifacts: true). The updater client downloads and
-          # verifies these — NOT the .exe directly.
           UPDATER_ZIP=$(ls src-tauri/target/release/bundle/nsis/*.nsis.zip | head -1)
           UPDATER_SIG=$(ls src-tauri/target/release/bundle/nsis/*.nsis.zip.sig | head -1)
 
@@ -124,7 +103,6 @@ jobs:
           }
           EOF
 
-          # Stage all release files
           cp src-tauri/target/release/bundle/msi/*.msi release-assets/
           cp src-tauri/target/release/bundle/nsis/*.exe release-assets/
           cp "$UPDATER_ZIP" release-assets/
