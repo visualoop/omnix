@@ -21,26 +21,41 @@ import {
 import { NavLink } from "react-router-dom";
 import { SokoLogo } from "@/components/soko-logo";
 import { APP_NAME } from "@/lib/brand";
+import { useAuthStore } from "@/stores/auth";
+import { hasAnyPermission, type Permission } from "@/lib/permissions";
 
-const navItems = [
-  { to: "/", icon: LayoutDashboard, label: "Dashboard" },
-  { to: "/pos", icon: ShoppingCart, label: "POS" },
-  { to: "/sales", icon: Receipt, label: "Sales" },
-  { to: "/returns", icon: RotateCcw, label: "Returns" },
-  { to: "/inventory", icon: Package, label: "Inventory" },
-  { to: "/purchase-orders", icon: Truck, label: "Purchases" },
-  { to: "/stock-take", icon: ClipboardCheck, label: "Stock Take" },
-  { to: "/suppliers", icon: Truck, label: "Suppliers" },
-  { to: "/customers", icon: Users, label: "Customers" },
-  { to: "/pharmacy", icon: Pill, label: "Pharmacy" },
-  { to: "/reports", icon: BarChart3, label: "Reports" },
-  { to: "/etims", icon: FileCheck, label: "eTIMS" },
-  { to: "/claims", icon: Shield, label: "Claims" },
-  { to: "/settings", icon: Settings, label: "Settings" },
+interface NavItem {
+  to: string;
+  icon: typeof LayoutDashboard;
+  label: string;
+  /** Show this item only if user has at least one of these permissions. Empty = always show. */
+  permissions: Permission[];
+}
+
+const navItems: NavItem[] = [
+  { to: "/", icon: LayoutDashboard, label: "Dashboard", permissions: [] },
+  { to: "/pos", icon: ShoppingCart, label: "POS", permissions: ["pos.use"] },
+  { to: "/sales", icon: Receipt, label: "Sales", permissions: ["sales.view"] },
+  { to: "/returns", icon: RotateCcw, label: "Returns", permissions: ["sales.refund"] },
+  { to: "/inventory", icon: Package, label: "Inventory", permissions: ["inventory.view"] },
+  { to: "/purchase-orders", icon: Truck, label: "Purchases", permissions: ["purchase_orders.view"] },
+  { to: "/stock-take", icon: ClipboardCheck, label: "Stock Take", permissions: ["stock_take.use"] },
+  { to: "/suppliers", icon: Truck, label: "Suppliers", permissions: ["suppliers.view"] },
+  { to: "/customers", icon: Users, label: "Customers", permissions: ["customers.view"] },
+  { to: "/pharmacy", icon: Pill, label: "Pharmacy", permissions: ["pharmacy.dispense"] },
+  { to: "/reports", icon: BarChart3, label: "Reports", permissions: ["reports.view", "reports.zreport"] },
+  { to: "/etims", icon: FileCheck, label: "eTIMS", permissions: ["etims.view"] },
+  { to: "/claims", icon: Shield, label: "Claims", permissions: ["claims.view"] },
+  { to: "/settings", icon: Settings, label: "Settings", permissions: ["settings.business"] },
 ];
 
 export function Sidebar({ onCommandOpen }: { onCommandOpen: () => void }) {
   const [collapsed, setCollapsed] = useState(false);
+  const user = useAuthStore((s) => s.user);
+
+  const visibleNav = navItems.filter(
+    (item) => item.permissions.length === 0 || hasAnyPermission(user, item.permissions),
+  );
 
   return (
     <aside
@@ -77,7 +92,7 @@ export function Sidebar({ onCommandOpen }: { onCommandOpen: () => void }) {
 
       {/* Nav */}
       <nav className="flex-1 mt-2 px-2 space-y-0.5">
-        {navItems.map((item) => (
+        {visibleNav.map((item) => (
           <NavLink
             key={item.to}
             to={item.to}

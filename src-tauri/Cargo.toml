@@ -1,6 +1,6 @@
 [package]
 name = "sokoos"
-version = "0.1.4"
+version = "0.1.5"
 description = "SokoOS — The operating system for your business"
 authors = ["SokoOS"]
 edition = "2021"

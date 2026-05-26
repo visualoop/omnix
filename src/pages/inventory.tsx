@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { getProducts, getCategories, type Product, type Category } from "@/services/inventory";
 import { ProductPanel } from "@/components/inventory/product-panel";
 import { BulkEditDialog } from "@/components/inventory/bulk-edit-dialog";
+import { Can } from "@/components/require-role";
 
 export function InventoryPage() {
   const [products, setProducts] = useState<Product[]>([]);
@@ -57,16 +58,20 @@ export function InventoryPage() {
         <h1 className="text-xl font-semibold tracking-tight">Inventory</h1>
         <div className="flex gap-2">
           {selected.size > 0 && (
-            <Button size="sm" variant="outline" onClick={() => setBulkOpen(true)}>
-              <Edit3 className="h-4 w-4 mr-1" /> Bulk Edit ({selected.size})
-            </Button>
+            <Can permission="inventory.bulk_edit">
+              <Button size="sm" variant="outline" onClick={() => setBulkOpen(true)}>
+                <Edit3 className="h-4 w-4 mr-1" /> Bulk Edit ({selected.size})
+              </Button>
+            </Can>
           )}
-          <Button size="sm" variant="outline" onClick={() => navigate("/inventory/import")}>
-            <Upload className="h-4 w-4 mr-1" /> Import CSV
-          </Button>
-          <Button size="sm" onClick={openNew}>
-            <Plus className="h-4 w-4 mr-1" /> Add Product
-          </Button>
+          <Can permission="inventory.edit">
+            <Button size="sm" variant="outline" onClick={() => navigate("/inventory/import")}>
+              <Upload className="h-4 w-4 mr-1" /> Import CSV
+            </Button>
+            <Button size="sm" onClick={openNew}>
+              <Plus className="h-4 w-4 mr-1" /> Add Product
+            </Button>
+          </Can>
         </div>
       </div>
 

@@ -4,6 +4,7 @@ import { Toaster } from "sonner";
 import { useAuthStore } from "@/stores/auth";
 import { AppShell } from "@/components/layout/app-shell";
 import { LicenseGuard } from "@/components/license-guard";
+import { RequireRole } from "@/components/require-role";
 import { LoginPage } from "@/pages/login";
 import { SetupWizard } from "@/pages/setup";
 import { DashboardPage } from "@/pages/dashboard";
@@ -99,49 +100,49 @@ function AppContent() {
       <Routes>
         <Route element={<AppShell />}>
           <Route index element={<DashboardPage />} />
-          <Route path="/pos" element={<POSPage />} />
-          <Route path="/inventory" element={<InventoryPage />} />
-          <Route path="/inventory/categories" element={<CategoriesPage />} />
-          <Route path="/inventory/stock" element={<StockPage />} />
-          <Route path="/inventory/import" element={<ImportProductsPage />} />
-          <Route path="/sales" element={<SalesHistoryPage />} />
-          <Route path="/users" element={<UsersPage />} />
-          <Route path="/settings/users" element={<UsersPage />} />
-          <Route path="/pharmacy" element={<PharmacyPage />} />
-          <Route path="/pharmacy/expiry" element={<ExpiryPage />} />
-          <Route path="/reports" element={<ReportsIndexPage />} />
-          <Route path="/reports/sales" element={<ReportsPage />} />
-          <Route path="/reports/inventory" element={<InventoryReportsPage />} />
-          <Route path="/reports/zreport" element={<ZReportPage />} />
-          <Route path="/pharmacy/doctors" element={<DoctorsPage />} />
-          <Route path="/pharmacy/refills" element={<RefillsPage />} />
-          <Route path="/petty-cash" element={<PettyCashPage />} />
-          <Route path="/promotions" element={<PromotionsPage />} />
-          <Route path="/expenses" element={<ExpensesPage />} />
-          <Route path="/pnl" element={<PnLPage />} />
-          <Route path="/cash-register" element={<CashRegisterPage />} />
-          <Route path="/settings" element={<SettingsPage />} />
-          <Route path="/settings/backup" element={<BackupPage />} />
-          <Route path="/audit" element={<AuditLogPage />} />
-          <Route path="/settings/network" element={<NetworkSettingsPage />} />
-          <Route path="/suppliers" element={<SuppliersPage />} />
-          <Route path="/purchase-orders" element={<PurchaseOrdersPage />} />
-          <Route path="/purchase-orders/new" element={<NewPurchaseOrderPage />} />
-          <Route path="/purchase-orders/:id" element={<PurchaseOrderDetailPage />} />
-          <Route path="/customers" element={<CustomersPage />} />
-          <Route path="/returns" element={<ReturnsPage />} />
-          <Route path="/returns/new" element={<NewReturnPage />} />
-          <Route path="/stock-take" element={<StockTakesPage />} />
-          <Route path="/stock-take/:id" element={<StockTakeDetailPage />} />
-          <Route path="/patients/:id" element={<PatientProfilePage />} />
-          <Route path="/settings/modules" element={<ModulesPage />} />
-          <Route path="/settings/payments" element={<PaymentSettingsPage />} />
-          <Route path="/settings/etims" element={<EtimsSettingsPage />} />
-          <Route path="/settings/insurance" element={<InsuranceSettingsPage />} />
-          <Route path="/settings/license" element={<LicensePage />} />
-          <Route path="/claims" element={<ClaimsPage />} />
-          <Route path="/etims" element={<EtimsQueuePage />} />
-          <Route path="/vat-report" element={<VatReportPage />} />
+          <Route path="/pos" element={<RequireRole permission="pos.use"><POSPage /></RequireRole>} />
+          <Route path="/inventory" element={<RequireRole permission="inventory.view"><InventoryPage /></RequireRole>} />
+          <Route path="/inventory/categories" element={<RequireRole permission="inventory.edit"><CategoriesPage /></RequireRole>} />
+          <Route path="/inventory/stock" element={<RequireRole permission="inventory.view"><StockPage /></RequireRole>} />
+          <Route path="/inventory/import" element={<RequireRole permission="inventory.edit"><ImportProductsPage /></RequireRole>} />
+          <Route path="/sales" element={<RequireRole permission="sales.view"><SalesHistoryPage /></RequireRole>} />
+          <Route path="/users" element={<RequireRole permission="users.view"><UsersPage /></RequireRole>} />
+          <Route path="/settings/users" element={<RequireRole permission="users.view"><UsersPage /></RequireRole>} />
+          <Route path="/pharmacy" element={<RequireRole permission="pharmacy.dispense"><PharmacyPage /></RequireRole>} />
+          <Route path="/pharmacy/expiry" element={<RequireRole permission="inventory.view"><ExpiryPage /></RequireRole>} />
+          <Route path="/reports" element={<RequireRole permission={["reports.view", "reports.zreport"]}><ReportsIndexPage /></RequireRole>} />
+          <Route path="/reports/sales" element={<RequireRole permission="reports.view"><ReportsPage /></RequireRole>} />
+          <Route path="/reports/inventory" element={<RequireRole permission="reports.view"><InventoryReportsPage /></RequireRole>} />
+          <Route path="/reports/zreport" element={<RequireRole permission="reports.zreport"><ZReportPage /></RequireRole>} />
+          <Route path="/pharmacy/doctors" element={<RequireRole permission="pharmacy.doctors.manage"><DoctorsPage /></RequireRole>} />
+          <Route path="/pharmacy/refills" element={<RequireRole permission="pharmacy.refill"><RefillsPage /></RequireRole>} />
+          <Route path="/petty-cash" element={<RequireRole permission="petty_cash.use"><PettyCashPage /></RequireRole>} />
+          <Route path="/promotions" element={<RequireRole permission="promotions.manage"><PromotionsPage /></RequireRole>} />
+          <Route path="/expenses" element={<RequireRole permission="expenses.view"><ExpensesPage /></RequireRole>} />
+          <Route path="/pnl" element={<RequireRole permission="reports.pnl"><PnLPage /></RequireRole>} />
+          <Route path="/cash-register" element={<RequireRole permission="cash_register.use"><CashRegisterPage /></RequireRole>} />
+          <Route path="/settings" element={<RequireRole permission="settings.business"><SettingsPage /></RequireRole>} />
+          <Route path="/settings/backup" element={<RequireRole permission="settings.backup"><BackupPage /></RequireRole>} />
+          <Route path="/audit" element={<RequireRole permission="audit.view"><AuditLogPage /></RequireRole>} />
+          <Route path="/settings/network" element={<RequireRole permission="settings.network"><NetworkSettingsPage /></RequireRole>} />
+          <Route path="/suppliers" element={<RequireRole permission="suppliers.view"><SuppliersPage /></RequireRole>} />
+          <Route path="/purchase-orders" element={<RequireRole permission="purchase_orders.view"><PurchaseOrdersPage /></RequireRole>} />
+          <Route path="/purchase-orders/new" element={<RequireRole permission="purchase_orders.create"><NewPurchaseOrderPage /></RequireRole>} />
+          <Route path="/purchase-orders/:id" element={<RequireRole permission="purchase_orders.view"><PurchaseOrderDetailPage /></RequireRole>} />
+          <Route path="/customers" element={<RequireRole permission="customers.view"><CustomersPage /></RequireRole>} />
+          <Route path="/returns" element={<RequireRole permission="sales.refund"><ReturnsPage /></RequireRole>} />
+          <Route path="/returns/new" element={<RequireRole permission="sales.refund"><NewReturnPage /></RequireRole>} />
+          <Route path="/stock-take" element={<RequireRole permission="stock_take.use"><StockTakesPage /></RequireRole>} />
+          <Route path="/stock-take/:id" element={<RequireRole permission="stock_take.use"><StockTakeDetailPage /></RequireRole>} />
+          <Route path="/patients/:id" element={<RequireRole permission="customers.view"><PatientProfilePage /></RequireRole>} />
+          <Route path="/settings/modules" element={<RequireRole permission="settings.modules"><ModulesPage /></RequireRole>} />
+          <Route path="/settings/payments" element={<RequireRole permission="settings.business"><PaymentSettingsPage /></RequireRole>} />
+          <Route path="/settings/etims" element={<RequireRole permission="etims.view"><EtimsSettingsPage /></RequireRole>} />
+          <Route path="/settings/insurance" element={<RequireRole permission="claims.view"><InsuranceSettingsPage /></RequireRole>} />
+          <Route path="/settings/license" element={<RequireRole permission="license.view"><LicensePage /></RequireRole>} />
+          <Route path="/claims" element={<RequireRole permission="claims.view"><ClaimsPage /></RequireRole>} />
+          <Route path="/etims" element={<RequireRole permission="etims.view"><EtimsQueuePage /></RequireRole>} />
+          <Route path="/vat-report" element={<RequireRole permission="reports.view"><VatReportPage /></RequireRole>} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Route>
       </Routes>
