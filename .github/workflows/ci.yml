@@ -1,12 +1,16 @@
 name: CI
 
 on:
+  # Only run CI when we actually need a build:
+  # - Tag push → release build (with GitHub Release)
+  # - PR → branch validation
+  # - Manual dispatch → on-demand release
+  #
+  # Direct pushes to main do NOT trigger CI. Open a PR or push a tag.
+  # This avoids duplicate runs when the same commit is pushed to a branch
+  # AND tagged (which used to trigger 2 runs).
   push:
-    branches: [main]
     tags: ["v*.*.*"]
-    paths-ignore:
-      - "**.md"
-      - "docs/**"
   pull_request:
     branches: [main]
   workflow_dispatch:
@@ -15,6 +19,12 @@ on:
         description: "Optional: tag a release (e.g. v0.1.3). Leave blank to just build artifacts."
         required: false
         type: string
+
+# Dedupe runs by commit SHA so retagging or force-pushing same commit
+# doesn't cause concurrent duplicate work.
+concurrency:
+  group: ci-${{ github.sha }}
+  cancel-in-progress: false
 
 env:
   CARGO_TERM_COLOR: always
