@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import { NavLink } from "react-router-dom";
 import { SokoLogo } from "@/components/soko-logo";
+import { APP_NAME } from "@/lib/brand";
 
 const navItems = [
   { to: "/", icon: LayoutDashboard, label: "Dashboard" },
@@ -52,7 +53,7 @@ export function Sidebar({ onCommandOpen }: { onCommandOpen: () => void }) {
       <div className="flex items-center h-12 px-3 border-b border-border gap-2">
         <SokoLogo size={24} />
         {!collapsed && (
-          <span className="text-sm font-semibold tracking-tight">SokoOS</span>
+          <span className="text-sm font-semibold tracking-tight">{APP_NAME}</span>
         )}
       </div>
 

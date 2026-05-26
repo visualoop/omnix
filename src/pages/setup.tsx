@@ -6,6 +6,7 @@ import { useAuthStore } from "@/stores/auth";
 import { runSetup } from "@/services/auth";
 import { setAutostartEnabled } from "@/services/autostart";
 import { SokoLogo } from "@/components/soko-logo";
+import { APP_NAME } from "@/lib/brand";
 
 interface SetupData {
   businessName: string;
@@ -92,7 +93,7 @@ export function SetupWizard() {
         <SokoLogo size={64} />
       </div>
       <div>
-        <h2 className="text-xl font-semibold">Welcome to SokoOS</h2>
+        <h2 className="text-xl font-semibold">Welcome to {APP_NAME}</h2>
         <p className="text-sm text-muted-foreground mt-1">
           The operating system for your business. Let's get you set up.
         </p>
@@ -159,7 +160,7 @@ export function SetupWizard() {
       <div>
         <h2 className="text-lg font-semibold">Owner Account</h2>
         <p className="text-xs text-muted-foreground mt-0.5">
-          You'll use this to sign in to SokoOS
+          You'll use this to sign in to {APP_NAME}
         </p>
       </div>
       <div className="space-y-3">
@@ -251,9 +252,9 @@ export function SetupWizard() {
           className="mt-0.5 rounded"
         />
         <div className="flex-1">
-          <p className="text-sm font-medium">Start SokoOS when Windows boots</p>
+          <p className="text-sm font-medium">Start {APP_NAME} when Windows boots</p>
           <p className="text-xs text-muted-foreground mt-1">
-            Recommended for the master device. SokoOS will launch automatically every time
+            Recommended for the master device. {APP_NAME} will launch automatically every time
             this PC turns on, so the LAN server is always reachable from cashier stations.
             You can change this later in Settings.
           </p>
@@ -263,7 +264,7 @@ export function SetupWizard() {
       <div className="border border-border rounded-md p-3 bg-muted/20">
         <p className="text-xs text-muted-foreground">
           <strong>Note:</strong> If this is a cashier client station (not the main device),
-          uncheck this — the staff will open SokoOS manually when they start their shift.
+          uncheck this — the staff will open {APP_NAME} manually when they start their shift.
         </p>
       </div>
 

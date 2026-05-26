@@ -21,6 +21,7 @@ import { Input } from "@/components/ui/input";
 import { UpdateChecker } from "@/components/update-checker";
 import { query, execute } from "@/lib/db";
 import { toast } from "sonner";
+import { APP_NAME } from "@/lib/brand";
 
 interface Business {
   id: string;
@@ -266,7 +267,7 @@ function AutostartToggle() {
         <h3 className="text-sm font-medium">Start with Windows</h3>
       </div>
       <p className="text-xs text-muted-foreground mb-3">
-        Recommended for the master device. SokoOS will launch automatically when this PC boots,
+        Recommended for the master device. {APP_NAME} will launch automatically when this PC boots,
         so the LAN server is always reachable from cashier stations.
       </p>
       {loading ? (

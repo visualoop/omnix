@@ -17,6 +17,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { query, execute } from "@/lib/db";
 import { toast } from "sonner";
+import { APP_NAME } from "@/lib/brand";
 
 interface BackupInfo {
   filename: string;
@@ -86,7 +87,7 @@ export function BackupPage() {
     setRestoring(filename);
     try {
       await invoke("restore_backup", { filename });
-      toast.success("Backup restored. Please restart SokoOS now.", { duration: 10000 });
+      toast.success(`Backup restored. Please restart ${APP_NAME} now.`, { duration: 10000 });
       load();
     } catch (e) {
       toast.error("Restore failed: " + e);
@@ -191,7 +192,7 @@ export function BackupPage() {
           <h2 className="text-sm font-semibold">Auto-Backup Schedule</h2>
         </div>
         <p className="text-xs text-muted-foreground">
-          Automatic backups run when you open SokoOS, if the previous backup is older than the interval.
+          Automatic backups run when you open {APP_NAME}, if the previous backup is older than the interval.
         </p>
         <div className="flex gap-2">
           {(["off", "daily", "weekly"] as const).map((opt) => (

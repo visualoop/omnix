@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { APP_NAME, BRAND } from "@/lib/brand";
 
 interface Module {
   id: string;
@@ -28,7 +29,7 @@ const MODULES: Module[] = [
   {
     id: "core",
     name: "Core",
-    description: "Foundation every SokoOS install includes — inventory, POS, customers, suppliers, accounting.",
+    description: `Foundation every ${APP_NAME} install includes — inventory, POS, customers, suppliers, accounting.`,
     icon: Cpu,
     status: "core",
     features: [
@@ -130,7 +131,7 @@ export function ModulesPage() {
         <div>
           <h1 className="text-xl font-semibold tracking-tight">Modules</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            SokoOS is a modular platform. Core ships in every install; verticals plug in on top.
+            {APP_NAME} is a modular platform. Core ships in every install; verticals plug in on top.
           </p>
         </div>
       </div>
@@ -144,9 +145,9 @@ export function ModulesPage() {
       <div className="border border-border rounded-lg p-4 bg-muted/20">
         <h3 className="text-sm font-semibold mb-2">Want a different vertical?</h3>
         <p className="text-xs text-muted-foreground">
-          Modules are added by SokoOS releases — they don't require reinstalling. If you need a
+          Modules are added by {APP_NAME} releases — they don't require reinstalling. If you need a
           vertical that's not yet built, contact us at{" "}
-          <a href="mailto:hello@sokoos.co.ke" className="text-primary underline">hello@sokoos.co.ke</a>.
+          <a href={`mailto:hello@${BRAND.company.domain}`} className="text-primary underline">hello@{BRAND.company.domain}</a>.
         </p>
       </div>
     </div>

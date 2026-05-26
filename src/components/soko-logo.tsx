@@ -1,7 +1,9 @@
 /**
- * SokoOS brand mark — the same S design used as the app icon.
+ * App brand mark — the same S design used as the app icon.
  * Renders inline SVG so it scales perfectly and matches the icon.
  */
+import { APP_NAME } from "@/lib/brand";
+
 export function SokoLogo({ size = 32, className = "" }: { size?: number; className?: string }) {
   return (
     <svg
@@ -10,7 +12,7 @@ export function SokoLogo({ size = 32, className = "" }: { size?: number; classNa
       viewBox="0 0 512 512"
       xmlns="http://www.w3.org/2000/svg"
       className={className}
-      aria-label="SokoOS"
+      aria-label={APP_NAME}
     >
       <defs>
         <linearGradient id={`sokoBg-${size}`} x1="0" y1="0" x2="1" y2="1">

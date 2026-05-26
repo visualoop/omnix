@@ -4,6 +4,7 @@ import { relaunch } from "@tauri-apps/plugin-process";
 import { Download, RefreshCw, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
+import { APP_NAME } from "@/lib/brand";
 
 interface UpdateInfo {
   version: string;
@@ -111,7 +112,7 @@ export function UpdateChecker() {
         </div>
       ) : (
         <p className="text-xs text-muted-foreground">
-          Check for new SokoOS releases. Updates require an active maintenance subscription.
+          Check for new {APP_NAME} releases. Updates require an active maintenance subscription.
         </p>
       )}
 

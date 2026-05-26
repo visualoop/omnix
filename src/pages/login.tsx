@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useAuthStore } from "@/stores/auth";
 import { SokoLogo } from "@/components/soko-logo";
+import { APP_NAME } from "@/lib/brand";
 
 export function LoginPage() {
   const [username, setUsername] = useState("");
@@ -36,7 +37,7 @@ export function LoginPage() {
           <div className="inline-flex items-center justify-center">
             <SokoLogo size={56} />
           </div>
-          <h1 className="text-2xl font-semibold tracking-tight">SokoOS</h1>
+          <h1 className="text-2xl font-semibold tracking-tight">{APP_NAME}</h1>
           <p className="text-sm text-muted-foreground">Sign in to continue</p>
         </div>
         <form onSubmit={handleLogin} className="space-y-3">

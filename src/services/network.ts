@@ -31,6 +31,7 @@ export type NetworkMode = "standalone" | "master" | "client";
 // ===== Mode + config (stored in settings table) =====
 
 import { query, execute } from "@/lib/db";
+import { APP_NAME } from "@/lib/brand";
 
 const MODE_KEY = "network.mode";
 const MASTER_URL_KEY = "network.master_url";
@@ -58,7 +59,7 @@ export async function setServerPort(port: number): Promise<void> {
 
 export async function getDeviceName(): Promise<string> {
   const rows = await query<{ value: string }>("SELECT value FROM settings WHERE key = ?1", [DEVICE_NAME_KEY]);
-  return rows[0]?.value || "SokoOS Device";
+  return rows[0]?.value || `${APP_NAME} Device`;
 }
 
 export async function setDeviceName(name: string): Promise<void> {

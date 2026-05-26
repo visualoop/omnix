@@ -19,6 +19,7 @@ import {
   deactivateLicense,
   type LicenseStatus,
 } from "@/services/license";
+import { APP_NAME } from "@/lib/brand";
 import { toast } from "sonner";
 
 export function LicensePage() {
@@ -40,7 +41,7 @@ export function LicensePage() {
   };
 
   const handleDeactivate = async () => {
-    if (!confirm("Deactivate this license?\n\nYou will need to enter the key again to use SokoOS on this machine.")) return;
+    if (!confirm(`Deactivate this license?\n\nYou will need to enter the key again to use ${APP_NAME} on this machine.`)) return;
     await deactivateLicense();
     toast.success("License deactivated");
     load();
@@ -75,7 +76,7 @@ export function LicensePage() {
       <div>
         <h1 className="text-xl font-semibold tracking-tight">License</h1>
         <p className="text-sm text-muted-foreground mt-1">
-          Your SokoOS license details and machine binding
+          Your {APP_NAME} license details and machine binding
         </p>
       </div>
 
@@ -171,7 +172,7 @@ export function LicensePage() {
       <div className="border border-red-500/30 bg-red-500/5 rounded-lg p-5 space-y-3">
         <h2 className="text-sm font-semibold text-red-700">Danger Zone</h2>
         <p className="text-xs text-muted-foreground">
-          Deactivating will remove the license from this machine. You'll need to enter the key again to continue using SokoOS.
+          Deactivating will remove the license from this machine. You'll need to enter the key again to continue using {APP_NAME}.
         </p>
         <Button variant="destructive" onClick={handleDeactivate} size="sm">
           <Trash2 className="h-3.5 w-3.5 mr-1.5" /> Deactivate License

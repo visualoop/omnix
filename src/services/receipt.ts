@@ -7,6 +7,7 @@
  */
 
 import { query } from "@/lib/db";
+import { BRAND } from "@/lib/brand";
 
 export interface ReceiptData {
   business: {
@@ -297,7 +298,7 @@ function renderReceiptHTML(d: ReceiptData): string {
   <hr>
 
   <div class="center sm">Thank you for shopping with us!</div>
-  <div class="center sm muted" style="margin-top:4px;">Powered by SokoOS</div>
+  <div class="center sm muted" style="margin-top:4px;">${BRAND.receipt.poweredBy}</div>
 
   <script>
     // Print automatically when loaded inline

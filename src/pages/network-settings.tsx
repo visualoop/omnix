@@ -44,6 +44,7 @@ import {
 import { getMachineInfo } from "@/services/license";
 import { refreshDbMode } from "@/lib/db";
 import { toast } from "sonner";
+import { APP_NAME } from "@/lib/brand";
 
 export function NetworkSettingsPage() {
   const [mode, setModeState] = useState<NetworkMode>("standalone");
@@ -449,7 +450,7 @@ function ClientPanel({ onPaired }: { onPaired: () => void }) {
           <div>
             <h3 className="text-sm font-medium">Find Master Device</h3>
             <p className="text-xs text-muted-foreground mt-0.5">
-              Search for SokoOS master devices on this network
+              Search for {APP_NAME} master devices on this network
             </p>
           </div>
           <Button onClick={handleDiscover} disabled={searching} size="sm" variant="outline">

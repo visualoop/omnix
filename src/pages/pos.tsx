@@ -8,6 +8,7 @@ import { PaymentModal } from "@/components/pos/payment-modal";
 import { InteractionAlerts } from "@/components/pos/interaction-alerts";
 import { HeldSalesDialog } from "@/components/pos/held-sales";
 import { DiscountDialog } from "@/components/pos/discount-dialog";
+import { CustomerPicker } from "@/components/pos/customer-picker";
 import { countHeldSales } from "@/services/held-sales";
 
 export function POSPage() {
@@ -118,6 +119,11 @@ export function POSPage() {
               </span>
             )}
           </Button>
+        </div>
+
+        {/* Customer picker */}
+        <div className="p-3 border-b border-border">
+          <CustomerPicker />
         </div>
 
         {/* Drug interaction warnings */}

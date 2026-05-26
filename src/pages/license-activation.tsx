@@ -7,6 +7,7 @@ import {
   type MachineInfo,
 } from "@/services/license";
 import { SokoLogo } from "@/components/soko-logo";
+import { APP_NAME, BRAND } from "@/lib/brand";
 import { toast } from "sonner";
 
 interface Props {
@@ -58,7 +59,7 @@ export function LicenseActivationPage({ onActivated }: Props) {
           <div className="inline-flex items-center justify-center mb-3">
             <SokoLogo size={64} />
           </div>
-          <h1 className="text-2xl font-semibold tracking-tight">Activate SokoOS</h1>
+          <h1 className="text-2xl font-semibold tracking-tight">Activate {APP_NAME}</h1>
           <p className="text-sm text-muted-foreground mt-1">
             Enter the license key you received after purchase
           </p>
@@ -126,12 +127,12 @@ export function LicenseActivationPage({ onActivated }: Props) {
           <p>
             Don't have a license yet?{" "}
             <a
-              href="https://sokoos.co.ke/buy"
+              href={`${BRAND.company.website}/buy`}
               target="_blank"
               rel="noopener noreferrer"
               className="text-primary inline-flex items-center gap-0.5 hover:underline"
             >
-              Purchase SokoOS <ExternalLink className="h-3 w-3" />
+              Purchase {APP_NAME} <ExternalLink className="h-3 w-3" />
             </a>
           </p>
           <p className="mt-1 text-xs">
