@@ -1,10 +1,11 @@
 import { useState, useEffect } from "react";
-import { Banknote, LockOpen, Lock } from "lucide-react";
+import { Banknote, LockOpen, Lock, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { getOpenShift, openShift, closeShift, getRecentShifts, type CashShift } from "@/services/accounting";
+import { printShiftHandover } from "@/services/shift-handover";
 import { useAuthStore } from "@/stores/auth";
 import { toast } from "sonner";
 
@@ -113,6 +114,7 @@ export function CashRegisterPage() {
                   <th className="text-right px-4 py-2.5 font-medium">Expected</th>
                   <th className="text-right px-4 py-2.5 font-medium">Actual</th>
                   <th className="text-right px-4 py-2.5 font-medium">Variance</th>
+                  <th className="text-right px-4 py-2.5 font-medium"></th>
                 </tr>
               </thead>
               <tbody>
@@ -135,6 +137,17 @@ export function CashRegisterPage() {
                       {s.difference !== null && s.difference !== undefined
                         ? `${s.difference >= 0 ? "+" : ""}${s.difference.toFixed(2)}`
                         : "—"}
+                    </td>
+                    <td className="px-4 py-2 text-right">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => printShiftHandover(s.id).catch((e) => toast.error(String(e)))}
+                        title="Print handover slip"
+                        className="h-7 w-7 p-0"
+                      >
+                        <FileText className="h-3.5 w-3.5" />
+                      </Button>
                     </td>
                   </tr>
                 ))}

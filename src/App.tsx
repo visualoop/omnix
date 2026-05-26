@@ -19,6 +19,8 @@ import { InventoryReportsPage } from "@/pages/inventory-reports";
 import { ZReportPage } from "@/pages/zreport";
 import { DoctorsPage } from "@/pages/doctors";
 import { RefillsPage } from "@/pages/refills";
+import { PettyCashPage } from "@/pages/petty-cash";
+import { PromotionsPage } from "@/pages/promotions";
 import { ExpensesPage } from "@/pages/expenses";
 import { PnLPage } from "@/pages/pnl";
 import { CashRegisterPage } from "@/pages/cash-register";
@@ -113,6 +115,8 @@ function AppContent() {
           <Route path="/reports/zreport" element={<ZReportPage />} />
           <Route path="/pharmacy/doctors" element={<DoctorsPage />} />
           <Route path="/pharmacy/refills" element={<RefillsPage />} />
+          <Route path="/petty-cash" element={<PettyCashPage />} />
+          <Route path="/promotions" element={<PromotionsPage />} />
           <Route path="/expenses" element={<ExpensesPage />} />
           <Route path="/pnl" element={<PnLPage />} />
           <Route path="/cash-register" element={<CashRegisterPage />} />
