@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { persist } from "zustand/middleware";
 import type { CartItem } from "@/services/sales";
 
 interface CartState {
@@ -20,9 +21,11 @@ interface CartState {
   grandTotal: () => number;
 }
 
-export const useCartStore = create<CartState>((set, get) => ({
-  items: [],
-  customerId: null,
+export const useCartStore = create<CartState>()(
+  persist(
+    (set, get) => ({
+      items: [],
+      customerId: null,
   discount: 0,
   discountType: "amount",
 
@@ -107,4 +110,15 @@ export const useCartStore = create<CartState>((set, get) => ({
     }, 0);
     return taxableBase + tax;
   },
-}));
+    }),
+    {
+      name: "sokoos-cart",
+      partialize: (s) => ({
+        items: s.items,
+        customerId: s.customerId,
+        discount: s.discount,
+        discountType: s.discountType,
+      }),
+    }
+  )
+);

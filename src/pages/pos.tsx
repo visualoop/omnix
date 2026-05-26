@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { Search, Minus, Plus, Trash2, Pause, Tag } from "lucide-react";
+import { Search, Minus, Plus, Trash2, Pause, Tag, Pill } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useCartStore } from "@/stores/cart";
@@ -9,6 +9,7 @@ import { InteractionAlerts } from "@/components/pos/interaction-alerts";
 import { HeldSalesDialog } from "@/components/pos/held-sales";
 import { DiscountDialog } from "@/components/pos/discount-dialog";
 import { CustomerPicker } from "@/components/pos/customer-picker";
+import { SubstitutionsDialog } from "@/components/pos/substitutions-dialog";
 import { countHeldSales } from "@/services/held-sales";
 
 export function POSPage() {
@@ -18,6 +19,7 @@ export function POSPage() {
   const [heldOpen, setHeldOpen] = useState(false);
   const [discountOpen, setDiscountOpen] = useState(false);
   const [heldCount, setHeldCount] = useState(0);
+  const [subFor, setSubFor] = useState<Product | null>(null);
   const searchRef = useRef<HTMLInputElement>(null);
   const { items, addItem, removeItem, updateQty, clear, subtotal, taxTotal, grandTotal, discount, discountType, cartDiscountAmount } = useCartStore();
 
@@ -141,9 +143,18 @@ export function POSPage() {
                 <div key={item.id} className="px-3 py-2">
                   <div className="flex justify-between">
                     <span className="text-sm font-medium truncate flex-1">{item.name}</span>
-                    <button onClick={() => removeItem(item.id)} className="text-muted-foreground hover:text-destructive ml-2">
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </button>
+                    <div className="flex items-center gap-1 ml-2">
+                      <button
+                        onClick={() => setSubFor({ id: item.id, name: item.name, selling_price: item.unit_price, tax_rate: item.tax_rate } as Product)}
+                        className="text-muted-foreground hover:text-primary"
+                        title="Find substitute"
+                      >
+                        <Pill className="h-3.5 w-3.5" />
+                      </button>
+                      <button onClick={() => removeItem(item.id)} className="text-muted-foreground hover:text-destructive">
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
                   </div>
                   <div className="flex items-center justify-between mt-1">
                     <div className="flex items-center gap-1">
@@ -220,6 +231,7 @@ export function POSPage() {
       <PaymentModal open={payOpen} onClose={() => setPayOpen(false)} />
       <HeldSalesDialog open={heldOpen} onClose={() => setHeldOpen(false)} />
       <DiscountDialog open={discountOpen} onClose={() => setDiscountOpen(false)} />
+      <SubstitutionsDialog open={!!subFor} product={subFor} onClose={() => setSubFor(null)} />
     </div>
   );
 }
