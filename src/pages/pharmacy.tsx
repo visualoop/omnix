@@ -1,11 +1,13 @@
 import { useState, useEffect, useCallback } from "react";
-import { Plus, Search, FileText, AlertTriangle } from "lucide-react";
+import { Plus, Search, FileText, AlertTriangle, Tag } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { getPrescriptions, getExpiringItems, type Prescription, type ExpiryItem } from "@/services/pharmacy";
+import { printDrugLabels } from "@/services/drug-labels";
 import { PrescriptionPanel } from "@/components/pharmacy/prescription-panel";
 import { Link } from "react-router-dom";
+import { toast } from "sonner";
 
 export function PharmacyPage() {
   const [prescriptions, setPrescriptions] = useState<Prescription[]>([]);
@@ -80,9 +82,28 @@ export function PharmacyPage() {
                   <td className="px-4 py-2.5 text-muted-foreground">{rx.doctor_name || "—"}</td>
                   <td className="px-4 py-2.5 text-xs text-muted-foreground">{rx.created_at}</td>
                   <td className="px-4 py-2.5 text-right">
-                    <Badge variant={rx.status === "dispensed" ? "default" : "secondary"} className="text-xs">
-                      {rx.status}
-                    </Badge>
+                    <div className="flex items-center justify-end gap-2">
+                      <Badge variant={rx.status === "dispensed" ? "default" : "secondary"} className="text-xs">
+                        {rx.status}
+                      </Badge>
+                      {rx.status === "dispensed" && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={async () => {
+                            try {
+                              await printDrugLabels(rx.id);
+                            } catch (e) {
+                              toast.error(String(e));
+                            }
+                          }}
+                          title="Print drug labels"
+                          className="h-7 w-7 p-0"
+                        >
+                          <Tag className="h-3.5 w-3.5" />
+                        </Button>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))}

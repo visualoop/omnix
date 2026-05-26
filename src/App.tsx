@@ -16,6 +16,7 @@ import { ExpiryPage } from "@/pages/expiry";
 import { ReportsPage } from "@/pages/reports";
 import { ReportsIndexPage } from "@/pages/reports-index";
 import { InventoryReportsPage } from "@/pages/inventory-reports";
+import { ZReportPage } from "@/pages/zreport";
 import { ExpensesPage } from "@/pages/expenses";
 import { PnLPage } from "@/pages/pnl";
 import { CashRegisterPage } from "@/pages/cash-register";
@@ -107,6 +108,7 @@ function AppContent() {
           <Route path="/reports" element={<ReportsIndexPage />} />
           <Route path="/reports/sales" element={<ReportsPage />} />
           <Route path="/reports/inventory" element={<InventoryReportsPage />} />
+          <Route path="/reports/zreport" element={<ZReportPage />} />
           <Route path="/expenses" element={<ExpensesPage />} />
           <Route path="/pnl" element={<PnLPage />} />
           <Route path="/cash-register" element={<CashRegisterPage />} />

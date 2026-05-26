@@ -28,6 +28,13 @@ const reports: ReportLink[] = [
     category: "sales",
   },
   {
+    to: "/reports/zreport",
+    title: "Z-Report (End of Day)",
+    description: "Daily shift summary for cash reconciliation and handover",
+    icon: FileSpreadsheet,
+    category: "sales",
+  },
+  {
     to: "/reports/inventory",
     title: "Inventory Reports",
     description: "Stock valuation, reorder list, dead stock",
