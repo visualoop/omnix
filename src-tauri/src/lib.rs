@@ -86,6 +86,12 @@ pub fn run() {
             sql: include_str!("../migrations/013_payments_settlement.sql"),
             kind: MigrationKind::Up,
         },
+        Migration {
+            version: 14,
+            description: "loyalty + doctors + substitutions + refills + promotions + petty cash",
+            sql: include_str!("../migrations/014_pharmacy_extensions.sql"),
+            kind: MigrationKind::Up,
+        },
     ];
 
     tauri::Builder::default()
