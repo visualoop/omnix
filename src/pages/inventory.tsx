@@ -1,25 +1,50 @@
 import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { Plus, Search, Package, Upload } from "lucide-react";
+import { Plus, Search, Package, Upload, Edit3 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { getProducts, type Product } from "@/services/inventory";
+import { getProducts, getCategories, type Product, type Category } from "@/services/inventory";
 import { ProductPanel } from "@/components/inventory/product-panel";
+import { BulkEditDialog } from "@/components/inventory/bulk-edit-dialog";
 
 export function InventoryPage() {
-  const [products, setProducts] = useState<Product[]>([]);  const [search, setSearch] = useState("");
+  const [products, setProducts] = useState<Product[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [search, setSearch] = useState("");
   const [panelOpen, setPanelOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [bulkOpen, setBulkOpen] = useState(false);
 
   const load = useCallback(async () => {
-    const data = await getProducts(search || undefined);
+    const [data, cats] = await Promise.all([
+      getProducts(search || undefined),
+      getCategories(),
+    ]);
     setProducts(data);
+    setCategories(cats);
   }, [search]);
 
   useEffect(() => {
     load();
   }, [load]);
+
+  const toggleSelect = (id: string) => {
+    setSelected((s) => {
+      const n = new Set(s);
+      if (n.has(id)) n.delete(id); else n.add(id);
+      return n;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    if (selected.size === products.length) {
+      setSelected(new Set());
+    } else {
+      setSelected(new Set(products.map((p) => p.id)));
+    }
+  };
 
   const openNew = () => { setEditingId(null); setPanelOpen(true); };
   const openEdit = (id: string) => { setEditingId(id); setPanelOpen(true); };
@@ -31,6 +56,11 @@ export function InventoryPage() {
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-semibold tracking-tight">Inventory</h1>
         <div className="flex gap-2">
+          {selected.size > 0 && (
+            <Button size="sm" variant="outline" onClick={() => setBulkOpen(true)}>
+              <Edit3 className="h-4 w-4 mr-1" /> Bulk Edit ({selected.size})
+            </Button>
+          )}
           <Button size="sm" variant="outline" onClick={() => navigate("/inventory/import")}>
             <Upload className="h-4 w-4 mr-1" /> Import CSV
           </Button>
@@ -59,6 +89,14 @@ export function InventoryPage() {
           <table className="w-full text-sm">
             <thead className="bg-muted/50">
               <tr className="border-b border-border">
+                <th className="px-3 py-2.5 w-8">
+                  <input
+                    type="checkbox"
+                    checked={selected.size > 0 && selected.size === products.length}
+                    onChange={toggleSelectAll}
+                    className="rounded"
+                  />
+                </th>
                 <th className="text-left px-4 py-2.5 font-medium">Product</th>
                 <th className="text-left px-4 py-2.5 font-medium">Category</th>
                 <th className="text-right px-4 py-2.5 font-medium">Stock</th>
@@ -71,9 +109,16 @@ export function InventoryPage() {
               {products.map((p) => (
                 <tr
                   key={p.id}
-                  className="border-b border-border last:border-0 hover:bg-muted/30 cursor-pointer transition-colors"
-                  onClick={() => openEdit(p.id)}
+                  className="border-b border-border last:border-0 hover:bg-muted/30 transition-colors"
                 >
+                  <td className="px-3 py-2.5" onClick={(e) => e.stopPropagation()}>
+                    <input
+                      type="checkbox"
+                      checked={selected.has(p.id)}
+                      onChange={() => toggleSelect(p.id)}
+                      className="rounded"
+                    />
+                  </td>
                   <td className="px-4 py-2.5">
                     <div>
                       <span className="font-medium">{p.name}</span>
@@ -102,6 +147,14 @@ export function InventoryPage() {
                     ) : (
                       <Badge variant="default" className="text-xs">OK</Badge>
                     )}
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={(e) => { e.stopPropagation(); openEdit(p.id); }}
+                      className="ml-2 h-7 w-7 p-0"
+                    >
+                      <Edit3 className="h-3 w-3" />
+                    </Button>
                   </td>
                 </tr>
               ))}
@@ -116,6 +169,13 @@ export function InventoryPage() {
         onClose={() => setPanelOpen(false)}
         productId={editingId}
         onSaved={load}
+      />
+      <BulkEditDialog
+        open={bulkOpen}
+        selectedIds={Array.from(selected)}
+        onClose={() => setBulkOpen(false)}
+        onComplete={() => { setSelected(new Set()); load(); }}
+        categories={categories}
       />
     </div>
   );

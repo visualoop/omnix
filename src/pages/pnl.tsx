@@ -1,8 +1,9 @@
 import { useState, useEffect } from "react";
-import { Download, TrendingUp, TrendingDown } from "lucide-react";
+import { Download, TrendingUp, TrendingDown, Printer } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { getPnL, type PnLData } from "@/services/accounting";
+import { printPage } from "@/lib/print";
 import { exportToCSV } from "@/lib/export";
 
 export function PnLPage() {
@@ -55,9 +56,14 @@ export function PnLPage() {
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-semibold tracking-tight">Profit & Loss</h1>
         {data && (
-          <Button variant="outline" size="sm" onClick={handleExport}>
-            <Download className="h-3.5 w-3.5 mr-1" /> Export CSV
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" onClick={() => printPage(`P&L ${startDate} to ${endDate}`)}>
+              <Printer className="h-3.5 w-3.5 mr-1" /> Print / PDF
+            </Button>
+            <Button variant="outline" size="sm" onClick={handleExport}>
+              <Download className="h-3.5 w-3.5 mr-1" /> Export CSV
+            </Button>
+          </div>
         )}
       </div>
 
