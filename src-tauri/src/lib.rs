@@ -195,6 +195,12 @@ fn run_inner() {
             sql: include_str!("../migrations/014_pharmacy_extensions.sql"),
             kind: MigrationKind::Up,
         },
+        Migration {
+            version: 15,
+            description: "local trial mode tracking",
+            sql: include_str!("../migrations/015_trial_mode.sql"),
+            kind: MigrationKind::Up,
+        },
     ];
 
     tauri::Builder::default()

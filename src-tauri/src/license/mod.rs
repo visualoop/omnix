@@ -48,8 +48,10 @@ pub enum LicenseError {
 ///
 /// Format: `SOKO-<base64url(json)>.<base64url(rsa_signature)>`
 pub fn verify_license_key(key: &str) -> Result<VerifiedLicense, LicenseError> {
-    let key = key.trim();
-    let key_body = key.strip_prefix("SOKO-").unwrap_or(key);
+    // Strip ALL whitespace (not just trim) — copy-paste often inserts
+    // line breaks mid-string when the email client / terminal wraps.
+    let cleaned: String = key.chars().filter(|c| !c.is_whitespace()).collect();
+    let key_body = cleaned.strip_prefix("SOKO-").unwrap_or(&cleaned);
 
     let parts: Vec<&str> = key_body.split('.').collect();
     if parts.len() != 2 {
@@ -84,7 +86,7 @@ pub fn verify_license_key(key: &str) -> Result<VerifiedLicense, LicenseError> {
 
     Ok(VerifiedLicense {
         payload,
-        raw_key: key.to_string(),
+        raw_key: cleaned,
     })
 }
 

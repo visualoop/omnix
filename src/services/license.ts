@@ -39,6 +39,7 @@ export interface LicenseStatus {
   maintenance_active: boolean;
   maintenance_days_remaining: number;
   machine: MachineInfo;
+  trial?: TrialState;
 }
 
 /** Get the current machine's fingerprint */
@@ -102,6 +103,19 @@ export async function getLicenseStatus(): Promise<LicenseStatus> {
   const active = rows[0];
 
   if (!active) {
+    // Check trial
+    const trial = await getTrialState();
+    if (trial.active) {
+      return {
+        activated: true,
+        license: null,
+        features: ["pharmacy", "etims", "insurance", "lan", "reports"],
+        maintenance_active: true,
+        maintenance_days_remaining: trial.days_remaining,
+        machine,
+        trial,
+      };
+    }
     return {
       activated: false,
       license: null,
@@ -109,6 +123,7 @@ export async function getLicenseStatus(): Promise<LicenseStatus> {
       maintenance_active: false,
       maintenance_days_remaining: 0,
       machine,
+      trial,
     };
   }
 
@@ -182,4 +197,80 @@ async function logActivationEvent(
 /** Format license key for display (groups of 5 chars, max 4 lines) */
 export function formatKeyForDisplay(key: string): string {
   return key.match(/.{1,40}/g)?.join("\n") || key;
+}
+
+// ─── Trial mode (no server) ──────────────────────────────────────────
+export interface TrialState {
+  active: boolean;
+  consumed: boolean;
+  started_at: string | null;
+  expires_at: string | null;
+  duration_days: number;
+  days_remaining: number;
+}
+
+const TRIAL_DURATION_DAYS = 30;
+
+/** Get the current trial state (or null if never started). */
+export async function getTrialState(): Promise<TrialState> {
+  const rows = await query<{
+    started_at: string;
+    machine_fingerprint: string;
+    duration_days: number;
+    consumed: number;
+  }>("SELECT * FROM trial_state WHERE id = 1");
+  const row = rows[0];
+
+  if (!row) {
+    return {
+      active: false,
+      consumed: false,
+      started_at: null,
+      expires_at: null,
+      duration_days: TRIAL_DURATION_DAYS,
+      days_remaining: TRIAL_DURATION_DAYS,
+    };
+  }
+
+  // Verify machine binding — copying the DB to another machine doesn't extend the trial
+  const machine = await getMachineInfo();
+  if (row.machine_fingerprint !== machine.fingerprint) {
+    return {
+      active: false,
+      consumed: true,           // treat as consumed to prevent abuse
+      started_at: row.started_at,
+      expires_at: null,
+      duration_days: row.duration_days,
+      days_remaining: 0,
+    };
+  }
+
+  const startedMs = new Date(row.started_at).getTime();
+  const expiresMs = startedMs + row.duration_days * 24 * 60 * 60 * 1000;
+  const now = Date.now();
+  const daysRemaining = Math.max(0, Math.ceil((expiresMs - now) / (24 * 60 * 60 * 1000)));
+
+  return {
+    active: now < expiresMs,
+    consumed: true,
+    started_at: row.started_at,
+    expires_at: new Date(expiresMs).toISOString(),
+    duration_days: row.duration_days,
+    days_remaining: daysRemaining,
+  };
+}
+
+/** Start a 30-day trial. Idempotent: if already started (or expired), returns existing state. */
+export async function startTrial(): Promise<TrialState> {
+  const existing = await getTrialState();
+  if (existing.consumed) {
+    return existing;
+  }
+  const machine = await getMachineInfo();
+  await execute(
+    `INSERT OR IGNORE INTO trial_state (id, started_at, machine_fingerprint, duration_days, consumed)
+     VALUES (1, datetime('now'), ?1, ?2, 1)`,
+    [machine.fingerprint, TRIAL_DURATION_DAYS],
+  );
+  return getTrialState();
 }
