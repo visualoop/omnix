@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Plus, Search, Users, Edit3, Phone, Mail, CreditCard, ShoppingBag, Pill } from "lucide-react";
+import { Plus, Search, Users, Edit3, Phone, Mail, CreditCard, ShoppingBag, Pill, Wallet } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
@@ -9,6 +9,9 @@ import {
   listCustomers, upsertCustomer, getCustomerStats,
   type Customer,
 } from "@/services/erp";
+import { recordCustomerPayment } from "@/services/settlement";
+import { useAuthStore } from "@/stores/auth";
+import { PaymentRecordDialog } from "@/components/payment-record-dialog";
 import { toast } from "sonner";
 
 export function CustomersPage() {
@@ -16,7 +19,9 @@ export function CustomersPage() {
   const [search, setSearch] = useState("");
   const [editing, setEditing] = useState<Customer | null>(null);
   const [creating, setCreating] = useState(false);
+  const [payingCustomer, setPayingCustomer] = useState<Customer | null>(null);
   const navigate = useNavigate();
+  const userId = useAuthStore((s) => s.user?.id);
 
   const load = async () => setCustomers(await listCustomers(search));
   useEffect(() => { load(); }, [search]);
@@ -104,6 +109,17 @@ export function CustomersPage() {
                     </td>
                     <td className="px-3 py-2.5 text-right">
                       <div className="flex justify-end gap-1">
+                        {c.balance > 0 && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setPayingCustomer(c)}
+                            title="Record payment"
+                            className="text-emerald-700 hover:text-emerald-800"
+                          >
+                            <Wallet className="h-3.5 w-3.5" />
+                          </Button>
+                        )}
                         <Button variant="ghost" size="sm" onClick={() => navigate(`/patients/${c.id}`)} title="Patient profile">
                           <Pill className="h-3.5 w-3.5" />
                         </Button>
@@ -125,6 +141,20 @@ export function CustomersPage() {
         customer={editing}
         onClose={() => { setCreating(false); setEditing(null); }}
         onSaved={() => { setCreating(false); setEditing(null); load(); }}
+      />
+
+      <PaymentRecordDialog
+        open={!!payingCustomer}
+        onClose={() => setPayingCustomer(null)}
+        title="Record Customer Payment"
+        subtitle={payingCustomer ? `${payingCustomer.name} owes KES ${payingCustomer.balance.toFixed(2)}` : ""}
+        maxAmount={payingCustomer?.balance}
+        onSubmit={async ({ amount, method, reference, note }) => {
+          if (!payingCustomer || !userId) return;
+          await recordCustomerPayment(payingCustomer.id, amount, method, userId, reference, note);
+          toast.success(`Payment of KES ${amount.toFixed(2)} recorded`);
+          load();
+        }}
       />
     </div>
   );

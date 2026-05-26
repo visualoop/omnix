@@ -1,10 +1,13 @@
 import { useState, useEffect } from "react";
-import { Plus, Search, Truck, Edit3, Phone, Mail } from "lucide-react";
+import { Plus, Search, Truck, Edit3, Phone, Mail, Wallet } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Badge } from "@/components/ui/badge";
 import { listSuppliers, upsertSupplier, deactivateSupplier, type Supplier } from "@/services/erp";
+import { recordSupplierPayment } from "@/services/settlement";
+import { useAuthStore } from "@/stores/auth";
+import { PaymentRecordDialog } from "@/components/payment-record-dialog";
 import { toast } from "sonner";
 
 export function SuppliersPage() {
@@ -13,6 +16,8 @@ export function SuppliersPage() {
   const [showAll, setShowAll] = useState(false);
   const [editing, setEditing] = useState<Supplier | null>(null);
   const [creating, setCreating] = useState(false);
+  const [paying, setPaying] = useState<Supplier | null>(null);
+  const userId = useAuthStore((s) => s.user?.id);
 
   const load = async () => {
     setSuppliers(await listSuppliers(!showAll));
@@ -115,9 +120,22 @@ export function SuppliersPage() {
                     )}
                   </td>
                   <td className="px-3 py-2.5 text-right">
-                    <Button variant="ghost" size="sm" onClick={() => setEditing(s)}>
-                      <Edit3 className="h-3.5 w-3.5" />
-                    </Button>
+                    <div className="flex justify-end gap-1">
+                      {s.balance_owed > 0 && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setPaying(s)}
+                          title="Pay supplier"
+                          className="text-emerald-700 hover:text-emerald-800"
+                        >
+                          <Wallet className="h-3.5 w-3.5" />
+                        </Button>
+                      )}
+                      <Button variant="ghost" size="sm" onClick={() => setEditing(s)}>
+                        <Edit3 className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -131,6 +149,20 @@ export function SuppliersPage() {
         supplier={editing}
         onClose={() => { setCreating(false); setEditing(null); }}
         onSaved={() => { setCreating(false); setEditing(null); load(); }}
+      />
+
+      <PaymentRecordDialog
+        open={!!paying}
+        onClose={() => setPaying(null)}
+        title="Pay Supplier"
+        subtitle={paying ? `${paying.name} — owed KES ${paying.balance_owed.toFixed(2)}` : ""}
+        maxAmount={paying?.balance_owed}
+        onSubmit={async ({ amount, method, reference, note }) => {
+          if (!paying || !userId) return;
+          await recordSupplierPayment(paying.id, amount, method, userId, reference, note);
+          toast.success(`Paid KES ${amount.toFixed(2)} to ${paying.name}`);
+          load();
+        }}
       />
     </div>
   );

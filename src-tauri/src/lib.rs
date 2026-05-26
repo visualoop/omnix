@@ -80,6 +80,12 @@ pub fn run() {
             sql: include_str!("../migrations/012_erp_extensions.sql"),
             kind: MigrationKind::Up,
         },
+        Migration {
+            version: 13,
+            description: "create customer & supplier payment settlement tables",
+            sql: include_str!("../migrations/013_payments_settlement.sql"),
+            kind: MigrationKind::Up,
+        },
     ];
 
     tauri::Builder::default()
