@@ -20,7 +20,7 @@ const ROLE_LABELS: Record<User["role"], { label: string; description: string; co
   owner: { label: "Owner", description: "Full access, cannot be removed", color: "bg-violet-500/10 text-violet-700 border-violet-500/30" },
   manager: { label: "Manager", description: "Inventory, reports, no settings", color: "bg-blue-500/10 text-blue-700 border-blue-500/30" },
   cashier: { label: "Cashier", description: "POS only", color: "bg-green-500/10 text-green-700 border-green-500/30" },
-  viewer: { label: "Viewer", description: "Read-only access to reports", color: "bg-gray-500/10 text-gray-700 border-gray-500/30" },
+  viewer: { label: "Viewer", description: "Read-only access to reports", color: "bg-muted/30 text-muted-foreground border-border" },
 };
 
 export function UsersPage() {
