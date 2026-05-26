@@ -20,8 +20,10 @@ import {
 } from "lucide-react";
 import { NavLink } from "react-router-dom";
 import { SokoLogo } from "@/components/soko-logo";
+import { ModuleLogo } from "@/components/module-logos";
 import { APP_NAME } from "@/lib/brand";
 import { useAuthStore } from "@/stores/auth";
+import { useActiveModule, MODULE_DEFINITIONS } from "@/stores/active-module";
 import { hasAnyPermission, type Permission } from "@/lib/permissions";
 
 interface NavItem {
@@ -52,6 +54,14 @@ const navItems: NavItem[] = [
 export function Sidebar({ onCommandOpen }: { onCommandOpen: () => void }) {
   const [collapsed, setCollapsed] = useState(false);
   const user = useAuthStore((s) => s.user);
+  const activeModuleId = useActiveModule((s) => s.active);
+  const loadModule = useActiveModule((s) => s.load);
+  const activeModule = MODULE_DEFINITIONS[activeModuleId];
+
+  // Lazy-load active module from DB on first mount
+  if (!useActiveModule.getState().loaded) {
+    loadModule().catch(() => {});
+  }
 
   const visibleNav = navItems.filter(
     (item) => item.permissions.length === 0 || hasAnyPermission(user, item.permissions),
@@ -64,11 +74,23 @@ export function Sidebar({ onCommandOpen }: { onCommandOpen: () => void }) {
         collapsed ? "w-[52px]" : "w-[200px]"
       )}
     >
-      {/* Logo */}
+      {/* Logo + Active Module */}
       <div className="flex items-center h-12 px-3 border-b border-border gap-2">
-        <SokoLogo size={24} />
+        <SokoLogo size={22} />
         {!collapsed && (
-          <span className="text-sm font-semibold tracking-tight">{APP_NAME}</span>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-1 text-sm font-semibold tracking-tight leading-tight">
+              {APP_NAME}
+            </div>
+            {activeModule && activeModule.id !== "core" && (
+              <div className="flex items-center gap-1 mt-0.5">
+                <ModuleLogo moduleId={activeModule.id} size={10} rounded />
+                <span className="text-[10px] text-muted-foreground font-medium">
+                  {activeModule.shortName}
+                </span>
+              </div>
+            )}
+          </div>
         )}
       </div>
 

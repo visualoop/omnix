@@ -1,12 +1,14 @@
 import { useState } from "react";
-import { Loader2, AlertCircle } from "lucide-react";
+import { Loader2, AlertCircle, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useAuthStore } from "@/stores/auth";
 import { runSetup } from "@/services/auth";
 import { setAutostartEnabled } from "@/services/autostart";
 import { SokoLogo } from "@/components/soko-logo";
+import { ModuleLogo } from "@/components/module-logos";
 import { APP_NAME } from "@/lib/brand";
+import { useActiveModule, MODULE_DEFINITIONS, type ModuleId } from "@/stores/active-module";
 
 interface SetupData {
   businessName: string;
@@ -18,6 +20,7 @@ interface SetupData {
   password: string;
   confirmPassword: string;
   autostart: boolean;
+  moduleId: ModuleId;
 }
 
 export function SetupWizard() {
@@ -32,10 +35,12 @@ export function SetupWizard() {
     password: "",
     confirmPassword: "",
     autostart: true,
+    moduleId: "dawa",
   });
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { setSetupComplete, setUser } = useAuthStore();
+  const setActiveModule = useActiveModule((s) => s.setActive);
 
     const update = (field: keyof SetupData, value: string | boolean) => {
     setData((d) => ({ ...d, [field]: value }));
@@ -62,7 +67,7 @@ export function SetupWizard() {
     try {
       const { user } = await runSetup({
         business_name: data.businessName,
-        business_type: "pharmacy",
+        business_type: data.moduleId,
         address: data.address,
         phone: data.phone,
         email: data.email,
@@ -70,6 +75,13 @@ export function SetupWizard() {
         username: data.username,
         password: data.password,
       });
+
+      // Persist active module so sidebar/branding pick it up
+      try {
+        await setActiveModule(data.moduleId);
+      } catch (e) {
+        console.warn("Could not save active module:", e);
+      }
 
       // Apply autostart preference (best-effort; don't fail setup if it errors)
       try {
@@ -103,12 +115,63 @@ export function SetupWizard() {
       </Button>
     </div>,
 
-    // Step 1: Business
+    // Step 1: Module selection
+    <div key="module" className="space-y-4">
+      <div>
+        <h2 className="text-lg font-semibold">What kind of business?</h2>
+        <p className="text-xs text-muted-foreground mt-0.5">
+          Pick the vertical that fits — we'll customize the app for you. You can switch modules later from Settings.
+        </p>
+      </div>
+      <div className="space-y-2 max-h-[55vh] overflow-y-auto pr-1 -mr-1">
+        {(Object.values(MODULE_DEFINITIONS) as Array<typeof MODULE_DEFINITIONS[ModuleId]>)
+          .filter((m) => m.id !== "core")
+          .map((m) => {
+            const isPlanned = m.status === "planned";
+            const isSelected = data.moduleId === m.id;
+            return (
+              <button
+                key={m.id}
+                type="button"
+                disabled={isPlanned}
+                onClick={() => update("moduleId", m.id)}
+                className={`w-full text-left flex items-center gap-3 rounded-md border p-3 transition ${
+                  isSelected
+                    ? "border-primary bg-primary/5"
+                    : isPlanned
+                      ? "border-border opacity-50 cursor-not-allowed"
+                      : "border-border hover:border-primary/40 hover:bg-accent/30"
+                }`}
+              >
+                <ModuleLogo moduleId={m.id} size={36} />
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-medium">{m.name}</span>
+                    {isPlanned && (
+                      <span className="text-[10px] uppercase tracking-wider text-muted-foreground border border-border rounded px-1.5 py-0.5">
+                        Soon
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{m.tagline}</p>
+                </div>
+                {isSelected && <Check className="h-4 w-4 text-primary shrink-0" />}
+              </button>
+            );
+          })}
+      </div>
+      <div className="flex gap-2">
+        <Button variant="outline" onClick={() => setStep(0)} className="flex-1">Back</Button>
+        <Button onClick={() => setStep(2)} className="flex-1">Continue</Button>
+      </div>
+    </div>,
+
+    // Step 2: Business info
     <div key="business" className="space-y-4">
       <div>
         <h2 className="text-lg font-semibold">Your Business</h2>
         <p className="text-xs text-muted-foreground mt-0.5">
-          Tell us about your business
+          Tell us about your {MODULE_DEFINITIONS[data.moduleId].shortName.toLowerCase()}
         </p>
       </div>
       <div className="space-y-3">
@@ -144,9 +207,9 @@ export function SetupWizard() {
         </Field>
       </div>
       <div className="flex gap-2">
-        <Button variant="outline" onClick={() => setStep(0)} className="flex-1">Back</Button>
+        <Button variant="outline" onClick={() => setStep(1)} className="flex-1">Back</Button>
         <Button
-          onClick={() => setStep(2)}
+          onClick={() => setStep(3)}
           className="flex-1"
           disabled={!data.businessName}
         >
@@ -155,7 +218,7 @@ export function SetupWizard() {
       </div>
     </div>,
 
-    // Step 2: Owner account
+    // Step 3: Owner account
     <div key="owner" className="space-y-4">
       <div>
         <h2 className="text-lg font-semibold">Owner Account</h2>
@@ -206,7 +269,7 @@ export function SetupWizard() {
       )}
 
       <div className="flex gap-2">
-        <Button variant="outline" onClick={() => setStep(1)} className="flex-1" disabled={submitting}>
+        <Button variant="outline" onClick={() => setStep(2)} className="flex-1" disabled={submitting}>
           Back
         </Button>
         <Button
@@ -225,7 +288,7 @@ export function SetupWizard() {
               return;
             }
             setError(null);
-            setStep(3);
+            setStep(4);
           }}
           className="flex-1"
           disabled={submitting || !data.ownerName || !data.username || !data.password || !data.confirmPassword}
@@ -235,7 +298,7 @@ export function SetupWizard() {
       </div>
     </div>,
 
-    // Step 3: Preferences (autostart)
+    // Step 4: Preferences (autostart)
     <div key="prefs" className="space-y-4">
       <div>
         <h2 className="text-lg font-semibold">Almost done</h2>
@@ -276,7 +339,7 @@ export function SetupWizard() {
       )}
 
       <div className="flex gap-2">
-        <Button variant="outline" onClick={() => setStep(2)} className="flex-1" disabled={submitting}>
+        <Button variant="outline" onClick={() => setStep(3)} className="flex-1" disabled={submitting}>
           Back
         </Button>
         <Button onClick={finish} className="flex-1" disabled={submitting}>
@@ -295,7 +358,7 @@ export function SetupWizard() {
       <div className="w-full max-w-[440px] space-y-6">
         {/* Progress */}
         <div className="flex gap-1">
-          {[0, 1, 2, 3].map((i) => (
+          {[0, 1, 2, 3, 4].map((i) => (
             <div
               key={i}
               className={`h-1 flex-1 rounded-full transition-colors ${
