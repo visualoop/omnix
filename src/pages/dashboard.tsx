@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { TrendingUp, ShoppingCart, AlertTriangle, Package, Users, Banknote, FileText } from "lucide-react";
 import { getDashboardKPIs, getSalesByDay, getTopProducts, getSalesByPaymentMethod, type DashboardKPIs, type SalesByDay, type TopProduct, type SalesByPaymentMethod } from "@/services/reports";
 import { SokoAreaChart, SokoPieChart } from "@/components/charts";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Link } from "react-router-dom";
 
 export function DashboardPage() {
@@ -9,8 +10,10 @@ export function DashboardPage() {
   const [salesByDay, setSalesByDay] = useState<SalesByDay[]>([]);
   const [topProducts, setTopProducts] = useState<TopProduct[]>([]);
   const [paymentMix, setPaymentMix] = useState<SalesByPaymentMethod[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    setLoading(true);
     Promise.all([
       getDashboardKPIs(),
       getSalesByDay(7),
@@ -23,6 +26,8 @@ export function DashboardPage() {
       setPaymentMix(p);
     }).catch(() => {
       // DB not initialized yet — silent
+    }).finally(() => {
+      setLoading(false);
     });
   }, []);
 
@@ -41,6 +46,7 @@ export function DashboardPage() {
           value={kpis ? kpis.today_sales_total.toFixed(0) : "—"}
           sub={`${kpis?.today_sales_count || 0} transactions`}
           prefix="KES"
+          loading={loading}
         />
         <KpiCard
           icon={TrendingUp}
@@ -48,12 +54,14 @@ export function DashboardPage() {
           value={kpis ? kpis.today_profit.toFixed(0) : "—"}
           prefix="KES"
           tone="success"
+          loading={loading}
         />
         <KpiCard
           icon={Banknote}
           label="Cash on Hand"
           value={kpis ? kpis.cash_position.toFixed(0) : "—"}
           prefix="KES"
+          loading={loading}
         />
         <Link to="/inventory">
           <KpiCard
@@ -62,6 +70,7 @@ export function DashboardPage() {
             value={kpis?.low_stock_count ?? "—"}
             sub="items need reorder"
             tone={kpis && kpis.low_stock_count > 0 ? "warning" : "default"}
+            loading={loading}
           />
         </Link>
       </div>
@@ -126,7 +135,7 @@ export function DashboardPage() {
   );
 }
 
-function KpiCard({ icon: Icon, label, value, sub, prefix, tone = "default" }: any) {
+function KpiCard({ icon: Icon, label, value, sub, prefix, tone = "default", loading = false }: any) {
   const tones = {
     default: "border-border",
     warning: "border-amber-500/50 bg-amber-500/5",
@@ -139,10 +148,20 @@ function KpiCard({ icon: Icon, label, value, sub, prefix, tone = "default" }: an
         <Icon className="h-4 w-4 text-muted-foreground" />
       </div>
       <div className="mt-2">
-        {prefix && <span className="text-xs text-muted-foreground mr-1">{prefix}</span>}
-        <span className="text-2xl font-semibold font-mono">{value}</span>
+        {loading ? (
+          <Skeleton className="h-7 w-24" />
+        ) : (
+          <>
+            {prefix && <span className="text-xs text-muted-foreground mr-1">{prefix}</span>}
+            <span className="text-2xl font-semibold font-mono">{value}</span>
+          </>
+        )}
       </div>
-      {sub && <p className="text-xs text-muted-foreground mt-1">{sub}</p>}
+      {loading ? (
+        <Skeleton className="h-3 w-20 mt-2" />
+      ) : (
+        sub && <p className="text-xs text-muted-foreground mt-1">{sub}</p>
+      )}
     </div>
   );
 }

@@ -3,6 +3,7 @@ import { Outlet } from "react-router-dom";
 import { Sidebar } from "./sidebar";
 import { Topbar } from "./topbar";
 import { CommandPalette } from "@/components/layout/command-palette";
+import { OnboardingTour } from "@/components/onboarding-tour";
 
 export function AppShell() {
   const [cmdOpen, setCmdOpen] = useState(false);
@@ -18,6 +19,7 @@ export function AppShell() {
         </main>
       </div>
       <CommandPalette open={cmdOpen} onOpenChange={setCmdOpen} />
+      <OnboardingTour />
     </div>
   );
 }

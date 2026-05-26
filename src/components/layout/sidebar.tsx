@@ -60,6 +60,7 @@ export function Sidebar({ onCommandOpen }: { onCommandOpen: () => void }) {
       {/* Search trigger */}
       <button
         onClick={onCommandOpen}
+        data-tour="cmd-k"
         className={cn(
           "mx-2 mt-2 flex items-center gap-2 rounded-md px-2 py-1.5 text-xs text-muted-foreground hover:bg-accent transition-colors",
           collapsed && "justify-center"
