@@ -11,8 +11,16 @@ jobs:
       - checkout
 
       - run:
+          name: Copy to short path
+          command: |
+            Remove-Item C:\build -Recurse -Force -ErrorAction SilentlyContinue
+            Copy-Item -Path . -Destination C:\build -Recurse
+            Test-Path C:\build\package.json
+
+      - run:
           name: Install Node.js
           command: |
+            Set-Location C:\build
             choco install nodejs --version=20.18.0 -y --no-progress
             refreshenv
             node --version
@@ -21,30 +29,27 @@ jobs:
       - run:
           name: Install Rust
           command: |
+            Set-Location C:\build
             Invoke-WebRequest -Uri https://static.rust-lang.org/rustup/dist/x86_64-pc-windows-msvc/rustup-init.exe -OutFile rustup-init.exe
             .\rustup-init.exe -y --default-toolchain stable --profile minimal
+            $env:Path = "$env:USERPROFILE\.cargo\bin;$env:Path"
+            rustup target add x86_64-pc-windows-msvc
             rustc --version
 
       - run:
-          name: Shorten build dir (fix MSVC link.exe 32K argument limit)
+          name: Install deps and type-check
           command: |
-            $env:Path = "$env:USERPROFILE\.cargo\bin;$env:Path"
-            mkdir C:\build -Force
-            Copy-Item -Path . -Destination C:\build -Recurse
             Set-Location C:\build
-
-            rustup target add x86_64-pc-windows-msvc
-            cargo check
-            Write-Host "Rust check passed"
+            $env:Path = "$env:USERPROFILE\.cargo\bin;$env:Path"
+            npm install
+            npm run build:installer-images
+            npx tsc --noEmit
 
       - run:
           name: Build Windows installers
           command: |
-            $env:Path = "$env:USERPROFILE\.cargo\bin;$env:Path"
             Set-Location C:\build
-            npm install
-            npm run build:installer-images
-            npx tsc --noEmit
+            $env:Path = "$env:USERPROFILE\.cargo\bin;$env:Path"
             npx tauri build --bundles msi,nsis
 
       - store_artifacts:
@@ -63,12 +68,14 @@ jobs:
           steps:
             - run:
                 name: Install GitHub CLI
-                command: choco install gh -y --no-progress
+                command: |
+                  Set-Location C:\build
+                  choco install gh -y --no-progress
             - run:
                 name: Publish GitHub Release
                 command: |
-                  $env:Path = "$env:USERPROFILE\.cargo\bin;$env:Path"
                   Set-Location C:\build
+                  $env:Path = "$env:USERPROFILE\.cargo\bin;$env:Path"
                   $TAG = $env:CIRCLE_TAG
                   $VERSION = $TAG -replace '^v',''
                   mkdir release-assets -Force
