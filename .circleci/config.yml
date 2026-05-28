@@ -103,6 +103,3 @@ workflows:
   build:
     jobs:
       - build-windows:
-          filters:
-            tags:
-              only: /^v.*/
