@@ -10,7 +10,7 @@ import { useEffect, useState } from "react";
 import { X, ArrowRight, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
-const TOUR_KEY = "sokoos-onboarding-completed-v1";
+const TOUR_KEY = "omnix-onboarding-completed-v1";
 
 interface TourStep {
   selector: string;

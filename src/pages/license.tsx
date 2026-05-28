@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { confirm } from "@/components/ui/confirm-dialog";
 import {
   ShieldCheck,
   Cpu,
@@ -41,7 +42,7 @@ export function LicensePage() {
   };
 
   const handleDeactivate = async () => {
-    if (!confirm(`Deactivate this license?\n\nYou will need to enter the key again to use ${APP_NAME} on this machine.`)) return;
+    if (!(await confirm({ title: `Deactivate this license?\n\nYou will need to enter the key again to use ${APP_NAME} on this machine.` }))) return;
     await deactivateLicense();
     toast.success("License deactivated");
     load();

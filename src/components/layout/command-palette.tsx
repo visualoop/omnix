@@ -6,8 +6,11 @@ import {
   Search as SearchIcon, Receipt, Truck, Users, FileCheck, Shield,
   RotateCcw, ClipboardCheck, Banknote, FileSpreadsheet, Plus,
   ArrowRight, Loader2, User, Box, FileText,
+  Tag, CalendarClock, CalendarPlus, AlertTriangle, TrendingUp,
 } from "lucide-react";
 import { query } from "@/lib/db";
+import { useActiveModule } from "@/stores/active-module";
+import { filterByActiveModule } from "@/lib/module-features";
 
 interface Props {
   open: boolean;
@@ -51,6 +54,9 @@ const pages: PageItem[] = [
   { type: "page", name: "Suppliers", to: "/suppliers", icon: Truck, keywords: "vendors" },
   { type: "page", name: "Customers", to: "/customers", icon: Users, keywords: "patients" },
   { type: "page", name: "Pharmacy", to: "/pharmacy", icon: Pill, keywords: "prescriptions Rx dawa" },
+  { type: "page", name: "Controlled Register", to: "/pharmacy/controlled-register", icon: Pill, keywords: "narcotic controlled drugs ppb" },
+  { type: "page", name: "Cold Chain", to: "/pharmacy/cold-chain", icon: Pill, keywords: "fridge temperature vaccine" },
+  { type: "page", name: "AMR Report", to: "/pharmacy/amr", icon: Pill, keywords: "antibiotic resistance surveillance" },
   { type: "page", name: "Reports", to: "/reports", icon: BarChart3, keywords: "analytics" },
   { type: "page", name: "Z-Report", to: "/reports/zreport", icon: FileSpreadsheet, keywords: "end of day shift summary" },
   { type: "page", name: "Cash Register", to: "/cash-register", icon: Banknote, keywords: "till float drawer" },
@@ -63,6 +69,12 @@ const pages: PageItem[] = [
   { type: "page", name: "Users", to: "/users", icon: Users, keywords: "staff accounts" },
   { type: "page", name: "Backup", to: "/settings/backup", icon: FileText, keywords: "restore export" },
   { type: "page", name: "Audit Log", to: "/audit", icon: FileText, keywords: "security history" },
+  // Retail-only items
+  { type: "page", name: "Brands", to: "/retail/brands", icon: Tag, keywords: "manufacturer" },
+  { type: "page", name: "Laybys", to: "/retail/laybys", icon: CalendarClock, keywords: "installments deposit" },
+  { type: "page", name: "Special Orders", to: "/retail/special-orders", icon: CalendarPlus, keywords: "preorder request" },
+  { type: "page", name: "Shrinkage", to: "/retail/shrinkage", icon: AlertTriangle, keywords: "damage theft loss" },
+  { type: "page", name: "Retail Insights", to: "/retail/dashboard", icon: TrendingUp, keywords: "brand category performance" },
   { type: "page", name: "License", to: "/settings/license", icon: Shield, keywords: "activate key" },
 ];
 
@@ -82,12 +94,13 @@ export function CommandPalette({ open, onOpenChange }: Props) {
   const [results, setResults] = useState<ResultItem[]>([]);
   const [searching, setSearching] = useState(false);
   const [recentItems, setRecentItems] = useState<string[]>([]);
+  const activeModule = useActiveModule((s) => s.active);
 
   // Load recents
   useEffect(() => {
     if (open) {
       try {
-        const r = JSON.parse(localStorage.getItem("sokoos-cmd-recent") || "[]");
+        const r = JSON.parse(localStorage.getItem("omnix-cmd-recent") || "[]");
         setRecentItems(Array.isArray(r) ? r.slice(0, 5) : []);
       } catch { setRecentItems([]); }
       setSearch("");
@@ -133,10 +146,12 @@ export function CommandPalette({ open, onOpenChange }: Props) {
             `SELECT id, sale_number, total, created_at FROM sales WHERE CAST(sale_number AS TEXT) LIKE ?1 OR id LIKE ?1 ORDER BY created_at DESC LIMIT 5`,
             [term],
           ),
-          query<{ id: string; rx_number: number; patient_name: string }>(
-            `SELECT id, rx_number, patient_name FROM prescriptions WHERE patient_name LIKE ?1 OR CAST(rx_number AS TEXT) LIKE ?1 ORDER BY created_at DESC LIMIT 5`,
-            [term],
-          ),
+          activeModule === "dawa"
+            ? query<{ id: string; rx_number: number; patient_name: string }>(
+                `SELECT id, rx_number, patient_name FROM prescriptions WHERE patient_name LIKE ?1 OR CAST(rx_number AS TEXT) LIKE ?1 ORDER BY created_at DESC LIMIT 5`,
+                [term],
+              )
+            : Promise.resolve([] as Array<{ id: string; rx_number: number; patient_name: string }>),
         ]);
 
         const items: ResultItem[] = [
@@ -196,9 +211,9 @@ export function CommandPalette({ open, onOpenChange }: Props) {
     onOpenChange(false);
     // Track recent
     try {
-      const r: string[] = JSON.parse(localStorage.getItem("sokoos-cmd-recent") || "[]");
+      const r: string[] = JSON.parse(localStorage.getItem("omnix-cmd-recent") || "[]");
       const updated = [name, ...r.filter((x) => x !== name)].slice(0, 5);
-      localStorage.setItem("sokoos-cmd-recent", JSON.stringify(updated));
+      localStorage.setItem("omnix-cmd-recent", JSON.stringify(updated));
     } catch {}
   };
 
@@ -308,7 +323,8 @@ export function CommandPalette({ open, onOpenChange }: Props) {
           {/* Pages */}
           <Command.Group heading="Pages">
             <div className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground px-2 py-1.5">Pages</div>
-            {pages.map((page) => (
+            {filterByActiveModule(pages, activeModule)
+              .map((page) => (
               <Command.Item
                 key={page.to}
                 value={`${page.name} ${page.keywords || ""}`}

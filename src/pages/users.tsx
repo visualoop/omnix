@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { confirm } from "@/components/ui/confirm-dialog";
 import { UserPlus, Users, Edit3, Lock, UserX, AlertCircle, Loader2, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -299,7 +300,7 @@ function EditUserForm({
   };
 
   const handleDeactivate = async () => {
-    if (!confirm(`Deactivate ${user.full_name}? They won't be able to sign in.`)) return;
+    if (!(await confirm({ title: `Deactivate ${user.full_name}? They won't be able to sign in.` }))) return;
     try {
       await deactivateUser(user.id);
       toast.success("User deactivated");
@@ -369,6 +370,9 @@ function EditUserForm({
         </Button>
       </div>
 
+      {/* Branch assignments */}
+      <BranchAssignmentBlock userId={user.id} />
+
       {/* Danger zone */}
       {!isSelf && !isOnlyOwner && user.active === 1 && (
         <div className="border-t border-border pt-4 space-y-3">
@@ -393,6 +397,62 @@ function EditUserForm({
       )}
     </div>
   );
+
+
+function BranchAssignmentBlock({ userId }: { userId: string }) {
+  const [branches, setBranches] = useState<Array<{ id: string; name: string; assigned: boolean }>>([]);
+  const [loading, setLoading] = useState(true);
+
+  const load = async () => {
+    setLoading(true);
+    try {
+      const { listBranches, listUserBranches } = await import("@/services/branches");
+      const [all, assigned] = await Promise.all([
+        listBranches(false),
+        listUserBranches(userId),
+      ]);
+      const assignedIds = new Set(assigned.map((a: any) => a.id));
+      setBranches(all.map((b) => ({ id: b.id, name: b.name, assigned: assignedIds.has(b.id) })));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => { load(); }, [userId]);
+
+  const toggle = async (branchId: string, assigned: boolean) => {
+    const { assignUserToBranch, removeUserFromBranch } = await import("@/services/branches");
+    if (assigned) await removeUserFromBranch(userId, branchId);
+    else await assignUserToBranch(userId, branchId);
+    toast.success(assigned ? "Removed from branch" : "Assigned to branch");
+    load();
+  };
+
+  if (loading) return null;
+  if (branches.length <= 1) return null;
+
+  return (
+    <div className="border-t border-border pt-4 space-y-3">
+      <div>
+        <h3 className="text-sm font-medium">Branch Access</h3>
+        <p className="text-xs text-muted-foreground mt-0.5">Which branches can this user log into?</p>
+      </div>
+      <div className="space-y-1.5">
+        {branches.map((b) => (
+          <label key={b.id} className="flex items-center gap-2 text-sm cursor-pointer">
+            <input
+              type="checkbox"
+              checked={b.assigned}
+              onChange={() => toggle(b.id, b.assigned)}
+              className="rounded"
+            />
+            <span>{b.name}</span>
+          </label>
+        ))}
+      </div>
+    </div>
+  );
+}
 }
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {

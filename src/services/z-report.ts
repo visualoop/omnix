@@ -5,7 +5,7 @@
  * to close their till: total sales by payment method, total tax, refunds,
  * cash in/out, opening/closing balance. Resets daily counters.
  *
- * SokoOS doesn't reset counters (sales never disappear), but we generate
+ * Omnix doesn't reset counters (sales never disappear), but we generate
  * the same summary view of what happened in a date window.
  */
 import { query } from "@/lib/db";
@@ -21,7 +21,8 @@ export interface ZReport {
   gross_sales: number;          // sum of all sale totals
   tax_total: number;
   discount_total: number;
-  net_sales: number;            // gross - returns
+  tip_total: number;            // total tips collected (paid to staff, not revenue)
+  net_sales: number;            // gross - returns - tips
 
   // Payment breakdown
   by_method: Array<{ method: string; count: number; total: number }>;
@@ -61,12 +62,13 @@ export async function getZReport(date?: string): Promise<ZReport> {
 
   // Sales aggregates
   const [salesAgg] = await query<{
-    count: number; gross: number; tax: number; discount: number;
+    count: number; gross: number; tax: number; discount: number; tip: number;
   }>(
     `SELECT COUNT(*) AS count,
             COALESCE(SUM(total), 0) AS gross,
             COALESCE(SUM(tax_amount), 0) AS tax,
-            COALESCE(SUM(discount_amount), 0) AS discount
+            COALESCE(SUM(discount_amount), 0) AS discount,
+            COALESCE(SUM(tip_amount), 0) AS tip
      FROM sales
      WHERE created_at BETWEEN ?1 AND ?2 AND status = 'completed'`,
     [from, to],
@@ -186,10 +188,10 @@ export async function getZReport(date?: string): Promise<ZReport> {
 
   // Pharmacy info
   const [bizName] = await query<{ value: string }>(
-    `SELECT value FROM business_settings WHERE key = 'business.name'`,
+    `SELECT value FROM settings WHERE key = 'business.name'`,
   );
   const [bizPhone] = await query<{ value: string }>(
-    `SELECT value FROM business_settings WHERE key = 'business.phone'`,
+    `SELECT value FROM settings WHERE key = 'business.phone'`,
   );
 
   const cashIn = (cashSalesAgg?.total || 0) + (custPayAgg?.cash_total || 0);
@@ -203,7 +205,8 @@ export async function getZReport(date?: string): Promise<ZReport> {
     gross_sales: salesAgg?.gross || 0,
     tax_total: salesAgg?.tax || 0,
     discount_total: salesAgg?.discount || 0,
-    net_sales: (salesAgg?.gross || 0) - (retAgg?.total || 0),
+    tip_total: salesAgg?.tip || 0,
+    net_sales: (salesAgg?.gross || 0) - (retAgg?.total || 0) - (salesAgg?.tip || 0),
     by_method: byMethod,
     return_count: retAgg?.count || 0,
     return_total: retAgg?.total || 0,
@@ -258,8 +261,9 @@ export function renderZReportHtml(r: ZReport): string {
   <div class="row"><span class="lbl">Gross sales</span><span>${fmt(r.gross_sales)}</span></div>
   <div class="row"><span class="lbl">Discounts</span><span>-${fmt(r.discount_total)}</span></div>
   <div class="row"><span class="lbl">Tax (VAT)</span><span>${fmt(r.tax_total)}</span></div>
+  ${r.tip_total > 0 ? `<div class="row"><span class="lbl">Tips (paid to staff)</span><span>${fmt(r.tip_total)}</span></div>` : ""}
   <div class="row"><span class="lbl">Returns (${r.return_count})</span><span>-${fmt(r.return_total)}</span></div>
-  <div class="row total"><span>Net sales</span><span>${fmt(r.net_sales)}</span></div>
+  <div class="row total"><span>Net sales (excl. tips)</span><span>${fmt(r.net_sales)}</span></div>
 
   ${r.by_method.length > 0 ? `
   <div class="section">Payment Methods</div>

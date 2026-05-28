@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { confirm } from "@/components/ui/confirm-dialog";
 import { X, Loader2, Tag, Percent, FolderInput, Power } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -28,7 +29,7 @@ export function BulkEditDialog({ open, selectedIds, onClose, onComplete, categor
 
   const apply = async () => {
     if (selectedIds.length === 0) return;
-    if (!confirm(`Apply changes to ${selectedIds.length} product(s)? This cannot be undone in bulk.`)) return;
+    if (!(await confirm({ title: `Apply changes to ${selectedIds.length} product(s)? This cannot be undone in bulk.` }))) return;
 
     setSubmitting(true);
     try {

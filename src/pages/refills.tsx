@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { confirm } from "@/components/ui/confirm-dialog";
 import { useNavigate } from "react-router-dom";
 import { Search, RotateCcw, Loader2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
@@ -28,7 +29,7 @@ export function RefillsPage() {
 
   const handleRefill = async (rxId: string, patientName: string) => {
     if (!userId) return;
-    if (!confirm(`Create a refill for ${patientName}?`)) return;
+    if (!(await confirm({ title: `Create a refill for ${patientName}?` }))) return;
     setRefilling(rxId);
     try {
       const newId = await refillPrescription(rxId, userId);

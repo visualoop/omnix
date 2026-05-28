@@ -1,4 +1,5 @@
 import { query, execute } from "@/lib/db";
+import { getActiveBranchId } from "@/stores/active-branch";
 
 export interface CartItem {
   id: string;
@@ -52,30 +53,35 @@ export async function completeSale(
   payments: PaymentEntry[],
   customerId: string | null,
   userId: string,
-  discountAmount: number
-): Promise<string> {
+  discountAmount: number,
+  tipAmount = 0,
+  tipEmployeeId: string | null = null,
+): Promise<{ saleId: string; saleItemIds: string[] }> {
   const saleId = crypto.randomUUID();
   const saleNumber = await getNextSaleNumber();
 
   const subtotal = items.reduce((s, i) => s + i.unit_price * i.quantity, 0);
   const taxAmount = items.reduce((s, i) => s + (i.unit_price * i.quantity * i.tax_rate / 100), 0);
-  const total = subtotal - discountAmount + taxAmount;
+  const total = subtotal - discountAmount + taxAmount + tipAmount;
   const paidAmount = payments.reduce((s, p) => s + p.amount, 0);
   const paymentStatus = paidAmount >= total ? "paid" : paidAmount > 0 ? "partial" : "unpaid";
+  const saleItemIds: string[] = [];
 
   // Insert sale
   await execute(
-    `INSERT INTO sales (id, sale_number, customer_id, user_id, subtotal, discount_amount, tax_amount, total, payment_status)
-     VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)`,
-    [saleId, saleNumber, customerId, userId, subtotal, discountAmount, taxAmount, total, paymentStatus]
+    `INSERT INTO sales (id, sale_number, customer_id, user_id, branch_id, subtotal, discount_amount, tax_amount, total, payment_status, tip_amount, tip_employee_id)
+     VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12)`,
+    [saleId, saleNumber, customerId, userId, getActiveBranchId(), subtotal, discountAmount, taxAmount, total, paymentStatus, tipAmount, tipEmployeeId]
   );
 
   // Insert items + deduct stock
   for (const item of items) {
+    const itemId = crypto.randomUUID();
+    saleItemIds.push(itemId);
     await execute(
       `INSERT INTO sale_items (id, sale_id, product_id, product_name, quantity, unit_price, discount, tax_rate, total)
        VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)`,
-      [crypto.randomUUID(), saleId, item.product_id, item.name, item.quantity, item.unit_price, item.discount, item.tax_rate, item.total]
+      [itemId, saleId, item.product_id, item.name, item.quantity, item.unit_price, item.discount, item.tax_rate, item.total]
     );
 
     // Deduct from oldest batch (FIFO)
@@ -99,11 +105,33 @@ export async function completeSale(
 
   // Insert payments
   for (const p of payments) {
+    const paymentId = crypto.randomUUID();
     await execute(
       `INSERT INTO payments (id, sale_id, method_id, method_name, amount, reference)
        VALUES (?1, ?2, ?3, ?4, ?5, ?6)`,
-      [crypto.randomUUID(), saleId, p.method_id, p.method_name, p.amount, p.reference || null]
+      [paymentId, saleId, p.method_id, p.method_name, p.amount, p.reference || null]
     );
+
+    // Mirror to bank_transactions for reconciliation
+    try {
+      const { recordTransaction } = await import("./banking");
+      const accountId = await pickBankAccountForMethod(p.method_name);
+      if (accountId) {
+        await recordTransaction({
+          account_id: accountId,
+          transaction_type: "deposit",
+          amount: p.amount,
+          description: `Sale ${saleNumber}`,
+          counterparty_name: customerId ? undefined : "Walk-in customer",
+          payment_method: p.method_name.toLowerCase(),
+          reference: p.reference || undefined,
+          related_sale_id: saleId,
+          user_id: userId,
+        });
+      }
+    } catch (e) {
+      console.error("Bank txn mirror failed for sale", saleNumber, ":", e);
+    }
   }
 
   // Auto-sign with KRA eTIMS if configured (non-blocking)
@@ -111,7 +139,7 @@ export async function completeSale(
     console.error("eTIMS signing failed:", e);
   });
 
-  return saleId;
+  return { saleId, saleItemIds };
 }
 
 async function signWithEtims(
@@ -143,14 +171,117 @@ async function signWithEtims(
   }
 }
 
-export async function getSales(limit = 50): Promise<Sale[]> {
+export async function getSales(limit = 50, branchId?: string): Promise<Sale[]> {
+  const branch = branchId ?? getActiveBranchId();
   return query<Sale>(
-    "SELECT * FROM sales WHERE status != 'held' ORDER BY created_at DESC LIMIT ?1",
-    [limit]
+    "SELECT * FROM sales WHERE status != 'held' AND branch_id = ?2 ORDER BY created_at DESC LIMIT ?1",
+    [limit, branch]
   );
 }
 
 export async function voidSale(saleId: string): Promise<void> {
+  // Get current state — only voidable if not already voided/refunded
+  const existing = await query<{ status: string; branch_id: string | null }>(
+    "SELECT status, branch_id FROM sales WHERE id = ?1",
+    [saleId],
+  );
+  if (existing.length === 0) throw new Error("Sale not found");
+  if (existing[0].status === "voided") return;
+  if (existing[0].status === "refunded") {
+    throw new Error("Cannot void a refunded sale");
+  }
+
+  // Pull sale items so we can restore stock atomically
+  const items = await query<{ product_id: string; quantity: number }>(
+    "SELECT product_id, quantity FROM sale_items WHERE sale_id = ?1",
+    [saleId],
+  );
+  const branchId = existing[0].branch_id ?? getActiveBranchId();
+
   await execute("UPDATE sales SET status = 'voided' WHERE id = ?1", [saleId]);
-  // TODO: restore stock
+
+  // Restore stock for each item, scoped to the branch where the sale happened.
+  // We try both branched + non-branched stock rows for safety on legacy data.
+  for (const item of items) {
+    if (!item.product_id || !item.quantity) continue;
+    if (branchId) {
+      const updated = await execute(
+        `UPDATE inventory
+         SET quantity = quantity + ?1, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now')
+         WHERE product_id = ?2 AND branch_id = ?3`,
+        [item.quantity, item.product_id, branchId],
+      );
+      // No row at this branch? Fall back to default product row.
+      const rows = (updated as { rowsAffected?: number } | undefined)?.rowsAffected ?? 0;
+      if (rows === 0) {
+        await execute(
+          `UPDATE inventory
+           SET quantity = quantity + ?1, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now')
+           WHERE product_id = ?2 AND (branch_id IS NULL OR branch_id = '')`,
+          [item.quantity, item.product_id],
+        );
+      }
+    } else {
+      await execute(
+        `UPDATE inventory
+         SET quantity = quantity + ?1, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now')
+         WHERE product_id = ?2`,
+        [item.quantity, item.product_id],
+      );
+    }
+
+    // Audit trail in stock_movements (if the table exists)
+    try {
+      await execute(
+        `INSERT INTO stock_movements
+         (id, product_id, branch_id, movement_type, quantity, reference_type, reference_id, created_at)
+         VALUES (?1, ?2, ?3, 'restore', ?4, 'sale_void', ?5,
+                 strftime('%Y-%m-%dT%H:%M:%fZ','now'))`,
+        [
+          crypto.randomUUID(),
+          item.product_id,
+          branchId,
+          item.quantity,
+          saleId,
+        ],
+      );
+    } catch {
+      // stock_movements may not exist on legacy databases — non-fatal.
+    }
+  }
+}
+
+
+/**
+ * Pick the appropriate bank account to mirror a payment to.
+ * Falls back to default account or the cash box.
+ */
+async function pickBankAccountForMethod(methodName: string): Promise<string | null> {
+  const lower = methodName.toLowerCase();
+  // M-Pesa payments → M-Pesa till/paybill if exists
+  if (lower.includes("mpesa") || lower.includes("m-pesa")) {
+    const rows = await query<{ id: string }>(
+      `SELECT id FROM bank_accounts WHERE account_type IN ('mpesa_till','mpesa_paybill') AND is_active = 1 LIMIT 1`,
+    );
+    if (rows[0]) return rows[0].id;
+  }
+  // Card / bank → default bank account
+  if (lower.includes("card") || lower.includes("bank") || lower.includes("transfer")) {
+    const rows = await query<{ id: string }>(
+      `SELECT id FROM bank_accounts WHERE account_type = 'bank' AND is_active = 1 ORDER BY is_default DESC LIMIT 1`,
+    );
+    if (rows[0]) return rows[0].id;
+  }
+  // Cash → cash box
+  if (lower.includes("cash")) {
+    const rows = await query<{ id: string }>(
+      `SELECT id FROM bank_accounts WHERE account_type = 'cash_box' AND is_active = 1 ORDER BY is_default DESC LIMIT 1`,
+    );
+    if (rows[0]) return rows[0].id;
+  }
+  // Fallback to default
+  const rows = await query<{ id: string }>(
+    `SELECT id FROM bank_accounts WHERE is_active = 1 ORDER BY is_default DESC LIMIT 1`,
+  );
+  return rows[0]?.id || null;
 }

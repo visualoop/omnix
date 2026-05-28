@@ -83,7 +83,7 @@ Layout (optimized for speed + visual clarity):
 - Configurable receipt template (header, footer, logo)
 - Auto-print or manual print toggle
 - Receipt reprint from sale history
-- Digital receipt option (future: SMS/WhatsApp)
+- Digital receipt option (future: print/email)
 
 ### 3.6 Sale Management
 - Sale history with search/filter

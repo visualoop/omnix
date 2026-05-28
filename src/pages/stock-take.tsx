@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { confirm } from "@/components/ui/confirm-dialog";
 import { useNavigate, useParams } from "react-router-dom";
 import {
   ClipboardCheck, Plus, Search, ArrowLeft, CheckCircle2, AlertTriangle, Loader2, Save,
@@ -155,7 +156,7 @@ export function StockTakeDetailPage() {
 
   const handleComplete = async (applyAdjustments: boolean) => {
     if (!id || !userId) return;
-    if (applyAdjustments && !confirm("Apply variances to inventory? This will create stock movements for all counted differences.")) return;
+    if (applyAdjustments && !(await confirm({ title: "Apply variances to inventory? This will create stock movements for all counted differences." }))) return;
     setCompleting(true);
     try {
       await completeStockTake(id, applyAdjustments, userId);

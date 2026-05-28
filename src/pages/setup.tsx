@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { useAuthStore } from "@/stores/auth";
 import { runSetup } from "@/services/auth";
 import { setAutostartEnabled } from "@/services/autostart";
-import { SokoLogo } from "@/components/soko-logo";
+import { OmnixLogo } from "@/components/omnix-logo";
 import { ModuleLogo } from "@/components/module-logos";
 import { APP_NAME } from "@/lib/brand";
 import { useActiveModule, MODULE_DEFINITIONS, type ModuleId } from "@/stores/active-module";
@@ -102,7 +102,7 @@ export function SetupWizard() {
     // Step 0: Welcome
     <div key="welcome" className="space-y-5 text-center">
       <div className="inline-flex items-center justify-center">
-        <SokoLogo size={64} />
+        <OmnixLogo size={64} />
       </div>
       <div>
         <h2 className="text-xl font-semibold">Welcome to {APP_NAME}</h2>

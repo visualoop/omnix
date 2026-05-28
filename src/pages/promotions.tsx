@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { confirm } from "@/components/ui/confirm-dialog";
 import { Plus, Search, Tag, X, Loader2, Calendar } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -206,7 +207,7 @@ function PromotionDialog({ promotion, onClose, onSaved }: {
   };
 
   const handleDelete = async () => {
-    if (!promotion || !confirm(`Delete promotion "${promotion.name}"? This cannot be undone.`)) return;
+    if (!promotion || !(await confirm({ title: `Delete promotion "${promotion.name}"? This cannot be undone.` }))) return;
     await deletePromotion(promotion.id);
     toast.success("Deleted");
     onSaved();

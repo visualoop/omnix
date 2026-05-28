@@ -10,7 +10,7 @@ function Table({ className, ...props }: React.ComponentProps<"table">) {
     >
       <table
         data-slot="table"
-        className={cn("w-full caption-bottom text-sm", className)}
+        className={cn("w-full caption-bottom text-[12.5px]", className)}
         {...props}
       />
     </div>
@@ -21,7 +21,8 @@ function TableHeader({ className, ...props }: React.ComponentProps<"thead">) {
   return (
     <thead
       data-slot="table-header"
-      className={cn("[&_tr]:border-b", className)}
+      // Native: subtle bottom border, slightly tinted bg, sticky-ready
+      className={cn("bg-muted/30 [&_tr]:border-b [&_tr]:border-border", className)}
       {...props}
     />
   )
@@ -42,7 +43,7 @@ function TableFooter({ className, ...props }: React.ComponentProps<"tfoot">) {
     <tfoot
       data-slot="table-footer"
       className={cn(
-        "border-t bg-muted/50 font-medium [&>tr]:last:border-b-0",
+        "border-t bg-muted/30 font-medium [&>tr]:last:border-b-0",
         className
       )}
       {...props}
@@ -54,8 +55,9 @@ function TableRow({ className, ...props }: React.ComponentProps<"tr">) {
   return (
     <tr
       data-slot="table-row"
+      // Native: very subtle row hover, single thin row border
       className={cn(
-        "border-b transition-colors hover:bg-muted/50 has-aria-expanded:bg-muted/50 data-[state=selected]:bg-muted",
+        "border-b border-border/60 transition-colors hover:bg-accent/30 has-aria-expanded:bg-accent/40 data-[state=selected]:bg-primary/10",
         className
       )}
       {...props}
@@ -67,8 +69,11 @@ function TableHead({ className, ...props }: React.ComponentProps<"th">) {
   return (
     <th
       data-slot="table-head"
+      // Native: 32px header (was 40), uppercase tiny label, semibold
       className={cn(
-        "h-10 px-2 text-left align-middle font-medium whitespace-nowrap text-foreground [&:has([role=checkbox])]:pr-0",
+        "h-8 px-2.5 text-left align-middle whitespace-nowrap",
+        "text-[10.5px] font-semibold uppercase tracking-wider text-muted-foreground",
+        "[&:has([role=checkbox])]:pr-0",
         className
       )}
       {...props}
@@ -80,8 +85,10 @@ function TableCell({ className, ...props }: React.ComponentProps<"td">) {
   return (
     <td
       data-slot="table-cell"
+      // Native: 32px row height, tighter padding, larger numbers via tabular-nums
       className={cn(
-        "p-2 align-middle whitespace-nowrap [&:has([role=checkbox])]:pr-0",
+        "px-2.5 py-1.5 align-middle whitespace-nowrap tabular-nums",
+        "[&:has([role=checkbox])]:pr-0",
         className
       )}
       {...props}
@@ -96,7 +103,7 @@ function TableCaption({
   return (
     <caption
       data-slot="table-caption"
-      className={cn("mt-4 text-sm text-muted-foreground", className)}
+      className={cn("mt-4 text-xs text-muted-foreground", className)}
       {...props}
     />
   )

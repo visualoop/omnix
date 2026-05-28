@@ -27,7 +27,7 @@ use std::net::SocketAddr;
 use std::sync::Arc;
 use tower_http::cors::{Any, CorsLayer};
 
-const SERVICE_TYPE: &str = "_sokoos._tcp.local.";
+const SERVICE_TYPE: &str = "_omnix._tcp.local.";
 
 #[derive(Clone)]
 pub struct ServerState {
@@ -101,7 +101,7 @@ pub fn build_router(state: ServerState) -> Router {
 async fn health(State(state): State<ServerState>) -> Json<JsonValue> {
     Json(serde_json::json!({
         "ok": true,
-        "service": "sokoos",
+        "service": "omnix",
         "version": env!("CARGO_PKG_VERSION"),
         "business": *state.business_name.read(),
     }))
@@ -348,10 +348,10 @@ fn start_mdns(port: u16) -> Result<ServiceDaemon, String> {
     let host_ip = local_ip_address::local_ip()
         .map_err(|e| e.to_string())?
         .to_string();
-    let host_name = format!("sokoos-{}.local.", host_ip.replace('.', "-"));
+    let host_name = format!("omnix-{}.local.", host_ip.replace('.', "-"));
     let service = ServiceInfo::new(
         SERVICE_TYPE,
-        "SokoOS",
+        "Omnix",
         &host_name,
         host_ip.as_str(),
         port,

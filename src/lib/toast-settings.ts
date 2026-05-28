@@ -6,7 +6,7 @@
  */
 import { toast as sonnerToast, type ExternalToast } from "sonner";
 
-const KEY = "sokoos-toast-settings";
+const KEY = "omnix-toast-settings";
 
 export interface ToastSettings {
   enabled: boolean;

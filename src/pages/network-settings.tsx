@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { confirm } from "@/components/ui/confirm-dialog";
 import {
   Network,
   Wifi,
@@ -216,7 +217,7 @@ function MasterPanel({ businessName }: { businessName: string }) {
   };
 
   const handleRevoke = async (token: string, name: string) => {
-    if (!confirm(`Revoke access for "${name}"?`)) return;
+    if (!(await confirm({ title: `Revoke access for "${name}"?` }))) return;
     await revokePairedDevice(token);
     toast.success("Device revoked");
     load();
@@ -406,7 +407,7 @@ function ClientPanel({ onPaired }: { onPaired: () => void }) {
   };
 
   const handleUnpair = async () => {
-    if (!confirm("Disconnect from this master? You'll need to pair again to use the shared database.")) return;
+    if (!(await confirm({ title: "Disconnect from this master? You'll need to pair again to use the shared database." }))) return;
     await clearMasterConfig();
     await refreshDbMode();
     setCurrentMaster(null);

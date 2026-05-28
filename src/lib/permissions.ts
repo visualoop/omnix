@@ -70,7 +70,31 @@ export type Permission =
   | "license.manage"
   | "audit.view"
   | "promotions.manage"
-  | "loyalty.manage";
+  | "loyalty.manage"
+  // HR
+  | "hr.employees.view"
+  | "hr.employees.manage"
+  | "hr.payroll.view"
+  | "hr.payroll.run"
+  | "hr.payroll.approve"
+  | "hr.attendance.view"
+  | "hr.attendance.record"
+  | "hr.leave.request"
+  | "hr.leave.approve"
+  | "invoicing.view"
+  | "invoicing.create"
+  | "invoicing.send"
+  | "invoicing.payment"
+  | "invoicing.cancel"
+  | "banking.view"
+  | "banking.manage"
+  | "banking.reconcile"
+  | "retail.brands.manage"
+  | "retail.variants.manage"
+  | "retail.price_lists.manage"
+  | "retail.shrinkage.record"
+  | "retail.laybys.use"
+  | "retail.special_orders.use";
 
 const ALL_PERMISSIONS: Permission[] = [
   "pos.use", "sales.view", "sales.refund", "sales.void",
@@ -87,6 +111,14 @@ const ALL_PERMISSIONS: Permission[] = [
   "settings.business", "settings.network", "settings.backup", "settings.modules",
   "license.view", "license.manage", "audit.view",
   "promotions.manage", "loyalty.manage",
+  "hr.employees.view", "hr.employees.manage",
+  "hr.payroll.view", "hr.payroll.run", "hr.payroll.approve",
+  "hr.attendance.view", "hr.attendance.record",
+  "hr.leave.request", "hr.leave.approve",
+  "invoicing.view", "invoicing.create", "invoicing.send", "invoicing.payment", "invoicing.cancel",
+  "banking.view", "banking.manage", "banking.reconcile",
+  "retail.brands.manage", "retail.variants.manage", "retail.price_lists.manage",
+  "retail.shrinkage.record", "retail.laybys.use", "retail.special_orders.use",
 ];
 
 /** Permission matrix. Each role gets exactly the permissions it should have. */
@@ -109,6 +141,12 @@ const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     "settings.business", "settings.backup",
     "audit.view",
     "promotions.manage", "loyalty.manage",
+    "hr.employees.view", "hr.attendance.view", "hr.attendance.record",
+    "hr.leave.approve", "hr.payroll.view",
+    "invoicing.view", "invoicing.create", "invoicing.send", "invoicing.payment",
+    "banking.view", "banking.manage", "banking.reconcile",
+    "retail.brands.manage", "retail.variants.manage", "retail.price_lists.manage",
+    "retail.shrinkage.record", "retail.laybys.use", "retail.special_orders.use",
   ],
 
   // Cashier: POS-focused. Can sell, take customer payments, view today's sales.
@@ -119,6 +157,8 @@ const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     "pharmacy.dispense", "pharmacy.refill",
     "cash_register.use",
     "reports.zreport",         // can run their end-of-day Z-report
+    "hr.attendance.record",    // can clock self in/out
+    "hr.leave.request",        // can request leave
   ],
 
   // Viewer: read-only. Reports, dashboards, no edits.

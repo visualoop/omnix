@@ -41,6 +41,12 @@ interface SettingsLink {
 
 const SETTINGS_LINKS: SettingsLink[] = [
   {
+    to: "/settings/branches",
+    label: "Branches",
+    description: "Manage shop locations and assign users",
+    icon: Building2,
+  },
+  {
     to: "/settings/payments",
     label: "Payment Methods",
     description: "Configure Paystack M-Pesa STK push",

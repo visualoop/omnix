@@ -14,8 +14,8 @@
 
 export const BRAND = {
   // Platform name (the OS-level product)
-  name: "SokoOS",
-  shortName: "Soko",
+  name: "Omnix",
+  shortName: "Omnix",
   tagline: "ERP for Kenyan SMEs",
 
   // First module (active vertical). When you add new modules, you may want
@@ -23,12 +23,12 @@ export const BRAND = {
   module: {
     name: "Dawa",
     fullName: "Dawa Pharmacy",
-    description: "Pharmacy management module for SokoOS",
+    description: "Pharmacy management module for Omnix",
   },
 
   // Company / publisher information
   company: {
-    name: "SokoOS Ltd.",
+    name: "Omnix Ltd.",
     domain: "sokoos.co.ke",
     website: "https://sokoos.co.ke",
     supportEmail: "support@sokoos.co.ke",
@@ -36,12 +36,12 @@ export const BRAND = {
 
   // Receipt header (override per tenant via setup wizard later if desired)
   receipt: {
-    poweredBy: "Powered by SokoOS",
+    poweredBy: "Powered by Omnix",
   },
 
   // Updater / installer naming
   installer: {
-    appNameInPath: "sokoos", // Used in install path: %APPDATA%\sokoos
+    appNameInPath: "omnix", // Used in install path: %APPDATA%\omnix
   },
 } as const;
 

@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { confirm } from "@/components/ui/confirm-dialog";
 import { Pill, X, ArrowDownRight, Check, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { suggestSubstitutionsFromGeneric, getSubstitutions } from "@/services/pharmacy-extras";
@@ -70,9 +71,9 @@ export function SubstitutionsDialog({ open, product, onClose, onSwap }: Props) {
       })),
   ];
 
-  const handleSelect = (sub: SuggestedSub) => {
+  const handleSelect = async (sub: SuggestedSub) => {
     if (sub.stock === 0) {
-      if (!confirm("This substitute is out of stock. Continue anyway?")) return;
+      if (!(await confirm({ title: "This substitute is out of stock. Continue anyway?" }))) return;
     }
     if (onSwap) {
       onSwap(product.id, sub);

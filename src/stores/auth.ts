@@ -38,6 +38,18 @@ export const useAuthStore = create<AuthState>()(
         try {
           const user = await loginDb(username, password);
           set({ user, loading: false });
+          // Lazy-import to avoid circular dependency
+          import("./active-branch").then((m) => m.useActiveBranch.getState().loadForUser(user.id));
+          // Run recurring invoice schedule (once per session, async fire-and-forget)
+          import("@/services/recurring-invoicing").then((m) =>
+            m.runRecurringSchedule(user.id).then((r) => {
+              if (r.generated > 0) {
+                import("sonner").then(({ toast }) =>
+                  toast.success(`Generated ${r.generated} recurring invoice${r.generated !== 1 ? "s" : ""}`),
+                );
+              }
+            }).catch(() => {}),
+          );
           return user;
         } catch (e) {
           set({ loading: false });
@@ -47,13 +59,14 @@ export const useAuthStore = create<AuthState>()(
 
       signOut: () => {
         set({ user: null });
+        import("./active-branch").then((m) => m.useActiveBranch.getState().clear());
       },
 
       setSetupComplete: (done) => set({ isSetupComplete: done }),
       setUser: (user) => set({ user }),
     }),
     {
-      name: "sokoos-auth",
+      name: "omnix-auth",
       // Only persist user (not loading/setupChecked); we re-check setup from DB on load
       partialize: (state) => ({ user: state.user }),
     }

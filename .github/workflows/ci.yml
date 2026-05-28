@@ -1,14 +1,6 @@
 name: CI
 
 on:
-  # Only run CI when we actually need a build:
-  # - Tag push → release build (with GitHub Release)
-  # - PR → branch validation
-  # - Manual dispatch → on-demand release
-  #
-  # Direct pushes to main do NOT trigger CI. Open a PR or push a tag.
-  # This avoids duplicate runs when the same commit is pushed to a branch
-  # AND tagged (which used to trigger 2 runs).
   push:
     tags: ["v*.*.*"]
   pull_request:
@@ -16,7 +8,7 @@ on:
   workflow_dispatch:
     inputs:
       release_version:
-        description: "Optional: tag a release (e.g. v0.1.3). Leave blank to just build artifacts."
+        description: "Optional: tag a release (e.g. v0.1.3). Leave blank to build artifacts only."
         required: false
         type: string
 
@@ -107,7 +99,7 @@ jobs:
         if: steps.ctx.outputs.is_release != 'true'
         uses: actions/upload-artifact@v4
         with:
-          name: SokoOS-Windows-MSI
+          name: Omnix-Windows-MSI
           path: src-tauri/target/release/bundle/msi/*.msi
           if-no-files-found: error
           retention-days: 30
@@ -116,7 +108,7 @@ jobs:
         if: steps.ctx.outputs.is_release != 'true'
         uses: actions/upload-artifact@v4
         with:
-          name: SokoOS-Windows-NSIS
+          name: Omnix-Windows-NSIS
           path: src-tauri/target/release/bundle/nsis/*.exe
           if-no-files-found: error
           retention-days: 30
@@ -125,7 +117,7 @@ jobs:
         if: steps.ctx.outputs.is_release != 'true'
         uses: actions/upload-artifact@v4
         with:
-          name: SokoOS-Updater-Signatures
+          name: Omnix-Updater-Signatures
           path: |
             src-tauri/target/release/bundle/msi/*.msi.sig
             src-tauri/target/release/bundle/nsis/*.exe.sig
@@ -178,7 +170,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.ctx.outputs.tag }}
-          name: SokoOS ${{ steps.ctx.outputs.tag }}
+          name: Omnix ${{ steps.ctx.outputs.tag }}
           draft: false
           prerelease: ${{ contains(steps.ctx.outputs.tag, '-') }}
           generate_release_notes: true

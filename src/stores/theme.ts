@@ -8,9 +8,9 @@ interface ThemeState {
 }
 
 export const useThemeStore = create<ThemeState>((set) => ({
-  theme: (localStorage.getItem("sokoos-theme") as Theme) || "system",
+  theme: (localStorage.getItem("omnix-theme") as Theme) || "system",
   setTheme: (theme) => {
-    localStorage.setItem("sokoos-theme", theme);
+    localStorage.setItem("omnix-theme", theme);
     set({ theme });
     applyTheme(theme);
   },

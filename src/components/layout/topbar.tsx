@@ -3,6 +3,7 @@ import { Moon, Sun, LogOut } from "lucide-react";
 import { useThemeStore } from "@/stores/theme";
 import { Button } from "@/components/ui/button";
 import { NetworkIndicator } from "@/components/layout/network-indicator";
+import { BranchSwitcher } from "@/components/layout/branch-switcher";
 import { ROLE_INFO, type Role } from "@/lib/permissions";
 
 export function Topbar() {
@@ -13,7 +14,9 @@ export function Topbar() {
   return (
     <header className="flex items-center justify-between h-12 px-4 border-b border-border bg-background">
       <div className="text-sm text-muted-foreground" />
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-1">
+        <BranchSwitcher />
+
         {/* Network indicator (only visible in master/client mode) */}
         <NetworkIndicator />
 

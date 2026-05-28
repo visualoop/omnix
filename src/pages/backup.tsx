@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { confirm } from "@/components/ui/confirm-dialog";
 import { invoke } from "@tauri-apps/api/core";
 import {
   Database,
@@ -77,12 +78,12 @@ export function BackupPage() {
   };
 
   const handleRestore = async (filename: string) => {
-    if (!confirm(
-      `Restore ${filename}?\n\n` +
-      "This will REPLACE all current data with the backup. " +
-      "A safety backup of the current state will be created first.\n\n" +
-      "The app will need to be restarted after restore."
-    )) return;
+    if (!(await confirm({
+      title: `Restore ${filename}?`,
+      description: "This will REPLACE all current data with the backup. A safety backup of the current state will be created first. The app will need to be restarted after restore.",
+      variant: "destructive",
+      confirmText: "Restore",
+    }))) return;
 
     setRestoring(filename);
     try {
@@ -97,7 +98,7 @@ export function BackupPage() {
   };
 
   const handleDelete = async (filename: string) => {
-    if (!confirm(`Delete ${filename}?`)) return;
+    if (!(await confirm({ title: `Delete ${filename}?` }))) return;
     try {
       await invoke("delete_backup", { filename });
       toast.success("Backup deleted");

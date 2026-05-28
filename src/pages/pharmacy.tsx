@@ -1,11 +1,12 @@
 import { useState, useEffect, useCallback } from "react";
-import { Plus, Search, FileText, AlertTriangle, Tag } from "lucide-react";
+import { Plus, Search, FileText, AlertTriangle, Tag, Calculator } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { getPrescriptions, getExpiringItems, type Prescription, type ExpiryItem } from "@/services/pharmacy";
 import { printDrugLabels } from "@/services/drug-labels";
 import { PrescriptionPanel } from "@/components/pharmacy/prescription-panel";
+import { DoseCalculatorDialog } from "@/components/pos/dose-calculator";
 import { Link } from "react-router-dom";
 import { toast } from "sonner";
 
@@ -14,6 +15,7 @@ export function PharmacyPage() {
   const [expiring, setExpiring] = useState<ExpiryItem[]>([]);
   const [search, setSearch] = useState("");
   const [panelOpen, setPanelOpen] = useState(false);
+  const [doseOpen, setDoseOpen] = useState(false);
 
   const load = useCallback(async () => {
     const [rxs, exps] = await Promise.all([
@@ -30,9 +32,39 @@ export function PharmacyPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-semibold tracking-tight">Pharmacy (Dawa)</h1>
-        <Button size="sm" onClick={() => setPanelOpen(true)}>
-          <Plus className="h-4 w-4 mr-1" /> New Prescription
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button size="sm" variant="outline" onClick={() => setDoseOpen(true)}>
+            <Calculator className="h-4 w-4 mr-1" /> Dose Calc
+          </Button>
+          <Link to="/pharmacy/controlled-register">
+            <Button size="sm" variant="outline">
+              Controlled Register
+            </Button>
+          </Link>
+          <Link to="/pharmacy/cold-chain">
+            <Button size="sm" variant="outline">
+              Cold Chain
+            </Button>
+          </Link>
+          <Link to="/pharmacy/amr">
+            <Button size="sm" variant="outline">
+              AMR Report
+            </Button>
+          </Link>
+          <Link to="/pharmacy/doctors">
+            <Button size="sm" variant="outline">
+              Doctors
+            </Button>
+          </Link>
+          <Link to="/pharmacy/refills">
+            <Button size="sm" variant="outline">
+              Refills
+            </Button>
+          </Link>
+          <Button size="sm" onClick={() => setPanelOpen(true)}>
+            <Plus className="h-4 w-4 mr-1" /> New Prescription
+          </Button>
+        </div>
       </div>
 
       {/* Quick stats */}
@@ -113,6 +145,7 @@ export function PharmacyPage() {
       )}
 
       <PrescriptionPanel open={panelOpen} onClose={() => setPanelOpen(false)} onSaved={load} />
+      <DoseCalculatorDialog open={doseOpen} onClose={() => setDoseOpen(false)} />
     </div>
   );
 }

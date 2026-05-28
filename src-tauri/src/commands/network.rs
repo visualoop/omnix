@@ -29,7 +29,7 @@ pub struct ServerStatus {
 
 fn db_url(app: &tauri::AppHandle) -> Result<String, String> {
     let dir = app.path().app_data_dir().map_err(|e| e.to_string())?;
-    let path: PathBuf = dir.join("sokoos.db");
+    let path: PathBuf = dir.join("omnix.db");
     Ok(format!("sqlite:{}", path.display()))
 }
 

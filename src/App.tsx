@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { Toaster } from "sonner";
+import { ConfirmDialogHost } from "@/components/ui/confirm-dialog";
 import { useAuthStore } from "@/stores/auth";
 import { AppShell } from "@/components/layout/app-shell";
 import { LicenseGuard } from "@/components/license-guard";
@@ -13,15 +14,40 @@ import { CategoriesPage } from "@/pages/categories";
 import { StockPage } from "@/pages/stock";
 import { POSPage } from "@/pages/pos";
 import { PharmacyPage } from "@/pages/pharmacy";
+import { ControlledRegisterPage } from "@/pages/controlled-register";
+import { ColdChainPage } from "@/pages/cold-chain";
+import { AmrReportPage } from "@/pages/amr-report";
 import { ExpiryPage } from "@/pages/expiry";
 import { ReportsPage } from "@/pages/reports";
 import { ReportsIndexPage } from "@/pages/reports-index";
 import { InventoryReportsPage } from "@/pages/inventory-reports";
 import { ZReportPage } from "@/pages/zreport";
+import { TipsReportPage } from "@/pages/tips-report";
 import { DoctorsPage } from "@/pages/doctors";
 import { RefillsPage } from "@/pages/refills";
 import { PettyCashPage } from "@/pages/petty-cash";
 import { PromotionsPage } from "@/pages/promotions";
+import { BranchesPage } from "@/pages/branches";
+import { StockTransfersPage } from "@/pages/stock-transfers";
+import { NewStockTransferPage } from "@/pages/stock-transfer-new";
+import { StockTransferDetailPage } from "@/pages/stock-transfer-detail";
+import { EmployeesPage } from "@/pages/employees";
+import { AttendancePage } from "@/pages/attendance";
+import { LeavePage } from "@/pages/leave";
+import { PayrollPage } from "@/pages/payroll";
+import { InvoicingPage } from "@/pages/invoicing";
+import { NewDocumentPage } from "@/pages/invoice-new";
+import { DocumentDetailPage } from "@/pages/invoice-detail";
+import { RecurringInvoicesPage } from "@/pages/recurring-invoices";
+import { CustomerDisplayPage } from "@/pages/customer-display";
+import { BankingPage } from "@/pages/banking";
+import { BankAccountDetailPage } from "@/pages/banking-detail";
+import { BrandsPage } from "@/pages/retail-brands";
+import { ShrinkagePage } from "@/pages/retail-shrinkage";
+import { LaybysPage } from "@/pages/retail-laybys";
+import { SpecialOrdersPage } from "@/pages/retail-special-orders";
+import { RetailDashboardPage } from "@/pages/retail-dashboard";
+import { QuickAddProductsPage } from "@/pages/quick-add";
 import { ExpensesPage } from "@/pages/expenses";
 import { PnLPage } from "@/pages/pnl";
 import { CashRegisterPage } from "@/pages/cash-register";
@@ -80,6 +106,7 @@ function AppContent() {
       <>
         <SetupWizard />
         <Toaster position="bottom-right" />
+        <ConfirmDialogHost />
       </>
     );
   }
@@ -114,10 +141,36 @@ function AppContent() {
           <Route path="/reports/sales" element={<RequireRole permission="reports.view"><ReportsPage /></RequireRole>} />
           <Route path="/reports/inventory" element={<RequireRole permission="reports.view"><InventoryReportsPage /></RequireRole>} />
           <Route path="/reports/zreport" element={<RequireRole permission="reports.zreport"><ZReportPage /></RequireRole>} />
+          <Route path="/reports/tips" element={<RequireRole permission="reports.view"><TipsReportPage /></RequireRole>} />
           <Route path="/pharmacy/doctors" element={<RequireRole permission="pharmacy.doctors.manage"><DoctorsPage /></RequireRole>} />
           <Route path="/pharmacy/refills" element={<RequireRole permission="pharmacy.refill"><RefillsPage /></RequireRole>} />
+          <Route path="/pharmacy/controlled-register" element={<RequireRole permission="pharmacy.dispense"><ControlledRegisterPage /></RequireRole>} />
+          <Route path="/pharmacy/cold-chain" element={<RequireRole permission="pharmacy.dispense"><ColdChainPage /></RequireRole>} />
+          <Route path="/pharmacy/amr" element={<RequireRole permission="reports.view"><AmrReportPage /></RequireRole>} />
           <Route path="/petty-cash" element={<RequireRole permission="petty_cash.use"><PettyCashPage /></RequireRole>} />
           <Route path="/promotions" element={<RequireRole permission="promotions.manage"><PromotionsPage /></RequireRole>} />
+          <Route path="/settings/branches" element={<RequireRole permission="settings.business"><BranchesPage /></RequireRole>} />
+          <Route path="/stock-transfers" element={<RequireRole permission="inventory.view"><StockTransfersPage /></RequireRole>} />
+          <Route path="/stock-transfers/new" element={<RequireRole permission="inventory.view"><NewStockTransferPage /></RequireRole>} />
+          <Route path="/stock-transfers/:id" element={<RequireRole permission="inventory.view"><StockTransferDetailPage /></RequireRole>} />
+          <Route path="/hr/employees" element={<RequireRole permission="hr.employees.view"><EmployeesPage /></RequireRole>} />
+          <Route path="/hr/attendance" element={<RequireRole permission="hr.attendance.view"><AttendancePage /></RequireRole>} />
+          <Route path="/hr/leave" element={<RequireRole permission="hr.leave.request"><LeavePage /></RequireRole>} />
+          <Route path="/hr/payroll" element={<RequireRole permission="hr.payroll.view"><PayrollPage /></RequireRole>} />
+          <Route path="/invoicing" element={<RequireRole permission="invoicing.view"><InvoicingPage /></RequireRole>} />
+          <Route path="/invoicing/invoice/new" element={<RequireRole permission="invoicing.create"><NewDocumentPage type="invoice" /></RequireRole>} />
+          <Route path="/invoicing/quotation/new" element={<RequireRole permission="invoicing.create"><NewDocumentPage type="quotation" /></RequireRole>} />
+          <Route path="/invoicing/invoice/:id" element={<RequireRole permission="invoicing.view"><DocumentDetailPage type="invoice" /></RequireRole>} />
+          <Route path="/invoicing/quotation/:id" element={<RequireRole permission="invoicing.view"><DocumentDetailPage type="quotation" /></RequireRole>} />
+          <Route path="/invoicing/recurring" element={<RequireRole permission="invoicing.create"><RecurringInvoicesPage /></RequireRole>} />
+          <Route path="/banking" element={<RequireRole permission="banking.view"><BankingPage /></RequireRole>} />
+          <Route path="/banking/:id" element={<RequireRole permission="banking.view"><BankAccountDetailPage /></RequireRole>} />
+          <Route path="/retail/brands" element={<RequireRole permission="retail.brands.manage"><BrandsPage /></RequireRole>} />
+          <Route path="/retail/dashboard" element={<RequireRole permission="reports.view"><RetailDashboardPage /></RequireRole>} />
+          <Route path="/inventory/quick-add" element={<RequireRole permission="inventory.edit"><QuickAddProductsPage /></RequireRole>} />
+          <Route path="/retail/shrinkage" element={<RequireRole permission="retail.shrinkage.record"><ShrinkagePage /></RequireRole>} />
+          <Route path="/retail/laybys" element={<RequireRole permission="retail.laybys.use"><LaybysPage /></RequireRole>} />
+          <Route path="/retail/special-orders" element={<RequireRole permission="retail.special_orders.use"><SpecialOrdersPage /></RequireRole>} />
           <Route path="/expenses" element={<RequireRole permission="expenses.view"><ExpensesPage /></RequireRole>} />
           <Route path="/pnl" element={<RequireRole permission="reports.pnl"><PnLPage /></RequireRole>} />
           <Route path="/cash-register" element={<RequireRole permission="cash_register.use"><CashRegisterPage /></RequireRole>} />
@@ -145,8 +198,11 @@ function AppContent() {
           <Route path="/vat-report" element={<RequireRole permission="reports.view"><VatReportPage /></RequireRole>} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Route>
+        {/* Customer-facing display — opens in separate window, no shell/sidebar */}
+        <Route path="/customer-display" element={<CustomerDisplayPage />} />
       </Routes>
       <Toaster position="bottom-right" />
+      <ConfirmDialogHost />
     </BrowserRouter>
   );
 }

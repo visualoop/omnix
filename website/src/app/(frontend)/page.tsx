@@ -1,0 +1,48 @@
+import { ClosingCtaSection } from '@/components/landing/closing-cta-section'
+import { ComplianceSection } from '@/components/landing/compliance-section'
+import { FaqSection } from '@/components/landing/faq-section'
+import { FounderNoteSection } from '@/components/landing/founder-note-section'
+import { HeroSection } from '@/components/landing/hero-section'
+import { ModulesRowsSection } from '@/components/landing/modules-rows-section'
+import { OnePriceSection } from '@/components/landing/one-price-section'
+import { ReceiptProofSection } from '@/components/landing/receipt-proof-section'
+import { RecentWorkSection } from '@/components/landing/recent-work-section'
+import { StudiosHandSection } from '@/components/landing/studios-hand-section'
+import { ThreeQuotesSection } from '@/components/landing/three-quotes-section'
+
+/**
+ * Duka homepage — long-scroll editorial.
+ *
+ * Section order per DUKA-BRIEF.md §6.1.
+ * Every section title is evocative (never literally "Features" / "Services").
+ * Every section uses the editorial type utilities defined in globals.css.
+ *
+ *  1. Hero                — headline italic-word emphasis, single CTA, mono caption, PosPreview
+ *  2. Founder note        — replaces stats row; signed letter (60ch italic Geist)
+ *  3. What we make        — 4 alternating image/text rows, honest placeholders
+ *  4. The receipt is the proof — eTIMS receipt + KRA filing side-by-side, hung quote
+ *  5. The studio's hand   — 3 numbered steps in Fraunces 96px accent
+ *  6. Recent work         — 1-2-1 layout of customer placeholders
+ *  7. Compliance          — quiet 4-col grid, no icons
+ *  8. Three quotes        — pull quotes hung off-grid, no avatars
+ *  9. One price           — single huge KES 30,000, three text-link entry points
+ * 10. FAQ                 — accordion, plus glyph rotates to ×
+ * 11. Closing CTA         — full-bleed dark band, italic 64px, one CTA + WhatsApp
+ */
+export default function HomePage() {
+  return (
+    <>
+      <HeroSection />
+      <FounderNoteSection />
+      <ModulesRowsSection />
+      <ReceiptProofSection />
+      <StudiosHandSection />
+      <RecentWorkSection />
+      <ComplianceSection />
+      <ThreeQuotesSection />
+      <OnePriceSection />
+      <FaqSection />
+      <ClosingCtaSection />
+    </>
+  )
+}

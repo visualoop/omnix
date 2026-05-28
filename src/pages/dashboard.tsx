@@ -3,14 +3,51 @@ import { TrendingUp, ShoppingCart, AlertTriangle, Package, Users, Banknote, File
 import { getDashboardKPIs, getSalesByDay, getTopProducts, getSalesByPaymentMethod, type DashboardKPIs, type SalesByDay, type TopProduct, type SalesByPaymentMethod } from "@/services/reports";
 import { SokoAreaChart, SokoPieChart } from "@/components/charts";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useActiveBranch } from "@/stores/active-branch";
+import { useActiveModule } from "@/stores/active-module";
+import { isFeatureAvailable } from "@/lib/module-features";
+import { useAuthStore } from "@/stores/auth";
 import { Link } from "react-router-dom";
 
+function useModuleAccent() {
+  const m = useActiveModule((s) => s.active);
+  if (m === "dawa") return {
+    gradient: "from-teal-600 via-emerald-600 to-cyan-600",
+    primary: "text-teal-700",
+    primaryBg: "bg-teal-50",
+    label: "Dawa Pharmacy",
+  };
+  if (m === "retail") return {
+    gradient: "from-orange-600 via-amber-500 to-rose-500",
+    primary: "text-orange-700",
+    primaryBg: "bg-orange-50",
+    label: "Soko Retail",
+  };
+  return {
+    gradient: "from-amber-600 via-yellow-500 to-orange-500",
+    primary: "text-amber-700",
+    primaryBg: "bg-amber-50",
+    label: "Core ERP",
+  };
+}
+
 export function DashboardPage() {
+  const accent = useModuleAccent();
+  const moduleId = useActiveModule((s) => s.active);
+  const user = useAuthStore((s) => s.user);
   const [kpis, setKpis] = useState<DashboardKPIs | null>(null);
   const [salesByDay, setSalesByDay] = useState<SalesByDay[]>([]);
   const [topProducts, setTopProducts] = useState<TopProduct[]>([]);
   const [paymentMix, setPaymentMix] = useState<SalesByPaymentMethod[]>([]);
   const [loading, setLoading] = useState(true);
+  const activeBranchId = useActiveBranch((s) => s.active?.id);
+
+  const greeting = (() => {
+    const h = new Date().getHours();
+    if (h < 12) return "Good morning";
+    if (h < 17) return "Good afternoon";
+    return "Good evening";
+  })();
 
   useEffect(() => {
     setLoading(true);
@@ -29,13 +66,32 @@ export function DashboardPage() {
     }).finally(() => {
       setLoading(false);
     });
-  }, []);
+  }, [activeBranchId]);
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-xl font-semibold tracking-tight">Dashboard</h1>
-        <p className="text-sm text-muted-foreground mt-1">Today, {new Date().toLocaleDateString("en-KE", { weekday: "long", day: "numeric", month: "long" })}</p>
+    <div className="space-y-5">
+      {/* Hero greeting card with module-aware gradient */}
+      <div className={`rounded-lg bg-gradient-to-br ${accent.gradient} p-5 text-white shadow-md`}>
+        <div className="flex items-start justify-between">
+          <div>
+            <p className="text-xs uppercase tracking-wider text-white/70 font-medium">{accent.label}</p>
+            <h1 className="text-2xl font-semibold tracking-tight mt-1">
+              {greeting}, {user?.full_name?.split(" ")[0] || "there"}.
+            </h1>
+            <p className="text-sm text-white/80 mt-1">
+              {new Date().toLocaleDateString("en-KE", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
+            </p>
+          </div>
+          {kpis && (
+            <div className="text-right">
+              <p className="text-xs uppercase tracking-wider text-white/70">Today's Revenue</p>
+              <p className="text-3xl font-bold font-mono mt-0.5">KES {kpis.today_sales_total.toFixed(0)}</p>
+              <p className="text-xs text-white/80 mt-0.5">
+                {kpis.today_sales_count} transaction{kpis.today_sales_count !== 1 ? "s" : ""}
+              </p>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* KPI cards */}
@@ -47,6 +103,7 @@ export function DashboardPage() {
           sub={`${kpis?.today_sales_count || 0} transactions`}
           prefix="KES"
           loading={loading}
+          accent={accent}
         />
         <KpiCard
           icon={TrendingUp}
@@ -81,14 +138,16 @@ export function DashboardPage() {
           <MiniCard icon={Package} label="Products" value={kpis?.total_products ?? "—"} />
         </Link>
         <MiniCard icon={Users} label="Customers" value={kpis?.total_customers ?? "—"} />
-        <Link to="/pharmacy/expiry">
-          <MiniCard
-            icon={FileText}
-            label="Expiring Soon"
-            value={kpis?.expiring_count ?? "—"}
-            tone={kpis && kpis.expiring_count > 0 ? "warning" : "default"}
-          />
-        </Link>
+        {isFeatureAvailable("/pharmacy/expiry", moduleId) && (
+          <Link to="/pharmacy/expiry">
+            <MiniCard
+              icon={FileText}
+              label="Expiring Soon"
+              value={kpis?.expiring_count ?? "—"}
+              tone={kpis && kpis.expiring_count > 0 ? "warning" : "default"}
+            />
+          </Link>
+        )}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">

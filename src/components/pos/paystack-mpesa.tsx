@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { Smartphone, CheckCircle2, XCircle, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { initiateMpesaCharge, verifyTransaction, getPaystackConfig } from "@/services/paystack";
+import { initiateMpesaCharge, verifyTransaction, submitChargeOtp, getPaystackConfig } from "@/services/paystack";
 
 interface Props {
   amount: number;
@@ -12,7 +12,7 @@ interface Props {
   onCancel: () => void;
 }
 
-type Status = "idle" | "initiating" | "awaiting_pin" | "polling" | "success" | "failed";
+type Status = "idle" | "initiating" | "awaiting_otp" | "polling" | "success" | "failed";
 
 export function PaystackMpesaCharge({ amount, email, saleId, onSuccess, onCancel }: Props) {
   const [phone, setPhone] = useState("");
@@ -20,6 +20,7 @@ export function PaystackMpesaCharge({ amount, email, saleId, onSuccess, onCancel
   const [reference, setReference] = useState<string | null>(null);
   const [error, setError] = useState<string>("");
   const [configured, setConfigured] = useState(false);
+  const [otp, setOtp] = useState("");
   const pollRef = useRef<number | null>(null);
 
   useEffect(() => {
@@ -39,8 +40,34 @@ export function PaystackMpesaCharge({ amount, email, saleId, onSuccess, onCancel
     try {
       const res = await initiateMpesaCharge({ amount, phone, email, saleId });
       setReference(res.reference);
-      setStatus("polling");
-      startPolling(res.reference);
+
+      if (res.display_text?.toLowerCase().includes("otp")) {
+        setStatus("awaiting_otp");
+      } else {
+        setStatus("polling");
+        startPolling(res.reference);
+      }
+    } catch (e) {
+      setError(String(e));
+      setStatus("failed");
+    }
+  };
+
+  const handleSubmitOtp = async () => {
+    if (!reference || !otp) return;
+    setError("");
+    try {
+      const res = await submitChargeOtp(reference, otp);
+      if (res.status === "success") {
+        setStatus("success");
+        setTimeout(() => onSuccess(reference), 800);
+      } else if (res.status === "pending") {
+        setStatus("polling");
+        startPolling(reference);
+      } else {
+        setStatus("failed");
+        setError(res.message || "OTP rejected");
+      }
     } catch (e) {
       setError(String(e));
       setStatus("failed");
@@ -117,7 +144,27 @@ export function PaystackMpesaCharge({ amount, email, saleId, onSuccess, onCancel
         </>
       )}
 
-      {(status === "initiating" || status === "polling" || status === "awaiting_pin") && (
+      {status === "awaiting_otp" && (
+        <div className="space-y-3">
+          <div className="text-center">
+            <p className="text-sm font-medium">Enter OTP</p>
+            <p className="text-xs text-muted-foreground mt-1">Paystack requires OTP confirmation. Check {phone} for the code.</p>
+          </div>
+          <Input
+            placeholder="Enter OTP code"
+            value={otp}
+            onChange={(e) => setOtp(e.target.value)}
+            autoFocus
+          />
+          {error && <p className="text-xs text-destructive">{error}</p>}
+          <div className="flex gap-2">
+            <Button variant="outline" className="flex-1" onClick={onCancel}>Cancel</Button>
+            <Button className="flex-1" onClick={handleSubmitOtp}>Submit OTP</Button>
+          </div>
+        </div>
+      )}
+
+      {(status === "initiating" || status === "polling") && (
         <div className="text-center py-6 space-y-3">
           <Loader2 className="h-8 w-8 mx-auto text-primary animate-spin" />
           <div>

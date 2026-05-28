@@ -1,0 +1,169 @@
+import { cn } from '@/lib/cn'
+
+/**
+ * Section container — uses the new max-width tokens (NOT max-w-[1180px]).
+ * Pick width per content density: narrow=760, text=920, default=1180, wide=1320, bleed=1480.
+ */
+interface ContainerProps extends React.HTMLAttributes<HTMLDivElement> {
+  width?: 'narrow' | 'text' | 'default' | 'wide' | 'bleed'
+}
+
+export function Container({ width = 'default', className, ...rest }: ContainerProps) {
+  const map = {
+    narrow: 'container-narrow',
+    text: 'container-text',
+    default: 'container-default',
+    wide: 'container-wide',
+    bleed: 'container-bleed',
+  } as const
+  return <div className={cn(map[width], className)} {...rest} />
+}
+
+interface SectionProps extends React.HTMLAttributes<HTMLElement> {
+  as?: 'section' | 'div'
+  pad?: 'tight' | 'default' | 'loose' | 'none'
+  divide?: boolean
+}
+
+export function Section({
+  as: Tag = 'section',
+  pad = 'default',
+  divide = false,
+  className,
+  children,
+  ...rest
+}: SectionProps) {
+  const padMap = {
+    none: '',
+    tight: 'py-14 sm:py-20',
+    default: 'py-20 sm:py-28 lg:py-32',
+    loose: 'py-28 sm:py-36 lg:py-44',
+  } as const
+  return (
+    <Tag
+      className={cn(
+        'relative w-full',
+        padMap[pad],
+        divide ? 'border-t border-[var(--color-border)]' : '',
+        className,
+      )}
+      {...rest}
+    >
+      {children}
+    </Tag>
+  )
+}
+
+/** Small uppercase label above section headlines. Uses --font-ui (Plus Jakarta) tracking. */
+export function Eyebrow({
+  className,
+  ...rest
+}: React.HTMLAttributes<HTMLSpanElement>) {
+  return (
+    <span
+      className={cn(
+        "inline-flex items-center gap-2 font-[family-name:var(--font-ui)] text-[11px] font-semibold uppercase tracking-[0.22em] text-[var(--color-accent)]",
+        className,
+      )}
+      {...rest}
+    />
+  )
+}
+
+/**
+ * Display heading — Fraunces serif, italic word emphasis supported via <Italic> child.
+ * Pass children as <>plain text <Italic>italic word</Italic> more text</>.
+ */
+interface HeadingProps {
+  level?: 1 | 2 | 3
+  children: React.ReactNode
+  className?: string
+  align?: 'left' | 'center'
+}
+
+export function Heading({ level = 2, children, className, align = 'left' }: HeadingProps) {
+  const sizeMap = {
+    1: 'text-[clamp(40px,6vw,84px)] leading-[1.02] tracking-[-0.025em]',
+    2: 'text-[clamp(32px,4.5vw,60px)] leading-[1.05] tracking-[-0.02em]',
+    3: 'text-[clamp(24px,2.6vw,36px)] leading-[1.1] tracking-[-0.015em]',
+  } as const
+  const Tag = (`h${level}` as 'h1' | 'h2' | 'h3')
+  return (
+    <Tag
+      className={cn(
+        'font-[family-name:var(--font-display)] font-normal text-balance text-[var(--color-fg)]',
+        sizeMap[level],
+        align === 'center' ? 'text-center' : '',
+        className,
+      )}
+    >
+      {children}
+    </Tag>
+  )
+}
+
+/** Italic word inside a Heading — Fraunces light italic */
+export function Italic({ children, className }: { children: React.ReactNode; className?: string }) {
+  return (
+    <span
+      className={cn(
+        'italic font-light text-[var(--color-fg-muted)]',
+        className,
+      )}
+    >
+      {children}
+    </span>
+  )
+}
+
+interface SectionHeaderProps {
+  eyebrow?: React.ReactNode
+  title: React.ReactNode
+  subtitle?: React.ReactNode
+  align?: 'left' | 'center'
+  className?: string
+}
+
+export function SectionHeader({
+  eyebrow,
+  title,
+  subtitle,
+  align = 'left',
+  className,
+}: SectionHeaderProps) {
+  return (
+    <div
+      className={cn(
+        'flex max-w-3xl flex-col gap-5',
+        align === 'center' ? 'mx-auto items-center text-center' : '',
+        className,
+      )}
+    >
+      {eyebrow ? (
+        <Eyebrow>
+          <span className="size-1 rounded-full bg-[var(--color-accent)]" />
+          {eyebrow}
+        </Eyebrow>
+      ) : null}
+      <Heading level={2} align={align}>
+        {title}
+      </Heading>
+      {subtitle ? (
+        <p className="max-w-2xl text-balance font-[family-name:var(--font-sans)] text-[17px] leading-[1.6] text-[var(--color-fg-muted)] sm:text-[19px]">
+          {subtitle}
+        </p>
+      ) : null}
+    </div>
+  )
+}
+
+/** Hairline 1-pixel divider with optional small accent dot at the centre. */
+export function Hairline({ accent = false, className }: { accent?: boolean; className?: string }) {
+  return (
+    <div className={cn('flex items-center gap-3', className)}>
+      <div className="h-px flex-1 bg-[var(--color-border)]" />
+      {accent ? <div className="size-1 rounded-full bg-[var(--color-accent)]" /> : null}
+      <div className="h-px flex-1 bg-[var(--color-border)]" />
+    </div>
+  )
+}

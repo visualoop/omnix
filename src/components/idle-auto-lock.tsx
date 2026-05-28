@@ -15,7 +15,7 @@ import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
-const STORAGE_KEY = "sokoos-idle-lock-minutes";
+const STORAGE_KEY = "omnix-idle-lock-minutes";
 const DEFAULT_MINUTES = 10;
 const ACTIVITY_EVENTS = ["mousemove", "keydown", "click", "scroll", "touchstart"] as const;
 

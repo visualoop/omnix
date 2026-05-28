@@ -2,7 +2,7 @@
  * Module-specific brand marks. Each vertical gets its own logo so when
  * the user installs that module, the app feels purpose-built for them.
  *
- * All logos: 512×512 viewBox, rounded square (rx=112) like the SokoOS
+ * All logos: 512×512 viewBox, rounded square (rx=112) like the Omnix
  * mark, but with module-specific gradients + glyphs.
  */
 
@@ -167,6 +167,9 @@ export function ModuleLogo({ moduleId, size = 32, className = "", rounded = true
     case "dawa":
     case "pharmacy":
       return <DawaLogo size={size} className={className} rounded={rounded} />;
+    case "retail":
+    case "soko":
+      return <RetailLogo size={size} className={className} rounded={rounded} />;
     case "hardware":
       return <HardwareLogo size={size} className={className} rounded={rounded} />;
     case "electronics":
@@ -178,4 +181,47 @@ export function ModuleLogo({ moduleId, size = 32, className = "", rounded = true
     default:
       return null;
   }
+}
+
+// ─── Retail (Soko) — Shopping Bag with Sparkle ───────────────────────
+export function RetailLogo({ size = 32, className = "", rounded = true }: LogoProps) {
+  const id = `retail-${size}`;
+  return (
+    <svg width={size} height={size} viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg" className={className} aria-label="Soko Retail">
+      <defs>
+        <linearGradient id={`${id}-bg`} x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stopColor="#F97316" />
+          <stop offset="100%" stopColor="#C2410C" />
+        </linearGradient>
+        <linearGradient id={`${id}-bag`} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#FFFFFF" />
+          <stop offset="100%" stopColor="#FED7AA" />
+        </linearGradient>
+      </defs>
+      {rounded && <rect width="512" height="512" rx={ROUNDED_RX} fill={`url(#${id}-bg)`} />}
+      {!rounded && <rect width="512" height="512" fill={`url(#${id}-bg)`} />}
+      {/* Shopping bag */}
+      <path
+        d="M 130 220 L 130 410 Q 130 430 150 430 L 362 430 Q 382 430 382 410 L 382 220 Z"
+        fill={`url(#${id}-bag)`}
+        stroke="#FFFFFF"
+        strokeWidth="6"
+      />
+      {/* Bag handles */}
+      <path
+        d="M 200 220 Q 200 130 256 130 Q 312 130 312 220"
+        fill="none"
+        stroke="#FFFFFF"
+        strokeWidth="14"
+        strokeLinecap="round"
+      />
+      {/* Sparkle */}
+      <g transform="translate(310, 280)">
+        <path
+          d="M 0 -30 L 6 -6 L 30 0 L 6 6 L 0 30 L -6 6 L -30 0 L -6 -6 Z"
+          fill="#FBBF24"
+        />
+      </g>
+    </svg>
+  );
 }

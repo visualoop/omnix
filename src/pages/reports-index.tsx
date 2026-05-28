@@ -7,6 +7,7 @@ import {
   FileSpreadsheet,
   Banknote,
   AlertTriangle,
+  Heart,
   Calendar,
   FileCheck,
 } from "lucide-react";
@@ -32,6 +33,13 @@ const reports: ReportLink[] = [
     title: "Z-Report (End of Day)",
     description: "Daily shift summary for cash reconciliation and handover",
     icon: FileSpreadsheet,
+    category: "sales",
+  },
+  {
+    to: "/reports/tips",
+    title: "Tips & Gratuities",
+    description: "Track tips by staff member, payment method, and period",
+    icon: Heart,
     category: "sales",
   },
   {

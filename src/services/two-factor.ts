@@ -10,7 +10,7 @@
  * `is2FAEnabled(userId)` in services/auth.ts and prompting for code.
  */
 
-const STORAGE_KEY = (userId: string) => `sokoos-2fa-${userId}`;
+const STORAGE_KEY = (userId: string) => `omnix-2fa-${userId}`;
 
 export interface TwoFASetup {
   secret: string;       // base32-encoded shared secret
@@ -116,7 +116,7 @@ function generateBackupCodes(count = 10): string[] {
   return codes;
 }
 
-export function start2FAEnrollment(userId: string, username: string, issuer = "SokoOS"): TwoFASetup {
+export function start2FAEnrollment(userId: string, username: string, issuer = "Omnix"): TwoFASetup {
   const secret = generateSecret();
   const uri = `otpauth://totp/${encodeURIComponent(issuer)}:${encodeURIComponent(username)}?secret=${secret}&issuer=${encodeURIComponent(issuer)}&algorithm=SHA1&digits=6&period=30`;
   return {

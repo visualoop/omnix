@@ -1,4 +1,4 @@
-// Backup & restore for the SokoOS SQLite database.
+// Backup & restore for the Omnix SQLite database.
 //
 // Strategy:
 // - Backup: copy the live DB file to a timestamped file in the backup directory.
@@ -22,7 +22,7 @@ pub struct BackupInfo {
 
 fn db_path(app: &tauri::AppHandle) -> Result<PathBuf, String> {
     let dir = app.path().app_data_dir().map_err(|e| e.to_string())?;
-    Ok(dir.join("sokoos.db"))
+    Ok(dir.join("omnix.db"))
 }
 
 fn backups_dir(app: &tauri::AppHandle) -> Result<PathBuf, String> {
@@ -83,7 +83,7 @@ pub fn create_backup(app: tauri::AppHandle, label: Option<String>) -> Result<Bac
         .filter(|s| !s.is_empty())
         .map(|s| format!("-{}", sanitize(s)))
         .unwrap_or_default();
-    let filename = format!("sokoos-{}{}.db", timestamp, label_part);
+    let filename = format!("omnix-{}{}.db", timestamp, label_part);
     let dst = dir.join(&filename);
 
     fs::copy(&src, &dst).map_err(|e| format!("Backup failed: {}", e))?;
@@ -114,9 +114,9 @@ pub fn list_backups(app: tauri::AppHandle) -> Result<Vec<BackupInfo>, String> {
                 Ok(m) => m,
                 Err(_) => continue,
             };
-            // Parse timestamp from filename: sokoos-YYYY-MM-DDTHH-mm-ss[-label].db
+            // Parse timestamp from filename: omnix-YYYY-MM-DDTHH-mm-ss[-label].db
             let stamp = filename
-                .strip_prefix("sokoos-")
+                .strip_prefix("omnix-")
                 .and_then(|s| s.split('-').collect::<Vec<_>>().get(0..6).map(|p| p.join("-")))
                 .unwrap_or_else(|| filename.clone());
 

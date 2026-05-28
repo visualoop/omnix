@@ -14,7 +14,7 @@ let modeChecked = false;
 export async function initDb(): Promise<"local" | "remote"> {
   // Always ensure local DB is loaded (used for settings even in client mode for cached configs)
   if (!db) {
-    db = await Database.load("sqlite:sokoos.db");
+    db = await Database.load("sqlite:omnix.db");
   }
 
   // Check mode from local settings table
@@ -53,7 +53,7 @@ export async function refreshDbMode(): Promise<"local" | "remote"> {
 
 async function getDb(): Promise<Database> {
   if (!db) {
-    db = await Database.load("sqlite:sokoos.db");
+    db = await Database.load("sqlite:omnix.db");
   }
   return db;
 }

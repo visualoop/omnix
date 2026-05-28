@@ -1,18 +1,18 @@
 /**
  * Active module — which vertical the user installed.
  *
- * Stored in business_settings (table) under key 'app.active_module'.
+ * Stored in settings (table) under key 'app.active_module'.
  * Defaults to 'dawa' (Pharmacy is the first module).
  *
  * Used to:
- * - Show the module's logo next to SokoOS in the sidebar
+ * - Show the module's logo next to Omnix in the sidebar
  * - Customize copy throughout the app ("Pharmacy" vs "Hardware Store")
  * - Hide module-specific routes for irrelevant verticals
  */
 import { create } from "zustand";
 import { query, execute } from "@/lib/db";
 
-export type ModuleId = "dawa" | "hardware" | "electronics" | "salon" | "restaurant" | "core";
+export type ModuleId = "dawa" | "retail" | "hardware" | "electronics" | "salon" | "restaurant" | "core";
 
 export interface ModuleDefinition {
   id: ModuleId;
@@ -35,6 +35,13 @@ export const MODULE_DEFINITIONS: Record<ModuleId, ModuleDefinition> = {
     name: "Dawa Pharmacy",
     shortName: "Dawa",
     tagline: "Prescriptions, drug labels, refills, expiry, controlled substances",
+    status: "available",
+  },
+  retail: {
+    id: "retail",
+    name: "Soko Retail",
+    shortName: "Retail",
+    tagline: "Brands, variants, laybys, special orders, shrinkage tracking",
     status: "available",
   },
   hardware: {
@@ -84,7 +91,7 @@ export const useActiveModule = create<ModuleStore>((set, get) => ({
     if (get().loaded) return;
     try {
       const rows = await query<{ value: string }>(
-        `SELECT value FROM business_settings WHERE key = ?1`,
+        `SELECT value FROM settings WHERE key = ?1`,
         [STORAGE_KEY],
       );
       const stored = rows[0]?.value as ModuleId | undefined;
@@ -97,7 +104,7 @@ export const useActiveModule = create<ModuleStore>((set, get) => ({
 
   setActive: async (id) => {
     await execute(
-      `INSERT INTO business_settings (key, value) VALUES (?1, ?2)
+      `INSERT INTO settings (key, value) VALUES (?1, ?2)
        ON CONFLICT(key) DO UPDATE SET value = excluded.value`,
       [STORAGE_KEY, id],
     );

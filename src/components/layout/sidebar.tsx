@@ -13,18 +13,30 @@ import {
   FileCheck,
   Shield,
   Receipt,
+  FileText,
+  Banknote,
   Truck,
   Users,
   RotateCcw,
   ClipboardCheck,
+  ArrowRightLeft,
+  Clock,
+  Plane,
+  Wallet,
+  Tag,
+  CalendarClock,
+  CalendarPlus,
+  AlertTriangle,
+  TrendingUp,
 } from "lucide-react";
 import { NavLink } from "react-router-dom";
-import { SokoLogo } from "@/components/soko-logo";
+import { OmnixLogo } from "@/components/omnix-logo";
 import { ModuleLogo } from "@/components/module-logos";
 import { APP_NAME } from "@/lib/brand";
 import { useAuthStore } from "@/stores/auth";
 import { useActiveModule, MODULE_DEFINITIONS } from "@/stores/active-module";
 import { hasAnyPermission, type Permission } from "@/lib/permissions";
+import { isFeatureAvailable } from "@/lib/module-features";
 
 interface NavItem {
   to: string;
@@ -34,20 +46,45 @@ interface NavItem {
   permissions: Permission[];
 }
 
+// Module gating is handled centrally by lib/module-features.ts.
+// Just declare nav items here with their `to` path; the registry decides
+// whether they belong to core/dawa/retail/etc.
 const navItems: NavItem[] = [
   { to: "/", icon: LayoutDashboard, label: "Dashboard", permissions: [] },
   { to: "/pos", icon: ShoppingCart, label: "POS", permissions: ["pos.use"] },
   { to: "/sales", icon: Receipt, label: "Sales", permissions: ["sales.view"] },
   { to: "/returns", icon: RotateCcw, label: "Returns", permissions: ["sales.refund"] },
   { to: "/inventory", icon: Package, label: "Inventory", permissions: ["inventory.view"] },
+  { to: "/stock-transfers", icon: ArrowRightLeft, label: "Transfers", permissions: ["inventory.view"] },
   { to: "/purchase-orders", icon: Truck, label: "Purchases", permissions: ["purchase_orders.view"] },
   { to: "/stock-take", icon: ClipboardCheck, label: "Stock Take", permissions: ["stock_take.use"] },
   { to: "/suppliers", icon: Truck, label: "Suppliers", permissions: ["suppliers.view"] },
   { to: "/customers", icon: Users, label: "Customers", permissions: ["customers.view"] },
+  { to: "/invoicing", icon: FileText, label: "Invoicing", permissions: ["invoicing.view"] },
+  { to: "/banking", icon: Banknote, label: "Banking", permissions: ["banking.view"] },
+  { to: "/expenses", icon: Wallet, label: "Expenses", permissions: ["expenses.view"] },
+  { to: "/pnl", icon: TrendingUp, label: "P&amp;L", permissions: ["reports.pnl"] },
+  { to: "/hr/employees", icon: Users, label: "Employees", permissions: ["hr.employees.view"] },
+  { to: "/hr/attendance", icon: Clock, label: "Attendance", permissions: ["hr.attendance.view","hr.attendance.record"] },
+  { to: "/hr/leave", icon: Plane, label: "Leave", permissions: ["hr.leave.request","hr.leave.approve"] },
+  { to: "/hr/payroll", icon: Wallet, label: "Payroll", permissions: ["hr.payroll.view"] },
+  { to: "/petty-cash", icon: Receipt, label: "Petty Cash", permissions: ["petty_cash.use"] },
+  { to: "/cash-register", icon: Banknote, label: "Cash Register", permissions: ["cash_register.use"] },
+  { to: "/promotions", icon: Tag, label: "Promotions", permissions: ["promotions.manage"] },
+  // Module-specific (gated by registry):
   { to: "/pharmacy", icon: Pill, label: "Pharmacy", permissions: ["pharmacy.dispense"] },
+  { to: "/retail/dashboard", icon: TrendingUp, label: "Retail Insights", permissions: ["reports.view"] },
+  { to: "/retail/brands", icon: Tag, label: "Brands", permissions: ["retail.brands.manage"] },
+  { to: "/retail/laybys", icon: CalendarClock, label: "Laybys", permissions: ["retail.laybys.use"] },
+  { to: "/retail/special-orders", icon: CalendarPlus, label: "Special Orders", permissions: ["retail.special_orders.use"] },
+  { to: "/retail/shrinkage", icon: AlertTriangle, label: "Shrinkage", permissions: ["retail.shrinkage.record"] },
+  // Continue core:
   { to: "/reports", icon: BarChart3, label: "Reports", permissions: ["reports.view", "reports.zreport"] },
+  { to: "/vat-report", icon: FileCheck, label: "VAT Report", permissions: ["reports.view"] },
   { to: "/etims", icon: FileCheck, label: "eTIMS", permissions: ["etims.view"] },
-  { to: "/claims", icon: Shield, label: "Claims", permissions: ["claims.view"] },
+  { to: "/claims", icon: Shield, label: "Insurance Claims", permissions: ["claims.view"] },
+  { to: "/users", icon: Users, label: "Users", permissions: ["users.view"] },
+  { to: "/audit", icon: ClipboardCheck, label: "Audit Log", permissions: ["audit.view"] },
   { to: "/settings", icon: Settings, label: "Settings", permissions: ["settings.business"] },
 ];
 
@@ -64,7 +101,9 @@ export function Sidebar({ onCommandOpen }: { onCommandOpen: () => void }) {
   }
 
   const visibleNav = navItems.filter(
-    (item) => item.permissions.length === 0 || hasAnyPermission(user, item.permissions),
+    (item) =>
+      (item.permissions.length === 0 || hasAnyPermission(user, item.permissions)) &&
+      isFeatureAvailable(item.to, activeModuleId),
   );
 
   return (
@@ -76,18 +115,19 @@ export function Sidebar({ onCommandOpen }: { onCommandOpen: () => void }) {
     >
       {/* Logo + Active Module */}
       <div className="flex items-center h-12 px-3 border-b border-border gap-2">
-        <SokoLogo size={22} />
+        {activeModule && activeModule.id !== "core" ? (
+          <ModuleLogo moduleId={activeModule.id} size={22} rounded />
+        ) : (
+          <OmnixLogo size={22} />
+        )}
         {!collapsed && (
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-1 text-sm font-semibold tracking-tight leading-tight">
-              {APP_NAME}
+              {activeModule && activeModule.id !== "core" ? activeModule.shortName : APP_NAME}
             </div>
             {activeModule && activeModule.id !== "core" && (
-              <div className="flex items-center gap-1 mt-0.5">
-                <ModuleLogo moduleId={activeModule.id} size={10} rounded />
-                <span className="text-[10px] text-muted-foreground font-medium">
-                  {activeModule.shortName}
-                </span>
+              <div className="text-[10px] text-muted-foreground font-medium leading-tight mt-0.5">
+                Powered by {APP_NAME}
               </div>
             )}
           </div>

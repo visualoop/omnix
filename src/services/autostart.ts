@@ -1,6 +1,6 @@
 /**
  * Wrapper around @tauri-apps/plugin-autostart
- * Lets users opt into "Start SokoOS when Windows boots".
+ * Lets users opt into "Start Omnix when Windows boots".
  */
 
 import { enable, disable, isEnabled } from "@tauri-apps/plugin-autostart";

@@ -4,6 +4,7 @@
  * cheque number, etc.) for reconciliation.
  */
 import { query, execute } from "@/lib/db";
+import { getActiveBranchId } from "@/stores/active-branch";
 
 export type PaymentMethod = "cash" | "mpesa" | "card" | "bank" | "other";
 
@@ -32,15 +33,36 @@ export async function recordCustomerPayment(
   if (amount <= 0) throw new Error("Amount must be greater than zero");
   const id = crypto.randomUUID();
   await execute(
-    `INSERT INTO customer_payments (id, customer_id, amount, method, reference, note, user_id)
-     VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)`,
-    [id, customerId, amount, method, reference || null, note || null, userId],
+    `INSERT INTO customer_payments (id, customer_id, amount, method, reference, note, user_id, branch_id)
+     VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)`,
+    [id, customerId, amount, method, reference || null, note || null, userId, getActiveBranchId()],
   );
   // Decrement balance owed
   await execute(
     `UPDATE customers SET balance = MAX(0, balance - ?1) WHERE id = ?2`,
     [amount, customerId],
   );
+
+  // Mirror to bank as deposit
+  try {
+    const { recordTransaction } = await import("./banking");
+    const accountId = await pickAccountForMethod(method);
+    if (accountId) {
+      const [cust] = await query<{ name: string }>(`SELECT name FROM customers WHERE id = ?1`, [customerId]);
+      await recordTransaction({
+        account_id: accountId,
+        transaction_type: "deposit",
+        amount,
+        description: `Customer payment: ${cust?.name || customerId}`,
+        counterparty_name: cust?.name,
+        payment_method: method,
+        reference: reference || undefined,
+        related_customer_payment_id: id,
+        user_id: userId,
+      });
+    }
+  } catch (e) { console.warn("Bank txn mirror failed:", e); }
+
   return id;
 }
 
@@ -63,15 +85,62 @@ export async function recordSupplierPayment(
   if (amount <= 0) throw new Error("Amount must be greater than zero");
   const id = crypto.randomUUID();
   await execute(
-    `INSERT INTO supplier_payments (id, supplier_id, amount, method, reference, note, user_id)
-     VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)`,
-    [id, supplierId, amount, method, reference || null, note || null, userId],
+    `INSERT INTO supplier_payments (id, supplier_id, amount, method, reference, note, user_id, branch_id)
+     VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)`,
+    [id, supplierId, amount, method, reference || null, note || null, userId, getActiveBranchId()],
   );
   await execute(
     `UPDATE suppliers SET balance_owed = MAX(0, balance_owed - ?1) WHERE id = ?2`,
     [amount, supplierId],
   );
+
+  // Mirror to bank as withdrawal
+  try {
+    const { recordTransaction } = await import("./banking");
+    const accountId = await pickAccountForMethod(method);
+    if (accountId) {
+      const [sup] = await query<{ name: string }>(`SELECT name FROM suppliers WHERE id = ?1`, [supplierId]);
+      await recordTransaction({
+        account_id: accountId,
+        transaction_type: "withdrawal",
+        amount,
+        description: `Supplier payment: ${sup?.name || supplierId}`,
+        counterparty_name: sup?.name,
+        payment_method: method,
+        reference: reference || undefined,
+        related_supplier_payment_id: id,
+        user_id: userId,
+      });
+    }
+  } catch (e) { console.warn("Bank txn mirror failed:", e); }
+
   return id;
+}
+
+async function pickAccountForMethod(method: string): Promise<string | null> {
+  const lower = method.toLowerCase();
+  if (lower.includes("mpesa") || lower.includes("m-pesa")) {
+    const rows = await query<{ id: string }>(
+      `SELECT id FROM bank_accounts WHERE account_type IN ('mpesa_till','mpesa_paybill') AND is_active = 1 LIMIT 1`,
+    );
+    if (rows[0]) return rows[0].id;
+  }
+  if (lower.includes("bank") || lower.includes("cheque") || lower.includes("transfer") || lower.includes("card")) {
+    const rows = await query<{ id: string }>(
+      `SELECT id FROM bank_accounts WHERE account_type = 'bank' AND is_active = 1 ORDER BY is_default DESC LIMIT 1`,
+    );
+    if (rows[0]) return rows[0].id;
+  }
+  if (lower.includes("cash")) {
+    const rows = await query<{ id: string }>(
+      `SELECT id FROM bank_accounts WHERE account_type = 'cash_box' AND is_active = 1 ORDER BY is_default DESC LIMIT 1`,
+    );
+    if (rows[0]) return rows[0].id;
+  }
+  const rows = await query<{ id: string }>(
+    `SELECT id FROM bank_accounts WHERE is_active = 1 ORDER BY is_default DESC LIMIT 1`,
+  );
+  return rows[0]?.id || null;
 }
 
 export async function listSupplierPayments(supplierId: string): Promise<SettlementPayment[]> {

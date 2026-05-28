@@ -6,6 +6,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sh
 import { Badge } from "@/components/ui/badge";
 import { query } from "@/lib/db";
 import { buildReceiptData, printReceipt } from "@/services/receipt";
+import { useActiveBranch } from "@/stores/active-branch";
 import { toast } from "sonner";
 
 interface SaleRow {
@@ -34,6 +35,7 @@ export function SalesHistoryPage() {
   const [period, setPeriod] = useState<"today" | "week" | "month" | "all">("today");
   const [activeSale, setActiveSale] = useState<SaleDetail | null>(null);
   const [loading, setLoading] = useState(true);
+  const branchId = useActiveBranch((s) => s.active?.id || "default-branch");
 
   const load = async () => {
     setLoading(true);
@@ -45,7 +47,6 @@ export function SalesHistoryPage() {
     const searchFilter = search.trim()
       ? `AND (s.sale_number LIKE ?1 OR c.name LIKE ?1 OR u.full_name LIKE ?1)`
       : "";
-    const params = search.trim() ? [`%${search.trim()}%`] : [];
 
     const rows = await query<SaleRow>(
       `SELECT s.id, s.sale_number, s.created_at, s.total, s.payment_status, s.status,
@@ -55,15 +56,15 @@ export function SalesHistoryPage() {
        FROM sales s
        LEFT JOIN users u ON u.id = s.user_id
        LEFT JOIN customers c ON c.id = s.customer_id
-       WHERE s.status != 'held' ${dateFilter} ${searchFilter}
+       WHERE s.status != 'held' AND s.branch_id = ?${search.trim() ? 2 : 1} ${dateFilter} ${searchFilter}
        ORDER BY s.created_at DESC LIMIT 200`,
-      params
+      search.trim() ? [`%${search.trim()}%`, branchId] : [branchId]
     );
     setSales(rows);
     setLoading(false);
   };
 
-  useEffect(() => { load(); }, [period, search]);
+  useEffect(() => { load(); }, [period, search, branchId]);
 
   const openDetail = async (id: string) => {
     const sale = (await query<SaleDetail>(

@@ -71,8 +71,9 @@ export function ZReportPage() {
             <Row label="Gross sales" value={fmt(report.gross_sales)} />
             <Row label="Discounts" value={`-${fmt(report.discount_total)}`} negative />
             <Row label="Tax (VAT)" value={fmt(report.tax_total)} />
+            {report.tip_total > 0 && <Row label="Tips (paid to staff)" value={fmt(report.tip_total)} />}
             <Row label={`Returns (${report.return_count})`} value={`-${fmt(report.return_total)}`} negative />
-            <Row label="Net sales" value={fmt(report.net_sales)} bold />
+            <Row label="Net sales (excl. tips)" value={fmt(report.net_sales)} bold />
           </Section>
 
           {/* Payment Methods */}

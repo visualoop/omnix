@@ -1,4 +1,5 @@
 import { query, execute } from "@/lib/db";
+import { getActiveBranchId } from "@/stores/active-branch";
 
 export interface ExpenseCategory {
   id: string;
@@ -79,14 +80,62 @@ export async function getExpenses(startDate?: string, endDate?: string): Promise
 export async function createExpense(input: CreateExpenseInput, userId: string): Promise<string> {
   const id = crypto.randomUUID();
   await execute(
-    `INSERT INTO expenses (id, category_id, category_name, amount, description, payment_method, reference, expense_date, notes, recorded_by)
-     VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)`,
+    `INSERT INTO expenses (id, category_id, category_name, amount, description, payment_method, reference, expense_date, notes, recorded_by, branch_id)
+     VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)`,
     [id, input.category_id, input.category_name, input.amount, input.description || null,
      input.payment_method || "cash", input.reference || null,
      input.expense_date || new Date().toISOString().slice(0, 10),
-     input.notes || null, userId]
+     input.notes || null, userId, getActiveBranchId()]
   );
+
+  // Mirror to bank as withdrawal for reconciliation
+  try {
+    const { recordTransaction } = await import("./banking");
+    const accountId = await pickAccountForMethod(input.payment_method || "cash");
+    if (accountId) {
+      await recordTransaction({
+        account_id: accountId,
+        transaction_type: "withdrawal",
+        amount: input.amount,
+        description: `${input.category_name}: ${input.description || ""}`.trim().slice(0, 200),
+        payment_method: input.payment_method || "cash",
+        reference: input.reference || undefined,
+        transaction_date: input.expense_date,
+        related_expense_id: id,
+        user_id: userId,
+      });
+    }
+  } catch (e) {
+    console.warn("Bank txn mirror failed:", e);
+  }
+
   return id;
+}
+
+async function pickAccountForMethod(method: string): Promise<string | null> {
+  const lower = method.toLowerCase();
+  if (lower.includes("mpesa") || lower.includes("m-pesa")) {
+    const rows = await query<{ id: string }>(
+      `SELECT id FROM bank_accounts WHERE account_type IN ('mpesa_till','mpesa_paybill') AND is_active = 1 LIMIT 1`,
+    );
+    if (rows[0]) return rows[0].id;
+  }
+  if (lower.includes("bank") || lower.includes("cheque") || lower.includes("transfer") || lower.includes("card")) {
+    const rows = await query<{ id: string }>(
+      `SELECT id FROM bank_accounts WHERE account_type = 'bank' AND is_active = 1 ORDER BY is_default DESC LIMIT 1`,
+    );
+    if (rows[0]) return rows[0].id;
+  }
+  if (lower.includes("cash")) {
+    const rows = await query<{ id: string }>(
+      `SELECT id FROM bank_accounts WHERE account_type = 'cash_box' AND is_active = 1 ORDER BY is_default DESC LIMIT 1`,
+    );
+    if (rows[0]) return rows[0].id;
+  }
+  const rows = await query<{ id: string }>(
+    `SELECT id FROM bank_accounts WHERE is_active = 1 ORDER BY is_default DESC LIMIT 1`,
+  );
+  return rows[0]?.id || null;
 }
 
 export async function deleteExpense(id: string): Promise<void> {
@@ -105,9 +154,9 @@ export async function getOpenShift(userId: string): Promise<CashShift | null> {
 export async function openShift(userId: string, openingBalance: number): Promise<string> {
   const id = crypto.randomUUID();
   await execute(
-    `INSERT INTO cash_register (id, user_id, opening_balance, status)
-     VALUES (?1, ?2, ?3, 'open')`,
-    [id, userId, openingBalance]
+    `INSERT INTO cash_register (id, user_id, opening_balance, status, branch_id)
+     VALUES (?1, ?2, ?3, 'open', ?4)`,
+    [id, userId, openingBalance, getActiveBranchId()]
   );
   return id;
 }

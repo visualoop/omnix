@@ -1,13 +1,6 @@
-/**
- * Receipt printing via window.print().
- *
- * Strategy: render the receipt HTML in a hidden iframe and trigger print.
- * Works with both A4 printers and 80mm thermal printers (driver handles the size).
- * The receipt CSS uses 80mm width by default which is centered on A4 if needed.
- */
-
 import { query } from "@/lib/db";
 import { BRAND } from "@/lib/brand";
+import QRCode from "qrcode";
 
 export interface ReceiptData {
   business: {
@@ -33,12 +26,10 @@ export interface ReceiptData {
   total: number;
   payments: Array<{ method_name: string; amount: number; reference?: string | null }>;
   customer?: { name: string; phone?: string | null } | null;
-  // KRA eTIMS (optional)
   kra?: {
     pin: string;
     invoice_no: string;
     internal_control_no: string;
-    qr_url?: string;
   } | null;
 }
 
@@ -49,7 +40,6 @@ export interface BusinessRow {
   email: string | null;
 }
 
-/** Fetch the data needed to build a receipt for a given sale. */
 export async function buildReceiptData(saleId: string): Promise<ReceiptData | null> {
   const businesses = await query<BusinessRow>("SELECT name, address, phone, email FROM business LIMIT 1");
   const business = businesses[0];
@@ -88,7 +78,6 @@ export async function buildReceiptData(saleId: string): Promise<ReceiptData | nu
     [saleId]
   );
 
-  // Try to get KRA signing info if available
   const kraRows = await query<{
     seller_pin: string;
     kra_invoice_no: string | null;
@@ -127,9 +116,8 @@ export async function buildReceiptData(saleId: string): Promise<ReceiptData | nu
   };
 }
 
-/** Render the receipt as HTML, then call window.print(). */
-export function printReceipt(data: ReceiptData): void {
-  const html = renderReceiptHTML(data);
+export async function printReceipt(data: ReceiptData): Promise<void> {
+  const html = await renderReceiptHTML(data);
   const iframe = document.createElement("iframe");
   iframe.style.position = "fixed";
   iframe.style.right = "0";
@@ -145,12 +133,10 @@ export function printReceipt(data: ReceiptData): void {
   doc.write(html);
   doc.close();
 
-  // Wait a tick for fonts/layout, then print
   iframe.onload = () => {
     setTimeout(() => {
       iframe.contentWindow?.focus();
       iframe.contentWindow?.print();
-      // Remove after a delay (printing is async)
       setTimeout(() => iframe.remove(), 2000);
     }, 100);
   };
@@ -164,11 +150,36 @@ function escapeHtml(str: string): string {
     .replace(/"/g, "&quot;");
 }
 
-function renderReceiptHTML(d: ReceiptData): string {
+async function generateQrDataUrl(text: string): Promise<string> {
+  try {
+    return await QRCode.toDataURL(text, {
+      width: 150,
+      margin: 1,
+      color: { dark: "#000", light: "#fff" },
+    });
+  } catch {
+    return "";
+  }
+}
+
+async function renderReceiptHTML(d: ReceiptData): Promise<string> {
   const date = new Date(d.sale.created_at).toLocaleString("en-KE", {
     day: "2-digit", month: "short", year: "numeric",
     hour: "2-digit", minute: "2-digit",
   });
+
+  let kraSection = "";
+  if (d.kra) {
+    const qrText = `${d.kra.invoice_no} / ${d.kra.pin}`;
+    const qrUrl = await generateQrDataUrl(qrText);
+    kraSection = `
+    <hr>
+    <div class="center sm bold">KRA TAX INVOICE</div>
+    <div class="center sm">CU Invoice: ${escapeHtml(d.kra.invoice_no)}</div>
+    <div class="center sm muted" style="word-break:break-all;">CU: ${escapeHtml(d.kra.internal_control_no)}</div>
+    ${qrUrl ? `<div class="center" style="margin:6px 0;"><img src="${qrUrl}" width="100" height="100" alt="QR" /></div>` : `<div class="qr-placeholder sm">QR Code<br><span class="muted">(scan to verify)</span></div>`}
+  `;
+  }
 
   return `<!DOCTYPE html>
 <html>
@@ -206,7 +217,6 @@ function renderReceiptHTML(d: ReceiptData): string {
     justify-content: space-between;
     gap: 8px;
   }
-  .row .right { text-align: right; }
   table {
     width: 100%;
     border-collapse: collapse;
@@ -287,22 +297,12 @@ function renderReceiptHTML(d: ReceiptData): string {
     </div>
   `).join("")}
 
-  ${d.kra ? `
-    <hr>
-    <div class="center sm bold">KRA TAX INVOICE</div>
-    <div class="center sm">CU Invoice: ${escapeHtml(d.kra.invoice_no)}</div>
-    <div class="center sm muted" style="word-break:break-all;">CU: ${escapeHtml(d.kra.internal_control_no)}</div>
-    <div class="qr-placeholder sm">QR Code<br><span class="muted">(scan to verify)</span></div>
-  ` : ""}
+  ${kraSection}
 
   <hr>
 
   <div class="center sm">Thank you for shopping with us!</div>
   <div class="center sm muted" style="margin-top:4px;">${BRAND.receipt.poweredBy}</div>
-
-  <script>
-    // Print automatically when loaded inline
-  </script>
 </body>
 </html>`;
 }

@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { confirm } from "@/components/ui/confirm-dialog";
 import { Pause, RotateCcw, Trash2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -49,7 +50,7 @@ export function HeldSalesDialog({ open, onClose }: { open: boolean; onClose: () 
   };
 
   const handleRecall = async (id: string) => {
-    if (cart.items.length > 0 && !confirm("Recall will replace current cart. Continue?")) return;
+    if (cart.items.length > 0 && !(await confirm({ title: "Recall will replace current cart. Continue?" }))) return;
     const result = await recallHeldSale(id);
     if (!result) return;
     cart.loadSnapshot(result.snapshot.items, result.snapshot.discount, result.customer_id);
@@ -58,7 +59,7 @@ export function HeldSalesDialog({ open, onClose }: { open: boolean; onClose: () 
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm("Delete this parked sale?")) return;
+    if (!(await confirm({ title: "Delete this parked sale?" }))) return;
     await deleteHeldSale(id);
     load();
   };

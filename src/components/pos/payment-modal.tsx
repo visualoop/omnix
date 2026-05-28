@@ -36,7 +36,7 @@ export function PaymentModal({ open, onClose }: Props) {
   const [showInsuranceVerify, setShowInsuranceVerify] = useState(false);
   const [insurance, setInsurance] = useState<InsuranceState | null>(null);
 
-  const { items, customerId, cartDiscountAmount, grandTotal, clear } = useCartStore();
+  const { items, customerId, cartDiscountAmount, grandTotal, clear, tip, tipEmployeeId } = useCartStore();
   const user = useAuthStore((s) => s.user);
   const total = grandTotal();
   const paidSoFar = payments.reduce((s, p) => s + p.amount, 0);
@@ -97,7 +97,7 @@ export function PaymentModal({ open, onClose }: Props) {
 
     setProcessing(true);
     try {
-      const saleId = await completeSale(items, finalPayments, customerId, user!.id, cartDiscountAmount());
+      const { saleId, saleItemIds } = await completeSale(items, finalPayments, customerId, user!.id, cartDiscountAmount(), tip, tipEmployeeId);
 
       // Create insurance claim if applicable
       if (insurance) {
@@ -108,8 +108,8 @@ export function PaymentModal({ open, onClose }: Props) {
           gross_amount: total,
           copay_amount: insurance.copay,
           claim_amount: insurance.claim,
-          items: items.map((it) => ({
-            sale_item_id: crypto.randomUUID(), // matches a sale_item we just inserted
+          items: items.map((it, i) => ({
+            sale_item_id: saleItemIds[i],
             product_id: it.product_id,
             product_name: it.name,
             quantity: it.quantity,
@@ -151,7 +151,7 @@ export function PaymentModal({ open, onClose }: Props) {
         {showStkPush ? (
           <PaystackMpesaCharge
             amount={remaining}
-            email="customer@sokoos.local"
+            email="customer@omnix.local"
             onSuccess={(ref) => {
               setPayments([...payments, {
                 method_id: "mpesa-paystack",
@@ -216,6 +216,47 @@ export function PaymentModal({ open, onClose }: Props) {
               autoFocus
               onKeyDown={(e) => e.key === "Enter" && handleComplete()}
             />
+            {selectedMethod === "cash" && (
+              <>
+                <div className="flex flex-wrap gap-1.5 pt-1">
+                  {[50, 100, 200, 500, 1000, 2000].map((denom) => (
+                    <button
+                      key={denom}
+                      type="button"
+                      onClick={() => {
+                        const current = parseFloat(amount) || 0;
+                        setAmount(String(current + denom));
+                      }}
+                      className="h-8 px-2.5 text-xs font-mono rounded-md border border-border bg-background hover:bg-accent transition"
+                    >
+                      +{denom}
+                    </button>
+                  ))}
+                  <button
+                    type="button"
+                    onClick={() => setAmount(String(total.toFixed(2)))}
+                    className="h-8 px-2.5 text-xs rounded-md border border-primary text-primary bg-background hover:bg-primary/5 transition"
+                  >
+                    Exact
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setAmount("")}
+                    className="h-8 px-2.5 text-xs rounded-md border border-border bg-background hover:bg-accent transition text-muted-foreground"
+                  >
+                    Clear
+                  </button>
+                </div>
+                {parseFloat(amount) > total && (
+                  <div className="text-sm pt-1">
+                    <span className="text-muted-foreground">Change: </span>
+                    <span className="font-mono font-semibold text-emerald-600">
+                      KES {(parseFloat(amount) - total).toFixed(2)}
+                    </span>
+                  </div>
+                )}
+              </>
+            )}
           </div>
 
           {/* Reference (for M-Pesa, bank) */}

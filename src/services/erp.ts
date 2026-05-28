@@ -1,4 +1,5 @@
 import { query, execute } from "@/lib/db";
+import { getActiveBranchId } from "@/stores/active-branch";
 
 // ============================================================
 // Suppliers
@@ -222,10 +223,10 @@ export async function createPurchaseOrder(input: CreatePOInput): Promise<string>
   const total = subtotal; // tax can be added later
 
   await execute(
-    `INSERT INTO purchase_orders (id, po_number, supplier_id, user_id, expected_date, subtotal, total, notes)
-     VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)`,
+    `INSERT INTO purchase_orders (id, po_number, supplier_id, user_id, expected_date, subtotal, total, notes, branch_id)
+     VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)`,
     [poId, poNumber, input.supplier_id, input.user_id, input.expected_date || null,
-     subtotal, total, input.notes || null]
+     subtotal, total, input.notes || null, getActiveBranchId()]
   );
 
   for (const [idx, item] of input.items.entries()) {
@@ -303,8 +304,8 @@ export async function createGoodsReceipt(input: CreateGRNInput): Promise<string>
 
     // Stock movement
     await execute(
-      `INSERT INTO stock_movements (id, product_id, batch_id, type, quantity, reference, user_id)
-       VALUES (?1, ?2, ?3, 'purchase', ?4, ?5, ?6)`,
+      `INSERT INTO stock_movements (id, product_id, batch_id, type, quantity, reference_type, reference_id, user_id)
+       VALUES (?1, ?2, ?3, 'purchase', ?4, 'grn', ?5, ?6)`,
       [crypto.randomUUID(), item.product_id, batchId, item.quantity, grnNumber, input.user_id]
     );
 
@@ -390,11 +391,11 @@ export async function createSaleReturn(input: CreateReturnInput): Promise<string
   const number = await nextReturnNumber();
 
   await execute(
-    `INSERT INTO sale_returns (id, return_number, sale_id, customer_id, user_id, reason, refund_method, refund_amount, restock_to_inventory, notes)
-     VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)`,
+    `INSERT INTO sale_returns (id, return_number, sale_id, customer_id, user_id, reason, refund_method, refund_amount, restock_to_inventory, notes, branch_id)
+     VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)`,
     [id, number, input.sale_id || null, input.customer_id || null, input.user_id,
      input.reason, input.refund_method, input.refund_amount,
-     input.restock_to_inventory ? 1 : 0, input.notes || null]
+     input.restock_to_inventory ? 1 : 0, input.notes || null, getActiveBranchId()]
   );
 
   for (const item of input.items) {
@@ -419,8 +420,8 @@ export async function createSaleReturn(input: CreateReturnInput): Promise<string
         );
       }
       await execute(
-        `INSERT INTO stock_movements (id, product_id, type, quantity, reference, user_id)
-         VALUES (?1, ?2, 'return', ?3, ?4, ?5)`,
+        `INSERT INTO stock_movements (id, product_id, type, quantity, reference_type, reference_id, user_id)
+         VALUES (?1, ?2, 'return', ?3, 'sale_return', ?4, ?5)`,
         [crypto.randomUUID(), item.product_id, item.quantity, number, input.user_id]
       );
     }
@@ -478,8 +479,8 @@ export async function createStockTake(userId: string, notes?: string): Promise<s
   const ref = `ST-${Date.now()}`;
 
   await execute(
-    `INSERT INTO stock_takes (id, reference, user_id, notes) VALUES (?1, ?2, ?3, ?4)`,
-    [id, ref, userId, notes || null]
+    `INSERT INTO stock_takes (id, reference, user_id, notes, branch_id) VALUES (?1, ?2, ?3, ?4, ?5)`,
+    [id, ref, userId, notes || null, getActiveBranchId()]
   );
 
   // Snapshot current stock for all active products
@@ -572,8 +573,8 @@ export async function completeStockTake(stockTakeId: string, applyAdjustments: b
           [Math.max(0, newQty), batches[0].id]);
       }
       await execute(
-        `INSERT INTO stock_movements (id, product_id, type, quantity, reference, user_id)
-         VALUES (?1, ?2, 'adjustment', ?3, ?4, ?5)`,
+        `INSERT INTO stock_movements (id, product_id, type, quantity, reference_type, reference_id, user_id)
+         VALUES (?1, ?2, 'adjustment', ?3, 'stock_take', ?4, ?5)`,
         [crypto.randomUUID(), item.product_id, item.variance || 0, "Stock take", userId]
       );
     }

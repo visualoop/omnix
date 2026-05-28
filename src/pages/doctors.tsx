@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { confirm } from "@/components/ui/confirm-dialog";
 import { Plus, Search, Stethoscope, Edit3, Building2, Phone } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -202,7 +203,7 @@ function DoctorForm({ open, doctor, onClose, onSaved }: {
               variant="ghost"
               className="w-full text-red-600"
               onClick={async () => {
-                if (!confirm(`Deactivate ${doctor.full_name}?`)) return;
+                if (!(await confirm({ title: `Deactivate ${doctor.full_name}?` }))) return;
                 await deactivateDoctor(doctor.id);
                 onSaved();
               }}

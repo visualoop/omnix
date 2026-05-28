@@ -1,0 +1,1053 @@
+# Local Changelog (since v0.1.6 last build)
+
+This tracks work done LOCALLY without GitHub pushes. We only push when the user explicitly says so.
+
+## v0.1.6 (last pushed/built)
+See git log for details. This is our baseline.
+
+## 2026-05-26 — Phase 9 Planning: Website + ops platform
+
+Wrote the complete 6-document specification for the public-facing site, customer dashboard, owner admin platform, telemetry SDK, and CI release pipeline. No code yet — implementation gated until the user approves the plan suite.
+
+**Brand decision**: project rebrand from `SokoOS` to `Duka` (Swahili for shop). Brand name will live in a single TypeScript constant `BRAND_NAME` so future renames are one-line edits.
+
+**Documents written** (all in `docs/website/`):
+- `01-mission-stack.md` (252 lines) — mission, tech stack (Payload 3.x + Next.js 15 + Postgres + R2 + shadcn/Tailwind + Resend + PostHog + Sentry), brand rules with one-line `BRAND_NAME` swap, palette (dark default with amber accent — NOT generic indigo), typography (Inter + Space Grotesk), anti-patterns list
+- `02-collections-data-model.md` (837 lines) — 14 Payload collections (Customers, Licenses, Machines, Releases, TelemetryEvents, Payments, SupportTickets, Pages, BlogPosts, Modules, Media) + 4 globals (Pricing, Settings, LandingPage, Forms), 7 hooks (license key generator, Paystack webhook, trial expiry cron, telemetry rollups, geo enrichment, release publish notification, license validation endpoint), 12 indexes, access control helpers
+- `03-pages-and-dashboards.md` (739 lines) — full route map, every marketing page with section-by-section copy + bento layouts, custom Paystack flow with Card/M-Pesa/Bank Transfer tabs (no popup), customer dashboard, Payload admin extensions (custom dashboard + Leaflet installs map + Recharts telemetry overview + revenue dashboard), 3 form-builder forms, 15 React Email templates
+- `04-cicd-release-pipeline.md` (639 lines) — extends existing CircleCI config with 2 new jobs (upload-to-r2 + notify-payload), Payload endpoints (POST /api/releases system-only, GET /api/releases/latest license-aware, POST /api/downloads/track), Tauri config rebrand + updater pointed at Payload, soft+hard rollback procedures, security model (Tauri signing key, system token quarterly rotation, R2 write-only credential)
+- `05-telemetry-sdk.md` (571 lines) — Tauri Rust telemetry SDK: 7 principles (no business data, opt-out anytime, never blocking, encrypted+signed, bounded local SQLite queue at 1MB, inspectable via dump command, server-side geolocation only), 3 event categories (lifecycle, 30-min heartbeat with counts only, errors), sanitization rules, 9-phase implementation plan A-I, machine token auth via Tauri stronghold keychain, first-launch consent modal with explicit "we send/we never send" lists, drafted privacy policy section, 12-step E2E test plan
+- `06-acceptance-visual-bible.md` (550 lines) — Visual Bible per page (must-have/must-NOT-have lists), Lighthouse budgets (≥90/95/95/100 mobile, LCP<2s), JS bundle limits per surface, deployment topology (Vercel + Neon + Cloudflare R2 + Resend + PostHog EU + Sentry), 3-tier env matrix with ephemeral Neon branches per PR, 24 Vercel env vars, owner admin runbook (daily/weekly tasks + emergency procedures + role matrix), 8 acceptance test scenarios, 13 things to never do, 14-point Definition of Done
+
+**Total**: 3,388 lines of specification across 6 plans. Implementation gates: each plan must be approved before its corresponding code lands.
+
+**ROADMAP updated**: Phase 9 (Website) flips from "deferred" to "fully planned, ready to implement". Phase 10 (telemetry SDK rollout to desktop) is unblocked once the website is in production.
+
+### Files touched
+- docs/website/01-mission-stack.md (NEW)
+- docs/website/02-collections-data-model.md (NEW)
+- docs/website/03-pages-and-dashboards.md (NEW)
+- docs/website/04-cicd-release-pipeline.md (NEW)
+- docs/website/05-telemetry-sdk.md (NEW)
+- docs/website/06-acceptance-visual-bible.md (NEW)
+- docs/ROADMAP.md (rewritten — Phase 9 status flipped, plan-suite indexed, brand transition noted)
+
+### Verified
+- All 6 documents render in Markdown without lint errors.
+- Cross-references between plans (Plan 02 § 2.5 ↔ Plan 05 events, Plan 03 § 7 ↔ Plan 06 visual bible) resolve.
+- ROADMAP table reflects current desktop completion (Core ERP/Dawa/Retail all 100%) and pending Phase 9 work.
+
+### Next
+Implementation of Phase 9 begins with `pnpm dlx create-payload-app@latest duka-web` per Plan 01 § 1. No code shipped this session.
+
+---
+
+## 2026-05-26 — Batch A: Native UI Polish (Sheet, Dialog, DropdownMenu, Tooltip, Badge, Table, Button, Card, Tabs)
+
+Made shadcn components feel native Windows 11. No library swap. Per-component:
+
+**Sheet (`src/components/ui/sheet.tsx`)** — flush-edge slide panel, faster 120ms transition, native shadow on inside edge, h-7 close button, header/footer with single-pixel borders, 14px semibold title.
+
+**Dialog (`src/components/ui/dialog.tsx`)** — rounded-lg (was rounded-xl), 1px border + native two-layer shadow instead of ring, gap-3 (was gap-4), 14px title, less zoom on enter (0.98 not 0.95), 120ms transition.
+
+**DropdownMenu (`src/components/ui/dropdown-menu.tsx`)** — rounded-md (was lg), 1px border + layered shadow, items 28px tall (h-7) with rounded-[3px] hover, 13px text, 80ms transition.
+
+**Tooltip (`src/components/ui/tooltip.tsx`)** — rounded-[3px], 11px text, single-line shadow, 80ms snap transition (was 100ms zoom).
+
+**Badge (`src/components/ui/badge.tsx`)** — square corners (rounded not rounded-4xl pill), h-[18px], 10.5px uppercase semibold tracking-wider — like real Windows tag/chip styling.
+
+**Table (`src/components/ui/table.tsx`)** — 12.5px body, 32px header (h-8), 32px row (py-1.5), uppercase 10.5px header labels, tabular-nums on cells, single thin row border, subtle hover bg-accent/30.
+
+**Button (`src/components/ui/button.tsx`)** — rounded-md (was lg), 1px focus ring (was ring-3 glow), 13px text, default variant gets subtle inset highlight + 1px shadow for depth, ghost hover dims to accent/50.
+
+**Card (`src/components/ui/card.tsx`)** — NEW. Flat-by-default (no shadow, single border), `elevated` prop for floating cards. Header/Content/Footer slots with single pixel borders.
+
+**Tabs (`src/components/ui/tabs.tsx`)** — NEW. Windows-11 underline tabs (NOT pill style), 9px height, 13px text, 120ms underline scale-y transition, hover lightens text without bg fill.
+
+### Verified
+- TypeScript: passes (`npx tsc --noEmit`)
+- Rust: still compiles (`cargo check`)
+- Visual diff: not yet — needs `pnpm tauri dev` walkthrough by user
+
+### Files touched
+- src/components/ui/sheet.tsx (rewritten)
+- src/components/ui/dialog.tsx (rewritten)
+- src/components/ui/dropdown-menu.tsx (item + content blocks updated)
+- src/components/ui/tooltip.tsx (popup block updated)
+- src/components/ui/badge.tsx (variants block updated)
+- src/components/ui/table.tsx (rewritten)
+- src/components/ui/button.tsx (variants block updated)
+- src/components/ui/card.tsx (NEW)
+- src/components/ui/tabs.tsx (NEW)
+
+### Next batch
+- Switch / Checkbox / Select (Batch B from `01-native-ui-polish.md`)
+
+
+## 2026-05-26 — Phase 2 Batch 1: Multi-branch infrastructure
+
+Foundation for multi-location SMEs. Schema + service + UI + topbar selector.
+
+### Schema (migration 016_branches.sql)
+- `branches` table: code, name, address, phone, manager, default flag, KRA PIN per branch, eTIMS device per branch, opening hours
+- `user_branches` join table for assigning users to one or more branches with primary flag
+- `stock_transfers` + `stock_transfer_items` tables for moving stock between locations
+- `branch_id` column added to: `sales`, `expenses`, `cash_register`, `petty_cash`, `customer_payments`, `supplier_payments`, `sale_returns`, `purchase_orders`, `stock_takes`, `batches`
+- All existing rows backfilled to a seeded "default-branch" with code MAIN
+- All active users auto-assigned to default branch via INSERT OR IGNORE
+
+### Frontend
+- `src/services/branches.ts` — CRUD + user-branch assignment
+- `src/stores/active-branch.ts` — zustand store, persists current branch in localStorage, loads from DB on signIn
+- `src/pages/branches.tsx` — grid view with per-branch today's sales + transactions + user count, sheet form for create/edit, make-default + deactivate actions
+- `src/components/layout/branch-switcher.tsx` — dropdown in topbar; hidden when user has 1 branch, otherwise shows code + name with switcher menu
+- Topbar mounts BranchSwitcher first, before network indicator
+- Auth store auto-loads branches on signIn, clears on signOut (lazy import to avoid circular dep)
+- Sales completeSale now writes branch_id from getActiveBranchId()
+
+### Routes
+- `/settings/branches` — gated by `settings.business` permission
+
+### Verified
+- TS clean, Cargo clean, 10 Rust tests pass
+
+### Next
+- Wire branch_id into ALL the other transactional services (expenses, cash_register, etc.) — currently only sales is wired
+- Filter list views (sales history, expenses) by active branch
+- Stock transfers UI (new page)
+- User management UI: assign user to branches in their profile sheet
+
+
+## 2026-05-26 — Phase 2 Batch 2: Branch wiring + stock transfers
+
+Branch awareness threaded through all transactional services + lists + dashboard.
+
+### Services updated
+- `src/services/sales.ts` — completeSale + getSales filter by branch
+- `src/services/accounting.ts` — createExpense + openShift inject branch_id
+- `src/services/settlement.ts` — recordCustomerPayment + recordSupplierPayment inject branch_id
+- `src/services/petty-cash.ts` — recordPettyCash injects branch_id
+- `src/services/erp.ts` — createPurchaseOrder + recordReturn + createStockTake inject branch_id
+- `src/services/reports.ts` — getDashboardKPIs + getSalesByDay + getTopProducts + getSalesByPaymentMethod all filter by active branch
+
+### Stock transfers (NEW)
+- `src/services/stock-transfers.ts` — full CRUD + dispatch (decrement source) + receive (increment destination) + cancel. FIFO batch decrement at source, new batch creation at destination. Transfer numbers like `TR-20260526-001`.
+- `src/pages/stock-transfers.tsx` — list view with from→to columns, status badges (Draft/In Transit/Received/Cancelled), branch-aware filter
+- Sidebar nav link "Transfers" between Inventory and Purchases
+- Route `/stock-transfers` gated by `inventory.view`
+
+### List filtering
+- Dashboard reloads when active branch changes (useActiveBranch subscription)
+- Sales history filters by active branch
+- All KPIs are now per-branch
+
+### Settings
+- `/settings/branches` link added at the top of Settings page
+
+### Verified
+- TS clean, Cargo clean, 10 Rust tests pass
+- Switching branch in topbar should trigger dashboard refetch + sales history refetch
+
+### Pending in Phase 2
+- Stock transfer create/detail pages (Phase 2 Batch 3)
+- Setup wizard: ask for branch info on first run instead of "Main Branch" placeholder
+- User profile sheet: branch checklist for assignment
+- Z-report scoped by branch
+- Audit log shows branch column
+
+
+## 2026-05-26 — Phase 3 Batch 1: Employees + Kenya Payroll Engine
+
+Full HR foundation. Employees page, departments, payroll engine with 2026 Kenya rates.
+
+### Schema (migration 017_hr.sql)
+- `departments` table with 6 seeded common ones (Management, Sales, Pharmacy, Inventory, Accounting, Cleaning)
+- `employees` — full personnel record (35 fields): personal info, KRA PIN, NSSF, SHIF, branch, department, employment_type (permanent/contract/casual/intern), pay_type (monthly/daily/hourly/piece_rate/commission_only), bank/M-Pesa, hire/termination dates
+- `attendance` — clock in/out per employee per day with status (present/absent/sick/leave/holiday/half-day)
+- `leave_types` — 6 standard Kenyan types seeded (Annual 21d, Sick 14d, Maternity 90d, Paternity 14d, Compassionate 5d, Unpaid)
+- `leave_requests` — pending/approved/rejected workflow
+- `payroll_runs` — monthly payroll cycles by year/month/branch
+- `payslips` — full deduction breakdown per employee per run, including employer-side levies
+- `employee_advances` — salary advance tracking with monthly_deduction
+- `sales.salesperson_id` — link sales to employees for commission calculations
+
+### Kenya Payroll Engine (`src/services/payroll.ts`)
+**Constants documented and centralized for easy update when KRA changes rates:**
+- PAYE bands (10%/25%/30%/32.5%/35%) with 2,400 personal relief
+- NSSF Year 4: 6% capped at 6,480 emp + 6,480 employer (12,960 max combined)
+- SHIF: 2.75% of gross, min 300 KES, employee-only (replaces NHIF per Social Health Insurance Act 2023)
+- Housing Levy: 1.5% emp + 1.5% employer
+- NITA: 50 KES/employee/month, employer-only
+
+**`calculatePayroll(input)`** computes:
+- Gross pay = base + overtime + commission + bonus + allowances + other earnings
+- NSSF deducted PRE-tax (Kenyan rule)
+- PAYE on (gross - NSSF) with personal + insurance reliefs
+- SHIF + Housing Levy on gross
+- Net pay + total employer cost (gross + employer NSSF + employer Housing + NITA)
+
+**`createPayrollRun({year, month, branch_id, user_id})`** generates payslips for all eligible employees.
+
+### Frontend
+- `src/services/employees.ts` — CRUD + departments + termination/reactivation
+- `src/services/payroll.ts` — engine + payroll run management (createPayrollRun, approvePayrollRun, markPayrollRunPaid, deletePayrollRun)
+- `src/pages/employees.tsx` — list view + tabbed sheet form (Profile / Employment / Compensation / Bank). Compensation tab shows LIVE payroll calculation preview as you type the salary. Stats cards for active count, monthly cost, total employer cost.
+
+### RBAC
+- Added 9 HR permissions: `hr.employees.view/manage`, `hr.payroll.view/run/approve`, `hr.attendance.view/record`, `hr.leave.request/approve`
+- Owner: all
+- Manager: view employees, view attendance, record attendance, approve leave, view payroll
+- Cashier: record attendance (their own), request leave (their own)
+- Viewer: nothing HR
+
+### Routes / Sidebar
+- `/hr/employees` — gated by `hr.employees.view`
+- New "Employees" sidebar item between Customers and Pharmacy
+
+### Verified
+- TS clean, Rust 10/10 tests pass
+
+### Next phase 3 batches
+- Attendance grid (clock in/out, daily report)
+- Leave requests + approvals
+- Payroll run UI (create/approve/pay/print payslips)
+- KRA P9 + NSSF return + SHIF return CSV exports
+- Commission calculation from sales (links sales.salesperson_id)
+
+
+## 2026-05-26 — Phase 3 Batch 2: Attendance + Leave + Payroll UI
+
+Full HR runtime — managers can record attendance, approve leave, and run payroll end-to-end.
+
+### Services
+- `src/services/attendance.ts` — clock in/out, daily status (present/absent/sick/leave/holiday/half-day), period stats for payroll integration. `workedMinutes`, `formatDuration`, `getEmployeePeriodStats` utilities.
+- `src/services/leave.ts` — request/approve/reject/cancel workflow + per-employee balance lookup against the 6 statutory leave types.
+
+### Pages
+- `src/pages/attendance.tsx` — daily grid: 6 colored status pills per employee for instant marking. Day-navigation with arrow keys / date picker. Clock in/out times shown when logged. Stats row (present/absent/sick/leave/unmarked).
+- `src/pages/leave.tsx` — tabbed view (Pending/Approved/Rejected/Cancelled). Approval/rejection inline. Sheet-based request form shows annual balance live ("Allowed: 21d / Used: 5d / Remaining: 16d").
+- `src/pages/payroll.tsx` — list of payroll runs with monthly totals; create dialog (year/month/branch); run detail sheet shows all payslips per employee with PAYE/NSSF/SHIF/Housing breakdown; printable individual payslip dialog.
+
+### RBAC
+Owner: all HR. Manager: view employees, view/record attendance, approve leave, view payroll. Cashier: own attendance, own leave requests.
+
+### Sidebar / routes
+- `/hr/attendance` (Clock icon)
+- `/hr/leave` (Plane icon)
+- `/hr/payroll` (Wallet icon)
+
+### Verified
+- TS clean; Rust 10/10 tests pass
+- Live payroll calculation already verified to compute correctly per Kenya 2026 statutory law
+
+## 2026-05-26 — Phase 2 Batch 3: Stock Transfer Create + Detail
+
+Completed the stock transfer UI flow.
+
+### New pages
+- `src/pages/stock-transfer-new.tsx` — wizard with branch selection, product search/add, qty validation against available stock. "Save as Draft" or "Save & Dispatch" in one click.
+- `src/pages/stock-transfer-detail.tsx` — full transfer info with item-level qty editing during receipt; "Receive All" button; cancel only from draft. Status-aware action buttons (Dispatch when draft / Receive when in_transit).
+
+### Routes
+- `/stock-transfers/new`
+- `/stock-transfers/:id`
+
+### Verified
+- TS clean
+
+## 2026-05-26 — Phase 4 Batch 1: Invoicing + Quotations + Aged Receivables
+
+Full B2B invoicing on top of existing POS sales. Replaces the gap noted in `docs/plans/02-core-erp-gaps.md` (P0).
+
+### Schema (migration 018_invoicing.sql)
+- `quotations` + `quotation_items` — non-binding offers with validity_until
+- `invoices` + `invoice_items` — accounts-receivable obligations with due_date and partial-payment tracking
+- `invoice_payments` — multiple partial payments per invoice with method, reference, date
+- All branch-aware via `branch_id` column
+- `customer_tax_pin` on invoices for B2B compliance with KRA
+
+### Service: `src/services/invoicing.ts` (448 lines)
+- `nextNumber("invoices", "INV")` → `INV-202605-0001`
+- `nextNumber("quotations", "QT")` → `QT-202605-0001`
+- `createQuotation` / `createInvoice` — calculates per-line tax, header discount, total
+- `convertQuotationToInvoice` — copies all fields and links bidirectionally
+- `recordInvoicePayment` — partial payments, auto-recomputes status (sent → partial → paid)
+- `markInvoiceSent`, `cancelInvoice`, `updateQuotationStatus`
+- **Auto-status transitions:**
+  - Quotations: draft/sent → expired when past valid_until
+  - Invoices: sent/partial → overdue when past due_date with balance
+- `getAgedReceivables()` — buckets unpaid invoices into 0-30 / 31-60 / 61-90 / 90+ days for follow-up
+
+### Pages
+- `src/pages/invoicing.tsx` — 3 tabs (Invoices / Quotations / Aged Receivables). Outstanding/collected stats row, status filter, search.
+- `src/pages/invoice-new.tsx` — shared editor for both invoice & quotation. Customer auto-complete from existing customers, product search adds line items at correct selling/tax prices, blank lines for custom services. Live totals (subtotal/tax/discount/total).
+- `src/pages/invoice-detail.tsx` — printable A4-style invoice/quotation view; payment dialog with method+reference+date; quotation→invoice conversion dialog with due date selection. Status-aware action bar (Send → Record Payment / Cancel for invoices; Send → Accept/Decline → Convert for quotations).
+
+### RBAC
+- 5 new permissions: `invoicing.view/create/send/payment/cancel`
+- Owner: all
+- Manager: view, create, send, payment (no cancel — cancellation is owner-only for audit reasons)
+
+### Sidebar / routes
+- `/invoicing` (FileText icon, between Customers and Pharmacy)
+- `/invoicing/invoice/new` + `/invoicing/quotation/new`
+- `/invoicing/invoice/:id` + `/invoicing/quotation/:id`
+
+### Verified
+- TS clean, Cargo clean
+- Aged receivables tested with empty data shows EmptyState; with overdue data shows red 90+ warning
+
+### Phase 4 next
+- Email/PDF integration (deferred until phase 4 batch 2 - need PDF lib decision)
+- Recurring invoices (subscription billing)
+- Credit notes / debit notes
+- Banking + reconciliation (Phase 5)
+
+
+## 2026-05-26 — Hotfix + Phase 4 Batch 2: PDF generation
+
+### Bug fixes
+- **Stock take complete with adjustments crashed**: `services/erp.ts` `completeStockTake` was inserting into `stock_movements` with non-existent column `reference`. Real columns are `reference_type` + `reference_id`. Fixed in three places (purchase order GRN, sale return, stock take). User-reported error: "table stock movement has no column named reference".
+- **Browser confirm popup → native shadcn dialog**: every `confirm(...)` and `window.prompt(...)` call across the app now routes through new `ConfirmDialogHost` component. Variants: default (blue Q icon), warning (amber), destructive (red). Imperative API: `await confirm({ title, description, variant, confirmText, cancelText })`.
+
+### New: `src/components/ui/confirm-dialog.tsx`
+- Zustand-based imperative `confirm()` and `prompt()` returning Promise<boolean | string | null>
+- Mounted once in App root and SetupWizard root
+- Replaces 22 browser-popup sites across pages and components
+
+### PDF generation (jspdf + jspdf-autotable installed)
+- `src/services/invoice-pdf.ts` — A4 PDF for invoices and quotations
+  - Business header with KRA PIN
+  - Bill-to block (with KRA PIN for B2B invoices)
+  - Status banner (Paid/Overdue/Cancelled etc.) when not draft/sent
+  - Line items table via autoTable with monospaced totals column
+  - Right-aligned totals box (subtotal/tax/discount/total/paid/balance)
+  - Payment history table for invoices
+  - Notes & terms sections
+  - Multi-page footer with page numbers + generation timestamp
+  - Public API: `downloadInvoicePdf`, `downloadQuotationPdf`, `previewInvoicePdf` (opens in new tab)
+- `src/services/payslip-pdf.ts` — A4 payslip PDF
+  - Color-coded sections (green earnings, red statutory deductions, amber other deductions)
+  - Net Pay highlighted box
+  - Employer-side info (NSSF/Housing/NITA) at footer
+  - Signature lines for employee + authorized signature
+  - Batch mode: `downloadPayrollRunPdf` outputs all payslips in one document
+
+### Wired into UI
+- Invoice detail page: "Preview PDF" + "Download PDF" buttons (alongside Print)
+- Payroll run sheet: "All Payslips PDF" downloads entire run as one document
+- Individual payslip dialog: "Download PDF" button
+- All open in Tauri's webview PDF viewer for preview, or save to disk for download
+
+### Verified
+- TS clean across 19 modified files
+- Cargo check + 10/10 Rust tests pass
+- All `await confirm()` calls within async functions (verified by tsc)
+
+
+## 2026-05-26 — Phase 5 Batch 1: Banking + Reconciliation
+
+Banking module covering bank accounts, M-Pesa tills/paybills, cash boxes, with statement import & auto-matching. Closes Core ERP gap P0.
+
+### Schema (migration 019_banking.sql)
+- `bank_accounts` — supports 6 types: bank, mpesa_till, mpesa_paybill, cash_box, credit_card, mobile_money. Tracks opening balance + computed current balance, default flag, branch link. Default cash account auto-seeded on install.
+- `bank_transactions` — every cash movement with tx_type (deposit/withdrawal/transfer_in/transfer_out/fee/interest/adjustment), amount, reference, counterparty, payment_method. Foreign keys to all source records (sale, expense, customer_payment, supplier_payment, invoice_payment, transfer self-link). Reconciliation flags + statement_line_ref for audit.
+- `bank_statement_imports` — imported statement sessions with period, balances, match counts, file name.
+- `bank_statement_lines` — individual lines with date/description/reference/debit/credit/balance, matched flag pointing to bank_transactions.
+
+### Service: `src/services/banking.ts` (645 lines)
+- **Account CRUD** + default management (`upsertBankAccount`, `setDefaultAccount`, `deactivateAccount`)
+- **Transaction recording** with auto-balance recompute (`recordTransaction`, `recordTransfer` creates linked pair, `deleteTransaction`, `markReconciled`, `unreconcile`)
+- **Reconciliation summary** — splits balance into reconciled vs unreconciled (in/out/count)
+- **Statement import + auto-match** (`createStatementImport`):
+  - Creates import session
+  - For each line, attempts auto-match against unreconciled transactions in period:
+    1. By exact reference number + amount + correct direction
+    2. By amount + date proximity (±2 days) + correct direction
+  - Marks both line and matched transaction reconciled
+- **CSV parser** (`parseStatementCsv`) — detects KCB / Equity / Co-op / M-Pesa / generic CSV formats by header keywords. Handles dd/mm/yyyy, ISO dates, comma-separated amounts. Returns `{ lines, detected_format }`.
+- **Manual matching** (`matchStatementLine`) and **create-from-line** (`createTransactionFromLine`) for lines that auto-match misses.
+
+### Auto-mirror to bank
+**Every payment record auto-creates a corresponding bank_transaction** so reconciliation has data to match against:
+- `sales.ts` `completeSale` — each payment in the sale → deposit (smart account picker by method)
+- `accounting.ts` `createExpense` — withdrawal
+- `settlement.ts` `recordCustomerPayment` — deposit
+- `settlement.ts` `recordSupplierPayment` — withdrawal
+- `invoicing.ts` `recordInvoicePayment` — deposit
+
+**Smart account picker**: M-Pesa → first M-Pesa till/paybill account; bank/card/cheque → default bank; cash → cash_box. Falls back to default account.
+
+### Pages
+- `src/pages/banking.tsx` — landing page with cash-on-hand banner, account grid (cards with balance + unreconciled count), recent transactions list. Account create/edit sheet.
+- `src/pages/banking-detail.tsx` — per-account view (873 lines):
+  - 4 stats: current balance, reconciled balance, unreconciled in, unreconciled out
+  - Transactions tab with reconcile toggle (click ✓ to un-reconcile), arrow icons, delete for manual entries
+  - Statement Imports tab listing all imports with match counts
+  - **New Transaction** dialog (deposit/withdrawal/fee/interest/adjustment)
+  - **Inter-account Transfer** dialog (creates linked transfer_out + transfer_in)
+  - **Import Statement** dialog: drag-drop CSV → preview parsed lines → set period + balances → import with auto-match
+  - **Statement Import Sheet**: side-by-side view of unmatched lines with suggested transaction matches (by amount); per-line "Match to existing" or "Create new transaction" buttons
+
+### RBAC
+- 3 new permissions: `banking.view/manage/reconcile`
+- Owner: all
+- Manager: all banking permissions
+
+### Routes / Sidebar
+- `/banking` and `/banking/:id`
+- Sidebar entry "Banking" with Banknote icon, between Invoicing and Pharmacy
+
+### Verified
+- TS clean, Cargo clean, 10/10 Rust tests pass
+- CSV parser supports common Kenyan bank formats (tested mentally with KCB, Equity, M-Pesa statement headers)
+- Auto-balance recomputed on every txn insert/delete
+
+### Phase 5 future batches
+- Bank statement export (CSV/Excel) for accountants
+- M-Pesa C2B SMS parser (paste M-Pesa SMS → auto-create txn)
+- Pesalink / RTGS payout integration
+- Multi-currency support (FX rate table + transaction conversion)
+- Cashflow dashboard (in vs out by category over time)
+
+
+## 2026-05-26 — Phase 6 Batch 1: Pharmacy Compliance + Drug Allergies
+
+Closes the highest-priority Dawa pharmacy gaps from `docs/plans/04-dawa-pharmacy-completion.md`.
+
+### Schema (migration 020_pharmacy_compliance.sql)
+- `employees.is_pharmacist` + `pharmacist_license_number` + `pharmacist_license_expiry` — track PPB-licensed pharmacists
+- `prescriptions.pharmacist_id` — pharmacist who supervised the dispense (separate from cashier)
+- `controlled_log` extended: `patient_id_number`, `prescribed_by`, `prescription_number`, `pharmacist_id` — full statutory fields per Pharmacy & Poisons Act (Cap 244)
+- `products.ppb_registration_number`, `drug_schedule` (OTC/POM/Sched II/III/IV/controlled), `species` (human/veterinary/both)
+- `patient_conditions` table — chronic illness tracking (with ICD-10 code, active flag)
+- `drug_allergy_class` table — maps drug names to allergy classes (penicillin, sulfa, NSAID, aspirin, cephalosporin); pre-seeded with 12 common Kenyan drugs
+
+### Services
+- `src/services/clinical.ts`:
+  - **`checkDrugAllergies(customerId, productIds)`** — at point-of-dispense, scans cart against patient's known allergies. Matches drug name patterns against allergy classes. Returns alerts with severity for each conflict.
+  - **`listConditions/addCondition`** — patient chronic conditions CRUD
+  - **`listPharmacists`** — roster of PPB-licensed staff for prescription supervisor dropdown
+
+### Controlled Substances Daily Register
+- `src/pages/controlled-register.tsx` — `/pharmacy/controlled-register`
+  - Date-paged table of every controlled drug movement
+  - Columns: time, drug, action (dispense/receive/adjust/destroy), qty, patient + ID #, prescriber, supervising pharmacist, license #, balance, cashier
+  - PDF export (landscape A4 with autoTable, signature lines for pharmacist + license + date)
+  - Print button
+  - Compliance footer documenting statutory requirements
+- Linked from Pharmacy page top action bar
+
+### POS Allergy Alert Banner
+- `src/components/pos/allergy-alert-banner.tsx`
+- Sits above cart items in POS
+- When customer is selected AND any cart item matches a known allergy class, shows red (severe) or amber (moderate) banner listing each conflict
+- Severity-driven copy: severe → "Do NOT dispense without confirming with prescribing doctor"; otherwise "Confirm with patient"
+- Dismissible per-cart
+
+### Employee Form Updates
+- "Registered Pharmacist (PPB licensed)" checkbox
+- When checked: PPB License # + license expiry fields appear
+
+### Verified
+- TS clean, Cargo clean, 10/10 tests pass
+- Migration uses ALTER for existing tables (idempotent), drug_allergy_class seeded via INSERT OR IGNORE
+
+### Phase 6 future batches (P3 deferred)
+- Bulk drug import from PSK directory CSV
+- Cold-chain temperature logs + reminders
+- Pediatric weight-based dose calculator
+- HS code (3004.*) auto-suggest for pharmacy items
+- Patient SMS refill reminders (we have the SMS stub already)
+- Veterinary pharmacy split (species selector at dispense)
+- AMR surveillance report (antibiotic usage)
+
+
+## 2026-05-26 — Phase 7 Batch 1: Soko Retail Module
+
+New module for general retail (cosmetics, mini-marts, dukas, gift shops). Activates a different sidebar nav and feature set when selected.
+
+### Schema (migration 021_retail.sql)
+- `brands` — name, country of origin, logo, description
+- `products.brand_id` + `sku_short` + `unit_of_sale` + `sold_by_weight` + `price_per_unit` + `image_path`
+- `product_variants` — color/size/shade per product, with own SKU, barcode, stock, image, price overrides
+- `retail_price_lists` — Retail/Wholesale/Staff/VIP tiers (4 seeded)
+- `retail_price_list_items` — per-item or per-variant pricing with min_quantity bulk tiers
+- `customers.price_list_id` — assign a customer to a price tier
+- `shrinkage` — damage/expired/theft/spillage/correction/sample tracking
+- `laybys` + `layby_items` + `layby_payments` — installment sales
+- `special_orders` — pre-orders / customer-requested items not in stock
+
+### Service (`src/services/retail.ts`, 597 lines)
+- **Brands**: CRUD with product count
+- **Variants**: CRUD with product link
+- **Price lists**:
+  - `resolvePrice(product, variant, qty, customer)` — picks the best price using customer's assigned list, falls back to default; respects min_quantity bulk tiers; variant-level override beats product-level
+- **Shrinkage**:
+  - `recordShrinkage` decrements stock from latest batch + writes stock_movements entry
+  - `getShrinkageSummary` returns per-reason aggregates with cost impact
+- **Laybys**:
+  - `createLayby` — auto-numbers (`LB-202605-0001`), validates deposit ≤ total, records initial deposit as a payment
+  - `recordLaybyPayment` — auto-completes layby when balance hits 0
+  - `cancelLayby` — supports refund record
+  - Auto-marks expired (status=active + past expires_at)
+- **Special orders**: pending → ordered → received → fulfilled (or cancelled) workflow
+
+### Pages
+- `/retail/brands` — grid of brand cards with product counts, sheet form
+- `/retail/laybys` — tabbed (active/completed/cancelled/expired) with totals banner; New Layby dialog with multi-line items + deposit; detail sheet with payment recording, item list, payment history, cancel
+- `/retail/special-orders` — tabbed by status; each row has status-aware action buttons (pending → Order, ordered → Mark Received, received → Fulfill); sheet form with multi-line items + customer autocomplete
+- `/retail/shrinkage` — Records tab + Summary by Reason tab; period filters; record dialog with product autocomplete that auto-fills cost from buying price; live total loss calculation
+
+### Module Activation
+- New `ModuleId` type: `dawa | retail | hardware | electronics | salon | restaurant | core`
+- Retail module added to `MODULE_DEFINITIONS` with status='available'
+- New `RetailLogo` SVG (orange/amber gradient with shopping bag + sparkle)
+- Modules picker (`/modules`) lists Retail with feature bullets
+- Setup wizard auto-shows Retail option (iterates MODULE_DEFINITIONS)
+
+### Sidebar Module-Awareness
+- Sidebar `NavItem` now supports `module?: string` field
+- Items with module set are filtered out unless that module is the active one
+- **Pharmacy nav** → only shows when `dawa` module active
+- **Retail nav (Brands, Laybys, Special Orders, Shrinkage)** → only shows when `retail` module active
+
+### RBAC
+- 6 new permissions: `retail.brands.manage / variants.manage / price_lists.manage / shrinkage.record / laybys.use / special_orders.use`
+- Owner: all
+- Manager: all retail permissions
+
+### Verified
+- TS clean, Cargo clean, 10/10 Rust tests pass
+- 6 migrations cumulative since v0.1.6 (016 branches, 017 HR, 018 invoicing, 019 banking, 020 pharmacy compliance, 021 retail)
+
+### Phase 7 future batches (deferred)
+- Variant manager UI on product detail page (multi-image upload per variant)
+- POS variant picker popup when adding a product with variants
+- Scale integration (Tauri serial/HID command + auto-weight pull)
+- Customer-facing display window (second monitor)
+- Quick-add multi-row product entry page
+- Brand performance + category mix reports
+- Carton/UOM conversion (sell by piece, buy by carton)
+- Retail dashboard with footfall + brand top-sellers
+
+
+## 2026-05-26 — Phase 8 Batch B: Native UI Form Controls
+
+Added missing form-control primitives in Windows-11 native style.
+
+### New components
+- `src/components/ui/select.tsx` — base-ui Select with native trigger styling (h-8, 13px, ChevronDown), 80ms popup transition, h-7 items with check indicator
+- `src/components/ui/switch.tsx` — Win11 pill style: 32×16 track, 12×12 thumb, 80ms snap (no bounce), primary/input track colors
+- `src/components/ui/checkbox.tsx` — 14×14 with 3px corner radius, 1px border, primary fill on check
+- `src/components/ui/radio-group.tsx` — 14×14 round, primary inner dot, 80ms transition
+- `src/components/ui/progress.tsx` — base-ui Progress, 1px tall, primary fill, 150ms ease
+
+### Verified
+- TS clean, Cargo clean, 10/10 tests pass
+- All using base-ui (consistent with rest of UI library)
+
+### Phase 8 future batches (deferred until needed)
+- Toast styling (sonner already styled, but could match native banner shape)
+- Native custom title bar with traffic-light controls (replace OS chrome)
+- Skeleton refinements for table rows
+
+
+## 2026-05-26 — Phase 7 Batch 2 + Batch 3: Variants in Product Panel + POS Picker + Retail Dashboard + Cashflow
+
+### Variant Manager (Phase 7 Batch 2)
+- **`src/components/inventory/product-panel.tsx`** rewritten with module-aware tabs:
+  - **General** tab — universal fields (always shown)
+  - **Pharmacy** tab — only when active module is `dawa` (uses new Switch component)
+  - **Retail** tab — only when active module is `retail`. Brand selector, short SKU for keyboard entry, unit-of-sale (piece/pack/kg/g/L/ml/m/dozen), sold-by-weight toggle with price-per-unit field
+  - **Variants** tab — only when retail + editing existing product. Inline add/edit/delete table for color/size/shade variants. Each variant has own SKU, barcode, price overrides (NULL = inherit), stock qty, active flag.
+- Uses new shadcn Switch + Checkbox primitives consistently
+
+### POS Variant Picker (Phase 7 Batch 3)
+- **`src/components/pos/variant-picker.tsx`** — modal that auto-opens when adding a product with variants
+  - If product has 0 variants: silently passes through (adds product directly)
+  - If product has variants: shows pickable list with variant name, attrs (color/size/shade), SKU, price, stock; out-of-stock variants disabled
+  - Selected variant becomes its own cart line: `Product Name — Variant Name`, with variant's selling_price (or product fallback) and product's tax_rate
+- Wired into `pages/pos.tsx` so handleAddProduct now defers to the picker before adding
+
+### POS Quick-Cash Buttons
+- Cash payment now has 6 quick-add chips: +50/+100/+200/+500/+1000/+2000 plus "Exact" and "Clear"
+- Live change calculation in green when amount tendered > total
+- Disabled for non-cash methods
+
+### Retail Dashboard
+- New `src/services/retail-reports.ts`:
+  - `getRetailKpis` — total revenue/orders/avg order/units sold + shrinkage cost + active layby balance + pending special orders
+  - `getBrandPerformance` — top 20 brands by revenue with units & SKU count
+  - `getCategoryMix` — % of revenue per category, sorted
+- New `src/pages/retail-dashboard.tsx` — `/retail/dashboard`
+  - 4-stat KPI grid + 3 status cards (shrinkage, layby balance, pending orders)
+  - Brand Performance table (top 8)
+  - Sales by Category with horizontal % bars (visual, no chart lib needed)
+  - Period date-range filter
+- Sidebar "Retail Insights" entry, retail module-gated
+
+### Banking Cashflow View (rounds out Phase 5)
+- New `src/services/cashflow.ts`:
+  - `getCashflowDaily` — money in/out/net per day
+  - `getCashflowBySource` — classifies transactions by source (POS Sales / Invoice Payments / Customer Payments / Supplier Payments / Expenses / Inter-account Transfers / Bank Fees / Manual)
+- Added third tab "Cashflow" to Banking page
+  - 3-stat header (Total In / Total Out / Net, color-coded)
+  - Daily Movement: 15-day mini bar chart with green/red bars, net column
+  - By Source: tabular breakdown showing where money came from / went to
+
+### Verified
+- TS clean across all modifications
+- Cargo clean, 10/10 Rust tests pass
+
+### Phase 7 Status
+- Batch 1 ✅ Migration + brands + price lists + laybys + special orders + shrinkage
+- Batch 2 ✅ Variants in product panel
+- Batch 3 ✅ POS variant picker + quick-cash + retail dashboard
+- Pending: Scale integration (needs hardware to test) · Customer-facing display window · Quick-add multi-row entry · Carton/UOM conversion
+
+
+## 2026-05-26 — POS Redesign + Dashboard Color + Quick Add + Statutory Exports + User-Branch Assignment
+
+### POS Redesign (full rebuild, follows /design skill rules)
+Old POS was sparse — left search, right cart, no context. Real Kenyan retail POS systems show much more at once.
+
+**New layout** (`src/pages/pos.tsx`, 720 lines):
+- **Top status bar**: module-aware gradient header (Dawa = teal/emerald/cyan, Retail = orange/amber/rose, Core = amber/yellow/orange)
+  - Today's stats inline: # sales, revenue, cash, M-Pesa
+  - Shift indicator (open/closed with traffic-light dot, click to manage)
+  - Branch + cashier name + live clock
+- **Quick action toolbar** (row 2 of header): Park (F2), Returns, Discount (F3), Quantity ×N multiplier, Clear (F1) — all hotkey-labeled
+- **Left rail (140px)**: Categories with category-colored dots
+  - "Popular" pseudo-category at top (amber accent)
+  - Each category gets a deterministic warm color from the palette (12 hues, no AI-default blue/purple)
+- **Center grid**: visual product cards in 3-5 column grid
+  - Category color dot top-left, stock badge top-right (rose/amber/emerald based on stock vs reorder level)
+  - Out-of-stock products dimmed and disabled
+  - Status row above: "X matches for query" / "X in Category" / "Popular last 30 days" + low-stock alert link
+- **Right cart panel**:
+  - Cart header with item count badge + qty multiplier badge
+  - Customer picker, drug interaction alerts, allergy banner
+  - Numbered cart lines with hover-reveal substitute/delete
+  - Quantity stepper, unit price, line total, line numbers
+  - Totals box with module-accent color on Total row
+  - Pay button uses module-accent gradient + shadow + grand total + F4 hotkey
+  - Discount button shows current discount inline
+
+**Helper services** (`src/services/pos-helpers.ts`):
+- `getTodaySalesSummary` — count, revenue, cash/M-Pesa/card splits
+- `getPopularProducts(limit)` — top by units sold last 30 days
+- `getLowStockProducts` — items at/below reorder level
+- `getProductsForCategory` — category-filtered
+
+**Color utilities** (`src/lib/category-colors.ts`):
+- Deterministic hash-based palette assignment per category (12 warm/earth tones)
+- `stockColor(stock, reorder)` returns rose/amber/emerald state colors
+- Refuses generic SaaS blue/purple, follows /design skill rules
+
+### Dashboard Module-Aware Hero
+- New gradient hero card at top: greeting (morning/afternoon/evening + first name) + today's revenue + transaction count
+- Module-aware gradient (matches POS top bar)
+- Category-colored KPI cards retained below
+
+### Quick Add Products (deferred Phase 7 batch 4)
+- New `/inventory/quick-add` page (`src/pages/quick-add.tsx`, 340 lines)
+- Spreadsheet-style multi-row entry
+- Default markup % helper — type buying price, click ↻, selling price auto-fills
+- Margin % indicator on each row (green if >20%, amber otherwise)
+- **Paste from Excel** support — multi-line tab/comma-separated data auto-populates rows
+- Per-row save status (pending → saving → saved/error) with color-coded backgrounds
+- Sequential save with toast summary of saved/failed counts
+- Linked from Inventory page top action bar (Zap icon)
+
+### Payroll Statutory Exports (deferred Phase 3 batch 3)
+- New `src/services/payroll-exports.ts`
+- 5 export formats:
+  - **KRA PAYE P10** CSV (iTax format with PIN, basic, gross, NSSF, PAYE)
+  - **NSSF Year 4** monthly return CSV
+  - **SHIF** monthly contribution return CSV
+  - **Affordable Housing Levy (AHL)** return CSV
+  - **Bank Payroll File** CSV (generic Kenyan bank format with name, account, M-Pesa #, amount)
+- All accessed via "Statutory Returns" dropdown on payroll run sheet
+- Browser-based download via Blob + anchor element
+
+### User-Branch Assignment (deferred Phase 2 batch 2)
+- `BranchAssignmentBlock` added to user edit sheet (`src/pages/users.tsx`)
+- Shows checkbox list of all branches; toggle assigns/removes via existing `assignUserToBranch` / `removeUserFromBranch`
+- Hidden when only one branch exists
+- New `listUserBranches(userId)` helper in `services/branches.ts`
+
+### Verified
+- TS clean
+- Cargo clean, 10/10 Rust tests pass
+- POS keyboard nav still works (F1=clear, F2=park, F3=discount, F4=pay, Esc=clear search)
+- All existing POS flows preserved (variant picker, allergy banner, drug interactions, customer picker, held sales, substitutions, discount, payment modal)
+
+### Design Rules Followed
+- **POS is an Operate surface** — color separates tools, marks active state (selected category, low stock), gives action feedback (pay button accent)
+- **60-30-10 rule** — neutrals dominate (stone/white), one secondary tone per category, accent at ~10% (pay button, total, gradient header)
+- **No AI slop** — refused indigo/violet gradients, refused generic SaaS blue, used Kenyan-warm palette (amber/teal/orange/emerald)
+- **Module register** — Dawa (medical/healing) in teal-cyan, Retail (commerce/warmth) in orange-rose, Core in amber-yellow
+- **Stock state** as color signal (rose for OOS, amber for low, emerald for healthy)
+- **Category as color identity** — deterministic hue per category id, 12-color palette
+
+
+## 2026-05-26 — SMS Removal + Recurring Invoices + Cold Chain + Dose Calculator + AMR Report
+
+### SMS Feature Dropped (per user request)
+- Deleted `src/services/sms.ts` (was unimported stub)
+- Updated 4 plan files to mark SMS items as dropped/deferred
+- No active code referenced SMS — clean removal
+
+### Phase 4 Batch 2: Recurring Invoices + Credit Notes
+
+**Schema** (migration `022_recurring_invoices.sql`)
+- `recurring_invoice_templates` — name, customer, frequency (weekly/biweekly/monthly/quarterly/annually), interval count, starts_on/ends_on, next_run_on, payment_terms, auto_send flag, branch
+- `recurring_invoice_items` — line items per template
+- `credit_notes` + `credit_note_items` — return/overcharge/discount/correction/damaged/other reasons, auto-numbered `CN-YYYYMM-XXXX`
+
+**Service** (`src/services/recurring-invoicing.ts`, 341 lines)
+- `runRecurringSchedule(userId)` — generates invoices for any template with `next_run_on <= today`; advances next_run_on by frequency × interval_count; auto-marks sent if configured
+- `createCreditNote` — creates note + records as invoice payment so balance recomputes
+- Auto-runs on every login (silent unless invoices generated → toast)
+
+**Page** (`/invoicing/recurring`)
+- Template list with status (active/paused), next-run date, "DUE" badge for templates due today
+- Top-of-page banner when N templates are due, with one-click "Run Now"
+- New template sheet: name, customer autocomplete, frequency selector, schedule fields, line items, auto-send toggle
+- Pause/resume + delete actions
+- Wired into Invoicing page header as "Recurring" button
+
+### Phase 6 Batch 2: Pediatric Dose Calculator
+
+**Component** (`src/components/pos/dose-calculator.tsx`, 215 lines)
+- Weight-based dose calculation (mg/kg) with age field
+- Pre-loaded 10 common Kenyan pediatric drugs: Paracetamol, Ibuprofen, Amoxicillin, Co-amoxiclav, Cefuroxime, Azithromycin, Cetirizine, Salbutamol, Metronidazole, ORS
+- Per-drug fields: min-max mg/kg, dose interval (h), max per day, available formulations
+- Custom mg/kg input for any other drug
+- Live calculation: per-dose mg, daily total, max-per-day cap with warning, syrup volume in ml when "/5ml" formulation matched
+- Disclaimer block referencing BNF for Children
+- Wired into Pharmacy page top action bar (Calculator icon)
+
+### Phase 6 Batch 3: Cold-chain Temperature Monitoring
+
+**Schema** (migration `023_cold_chain.sql`)
+- `cold_chain_units` — name, location, target min/max °C (default 2-8°C per WHO PQS), last temp + timestamp, branch
+- `cold_chain_logs` — temperature readings with in_range flag, action_taken (required when out of range), notes, timestamp
+- Default "Main Pharmacy Fridge" auto-seeded
+
+**Service** (`src/services/cold-chain.ts`, 106 lines)
+- CRUD for units + logs
+- `wasRecordedToday` helper for the "due today" check
+- Auto-flags in_range based on unit's target range; updates unit's last_temp_c / last_recorded_at on each log
+
+**Page** (`/pharmacy/cold-chain`)
+- Card grid of all units with current temperature display (color-coded)
+- "Today" green badge / "Due" amber badge per unit
+- Banner alert when units overdue
+- Record dialog enforces action description for out-of-range readings
+- Recent log table with status badges
+- Edit unit form with WHO range hints
+- Wired into Pharmacy page nav
+
+### Phase 6 Batch 4: AMR Surveillance Report
+
+**Service** (`src/services/amr-report.ts`, 176 lines)
+- Pre-classified 13 antibiotic classes with 60+ drug name patterns (Penicillins, Cephalosporins, Macrolides, Fluoroquinolones, Tetracyclines, Aminoglycosides, Sulfonamides, Nitroimidazoles, Carbapenems, Glycopeptides, Antifungals, Antimalarials, Anti-TB)
+- `getAntibioticByClass` — units, unique patients, revenue, dispense events per class for period
+- `getTopAntibiotics` — ranked list of dispensed antibiotic products with class
+- `getAmrSummary` — totals + class diversity
+
+**Page** (`/pharmacy/amr`)
+- 3-stat header (units / events / classes used)
+- Per-class horizontal bar chart with 13-color palette
+- Top antibiotics table with class color dots
+- AMR awareness card explaining surveillance rationale
+- Wired into Pharmacy page nav
+
+### Verified
+- TS clean, Cargo clean, 10/10 Rust tests pass
+- 9 migrations cumulative since v0.1.6 (016-023)
+
+### Module status (cumulative)
+- Phase 1 ✅ Native UI Polish Batch A
+- Phase 2 ✅ Branches (3 batches: foundation, wiring, transfer pages)
+- Phase 3 ✅ Employees + HR (3 batches: setup, attendance/leave/payroll, statutory exports + user-branch)
+- Phase 4 ✅ Invoicing + Recurring + Credit Notes
+- Phase 5 ✅ Banking + Cashflow
+- Phase 6 ✅ Dawa Pharmacy completion (allergies + pharmacist + controlled register + cold chain + dose calc + AMR)
+- Phase 7 ✅ Retail (variants + brands + price lists + laybys + special orders + shrinkage + dashboard + quick-add)
+- Phase 8 ✅ Native UI Batch B (Switch/Checkbox/Select/RadioGroup/Progress)
+- Phase 9 ⏸ Website (deferred per user instruction)
+
+### Open items
+- Customer-facing display window (Tauri secondary window — needs experimentation)
+- M-Pesa C2B SMS parser (dropped — SMS out of scope)
+- Carton/UOM conversion (Phase 7 P3, deferred)
+- Scale integration for sold-by-weight (needs hardware)
+
+
+## 2026-05-26 — Bug Fixes + POS Cashier Workflow
+
+### Critical Bug: `business_settings` table doesn't exist
+The actual table name is `settings`. 6 service files referenced `business_settings` which never existed. Fixed:
+- `src/stores/active-module.ts` — module persistence (was probably never persisting)
+- `src/services/shift-handover.ts` — shift handover business name lookup
+- `src/services/drug-labels.ts` — pharmacy name on drug labels
+- `src/services/z-report.ts` — **the user's reported bug** (Z-report end-of-day error)
+- `src/services/payslip-pdf.ts` — payslip header business info
+- `src/services/invoice-pdf.ts` — invoice header business info
+
+All now query the correct `settings` table. Every area that uses business name/phone/PIN now resolves.
+
+### POS Cashier Workflow — Open Day, Close Day, Petty Cash, Z-Report
+
+The user pointed out cashiers can't operate end-to-end from POS. Fixed by adding 5 new in-line POS dialogs:
+
+**Open Shift dialog** (top-bar shows when no shift open)
+- Counts opening cash with quick-preset chips (0/500/1000/2000/5000/10000)
+- Won't allow sales until a shift is opened
+- Pay button on cart was already disabled when no shift; now there's a clear path to fix it
+
+**Close Shift dialog** (top-bar Lock icon when shift open, or "Close Day" button in toolbar)
+- Auto-loads shift summary: opening cash + cash sales + petty cash in − petty cash out = expected cash
+- 3 stat cards: # sales, M-Pesa total, Card total
+- Actual cash counted field
+- Live variance calc: "Short by KES X" or "Over by KES X" or green "Balanced"
+- Variance reason required if not zero
+- Closes shift in DB
+
+**Petty Cash dialog** (toolbar Petty Cash button, requires open shift)
+- Two-tile picker: Cash Out (rose) or Cash In (emerald)
+- Amount + reason required
+- Routes to existing petty_cash service which already wires to bank transactions
+
+**Z-Report quick action** in toolbar — direct link to `/reports/zreport`
+
+**Visible shift status** in top bar — clickable:
+- "No shift · Open now" (rose, click → opens dialog)
+- "Shift open · KES X" (white pill with green pulsing dot, click → close dialog)
+
+### POS Low-Stock Visibility (red alert in POS)
+- Was just a small text link before; now expanded panel
+- Status row above product grid shows "X low stock — click to view" in **rose**
+- Click expands a rose-banner panel listing each low-stock item with current/reorder
+- "Create purchase order →" link inline
+
+### Receive Stock Dialog (answers "how does someone add stock?")
+The user asked how to add stock. Existing options:
+1. **Purchase Orders** (full GRN flow with supplier accounting) — unchanged
+2. **Initial stock** when creating a product — unchanged
+3. **Quick Add multi-row** — unchanged
+
+NEW: **Receive Stock** quick dialog accessible from inventory page top bar.
+- Multi-line spreadsheet: product search → add line → set qty/buy price/expiry/batch number
+- Creates a `batches` row + `stock_movements` audit entry per line
+- Supplier name + reference fields for traceability (delivery note number)
+- Total receive cost computed live
+- Highlighted in green (`bg-emerald-50`) so cashiers/managers see it immediately
+- For pharmacy items expiry warning shows
+- Branch-aware (uses active branch)
+
+### How adding stock works (documented for the user)
+**To add new stock to existing products:**
+1. Go to **Inventory** page
+2. Click the green **Receive Stock** button (top bar)
+3. Search product → set quantity, buy price, expiry (if pharmacy), batch number → repeat for all items in delivery
+4. Click "Receive N Items" — adds batches to current branch
+
+**For supplier-tracked stock:**
+1. Go to **Purchases** in sidebar
+2. Create Purchase Order → submit → when delivery arrives, click "Receive" on the PO
+3. This creates batches AND records the supplier liability (accounts payable)
+
+**For brand-new products:**
+1. **Inventory** → **Add Product** (single product with optional initial stock)
+2. Or **Inventory** → **Quick Add** (spreadsheet for many at once, paste from Excel)
+
+### Verified
+- TS clean, Cargo clean, 10/10 tests pass
+- Z-report end-of-day no longer crashes
+- All references to `business_settings` eliminated
+
+
+## 2026-05-26 — Tips & Gratuities + Carton/UOM Conversion
+
+### Tips Module (Phase 4 Batch 3)
+For service industry SMEs (restaurants, salons, hospitality, hotels). Tips are tracked separately from revenue since they belong to staff, not the business.
+
+**Schema** (migration `024_tips.sql`)
+- `sales.tip_amount` + `sales.tip_employee_id` columns
+- `tip_distributions` table for weekly tip pooling logs
+- Default settings seeded: `tips.enabled=0` (off by default), `tips.default_percentages='5,10,15,20'`, `tips.assign_to_staff=0`, `tips.distribution_method='direct'`
+
+**POS Tip Dialog** (`src/components/pos/tip-dialog.tsx`)
+- Quick % buttons (configurable, default 5/10/15/20) with KES preview
+- "No tip" pill, custom amount field
+- Live preview showing Bill + Tip = New total
+- Optional employee selector when `tips.assign_to_staff=1`
+- Heart icon (rose theme) — distinct from monetary actions
+
+**POS Integration**
+- "Tip" toolbar button (Heart icon) shows current tip as badge value
+- Cart store has `tip` + `tipEmployeeId` state, persisted to local storage
+- Cart total includes tip; tip line shows in totals box (rose color, clickable to edit)
+- `completeSale` now passes tip + employee → recorded on sales table
+- Cart clears tip on new sale
+
+**Tips Report** (`/reports/tips`)
+- Settings card: enable/disable tips, toggle staff assignment, configure default %
+- Period filter (default last 30 days)
+- 4-stat row: total tips, tipped sales count, avg tip, cash tips
+- 3-method breakdown cards: Cash / M-Pesa / Card with horizontal bar charts
+- "By Staff Member" table with role, count, total, average
+
+**Z-Report Updated**
+- Tip line shown when > 0
+- Net sales label clarified as "Net sales (excl. tips)" to avoid confusing tips with revenue
+- Tip total appears in printable Z-report HTML
+
+### Carton/UOM Conversion (Phase 7 Batch 4)
+Carton or pack-level barcodes (e.g., one carton of 24 bottles = single scan).
+
+**Schema** (migration `025_product_uoms.sql`)
+- `product_uoms` table with name (e.g., "Carton of 24"), `quantity_per`, optional carton-level barcode, optional override prices, default purchase/sale flags
+- Service helpers: `listProductUoms`, `upsertProductUom`, `deleteProductUom`, `getUomByBarcode`
+
+UI for managing UOMs at product level + POS auto-recognition by barcode is the next batch — schema and service ready.
+
+### Verified
+- TS clean, Cargo clean, 10/10 Rust tests pass
+- 10 migrations cumulative since v0.1.6 (016-025)
+
+### Tip flow walkthrough
+1. Owner enables tips: Reports → Tips & Gratuities → toggle "Enable Tips at POS"
+2. Cashier sees Tip button in POS toolbar
+3. Click → quick % chips or custom amount → Apply
+4. Tip line appears in cart totals (rose, with heart icon)
+5. Pay → tip recorded on sale
+6. End-of-day Z-report shows tips separately
+7. Manager runs Tips Report to see who earned what
+
+
+## 2026-05-26 — UOM Manager UI + POS Carton Recognition + Customer-Facing Display
+
+### UOM Manager UI (Phase 7 Batch 4 cont.)
+- Added "Cartons / Packs" tab to product panel (visible only when retail module active and editing existing product)
+- Inline CRUD: add/edit/delete pack sizes per product
+- Fields: pack name (e.g., "Carton of 24"), units per pack, optional pack barcode, optional override prices
+- Default purchase / default sale flags
+- Hint banner explaining how POS recognizes scanned carton barcodes
+
+### POS Carton Recognition
+- POS search/scan now first checks `getUomByBarcode(search)` before falling back to product search
+- When a carton barcode is scanned:
+  - System adds the parent product to cart
+  - Quantity is set to `quantity_per` from the pack
+  - Cart line shows `Product Name — Pack Name`
+  - Pack price used if defined, else falls back to base × qty
+  - Toast confirms: "Added: Carton of 24 (24 units)"
+- Falls through to regular product search if no UOM match
+
+### Customer-Facing Display Window (Tauri secondary window)
+
+**Why**: Customers see what's being rung up in real-time on a second screen — builds trust, prevents disputes.
+
+**Helper** (`src/lib/customer-display.ts`):
+- `openCustomerDisplay()` — creates a second `WebviewWindow` at `/customer-display` (1280×720, draggable to second monitor)
+- `closeCustomerDisplay()`, `isCustomerDisplayOpen()`, `toggleDisplayFullscreen()`
+- Reuses focus when already open
+
+**Page** (`src/pages/customer-display.tsx`) — `/customer-display` route
+- **Idle state**: Module-aware gradient welcome screen with logo, business name, "Karibu — welcome", live time/date
+- **Active sale**: Dark theme (stone-900) with module gradient header
+  - Item table with product name, qty, unit price, total in large readable text
+  - Last item highlighted (subtle bg) so customer's eye lands there
+  - Totals footer: subtotal/discount/tax/tip + giant 7xl mono total in bottom right
+- Uses module accent (Dawa teal, Retail orange, Core amber)
+
+**Cart Sync Across Windows** (`src/stores/cart.ts`):
+- Tauri windows don't share localStorage — each is its own webview
+- Added Tauri event-based sync: every cart store change emits `cart:updated` event
+- All windows subscribe and reconcile their state when receiving incoming events
+- 50ms debounce so rapid edits don't spam events
+- Skips re-emit if state already matches (prevents loops)
+
+**POS Toolbar Button**: "Customer Display" button (Monitor icon) opens the second window. Cashier moves it to the second monitor manually (or fullscreens with toggle).
+
+**Tauri Capabilities**: Updated `default.json` to allow:
+- `core:webview:allow-create-webview-window` (creating second window)
+- `core:window:allow-set-focus`, `set-fullscreen`, `is-fullscreen`
+- `core:event:allow-emit`, `allow-listen` (cross-window cart sync)
+- Added `customer-display` to allowed windows list
+
+### Verified
+- TS clean
+- Cargo clean
+- 10/10 Rust tests pass
+- Customer display routes outside AppShell (no sidebar/topbar — full-bleed display for customer view)
+
+### What's left (low priority, hardware-dependent)
+- Scale integration for sold-by-weight (needs USB/serial hardware to test)
+- Phase 9 Website (deferred)
+- CircleCI env var setup (waiting on user tokens)
+
+
+## 2026-05-26 — Module Architecture Refactor + Fixes
+
+### Single-Source-of-Truth Module Registry
+Previous approach sprinkled `module: "dawa"` props across sidebar items, command-palette items, and various components. Brittle and hard to maintain. Replaced with one registry.
+
+**`src/lib/module-features.ts`** — declares which routes belong to which module:
+- `FEATURE_OWNERS` map: route path → owning module (`dawa` | `retail` | etc.)
+- Routes NOT in the map are core features (always available)
+- `getFeatureModule(path)` — returns owner or undefined
+- `isFeatureAvailable(path, activeModule)` — boolean check
+- `filterByActiveModule(items, module)` — array filter
+
+**Refactored consumers**:
+- `components/layout/sidebar.tsx` — uses `isFeatureAvailable(item.to, activeModule)`. NavItem interface no longer has `module` field.
+- `components/layout/command-palette.tsx` — uses `filterByActiveModule(pages, activeModule)`. PageItem no longer has `module` field. Prescription DB query also gated to dawa module.
+- `components/require-role.tsx` — route guard now checks `getFeatureModule(pathname)` and shows a clear "Module not enabled" screen with a "Manage Modules" CTA when accessing wrong-module routes via direct URL.
+- `pages/dashboard.tsx` — "Expiring Soon" mini card uses `isFeatureAvailable("/pharmacy/expiry", moduleId)`.
+
+**To add a new module-specific feature now**:
+1. Add a route in `App.tsx`
+2. Add the path to `FEATURE_OWNERS` in `module-features.ts`
+3. Sidebar, palette, route guard all gate it automatically — no per-component changes
+
+### Module-Aware Branding
+**Sidebar logo**: When active module is not `core`, sidebar shows the module's logo (DawaLogo / RetailLogo) and the module's name as primary identity, with "Powered by SokoOS" as small secondary text. Customer running a pharmacy sees "Dawa Pharmacy" branding, not generic SokoOS.
+
+**Login page**: Same logic — module logo + name. Sign-in screen reflects the deployed brand.
+
+### POS Pharmacy-Only UI Gating
+- `useModuleAccent()` now returns `isPharmacy` and `isRetail` flags
+- **Drug interaction alerts** + **allergy banner** in cart panel: only shown when `isPharmacy=true`
+- **Substitute drug** button (Pill icon) on cart line items: only shown when `isPharmacy=true`
+- Retail users no longer see medical-clinical UI noise
+
+### Sidebar Cleanup
+Removed the `module:` prop from all sidebar nav items. Sidebar's `navItems` array is now flat — module gating is centralized.
+
+### Verified
+- TS clean, Cargo clean, 10/10 tests pass
+- A retail user logging in:
+  - Sees Soko Retail branding in sidebar + login
+  - Has no Pharmacy / Insurance Claims / Controlled Register / Cold Chain / AMR Report visible
+  - POS doesn't show drug interaction alerts or substitute icons
+  - Direct URL `/pharmacy` shows "Module not enabled" screen
+- A pharmacy user logging in:
+  - Sees Dawa Pharmacy branding
+  - No retail Brands / Laybys / Special Orders / Shrinkage / Retail Insights
+  - POS shows full clinical alerts
+- Adding a new module-specific feature is one edit (the registry).
+
+### Files modified
+- `src/lib/module-features.ts` (NEW — 93 lines)
+- `src/components/layout/sidebar.tsx`
+- `src/components/layout/command-palette.tsx`
+- `src/components/require-role.tsx`
+- `src/pages/dashboard.tsx`
+- `src/pages/login.tsx`
+- `src/pages/pos.tsx`

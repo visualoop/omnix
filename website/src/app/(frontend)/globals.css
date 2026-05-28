@@ -1,0 +1,404 @@
+@import 'tailwindcss';
+@import 'tw-animate-css';
+
+/* ═══════════════════════════════════════════════════════════════════════
+ * COMMITTED AESTHETIC DIRECTION (per Anthropic frontend-design + aesthetic-direction skills)
+ *
+ * Three adjectives:        editorial · confident · warm-luxe
+ * Audience:                Kenyan SME owner-operators, ages 28–55, buying once
+ * Reference ceiling:       Linear · Stripe · Cereal magazine · Vercel · Aesop
+ * Industry:                B2B desktop ERP, paid-once, locally fluent
+ *
+ * Type        Fraunces (display, italic on emphasis) + Geist (body) + Plus Jakarta (UI labels) + JetBrains Mono (numbers)
+ *             Fraunces is intentional, not silent default. Italic word per headline carries voice.
+ * Color tone  Warm. Espresso bg #0B0907, cream fg #F2EDE3, single accent #C77B3F (deep terracotta-copper).
+ *             3 surface depths total. NO green/blue/purple/teal anywhere.
+ * Density     Loose for marketing, normal for dashboard. 4px base scale. Section rhythm 96/120/180px.
+ * Radius      Soft (8–12px on cards, 6px on buttons). Pricing card uses sharp 0px to feel architectural.
+ * Components  Filled accent for primary CTA. Ghost for secondary. 1px border on every card.
+ * Imagery     Honest placeholders > hand-drawn SVG. Real product UI > stock photography.
+ * Motion      Quiet. 200ms ease on hover, framer whileInView fades only. No scroll-jacking, no parallax.
+ *
+ * Anti-patterns explicitly banned (verified against ai-slop-check skill):
+ *   ✗ border-left: 4px solid as default card pattern
+ *   ✗ emoji in headlines
+ *   ✗ 3+ color gradients, purple→pink, orange→pink
+ *   ✗ #FFFFFF + #000000 — use #F2EDE3 + #0B0907
+ *   ✗ off-scale spacing (7px, 13px, 18px)
+ *   ✗ Inter / Roboto / Arial as silent defaults
+ *   ✗ section title literally "Features" / "Services" / "Why Choose Us"
+ *   ✗ "Trusted by 50+" avatar strips with 4.9★
+ *   ✗ 3-column emoji feature grids
+ * ═══════════════════════════════════════════════════════════════════════ */
+
+@theme {
+  /* ── Surfaces (4 depths max — espresso → stone → elevated → hover) ── */
+  --color-bg: #0B0907;            /* espresso, near-black with warm undertone */
+  --color-surface: #15110D;       /* warm stone */
+  --color-surface-2: #1F1A14;     /* elevated card */
+  --color-surface-hover: #2A241B; /* hover state on surface */
+
+  --color-border: #2C2620;
+  --color-border-strong: #443B30;
+
+  /* ── Foregrounds (warm creams instead of pure white) ── */
+  --color-fg: #F2EDE3;            /* primary text */
+  --color-fg-muted: #B8AC95;      /* secondary text, sand */
+  --color-fg-subtle: #7A6F5C;     /* captions, taupe */
+
+  /* ── Single accent (deep terracotta-copper, distinctly Kenyan-earth) ── */
+  --color-accent: #C77B3F;
+  --color-accent-hover: #D89456;
+  --color-accent-foreground: #0B0907;
+  --color-accent-soft: rgba(199, 123, 63, 0.08);
+  --color-accent-line: rgba(199, 123, 63, 0.18);
+  --color-accent-glow: rgba(199, 123, 63, 0.22);
+
+  /* ── Semantic states (all warm — no green, no blue) ── */
+  --color-positive: #B5904A;      /* gilded amber for "active" */
+  --color-caution: #C77B3F;       /* matches accent */
+  --color-negative: #B0432F;      /* warm clay-red */
+  --color-neutral: #7A6F5C;       /* taupe */
+
+  /* ── Type stack ── */
+  --font-display: var(--font-fraunces), 'Fraunces', ui-serif, Georgia, serif;
+  --font-sans: var(--font-geist), 'Geist', ui-sans-serif, system-ui, sans-serif;
+  --font-ui: var(--font-jakarta), 'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-jetbrains), 'JetBrains Mono', ui-monospace, 'SFMono-Regular', monospace;
+
+  /* ── Radii (soft default; sharp option for architectural feel) ── */
+  --radius-xs: 2px;
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 10px;
+  --radius-xl: 14px;
+  --radius-2xl: 20px;
+
+  /* ── Container widths (NOT max-w-7xl) ── */
+  --w-narrow: 760px;
+  --w-text: 920px;
+  --w-default: 1180px;
+  --w-wide: 1320px;
+  --w-bleed: 1480px;
+
+  /* ── Spacing scale (4px base, snaps every value) ── */
+  --space-section-tight: 96px;
+  --space-section: 144px;
+  --space-section-loose: 192px;
+}
+
+@layer base {
+  /* Bridge shadcn variables → our tokens (so all installed shadcn components
+     inherit the warm-luxe palette automatically) */
+  :root {
+    --background: var(--color-bg);
+    --foreground: var(--color-fg);
+    --card: var(--color-surface);
+    --card-foreground: var(--color-fg);
+    --popover: var(--color-surface-2);
+    --popover-foreground: var(--color-fg);
+    --primary: var(--color-accent);
+    --primary-foreground: var(--color-accent-foreground);
+    --secondary: var(--color-surface-2);
+    --secondary-foreground: var(--color-fg);
+    --muted: var(--color-surface);
+    --muted-foreground: var(--color-fg-muted);
+    --accent: var(--color-surface-hover);
+    --accent-foreground: var(--color-fg);
+    --destructive: var(--color-negative);
+    --border: var(--color-border);
+    --input: var(--color-border-strong);
+    --ring: var(--color-accent);
+    --radius: 0.625rem;
+  }
+
+  *,
+  *::before,
+  *::after {
+    border-color: var(--color-border);
+  }
+
+  html {
+    background: var(--color-bg);
+    color: var(--color-fg);
+    color-scheme: dark;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+    scrollbar-gutter: stable;
+  }
+
+  body {
+    margin: 0;
+    font-family: var(--font-sans);
+    font-size: 16px;
+    line-height: 1.6;
+    background: var(--color-bg);
+    /* Subtle warm noise so the espresso bg never feels flat — single hue, low chroma */
+    background-image:
+      radial-gradient(at 8% -8%, rgba(199, 123, 63, 0.05) 0%, transparent 55%),
+      radial-gradient(at 96% 6%, rgba(199, 123, 63, 0.035) 0%, transparent 50%);
+  }
+
+  ::selection {
+    background: var(--color-accent);
+    color: var(--color-accent-foreground);
+  }
+
+  ::-webkit-scrollbar { width: 12px; height: 12px; }
+  ::-webkit-scrollbar-track { background: var(--color-bg); }
+  ::-webkit-scrollbar-thumb {
+    background: var(--color-border-strong);
+    border-radius: 9999px;
+    border: 3px solid var(--color-bg);
+  }
+  ::-webkit-scrollbar-thumb:hover { background: var(--color-fg-subtle); }
+
+  h1, h2, h3, h4 {
+    font-family: var(--font-display);
+    letter-spacing: -0.025em;
+    line-height: 1.0;
+    font-weight: 300;
+    color: var(--color-fg);
+  }
+
+  a { color: inherit; text-decoration: none; }
+}
+
+@layer utilities {
+  /* ─── Text wrap helpers ─── */
+  .text-balance { text-wrap: balance; }
+  .text-pretty  { text-wrap: pretty; }
+
+  /* ─── Container utility classes (replace max-w-7xl) ─── */
+  .container-narrow,
+  .container-text,
+  .container-default,
+  .container-wide,
+  .container-bleed {
+    margin-inline: auto;
+    padding-inline: 1.5rem;
+  }
+  .container-narrow  { max-width: var(--w-narrow); }
+  .container-text    { max-width: var(--w-text); }
+  .container-default { max-width: var(--w-default); }
+  .container-wide    { max-width: var(--w-wide); }
+  .container-bleed   { max-width: var(--w-bleed); }
+
+  @media (min-width: 768px) {
+    .container-narrow, .container-text, .container-default, .container-wide, .container-bleed {
+      padding-inline: 2.5rem;
+    }
+  }
+
+  /* ─── Editorial type utilities (used everywhere) ─── */
+
+  /* Eyebrow — small uppercase tracked label preceded by accent dot.
+     Use above section headlines and on hero CTAs. */
+  .eyebrow {
+    font-family: var(--font-ui);
+    font-weight: 600;
+    font-size: 11px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--color-fg-muted);
+    display: inline-flex;
+    align-items: center;
+    gap: 0.6em;
+  }
+  .eyebrow::before {
+    content: '';
+    width: 6px;
+    height: 6px;
+    border-radius: 9999px;
+    background: var(--color-accent);
+    flex-shrink: 0;
+  }
+  .eyebrow-plain {
+    font-family: var(--font-ui);
+    font-weight: 600;
+    font-size: 11px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--color-fg-muted);
+  }
+
+  /* Headlines — Fraunces with italic-word emphasis.
+     Use <em> inside the headline for the italic word. */
+  .headline-hero {
+    font-family: var(--font-display);
+    font-weight: 300;
+    font-size: clamp(56px, 7.4vw, 108px);
+    line-height: 0.96;
+    letter-spacing: -0.028em;
+    color: var(--color-fg);
+  }
+  .headline-hero em {
+    font-style: italic;
+    font-weight: 300;
+    color: var(--color-fg);
+  }
+
+  .headline-section {
+    font-family: var(--font-display);
+    font-weight: 300;
+    font-size: clamp(40px, 4.8vw, 64px);
+    line-height: 1.0;
+    letter-spacing: -0.022em;
+    color: var(--color-fg);
+  }
+  .headline-section em {
+    font-style: italic;
+    color: var(--color-fg);
+  }
+
+  .headline-sub {
+    font-family: var(--font-display);
+    font-weight: 400;
+    font-size: clamp(26px, 2.6vw, 40px);
+    line-height: 1.1;
+    letter-spacing: -0.018em;
+    color: var(--color-fg);
+  }
+  .headline-sub em {
+    font-style: italic;
+  }
+
+  /* Lede — the editorial paragraph after a headline.
+     Geist 19px max-width 60ch */
+  .lede {
+    font-family: var(--font-sans);
+    font-size: clamp(17px, 1.4vw, 19px);
+    line-height: 1.55;
+    color: var(--color-fg-muted);
+    max-width: 60ch;
+  }
+  .lede-italic {
+    font-family: var(--font-sans);
+    font-style: italic;
+    font-size: clamp(18px, 1.5vw, 22px);
+    line-height: 1.55;
+    color: var(--color-fg-muted);
+    max-width: 60ch;
+  }
+
+  /* Pull quote — Fraunces italic, hung indent (pulls visually off the grid) */
+  .pull-quote {
+    font-family: var(--font-display);
+    font-style: italic;
+    font-weight: 400;
+    font-size: clamp(24px, 2.6vw, 36px);
+    line-height: 1.25;
+    letter-spacing: -0.014em;
+    color: var(--color-fg);
+    max-width: 28ch;
+  }
+  .pull-quote::before {
+    content: '"';
+    display: inline-block;
+    transform: translateX(-0.5em);
+    color: var(--color-accent);
+  }
+
+  /* Caption-mono — 11px tracked uppercase JetBrains Mono.
+     Used for tech captions ("Windows 11 · 64-bit · 4 GB RAM") */
+  .caption-mono {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    line-height: 1.6;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--color-fg-subtle);
+  }
+
+  /* Number-display — for the one giant price */
+  .number-display {
+    font-family: var(--font-display);
+    font-weight: 300;
+    font-size: clamp(96px, 14vw, 192px);
+    line-height: 0.9;
+    letter-spacing: -0.045em;
+    color: var(--color-fg);
+    font-variant-numeric: tabular-nums;
+  }
+  .number-display .currency {
+    font-family: var(--font-mono);
+    font-size: 0.22em;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    vertical-align: 0.55em;
+    color: var(--color-fg-muted);
+    margin-right: 0.18em;
+  }
+
+  /* Section vertical rhythm — three paces */
+  .section-tight  { padding-block: var(--space-section-tight); }
+  .section        { padding-block: var(--space-section); }
+  .section-loose  { padding-block: var(--space-section-loose); }
+
+  /* ─── Atmosphere utilities ─── */
+
+  /* Subtle inner highlight on top edge — for buttons that should feel physical */
+  .ring-inset-soft {
+    box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.08);
+  }
+  /* For cards that should feel embossed without using a real shadow */
+  .ring-inset-card {
+    box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.04);
+  }
+
+  /* Single-pixel hairline divider, optionally with center accent dot */
+  .hairline {
+    height: 1px;
+    background: var(--color-border);
+    width: 100%;
+  }
+  .hairline-fade {
+    height: 1px;
+    background: linear-gradient(to right, transparent, var(--color-border), var(--color-border), transparent);
+  }
+  .hairline-accent {
+    height: 1px;
+    background: linear-gradient(to right, transparent, var(--color-accent), transparent);
+    width: 64px;
+  }
+
+  /* Section accent — the soft pool of accent that sits behind hero content */
+  .accent-pool {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background:
+      radial-gradient(60% 40% at 50% 100%, var(--color-accent-glow) 0%, transparent 70%);
+    opacity: 0.5;
+  }
+
+  /* Accent ring — used on the elevated price card */
+  .accent-ring {
+    box-shadow:
+      0 0 0 1px var(--color-accent-line),
+      0 0 60px -20px var(--color-accent-glow);
+  }
+
+  /* Italic-word inline emphasis (when not using <em>) */
+  .italic-display {
+    font-family: var(--font-display);
+    font-style: italic;
+    font-weight: 300;
+  }
+
+  /* Marquee for any horizontal scroll lockup */
+  @keyframes marquee {
+    from { transform: translateX(0); }
+    to   { transform: translateX(-50%); }
+  }
+  .animate-marquee {
+    animation: marquee 40s linear infinite;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .animate-marquee, .animate-pulse {
+      animation: none;
+    }
+  }
+}

@@ -173,3 +173,40 @@ export async function deactivateUser(userId: string): Promise<void> {
   }
   await execute("UPDATE users SET active = 0 WHERE id = ?1", [userId]);
 }
+
+export async function getActiveUsernames(): Promise<string[]> {
+  const rows = await query<{ username: string }>(
+    "SELECT username FROM users WHERE active = 1 ORDER BY username"
+  );
+  return rows.map((r) => r.username);
+}
+
+export async function resetUserPassword(
+  username: string,
+  newPassword: string,
+  authorizerPassword: string,
+): Promise<void> {
+  if (newPassword.length < 4) throw new Error("New password must be at least 4 characters");
+
+  // Verify the authorizer is an owner
+  const owners = await query<User & { password_hash: string }>(
+    "SELECT * FROM users WHERE role = 'owner' AND active = 1"
+  );
+
+  let authorizer: (User & { password_hash: string }) | null = null;
+  for (const owner of owners) {
+    const ok = await verifyPassword(authorizerPassword, owner.password_hash);
+    if (ok) { authorizer = owner; break; }
+  }
+  if (!authorizer) throw new Error("Owner password incorrect. Only the business owner can reset passwords.");
+
+  // Verify target user exists
+  const targets = await query<{ id: string }>(
+    "SELECT id FROM users WHERE username = ?1 AND active = 1", [username]
+  );
+  if (targets.length === 0) throw new Error(`User '${username}' not found or inactive`);
+
+  // Reset
+  const hash = await hashPassword(newPassword);
+  await execute("UPDATE users SET password_hash = ?1 WHERE id = ?2", [hash, targets[0].id]);
+}

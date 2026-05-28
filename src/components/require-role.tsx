@@ -1,9 +1,11 @@
-import { Lock, Shield, ArrowLeft } from "lucide-react";
+import { Lock, Shield, ArrowLeft, Box } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuthStore } from "@/stores/auth";
 import { hasPermission, hasAnyPermission, ROLE_INFO, type Permission } from "@/lib/permissions";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import type { Role } from "@/lib/permissions";
+import { useActiveModule, MODULE_DEFINITIONS } from "@/stores/active-module";
+import { getFeatureModule } from "@/lib/module-features";
 
 interface Props {
   /** Required permission(s). User needs ANY ONE of these to access. */
@@ -24,9 +26,42 @@ interface Props {
 export function RequireRole({ permission, roles, children }: Props) {
   const user = useAuthStore((s) => s.user);
   const navigate = useNavigate();
+  const location = useLocation();
+  const activeModule = useActiveModule((s) => s.active);
 
   if (!user) {
     return null; // App.tsx handles login redirect; we shouldn't render here
+  }
+
+  // ─── Module gate ─────────────────────────────────────────
+  // If this route belongs to a module that isn't currently active,
+  // show a clear "feature not enabled" screen instead of granting access.
+  const requiredModule = getFeatureModule(location.pathname);
+  if (requiredModule && requiredModule !== activeModule) {
+    const moduleDef = MODULE_DEFINITIONS[requiredModule];
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] px-6 text-center">
+        <div className="h-16 w-16 rounded-full bg-blue-500/15 flex items-center justify-center mb-4">
+          <Box className="h-7 w-7 text-blue-700" />
+        </div>
+        <h2 className="text-lg font-semibold mb-1">Module not enabled</h2>
+        <p className="text-sm text-muted-foreground max-w-md mb-1">
+          This feature belongs to the <b>{moduleDef.name}</b> module.
+        </p>
+        <p className="text-sm text-muted-foreground max-w-md mb-4">
+          You're currently using the <b>{MODULE_DEFINITIONS[activeModule].name}</b> module.
+          Switch modules from Settings to enable {moduleDef.shortName} features.
+        </p>
+        <div className="flex gap-2">
+          <Button variant="outline" size="sm" onClick={() => navigate(-1)}>
+            <ArrowLeft className="h-3.5 w-3.5 mr-1.5" /> Back
+          </Button>
+          <Button size="sm" onClick={() => navigate("/settings/modules")}>
+            <Box className="h-3.5 w-3.5 mr-1.5" /> Manage Modules
+          </Button>
+        </div>
+      </div>
+    );
   }
 
   const allowedByPermission = (() => {

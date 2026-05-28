@@ -1,4 +1,5 @@
 import { query } from "@/lib/db";
+import { getActiveBranchId } from "@/stores/active-branch";
 
 export interface DashboardKPIs {
   today_sales_count: number;
@@ -32,11 +33,12 @@ export interface SalesByPaymentMethod {
 
 export async function getDashboardKPIs(): Promise<DashboardKPIs> {
   const today = new Date().toISOString().slice(0, 10);
+  const branchId = getActiveBranchId();
 
   const todaySales = await query<{ count: number; total: number }>(
     `SELECT COUNT(*) as count, COALESCE(SUM(total), 0) as total 
-     FROM sales WHERE date(created_at) = ?1 AND status = 'completed'`,
-    [today]
+     FROM sales WHERE date(created_at) = ?1 AND status = 'completed' AND branch_id = ?2`,
+    [today, branchId]
   );
 
   const todayProfit = await query<{ profit: number }>(
@@ -44,20 +46,22 @@ export async function getDashboardKPIs(): Promise<DashboardKPIs> {
      FROM sale_items si
      JOIN sales s ON s.id = si.sale_id
      LEFT JOIN batches b ON b.id = si.batch_id
-     WHERE date(s.created_at) = ?1 AND s.status = 'completed'`,
-    [today]
+     WHERE date(s.created_at) = ?1 AND s.status = 'completed' AND s.branch_id = ?2`,
+    [today, branchId]
   );
 
   const lowStock = await query<{ count: number }>(
     `SELECT COUNT(*) as count FROM products p
      WHERE p.active = 1 
-       AND COALESCE((SELECT SUM(b.quantity) FROM batches b WHERE b.product_id = p.id), 0) <= p.reorder_level`
+       AND COALESCE((SELECT SUM(b.quantity) FROM batches b WHERE b.product_id = p.id AND b.branch_id = ?1), 0) <= p.reorder_level`,
+    [branchId]
   );
 
   const expiring = await query<{ count: number }>(
     `SELECT COUNT(*) as count FROM batches b
-     WHERE b.expiry_date IS NOT NULL AND b.quantity > 0
-       AND julianday(b.expiry_date) - julianday('now') <= 90`
+     WHERE b.expiry_date IS NOT NULL AND b.quantity > 0 AND b.branch_id = ?1
+       AND julianday(b.expiry_date) - julianday('now') <= 90`,
+    [branchId]
   );
 
   const products = await query<{ count: number }>(
@@ -71,8 +75,8 @@ export async function getDashboardKPIs(): Promise<DashboardKPIs> {
   const cashPos = await query<{ total: number }>(
     `SELECT COALESCE(SUM(p.amount), 0) as total
      FROM payments p JOIN sales s ON s.id = p.sale_id
-     WHERE date(s.created_at) = ?1 AND p.method_id = 'cash'`,
-    [today]
+     WHERE date(s.created_at) = ?1 AND p.method_id = 'cash' AND s.branch_id = ?2`,
+    [today, branchId]
   );
 
   return {
@@ -90,11 +94,11 @@ export async function getDashboardKPIs(): Promise<DashboardKPIs> {
 export async function getSalesByDay(days: number = 7): Promise<SalesByDay[]> {
   return query<SalesByDay>(
     `SELECT date(created_at) as date, COALESCE(SUM(total), 0) as total, COUNT(*) as count
-     FROM sales WHERE status = 'completed' 
+     FROM sales WHERE status = 'completed' AND branch_id = ?2
        AND julianday('now') - julianday(created_at) < ?1
      GROUP BY date(created_at)
      ORDER BY date ASC`,
-    [days]
+    [days, getActiveBranchId()]
   );
 }
 
@@ -104,10 +108,11 @@ export async function getTopProducts(days: number = 30, limit: number = 10): Pro
             SUM(si.quantity) as qty_sold,
             SUM(si.total) as total_revenue
      FROM sale_items si JOIN sales s ON s.id = si.sale_id
-     WHERE s.status = 'completed' AND julianday('now') - julianday(s.created_at) < ?1
+     WHERE s.status = 'completed' AND s.branch_id = ?3
+       AND julianday('now') - julianday(s.created_at) < ?1
      GROUP BY si.product_id, si.product_name
      ORDER BY total_revenue DESC LIMIT ?2`,
-    [days, limit]
+    [days, limit, getActiveBranchId()]
   );
 }
 
@@ -115,9 +120,10 @@ export async function getSalesByPaymentMethod(days: number = 30): Promise<SalesB
   return query<SalesByPaymentMethod>(
     `SELECT p.method_name, COUNT(*) as count, SUM(p.amount) as total
      FROM payments p JOIN sales s ON s.id = p.sale_id
-     WHERE s.status = 'completed' AND julianday('now') - julianday(s.created_at) < ?1
+     WHERE s.status = 'completed' AND s.branch_id = ?2
+       AND julianday('now') - julianday(s.created_at) < ?1
      GROUP BY p.method_name ORDER BY total DESC`,
-    [days]
+    [days, getActiveBranchId()]
   );
 }
 

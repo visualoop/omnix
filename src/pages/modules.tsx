@@ -9,6 +9,7 @@ import {
   Smartphone,
   Sparkles,
   UtensilsCrossed,
+  ShoppingBag,
   ArrowLeft,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -56,14 +57,32 @@ const MODULES: Module[] = [
     features: [
       "Prescriptions with prescriber tracking",
       "Expiry alerts (30/60/90 day windows)",
-      "Controlled substances log",
-      "Drug-drug interaction warnings (28 clinical pairs)",
+      "Controlled substances log + statutory daily register",
+      "Drug-drug + drug-allergy warnings",
       "Patient profiles: allergies, conditions, medications",
+      "Pharmacist on duty (PPB-licensed) tracking",
       "SHA + private insurance claims",
       "VAT exemption for medicaments",
       "Pharmacy-specific HS codes for KRA",
     ],
-    routes: ["/pharmacy", "/pharmacy/expiry", "/claims", "/patients/:id"],
+    routes: ["/pharmacy", "/pharmacy/expiry", "/pharmacy/controlled-register", "/claims", "/patients/:id"],
+  },
+  {
+    id: "retail",
+    name: "Soko Retail",
+    description: "General retail: cosmetics, mini-marts, dukas, gift shops. Variants, brands, laybys.",
+    icon: ShoppingBag,
+    status: "installed",
+    features: [
+      "Brands with country of origin",
+      "Product variants (color, size, shade)",
+      "Tiered pricing (retail/wholesale/staff/VIP)",
+      "Layby (pay-in-installments) with deposit + balance tracking",
+      "Special orders / pre-orders",
+      "Shrinkage tracking with cost analysis",
+      "Per-customer price-list assignment",
+    ],
+    routes: ["/retail/brands", "/retail/laybys", "/retail/special-orders", "/retail/shrinkage"],
   },
   {
     id: "hardware",

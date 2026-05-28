@@ -1,12 +1,13 @@
 import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { Plus, Search, Package, Upload, Edit3 } from "lucide-react";
+import { Plus, Search, Package, Upload, Edit3, Zap, PackagePlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { getProducts, getCategories, type Product, type Category } from "@/services/inventory";
 import { ProductPanel } from "@/components/inventory/product-panel";
 import { BulkEditDialog } from "@/components/inventory/bulk-edit-dialog";
+import { ReceiveStockDialog } from "@/components/inventory/receive-stock-dialog";
 import { Can } from "@/components/require-role";
 
 export function InventoryPage() {
@@ -14,9 +15,10 @@ export function InventoryPage() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [search, setSearch] = useState("");
   const [panelOpen, setPanelOpen] = useState(false);
+  const [bulkOpen, setBulkOpen] = useState(false);
+  const [receiveOpen, setReceiveOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [selected, setSelected] = useState<Set<string>>(new Set());
-  const [bulkOpen, setBulkOpen] = useState(false);
 
   const load = useCallback(async () => {
     const [data, cats] = await Promise.all([
@@ -65,6 +67,12 @@ export function InventoryPage() {
             </Can>
           )}
           <Can permission="inventory.edit">
+            <Button size="sm" variant="outline" onClick={() => setReceiveOpen(true)} className="bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100">
+              <PackagePlus className="h-4 w-4 mr-1" /> Receive Stock
+            </Button>
+            <Button size="sm" variant="outline" onClick={() => navigate("/inventory/quick-add")}>
+              <Zap className="h-4 w-4 mr-1" /> Quick Add
+            </Button>
             <Button size="sm" variant="outline" onClick={() => navigate("/inventory/import")}>
               <Upload className="h-4 w-4 mr-1" /> Import CSV
             </Button>
@@ -181,6 +189,11 @@ export function InventoryPage() {
         onClose={() => setBulkOpen(false)}
         onComplete={() => { setSelected(new Set()); load(); }}
         categories={categories}
+      />
+      <ReceiveStockDialog
+        open={receiveOpen}
+        onClose={() => setReceiveOpen(false)}
+        onSaved={() => { setReceiveOpen(false); load(); }}
       />
     </div>
   );

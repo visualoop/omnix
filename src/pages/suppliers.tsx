@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { confirm } from "@/components/ui/confirm-dialog";
 import { Plus, Search, Truck, Edit3, Phone, Mail, Wallet } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -214,7 +215,7 @@ function SupplierForm({ open, supplier, onClose, onSaved }: {
   };
 
   const handleDeactivate = async () => {
-    if (!supplier || !confirm(`Deactivate ${supplier.name}?`)) return;
+    if (!supplier || !(await confirm({ title: `Deactivate ${supplier.name}?` }))) return;
     await deactivateSupplier(supplier.id);
     toast.success("Deactivated");
     onSaved();

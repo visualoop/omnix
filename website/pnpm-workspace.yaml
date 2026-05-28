@@ -1,0 +1,6 @@
+onlyBuiltDependencies:
+  - sharp
+  - esbuild
+  - unrs-resolver
+  - core-js
+  - msw

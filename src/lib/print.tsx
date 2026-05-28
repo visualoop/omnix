@@ -44,7 +44,7 @@ export function ensurePrintCss() {
   if (injected) return;
   injected = true;
   const style = document.createElement("style");
-  style.id = "sokoos-print-css";
+  style.id = "omnix-print-css";
   style.textContent = PRINT_CSS;
   document.head.appendChild(style);
 }

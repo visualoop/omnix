@@ -147,18 +147,36 @@ export async function verifyMember(
   );
   if (cached[0]) return { ok: true, member: cached[0] };
 
-  // For SHA, attempt API call
-  if (provider.type === "sha" && provider.api_endpoint && provider.api_key) {
+  // For SHA, attempt API call via AfyaLink (DHA HIE)
+  if (provider.type === "sha" && provider.api_key && provider.api_secret) {
     try {
       const baseUrl = provider.test_mode === 1
-        ? "https://sandbox.sha.go.ke/api/v1"
-        : provider.api_endpoint;
+        ? "https://afyalink.dha.go.ke"
+        : (provider.api_endpoint || "https://afyalink.dha.go.ke");
 
-      const res = await fetch(`${baseUrl}/members/verify`, {
+      // Step 1: Get JWT token via Basic Auth
+      const tokenRes = await fetch(`${baseUrl}/v1/hie-auth?key=${encodeURIComponent(provider.api_key)}`, {
+        method: "GET",
+        headers: {
+          "Authorization": `Basic ${btoa(`${provider.api_key}:${provider.api_secret}`)}`,
+        },
+      });
+
+      if (!tokenRes.ok) {
+        const err = await tokenRes.json().catch(() => ({}));
+        return { ok: false, error: (err as { message?: string }).message || "HIE auth failed" };
+      }
+
+      const tokenData = await tokenRes.json() as { token?: string; access_token?: string };
+      const jwtToken = tokenData.token || tokenData.access_token;
+      if (!jwtToken) return { ok: false, error: "No token in HIE response" };
+
+      // Step 2: Verify member
+      const res = await fetch(`${baseUrl}/v1/hie-member-verify`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${provider.api_key}`,
+          "Authorization": `Bearer ${jwtToken}`,
         },
         body: JSON.stringify({
           member_number: memberNumber,
