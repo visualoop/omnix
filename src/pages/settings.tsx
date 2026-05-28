@@ -49,7 +49,7 @@ const SETTINGS_LINKS: SettingsLink[] = [
   {
     to: "/settings/payments",
     label: "Payment Methods",
-    description: "Configure Paystack M-Pesa STK push",
+    description: "Configure Paystack Configure Paystack M-Pesa STK push M-Pesa Daraja",
     icon: CreditCard,
   },
   {
