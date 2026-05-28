@@ -19,14 +19,6 @@ jobs:
             npm --version
 
       - run:
-          name: Install pnpm
-          command: |
-            refreshenv
-            npm install -g pnpm@9
-            $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
-            pnpm --version
-
-      - run:
           name: Install Rust
           command: |
             Invoke-WebRequest -Uri https://static.rust-lang.org/rustup/dist/x86_64-pc-windows-msvc/rustup-init.exe -OutFile rustup-init.exe
@@ -39,21 +31,18 @@ jobs:
           name: Install deps
           command: |
             refreshenv
-            $env:Path = "$env:USERPROFILE\.cargo\bin;$env:Path"
-            pnpm install --frozen-lockfile
+            npm install
 
       - run:
           name: Rebuild installer images
           command: |
             refreshenv
-            $env:Path = "$env:USERPROFILE\.cargo\bin;$env:Path"
-            pnpm build:installer-images
+            node scripts/build-installer-images.mjs
 
       - run:
           name: Type-check
           command: |
             refreshenv
-            $env:Path = "$env:USERPROFILE\.cargo\bin;$env:Path"
             npx tsc --noEmit
 
       - run:
@@ -61,7 +50,7 @@ jobs:
           command: |
             refreshenv
             $env:Path = "$env:USERPROFILE\.cargo\bin;$env:Path"
-            pnpm tauri build --bundles msi,nsis
+            npx tauri build --bundles msi,nsis
 
       - store_artifacts:
           path: src-tauri\target\release\bundle\msi
