@@ -23,41 +23,36 @@ jobs:
           command: |
             Invoke-WebRequest -Uri https://static.rust-lang.org/rustup/dist/x86_64-pc-windows-msvc/rustup-init.exe -OutFile rustup-init.exe
             .\rustup-init.exe -y --default-toolchain stable --profile minimal
-            $env:Path = "$env:USERPROFILE\.cargo\bin;$env:Path"
-            rustup target add x86_64-pc-windows-msvc
             rustc --version
 
       - run:
-          name: Install deps
+          name: Shorten build dir (fix MSVC link.exe 32K argument limit)
           command: |
-            refreshenv
-            npm install
+            $env:Path = "$env:USERPROFILE\.cargo\bin;$env:Path"
+            mkdir C:\build -Force
+            Copy-Item -Path . -Destination C:\build -Recurse
+            Set-Location C:\build
 
-      - run:
-          name: Rebuild installer images
-          command: |
-            refreshenv
-            node scripts/build-installer-images.mjs
-
-      - run:
-          name: Type-check
-          command: |
-            refreshenv
-            npx tsc --noEmit
+            rustup target add x86_64-pc-windows-msvc
+            cargo check
+            Write-Host "Rust check passed"
 
       - run:
           name: Build Windows installers
           command: |
-            refreshenv
             $env:Path = "$env:USERPROFILE\.cargo\bin;$env:Path"
+            Set-Location C:\build
+            npm install
+            npm run build:installer-images
+            npx tsc --noEmit
             npx tauri build --bundles msi,nsis
 
       - store_artifacts:
-          path: src-tauri\target\release\bundle\msi
+          path: C:\build\src-tauri\target\release\bundle\msi
           destination: windows-msi
 
       - store_artifacts:
-          path: src-tauri\target\release\bundle\nsis
+          path: C:\build\src-tauri\target\release\bundle\nsis
           destination: windows-nsis
 
       - when:
@@ -72,8 +67,8 @@ jobs:
             - run:
                 name: Publish GitHub Release
                 command: |
-                  refreshenv
                   $env:Path = "$env:USERPROFILE\.cargo\bin;$env:Path"
+                  Set-Location C:\build
                   $TAG = $env:CIRCLE_TAG
                   $VERSION = $TAG -replace '^v',''
                   mkdir release-assets -Force
