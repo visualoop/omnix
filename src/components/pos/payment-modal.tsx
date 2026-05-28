@@ -6,9 +6,11 @@ import { useCartStore } from "@/stores/cart";
 import { useAuthStore } from "@/stores/auth";
 import { completeSale, getPaymentMethods, type PaymentMethod, type PaymentEntry } from "@/services/sales";
 import { getPaystackConfig } from "@/services/paystack";
+import { getDarajaConfig } from "@/services/daraja";
 import { createClaim, type InsuranceProvider, type InsuranceMember } from "@/services/insurance";
 import { buildReceiptData, printReceipt } from "@/services/receipt";
 import { PaystackMpesaCharge } from "@/components/pos/paystack-mpesa";
+import { DarajaMpesaCharge } from "@/components/pos/daraja-mpesa";
 import { InsuranceVerifyPanel } from "@/components/pos/insurance-verify";
 import { toast } from "sonner";
 
@@ -32,7 +34,9 @@ export function PaymentModal({ open, onClose }: Props) {
   const [payments, setPayments] = useState<PaymentEntry[]>([]);
   const [processing, setProcessing] = useState(false);
   const [paystackActive, setPaystackActive] = useState(false);
+  const [darajaActive, setDarajaActive] = useState(false);
   const [showStkPush, setShowStkPush] = useState(false);
+  const [showDarajaStk, setShowDarajaStk] = useState(false);
   const [showInsuranceVerify, setShowInsuranceVerify] = useState(false);
   const [insurance, setInsurance] = useState<InsuranceState | null>(null);
 
@@ -46,16 +50,17 @@ export function PaymentModal({ open, onClose }: Props) {
     if (open) {
       getPaymentMethods().then(setMethods);
       getPaystackConfig().then((c) => setPaystackActive(!!c?.active));
+      getDarajaConfig().then((c) => setDarajaActive(!!c?.active));
       setPayments([]);
       setAmount(String(total.toFixed(2)));
       setReference("");
       setShowStkPush(false);
+      setShowDarajaStk(false);
       setShowInsuranceVerify(false);
       setInsurance(null);
     }
   }, [open, total]);
 
-  // When user clicks Insurance method, open verification panel
   const handleSelectMethod = (id: string) => {
     setSelectedMethod(id);
     if (id === "insurance" && !insurance) {
@@ -66,14 +71,12 @@ export function PaymentModal({ open, onClose }: Props) {
   const handleInsuranceConfirmed = (data: InsuranceState) => {
     setInsurance(data);
     setShowInsuranceVerify(false);
-    // Add claim portion as insurance payment
     setPayments([{
       method_id: "insurance",
       method_name: `${data.provider.code} - ${data.member.full_name}`,
       amount: data.claim,
       reference: data.member.member_number,
     }]);
-    // Member still needs to pay copay
     setAmount(String(data.copay.toFixed(2)));
     setSelectedMethod("cash");
   };
@@ -99,7 +102,6 @@ export function PaymentModal({ open, onClose }: Props) {
     try {
       const { saleId, saleItemIds } = await completeSale(items, finalPayments, customerId, user!.id, cartDiscountAmount(), tip, tipEmployeeId);
 
-      // Create insurance claim if applicable
       if (insurance) {
         await createClaim({
           sale_id: saleId,
@@ -122,7 +124,6 @@ export function PaymentModal({ open, onClose }: Props) {
         toast.success("Sale completed");
       }
 
-      // Print receipt (give eTIMS a moment to sign first)
       setTimeout(async () => {
         try {
           const data = await buildReceiptData(saleId);
@@ -148,7 +149,22 @@ export function PaymentModal({ open, onClose }: Props) {
           <DialogTitle>Payment</DialogTitle>
         </DialogHeader>
 
-        {showStkPush ? (
+        {showDarajaStk ? (
+          <DarajaMpesaCharge
+            amount={remaining}
+            onSuccess={(ref) => {
+              setPayments([...payments, {
+                method_id: "mpesa-daraja",
+                method_name: "M-Pesa (Direct)",
+                amount: remaining,
+                reference: ref,
+              }]);
+              setShowDarajaStk(false);
+              setAmount("0");
+            }}
+            onCancel={() => setShowDarajaStk(false)}
+          />
+        ) : showStkPush ? (
           <PaystackMpesaCharge
             amount={remaining}
             email="customer@omnix.local"
@@ -172,7 +188,6 @@ export function PaymentModal({ open, onClose }: Props) {
           />
         ) : (
         <div className="space-y-4">
-          {/* Total */}
           <div className="text-center py-2">
             <p className="text-xs text-muted-foreground">Total Due</p>
             <p className="text-3xl font-bold font-mono">{total.toFixed(2)}</p>
@@ -188,7 +203,6 @@ export function PaymentModal({ open, onClose }: Props) {
             )}
           </div>
 
-          {/* Method selector */}
           <div className="grid grid-cols-2 gap-2">
             {methods.map((m) => (
               <button
@@ -205,7 +219,6 @@ export function PaymentModal({ open, onClose }: Props) {
             ))}
           </div>
 
-          {/* Amount */}
           <div className="space-y-1.5">
             <label className="text-xs font-medium text-muted-foreground">Amount</label>
             <Input
@@ -220,46 +233,23 @@ export function PaymentModal({ open, onClose }: Props) {
               <>
                 <div className="flex flex-wrap gap-1.5 pt-1">
                   {[50, 100, 200, 500, 1000, 2000].map((denom) => (
-                    <button
-                      key={denom}
-                      type="button"
-                      onClick={() => {
-                        const current = parseFloat(amount) || 0;
-                        setAmount(String(current + denom));
-                      }}
-                      className="h-8 px-2.5 text-xs font-mono rounded-md border border-border bg-background hover:bg-accent transition"
-                    >
+                    <button key={denom} type="button" onClick={() => { const current = parseFloat(amount) || 0; setAmount(String(current + denom)); }} className="h-8 px-2.5 text-xs font-mono rounded-md border border-border bg-background hover:bg-accent transition">
                       +{denom}
                     </button>
                   ))}
-                  <button
-                    type="button"
-                    onClick={() => setAmount(String(total.toFixed(2)))}
-                    className="h-8 px-2.5 text-xs rounded-md border border-primary text-primary bg-background hover:bg-primary/5 transition"
-                  >
-                    Exact
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setAmount("")}
-                    className="h-8 px-2.5 text-xs rounded-md border border-border bg-background hover:bg-accent transition text-muted-foreground"
-                  >
-                    Clear
-                  </button>
+                  <button type="button" onClick={() => setAmount(String(total.toFixed(2)))} className="h-8 px-2.5 text-xs rounded-md border border-primary text-primary bg-background hover:bg-primary/5 transition">Exact</button>
+                  <button type="button" onClick={() => setAmount("")} className="h-8 px-2.5 text-xs rounded-md border border-border bg-background hover:bg-accent transition text-muted-foreground">Clear</button>
                 </div>
                 {parseFloat(amount) > total && (
                   <div className="text-sm pt-1">
                     <span className="text-muted-foreground">Change: </span>
-                    <span className="font-mono font-semibold text-emerald-600">
-                      KES {(parseFloat(amount) - total).toFixed(2)}
-                    </span>
+                    <span className="font-mono font-semibold text-emerald-600">KES {(parseFloat(amount) - total).toFixed(2)}</span>
                   </div>
                 )}
               </>
             )}
           </div>
 
-          {/* Reference (for M-Pesa, bank) */}
           {selectedMethod !== "cash" && selectedMethod !== "insurance" && (
             <div className="space-y-1.5">
               <label className="text-xs font-medium text-muted-foreground">Reference / Transaction Code</label>
@@ -267,18 +257,18 @@ export function PaymentModal({ open, onClose }: Props) {
             </div>
           )}
 
-          {/* Paystack STK Push button */}
+          {darajaActive && selectedMethod === "mpesa-manual" && (
+            <Button variant="outline" className="w-full border-green-500 text-green-600 hover:bg-green-50" onClick={() => setShowDarajaStk(true)}>
+              📱 Send STK Push via M-Pesa (Direct)
+            </Button>
+          )}
+
           {paystackActive && selectedMethod === "mpesa-manual" && (
-            <Button
-              variant="outline"
-              className="w-full"
-              onClick={() => setShowStkPush(true)}
-            >
+            <Button variant="outline" className="w-full" onClick={() => setShowStkPush(true)}>
               📱 Send STK Push via Paystack
             </Button>
           )}
 
-          {/* Split payment history */}
           {payments.length > 0 && (
             <div className="border border-border rounded-md p-2 space-y-1">
               {payments.map((p, i) => (
@@ -290,35 +280,23 @@ export function PaymentModal({ open, onClose }: Props) {
             </div>
           )}
 
-          {/* Actions */}
           <div className="flex gap-2">
             {payments.length === 0 && remaining > 0 ? (
               <>
-                <Button variant="secondary" className="flex-1" onClick={addPayment}>
-                  Split
-                </Button>
-                <Button className="flex-1" onClick={handleComplete} disabled={processing}>
-                  {processing ? "..." : "Complete"}
-                </Button>
+                <Button variant="secondary" className="flex-1" onClick={addPayment}>Split</Button>
+                <Button className="flex-1" onClick={handleComplete} disabled={processing}>{processing ? "..." : "Complete"}</Button>
               </>
             ) : remaining > 0 ? (
-              <Button className="w-full" onClick={addPayment}>
-                Add Payment
-              </Button>
+              <Button className="w-full" onClick={addPayment}>Add Payment</Button>
             ) : (
-              <Button className="w-full" onClick={handleComplete} disabled={processing}>
-                {processing ? "Processing..." : "Complete Sale"}
-              </Button>
+              <Button className="w-full" onClick={handleComplete} disabled={processing}>{processing ? "Processing..." : "Complete Sale"}</Button>
             )}
           </div>
 
-          {/* Change */}
           {parseFloat(amount) > remaining && remaining <= 0 && (
             <div className="text-center text-sm">
               <span className="text-muted-foreground">Change: </span>
-              <span className="font-mono font-medium text-green-600">
-                {(parseFloat(amount) - total + paidSoFar).toFixed(2)}
-              </span>
+              <span className="font-mono font-medium text-green-600">{(parseFloat(amount) - total + paidSoFar).toFixed(2)}</span>
             </div>
           )}
         </div>
