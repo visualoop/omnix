@@ -7,10 +7,6 @@ jobs:
       resource_class: windows.medium
       shell: powershell.exe
 
-    environment:
-      PNPM_HOME: C:\Users\circleci\AppData\Local\pnpm
-      CARGO_INCREMENTAL: 0
-
     steps:
       - checkout
 
@@ -23,11 +19,11 @@ jobs:
             npm --version
 
       - run:
-          name: Enable pnpm
+          name: Install pnpm
           command: |
-            corepack enable
-            corepack prepare pnpm@9 --activate
-            $env:Path = "$env:PNPM_HOME;$env:Path"
+            refreshenv
+            npm install -g pnpm@9
+            $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
             pnpm --version
 
       - run:
@@ -42,25 +38,29 @@ jobs:
       - run:
           name: Install deps
           command: |
-            $env:Path = "$env:PNPM_HOME;$env:USERPROFILE\.cargo\bin;$env:Path"
+            refreshenv
+            $env:Path = "$env:USERPROFILE\.cargo\bin;$env:Path"
             pnpm install --frozen-lockfile
 
       - run:
           name: Rebuild installer images
           command: |
-            $env:Path = "$env:PNPM_HOME;$env:USERPROFILE\.cargo\bin;$env:Path"
+            refreshenv
+            $env:Path = "$env:USERPROFILE\.cargo\bin;$env:Path"
             pnpm build:installer-images
 
       - run:
           name: Type-check
           command: |
-            $env:Path = "$env:PNPM_HOME;$env:USERPROFILE\.cargo\bin;$env:Path"
+            refreshenv
+            $env:Path = "$env:USERPROFILE\.cargo\bin;$env:Path"
             npx tsc --noEmit
 
       - run:
           name: Build Windows installers
           command: |
-            $env:Path = "$env:PNPM_HOME;$env:USERPROFILE\.cargo\bin;$env:Path"
+            refreshenv
+            $env:Path = "$env:USERPROFILE\.cargo\bin;$env:Path"
             pnpm tauri build --bundles msi,nsis
 
       - store_artifacts:
@@ -83,7 +83,8 @@ jobs:
             - run:
                 name: Publish GitHub Release
                 command: |
-                  $env:Path = "$env:PNPM_HOME;$env:USERPROFILE\.cargo\bin;$env:Path"
+                  refreshenv
+                  $env:Path = "$env:USERPROFILE\.cargo\bin;$env:Path"
                   $TAG = $env:CIRCLE_TAG
                   $VERSION = $TAG -replace '^v',''
                   mkdir release-assets -Force
