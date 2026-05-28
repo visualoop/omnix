@@ -2,7 +2,7 @@
 
 ## 1. Sign up at circleci.com
 Go to https://circleci.com/signup/ — click "Sign Up with GitHub".
-Authorize the justinelut/sokoOS repository.
+Authorize the justinelut/omnix repository.
 
 ## 2. Add environment variables
 In CircleCI Dashboard → Project Settings → Environment Variables, add:
