@@ -1,0 +1,201 @@
+version: 2.1
+
+parameters:
+  trigger_release:
+    type: boolean
+    default: false
+  release_tag:
+    type: string
+    default: ""
+
+workflows:
+  build:
+    jobs:
+      - build-windows:
+          filters:
+            tags:
+              only: /^v.*/
+  tagged-release:
+    jobs:
+      - build-windows-release:
+          filters:
+            tags:
+              only: /^v.*/
+
+jobs:
+  build-windows:
+    machine:
+      image: windows-server-2025-gui:current
+      resource_class: windows.medium
+      shell: bash.exe
+
+    steps:
+      - checkout
+
+      - run:
+          name: Install Node.js
+          command: choco install nodejs --version=20.18.0 -y --no-progress
+
+      - run:
+          name: Install pnpm
+          command: npm install -g pnpm@9
+
+      - run:
+          name: Install Rust
+          command: |
+            curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain stable --profile minimal
+            echo 'export PATH="$HOME/.cargo/bin:$PATH"' >> $BASH_ENV
+            source $BASH_ENV
+            rustup target add x86_64-pc-windows-msvc
+
+      - restore_cache:
+          keys:
+            - rust-cache-v1-{{ checksum "src-tauri/Cargo.lock" }}
+            - rust-cache-v1-
+
+      - run:
+          name: Install deps
+          command: pnpm install --frozen-lockfile
+
+      - run:
+          name: Rebuild installer images
+          command: pnpm build:installer-images
+
+      - run:
+          name: Type-check
+          command: npx tsc --noEmit
+
+      - run:
+          name: Build Windows installers
+          command: |
+            export PATH="$HOME/.cargo/bin:$PATH"
+            pnpm tauri build --bundles msi,nsis
+
+      - save_cache:
+          paths:
+            - "C:\\Users\\circleci\\.cargo"
+            - "src-tauri\\target"
+          key: rust-cache-v1-{{ checksum "src-tauri/Cargo.lock" }}
+
+      - store_artifacts:
+          path: src-tauri/target/release/bundle/msi
+          destination: windows-msi
+
+      - store_artifacts:
+          path: src-tauri/target/release/bundle/nsis
+          destination: windows-nsis
+
+      - store_artifacts:
+          path: src-tauri/target/release/bundle/msi/*.sig
+          destination: signatures
+
+  build-windows-release:
+    machine:
+      image: windows-server-2025-gui:current
+      resource_class: windows.medium
+      shell: bash.exe
+
+    steps:
+      - checkout
+
+      - run:
+          name: Install Node.js
+          command: choco install nodejs --version=20.18.0 -y --no-progress
+
+      - run:
+          name: Install pnpm
+          command: npm install -g pnpm@9
+
+      - run:
+          name: Install Rust
+          command: |
+            curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain stable --profile minimal
+            echo 'export PATH="$HOME/.cargo/bin:$PATH"' >> $BASH_ENV
+            source $BASH_ENV
+            rustup target add x86_64-pc-windows-msvc
+
+      - run:
+          name: Install GitHub CLI
+          command: choco install gh -y --no-progress
+
+      - restore_cache:
+          keys:
+            - rust-cache-v1-{{ checksum "src-tauri/Cargo.lock" }}
+            - rust-cache-v1-
+
+      - run:
+          name: Install deps
+          command: pnpm install --frozen-lockfile
+
+      - run:
+          name: Rebuild installer images
+          command: pnpm build:installer-images
+
+      - run:
+          name: Type-check
+          command: npx tsc --noEmit
+
+      - run:
+          name: Build Windows installers (signed)
+          command: |
+            export PATH="$HOME/.cargo/bin:$PATH"
+            pnpm tauri build --bundles msi,nsis
+
+      - save_cache:
+          paths:
+            - "C:\\Users\\circleci\\.cargo"
+            - "src-tauri\\target"
+          key: rust-cache-v1-{{ checksum "src-tauri/Cargo.lock" }}
+
+      - run:
+          name: Generate updater manifest
+          command: |
+            TAG="${CIRCLE_TAG}"
+            VERSION="${TAG#v}"
+            mkdir -p release-assets
+
+            INSTALLER=$(ls src-tauri/target/release/bundle/nsis/*-setup.exe 2>/dev/null | head -1)
+            SIG_FILE=$(ls src-tauri/target/release/bundle/nsis/*-setup.exe.sig 2>/dev/null | head -1)
+            INSTALLER_NAME=$(basename "$INSTALLER")
+
+            if [ -z "$INSTALLER" ] || [ -z "$SIG_FILE" ]; then
+              echo "No signed installer/sig found - skipping manifest"
+              touch release-assets/latest.json
+              exit 0
+            fi
+
+            SIGNATURE=$(cat "$SIG_FILE")
+
+            cat > release-assets/latest.json <<JSON
+            {
+              "version": "$VERSION",
+              "notes": "See https://github.com/justinelut/sokoOS/releases/tag/$TAG",
+              "pub_date": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+              "platforms": {
+                "windows-x86_64": {
+                  "signature": "$SIGNATURE",
+                  "url": "https://github.com/justinelut/sokoOS/releases/download/$TAG/$INSTALLER_NAME"
+                }
+              }
+            }
+JSON
+
+      - run:
+          name: Publish GitHub Release
+          command: |
+            echo "$GITHUB_TOKEN" | gh auth login --with-token
+            gh release create "$CIRCLE_TAG" \
+              src-tauri/target/release/bundle/msi/*.msi \
+              src-tauri/target/release/bundle/nsis/*.exe \
+              release-assets/latest.json \
+              --title "Omnix $CIRCLE_TAG" \
+              --generate-notes \
+              --repo justinelut/sokoOS
+
+      - store_artifacts:
+          path: src-tauri/target/release/bundle/msi
+          destination: windows-msi
+
+      - store_artifacts:
+          path: src-tauri/target/release/bundle/nsis
+          destination: windows-nsis
