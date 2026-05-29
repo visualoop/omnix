@@ -7,18 +7,7 @@ jobs:
       resource_class: windows.medium
       shell: powershell.exe
     steps:
-      # Built-in checkout uses SSH — hangs on Windows machine executor.
-      # Use HTTPS with the GITHUB_TOKEN env var instead (set in CircleCI project settings).
-      - run:
-          name: Checkout repository
-          command: |
-            $ErrorActionPreference = 'Stop'
-            if (Test-Path .git) { Remove-Item -Recurse -Force .git }
-            git init
-            git remote add origin "https://$env:GITHUB_TOKEN@github.com/justinelut/omnix.git"
-            git fetch --depth 1 origin "+$env:CIRCLE_SHA1:refs/remotes/origin/tmp"
-            git checkout --force "$env:CIRCLE_SHA1"
-          no_output_timeout: 10m
+      - checkout
 
       # Image already has Node.js 24.9.0 pre-installed.
       # Do NOT install another Node.js — mixing versions corrupts npm's bundled modules.
@@ -110,7 +99,5 @@ workflows:
     jobs:
       - build-windows:
           filters:
-            branches:
-              ignore: /.*/
             tags:
               only: /^v.*/
