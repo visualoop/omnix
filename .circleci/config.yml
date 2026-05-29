@@ -21,36 +21,23 @@ jobs:
       - run:
           name: Setup Rust and build tools
           command: |
-            # Install mingw for dlltool.exe (needed by raw-dylib imports in windows-sys, parking_lot_core)
-            choco install mingw -y --no-progress
+            # MSYS2 is pre-installed on the CircleCI Windows image at C:\msys64.
+            # Install mingw-w64 binutils via pacman — gives us a stable, known dlltool path.
+            C:\msys64\usr\bin\bash.exe -lc "pacman -S --noconfirm mingw-w64-x86_64-binutils"
+            $dlltoolPath = "C:\msys64\mingw64\bin\dlltool.exe"
+            if (-not (Test-Path $dlltoolPath)) {
+              Write-Error "dlltool.exe not found at $dlltoolPath after pacman install"; exit 1
+            }
+            Write-Host "dlltool found at: $dlltoolPath"
 
             Invoke-WebRequest -Uri https://win.rustup.rs -OutFile rustup-init.exe
             .\rustup-init.exe -y
             $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
             rustup default stable-x86_64-pc-windows-msvc
-            rustup component add llvm-tools-preview
 
-            # Find dlltool.exe from mingw and persist to CIRCLE_SHELL_ENV (survives across steps)
-            $dlltoolDir = "C:\ProgramData\chocolatey\lib\mingw\tools\install\mingw64\bin"
-            if (-not (Test-Path "$dlltoolDir\dlltool.exe")) {
-              $found = Get-ChildItem -Path "C:\ProgramData\chocolatey\lib\mingw" -Recurse -Filter "dlltool.exe" -ErrorAction SilentlyContinue | Select-Object -First 1
-              if ($found) { $dlltoolDir = Split-Path $found.FullName -Parent }
-              else { Write-Error "dlltool.exe not found after mingw install"; exit 1 }
-            }
-            Write-Host "dlltool found at: $dlltoolDir\dlltool.exe"
-
-            # Find lld-link from llvm-tools-preview
-            $lldLink = Get-ChildItem -Path "$env:USERPROFILE\.rustup\toolchains" -Recurse -Filter "lld-link.exe" -ErrorAction SilentlyContinue | Select-Object -First 1
-            $lldLinkDir = if ($lldLink) { Split-Path $lldLink.FullName -Parent } else { "" }
-
-            # Persist env vars via CIRCLE_SHELL_ENV so all subsequent steps inherit them
-            Add-Content $env:CIRCLE_SHELL_ENV "`$env:RUSTFLAGS=`"-Cdlltool=$dlltoolDir\dlltool.exe`""
-            # Add lld-link dir to PATH if found
-            if ($lldLinkDir) {
-              Add-Content $env:CIRCLE_SHELL_ENV "`$env:Path=`"$lldLinkDir;`$env:Path`""
-            }
-            # Keep mingw OFF the PATH so gcc.exe doesn't confuse the cc crate (dlltool is passed via RUSTFLAGS)
-            Add-Content $env:CIRCLE_SHELL_ENV "`$env:Path=(`$env:Path.Split(';') | Where-Object { `$_ -notmatch '[Mm]ingw' }) -join ';'"
+            # Persist RUSTFLAGS via CIRCLE_SHELL_ENV so all subsequent steps inherit it.
+            # Keep msys64/mingw64/bin OFF PATH so gcc.exe doesn't confuse the cc crate.
+            Add-Content $env:CIRCLE_SHELL_ENV "`$env:RUSTFLAGS=`"-Cdlltool=$dlltoolPath`""
 
       # Exclude website/ (separate project), node_modules, .git to speed copy and avoid confusion
       - run:
