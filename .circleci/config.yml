@@ -10,25 +10,34 @@ jobs:
       - checkout
 
       - run:
-          name: Setup Node.js
+          name: Setup Node.js 20
           command: |
-            choco install nodejs-lts -y
-            refreshenv
-            npm install -g pnpm
+            Invoke-WebRequest -Uri https://nodejs.org/dist/v20.18.0/node-v20.18.0-x64.msi -OutFile node-installer.msi
+            Start-Process msiexec.exe -ArgumentList '/i', 'node-installer.msi', '/quiet', '/norestart' -Wait
+            $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
+            node --version
+            npm --version
+
+      - run:
+          name: Install pnpm
+          command: |
+            $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
+            npm install -g pnpm@9
+            pnpm --version
 
       - run:
           name: Setup Rust with LLVM linker
           command: |
             Invoke-WebRequest -Uri https://win.rustup.rs -OutFile rustup-init.exe
             .\rustup-init.exe -y
-            refreshenv
+            $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
             rustup default stable-x86_64-pc-windows-msvc
             rustup component add llvm-tools-preview
             $lldLink = Get-ChildItem -Path "$env:USERPROFILE\.rustup\toolchains" -Recurse -Filter "lld-link.exe" | Select-Object -First 1
             if ($lldLink) {
               $lldLinkDir = Split-Path $lldLink.FullName -Parent
-              [Environment]::SetEnvironmentVariable("Path", "$lldLinkDir;$env:Path", "Process")
-              Write-Host "lld-link found at: $lldLink.FullName"
+              $env:Path = "$lldLinkDir;$env:Path"
+              Write-Host "lld-link found at: $($lldLink.FullName)"
             } else {
               Write-Host "WARNING: lld-link not found"
             }
@@ -42,7 +51,7 @@ jobs:
           name: Install dependencies
           command: |
             Set-Location C:\build
-            refreshenv
+            $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
             $lldLink = Get-ChildItem -Path "$env:USERPROFILE\.rustup\toolchains" -Recurse -Filter "lld-link.exe" | Select-Object -First 1
             if ($lldLink) {
               $lldLinkDir = Split-Path $lldLink.FullName -Parent
@@ -54,31 +63,31 @@ jobs:
           name: Type check
           command: |
             Set-Location C:\build
-            refreshenv
+            $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
             $lldLink = Get-ChildItem -Path "$env:USERPROFILE\.rustup\toolchains" -Recurse -Filter "lld-link.exe" | Select-Object -First 1
             if ($lldLink) {
               $lldLinkDir = Split-Path $lldLink.FullName -Parent
               $env:Path = "$lldLinkDir;$env:Path"
             }
-            pnpm tsc --noEmit
+            pnpm run type-check
 
       - run:
           name: Build installer images
           command: |
             Set-Location C:\build
-            refreshenv
+            $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
             $lldLink = Get-ChildItem -Path "$env:USERPROFILE\.rustup\toolchains" -Recurse -Filter "lld-link.exe" | Select-Object -First 1
             if ($lldLink) {
               $lldLinkDir = Split-Path $lldLink.FullName -Parent
               $env:Path = "$lldLinkDir;$env:Path"
             }
-            pnpm build:installer-images
+            pnpm run build:installer-images
 
       - run:
           name: Build Windows installer
           command: |
             Set-Location C:\build
-            refreshenv
+            $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
             $lldLink = Get-ChildItem -Path "$env:USERPROFILE\.rustup\toolchains" -Recurse -Filter "lld-link.exe" | Select-Object -First 1
             if ($lldLink) {
               $lldLinkDir = Split-Path $lldLink.FullName -Parent
