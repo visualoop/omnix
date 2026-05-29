@@ -37,8 +37,9 @@ jobs:
             $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
             rustup default stable-x86_64-pc-windows-msvc
 
-            # Persist RUSTFLAGS via CIRCLE_SHELL_ENV so all subsequent steps inherit it
+            # Persist both RUSTFLAGS and add dlltool dir to PATH via CIRCLE_SHELL_ENV
             Add-Content $env:CIRCLE_SHELL_ENV "`$env:RUSTFLAGS=`"-Cdlltool=$dlltoolPath`""
+            Add-Content $env:CIRCLE_SHELL_ENV "`$env:PATH=`"C:\tools\msys64\mingw64\bin;`$env:PATH`""
 
       # Exclude website/ (separate project), node_modules, .git to speed copy and avoid confusion
       - run:
@@ -69,6 +70,8 @@ jobs:
           name: Build Windows installer
           command: |
             Set-Location C:\build
+            Write-Host "RUSTFLAGS: $env:RUSTFLAGS"
+            Write-Host "PATH contains msys64: $($env:PATH -match 'msys64')"
             npm run tauri -- build --bundles msi nsis
 
       - store_artifacts:
