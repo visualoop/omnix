@@ -8,6 +8,7 @@
     "build": "vite build",
     "preview": "vite preview",
     "tauri": "tauri",
+    "type-check": "tsc --noEmit",
     "build:installer-images": "node scripts/build-installer-images.mjs"
   },
   "dependencies": {
@@ -55,11 +56,5 @@
     "jimp": "^1.6.0",
     "typescript": "~5.8.3",
     "vite": "^7.0.4"
-  },
-  "pnpm": {
-    "onlyBuiltDependencies": [
-      "esbuild",
-      "msw"
-    ]
   }
 }
