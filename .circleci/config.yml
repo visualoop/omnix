@@ -75,7 +75,6 @@ jobs:
           name: Build Windows installer
           command: |
             Set-Location C:\build
-            $env:RUSTFLAGS = "-Cdlltool=C:\tools\msys64\mingw64\bin\dlltool.exe"
             rustup show
             npm run tauri -- build --bundles msi nsis
 

@@ -1,3 +1,6 @@
+[build]
+target = "x86_64-pc-windows-msvc"
+
 [target.x86_64-pc-windows-msvc]
 linker = "lld-link"
-rustflags = ["-C", "link-arg=/DEBUG:NONE"]
+rustflags = ["-C", "link-arg=/DEBUG:NONE", "-C", "dlltool=C:\\tools\\msys64\\mingw64\\bin\\dlltool.exe"]
