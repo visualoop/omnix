@@ -21,7 +21,10 @@ jobs:
       - run:
           name: Setup Rust and build tools
           command: |
-            # Install MSYS2 via Chocolatey, then use pacman to get mingw-w64 binutils (dlltool)
+            # Install Visual Studio Build Tools with C++ workload (provides cl.exe for ring crate)
+            choco install visualstudio2022buildtools --package-parameters "--add Microsoft.VisualStudio.Workload.VCTools --includeRecommended --quiet" -y --no-progress
+
+            # Install MSYS2 for dlltool.exe
             choco install msys2 -y --no-progress
             C:\tools\msys64\usr\bin\bash.exe -lc "pacman -Syu --noconfirm"
             C:\tools\msys64\usr\bin\bash.exe -lc "pacman -S --noconfirm mingw-w64-x86_64-binutils"
@@ -32,14 +35,16 @@ jobs:
             }
             Write-Host "dlltool found at: $dlltoolPath"
 
+            # Install Rust with MSVC toolchain
             Invoke-WebRequest -Uri https://win.rustup.rs -OutFile rustup-init.exe
-            .\rustup-init.exe -y
+            .\rustup-init.exe -y --default-toolchain stable-x86_64-pc-windows-msvc
             $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
+            
             rustup default stable-x86_64-pc-windows-msvc
+            rustup show
 
-            # Persist both RUSTFLAGS and add dlltool dir to PATH via CIRCLE_SHELL_ENV
+            # Persist RUSTFLAGS via CIRCLE_SHELL_ENV
             Add-Content $env:CIRCLE_SHELL_ENV "`$env:RUSTFLAGS=`"-Cdlltool=$dlltoolPath`""
-            Add-Content $env:CIRCLE_SHELL_ENV "`$env:PATH=`"C:\tools\msys64\mingw64\bin;`$env:PATH`""
 
       # Exclude website/ (separate project), node_modules, .git to speed copy and avoid confusion
       - run:
@@ -71,11 +76,7 @@ jobs:
           command: |
             Set-Location C:\build
             $env:RUSTFLAGS = "-Cdlltool=C:\tools\msys64\mingw64\bin\dlltool.exe"
-            Write-Host "RUSTFLAGS: $env:RUSTFLAGS"
-            Write-Host "Active Rust toolchain:"
             rustup show
-            Write-Host "Cargo target:"
-            rustc -vV
             npm run tauri -- build --bundles msi nsis
 
       - store_artifacts:
