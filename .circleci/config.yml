@@ -21,12 +21,14 @@ jobs:
       - run:
           name: Setup Rust and build tools
           command: |
-            # MSYS2 is pre-installed on the CircleCI Windows image at C:\msys64.
-            # Install mingw-w64 binutils via pacman — gives us a stable, known dlltool path.
-            C:\msys64\usr\bin\bash.exe -lc "pacman -S --noconfirm mingw-w64-x86_64-binutils"
-            $dlltoolPath = "C:\msys64\mingw64\bin\dlltool.exe"
+            # Install MSYS2 via Chocolatey, then use pacman to get mingw-w64 binutils (dlltool)
+            choco install msys2 -y --no-progress
+            C:\tools\msys64\usr\bin\bash.exe -lc "pacman -Syu --noconfirm"
+            C:\tools\msys64\usr\bin\bash.exe -lc "pacman -S --noconfirm mingw-w64-x86_64-binutils"
+            
+            $dlltoolPath = "C:\tools\msys64\mingw64\bin\dlltool.exe"
             if (-not (Test-Path $dlltoolPath)) {
-              Write-Error "dlltool.exe not found at $dlltoolPath after pacman install"; exit 1
+              Write-Error "dlltool.exe not found at $dlltoolPath"; exit 1
             }
             Write-Host "dlltool found at: $dlltoolPath"
 
@@ -35,8 +37,7 @@ jobs:
             $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
             rustup default stable-x86_64-pc-windows-msvc
 
-            # Persist RUSTFLAGS via CIRCLE_SHELL_ENV so all subsequent steps inherit it.
-            # Keep msys64/mingw64/bin OFF PATH so gcc.exe doesn't confuse the cc crate.
+            # Persist RUSTFLAGS via CIRCLE_SHELL_ENV so all subsequent steps inherit it
             Add-Content $env:CIRCLE_SHELL_ENV "`$env:RUSTFLAGS=`"-Cdlltool=$dlltoolPath`""
 
       # Exclude website/ (separate project), node_modules, .git to speed copy and avoid confusion
