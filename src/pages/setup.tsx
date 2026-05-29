@@ -177,7 +177,7 @@ export function SetupWizard() {
       <div className="space-y-3">
         <Field label="Business Name *">
           <Input
-            placeholder="e.g., Afya Pharmacy"
+            placeholder={MODULE_DEFINITIONS[data.moduleId].setupPlaceholders.businessName}
             value={data.businessName}
             onChange={(e) => update("businessName", e.target.value)}
             autoFocus
@@ -185,14 +185,14 @@ export function SetupWizard() {
         </Field>
         <Field label="Address">
           <Input
-            placeholder="e.g., Moi Avenue, Nairobi"
+            placeholder={MODULE_DEFINITIONS[data.moduleId].setupPlaceholders.address}
             value={data.address}
             onChange={(e) => update("address", e.target.value)}
           />
         </Field>
         <Field label="Phone">
           <Input
-            placeholder="0700 000 000"
+            placeholder={MODULE_DEFINITIONS[data.moduleId].setupPlaceholders.phone}
             value={data.phone}
             onChange={(e) => update("phone", e.target.value)}
           />
@@ -200,7 +200,7 @@ export function SetupWizard() {
         <Field label="Email">
           <Input
             type="email"
-            placeholder="info@yourpharmacy.co.ke"
+            placeholder={MODULE_DEFINITIONS[data.moduleId].setupPlaceholders.email}
             value={data.email}
             onChange={(e) => update("email", e.target.value)}
           />

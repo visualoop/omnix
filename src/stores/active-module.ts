@@ -20,6 +20,12 @@ export interface ModuleDefinition {
   shortName: string;
   tagline: string;
   status: "core" | "available" | "planned";
+  setupPlaceholders: {
+    businessName: string;
+    address: string;
+    phone: string;
+    email: string;
+  };
 }
 
 export const MODULE_DEFINITIONS: Record<ModuleId, ModuleDefinition> = {
@@ -29,6 +35,12 @@ export const MODULE_DEFINITIONS: Record<ModuleId, ModuleDefinition> = {
     shortName: "Core",
     tagline: "Inventory, POS, customers, suppliers, accounting",
     status: "core",
+    setupPlaceholders: {
+      businessName: "e.g., My Business",
+      address: "e.g., Moi Avenue, Nairobi",
+      phone: "0700 000 000",
+      email: "info@mybusiness.co.ke",
+    },
   },
   dawa: {
     id: "dawa",
@@ -36,6 +48,12 @@ export const MODULE_DEFINITIONS: Record<ModuleId, ModuleDefinition> = {
     shortName: "Dawa",
     tagline: "Prescriptions, drug labels, refills, expiry, controlled substances",
     status: "available",
+    setupPlaceholders: {
+      businessName: "e.g., Afya Pharmacy",
+      address: "e.g., Moi Avenue, Nairobi",
+      phone: "0700 000 000",
+      email: "info@yourpharmacy.co.ke",
+    },
   },
   retail: {
     id: "retail",
@@ -43,6 +61,12 @@ export const MODULE_DEFINITIONS: Record<ModuleId, ModuleDefinition> = {
     shortName: "Retail",
     tagline: "Brands, variants, laybys, special orders, shrinkage tracking",
     status: "available",
+    setupPlaceholders: {
+      businessName: "e.g., Mama Njeri's Shop",
+      address: "e.g., Kimathi Street, Nairobi",
+      phone: "0700 000 000",
+      email: "info@yourshop.co.ke",
+    },
   },
   hardware: {
     id: "hardware",
@@ -50,6 +74,12 @@ export const MODULE_DEFINITIONS: Record<ModuleId, ModuleDefinition> = {
     shortName: "Hardware",
     tagline: "Bulk pricing, parts catalog, contractor accounts",
     status: "planned",
+    setupPlaceholders: {
+      businessName: "e.g., Jua Kali Hardware",
+      address: "e.g., Industrial Area, Nairobi",
+      phone: "0700 000 000",
+      email: "info@yourhardware.co.ke",
+    },
   },
   electronics: {
     id: "electronics",
@@ -57,6 +87,12 @@ export const MODULE_DEFINITIONS: Record<ModuleId, ModuleDefinition> = {
     shortName: "Electronics",
     tagline: "IMEI tracking, warranty, repair tickets",
     status: "planned",
+    setupPlaceholders: {
+      businessName: "e.g., TechHub Electronics",
+      address: "e.g., Tom Mboya Street, Nairobi",
+      phone: "0700 000 000",
+      email: "info@yourelectronics.co.ke",
+    },
   },
   salon: {
     id: "salon",
@@ -64,6 +100,12 @@ export const MODULE_DEFINITIONS: Record<ModuleId, ModuleDefinition> = {
     shortName: "Salon",
     tagline: "Appointments, services, staff commissions",
     status: "planned",
+    setupPlaceholders: {
+      businessName: "e.g., Glamour Salon & Spa",
+      address: "e.g., Westlands, Nairobi",
+      phone: "0700 000 000",
+      email: "info@yoursalon.co.ke",
+    },
   },
   restaurant: {
     id: "restaurant",
@@ -71,6 +113,12 @@ export const MODULE_DEFINITIONS: Record<ModuleId, ModuleDefinition> = {
     shortName: "Restaurant",
     tagline: "Kitchen Order Tickets, tables, recipe costing",
     status: "planned",
+    setupPlaceholders: {
+      businessName: "e.g., Mama Oliech Restaurant",
+      address: "e.g., Kenyatta Avenue, Nairobi",
+      phone: "0700 000 000",
+      email: "info@yourrestaurant.co.ke",
+    },
   },
 };
 
