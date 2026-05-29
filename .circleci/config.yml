@@ -19,13 +19,18 @@ jobs:
             rustc --version
 
       - run:
-          name: Setup Rust with LLVM linker
+          name: Setup Rust and build tools
           command: |
+            # Install mingw for dlltool.exe (needed by raw-dylib imports e.g. windows-sys)
+            choco install mingw -y --no-progress
+
             Invoke-WebRequest -Uri https://win.rustup.rs -OutFile rustup-init.exe
             .\rustup-init.exe -y
             $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
             rustup default stable-x86_64-pc-windows-msvc
             rustup component add llvm-tools-preview
+
+            # lld-link is in llvm-tools-preview's lib path, not on PATH — add it
             $lldLink = Get-ChildItem -Path "$env:USERPROFILE\.rustup\toolchains" -Recurse -Filter "lld-link.exe" | Select-Object -First 1
             if ($lldLink) {
               $lldLinkDir = Split-Path $lldLink.FullName -Parent
@@ -34,6 +39,9 @@ jobs:
             } else {
               Write-Host "WARNING: lld-link not found"
             }
+
+            # dlltool is provided by mingw via choco (in Machine PATH)
+            Write-Host "dlltool: $(Get-Command dlltool.exe -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Source)"
 
       # Exclude website/ (separate project), node_modules, .git to speed copy and avoid confusion
       - run:
