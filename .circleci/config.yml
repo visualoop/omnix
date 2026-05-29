@@ -40,7 +40,15 @@ jobs:
               Write-Host "WARNING: lld-link not found"
             }
 
-            # dlltool is provided by mingw via choco (in Machine PATH)
+            # Copy dlltool.exe from mingw into the Rust toolchain bin dir,
+            # then remove mingw from PATH so gcc.exe doesn't confuse the cc crate.
+            $dlltool = Get-ChildItem -Path "C:\ProgramData\chocolatey\lib\mingw" -Recurse -Filter "dlltool.exe" | Select-Object -First 1
+            if ($dlltool) {
+              $rustBin = "$env:USERPROFILE\.rustup\toolchains\stable-x86_64-pc-windows-msvc\bin"
+              Copy-Item $dlltool.FullName "$rustBin\dlltool.exe" -Force
+              Write-Host "dlltool copied to: $rustBin\dlltool.exe"
+            }
+            $env:Path = ($env:Path.Split(';') | Where-Object { $_ -notmatch '[Mm]ingw' }) -join ';'
             Write-Host "dlltool: $(Get-Command dlltool.exe -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Source)"
 
       # Exclude website/ (separate project), node_modules, .git to speed copy and avoid confusion
@@ -55,6 +63,7 @@ jobs:
           command: |
             Set-Location C:\build
             $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
+            $env:Path = ($env:Path.Split(';') | Where-Object { $_ -notmatch '[Mm]ingw' }) -join ';'
             $lldLink = Get-ChildItem -Path "$env:USERPROFILE\.rustup\toolchains" -Recurse -Filter "lld-link.exe" | Select-Object -First 1
             if ($lldLink) {
               $lldLinkDir = Split-Path $lldLink.FullName -Parent
@@ -67,6 +76,7 @@ jobs:
           command: |
             Set-Location C:\build
             $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
+            $env:Path = ($env:Path.Split(';') | Where-Object { $_ -notmatch '[Mm]ingw' }) -join ';'
             $lldLink = Get-ChildItem -Path "$env:USERPROFILE\.rustup\toolchains" -Recurse -Filter "lld-link.exe" | Select-Object -First 1
             if ($lldLink) {
               $lldLinkDir = Split-Path $lldLink.FullName -Parent
@@ -79,6 +89,7 @@ jobs:
           command: |
             Set-Location C:\build
             $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
+            $env:Path = ($env:Path.Split(';') | Where-Object { $_ -notmatch '[Mm]ingw' }) -join ';'
             $lldLink = Get-ChildItem -Path "$env:USERPROFILE\.rustup\toolchains" -Recurse -Filter "lld-link.exe" | Select-Object -First 1
             if ($lldLink) {
               $lldLinkDir = Split-Path $lldLink.FullName -Parent
@@ -91,6 +102,7 @@ jobs:
           command: |
             Set-Location C:\build
             $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
+            $env:Path = ($env:Path.Split(';') | Where-Object { $_ -notmatch '[Mm]ingw' }) -join ';'
             $lldLink = Get-ChildItem -Path "$env:USERPROFILE\.rustup\toolchains" -Recurse -Filter "lld-link.exe" | Select-Object -First 1
             if ($lldLink) {
               $lldLinkDir = Split-Path $lldLink.FullName -Parent
