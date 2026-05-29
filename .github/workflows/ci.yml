@@ -55,17 +55,11 @@ jobs:
             echo "version=" >> $GITHUB_OUTPUT
           fi
 
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: 9
-          run_install: false
-
-      - name: Setup Node (with pnpm cache)
+      - name: Setup Node (with npm cache)
         uses: actions/setup-node@v4
         with:
           node-version: "20"
-          cache: pnpm
+          cache: npm
 
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
@@ -76,13 +70,13 @@ jobs:
           workspaces: src-tauri
 
       - name: Install frontend dependencies
-        run: pnpm install --frozen-lockfile
+        run: npm ci
 
       - name: Rebuild installer BMPs from SVG sources
-        run: pnpm build:installer-images
+        run: npm run build:installer-images
 
       - name: Type-check frontend
-        run: pnpm exec tsc --noEmit
+        run: npm exec tsc --noEmit
 
       - name: Run Rust unit tests
         working-directory: src-tauri
@@ -100,7 +94,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: Omnix-Windows-MSI
-          path: src-tauri/target/release/bundle/msi/*.msi
+          path: src-tauri/target/x86_64-pc-windows-msvc/release/bundle/msi/*.msi
           if-no-files-found: error
           retention-days: 30
 
@@ -109,7 +103,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: Omnix-Windows-NSIS
-          path: src-tauri/target/release/bundle/nsis/*.exe
+          path: src-tauri/target/x86_64-pc-windows-msvc/release/bundle/nsis/*.exe
           if-no-files-found: error
           retention-days: 30
 
@@ -119,8 +113,8 @@ jobs:
         with:
           name: Omnix-Updater-Signatures
           path: |
-            src-tauri/target/release/bundle/msi/*.msi.sig
-            src-tauri/target/release/bundle/nsis/*.exe.sig
+            src-tauri/target/x86_64-pc-windows-msvc/release/bundle/msi/*.msi.sig
+            src-tauri/target/x86_64-pc-windows-msvc/release/bundle/nsis/*.exe.sig
           if-no-files-found: warn
           retention-days: 30
 
@@ -131,13 +125,13 @@ jobs:
         run: |
           mkdir -p release-assets
 
-          INSTALLER=$(ls src-tauri/target/release/bundle/nsis/*-setup.exe 2>/dev/null | head -1)
-          SIG_FILE=$(ls src-tauri/target/release/bundle/nsis/*-setup.exe.sig 2>/dev/null | head -1)
+          INSTALLER=$(ls src-tauri/target/x86_64-pc-windows-msvc/release/bundle/nsis/*-setup.exe 2>/dev/null | head -1)
+          SIG_FILE=$(ls src-tauri/target/x86_64-pc-windows-msvc/release/bundle/nsis/*-setup.exe.sig 2>/dev/null | head -1)
 
           if [ -z "$INSTALLER" ] || [ -z "$SIG_FILE" ]; then
             echo "ERROR: NSIS installer or signature not found"
-            ls -la src-tauri/target/release/bundle/nsis/ || true
-            ls -la src-tauri/target/release/bundle/msi/ || true
+            ls -la src-tauri/target/x86_64-pc-windows-msvc/release/bundle/nsis/ || true
+            ls -la src-tauri/target/x86_64-pc-windows-msvc/release/bundle/msi/ || true
             exit 1
           fi
 
@@ -158,10 +152,10 @@ jobs:
           }
           EOF
 
-          cp src-tauri/target/release/bundle/msi/*.msi release-assets/ 2>/dev/null || true
-          cp src-tauri/target/release/bundle/msi/*.msi.sig release-assets/ 2>/dev/null || true
-          cp src-tauri/target/release/bundle/nsis/*.exe release-assets/ 2>/dev/null || true
-          cp src-tauri/target/release/bundle/nsis/*.exe.sig release-assets/ 2>/dev/null || true
+          cp src-tauri/target/x86_64-pc-windows-msvc/release/bundle/msi/*.msi release-assets/ 2>/dev/null || true
+          cp src-tauri/target/x86_64-pc-windows-msvc/release/bundle/msi/*.msi.sig release-assets/ 2>/dev/null || true
+          cp src-tauri/target/x86_64-pc-windows-msvc/release/bundle/nsis/*.exe release-assets/ 2>/dev/null || true
+          cp src-tauri/target/x86_64-pc-windows-msvc/release/bundle/nsis/*.exe.sig release-assets/ 2>/dev/null || true
 
           ls -la release-assets/
 
