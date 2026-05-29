@@ -72,6 +72,10 @@ jobs:
             Set-Location C:\build
             $env:RUSTFLAGS = "-Cdlltool=C:\tools\msys64\mingw64\bin\dlltool.exe"
             Write-Host "RUSTFLAGS: $env:RUSTFLAGS"
+            Write-Host "Active Rust toolchain:"
+            rustup show
+            Write-Host "Cargo target:"
+            rustc -vV
             npm run tauri -- build --bundles msi nsis
 
       - store_artifacts:
