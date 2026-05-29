@@ -9,7 +9,7 @@ import {
   getMachineInfo, activateLicense, startTrial, getTrialState,
   type MachineInfo, type TrialState,
 } from "@/services/license";
-import { SokoLogo } from "@/components/soko-logo";
+import { OmnixLogo } from "@/components/omnix-logo";
 import { APP_NAME, BRAND } from "@/lib/brand";
 import { toast } from "sonner";
 
@@ -107,7 +107,7 @@ export function LicenseActivationPage({ onActivated }: Props) {
         <div className="relative bg-gradient-to-br from-primary/5 via-background to-background p-8 lg:p-12 flex flex-col">
           {/* Top bar with logo */}
           <div className="flex items-center gap-3">
-            <SokoLogo size={36} />
+            <OmnixLogo size={36} />
             <div>
               <div className="font-semibold tracking-tight">{APP_NAME}</div>
               <div className="text-xs text-muted-foreground">{BRAND.tagline}</div>
