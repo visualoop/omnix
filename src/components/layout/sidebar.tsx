@@ -63,7 +63,7 @@ const navItems: NavItem[] = [
   { to: "/invoicing", icon: FileText, label: "Invoicing", permissions: ["invoicing.view"] },
   { to: "/banking", icon: Banknote, label: "Banking", permissions: ["banking.view"] },
   { to: "/expenses", icon: Wallet, label: "Expenses", permissions: ["expenses.view"] },
-  { to: "/pnl", icon: TrendingUp, label: "P&amp;L", permissions: ["reports.pnl"] },
+  { to: "/pnl", icon: TrendingUp, label: "P&L", permissions: ["reports.pnl"] },
   { to: "/hr/employees", icon: Users, label: "Employees", permissions: ["hr.employees.view"] },
   { to: "/hr/attendance", icon: Clock, label: "Attendance", permissions: ["hr.attendance.view","hr.attendance.record"] },
   { to: "/hr/leave", icon: Plane, label: "Leave", permissions: ["hr.leave.request","hr.leave.approve"] },

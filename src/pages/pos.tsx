@@ -28,6 +28,7 @@ import { CustomerPicker } from "@/components/pos/customer-picker";
 import { AllergyAlertBanner } from "@/components/pos/allergy-alert-banner";
 import { VariantPickerDialog } from "@/components/pos/variant-picker";
 import { SubstitutionsDialog } from "@/components/pos/substitutions-dialog";
+import { QtyMultiplierDialog } from "@/components/pos/qty-multiplier-dialog";
 import { OpenShiftDialog, CloseShiftDialog, PettyCashDialog } from "@/components/pos/cash-dialogs";
 import { TipDialog } from "@/components/pos/tip-dialog";
 import { openCustomerDisplay } from "@/lib/customer-display";
@@ -87,6 +88,7 @@ export function POSPage() {
   const [heldCount, setHeldCount] = useState(0);
   const [subFor, setSubFor] = useState<Product | null>(null);
   const [qtyMultiplier, setQtyMultiplier] = useState(1);
+  const [qtyMultiplierOpen, setQtyMultiplierOpen] = useState(false);
   const [pendingVariantPick, setPendingVariantPick] = useState<Product | null>(null);
   const [now, setNow] = useState(new Date());
   const [openShiftDialog, setOpenShiftDialog] = useState(false);
@@ -232,7 +234,7 @@ export function POSPage() {
       : popular;
 
   return (
-    <div className="flex flex-col h-[calc(100vh-96px)] -m-6 bg-muted/30">
+    <div className="flex flex-col h-[calc(100vh-48px)] -m-6 bg-muted/30">
       {/* ─── TOP STATUS BAR ─────────────────────────────────────────── */}
       <div className={`bg-gradient-to-r ${accent.headerGradient} text-white flex-shrink-0`}>
         <div className="px-4 py-2 flex items-center gap-4 text-xs">
@@ -304,11 +306,7 @@ export function POSPage() {
           <ActionPill icon={FileText} label="Z-Report" onClick={() => navigate("/reports/zreport")} />
           <ActionPill icon={Calculator} label="Qty ×N"
             value={qtyMultiplier > 1 ? `×${qtyMultiplier}` : undefined}
-            onClick={() => {
-              const next = window.prompt("Quantity multiplier (1-99). Next item added will use this quantity.");
-              const n = parseInt(next || "1");
-              if (n > 0 && n <= 99) setQtyMultiplier(n);
-            }}
+            onClick={() => setQtyMultiplierOpen(true)}
           />
           <div className="flex-1" />
           <ActionPill icon={Trash2} label="Clear" hotkey="F1" onClick={clear} disabled={items.length === 0} variant="danger" />
@@ -504,6 +502,15 @@ export function POSPage() {
             addItem({ id: p.id, name: p.name, selling_price: p.selling_price, tax_rate: p.tax_rate });
           }
           setPendingVariantPick(null);
+        }}
+      />
+      <QtyMultiplierDialog
+        open={qtyMultiplierOpen}
+        onClose={() => setQtyMultiplierOpen(false)}
+        currentValue={qtyMultiplier}
+        onSet={(n) => {
+          setQtyMultiplier(n);
+          setQtyMultiplierOpen(false);
         }}
       />
     </div>
