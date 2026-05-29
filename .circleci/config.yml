@@ -30,40 +30,27 @@ jobs:
             rustup default stable-x86_64-pc-windows-msvc
             rustup component add llvm-tools-preview
 
-            # lld-link is in llvm-tools-preview's lib path, not on PATH — add it
-            $lldLink = Get-ChildItem -Path "$env:USERPROFILE\.rustup\toolchains" -Recurse -Filter "lld-link.exe" | Select-Object -First 1
-            if ($lldLink) {
-              $lldLinkDir = Split-Path $lldLink.FullName -Parent
-              $env:Path = "$lldLinkDir;$env:Path"
-              Write-Host "lld-link found at: $($lldLink.FullName)"
-            } else {
-              Write-Host "WARNING: lld-link not found"
-            }
-
-            # Find dlltool.exe and persist its path as RUSTFLAGS so cargo passes -Cdlltool to rustc.
+            # Find dlltool.exe from mingw and persist to CIRCLE_SHELL_ENV (survives across steps)
             $dlltoolDir = "C:\ProgramData\chocolatey\lib\mingw\tools\install\mingw64\bin"
-            if (Test-Path "$dlltoolDir\dlltool.exe") {
-              $dlltoolPath = "$dlltoolDir\dlltool.exe"
-              [Environment]::SetEnvironmentVariable("RUSTFLAGS", "-Cdlltool=$dlltoolPath", "User")
-              $env:RUSTFLAGS = "-Cdlltool=$dlltoolPath"
-              Write-Host "dlltool found at: $dlltoolPath"
-              Write-Host "RUSTFLAGS set to: $env:RUSTFLAGS"
-            } else {
-              Write-Host "WARNING: dlltool not found at $dlltoolDir — searching..."
-              $found = Get-ChildItem -Path "C:\ProgramData\chocolatey\lib\mingw" -Recurse -Filter "dlltool.exe" | Select-Object -First 1
-              if ($found) {
-                $dlltoolPath = $found.FullName
-                [Environment]::SetEnvironmentVariable("RUSTFLAGS", "-Cdlltool=$dlltoolPath", "User")
-                $env:RUSTFLAGS = "-Cdlltool=$dlltoolPath"
-                Write-Host "dlltool found at: $dlltoolPath"
-                Write-Host "RUSTFLAGS set to: $env:RUSTFLAGS"
-              } else {
-                Write-Host "ERROR: dlltool.exe not found anywhere"
-              }
+            if (-not (Test-Path "$dlltoolDir\dlltool.exe")) {
+              $found = Get-ChildItem -Path "C:\ProgramData\chocolatey\lib\mingw" -Recurse -Filter "dlltool.exe" -ErrorAction SilentlyContinue | Select-Object -First 1
+              if ($found) { $dlltoolDir = Split-Path $found.FullName -Parent }
+              else { Write-Error "dlltool.exe not found after mingw install"; exit 1 }
             }
+            Write-Host "dlltool found at: $dlltoolDir\dlltool.exe"
 
-            # Strip mingw from PATH so gcc.exe doesn't confuse the cc crate
-            $env:Path = ($env:Path.Split(';') | Where-Object { $_ -notmatch '[Mm]ingw' }) -join ';'
+            # Find lld-link from llvm-tools-preview
+            $lldLink = Get-ChildItem -Path "$env:USERPROFILE\.rustup\toolchains" -Recurse -Filter "lld-link.exe" -ErrorAction SilentlyContinue | Select-Object -First 1
+            $lldLinkDir = if ($lldLink) { Split-Path $lldLink.FullName -Parent } else { "" }
+
+            # Persist env vars via CIRCLE_SHELL_ENV so all subsequent steps inherit them
+            Add-Content $env:CIRCLE_SHELL_ENV "`$env:RUSTFLAGS=`"-Cdlltool=$dlltoolDir\dlltool.exe`""
+            # Add lld-link dir to PATH if found
+            if ($lldLinkDir) {
+              Add-Content $env:CIRCLE_SHELL_ENV "`$env:Path=`"$lldLinkDir;`$env:Path`""
+            }
+            # Keep mingw OFF the PATH so gcc.exe doesn't confuse the cc crate (dlltool is passed via RUSTFLAGS)
+            Add-Content $env:CIRCLE_SHELL_ENV "`$env:Path=(`$env:Path.Split(';') | Where-Object { `$_ -notmatch '[Mm]ingw' }) -join ';'"
 
       # Exclude website/ (separate project), node_modules, .git to speed copy and avoid confusion
       - run:
@@ -76,55 +63,24 @@ jobs:
           name: Install dependencies
           command: |
             Set-Location C:\build
-            $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
-            $env:RUSTFLAGS = [Environment]::GetEnvironmentVariable("RUSTFLAGS", "User")
-            $env:Path = ($env:Path.Split(';') | Where-Object { $_ -notmatch '[Mm]ingw' }) -join ';'
-            $lldLink = Get-ChildItem -Path "$env:USERPROFILE\.rustup\toolchains" -Recurse -Filter "lld-link.exe" | Select-Object -First 1
-            if ($lldLink) {
-              $lldLinkDir = Split-Path $lldLink.FullName -Parent
-              $env:Path = "$lldLinkDir;$env:Path"
-            }
             npm ci
 
       - run:
           name: Type check
           command: |
             Set-Location C:\build
-            $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
-            $env:Path = ($env:Path.Split(';') | Where-Object { $_ -notmatch '[Mm]ingw' }) -join ';'
-            $lldLink = Get-ChildItem -Path "$env:USERPROFILE\.rustup\toolchains" -Recurse -Filter "lld-link.exe" | Select-Object -First 1
-            if ($lldLink) {
-              $lldLinkDir = Split-Path $lldLink.FullName -Parent
-              $env:Path = "$lldLinkDir;$env:Path"
-            }
             npm run type-check
 
       - run:
           name: Build installer images
           command: |
             Set-Location C:\build
-            $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
-            $env:RUSTFLAGS = [Environment]::GetEnvironmentVariable("RUSTFLAGS", "User")
-            $env:Path = ($env:Path.Split(';') | Where-Object { $_ -notmatch '[Mm]ingw' }) -join ';'
-            $lldLink = Get-ChildItem -Path "$env:USERPROFILE\.rustup\toolchains" -Recurse -Filter "lld-link.exe" | Select-Object -First 1
-            if ($lldLink) {
-              $lldLinkDir = Split-Path $lldLink.FullName -Parent
-              $env:Path = "$lldLinkDir;$env:Path"
-            }
             npm run build:installer-images
 
       - run:
           name: Build Windows installer
           command: |
             Set-Location C:\build
-            $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
-            $env:RUSTFLAGS = [Environment]::GetEnvironmentVariable("RUSTFLAGS", "User")
-            $env:Path = ($env:Path.Split(';') | Where-Object { $_ -notmatch '[Mm]ingw' }) -join ';'
-            $lldLink = Get-ChildItem -Path "$env:USERPROFILE\.rustup\toolchains" -Recurse -Filter "lld-link.exe" | Select-Object -First 1
-            if ($lldLink) {
-              $lldLinkDir = Split-Path $lldLink.FullName -Parent
-              $env:Path = "$lldLinkDir;$env:Path"
-            }
             npm run tauri -- build --bundles msi nsis
 
       - store_artifacts:
