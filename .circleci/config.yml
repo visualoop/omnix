@@ -40,16 +40,16 @@ jobs:
               Write-Host "WARNING: lld-link not found"
             }
 
-            # Copy dlltool.exe from mingw into the Rust toolchain bin dir,
+            # Copy dlltool.exe from mingw into $HOME\.cargo\bin (which is on User PATH),
             # then remove mingw from PATH so gcc.exe doesn't confuse the cc crate.
             $dlltool = Get-ChildItem -Path "C:\ProgramData\chocolatey\lib\mingw" -Recurse -Filter "dlltool.exe" | Select-Object -First 1
             if ($dlltool) {
-              $rustBin = "$env:USERPROFILE\.rustup\toolchains\stable-x86_64-pc-windows-msvc\bin"
-              Copy-Item $dlltool.FullName "$rustBin\dlltool.exe" -Force
-              Write-Host "dlltool copied to: $rustBin\dlltool.exe"
+              $cargoBin = "$env:USERPROFILE\.cargo\bin"
+              Copy-Item $dlltool.FullName "$cargoBin\dlltool.exe" -Force
+              Write-Host "dlltool copied to: $cargoBin\dlltool.exe"
             }
             $env:Path = ($env:Path.Split(';') | Where-Object { $_ -notmatch '[Mm]ingw' }) -join ';'
-            Write-Host "dlltool: $(Get-Command dlltool.exe -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Source)"
+            Get-Command dlltool.exe
 
       # Exclude website/ (separate project), node_modules, .git to speed copy and avoid confusion
       - run:
