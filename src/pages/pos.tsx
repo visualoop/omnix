@@ -232,7 +232,7 @@ export function POSPage() {
       : popular;
 
   return (
-    <div className="flex flex-col h-[calc(100vh-96px)] -m-6 bg-stone-50">
+    <div className="flex flex-col h-[calc(100vh-96px)] -m-6 bg-muted/30">
       {/* ─── TOP STATUS BAR ─────────────────────────────────────────── */}
       <div className={`bg-gradient-to-r ${accent.headerGradient} text-white flex-shrink-0`}>
         <div className="px-4 py-2 flex items-center gap-4 text-xs">
@@ -259,7 +259,7 @@ export function POSPage() {
             {shift ? (
               <button
                 onClick={() => setCloseShiftDialog(true)}
-                className="flex items-center gap-1 bg-white/15 hover:bg-white/25 px-2 py-1 rounded transition cursor-pointer"
+                className="flex items-center gap-1 bg-accent/50 hover:bg-accent px-2 py-1 rounded transition cursor-pointer"
                 title="Click to close shift / end of day"
               >
                 <span className="h-1.5 w-1.5 rounded-full bg-emerald-300 animate-pulse" />
@@ -318,7 +318,7 @@ export function POSPage() {
       {/* ─── MAIN GRID ──────────────────────────────────────────────── */}
       <div className="flex flex-1 min-h-0">
         {/* Left rail: Categories */}
-        <div className="w-[140px] border-r border-border bg-white flex flex-col flex-shrink-0">
+        <div className="w-[140px] border-r border-border bg-background flex flex-col flex-shrink-0">
           <CategoryRail
             categories={categories}
             activeId={activeCategoryId}
@@ -327,9 +327,9 @@ export function POSPage() {
         </div>
 
         {/* Center: Search + product grid */}
-        <div className="flex-1 flex flex-col min-w-0 bg-white">
+        <div className="flex-1 flex flex-col min-w-0 bg-background">
           {/* Search bar */}
-          <div className="p-3 border-b border-border bg-white flex items-center gap-2">
+          <div className="p-3 border-b border-border bg-background flex items-center gap-2">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
               <Input
@@ -355,7 +355,7 @@ export function POSPage() {
           </div>
 
           {/* Status row */}
-          <div className="px-3 py-1.5 bg-stone-50 border-b border-border flex items-center justify-between text-[11px]">
+          <div className="px-3 py-1.5 bg-muted/30 border-b border-border flex items-center justify-between text-[11px]">
             <div className="flex items-center gap-3">
               {search ? (
                 <span className="font-medium">
@@ -394,7 +394,7 @@ export function POSPage() {
               </div>
               <div className="grid grid-cols-3 gap-1.5">
                 {lowStock.map((p) => (
-                  <div key={p.id} className="bg-white border border-rose-200 rounded p-1.5 text-[11px]">
+                  <div key={p.id} className="bg-background border border-rose-200 rounded p-1.5 text-[11px]">
                     <div className="font-medium truncate">{p.name}</div>
                     <div className="text-rose-700 font-mono tabular-nums">
                       {p.stock_qty} / {p.reorder_level} reorder
@@ -432,7 +432,7 @@ export function POSPage() {
         </div>
 
         {/* Right: Cart panel */}
-        <div className="w-[340px] flex flex-col bg-white border-l border-border flex-shrink-0">
+        <div className="w-[340px] flex flex-col bg-background border-l border-border flex-shrink-0">
           <CartPanel
             accent={accent}
             items={items}
@@ -535,7 +535,7 @@ function ActionPill({
   variant?: "default" | "danger" | "success";
 }) {
   const variantClass =
-    variant === "danger" ? "bg-white/10 hover:bg-rose-500/40 text-white/90" :
+    variant === "danger" ? "bg-destructive/10 hover:bg-destructive/20 text-destructive" :
     variant === "success" ? "bg-emerald-400/30 hover:bg-emerald-400/50 text-white ring-1 ring-emerald-300/40" :
     "bg-white/15 hover:bg-white/25 text-white";
   return (

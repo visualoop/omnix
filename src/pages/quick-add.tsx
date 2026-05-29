@@ -184,7 +184,7 @@ export function QuickAddProductsPage() {
       </Card>
 
       {/* Bulk grid */}
-      <div className="border border-border rounded-md overflow-hidden bg-white">
+      <div className="border border-border rounded-md overflow-hidden bg-background">
         <table className="w-full text-sm">
           <thead className="bg-stone-50 border-b border-border">
             <tr>
