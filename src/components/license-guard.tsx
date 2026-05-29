@@ -1,7 +1,7 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { Loader2 } from "lucide-react";
 import { getLicenseStatus, type LicenseStatus } from "@/services/license";
-import { LicensePage } from "@/pages/license";
+import { LicenseActivationPage } from "@/pages/license-activation";
 
 interface Props {
   children: ReactNode;
@@ -9,7 +9,7 @@ interface Props {
 
 /**
  * Gates the app behind license activation.
- * Shows LicensePage if no valid license, otherwise renders children.
+ * Shows LicenseActivationPage if no valid license, otherwise renders children.
  *
  * Set VITE_SKIP_LICENSE=1 in .env.development to bypass during development.
  */
@@ -50,7 +50,7 @@ export function LicenseGuard({ children }: Props) {
   }
 
   if (!status?.activated) {
-    return <LicensePage />;
+    return <LicenseActivationPage onActivated={refresh} />;
   }
 
   return <>{children}</>;

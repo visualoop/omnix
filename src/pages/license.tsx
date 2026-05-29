@@ -15,11 +15,9 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
 import {
   getLicenseStatus,
   deactivateLicense,
-  activateLicense,
   type LicenseStatus,
 } from "@/services/license";
 import { APP_NAME } from "@/lib/brand";
@@ -28,8 +26,6 @@ import { toast } from "sonner";
 export function LicensePage() {
   const [status, setStatus] = useState<LicenseStatus | null>(null);
   const [copied, setCopied] = useState(false);
-  const [licenseKey, setLicenseKey] = useState("");
-  const [activating, setActivating] = useState(false);
 
   const load = async () => {
     setStatus(await getLicenseStatus());
@@ -45,29 +41,6 @@ export function LicensePage() {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const handleActivate = async () => {
-    if (!licenseKey.trim()) {
-      toast.error("Please enter a license key");
-      return;
-    }
-    setActivating(true);
-    try {
-      const result = await activateLicense(licenseKey.trim());
-      if (result.ok) {
-        toast.success("License activated successfully");
-        await load();
-        setLicenseKey("");
-      } else {
-        toast.error(result.error || "Failed to activate license");
-      }
-    } catch (error) {
-      toast.error("Failed to activate license");
-      console.error(error);
-    } finally {
-      setActivating(false);
-    }
-  };
-
   const handleDeactivate = async () => {
     if (!(await confirm({ title: `Deactivate this license?\n\nYou will need to enter the key again to use ${APP_NAME} on this machine.` }))) return;
     await deactivateLicense();
@@ -81,60 +54,16 @@ export function LicensePage() {
 
   if (!status.activated || !status.license) {
     return (
-      <div className="min-h-screen flex items-center justify-center p-6">
-        <div className="space-y-6 max-w-md w-full">
-          <div className="text-center space-y-2">
-            <ShieldCheck className="h-12 w-12 mx-auto text-primary" />
-            <h1 className="text-2xl font-semibold tracking-tight">Activate {APP_NAME}</h1>
-            <p className="text-sm text-muted-foreground">
-              Enter your license key to continue
+      <div className="space-y-4 max-w-2xl">
+        <h1 className="text-xl font-semibold tracking-tight">License</h1>
+        <div className="border border-amber-500/50 bg-amber-500/5 rounded-lg p-4 flex items-start gap-3">
+          <AlertTriangle className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
+          <div>
+            <p className="font-medium">No active license</p>
+            <p className="text-sm text-muted-foreground mt-1">
+              The license has been deactivated or invalidated. Restart the app to enter a new license key.
             </p>
           </div>
-
-          <div className="border border-border rounded-lg p-5 space-y-4">
-            <div className="space-y-2">
-              <label className="text-sm font-medium">License Key</label>
-              <Input
-                type="text"
-                placeholder="XXXX-XXXX-XXXX-XXXX"
-                value={licenseKey}
-                onChange={(e) => setLicenseKey(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && handleActivate()}
-                disabled={activating}
-                className="font-mono"
-              />
-            </div>
-
-            <Button
-              onClick={handleActivate}
-              disabled={activating || !licenseKey.trim()}
-              className="w-full"
-            >
-              {activating ? "Activating..." : "Activate License"}
-            </Button>
-          </div>
-
-          <div className="border border-border rounded-lg p-4 space-y-3">
-            <div className="flex items-center gap-2">
-              <Cpu className="h-4 w-4 text-muted-foreground" />
-              <h2 className="text-sm font-semibold">Machine ID</h2>
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Provide this ID when purchasing or activating your license
-            </p>
-            <div className="flex items-center gap-2">
-              <code className="flex-1 bg-muted px-3 py-2 rounded font-mono text-sm tracking-wide">
-                {status.machine.formatted}
-              </code>
-              <Button variant="outline" size="sm" onClick={handleCopyMachineId}>
-                {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
-              </Button>
-            </div>
-          </div>
-
-          <p className="text-xs text-center text-muted-foreground">
-            Need a license? Visit <span className="font-medium">sokoos.co.ke</span>
-          </p>
         </div>
       </div>
     );
