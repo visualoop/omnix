@@ -71,9 +71,7 @@ jobs:
           command: |
             Set-Location C:\build
             $env:RUSTFLAGS = "-Cdlltool=C:\tools\msys64\mingw64\bin\dlltool.exe"
-            $env:PATH = "C:\tools\msys64\mingw64\bin;$env:PATH"
             Write-Host "RUSTFLAGS: $env:RUSTFLAGS"
-            Write-Host "dlltool location: $(Get-Command dlltool.exe -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Source)"
             npm run tauri -- build --bundles msi nsis
 
       - store_artifacts:
