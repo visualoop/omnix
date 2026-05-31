@@ -51,10 +51,12 @@ export interface PnLData {
     sales_cash: number;
     sales_credit: number;
     sales_other: number;
+    returns: number;
     other_income: number;
     total: number;
   };
   cogs: number;
+  returned_cogs: number;
   gross_profit: number;
   expenses: Array<{ category: string; amount: number }>;
   total_expenses: number;
@@ -223,7 +225,14 @@ export async function getPnL(startDate: string, endDate: string): Promise<PnLDat
     [startDate, endDate]
   );
 
-  const totalRevenue = sales_cash + sales_credit + sales_other + (otherIncome[0]?.total || 0);
+  const returns = await query<{ total: number }>(
+    `SELECT COALESCE(SUM(refund_amount), 0) as total
+     FROM sale_returns
+     WHERE date(return_date) BETWEEN ?1 AND ?2`,
+    [startDate, endDate]
+  );
+  const returnsAmount = returns[0]?.total || 0;
+  const totalRevenue = sales_cash + sales_credit + sales_other - returnsAmount + (otherIncome[0]?.total || 0);
 
   // COGS — buying price * quantity sold
   const cogs = await query<{ total: number }>(
@@ -232,6 +241,22 @@ export async function getPnL(startDate: string, endDate: string): Promise<PnLDat
      JOIN sales s ON s.id = si.sale_id
      LEFT JOIN batches b ON b.id = si.batch_id
      WHERE s.status = 'completed' AND date(s.created_at) BETWEEN ?1 AND ?2`,
+    [startDate, endDate]
+  );
+
+  const returnedCogs = await query<{ total: number }>(
+    `SELECT COALESCE(SUM(
+       COALESCE(
+         b.buying_price,
+         (SELECT b2.buying_price FROM batches b2 WHERE b2.product_id = sri.product_id ORDER BY b2.received_at DESC LIMIT 1),
+         0
+       ) * sri.quantity
+     ), 0) as total
+     FROM sale_return_items sri
+     JOIN sale_returns sr ON sr.id = sri.return_id
+     LEFT JOIN sale_items si ON si.id = sri.sale_item_id
+     LEFT JOIN batches b ON b.id = si.batch_id
+     WHERE date(sr.return_date) BETWEEN ?1 AND ?2`,
     [startDate, endDate]
   );
 
@@ -244,7 +269,8 @@ export async function getPnL(startDate: string, endDate: string): Promise<PnLDat
   );
 
   const totalExpenses = expenses.reduce((s, e) => s + e.amount, 0);
-  const cogsAmount = cogs[0]?.total || 0;
+  const returnedCogsAmount = returnedCogs[0]?.total || 0;
+  const cogsAmount = Math.max(0, (cogs[0]?.total || 0) - returnedCogsAmount);
   const grossProfit = totalRevenue - cogsAmount;
   const netProfit = grossProfit - totalExpenses;
   const margin = totalRevenue > 0 ? (netProfit / totalRevenue) * 100 : 0;
@@ -254,10 +280,12 @@ export async function getPnL(startDate: string, endDate: string): Promise<PnLDat
       sales_cash,
       sales_credit,
       sales_other,
+      returns: returnsAmount,
       other_income: otherIncome[0]?.total || 0,
       total: totalRevenue,
     },
     cogs: cogsAmount,
+    returned_cogs: returnedCogsAmount,
     gross_profit: grossProfit,
     expenses,
     total_expenses: totalExpenses,

@@ -11,9 +11,10 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { TableRowSkeleton } from "@/components/ui/skeletons";
 import {
   listEmployees, listDepartments, upsertEmployee, terminateEmployee, reactivateEmployee, getNextEmployeeNumber,
-  type EmployeeWithDetails, type Employee, type Department,
+  listLinkableUsers, type EmployeeWithDetails, type Employee, type Department, type LinkableUser,
 } from "@/services/employees";
 import { listBranches, type BranchWithStats } from "@/services/branches";
+import { createUser, type User } from "@/services/auth";
 import { calculatePayroll } from "@/services/payroll";
 import { toast } from "sonner";
 
@@ -188,6 +189,8 @@ function EmployeeForm({ open, employee, departments, branches, onClose, onSaved 
   onSaved: () => void;
 }) {
   const [form, setForm] = useState<Partial<Employee>>({});
+  const [users, setUsers] = useState<LinkableUser[]>([]);
+  const [createLoginOpen, setCreateLoginOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [empNumber, setEmpNumber] = useState("");
 
@@ -206,6 +209,7 @@ function EmployeeForm({ open, employee, departments, branches, onClose, onSaved 
         });
         getNextEmployeeNumber().then(setEmpNumber);
       }
+      listLinkableUsers(employee?.id).then(setUsers);
     }
   }, [employee, open]);
 
@@ -307,6 +311,23 @@ function EmployeeForm({ open, employee, departments, branches, onClose, onSaved 
             </TabsPanel>
 
             <TabsPanel value="employment" className="space-y-3 mt-3">
+              <Field label="System User Account" hint="Optional. Link only staff who need to log in to Omnix.">
+                <div className="flex gap-2">
+                  <select
+                    value={form.user_id || ""}
+                    onChange={(e) => setForm({ ...form, user_id: e.target.value || null })}
+                    className="w-full h-8 rounded-md border border-input bg-background px-2 text-[13px]"
+                  >
+                    <option value="">No login access</option>
+                    {users.map((u) => (
+                      <option key={u.id} value={u.id}>{u.full_name} (@{u.username}) - {u.role}</option>
+                    ))}
+                  </select>
+                  <Button type="button" variant="outline" size="sm" onClick={() => setCreateLoginOpen(true)}>
+                    Create
+                  </Button>
+                </div>
+              </Field>
               <Field label="Job Title *">
                 <Input value={form.job_title || ""} onChange={(e) => setForm({ ...form, job_title: e.target.value })} />
               </Field>
@@ -507,6 +528,92 @@ function EmployeeForm({ open, employee, departments, branches, onClose, onSaved 
           <Button size="sm" onClick={save} disabled={submitting}>
             {submitting && <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />}
             <Check className="h-3.5 w-3.5 mr-1" /> Save
+          </Button>
+        </SheetFooter>
+      </SheetContent>
+      <CreateLoginSheet
+        open={createLoginOpen}
+        employeeName={form.full_name || ""}
+        employeeEmail={form.email || ""}
+        onClose={() => setCreateLoginOpen(false)}
+        onCreated={async (user) => {
+          setForm((prev) => ({ ...prev, user_id: user.id }));
+          setUsers(await listLinkableUsers(employee?.id));
+          setCreateLoginOpen(false);
+        }}
+      />
+    </Sheet>
+  );
+}
+
+function CreateLoginSheet({ open, employeeName, employeeEmail, onClose, onCreated }: {
+  open: boolean;
+  employeeName: string;
+  employeeEmail: string;
+  onClose: () => void;
+  onCreated: (user: User) => void;
+}) {
+  const [username, setUsername] = useState("");
+  const [fullName, setFullName] = useState("");
+  const [password, setPassword] = useState("");
+  const [role, setRole] = useState<User["role"]>("cashier");
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (!open) return;
+    setFullName(employeeName);
+    setUsername((employeeEmail.split("@")[0] || employeeName.toLowerCase().replace(/[^a-z0-9]+/g, ".")).replace(/^\.+|\.+$/g, ""));
+    setPassword("");
+    setRole("cashier");
+  }, [employeeEmail, employeeName, open]);
+
+  const save = async () => {
+    if (!username || !fullName || !password) {
+      toast.error("Username, name, and password are required");
+      return;
+    }
+    setSaving(true);
+    try {
+      const user = await createUser({ username, full_name: fullName, password, role });
+      toast.success("User account created");
+      onCreated(user);
+    } catch (e) {
+      toast.error(String(e));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Sheet open={open} onOpenChange={(o) => !o && onClose()}>
+      <SheetContent side="right" className="w-[420px] sm:max-w-[420px]">
+        <SheetHeader>
+          <SheetTitle>Create User Account</SheetTitle>
+        </SheetHeader>
+        <div className="flex-1 overflow-auto px-4 py-3 space-y-3">
+          <Field label="Full Name">
+            <Input value={fullName} onChange={(e) => setFullName(e.target.value)} />
+          </Field>
+          <Field label="Username">
+            <Input value={username} onChange={(e) => setUsername(e.target.value)} className="font-mono" />
+          </Field>
+          <Field label="Role">
+            <select value={role} onChange={(e) => setRole(e.target.value as User["role"])} className="w-full h-8 rounded-md border border-input bg-background px-2 text-[13px]">
+              <option value="cashier">Cashier</option>
+              <option value="manager">Manager</option>
+              <option value="viewer">Viewer</option>
+              <option value="owner">Owner</option>
+            </select>
+          </Field>
+          <Field label="Temporary Password">
+            <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} />
+          </Field>
+        </div>
+        <SheetFooter>
+          <Button variant="outline" size="sm" onClick={onClose} disabled={saving}>Cancel</Button>
+          <Button size="sm" onClick={save} disabled={saving}>
+            {saving && <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />}
+            Create & Link
           </Button>
         </SheetFooter>
       </SheetContent>

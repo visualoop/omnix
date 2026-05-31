@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useCartStore } from "@/stores/cart";
 import { useAuthStore } from "@/stores/auth";
-import { completeSale, getPaymentMethods, type PaymentMethod, type PaymentEntry } from "@/services/sales";
+import { completeSale, getPaymentMethods, type CartItem, type PaymentMethod, type PaymentEntry } from "@/services/sales";
 import { getPaystackConfig } from "@/services/paystack";
 import { getDarajaConfig } from "@/services/daraja";
 import { createClaim, type InsuranceProvider, type InsuranceMember } from "@/services/insurance";
@@ -26,6 +26,15 @@ interface InsuranceState {
   claim: number;
 }
 
+interface PaymentSnapshot {
+  items: CartItem[];
+  customerId: string | null;
+  discountAmount: number;
+  total: number;
+  tip: number;
+  tipEmployeeId: string | null;
+}
+
 export function PaymentModal({ open, onClose }: Props) {
   const [methods, setMethods] = useState<PaymentMethod[]>([]);
   const [selectedMethod, setSelectedMethod] = useState<string>("cash");
@@ -39,27 +48,41 @@ export function PaymentModal({ open, onClose }: Props) {
   const [showDarajaStk, setShowDarajaStk] = useState(false);
   const [showInsuranceVerify, setShowInsuranceVerify] = useState(false);
   const [insurance, setInsurance] = useState<InsuranceState | null>(null);
+  const [snapshot, setSnapshot] = useState<PaymentSnapshot | null>(null);
 
-  const { items, customerId, cartDiscountAmount, grandTotal, clear, tip, tipEmployeeId } = useCartStore();
+  const clear = useCartStore((s) => s.clear);
+  const liveGrandTotal = useCartStore((s) => s.grandTotal);
   const user = useAuthStore((s) => s.user);
-  const total = grandTotal();
+  const total = snapshot?.total ?? liveGrandTotal();
   const paidSoFar = payments.reduce((s, p) => s + p.amount, 0);
   const remaining = total - paidSoFar;
 
   useEffect(() => {
     if (open) {
+      const cart = useCartStore.getState();
+      const nextSnapshot: PaymentSnapshot = {
+        items: cart.items.map((item) => ({ ...item })),
+        customerId: cart.customerId,
+        discountAmount: cart.cartDiscountAmount(),
+        total: cart.grandTotal(),
+        tip: cart.tip,
+        tipEmployeeId: cart.tipEmployeeId,
+      };
+      setSnapshot(nextSnapshot);
       getPaymentMethods().then(setMethods);
       getPaystackConfig().then((c) => setPaystackActive(!!c?.active));
       getDarajaConfig().then((c) => setDarajaActive(!!c?.active));
       setPayments([]);
-      setAmount(String(total.toFixed(2)));
+      setAmount(String(nextSnapshot.total.toFixed(2)));
       setReference("");
       setShowStkPush(false);
       setShowDarajaStk(false);
       setShowInsuranceVerify(false);
       setInsurance(null);
+    } else {
+      setSnapshot(null);
     }
-  }, [open, total]);
+  }, [open]);
 
   const handleSelectMethod = (id: string) => {
     setSelectedMethod(id);
@@ -92,25 +115,50 @@ export function PaymentModal({ open, onClose }: Props) {
   };
 
   const handleComplete = async () => {
+    const saleSnapshot = snapshot ?? (() => {
+      const cart = useCartStore.getState();
+      return {
+        items: cart.items.map((item) => ({ ...item })),
+        customerId: cart.customerId,
+        discountAmount: cart.cartDiscountAmount(),
+        total: cart.grandTotal(),
+        tip: cart.tip,
+        tipEmployeeId: cart.tipEmployeeId,
+      };
+    })();
+
+    if (saleSnapshot.items.length === 0) {
+      toast.error("Cart is empty");
+      return;
+    }
+
     const finalPayments = payments.length > 0 ? payments : [{
       method_id: selectedMethod,
       method_name: methods.find((m) => m.id === selectedMethod)?.name || "Cash",
-      amount: parseFloat(amount) || total,
+      amount: parseFloat(amount) || saleSnapshot.total,
     }];
 
     setProcessing(true);
     try {
-      const { saleId, saleItemIds } = await completeSale(items, finalPayments, customerId, user!.id, cartDiscountAmount(), tip, tipEmployeeId);
+      const { saleId, saleItemIds } = await completeSale(
+        saleSnapshot.items,
+        finalPayments,
+        saleSnapshot.customerId,
+        user!.id,
+        saleSnapshot.discountAmount,
+        saleSnapshot.tip,
+        saleSnapshot.tipEmployeeId,
+      );
 
       if (insurance) {
         await createClaim({
           sale_id: saleId,
           provider_id: insurance.provider.id,
           member: insurance.member,
-          gross_amount: total,
+          gross_amount: saleSnapshot.total,
           copay_amount: insurance.copay,
           claim_amount: insurance.claim,
-          items: items.map((it, i) => ({
+          items: saleSnapshot.items.map((it, i) => ({
             sale_item_id: saleItemIds[i],
             product_id: it.product_id,
             product_name: it.name,
@@ -134,6 +182,10 @@ export function PaymentModal({ open, onClose }: Props) {
       }, 500);
 
       clear();
+      setPayments([]);
+      setAmount("0");
+      setReference("");
+      setSnapshot(null);
       onClose();
     } catch (e) {
       toast.error(String(e));

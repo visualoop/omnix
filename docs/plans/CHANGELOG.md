@@ -5,6 +5,84 @@ This tracks work done LOCALLY without GitHub pushes. We only push when the user 
 ## v0.1.6 (last pushed/built)
 See git log for details. This is our baseline.
 
+## v0.2.6 — System integration stabilization (Plan 07 partial)
+
+Shipped locally from Codex integration pass:
+
+- **Settings shell**: `SettingsLayout` with grouped sidebar, back button, module-filtered nav; nested `/settings/*` routes; main sidebar hidden in settings; business profile-only index page.
+- **POS cart**: revision-based sync, immediate broadcast on clear, `addItemWithQuantity`, `useShallow` selectors.
+- **Payment**: immutable cart snapshot when payment modal opens.
+- **P&L**: sales returns and returned COGS subtracted; visible returns lines in UI.
+- **HR**: employee form links/creates system user accounts.
+- **Plans**: added docs/plans/07, 08, 09 and website/07.
+
+Still open after this release: dashboard KPI returns, `/settings/roles`, sidebar Users/Audit dedup, customer display redesign, hospitality module.
+
+## 2026-05-31 - Planning: website rewrite design preservation
+
+Updated the Omnix website rewrite plan to explicitly preserve the existing website design direction. The rewrite is now scoped to brand, pricing, package architecture, routes, Payload data model, checkout, dashboards, and content; it must not replace the approved dark premium SaaS visual system.
+
+### Files touched
+- docs/website/07-omnix-website-rewrite-and-launch-plan.md
+- docs/plans/CHANGELOG.md
+
+## 2026-05-31 - Planning: Omnix website rewrite and launch plan
+
+Added a website rewrite plan that supersedes the stale Duka-oriented website assumptions before implementation begins.
+
+### Document written
+- `docs/website/07-omnix-website-rewrite-and-launch-plan.md` - Omnix brand architecture, package-based pricing, corrected website IA, Payload model changes, checkout flow, customer dashboard, owner admin views, module pages, compare pages, help center, telemetry/privacy updates, and implementation readiness checklist.
+
+### Key decisions captured
+- Do not build the existing Duka website plan as-is.
+- Sell complete Omnix vertical packages, not Starter/Business/Enterprise tiers.
+- Treat Core as internal architecture, not a customer-facing product.
+- Add lead/demo pipeline and compare pages before launch.
+- Switch to implementation only after brand, pricing, routes, Payload collections, checkout, dashboard/admin, and visual direction are approved.
+
+### Files touched
+- docs/website/07-omnix-website-rewrite-and-launch-plan.md (NEW)
+- docs/plans/CHANGELOG.md
+
+## 2026-05-31 - Planning: RBAC, pricing, modules, competition, and UI quality
+
+Added a platform strategy plan after reviewing existing pricing/module docs, current customer display implementation, current static permission matrix, and current market signals from Kenyan POS/ERP competitors.
+
+### Document written
+- `09-platform-strategy-rbac-pricing-ui.md` - granular roles/groups/permissions plan, Core-vs-module rulebook, recommended Kenya module portfolio, revised module-based pricing model, competitor positioning, customer-facing display redesign plan, and UI skill/design workflow.
+
+### Key decisions captured
+- Move from fixed four-role RBAC to dynamic custom roles, groups, permission catalog, branch/module scopes, and overrides.
+- Keep users and employees separate, linked only when an employee needs system access.
+- Keep AGENTS.md pricing rule: no Standard/Pro/Enterprise tiers. Use one Core license plus paid modules, devices, maintenance, and services.
+- Prioritize Dawa, Retail, Hospitality, then Hardware, Workshop/Repair, Wholesale/Distribution, Salon/Spa.
+- Redesign customer display around a module display registry and settings, not hardcoded gradients.
+- Prefer reviewed official/high-trust UI skills plus a repo-local Omnix UI quality skill over random skill stacking.
+
+### Files touched
+- docs/plans/09-platform-strategy-rbac-pricing-ui.md (NEW)
+- docs/plans/CHANGELOG.md
+
+## 2026-05-31 - Planning: integration stabilization + hospitality module
+
+Added two plan documents under `docs/plans/` after reviewing the existing Core ERP, HR, Dawa, Retail, branch, settings, POS, and accounting plans plus current source files.
+
+### Documents written
+- `07-system-integration-stabilization.md` - settings shell/sidebar/back-button plan, module-aware settings ownership, role/employee/user relationship plan, POS rerender/cart clearing stabilization, returns/profit corrections, multi-location completion, and implementation batches.
+- `08-hospitality-module.md` - restaurant/hotel/hospitality vertical plan with module boundaries, permissions, settings, tables, kitchen, menu modifiers, rooms, bookings, folios, recipes, service charge, reports, migrations, and build order.
+
+### Key repo findings captured
+- Branches, branch switcher, active branch store, and branch settings page already exist, but discoverability and full branch filtering still need a completion pass.
+- `employees.user_id` already exists in schema and service, but the employee/user linking workflow is incomplete in UI.
+- POS currently subscribes too broadly to cart state and uses fragile "last item" logic for multiplier/UOM flows.
+- Payment completion clears the cart after sale creation, but clear/broadcast/persist ordering can allow stale state to reappear.
+- P&L currently does not subtract sale returns or returned COGS.
+
+### Files touched
+- docs/plans/07-system-integration-stabilization.md (NEW)
+- docs/plans/08-hospitality-module.md (NEW)
+- docs/plans/CHANGELOG.md
+
 ## 2026-05-26 — Phase 9 Planning: Website + ops platform
 
 Wrote the complete 6-document specification for the public-facing site, customer dashboard, owner admin platform, telemetry SDK, and CI release pipeline. No code yet — implementation gated until the user approves the plan suite.

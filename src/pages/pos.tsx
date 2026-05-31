@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useCartStore } from "@/stores/cart";
+import { useShallow } from "zustand/react/shallow";
 import { useAuthStore } from "@/stores/auth";
 import { useActiveBranch } from "@/stores/active-branch";
 import { useActiveModule } from "@/stores/active-module";
@@ -98,9 +99,35 @@ export function POSPage() {
   const [showLowStock, setShowLowStock] = useState(false);
   const searchRef = useRef<HTMLInputElement>(null);
 
-  const { items, addItem, removeItem, updateQty, clear, subtotal, taxTotal, grandTotal, discount, discountType, cartDiscountAmount } = useCartStore();
-  const customerId = useCartStore((s) => s.customerId);
-  const tip = useCartStore((s) => s.tip);
+  const {
+    items,
+    addItemWithQuantity,
+    removeItem,
+    updateQty,
+    clear,
+    subtotal,
+    taxTotal,
+    grandTotal,
+    discount,
+    discountType,
+    cartDiscountAmount,
+    customerId,
+    tip,
+  } = useCartStore(useShallow((s) => ({
+    items: s.items,
+    addItemWithQuantity: s.addItemWithQuantity,
+    removeItem: s.removeItem,
+    updateQty: s.updateQty,
+    clear: s.clear,
+    subtotal: s.subtotal,
+    taxTotal: s.taxTotal,
+    grandTotal: s.grandTotal,
+    discount: s.discount,
+    discountType: s.discountType,
+    cartDiscountAmount: s.cartDiscountAmount,
+    customerId: s.customerId,
+    tip: s.tip,
+  })));
   const user = useAuthStore((s) => s.user);
   const branch = useActiveBranch((s) => s.active);
   const activeModule = useActiveModule((s) => s.active);
@@ -151,20 +178,14 @@ export function POSPage() {
       const uomMatch = await getUomByBarcode(search);
       if (cancelled) return;
       if (uomMatch) {
-        // Add product with correct quantity for this pack
-        addItem({
+        const packQty = Math.max(1, uomMatch.uom.quantity_per || 1);
+        const packPrice = uomMatch.uom.selling_price ?? (uomMatch.base_selling_price * packQty);
+        addItemWithQuantity({
           id: uomMatch.product_id,
-          name: `${uomMatch.product_name} — ${uomMatch.uom.name}`,
-          selling_price: uomMatch.uom.selling_price ?? (uomMatch.base_selling_price * uomMatch.uom.quantity_per),
-          tax_rate: 0, // pack price already includes tax
-        });
-        // For pack pricing, multiply qty
-        const packQty = uomMatch.uom.quantity_per;
-        if (packQty > 1) {
-          // Update the just-added line to reflect the pack quantity
-          const lastItem = useCartStore.getState().items[useCartStore.getState().items.length - 1];
-          if (lastItem) updateQty(lastItem.id, packQty);
-        }
+          name: `${uomMatch.product_name} - ${uomMatch.uom.name}`,
+          selling_price: packPrice / packQty,
+          tax_rate: 0,
+        }, packQty);
         toast.success(`Added: ${uomMatch.uom.name} (${packQty} units)`);
         setSearch("");
         searchRef.current?.focus();
@@ -177,7 +198,7 @@ export function POSPage() {
     })().catch(console.error);
 
     return () => { cancelled = true; };
-  }, [search]);
+  }, [search, addItemWithQuantity]);
 
   // Category filter products
   useEffect(() => {
@@ -196,18 +217,6 @@ export function POSPage() {
     setSearch("");
     searchRef.current?.focus();
   };
-
-  // Apply quantity multiplier when a product is added
-  useEffect(() => {
-    if (qtyMultiplier > 1 && items.length > 0) {
-      const lastItem = items[items.length - 1];
-      // Only apply once per item add — check if quantity is exactly 1
-      if (lastItem.quantity === 1) {
-        updateQty(lastItem.id, qtyMultiplier);
-        setQtyMultiplier(1); // reset
-      }
-    }
-  }, [items.length]);
 
   // Keyboard shortcuts
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
@@ -492,15 +501,16 @@ export function POSPage() {
         onClose={() => setPendingVariantPick(null)}
         onPick={(p, variant) => {
           if (variant) {
-            addItem({
+            addItemWithQuantity({
               id: variant.id,
-              name: `${p.name} — ${variant.variant_name}`,
+              name: `${p.name} - ${variant.variant_name}`,
               selling_price: variant.selling_price ?? p.selling_price,
               tax_rate: p.tax_rate,
-            });
+            }, qtyMultiplier);
           } else {
-            addItem({ id: p.id, name: p.name, selling_price: p.selling_price, tax_rate: p.tax_rate });
+            addItemWithQuantity({ id: p.id, name: p.name, selling_price: p.selling_price, tax_rate: p.tax_rate }, qtyMultiplier);
           }
+          setQtyMultiplier(1);
           setPendingVariantPick(null);
         }}
       />

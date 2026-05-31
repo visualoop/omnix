@@ -4,6 +4,7 @@ import { Toaster } from "sonner";
 import { ConfirmDialogHost } from "@/components/ui/confirm-dialog";
 import { useAuthStore } from "@/stores/auth";
 import { AppShell } from "@/components/layout/app-shell";
+import { SettingsLayout } from "@/components/layout/settings-layout";
 import { LicenseGuard } from "@/components/license-guard";
 import { RequireRole } from "@/components/require-role";
 import { LoginPage } from "@/pages/login";
@@ -134,7 +135,6 @@ function AppContent() {
           <Route path="/inventory/import" element={<RequireRole permission="inventory.edit"><ImportProductsPage /></RequireRole>} />
           <Route path="/sales" element={<RequireRole permission="sales.view"><SalesHistoryPage /></RequireRole>} />
           <Route path="/users" element={<RequireRole permission="users.view"><UsersPage /></RequireRole>} />
-          <Route path="/settings/users" element={<RequireRole permission="users.view"><UsersPage /></RequireRole>} />
           <Route path="/pharmacy" element={<RequireRole permission="pharmacy.dispense"><PharmacyPage /></RequireRole>} />
           <Route path="/pharmacy/expiry" element={<RequireRole permission="inventory.view"><ExpiryPage /></RequireRole>} />
           <Route path="/reports" element={<RequireRole permission={["reports.view", "reports.zreport"]}><ReportsIndexPage /></RequireRole>} />
@@ -149,7 +149,6 @@ function AppContent() {
           <Route path="/pharmacy/amr" element={<RequireRole permission="reports.view"><AmrReportPage /></RequireRole>} />
           <Route path="/petty-cash" element={<RequireRole permission="petty_cash.use"><PettyCashPage /></RequireRole>} />
           <Route path="/promotions" element={<RequireRole permission="promotions.manage"><PromotionsPage /></RequireRole>} />
-          <Route path="/settings/branches" element={<RequireRole permission="settings.business"><BranchesPage /></RequireRole>} />
           <Route path="/stock-transfers" element={<RequireRole permission="inventory.view"><StockTransfersPage /></RequireRole>} />
           <Route path="/stock-transfers/new" element={<RequireRole permission="inventory.view"><NewStockTransferPage /></RequireRole>} />
           <Route path="/stock-transfers/:id" element={<RequireRole permission="inventory.view"><StockTransferDetailPage /></RequireRole>} />
@@ -174,10 +173,20 @@ function AppContent() {
           <Route path="/expenses" element={<RequireRole permission="expenses.view"><ExpensesPage /></RequireRole>} />
           <Route path="/pnl" element={<RequireRole permission="reports.pnl"><PnLPage /></RequireRole>} />
           <Route path="/cash-register" element={<RequireRole permission="cash_register.use"><CashRegisterPage /></RequireRole>} />
-          <Route path="/settings" element={<RequireRole permission="settings.business"><SettingsPage /></RequireRole>} />
-          <Route path="/settings/backup" element={<RequireRole permission="settings.backup"><BackupPage /></RequireRole>} />
+          <Route path="/settings" element={<SettingsLayout />}>
+            <Route index element={<RequireRole permission="settings.business"><SettingsPage /></RequireRole>} />
+            <Route path="branches" element={<RequireRole permission="settings.business"><BranchesPage /></RequireRole>} />
+            <Route path="users" element={<RequireRole permission="users.view"><UsersPage /></RequireRole>} />
+            <Route path="payments" element={<RequireRole permission="settings.business"><PaymentSettingsPage /></RequireRole>} />
+            <Route path="etims" element={<RequireRole permission="etims.view"><EtimsSettingsPage /></RequireRole>} />
+            <Route path="insurance" element={<RequireRole permission="claims.view"><InsuranceSettingsPage /></RequireRole>} />
+            <Route path="network" element={<RequireRole permission="settings.network"><NetworkSettingsPage /></RequireRole>} />
+            <Route path="modules" element={<RequireRole permission="settings.modules"><ModulesPage /></RequireRole>} />
+            <Route path="backup" element={<RequireRole permission="settings.backup"><BackupPage /></RequireRole>} />
+            <Route path="audit" element={<RequireRole permission="audit.view"><AuditLogPage /></RequireRole>} />
+            <Route path="license" element={<RequireRole permission="license.view"><LicensePage /></RequireRole>} />
+          </Route>
           <Route path="/audit" element={<RequireRole permission="audit.view"><AuditLogPage /></RequireRole>} />
-          <Route path="/settings/network" element={<RequireRole permission="settings.network"><NetworkSettingsPage /></RequireRole>} />
           <Route path="/suppliers" element={<RequireRole permission="suppliers.view"><SuppliersPage /></RequireRole>} />
           <Route path="/purchase-orders" element={<RequireRole permission="purchase_orders.view"><PurchaseOrdersPage /></RequireRole>} />
           <Route path="/purchase-orders/new" element={<RequireRole permission="purchase_orders.create"><NewPurchaseOrderPage /></RequireRole>} />
@@ -188,11 +197,6 @@ function AppContent() {
           <Route path="/stock-take" element={<RequireRole permission="stock_take.use"><StockTakesPage /></RequireRole>} />
           <Route path="/stock-take/:id" element={<RequireRole permission="stock_take.use"><StockTakeDetailPage /></RequireRole>} />
           <Route path="/patients/:id" element={<RequireRole permission="customers.view"><PatientProfilePage /></RequireRole>} />
-          <Route path="/settings/modules" element={<RequireRole permission="settings.modules"><ModulesPage /></RequireRole>} />
-          <Route path="/settings/payments" element={<RequireRole permission="settings.business"><PaymentSettingsPage /></RequireRole>} />
-          <Route path="/settings/etims" element={<RequireRole permission="etims.view"><EtimsSettingsPage /></RequireRole>} />
-          <Route path="/settings/insurance" element={<RequireRole permission="claims.view"><InsuranceSettingsPage /></RequireRole>} />
-          <Route path="/settings/license" element={<RequireRole permission="license.view"><LicensePage /></RequireRole>} />
           <Route path="/claims" element={<RequireRole permission="claims.view"><ClaimsPage /></RequireRole>} />
           <Route path="/etims" element={<RequireRole permission="etims.view"><EtimsQueuePage /></RequireRole>} />
           <Route path="/vat-report" element={<RequireRole permission="reports.view"><VatReportPage /></RequireRole>} />

@@ -64,6 +64,13 @@ export interface EmployeeWithDetails extends Employee {
   username: string | null;
 }
 
+export interface LinkableUser {
+  id: string;
+  username: string;
+  full_name: string;
+  role: string;
+}
+
 // ─── Departments ───────────────────────────────────────────────────────
 export async function listDepartments(): Promise<Department[]> {
   return query<Department>(`SELECT * FROM departments ORDER BY name`);
@@ -126,6 +133,17 @@ export async function getEmployee(id: string): Promise<Employee | null> {
 export async function getNextEmployeeNumber(): Promise<string> {
   const [r] = await query<{ count: number }>(`SELECT COUNT(*) AS count FROM employees`);
   return `EMP-${String((r?.count || 0) + 1).padStart(4, "0")}`;
+}
+
+export async function listLinkableUsers(currentEmployeeId?: string): Promise<LinkableUser[]> {
+  return query<LinkableUser>(
+    `SELECT u.id, u.username, u.full_name, u.role
+     FROM users u
+     LEFT JOIN employees e ON e.user_id = u.id AND (?1 IS NULL OR e.id != ?1)
+     WHERE u.active = 1 AND e.id IS NULL
+     ORDER BY u.full_name, u.username`,
+    [currentEmployeeId || null],
+  );
 }
 
 export async function upsertEmployee(input: Partial<Employee> & { full_name: string; job_title: string }): Promise<string> {

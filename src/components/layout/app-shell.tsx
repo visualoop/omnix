@@ -13,6 +13,7 @@ export function AppShell() {
   const location = useLocation();
   const [routeKey, setRouteKey] = useState(location.pathname);
   const [transitionClass, setTransitionClass] = useState("animate-in fade-in-0 duration-200");
+  const isSettingsRoute = location.pathname.startsWith("/settings");
 
   useEffect(() => {
     setRouteKey(location.pathname);
@@ -21,7 +22,7 @@ export function AppShell() {
 
   return (
     <div className="flex h-screen w-screen overflow-hidden bg-background text-foreground">
-      <Sidebar onCommandOpen={openCmd} />
+      {!isSettingsRoute && <Sidebar onCommandOpen={openCmd} />}
       <div className="flex flex-col flex-1 overflow-hidden">
         <Topbar />
         <main className="flex-1 overflow-auto p-6">

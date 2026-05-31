@@ -153,7 +153,7 @@ export function Sidebar({ onCommandOpen }: { onCommandOpen: () => void }) {
       </button>
 
       {/* Nav */}
-      <nav className="flex-1 mt-2 px-2 space-y-0.5">
+      <nav className="flex-1 mt-2 px-2 space-y-0.5 overflow-auto min-h-0 pb-2">
         {visibleNav.map((item) => (
           <NavLink
             key={item.to}

@@ -35,10 +35,12 @@ export function PnLPage() {
       { line: "  Sales (Cash)", amount: data.revenue.sales_cash.toFixed(2) },
       { line: "  Sales (Credit)", amount: data.revenue.sales_credit.toFixed(2) },
       { line: "  Sales (Other Methods)", amount: data.revenue.sales_other.toFixed(2) },
+      { line: "  Sales Returns", amount: `-${data.revenue.returns.toFixed(2)}` },
       { line: "  Other Income", amount: data.revenue.other_income.toFixed(2) },
-      { line: "Total Revenue", amount: data.revenue.total.toFixed(2) },
+      { line: "Net Revenue", amount: data.revenue.total.toFixed(2) },
       { line: "", amount: "" },
       { line: "Cost of Goods Sold", amount: data.cogs.toFixed(2) },
+      { line: "Returned COGS", amount: `-${data.returned_cogs.toFixed(2)}` },
       { line: "Gross Profit", amount: data.gross_profit.toFixed(2) },
       { line: "", amount: "" },
       { line: "EXPENSES", amount: "" },
@@ -102,12 +104,14 @@ export function PnLPage() {
               <Line label="Sales (Cash)" amount={data.revenue.sales_cash} />
               <Line label="Sales (Credit)" amount={data.revenue.sales_credit} />
               <Line label="Sales (Other Methods)" amount={data.revenue.sales_other} />
+              {data.revenue.returns > 0 && <Line label="Sales Returns" amount={-data.revenue.returns} negative />}
               <Line label="Other Income" amount={data.revenue.other_income} />
-              <Line label="Total Revenue" amount={data.revenue.total} bold />
+              <Line label="Net Revenue" amount={data.revenue.total} bold />
             </Section>
 
             <Section title="Cost of Goods Sold">
               <Line label="COGS" amount={data.cogs} />
+              {data.returned_cogs > 0 && <Line label="Returned COGS" amount={-data.returned_cogs} negative />}
               <Line label="Gross Profit" amount={data.gross_profit} bold positive={data.gross_profit >= 0} />
             </Section>
 
@@ -168,11 +172,11 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   );
 }
 
-function Line({ label, amount, bold, positive }: { label: string; amount: number; bold?: boolean; positive?: boolean }) {
+function Line({ label, amount, bold, positive, negative }: { label: string; amount: number; bold?: boolean; positive?: boolean; negative?: boolean }) {
   return (
     <div className={`flex justify-between py-1.5 ${bold ? "border-t border-border font-semibold pt-2 mt-1" : ""}`}>
       <span className={bold ? "text-foreground" : "text-muted-foreground pl-4"}>{label}</span>
-      <span className={`font-mono ${positive === false ? "text-red-600" : positive ? "text-green-600" : ""}`}>
+      <span className={`font-mono ${negative || positive === false ? "text-red-600" : positive ? "text-green-600" : ""}`}>
         {amount.toFixed(2)}
       </span>
     </div>
