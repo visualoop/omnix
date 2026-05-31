@@ -80,6 +80,7 @@ const navItems: NavItem[] = [
   { to: "/retail/shrinkage", icon: AlertTriangle, label: "Shrinkage", permissions: ["retail.shrinkage.record"] },
   // Continue core:
   { to: "/reports", icon: BarChart3, label: "Reports", permissions: ["reports.view", "reports.zreport"] },
+  { to: "/reports/daily-operations", icon: BarChart3, label: "Daily Ops", permissions: ["reports.view"] },
   { to: "/vat-report", icon: FileCheck, label: "VAT Report", permissions: ["reports.view"] },
   { to: "/etims", icon: FileCheck, label: "eTIMS", permissions: ["etims.view"] },
   { to: "/claims", icon: Shield, label: "Insurance Claims", permissions: ["claims.view"] },

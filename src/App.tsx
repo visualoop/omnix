@@ -41,6 +41,10 @@ import { NewDocumentPage } from "@/pages/invoice-new";
 import { DocumentDetailPage } from "@/pages/invoice-detail";
 import { RecurringInvoicesPage } from "@/pages/recurring-invoices";
 import { CustomerDisplayPage } from "@/pages/customer-display";
+import { DailyOperationsPage } from "@/pages/daily-operations";
+import { CustomerDisplaySettingsPage } from "@/pages/settings-customer-display";
+import { TaxSettingsPage } from "@/pages/settings-taxes";
+import { PriceListSettingsPage } from "@/pages/settings-price-lists";
 import { BankingPage } from "@/pages/banking";
 import { BankAccountDetailPage } from "@/pages/banking-detail";
 import { BrandsPage } from "@/pages/retail-brands";
@@ -85,6 +89,18 @@ function App() {
 
 function AppContent() {
   const { user, isSetupComplete, setupChecked, refreshSetupState } = useAuthStore();
+
+  // Customer display — separate window, no auth/license guards
+  if (window.location.pathname === "/customer-display") {
+    return (
+      <BrowserRouter>
+        <Routes>
+          <Route path="/customer-display" element={<CustomerDisplayPage />} />
+          <Route path="*" element={<CustomerDisplayPage />} />
+        </Routes>
+      </BrowserRouter>
+    );
+  }
 
   useEffect(() => {
     // Initialize DB mode (detects standalone/client) before checking setup
@@ -143,6 +159,7 @@ function AppContent() {
           <Route path="/reports/inventory" element={<RequireRole permission="reports.view"><InventoryReportsPage /></RequireRole>} />
           <Route path="/reports/zreport" element={<RequireRole permission="reports.zreport"><ZReportPage /></RequireRole>} />
           <Route path="/reports/tips" element={<RequireRole permission="reports.view"><TipsReportPage /></RequireRole>} />
+          <Route path="/reports/daily-operations" element={<RequireRole permission={["reports.view", "reports.zreport"]}><DailyOperationsPage /></RequireRole>} />
           <Route path="/pharmacy/doctors" element={<RequireRole permission="pharmacy.doctors.manage"><DoctorsPage /></RequireRole>} />
           <Route path="/pharmacy/refills" element={<RequireRole permission="pharmacy.refill"><RefillsPage /></RequireRole>} />
           <Route path="/pharmacy/controlled-register" element={<RequireRole permission="pharmacy.dispense"><ControlledRegisterPage /></RequireRole>} />
@@ -185,6 +202,9 @@ function AppContent() {
             <Route path="network" element={<RequireRole permission="settings.network"><NetworkSettingsPage /></RequireRole>} />
             <Route path="modules" element={<RequireRole permission="settings.modules"><ModulesPage /></RequireRole>} />
             <Route path="backup" element={<RequireRole permission="settings.backup"><BackupPage /></RequireRole>} />
+            <Route path="taxes" element={<RequireRole permission="settings.business"><TaxSettingsPage /></RequireRole>} />
+            <Route path="price-lists" element={<RequireRole permission="retail.price_lists.manage"><PriceListSettingsPage /></RequireRole>} />
+            <Route path="customer-display" element={<RequireRole permission="settings.business"><CustomerDisplaySettingsPage /></RequireRole>} />
             <Route path="audit" element={<RequireRole permission="audit.view"><AuditLogPage /></RequireRole>} />
             <Route path="license" element={<RequireRole permission="license.view"><LicensePage /></RequireRole>} />
           </Route>

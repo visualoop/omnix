@@ -777,7 +777,7 @@ function StatementImportSheet({ importId, accountId, userId, onClose, onChange }
         <SheetHeader>
           <SheetTitle>Statement Import — {data.import.period_start} to {data.import.period_end}</SheetTitle>
         </SheetHeader>
-        <div className="flex-1 overflow-auto px-4 py-3 space-y-4">
+        <div className="flex-1 overflow-auto space-y-4">
           <div className="grid grid-cols-4 gap-2">
             <Stat label="Total Lines" value={String(data.import.line_count)} />
             <Stat label="Matched" value={String(data.import.matched_count)} color="text-emerald-600" />

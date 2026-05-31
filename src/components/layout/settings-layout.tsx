@@ -22,10 +22,13 @@ const SETTINGS_NAV: SettingsNavItem[] = [
   { to: "/settings/users", label: "Users & Permissions", description: "Accounts, roles, branch access", icon: Users, permission: "users.view", group: "Access" },
   { to: "/settings/roles", label: "Role Matrix", description: "What each role can do", icon: ShieldCheck, permission: "users.manage", group: "Access" },
   { to: "/settings/payments", label: "Payment Methods", description: "Cash, M-Pesa, cards, bank", icon: CreditCard, permission: "settings.business", group: "Finance" },
+  { to: "/settings/taxes", label: "Tax & VAT", description: "Default rates, tax classes", icon: CreditCard, permission: "settings.business", group: "Finance" },
+  { to: "/settings/price-lists", label: "Price Lists", description: "Customer pricing tiers", icon: CreditCard, permission: "retail.price_lists.manage", group: "Finance" },
   { to: "/settings/etims", label: "KRA eTIMS", description: "Tax invoice signing", icon: FileCheck, permission: "etims.view", group: "Finance" },
   { to: "/settings/network", label: "LAN Multi-device", description: "Master/client mode", icon: Network, permission: "settings.network", group: "Operations" },
   { to: "/settings/modules", label: "Modules", description: "Active vertical and roadmap", icon: Boxes, permission: "settings.modules", group: "Operations" },
   { to: "/settings/backup", label: "Backup & Restore", description: "Protect business data", icon: Database, permission: "settings.backup", group: "Operations" },
+  { to: "/settings/customer-display", label: "Customer Display", description: "Second screen settings", icon: Database, permission: "settings.business", group: "Operations" },
   { to: "/settings/audit", label: "Audit Log", description: "Security and compliance history", icon: Activity, permission: "audit.view", group: "Operations" },
   { to: "/settings/license", label: "License", description: "Machine binding and updates", icon: Key, permission: "license.view", group: "Operations" },
   { to: "/settings/insurance", label: "Insurance Providers", description: "SHA and private insurers", icon: Shield, permission: "claims.view", group: "Dawa", module: "dawa" },
@@ -35,6 +38,7 @@ const GROUPS: SettingsNavItem["group"][] = ["Business", "Access", "Finance", "Op
 
 export function SettingsLayout() {
   const navigate = useNavigate();
+  const backToDashboard = () => navigate("/");
   const location = useLocation();
   const user = useAuthStore((s) => s.user);
   const activeModule = useActiveModule((s) => s.active);
@@ -51,7 +55,7 @@ export function SettingsLayout() {
         <div className="h-12 border-b border-border px-3 flex items-center gap-2">
           <button
             type="button"
-            onClick={() => navigate(-1)}
+            onClick={() => backToDashboard()}
             className="h-8 w-8 rounded-md hover:bg-accent flex items-center justify-center text-muted-foreground hover:text-foreground"
             title="Back"
           >

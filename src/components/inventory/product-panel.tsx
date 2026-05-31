@@ -160,7 +160,7 @@ export function ProductPanel({ open, onClose, productId, onSaved }: Props) {
           <SheetTitle>{isEdit ? "Edit Product" : "New Product"}</SheetTitle>
         </SheetHeader>
 
-        <div className="flex-1 overflow-auto px-4 py-3">
+        <div className="flex-1 overflow-auto flex flex-col">
           <Tabs value={tab} onValueChange={setTab}>
             <TabsList>
               <TabsTrigger value="general">General</TabsTrigger>

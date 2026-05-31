@@ -348,7 +348,7 @@ function UnitForm({ open, unit, onClose, onSaved }: {
         <SheetHeader>
           <SheetTitle>{unit ? unit.name : "New Cold Storage Unit"}</SheetTitle>
         </SheetHeader>
-        <div className="flex-1 overflow-auto px-4 py-3 space-y-3">
+        <div className="flex-1 overflow-auto space-y-3">
           <div className="space-y-1">
             <label className="text-[11px] font-medium text-muted-foreground">Name *</label>
             <Input value={form.name || ""} onChange={(e) => setForm({ ...form, name: e.target.value })} autoFocus />

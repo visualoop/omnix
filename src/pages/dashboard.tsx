@@ -12,21 +12,21 @@ import { Link } from "react-router-dom";
 function useModuleAccent() {
   const m = useActiveModule((s) => s.active);
   if (m === "dawa") return {
-    gradient: "from-teal-600 via-emerald-600 to-cyan-600",
-    primary: "text-teal-700",
-    primaryBg: "bg-teal-50",
+    headerBg: "bg-teal-700",
+    primary: "text-teal-700 dark:text-teal-400",
+    primaryBg: "bg-teal-500/10",
     label: "Dawa Pharmacy",
   };
   if (m === "retail") return {
-    gradient: "from-orange-600 via-amber-500 to-rose-500",
-    primary: "text-orange-700",
-    primaryBg: "bg-orange-50",
+    headerBg: "bg-amber-700",
+    primary: "text-amber-700 dark:text-amber-400",
+    primaryBg: "bg-amber-500/10",
     label: "Soko Retail",
   };
   return {
-    gradient: "from-amber-600 via-yellow-500 to-orange-500",
-    primary: "text-amber-700",
-    primaryBg: "bg-amber-50",
+    headerBg: "bg-primary",
+    primary: "text-primary",
+    primaryBg: "bg-accent/10",
     label: "Core ERP",
   };
 }
@@ -71,7 +71,7 @@ export function DashboardPage() {
   return (
     <div className="space-y-5">
       {/* Hero greeting card with module-aware gradient */}
-      <div className={`rounded-lg bg-gradient-to-br ${accent.gradient} p-5 text-white shadow-md`}>
+      <div className={`rounded-lg ${accent.headerBg} p-5 text-white`}>
         <div className="flex items-start justify-between">
           <div>
             <p className="text-xs uppercase tracking-wider text-white/70 font-medium">{accent.label}</p>

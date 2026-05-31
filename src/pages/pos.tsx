@@ -32,6 +32,7 @@ import { SubstitutionsDialog } from "@/components/pos/substitutions-dialog";
 import { QtyMultiplierDialog } from "@/components/pos/qty-multiplier-dialog";
 import { OpenShiftDialog, CloseShiftDialog, PettyCashDialog } from "@/components/pos/cash-dialogs";
 import { TipDialog } from "@/components/pos/tip-dialog";
+import { PromoDialog } from "@/components/pos/promo-dialog";
 import { openCustomerDisplay } from "@/lib/customer-display";
 import { countHeldSales } from "@/services/held-sales";
 import { categoryColor, stockColor } from "@/lib/category-colors";
@@ -43,29 +44,29 @@ const KES = (n: number) => "KES " + n.toLocaleString("en-KE", { minimumFractionD
 function useModuleAccent() {
   const m = useActiveModule((s) => s.active);
   if (m === "dawa") return {
-    pay: "bg-teal-600 hover:bg-teal-700",
-    accentText: "text-teal-700",
-    accentBg: "bg-teal-50",
-    accentRing: "ring-teal-200",
-    headerGradient: "from-teal-600 via-emerald-600 to-cyan-600",
+    pay: "bg-teal-700 hover:bg-teal-800",
+    accentText: "text-teal-700 dark:text-teal-400",
+    accentBg: "bg-teal-500/10",
+    accentRing: "ring-teal-500/30",
+    headerBg: "bg-teal-700",
     isPharmacy: true,
     isRetail: false,
   };
   if (m === "retail") return {
-    pay: "bg-orange-600 hover:bg-orange-700",
-    accentText: "text-orange-700",
-    accentBg: "bg-orange-50",
-    accentRing: "ring-orange-200",
-    headerGradient: "from-orange-600 via-amber-500 to-rose-500",
+    pay: "bg-amber-700 hover:bg-amber-800",
+    accentText: "text-amber-700 dark:text-amber-400",
+    accentBg: "bg-amber-500/10",
+    accentRing: "ring-amber-500/30",
+    headerBg: "bg-amber-700",
     isPharmacy: false,
     isRetail: true,
   };
   return {
-    pay: "bg-amber-600 hover:bg-amber-700",
-    accentText: "text-amber-700",
-    accentBg: "bg-amber-50",
-    accentRing: "ring-amber-200",
-    headerGradient: "from-amber-600 via-yellow-500 to-orange-500",
+    pay: "bg-primary hover:bg-primary/90",
+    accentText: "text-primary",
+    accentBg: "bg-accent/10",
+    accentRing: "ring-accent",
+    headerBg: "bg-primary",
     isPharmacy: false,
     isRetail: false,
   };
@@ -96,6 +97,7 @@ export function POSPage() {
   const [closeShiftDialog, setCloseShiftDialog] = useState(false);
   const [pettyCashDialog, setPettyCashDialog] = useState(false);
   const [tipDialog, setTipDialog] = useState(false);
+  const [promoOpen, setPromoOpen] = useState(false);
   const [showLowStock, setShowLowStock] = useState(false);
   const searchRef = useRef<HTMLInputElement>(null);
 
@@ -245,7 +247,7 @@ export function POSPage() {
   return (
     <div className="flex flex-col h-[calc(100vh-48px)] -m-6 bg-muted/30">
       {/* ─── TOP STATUS BAR ─────────────────────────────────────────── */}
-      <div className={`bg-gradient-to-r ${accent.headerGradient} text-white flex-shrink-0`}>
+      <div className={`${accent.headerBg} text-white flex-shrink-0`}>
         <div className="px-4 py-2 flex items-center gap-4 text-xs">
           {/* Brand */}
           <div className="flex items-center gap-2 font-semibold">
@@ -470,6 +472,9 @@ export function POSPage() {
       <PaymentModal open={payOpen} onClose={() => setPayOpen(false)} />
       <HeldSalesDialog open={heldOpen} onClose={() => setHeldOpen(false)} />
       <DiscountDialog open={discountOpen} onClose={() => setDiscountOpen(false)} />
+      <PromoDialog open={promoOpen} onClose={() => setPromoOpen(false)} onApply={(amount, type) => {
+        useCartStore.getState().setDiscount(amount, type);
+      }} />
       <SubstitutionsDialog open={!!subFor} product={subFor} onClose={() => setSubFor(null)} />
       <OpenShiftDialog
         open={openShiftDialog}
@@ -553,7 +558,7 @@ function ActionPill({
 }) {
   const variantClass =
     variant === "danger" ? "bg-destructive/10 hover:bg-destructive/20 text-destructive" :
-    variant === "success" ? "bg-emerald-400/30 hover:bg-emerald-400/50 text-white ring-1 ring-emerald-300/40" :
+    variant === "success" ? "bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 ring-1 ring-emerald-500/30" :
     "bg-white/15 hover:bg-white/25 text-white";
   return (
     <button
@@ -588,7 +593,7 @@ function CategoryRail({ categories, activeId, onSelect }: {
         active={activeId === null}
         label="Popular"
         icon={Sparkles}
-        color={{ fg: "text-amber-700", bg: "bg-amber-50", border: "border-amber-200", dot: "bg-amber-500" }}
+        color={{ fg: "text-accent-foreground", bg: "bg-accent/10", border: "border-accent", dot: "bg-accent" }}
         onClick={() => onSelect(null)}
       />
       <div className="border-t border-border my-1" />
@@ -825,7 +830,7 @@ function CartLine({ idx, item, onRemove, onQty, onSub, showSubstitute }: {
               {showSubstitute && (
                 <button
                   onClick={onSub}
-                  className="text-stone-400 hover:text-violet-600 p-0.5"
+                  className="text-muted-foreground hover:text-violet-600 p-0.5"
                   title="Find substitute"
                 >
                   <Pill className="h-3 w-3" />
@@ -833,7 +838,7 @@ function CartLine({ idx, item, onRemove, onQty, onSub, showSubstitute }: {
               )}
               <button
                 onClick={onRemove}
-                className="text-stone-400 hover:text-rose-600 p-0.5"
+                className="text-muted-foreground hover:text-rose-600 p-0.5"
                 title="Remove"
               >
                 <Trash2 className="h-3 w-3" />

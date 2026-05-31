@@ -36,9 +36,18 @@ export async function getDashboardKPIs(): Promise<DashboardKPIs> {
   const branchId = getActiveBranchId();
 
   const todaySales = await query<{ count: number; total: number }>(
-    `SELECT COUNT(*) as count, COALESCE(SUM(total), 0) as total 
+    `SELECT
+       COUNT(*) as count,
+       COALESCE(SUM(total), 0) as total
      FROM sales WHERE date(created_at) = ?1 AND status = 'completed' AND branch_id = ?2`,
     [today, branchId]
+  );
+
+  // Subtract today's returns
+  const todayReturns = await query<{ count: number; total: number }>(
+    `SELECT COUNT(*) as count, COALESCE(SUM(refund_amount), 0) as total
+     FROM sale_returns WHERE date(created_at) = ?1 AND branch_id = ?2`,
+    [today, branchId],
   );
 
   const todayProfit = await query<{ profit: number }>(
@@ -80,8 +89,8 @@ export async function getDashboardKPIs(): Promise<DashboardKPIs> {
   );
 
   return {
-    today_sales_count: todaySales[0]?.count || 0,
-    today_sales_total: todaySales[0]?.total || 0,
+    today_sales_count: Math.max(0, (todaySales[0]?.count || 0) - (todayReturns[0]?.count || 0)),
+    today_sales_total: Math.max(0, (todaySales[0]?.total || 0) - (todayReturns[0]?.total || 0)),
     today_profit: todayProfit[0]?.profit || 0,
     low_stock_count: lowStock[0]?.count || 0,
     expiring_count: expiring[0]?.count || 0,
@@ -93,10 +102,16 @@ export async function getDashboardKPIs(): Promise<DashboardKPIs> {
 
 export async function getSalesByDay(days: number = 7): Promise<SalesByDay[]> {
   return query<SalesByDay>(
-    `SELECT date(created_at) as date, COALESCE(SUM(total), 0) as total, COUNT(*) as count
-     FROM sales WHERE status = 'completed' AND branch_id = ?2
-       AND julianday('now') - julianday(created_at) < ?1
-     GROUP BY date(created_at)
+    `SELECT date(s.created_at) as date,
+            COALESCE(SUM(s.total), 0) -
+              COALESCE((SELECT COALESCE(SUM(sr.refund_amount), 0)
+                        FROM sale_returns sr WHERE date(sr.return_date) = date(s.created_at)
+                        AND sr.branch_id = s.branch_id), 0) as total,
+            COUNT(*) as count
+     FROM sales s
+     WHERE s.status = 'completed' AND s.branch_id = ?2
+       AND julianday('now') - julianday(s.created_at) < ?1
+     GROUP BY date(s.created_at)
      ORDER BY date ASC`,
     [days, getActiveBranchId()]
   );
@@ -104,26 +119,38 @@ export async function getSalesByDay(days: number = 7): Promise<SalesByDay[]> {
 
 export async function getTopProducts(days: number = 30, limit: number = 10): Promise<TopProduct[]> {
   return query<TopProduct>(
-    `SELECT si.product_id, si.product_name, 
-            SUM(si.quantity) as qty_sold,
-            SUM(si.total) as total_revenue
+    `SELECT si.product_id, si.product_name,
+            COALESCE(SUM(si.quantity), 0) -
+              COALESCE((SELECT SUM(sri.quantity) FROM sale_return_items sri
+                        JOIN sale_returns sr ON sr.id = sri.return_id
+                        WHERE sri.product_id = si.product_id
+                          AND sr.return_date >= date('now', ?4 || ' days')),
+                      0) as qty_sold,
+            COALESCE(SUM(si.total), 0) -
+              COALESCE((SELECT SUM(sri.line_total) FROM sale_return_items sri
+                        JOIN sale_returns sr ON sr.id = sri.return_id
+                        WHERE sri.product_id = si.product_id
+                          AND sr.return_date >= date('now', ?4 || ' days')),
+                      0) as total_revenue
      FROM sale_items si JOIN sales s ON s.id = si.sale_id
      WHERE s.status = 'completed' AND s.branch_id = ?3
        AND julianday('now') - julianday(s.created_at) < ?1
      GROUP BY si.product_id, si.product_name
+     HAVING qty_sold > 0
      ORDER BY total_revenue DESC LIMIT ?2`,
-    [days, limit, getActiveBranchId()]
+    [days, limit, getActiveBranchId(), -days],
   );
 }
 
 export async function getSalesByPaymentMethod(days: number = 30): Promise<SalesByPaymentMethod[]> {
   return query<SalesByPaymentMethod>(
-    `SELECT p.method_name, COUNT(*) as count, SUM(p.amount) as total
+    `SELECT p.method_name, COUNT(DISTINCT s.id) as count, SUM(p.amount) as total
      FROM payments p JOIN sales s ON s.id = p.sale_id
      WHERE s.status = 'completed' AND s.branch_id = ?2
        AND julianday('now') - julianday(s.created_at) < ?1
+       AND s.id NOT IN (SELECT sale_id FROM sale_returns WHERE date(return_date) >= date('now', ?3 || ' days'))
      GROUP BY p.method_name ORDER BY total DESC`,
-    [days, getActiveBranchId()]
+    [days, getActiveBranchId(), -days],
   );
 }
 

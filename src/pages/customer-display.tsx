@@ -2,13 +2,11 @@
  * Customer-facing display.
  *
  * Opens in a separate Tauri window (typically on a second monitor facing the
- * customer). Subscribes to cart store updates and shows the current cart with
- * running total, change due, and welcome message.
+ * customer). Subscribes to cart store and shows the current cart with
+ * running total and welcome message.
  *
- * Two states:
- *  - Idle (no cart items) → branded welcome screen with promotional space
- *  - Active sale → live cart contents + total
- *  - Payment success → "Thank you" splash with change due
+ * Design per Plan 09: flat dark canvas, module-aware accent, no gradients.
+ * Dawa privacy mode hides product names when configured via settings.
  */
 import { useEffect, useState } from "react";
 import { useCartStore } from "@/stores/cart";
@@ -19,6 +17,11 @@ import { query } from "@/lib/db";
 
 const KES = (n: number) => "KES " + n.toLocaleString("en-KE", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
+const ACCENT_BORDER: Record<string, string> = {
+  dawa: "border-teal-500/50 bg-teal-500",
+  retail: "border-amber-500/50 bg-amber-500",
+};
+
 export function CustomerDisplayPage() {
   const items = useCartStore((s) => s.items);
   const subtotal = useCartStore((s) => s.subtotal());
@@ -28,6 +31,7 @@ export function CustomerDisplayPage() {
   const tip = useCartStore((s) => s.tip);
   const moduleId = useActiveModule((s) => s.active);
   const [businessName, setBusinessName] = useState("");
+  const [privacyMode, setPrivacyMode] = useState(false);
   const [now, setNow] = useState(new Date());
 
   useEffect(() => {
@@ -36,89 +40,90 @@ export function CustomerDisplayPage() {
   }, []);
 
   useEffect(() => {
-    query<{ value: string }>(`SELECT value FROM settings WHERE key = 'business.name'`)
-      .then((rows) => setBusinessName(rows[0]?.value || "Omnix"))
-      .catch((e) => { console.error("Business name fetch failed:", e); });
+    Promise.all([
+      query<{ value: string }>(`SELECT value FROM settings WHERE key = 'business.name'`),
+      query<{ value: string }>(`SELECT value FROM settings WHERE key = 'display.privacy'`),
+    ]).then(([nameRows, privacyRows]) => {
+      setBusinessName(nameRows[0]?.value || "Omnix");
+      setPrivacyMode(privacyRows[0]?.value === "1");
+    }).catch(() => {});
   }, []);
 
-  const accent = moduleId === "dawa"
-    ? "from-teal-600 via-emerald-600 to-cyan-600"
-    : moduleId === "retail"
-      ? "from-orange-600 via-amber-500 to-rose-500"
-      : "from-amber-600 via-yellow-500 to-orange-500";
+  const accentLine = ACCENT_BORDER[moduleId] || "border-primary/50 bg-primary";
 
-  // Idle state — welcome screen
   if (items.length === 0) {
     return (
-      <div className={`min-h-screen bg-gradient-to-br ${accent} text-white flex flex-col items-center justify-center p-12`}>
-        <ModuleLogo moduleId={moduleId} size={160} />
-        <h1 className="text-7xl font-bold mt-8 tracking-tight">{businessName}</h1>
-        <p className="text-2xl text-white/80 mt-4">Karibu — welcome</p>
-        <div className="mt-16 text-lg text-white/60">
+      <div className="min-h-screen bg-stone-950 text-stone-200 flex flex-col items-center justify-center p-12">
+        <ModuleLogo moduleId={moduleId} size={120} />
+        <h1 className="text-5xl font-bold mt-6 text-white tracking-tight">{businessName}</h1>
+        <p className="text-xl text-stone-400 mt-3">Karibu — welcome</p>
+        <div className={`mt-12 w-32 h-0.5 ${accentLine}`} />
+        <div className="mt-8 text-base text-stone-500">
           {now.toLocaleDateString("en-KE", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
         </div>
-        <div className="mt-2 text-2xl font-mono text-white/80">
+        <div className="mt-1 text-3xl font-mono text-stone-300">
           {now.toLocaleTimeString("en-KE", { hour: "2-digit", minute: "2-digit", hour12: false })}
         </div>
-        <p className="mt-12 text-white/60 text-base">
-          Please proceed to the cashier
-        </p>
+        {privacyMode && moduleId === "dawa" && (
+          <p className="mt-10 text-stone-500 text-sm">Privacy mode · Product names hidden</p>
+        )}
+        <p className="mt-8 text-stone-600 text-sm">Please proceed to the cashier</p>
       </div>
     );
   }
 
-  // Active sale — live cart
+  const displayName = (name: string) => privacyMode && moduleId === "dawa" ? "Pharmacy item" : name;
+
   return (
-    <div className="min-h-screen bg-stone-900 text-white flex flex-col">
-      {/* Header */}
-      <div className={`bg-gradient-to-r ${accent} px-8 py-4 flex items-center justify-between flex-shrink-0`}>
-        <div className="flex items-center gap-3">
-          <ModuleLogo moduleId={moduleId} size={40} />
-          <div>
-            <div className="text-sm text-white/80">{businessName}</div>
-            <div className="text-xs text-white/60">Your order</div>
+    <div className="min-h-screen bg-stone-950 text-stone-200 flex flex-col">
+      <div className="flex-shrink-0 border-b border-stone-800">
+        <div className={`h-0.5 ${accentLine}`} />
+        <div className="px-8 py-4 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <ModuleLogo moduleId={moduleId} size={36} />
+            <div>
+              <div className="text-sm text-stone-400">{businessName}</div>
+              <div className="text-xs text-stone-500">Your order</div>
+            </div>
           </div>
-        </div>
-        <div className="text-right">
-          <div className="text-xs text-white/70">{items.length} item{items.length !== 1 ? "s" : ""}</div>
-          <div className="text-sm font-mono text-white/80">
-            {now.toLocaleTimeString("en-KE", { hour: "2-digit", minute: "2-digit", hour12: false })}
+          <div className="text-right">
+            <div className="text-xs text-stone-500">{items.length} item{items.length !== 1 ? "s" : ""}</div>
+            <div className="text-sm font-mono text-stone-400">
+              {now.toLocaleTimeString("en-KE", { hour: "2-digit", minute: "2-digit", hour12: false })}
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Items list */}
-      <div className="flex-1 overflow-auto px-8 py-6">
+      <div className="flex-1 overflow-auto px-8 py-5">
         <table className="w-full">
           <thead>
-            <tr className="border-b border-stone-700">
-              <th className="text-left py-3 text-sm font-semibold text-stone-400">Item</th>
-              <th className="text-right py-3 text-sm font-semibold text-stone-400 w-24">Qty</th>
-              <th className="text-right py-3 text-sm font-semibold text-stone-400 w-32">Price</th>
-              <th className="text-right py-3 text-sm font-semibold text-stone-400 w-32">Total</th>
+            <tr className="border-b border-stone-800">
+              <th className="text-left py-3 text-sm font-semibold text-stone-500">Item</th>
+              <th className="text-right py-3 text-sm font-semibold text-stone-500 w-20">Qty</th>
+              <th className="text-right py-3 text-sm font-semibold text-stone-500 w-32">Price</th>
+              <th className="text-right py-3 text-sm font-semibold text-stone-500 w-32">Total</th>
             </tr>
           </thead>
           <tbody>
             {items.map((item, idx) => (
               <tr
                 key={item.id}
-                className={`border-b border-stone-800 ${idx === items.length - 1 ? "bg-stone-800/50 transition-colors" : ""}`}
+                className={`border-b border-stone-800/50 ${idx === items.length - 1 ? "bg-stone-900/50" : ""}`}
               >
-                <td className="py-3 text-lg font-medium">{item.name}</td>
+                <td className="py-3 text-lg font-medium text-white">{displayName(item.name)}</td>
                 <td className="py-3 text-right text-lg font-mono tabular-nums">{item.quantity}</td>
-                <td className="py-3 text-right text-lg font-mono tabular-nums text-stone-300">{item.unit_price.toFixed(2)}</td>
-                <td className="py-3 text-right text-lg font-mono tabular-nums font-semibold">{(item.unit_price * item.quantity).toFixed(2)}</td>
+                <td className="py-3 text-right text-lg font-mono tabular-nums text-stone-400">{item.unit_price.toFixed(2)}</td>
+                <td className="py-3 text-right text-lg font-mono tabular-nums font-semibold text-white">{(item.unit_price * item.quantity).toFixed(2)}</td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
 
-      {/* Totals footer */}
-      <div className="bg-stone-950 px-8 py-6 border-t-2 border-stone-700 flex-shrink-0">
+      <div className="bg-stone-900 px-8 py-6 border-t border-stone-800 flex-shrink-0">
         <div className="grid grid-cols-2 gap-8 max-w-4xl mx-auto">
-          {/* Left: receipts breakdown */}
-          <div className="space-y-2 text-stone-300 text-base">
+          <div className="space-y-2 text-stone-400 text-base">
             <div className="flex justify-between">
               <span>Subtotal</span>
               <span className="font-mono tabular-nums">{subtotal.toFixed(2)}</span>
@@ -145,10 +150,8 @@ export function CustomerDisplayPage() {
               </div>
             )}
           </div>
-
-          {/* Right: big total */}
           <div className="flex flex-col items-end justify-end">
-            <div className="text-stone-400 text-sm uppercase tracking-widest">Total to pay</div>
+            <div className="text-stone-500 text-sm uppercase tracking-widest">Total to pay</div>
             <div className="text-7xl font-bold font-mono tabular-nums leading-none mt-2 text-white">
               {KES(grandTotal)}
             </div>

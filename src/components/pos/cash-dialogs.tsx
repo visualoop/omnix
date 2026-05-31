@@ -256,7 +256,7 @@ async function loadStats(userId: string) {
      FROM sales s
      LEFT JOIN payments p ON p.sale_id = s.id
      WHERE s.user_id = ?1
-       AND s.payment_status != 'voided'
+       AND s.status != 'voided'
        AND date(s.created_at) = date('now')`,
     [userId],
   );
@@ -312,7 +312,7 @@ export function PettyCashDialog({ open, onClose, onSaved }: {
       <DialogContent>
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Banknote className="h-4 w-4 text-amber-600" /> Petty Cash
+            <Banknote className="h-4 w-4 text-amber-400" /> Petty Cash
           </DialogTitle>
         </DialogHeader>
         <div className="space-y-3 py-2">

@@ -93,9 +93,9 @@ export function TipDialog({ open, onClose }: { open: boolean; onClose: () => voi
               <button
                 type="button"
                 onClick={() => setAmount("0")}
-                className="p-2 rounded border border-border hover:border-stone-400 hover:bg-stone-50 transition text-center"
+                className="p-2 rounded border border-border hover:border-muted-foreground hover:bg-accent transition text-center"
               >
-                <div className="text-sm font-bold text-stone-700">No tip</div>
+                <div className="text-sm font-bold text-foreground">No tip</div>
                 <div className="text-[9px] text-muted-foreground">—</div>
               </button>
             </div>

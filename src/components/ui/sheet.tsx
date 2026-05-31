@@ -52,12 +52,9 @@ function SheetContent({
         data-slot="sheet-content"
         data-side={side}
         className={cn(
-          // Base — flat, edge-to-edge, native shadow only on the leading edge
           "fixed z-50 flex flex-col bg-popover bg-clip-padding text-sm text-popover-foreground",
-          // Faster transition (web app style was 200ms; native is ~120ms)
           "transition-transform duration-120 ease-[cubic-bezier(0.2,0,0,1)]",
           "data-ending-style:opacity-0 data-starting-style:opacity-0",
-          // Sides — flush against window edge, single thin border on inner side
           "data-[side=bottom]:inset-x-0 data-[side=bottom]:bottom-0 data-[side=bottom]:h-auto data-[side=bottom]:max-h-[85vh] data-[side=bottom]:border-t",
           "data-[side=bottom]:data-ending-style:translate-y-2 data-[side=bottom]:data-starting-style:translate-y-2",
           "data-[side=left]:inset-y-0 data-[side=left]:left-0 data-[side=left]:h-full data-[side=left]:w-[440px] data-[side=left]:max-w-[88vw] data-[side=left]:border-r",
@@ -66,7 +63,6 @@ function SheetContent({
           "data-[side=right]:data-ending-style:translate-x-4 data-[side=right]:data-starting-style:translate-x-4",
           "data-[side=top]:inset-x-0 data-[side=top]:top-0 data-[side=top]:h-auto data-[side=top]:max-h-[85vh] data-[side=top]:border-b",
           "data-[side=top]:data-ending-style:-translate-y-2 data-[side=top]:data-starting-style:-translate-y-2",
-          // Native shadow on the inside edge facing the viewport (subtle, not heavy)
           "shadow-[0_1px_0_rgb(0_0_0_/_0.04),-2px_0_8px_rgb(0_0_0_/_0.06)]",
           "data-[side=left]:shadow-[0_1px_0_rgb(0_0_0_/_0.04),2px_0_8px_rgb(0_0_0_/_0.06)]",
           "data-[side=top]:shadow-[0_2px_8px_rgb(0_0_0_/_0.06)]",
@@ -75,7 +71,9 @@ function SheetContent({
         )}
         {...props}
       >
-        {children}
+        <div className="flex flex-col flex-1 min-h-0 px-5">
+          {children}
+        </div>
         {showCloseButton && (
           <SheetPrimitive.Close
             data-slot="sheet-close"
@@ -102,7 +100,7 @@ function SheetHeader({ className, ...props }: React.ComponentProps<"div">) {
       data-slot="sheet-header"
       className={cn(
         // Tighter native padding, single bottom border like Office side panels
-        "flex flex-col gap-0.5 px-4 py-3 border-b border-border",
+        "flex flex-col gap-0.5 py-3 border-b border-border",
         className
       )}
       {...props}

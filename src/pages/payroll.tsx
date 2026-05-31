@@ -285,7 +285,7 @@ function PayrollRunSheet({ runId, onClose, onChange }: {
             {MONTHS[data.run.period_month - 1]} {data.run.period_year} Payroll
           </SheetTitle>
         </SheetHeader>
-        <div className="flex-1 overflow-auto px-4 py-3 space-y-4">
+        <div className="flex-1 overflow-auto space-y-4">
           <div className="grid grid-cols-3 gap-2">
             <Stat label="Employees" value={String(data.run.employee_count)} />
             <Stat label="Gross" value={KES(data.run.gross_total)} />

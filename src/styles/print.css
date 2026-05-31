@@ -1,0 +1,71 @@
+/* ============================================
+   Print styles — Omnix desktop app
+   Forces light mode and hides UI chrome.
+   Apply class "print-area" to printable content.
+   Apply class "print-hide" to hide elements.
+   ============================================ */
+
+@media print {
+  /* Force light background */
+  body, html, .dark body, .dark {
+    background: white !important;
+    color: black !important;
+  }
+
+  /* Reset all dark-mode background/color overrides */
+  .dark * {
+    background-color: white !important;
+    color: black !important;
+    border-color: #ddd !important;
+    box-shadow: none !important;
+  }
+
+  /* Hide interactive elements */
+  .print-hide,
+  button:not(.print-keep),
+  nav:not(.print-keep),
+  .sidebar,
+  .topbar,
+  .command-palette,
+  header:not(.print-keep),
+  footer:not(.print-keep),
+  .toast-container,
+  .dialog-overlay {
+    display: none !important;
+  }
+
+  /* Only show print area */
+  body > *:not(.print-area) {
+    display: none !important;
+  }
+
+  body > .print-area {
+    display: block !important;
+    padding: 1cm;
+  }
+
+  /* Ensure text is readable */
+  .text-white, .text-white\/70, .text-white\/80, .text-white\/90, .text-white\/95 {
+    color: black !important;
+  }
+
+  .text-rose-400, .text-rose-500, .text-rose-600, .text-rose-700 {
+    color: #e11d48 !important;
+  }
+
+  .text-emerald-400, .text-emerald-500, .text-emerald-600, .text-emerald-700 {
+    color: #059669 !important;
+  }
+
+  .text-muted-foreground {
+    color: #666 !important;
+  }
+
+  /* Reset dark backgrounds on cards/rows */
+  .bg-stone-950, .bg-stone-900, .bg-stone-800, .bg-stone-700,
+  .bg-teal-700, .bg-teal-800, .bg-amber-700, .bg-amber-800,
+  .bg-primary {
+    background: white !important;
+    color: black !important;
+  }
+}

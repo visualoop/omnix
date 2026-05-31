@@ -194,7 +194,7 @@ function BranchForm({ open, branch, onClose, onSaved }: {
         <SheetHeader>
           <SheetTitle>{branch ? branch.name : "New Branch"}</SheetTitle>
         </SheetHeader>
-        <div className="flex-1 overflow-auto px-4 py-3 space-y-3">
+        <div className="flex-1 overflow-auto space-y-3">
           <div className="grid grid-cols-3 gap-2">
             <Field label="Code *" hint="Short code on receipts">
               <Input

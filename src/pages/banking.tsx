@@ -309,7 +309,7 @@ function AccountForm({ open, account, onClose, onSaved }: {
         <SheetHeader>
           <SheetTitle>{account ? account.name : "New Account"}</SheetTitle>
         </SheetHeader>
-        <div className="flex-1 overflow-auto px-4 py-3 space-y-3">
+        <div className="flex-1 overflow-auto space-y-3">
           <Field label="Account Name *">
             <Input value={form.name || ""} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder='e.g., "KCB Main", "Till 123456"' autoFocus />
           </Field>

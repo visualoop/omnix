@@ -186,7 +186,7 @@ export function QuickAddProductsPage() {
       {/* Bulk grid */}
       <div className="border border-border rounded-md overflow-hidden bg-background">
         <table className="w-full text-sm">
-          <thead className="bg-stone-50 border-b border-border">
+          <thead className="bg-muted/50 border-b border-border">
             <tr>
               <th className="text-left px-2 py-1.5 text-[10px] uppercase tracking-wider text-muted-foreground w-8">#</th>
               <th className="text-left px-2 py-1.5 text-[10px] uppercase tracking-wider text-muted-foreground">Product Name *</th>

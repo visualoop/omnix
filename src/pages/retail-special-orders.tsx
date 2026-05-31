@@ -221,7 +221,7 @@ function NewSpecialOrderSheet({ open, onClose, onSaved }: {
         <SheetHeader>
           <SheetTitle>New Special Order</SheetTitle>
         </SheetHeader>
-        <div className="flex-1 overflow-auto px-4 py-3 space-y-3">
+        <div className="flex-1 overflow-auto space-y-3">
           <div className="space-y-1 relative">
             <label className="text-[11px] font-medium text-muted-foreground">Customer Name</label>
             <Input

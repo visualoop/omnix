@@ -272,7 +272,7 @@ function NewTemplateSheet({ open, onClose, onSaved }: {
         <SheetHeader>
           <SheetTitle>New Recurring Template</SheetTitle>
         </SheetHeader>
-        <div className="flex-1 overflow-auto px-4 py-3 space-y-3">
+        <div className="flex-1 overflow-auto space-y-3">
           <Field label="Template Name *">
             <Input value={name} onChange={(e) => setName(e.target.value)} placeholder='e.g., "Monthly Subscription - Acme Co"' autoFocus />
           </Field>

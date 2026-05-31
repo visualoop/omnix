@@ -151,7 +151,7 @@ function BrandForm({ open, brand, onClose, onSaved }: {
         <SheetHeader>
           <SheetTitle>{brand ? brand.name : "New Brand"}</SheetTitle>
         </SheetHeader>
-        <div className="flex-1 overflow-auto px-4 py-3 space-y-3">
+        <div className="flex-1 overflow-auto space-y-3">
           <Field label="Brand Name *">
             <Input value={form.name || ""} onChange={(e) => setForm({ ...form, name: e.target.value })} autoFocus />
           </Field>

@@ -454,7 +454,7 @@ function LaybyDetailSheet({ laybyId, onClose, onChange }: {
         <SheetHeader>
           <SheetTitle>{layby.layby_number}</SheetTitle>
         </SheetHeader>
-        <div className="flex-1 overflow-auto px-4 py-3 space-y-4">
+        <div className="flex-1 overflow-auto space-y-4">
           {/* Customer + Status */}
           <div className="flex justify-between items-start">
             <div>

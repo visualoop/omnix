@@ -244,7 +244,7 @@ function NewLeaveRequest({ open, onClose, onSaved, types, employees }: {
         <SheetHeader>
           <SheetTitle>New Leave Request</SheetTitle>
         </SheetHeader>
-        <div className="flex-1 overflow-auto px-4 py-3 space-y-3">
+        <div className="flex-1 overflow-auto space-y-3">
           <Field label="Employee">
             <select
               value={form.employee_id}

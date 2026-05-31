@@ -110,8 +110,8 @@ export async function getRetailKpis(opts?: {
   const [sales] = await query<{ total_revenue: number; total_orders: number; total_units: number }>(
     `SELECT COALESCE(SUM(total), 0) AS total_revenue,
             COUNT(*) AS total_orders,
-            COALESCE((SELECT SUM(quantity) FROM sale_items WHERE sale_id IN (SELECT id FROM sales WHERE payment_status != 'voided' ${salesWhere})), 0) AS total_units
-     FROM sales WHERE payment_status != 'voided' ${salesWhere}`,
+            COALESCE((SELECT SUM(quantity) FROM sale_items WHERE sale_id IN (SELECT id FROM sales WHERE status != 'voided' ${salesWhere})), 0) AS total_units
+     FROM sales WHERE status != 'voided' ${salesWhere}`,
     params,
   );
 

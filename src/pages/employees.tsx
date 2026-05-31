@@ -247,7 +247,7 @@ function EmployeeForm({ open, employee, departments, branches, onClose, onSaved 
           <SheetTitle>{employee ? employee.full_name : "New Employee"}</SheetTitle>
         </SheetHeader>
 
-        <div className="flex-1 overflow-auto px-4 py-3">
+        <div className="flex-1 overflow-auto">
           <Tabs defaultValue="profile">
             <TabsList>
               <TabsTrigger value="profile">Profile</TabsTrigger>

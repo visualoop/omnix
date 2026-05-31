@@ -1,10 +1,11 @@
 import { useState, useEffect } from "react";
-import { Download, TrendingUp, TrendingDown, Printer } from "lucide-react";
+import { Download, TrendingUp, TrendingDown, Printer, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { getPnL, type PnLData } from "@/services/accounting";
 import { printPage } from "@/lib/print";
 import { exportToCSV } from "@/lib/export";
+
+const KES = (n: number) => "KES " + n.toLocaleString("en-KE", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 export function PnLPage() {
   const today = new Date().toISOString().slice(0, 10);
@@ -53,14 +54,18 @@ export function PnLPage() {
     exportToCSV(`pnl-${startDate}-to-${endDate}`, rows);
   };
 
+  const totalIn = data ? data.revenue.total : 0;
+  const totalOut = data ? data.cogs + data.total_expenses : 0;
+  const barRatio = totalIn > 0 ? Math.min(Math.abs(data?.net_profit || 0) / totalIn, 1) : 0;
+
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between print-hide">
         <h1 className="text-xl font-semibold tracking-tight">Profit & Loss</h1>
         {data && (
           <div className="flex gap-2">
             <Button variant="outline" size="sm" onClick={() => printPage(`P&L ${startDate} to ${endDate}`)}>
-              <Printer className="h-3.5 w-3.5 mr-1" /> Print / PDF
+              <Printer className="h-3.5 w-3.5 mr-1" /> Print
             </Button>
             <Button variant="outline" size="sm" onClick={handleExport}>
               <Download className="h-3.5 w-3.5 mr-1" /> Export CSV
@@ -69,116 +74,195 @@ export function PnLPage() {
         )}
       </div>
 
-      {/* Date controls */}
-      <div className="flex items-center gap-3 flex-wrap">
+      <div className="flex items-center gap-3 flex-wrap print-hide">
         <div className="flex items-center gap-2">
-          <Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="h-9 w-40" />
+          <input
+            type="date"
+            value={startDate}
+            onChange={(e) => setStartDate(e.target.value)}
+            className="h-9 w-40 rounded-md border border-border bg-background px-2 text-[13px]"
+          />
           <span className="text-sm text-muted-foreground">to</span>
-          <Input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="h-9 w-40" />
+          <input
+            type="date"
+            value={endDate}
+            onChange={(e) => setEndDate(e.target.value)}
+            className="h-9 w-40 rounded-md border border-border bg-background px-2 text-[13px]"
+          />
         </div>
         <div className="flex gap-1 border border-border rounded-md p-0.5">
-          <button onClick={() => setQuickRange(7)} className="px-3 py-1 text-xs rounded hover:bg-accent">7d</button>
-          <button onClick={() => setQuickRange(30)} className="px-3 py-1 text-xs rounded hover:bg-accent">30d</button>
-          <button onClick={setMonth} className="px-3 py-1 text-xs rounded hover:bg-accent">This Month</button>
-          <button onClick={() => setQuickRange(365)} className="px-3 py-1 text-xs rounded hover:bg-accent">1Y</button>
+          {[
+            { label: "7d", fn: () => setQuickRange(7) },
+            { label: "30d", fn: () => setQuickRange(30) },
+            { label: "This Month", fn: setMonth },
+            { label: "1Y", fn: () => setQuickRange(365) },
+          ].map(({ label, fn }) => (
+            <button key={label} onClick={fn} className="px-3 py-1 text-xs rounded hover:bg-accent transition">
+              {label}
+            </button>
+          ))}
         </div>
       </div>
 
       {!data ? (
-        <p className="text-sm text-muted-foreground py-8 text-center">Loading...</p>
+        <div className="py-16 text-center text-sm text-muted-foreground">Loading statement&hellip;</div>
       ) : (
-        <>
-          {/* Summary cards */}
-          <div className="grid grid-cols-3 gap-3">
-            <SummaryCard label="Total Revenue" value={data.revenue.total} icon={TrendingUp} tone="success" />
-            <SummaryCard label="Total Expenses" value={data.total_expenses + data.cogs} icon={TrendingDown} tone="warning" />
-            <SummaryCard label="Net Profit" value={data.net_profit} icon={TrendingUp} tone={data.net_profit >= 0 ? "success" : "destructive"} />
+        <div className="max-w-3xl mx-auto">
+          {/* Health bar */}
+          <div className="mb-8">
+            <div className="flex items-end gap-4 mb-3">
+              <div>
+                <div className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">Revenue</div>
+                <div className="text-2xl font-bold font-mono tabular-nums">{KES(data.revenue.total)}</div>
+              </div>
+              <ChevronDown className="h-4 w-4 text-muted-foreground mb-1" />
+              <div>
+                <div className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">Costs</div>
+                <div className="text-2xl font-bold font-mono tabular-nums">{KES(totalOut)}</div>
+              </div>
+              <div className="ml-auto text-right">
+                <div className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">Profit</div>
+                <div className={`text-2xl font-bold font-mono tabular-nums ${data.net_profit >= 0 ? "text-emerald-500" : "text-destructive"}`}>
+                  {KES(data.net_profit)}
+                </div>
+              </div>
+            </div>
+            <div className="h-1.5 rounded-full bg-muted overflow-hidden flex">
+              <div
+                className="h-full bg-emerald-500 rounded-full transition-all"
+                style={{ width: `${Math.min(totalOut / Math.max(totalIn, 1) * 100, 60)}%` }}
+              />
+              <div
+                className={`h-full rounded-full transition-all ${data.net_profit >= 0 ? "bg-emerald-400" : "bg-destructive"}`}
+                style={{ width: `${Math.max(barRatio * 40, 2)}%` }}
+              />
+            </div>
+            <div className="flex justify-between mt-1.5">
+              <span className="text-[10px] text-muted-foreground">
+                {totalIn > 0 ? ((totalOut / totalIn) * 100).toFixed(0) : 0}% cost ratio
+              </span>
+              <span className={`text-[10px] font-semibold ${data.net_profit >= 0 ? "text-emerald-500" : "text-destructive"}`}>
+                {data.margin.toFixed(1)}% margin
+              </span>
+            </div>
           </div>
 
-          {/* P&L Statement */}
-          <div className="border border-border rounded-lg p-6 max-w-2xl mx-auto">
-            <h2 className="text-lg font-semibold mb-1 text-center">Profit & Loss Statement</h2>
-            <p className="text-xs text-muted-foreground text-center mb-6">{startDate} to {endDate}</p>
+          {/* Revenue Section */}
+          <Section title="Revenue" icon={TrendingUp}>
+            <Row label="Cash sales" value={data.revenue.sales_cash} ratio={data.revenue.total} />
+            <Row label="Credit sales" value={data.revenue.sales_credit} ratio={data.revenue.total} />
+            {data.revenue.sales_other > 0 && (
+              <Row label="Other methods" value={data.revenue.sales_other} ratio={data.revenue.total} />
+            )}
+            {data.revenue.returns > 0 && (
+              <Row label="Returns" value={-data.revenue.returns} negative />
+            )}
+            {data.revenue.other_income > 0 && (
+              <Row label="Other income" value={data.revenue.other_income} ratio={data.revenue.total} />
+            )}
+            <div className="flex justify-between py-2 border-t border-border mt-1">
+              <span className="text-sm font-semibold">Net Revenue</span>
+              <span className="text-sm font-bold font-mono tabular-nums">{KES(data.revenue.total)}</span>
+            </div>
+          </Section>
 
-            <Section title="Revenue">
-              <Line label="Sales (Cash)" amount={data.revenue.sales_cash} />
-              <Line label="Sales (Credit)" amount={data.revenue.sales_credit} />
-              <Line label="Sales (Other Methods)" amount={data.revenue.sales_other} />
-              {data.revenue.returns > 0 && <Line label="Sales Returns" amount={-data.revenue.returns} negative />}
-              <Line label="Other Income" amount={data.revenue.other_income} />
-              <Line label="Net Revenue" amount={data.revenue.total} bold />
-            </Section>
+          {/* COGS Section */}
+          <Section title="Cost of Goods Sold" icon={TrendingDown}>
+            <Row label="COGS" value={data.cogs} ratio={data.revenue.total} />
+            {data.returned_cogs > 0 && (
+              <Row label="Returned COGS" value={-data.returned_cogs} negative />
+            )}
+            <div className="flex justify-between py-2 border-t border-border mt-1">
+              <span className="text-sm font-semibold">Gross Profit</span>
+              <span className={`text-sm font-bold font-mono tabular-nums ${data.gross_profit >= 0 ? "text-emerald-500" : "text-destructive"}`}>
+                {KES(data.gross_profit)}
+              </span>
+            </div>
+          </Section>
 
-            <Section title="Cost of Goods Sold">
-              <Line label="COGS" amount={data.cogs} />
-              {data.returned_cogs > 0 && <Line label="Returned COGS" amount={-data.returned_cogs} negative />}
-              <Line label="Gross Profit" amount={data.gross_profit} bold positive={data.gross_profit >= 0} />
-            </Section>
+          {/* Expenses Section */}
+          <Section title="Operating Expenses" icon={TrendingDown}>
+            {data.expenses.length === 0 ? (
+              <p className="text-xs text-muted-foreground py-3">No expenses recorded in this period</p>
+            ) : (
+              <>
+                {data.expenses.map((e) => (
+                  <Row key={e.category} label={e.category} value={e.amount} ratio={data.revenue.total} />
+                ))}
+              </>
+            )}
+            <div className="flex justify-between py-2 border-t border-border mt-1">
+              <span className="text-sm font-semibold">Total Expenses</span>
+              <span className="text-sm font-bold font-mono tabular-nums">{KES(data.total_expenses)}</span>
+            </div>
+          </Section>
 
-            <Section title="Operating Expenses">
-              {data.expenses.length === 0 ? (
-                <p className="text-xs text-muted-foreground py-2">No expenses recorded</p>
-              ) : (
-                data.expenses.map((e) => <Line key={e.category} label={e.category} amount={e.amount} />)
-              )}
-              <Line label="Total Expenses" amount={data.total_expenses} bold />
-            </Section>
-
-            <div className="mt-6 pt-4 border-t-2 border-border">
-              <div className="flex justify-between items-center">
-                <span className="text-base font-bold">NET PROFIT</span>
-                <span className={`text-2xl font-bold font-mono ${data.net_profit >= 0 ? "text-green-600" : "text-red-600"}`}>
-                  KES {data.net_profit.toFixed(2)}
-                </span>
+          {/* Net Profit */}
+          <div className="mt-6 pt-5 border-t-2 border-border">
+            <div className="flex justify-between items-baseline">
+              <div>
+                <div className="text-lg font-bold tracking-tight">Net Profit</div>
+                <div className="text-xs text-muted-foreground">Before tax &bull; {startDate} &ndash; {endDate}</div>
               </div>
-              <div className="flex justify-between mt-1 text-xs text-muted-foreground">
-                <span>Profit Margin</span>
-                <span className="font-mono">{data.margin.toFixed(2)}%</span>
+              <div className="text-right">
+                <div className={`text-3xl font-bold font-mono tabular-nums ${data.net_profit >= 0 ? "text-emerald-500" : "text-destructive"}`}>
+                  {KES(data.net_profit)}
+                </div>
+                <div className={`text-xs mt-0.5 ${data.net_profit >= 0 ? "text-emerald-500" : "text-destructive"}`}>
+                  {data.margin.toFixed(1)}% of revenue
+                </div>
               </div>
             </div>
           </div>
-        </>
+
+          {/* Print-only footer */}
+          <div className="hidden print:block mt-10 pt-4 border-t border-border text-[10px] text-muted-foreground space-y-1">
+            <p>Profit &amp; Loss Statement &bull; {startDate} to {endDate}</p>
+            <p>Generated {new Date().toLocaleString("en-KE")}</p>
+          </div>
+        </div>
       )}
     </div>
   );
 }
 
-function SummaryCard({ label, value, icon: Icon, tone }: { label: string; value: number; icon: typeof TrendingUp; tone: "success" | "warning" | "destructive" }) {
-  const tones = {
-    success: "border-green-500/50 bg-green-500/5 text-green-600",
-    warning: "border-amber-500/50 bg-amber-500/5 text-amber-600",
-    destructive: "border-destructive/50 bg-destructive/5 text-destructive",
-  };
+function Section({ title, icon: Icon, children }: { title: string; icon: typeof TrendingUp; children: React.ReactNode }) {
   return (
-    <div className={`border rounded-lg p-4 ${tones[tone].split(" ").slice(0, 2).join(" ")}`}>
-      <div className="flex items-center justify-between">
-        <span className="text-xs text-muted-foreground">{label}</span>
-        <Icon className={`h-4 w-4 ${tones[tone].split(" ")[2]}`} />
+    <div className="mb-5">
+      <div className="flex items-center gap-2 mb-3">
+        <Icon className="h-4 w-4 text-muted-foreground" />
+        <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">{title}</h2>
       </div>
-      <p className="text-2xl font-semibold mt-1 font-mono">
-        <span className="text-xs text-muted-foreground mr-1">KES</span>
-        {value.toFixed(0)}
-      </p>
+      <div className="space-y-0.5">{children}</div>
     </div>
   );
 }
 
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
+function Row({
+  label,
+  value,
+  ratio,
+  negative,
+}: {
+  label: string;
+  value: number;
+  ratio?: number;
+  negative?: boolean;
+}) {
+  const pct = ratio && ratio > 0 ? ((Math.abs(value) / ratio) * 100).toFixed(0) : null;
   return (
-    <div className="mt-4">
-      <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">{title}</h3>
-      <div className="space-y-1">{children}</div>
-    </div>
-  );
-}
-
-function Line({ label, amount, bold, positive, negative }: { label: string; amount: number; bold?: boolean; positive?: boolean; negative?: boolean }) {
-  return (
-    <div className={`flex justify-between py-1.5 ${bold ? "border-t border-border font-semibold pt-2 mt-1" : ""}`}>
-      <span className={bold ? "text-foreground" : "text-muted-foreground pl-4"}>{label}</span>
-      <span className={`font-mono ${negative || positive === false ? "text-red-600" : positive ? "text-green-600" : ""}`}>
-        {amount.toFixed(2)}
-      </span>
+    <div className="flex justify-between py-1.5 group">
+      <span className="text-sm text-muted-foreground">{label}</span>
+      <div className="flex items-center gap-3">
+        {pct && !negative && (
+          <span className="text-[10px] text-muted-foreground/60 tabular-nums opacity-0 group-hover:opacity-100 transition">
+            {pct}%
+          </span>
+        )}
+        <span className={`text-sm font-mono tabular-nums ${negative ? "text-destructive" : ""}`}>
+          {negative ? "-" : ""}{KES(Math.abs(value))}
+        </span>
+      </div>
     </div>
   );
 }
