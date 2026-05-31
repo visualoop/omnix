@@ -2,7 +2,7 @@ mod commands;
 mod db;
 mod license;
 mod network;
-mod telemetry;
+// mod telemetry; // Phase 10 — activate when website/telemetry endpoint is live
 
 use tauri_plugin_sql::{Migration, MigrationKind};
 
