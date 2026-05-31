@@ -180,73 +180,66 @@ export async function getSales(limit = 50, branchId?: string): Promise<Sale[]> {
 }
 
 export async function voidSale(saleId: string): Promise<void> {
-  // Get current state — only voidable if not already voided/refunded
-  const existing = await query<{ status: string; branch_id: string | null }>(
-    "SELECT status, branch_id FROM sales WHERE id = ?1",
+  const existing = await query<{ status: string }>(
+    "SELECT status FROM sales WHERE id = ?1",
     [saleId],
   );
   if (existing.length === 0) throw new Error("Sale not found");
   if (existing[0].status === "voided") return;
-  if (existing[0].status === "refunded") {
-    throw new Error("Cannot void a refunded sale");
-  }
 
-  // Pull sale items so we can restore stock atomically
   const items = await query<{ product_id: string; quantity: number }>(
     "SELECT product_id, quantity FROM sale_items WHERE sale_id = ?1",
     [saleId],
   );
-  const branchId = existing[0].branch_id ?? getActiveBranchId();
 
   await execute("UPDATE sales SET status = 'voided' WHERE id = ?1", [saleId]);
 
-  // Restore stock for each item, scoped to the branch where the sale happened.
-  // We try both branched + non-branched stock rows for safety on legacy data.
   for (const item of items) {
     if (!item.product_id || !item.quantity) continue;
-    if (branchId) {
-      const updated = await execute(
-        `UPDATE inventory
-         SET quantity = quantity + ?1, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now')
-         WHERE product_id = ?2 AND branch_id = ?3`,
-        [item.quantity, item.product_id, branchId],
-      );
-      // No row at this branch? Fall back to default product row.
-      const rows = (updated as { rowsAffected?: number } | undefined)?.rowsAffected ?? 0;
-      if (rows === 0) {
-        await execute(
-          `UPDATE inventory
-           SET quantity = quantity + ?1, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now')
-           WHERE product_id = ?2 AND (branch_id IS NULL OR branch_id = '')`,
-          [item.quantity, item.product_id],
-        );
-      }
-    } else {
+
+    let remaining = item.quantity;
+    const batches = await query<{ id: string; quantity: number }>(
+      "SELECT id, quantity FROM batches WHERE product_id = ?1 ORDER BY received_at ASC",
+      [item.product_id],
+    );
+
+    if (batches.length === 0) {
       await execute(
-        `UPDATE inventory
-         SET quantity = quantity + ?1, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now')
-         WHERE product_id = ?2`,
-        [item.quantity, item.product_id],
+        `INSERT INTO batches (id, product_id, quantity, received_at, batch_number)
+         VALUES (?1, ?2, ?3, strftime('%Y-%m-%dT%H:%M:%fZ','now'), 'VOID-RESTORE')`,
+        [crypto.randomUUID(), item.product_id, item.quantity],
       );
+      await execute(
+        `INSERT INTO stock_movements (id, product_id, type, quantity, reference_type, reference_id)
+         VALUES (?1, ?2, 'return', ?3, 'sale_void', ?4)`,
+        [crypto.randomUUID(), item.product_id, item.quantity, saleId],
+      );
+      continue;
     }
 
-    // Audit trail in stock_movements (if the table exists)
-    try {
+    for (const batch of batches) {
+      if (remaining <= 0) break;
+      const restore = Math.min(remaining, remaining);
+      await execute("UPDATE batches SET quantity = quantity + ?1 WHERE id = ?2", [restore, batch.id]);
       await execute(
-        `INSERT INTO stock_movements
-         (id, product_id, branch_id, movement_type, quantity, reference_type, reference_id, created_at)
-         VALUES (?1, ?2, ?3, 'restore', ?4, 'sale_void', ?5,
-                 strftime('%Y-%m-%dT%H:%M:%fZ','now'))`,
-        [
-          crypto.randomUUID(),
-          item.product_id,
-          branchId,
-          item.quantity,
-          saleId,
-        ],
+        `INSERT INTO stock_movements (id, product_id, batch_id, type, quantity, reference_type, reference_id)
+         VALUES (?1, ?2, ?3, 'return', ?4, 'sale_void', ?5)`,
+        [crypto.randomUUID(), item.product_id, batch.id, restore, saleId],
       );
-    } catch {
-      // stock_movements may not exist on legacy databases — non-fatal.
+      remaining -= restore;
+    }
+
+    if (remaining > 0) {
+      await execute(
+        `INSERT INTO batches (id, product_id, quantity, received_at, batch_number)
+         VALUES (?1, ?2, ?3, strftime('%Y-%m-%dT%H:%M:%fZ','now'), 'VOID-RESTORE')`,
+        [crypto.randomUUID(), item.product_id, remaining],
+      );
+      await execute(
+        `INSERT INTO stock_movements (id, product_id, type, quantity, reference_type, reference_id)
+         VALUES (?1, ?2, 'return', ?3, 'sale_void', ?4)`,
+        [crypto.randomUUID(), item.product_id, remaining, saleId],
+      );
     }
   }
 }

@@ -177,6 +177,109 @@ export function getPermissionsForRole(role: Role): Permission[] {
   return ROLE_PERMISSIONS[role] || [];
 }
 
+/** Check if a role grants a permission (for matrix UI; owner always true). */
+export function roleHasPermission(role: Role, permission: Permission): boolean {
+  if (role === "owner") return true;
+  return ROLE_PERMISSIONS[role]?.includes(permission) ?? false;
+}
+
+export type PermissionGroup =
+  | "Sales"
+  | "Inventory"
+  | "Purchasing"
+  | "Customers"
+  | "Suppliers"
+  | "Pharmacy"
+  | "Reports & Finance"
+  | "Compliance"
+  | "Admin"
+  | "HR"
+  | "Invoicing"
+  | "Banking"
+  | "Retail";
+
+export type PermissionRisk = "low" | "normal" | "high" | "critical";
+
+export interface PermissionMeta {
+  key: Permission;
+  label: string;
+  group: PermissionGroup;
+  risk: PermissionRisk;
+}
+
+/** Human-readable catalog for role matrix and future custom-role editor. */
+export const PERMISSION_CATALOG: PermissionMeta[] = [
+  { key: "pos.use", label: "Use POS", group: "Sales", risk: "normal" },
+  { key: "sales.view", label: "View sales", group: "Sales", risk: "low" },
+  { key: "sales.refund", label: "Process refunds", group: "Sales", risk: "high" },
+  { key: "sales.void", label: "Void sales", group: "Sales", risk: "critical" },
+  { key: "inventory.view", label: "View inventory", group: "Inventory", risk: "low" },
+  { key: "inventory.edit", label: "Edit products", group: "Inventory", risk: "normal" },
+  { key: "inventory.bulk_edit", label: "Bulk edit inventory", group: "Inventory", risk: "high" },
+  { key: "inventory.delete", label: "Delete products", group: "Inventory", risk: "critical" },
+  { key: "purchase_orders.view", label: "View purchase orders", group: "Purchasing", risk: "low" },
+  { key: "purchase_orders.create", label: "Create purchase orders", group: "Purchasing", risk: "normal" },
+  { key: "purchase_orders.receive", label: "Receive goods", group: "Purchasing", risk: "normal" },
+  { key: "stock_take.use", label: "Run stock takes", group: "Purchasing", risk: "high" },
+  { key: "customers.view", label: "View customers", group: "Customers", risk: "low" },
+  { key: "customers.edit", label: "Edit customers", group: "Customers", risk: "normal" },
+  { key: "customers.payment", label: "Record customer payments", group: "Customers", risk: "normal" },
+  { key: "suppliers.view", label: "View suppliers", group: "Suppliers", risk: "low" },
+  { key: "suppliers.edit", label: "Edit suppliers", group: "Suppliers", risk: "normal" },
+  { key: "suppliers.payment", label: "Record supplier payments", group: "Suppliers", risk: "normal" },
+  { key: "pharmacy.dispense", label: "Dispense prescriptions", group: "Pharmacy", risk: "high" },
+  { key: "pharmacy.refill", label: "Process refills", group: "Pharmacy", risk: "normal" },
+  { key: "pharmacy.controlled", label: "Dispense controlled drugs", group: "Pharmacy", risk: "critical" },
+  { key: "pharmacy.doctors.manage", label: "Manage prescribers", group: "Pharmacy", risk: "normal" },
+  { key: "reports.view", label: "View reports", group: "Reports & Finance", risk: "low" },
+  { key: "reports.zreport", label: "Run Z-report", group: "Reports & Finance", risk: "high" },
+  { key: "reports.pnl", label: "View profit & loss", group: "Reports & Finance", risk: "normal" },
+  { key: "expenses.view", label: "View expenses", group: "Reports & Finance", risk: "low" },
+  { key: "expenses.create", label: "Create expenses", group: "Reports & Finance", risk: "normal" },
+  { key: "cash_register.use", label: "Use cash register", group: "Reports & Finance", risk: "normal" },
+  { key: "petty_cash.use", label: "Use petty cash", group: "Reports & Finance", risk: "normal" },
+  { key: "etims.view", label: "View eTIMS", group: "Compliance", risk: "low" },
+  { key: "etims.submit", label: "Submit eTIMS invoices", group: "Compliance", risk: "high" },
+  { key: "claims.view", label: "View insurance claims", group: "Compliance", risk: "low" },
+  { key: "claims.submit", label: "Submit insurance claims", group: "Compliance", risk: "high" },
+  { key: "users.view", label: "View users", group: "Admin", risk: "low" },
+  { key: "users.manage", label: "Manage users & roles", group: "Admin", risk: "critical" },
+  { key: "settings.business", label: "Business settings", group: "Admin", risk: "high" },
+  { key: "settings.network", label: "Network settings", group: "Admin", risk: "critical" },
+  { key: "settings.backup", label: "Backup & restore", group: "Admin", risk: "critical" },
+  { key: "settings.modules", label: "Manage modules", group: "Admin", risk: "critical" },
+  { key: "license.view", label: "View license", group: "Admin", risk: "low" },
+  { key: "license.manage", label: "Manage license", group: "Admin", risk: "critical" },
+  { key: "audit.view", label: "View audit log", group: "Admin", risk: "normal" },
+  { key: "promotions.manage", label: "Manage promotions", group: "Admin", risk: "normal" },
+  { key: "loyalty.manage", label: "Manage loyalty", group: "Admin", risk: "normal" },
+  { key: "hr.employees.view", label: "View employees", group: "HR", risk: "low" },
+  { key: "hr.employees.manage", label: "Manage employees", group: "HR", risk: "high" },
+  { key: "hr.payroll.view", label: "View payroll", group: "HR", risk: "normal" },
+  { key: "hr.payroll.run", label: "Run payroll", group: "HR", risk: "critical" },
+  { key: "hr.payroll.approve", label: "Approve payroll", group: "HR", risk: "critical" },
+  { key: "hr.attendance.view", label: "View attendance", group: "HR", risk: "low" },
+  { key: "hr.attendance.record", label: "Record attendance", group: "HR", risk: "normal" },
+  { key: "hr.leave.request", label: "Request leave", group: "HR", risk: "low" },
+  { key: "hr.leave.approve", label: "Approve leave", group: "HR", risk: "normal" },
+  { key: "invoicing.view", label: "View invoices", group: "Invoicing", risk: "low" },
+  { key: "invoicing.create", label: "Create invoices", group: "Invoicing", risk: "normal" },
+  { key: "invoicing.send", label: "Send invoices", group: "Invoicing", risk: "normal" },
+  { key: "invoicing.payment", label: "Record invoice payments", group: "Invoicing", risk: "normal" },
+  { key: "invoicing.cancel", label: "Cancel invoices", group: "Invoicing", risk: "high" },
+  { key: "banking.view", label: "View banking", group: "Banking", risk: "low" },
+  { key: "banking.manage", label: "Manage bank accounts", group: "Banking", risk: "high" },
+  { key: "banking.reconcile", label: "Reconcile bank", group: "Banking", risk: "high" },
+  { key: "retail.brands.manage", label: "Manage brands", group: "Retail", risk: "normal" },
+  { key: "retail.variants.manage", label: "Manage variants", group: "Retail", risk: "normal" },
+  { key: "retail.price_lists.manage", label: "Manage price lists", group: "Retail", risk: "high" },
+  { key: "retail.shrinkage.record", label: "Record shrinkage", group: "Retail", risk: "high" },
+  { key: "retail.laybys.use", label: "Use laybys", group: "Retail", risk: "normal" },
+  { key: "retail.special_orders.use", label: "Use special orders", group: "Retail", risk: "normal" },
+];
+
+export const ROLES: Role[] = ["owner", "manager", "cashier", "viewer"];
+
 export function hasPermission(user: User | null, permission: Permission): boolean {
   if (!user) return false;
   if (user.role === "owner") return true;          // owner shortcut

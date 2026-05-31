@@ -48,3 +48,8 @@ brand/node_modules
 brand/preview.mjs
 brand/build.mjs
 
+# AI assistant local config (non-project config)
+.codex/
+.cursor/
+.commandcode/
+

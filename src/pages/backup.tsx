@@ -87,7 +87,7 @@ export function BackupPage() {
 
     setRestoring(filename);
     try {
-      await invoke("restore_backup", { filename });
+      await invoke<void>("restore_backup", { filename });
       toast.success(`Backup restored. Please restart ${APP_NAME} now.`, { duration: 10000 });
       load();
     } catch (e) {
@@ -100,7 +100,7 @@ export function BackupPage() {
   const handleDelete = async (filename: string) => {
     if (!(await confirm({ title: `Delete ${filename}?` }))) return;
     try {
-      await invoke("delete_backup", { filename });
+      await invoke<void>("delete_backup", { filename });
       toast.success("Backup deleted");
       load();
     } catch (e) {

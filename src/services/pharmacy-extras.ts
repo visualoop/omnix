@@ -36,15 +36,16 @@ export async function getSubstitutions(productId: string): Promise<SubstitutionW
        s.*,
        p.name AS substitute_name,
        p.sku AS substitute_sku,
-       p.selling_price AS substitute_price,
+       COALESCE(pp.selling_price, 0) AS substitute_price,
        COALESCE((SELECT SUM(b.quantity) FROM batches b WHERE b.product_id = p.id), 0) AS substitute_stock,
        ph.generic_name AS substitute_generic
      FROM drug_substitutions s
      JOIN products p ON p.id = s.substitute_product_id
      LEFT JOIN pharmacy_products ph ON ph.product_id = p.id
+     LEFT JOIN product_prices pp ON pp.product_id = p.id AND pp.price_list_id = 'default'
      WHERE s.product_id = ?1
        AND p.active = 1
-     ORDER BY s.therapeutic_match DESC, s.strength_match DESC, p.selling_price`,
+     ORDER BY s.therapeutic_match DESC, s.strength_match DESC, substitute_price`,
     [productId],
   );
 }
@@ -58,16 +59,18 @@ export async function suggestSubstitutionsFromGeneric(productId: string): Promis
        SELECT generic_name FROM pharmacy_products WHERE product_id = ?1
      )
      SELECT
-       p.id, p.name, p.sku, p.selling_price,
+       p.id, p.name, p.sku,
+       COALESCE(pp.selling_price, 0) AS selling_price,
        COALESCE((SELECT SUM(b.quantity) FROM batches b WHERE b.product_id = p.id), 0) AS stock,
        ph.generic_name
      FROM products p
      JOIN pharmacy_products ph ON ph.product_id = p.id
+     LEFT JOIN product_prices pp ON pp.product_id = p.id AND pp.price_list_id = 'default'
      WHERE p.active = 1
        AND p.id != ?1
        AND ph.generic_name IS NOT NULL
        AND ph.generic_name = (SELECT generic_name FROM origin)
-     ORDER BY p.selling_price
+     ORDER BY selling_price
      LIMIT 8`,
     [productId],
   );

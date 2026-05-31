@@ -16,7 +16,7 @@ export async function getBrandPerformance(opts?: {
   endDate?: string;
   branchId?: string;
 }): Promise<BrandPerformance[]> {
-  const conditions: string[] = ["s.payment_status != 'voided'"];
+  const conditions: string[] = ["s.status != 'voided'"];
   const params: any[] = [];
   if (opts?.startDate) { conditions.push(`s.created_at >= ?${params.length + 1}`); params.push(opts.startDate); }
   if (opts?.endDate) { conditions.push(`s.created_at <= ?${params.length + 1}`); params.push(opts.endDate + " 23:59:59"); }
@@ -54,7 +54,7 @@ export async function getCategoryMix(opts?: {
   endDate?: string;
   branchId?: string;
 }): Promise<CategoryMix[]> {
-  const conditions: string[] = ["s.payment_status != 'voided'"];
+  const conditions: string[] = ["s.status != 'voided'"];
   const params: any[] = [];
   if (opts?.startDate) { conditions.push(`s.created_at >= ?${params.length + 1}`); params.push(opts.startDate); }
   if (opts?.endDate) { conditions.push(`s.created_at <= ?${params.length + 1}`); params.push(opts.endDate + " 23:59:59"); }

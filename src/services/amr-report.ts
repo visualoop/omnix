@@ -45,7 +45,7 @@ export async function getAntibioticByClass(opts?: {
   endDate?: string;
   branchId?: string;
 }): Promise<AntibioticClassReport[]> {
-  const conditions: string[] = ["s.payment_status != 'voided'"];
+  const conditions: string[] = ["s.status != 'voided'"];
   const params: any[] = [];
   if (opts?.startDate) { conditions.push(`s.created_at >= ?${params.length + 1}`); params.push(opts.startDate); }
   if (opts?.endDate) { conditions.push(`s.created_at <= ?${params.length + 1}`); params.push(opts.endDate + " 23:59:59"); }
@@ -103,7 +103,7 @@ export async function getTopAntibiotics(opts?: {
   branchId?: string;
   limit?: number;
 }): Promise<AntibioticTopProduct[]> {
-  const conditions: string[] = ["s.payment_status != 'voided'"];
+  const conditions: string[] = ["s.status != 'voided'"];
   const params: any[] = [];
   if (opts?.startDate) { conditions.push(`s.created_at >= ?${params.length + 1}`); params.push(opts.startDate); }
   if (opts?.endDate) { conditions.push(`s.created_at <= ?${params.length + 1}`); params.push(opts.endDate + " 23:59:59"); }

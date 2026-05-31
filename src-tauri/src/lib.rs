@@ -301,7 +301,6 @@ fn run_inner() {
             commands::delete_backup,
             commands::restore_backup,
             commands::get_db_size,
-            commands::export_backup_to,
             commands::start_lan_server,
             commands::stop_lan_server,
             commands::lan_server_status,

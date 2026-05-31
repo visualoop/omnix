@@ -19,9 +19,9 @@ export async function getTodaySalesSummary(): Promise<TodaySalesSummary> {
   const branchId = getActiveBranchId();
   const [s] = await query<{ count: number; revenue: number; refunds: number }>(
     `SELECT
-       COUNT(CASE WHEN payment_status != 'voided' THEN 1 END) AS count,
-       COALESCE(SUM(CASE WHEN payment_status NOT IN ('voided','refunded') THEN total ELSE 0 END), 0) AS revenue,
-       COALESCE(SUM(CASE WHEN payment_status = 'refunded' THEN total ELSE 0 END), 0) AS refunds
+       COUNT(CASE WHEN status != 'voided' THEN 1 END) AS count,
+       COALESCE(SUM(CASE WHEN status NOT IN ('voided','held') THEN total ELSE 0 END), 0) AS revenue,
+       0 AS refunds
      FROM sales WHERE date(created_at) = date('now') AND branch_id = ?1`,
     [branchId],
   );
@@ -29,7 +29,7 @@ export async function getTodaySalesSummary(): Promise<TodaySalesSummary> {
     `SELECT p.method_name, COALESCE(SUM(p.amount), 0) AS total
      FROM payments p
      JOIN sales s ON s.id = p.sale_id
-     WHERE date(s.created_at) = date('now') AND s.branch_id = ?1 AND s.payment_status != 'voided'
+     WHERE date(s.created_at) = date('now') AND s.branch_id = ?1 AND s.status != 'voided'
      GROUP BY p.method_name`,
     [branchId],
   );
@@ -72,7 +72,7 @@ export async function getPopularProducts(limit = 24): Promise<PopularProduct[]> 
        COALESCE((SELECT SUM(si.quantity) FROM sale_items si
          JOIN sales s ON s.id = si.sale_id
          WHERE si.product_id = p.id AND s.created_at >= datetime('now', '-30 days')
-         AND s.payment_status != 'voided'), 0) AS units_sold
+         AND s.status != 'voided'), 0) AS units_sold
      FROM products p
      LEFT JOIN product_prices pp ON pp.product_id = p.id AND pp.price_list_id = 'default'
      LEFT JOIN categories c ON c.id = p.category_id

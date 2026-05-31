@@ -63,6 +63,7 @@ import { ImportProductsPage } from "@/pages/import-products";
 import { SalesHistoryPage } from "@/pages/sales-history";
 import { UsersPage } from "@/pages/users";
 import { SettingsPage } from "@/pages/settings";
+import { SettingsRolesPage } from "@/pages/settings-roles";
 import { BackupPage } from "@/pages/backup";
 import { AuditLogPage } from "@/pages/audit";
 import { NetworkSettingsPage } from "@/pages/network-settings";
@@ -177,6 +178,7 @@ function AppContent() {
             <Route index element={<RequireRole permission="settings.business"><SettingsPage /></RequireRole>} />
             <Route path="branches" element={<RequireRole permission="settings.business"><BranchesPage /></RequireRole>} />
             <Route path="users" element={<RequireRole permission="users.view"><UsersPage /></RequireRole>} />
+            <Route path="roles" element={<RequireRole permission="users.manage"><SettingsRolesPage /></RequireRole>} />
             <Route path="payments" element={<RequireRole permission="settings.business"><PaymentSettingsPage /></RequireRole>} />
             <Route path="etims" element={<RequireRole permission="etims.view"><EtimsSettingsPage /></RequireRole>} />
             <Route path="insurance" element={<RequireRole permission="claims.view"><InsuranceSettingsPage /></RequireRole>} />

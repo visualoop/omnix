@@ -99,7 +99,7 @@ export async function startServer(port: number, businessName: string): Promise<S
 }
 
 export async function stopServer(): Promise<void> {
-  return invoke("stop_lan_server");
+  return invoke<void>("stop_lan_server");
 }
 
 export async function getServerStatus(): Promise<ServerStatus> {
@@ -115,7 +115,7 @@ export async function listPairedDevices(): Promise<PairedDevice[]> {
 }
 
 export async function revokePairedDevice(tokenPrefix: string): Promise<void> {
-  return invoke("revoke_paired_device", { tokenPrefix });
+  return invoke<void>("revoke_paired_device", { tokenPrefix });
 }
 
 // ===== Client mode (pair with master) =====

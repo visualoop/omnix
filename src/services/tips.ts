@@ -17,7 +17,7 @@ export async function getTipsSummary(opts?: {
   endDate?: string;
   branchId?: string;
 }): Promise<TipBreakdown> {
-  const conditions: string[] = ["s.payment_status != 'voided'", "s.tip_amount > 0"];
+  const conditions: string[] = ["s.status != 'voided'", "s.tip_amount > 0"];
   const params: any[] = [];
   if (opts?.startDate) { conditions.push(`s.created_at >= ?${params.length + 1}`); params.push(opts.startDate); }
   if (opts?.endDate) { conditions.push(`s.created_at <= ?${params.length + 1}`); params.push(opts.endDate + " 23:59:59"); }
@@ -75,7 +75,7 @@ export async function getTipsByEmployee(opts?: {
   endDate?: string;
   branchId?: string;
 }): Promise<TipByEmployee[]> {
-  const conditions: string[] = ["s.payment_status != 'voided'", "s.tip_amount > 0"];
+  const conditions: string[] = ["s.status != 'voided'", "s.tip_amount > 0"];
   const params: any[] = [];
   if (opts?.startDate) { conditions.push(`s.created_at >= ?${params.length + 1}`); params.push(opts.startDate); }
   if (opts?.endDate) { conditions.push(`s.created_at <= ?${params.length + 1}`); params.push(opts.endDate + " 23:59:59"); }

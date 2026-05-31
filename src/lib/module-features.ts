@@ -31,6 +31,7 @@ const FEATURE_OWNERS: Record<string, Exclude<ModuleId, "core">> = {
   "/pharmacy/amr": "dawa",
   "/claims": "dawa",
   "/patients": "dawa",
+  "/settings/insurance": "dawa",
 
   // ─── Soko Retail ────────────────────────────────────────
   "/retail/brands": "retail",

@@ -16,6 +16,8 @@ import {
 import { useAuthStore } from "@/stores/auth";
 import { toast } from "sonner";
 import { APP_NAME } from "@/lib/brand";
+import { Can } from "@/components/require-role";
+import { getPermissionsForRole, ROLE_INFO } from "@/lib/permissions";
 
 const ROLE_LABELS: Record<User["role"], { label: string; description: string; color: string }> = {
   owner: { label: "Owner", description: "Full access, cannot be removed", color: "bg-violet-500/10 text-violet-700 border-violet-500/30" },
@@ -44,9 +46,11 @@ export function UsersPage() {
             Manage who can sign in to {APP_NAME}
           </p>
         </div>
-        <Button onClick={() => setShowCreate(true)}>
-          <UserPlus className="h-4 w-4 mr-2" /> Add User
-        </Button>
+        <Can permission="users.manage">
+          <Button onClick={() => setShowCreate(true)}>
+            <UserPlus className="h-4 w-4 mr-2" /> Add User
+          </Button>
+        </Can>
       </div>
 
       {/* Stats */}
@@ -109,9 +113,11 @@ export function UsersPage() {
                     )}
                   </td>
                   <td className="px-3 py-2.5 text-right">
-                    <Button variant="ghost" size="sm" onClick={() => setEditingUser(u)}>
-                      <Edit3 className="h-3.5 w-3.5" />
-                    </Button>
+                    <Can permission="users.manage">
+                      <Button variant="ghost" size="sm" onClick={() => setEditingUser(u)}>
+                        <Edit3 className="h-3.5 w-3.5" />
+                      </Button>
+                    </Can>
                   </td>
                 </tr>
               ))}
@@ -222,6 +228,13 @@ function CreateUserForm({ onCreated }: { onCreated: () => void }) {
             </option>
           ))}
         </select>
+        <p className="text-[11px] text-muted-foreground mt-1.5">
+          {ROLE_INFO[form.role].tagline}
+          {" · "}
+          {form.role === "owner"
+            ? "All permissions"
+            : `${getPermissionsForRole(form.role).length} permissions granted`}
+        </p>
       </Field>
       <Field label="Password *">
         <Input

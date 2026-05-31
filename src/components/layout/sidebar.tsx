@@ -17,8 +17,8 @@ import {
   Banknote,
   Truck,
   Users,
-  RotateCcw,
   ClipboardCheck,
+  RotateCcw,
   ArrowRightLeft,
   Clock,
   Plane,
@@ -83,8 +83,6 @@ const navItems: NavItem[] = [
   { to: "/vat-report", icon: FileCheck, label: "VAT Report", permissions: ["reports.view"] },
   { to: "/etims", icon: FileCheck, label: "eTIMS", permissions: ["etims.view"] },
   { to: "/claims", icon: Shield, label: "Insurance Claims", permissions: ["claims.view"] },
-  { to: "/users", icon: Users, label: "Users", permissions: ["users.view"] },
-  { to: "/audit", icon: ClipboardCheck, label: "Audit Log", permissions: ["audit.view"] },
   { to: "/settings", icon: Settings, label: "Settings", permissions: ["settings.business"] },
 ];
 

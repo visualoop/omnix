@@ -1,4 +1,4 @@
-import { ArrowLeft, Building2, CreditCard, FileCheck, Shield, Users, Key, Database, Activity, Network, Boxes } from "lucide-react";
+import { ArrowLeft, Building2, CreditCard, FileCheck, Shield, Users, Key, Database, Activity, Network, Boxes, ShieldCheck } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
@@ -20,6 +20,7 @@ const SETTINGS_NAV: SettingsNavItem[] = [
   { to: "/settings", label: "Business Profile", description: "Name, contacts, identity", icon: Building2, permission: "settings.business", group: "Business" },
   { to: "/settings/branches", label: "Locations & Branches", description: "Branches and user access", icon: Building2, permission: "settings.business", group: "Business" },
   { to: "/settings/users", label: "Users & Permissions", description: "Accounts, roles, branch access", icon: Users, permission: "users.view", group: "Access" },
+  { to: "/settings/roles", label: "Role Matrix", description: "What each role can do", icon: ShieldCheck, permission: "users.manage", group: "Access" },
   { to: "/settings/payments", label: "Payment Methods", description: "Cash, M-Pesa, cards, bank", icon: CreditCard, permission: "settings.business", group: "Finance" },
   { to: "/settings/etims", label: "KRA eTIMS", description: "Tax invoice signing", icon: FileCheck, permission: "etims.view", group: "Finance" },
   { to: "/settings/network", label: "LAN Multi-device", description: "Master/client mode", icon: Network, permission: "settings.network", group: "Operations" },

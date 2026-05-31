@@ -180,21 +180,6 @@ pub fn get_db_size(app: tauri::AppHandle) -> Result<u64, String> {
     fs::metadata(&path).map(|m| m.len()).map_err(|e| e.to_string())
 }
 
-#[tauri::command]
-pub fn export_backup_to(app: tauri::AppHandle, filename: String, dest_path: String) -> Result<(), String> {
-    if filename.contains('/') || filename.contains('\\') || filename.contains("..") {
-        return Err("Invalid filename".to_string());
-    }
-    let dir = backups_dir(&app)?;
-    let src = dir.join(&filename);
-    if !src.starts_with(&dir) || !src.exists() {
-        return Err("Backup not found".to_string());
-    }
-    let dest = Path::new(&dest_path);
-    fs::copy(&src, dest).map_err(|e| format!("Export failed: {}", e))?;
-    Ok(())
-}
-
 fn sanitize(s: &str) -> String {
     s.chars()
         .map(|c| if c.is_alphanumeric() || c == '-' || c == '_' { c } else { '_' })
