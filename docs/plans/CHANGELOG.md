@@ -2,6 +2,18 @@
 
 This tracks work done LOCALLY without GitHub pushes. We only push when the user explicitly says so.
 
+## Release v0.2.10 — UI consistency
+
+What ships in this build:
+
+- **Sidebar:** active module's items (Pharmacy / Retail / Hardware / Hospitality) collapse into a **single expandable group** like Settings — only Core stays top-level, no more long scroll. Auto-expands when on a module sub-route.
+- **Native popups gone:** every `window.prompt`/`window.confirm` replaced with the shadcn dialog (the "Create new role", create group, settle batch, and 10 hospitality dialogs that were still native).
+- **Module-themed dashboards & POS:** hospitality (red `bg-rose-700`), hardware (orange `bg-orange-700`); previously fell to a default that rendered as an unthemed white header.
+- **Branded primary actions:** every "create / pay / new" button in hospitality (rose) and hardware (orange) now matches the module accent. Workflow-transition buttons (Send to kitchen, Bump, Check-in/out, Dispatch) stay neutral so brand colour flags only the primary moments.
+- **Reports & P&L cleanup:** unique icon per report (P&L → Scale, Cash Register → Wallet, Stock Movements → ArrowLeftRight, eTIMS → Send); P&L title/toolbar/dates/statement now share one left edge; emerald-500/-400/rose-400 mix unified to one palette across P&L + Daily Operations; Daily Ops got a proper page header.
+- **Vercel deploy:** project's `rootDirectory` set to `website` (was unset → repo root, hence the `next not detected` failure); deploy is green.
+- **Build hygiene:** dual lockfiles removed, `packageManager: pnpm@9.15.4` pinned, malformed `pnpm-workspace.yaml` files corrected, CI workflow fixed (pnpm version derived from `packageManager` instead of conflicting with it).
+
 ## Release v0.2.9 (pushed + tagged)
 - Pushed all platform-completion + hardening work to `origin/main` (account `visualoop`) and tagged `v0.2.9` to trigger the CI build/sign/release workflow (Windows MSI/NSIS + `latest.json` updater manifest).
 - Version bumped 0.2.8 → **0.2.9** across `package.json`, `src-tauri/Cargo.toml`, `src-tauri/tauri.conf.json`, `Cargo.lock` (the pre-existing `v0.2.8` GitHub release was already published with drifted 0.2.6 assets, so a clean new version was required rather than retagging).
