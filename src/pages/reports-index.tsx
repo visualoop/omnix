@@ -10,6 +10,10 @@ import {
   Heart,
   Calendar,
   FileCheck,
+  Scale,
+  Wallet,
+  ArrowLeftRight,
+  Send,
 } from "lucide-react";
 
 interface ReportLink {
@@ -53,7 +57,7 @@ const reports: ReportLink[] = [
     to: "/pnl",
     title: "Profit & Loss",
     description: "Full P&L statement with margin analysis",
-    icon: Banknote,
+    icon: Scale,
     category: "finance",
   },
   {
@@ -67,7 +71,7 @@ const reports: ReportLink[] = [
     to: "/cash-register",
     title: "Cash Register",
     description: "Shift management and variance tracking",
-    icon: Banknote,
+    icon: Wallet,
     category: "finance",
   },
   {
@@ -88,7 +92,7 @@ const reports: ReportLink[] = [
     to: "/inventory/stock",
     title: "Stock Movements",
     description: "All inventory movements (audit trail)",
-    icon: FileSpreadsheet,
+    icon: ArrowLeftRight,
     category: "inventory",
   },
   {
@@ -102,7 +106,7 @@ const reports: ReportLink[] = [
     to: "/etims",
     title: "eTIMS Submissions",
     description: "KRA invoice submission status and queue",
-    icon: FileCheck,
+    icon: Send,
     category: "finance",
   },
 ];

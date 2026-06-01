@@ -26,6 +26,7 @@ import {
 import { getPaymentMethods, type PaymentMethod } from "@/services/sales";
 import { useAuthStore } from "@/stores/auth";
 import { query } from "@/lib/db";
+import { prompt, confirm } from "@/components/ui/confirm-dialog";
 
 const KES = (n: number) => "KES " + n.toLocaleString("en-KE", { minimumFractionDigits: 0, maximumFractionDigits: 0 });
 
@@ -103,12 +104,12 @@ export function HospitalityTablesPage() {
   useEffect(() => { load(); }, []);
 
   const addArea = async () => {
-    const name = prompt("Dining area name (e.g. Main Hall, Terrace)");
+    const name = await prompt({ title: "New dining area", placeholder: "e.g. Main Hall, Terrace", required: true });
     if (!name?.trim()) return;
     try { await createArea(name.trim()); load(); } catch (e) { toast.error(String(e)); }
   };
   const addTable = async () => {
-    const code = prompt("Table code (e.g. T1)");
+    const code = await prompt({ title: "New table", placeholder: "Table code, e.g. T1", required: true });
     if (!code?.trim()) return;
     try {
       await createTable({ areaId: areas[0]?.id ?? null, code: code.trim(), name: `Table ${code.trim()}`, seats: 4 });
@@ -178,9 +179,10 @@ export function HospitalityMenuPage() {
   useEffect(() => { load(); }, []);
 
   const addItem = async () => {
-    const name = prompt("Menu item name");
+    const name = await prompt({ title: "New menu item", placeholder: "Item name", required: true });
     if (!name?.trim()) return;
-    const priceStr = prompt("Dine-in price (KES)", "0");
+    const priceStr = await prompt({ title: `Dine-in price for "${name.trim()}"`, placeholder: "Price (KES)", defaultValue: "0" });
+    if (priceStr === null) return;
     try {
       await createMenuItem({ name: name.trim(), dineInPrice: parseFloat(priceStr || "0") || 0 });
       load();
@@ -474,13 +476,13 @@ export function HospitalityRoomsPage() {
   useEffect(() => { load(); }, []);
 
   const addType = async () => {
-    const name = prompt("Room type (e.g. Standard, Deluxe)"); if (!name?.trim()) return;
-    const rate = prompt("Base rate per night (KES)", "0");
+    const name = await prompt({ title: "New room type", placeholder: "e.g. Standard, Deluxe", required: true }); if (!name?.trim()) return;
+    const rate = await prompt({ title: `Base rate for "${name.trim()}"`, placeholder: "Rate per night (KES)", defaultValue: "0" }); if (rate === null) return;
     try { await createRoomType({ name: name.trim(), baseRate: parseFloat(rate || "0") || 0 }); load(); } catch (e) { toast.error(String(e)); }
   };
   const addRoom = async () => {
     if (types.length === 0) { toast.error("Create a room type first"); return; }
-    const num = prompt("Room number (e.g. 101)"); if (!num?.trim()) return;
+    const num = await prompt({ title: "New room", placeholder: "Room number, e.g. 101", required: true }); if (!num?.trim()) return;
     try { await createRoom({ roomTypeId: types[0].id, roomNumber: num.trim() }); load(); } catch (e) { toast.error(String(e)); }
   };
   const cycle = async (r: Room) => {
@@ -523,9 +525,9 @@ export function HospitalityBookingsPage() {
 
   const newBooking = async () => {
     if (types.length === 0) { toast.error("Create a room type first (Rooms page)"); return; }
-    const guest = prompt("Guest name"); if (!guest?.trim()) return;
-    const inDate = prompt("Check-in date (YYYY-MM-DD)", new Date().toISOString().slice(0, 10));
-    const outDate = prompt("Check-out date (YYYY-MM-DD)", new Date(Date.now() + 86400000).toISOString().slice(0, 10));
+    const guest = await prompt({ title: "New booking", placeholder: "Guest name", required: true }); if (!guest?.trim()) return;
+    const inDate = await prompt({ title: "Check-in date", placeholder: "YYYY-MM-DD", defaultValue: new Date().toISOString().slice(0, 10), required: true });
+    const outDate = await prompt({ title: "Check-out date", placeholder: "YYYY-MM-DD", defaultValue: new Date(Date.now() + 86400000).toISOString().slice(0, 10), required: true });
     if (!inDate || !outDate) return;
     try {
       await createBooking({ guestName: guest.trim(), roomTypeId: types[0].id, checkIn: inDate, checkOut: outDate, ratePerNight: types[0].base_rate, userId });
@@ -540,7 +542,7 @@ export function HospitalityBookingsPage() {
   const doCheckOut = async (b: Booking) => {
     try { await checkOut(b.id); load(); toast.success("Checked out"); }
     catch (e) {
-      if (confirm(`${e}. Override and check out anyway?`)) { try { await checkOut(b.id, true); load(); toast.success("Checked out (override)"); } catch (e2) { toast.error(String(e2)); } }
+      if (await confirm({ title: "Outstanding balance", description: `${e}. Override and check out anyway?`, variant: "warning", confirmText: "Override & check out" })) { try { await checkOut(b.id, true); load(); toast.success("Checked out (override)"); } catch (e2) { toast.error(String(e2)); } }
     }
   };
 

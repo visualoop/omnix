@@ -59,7 +59,7 @@ export function PnLPage() {
   const barRatio = totalIn > 0 ? Math.min(Math.abs(data?.net_profit || 0) / totalIn, 1) : 0;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 max-w-3xl">
       <div className="flex items-center justify-between print-hide">
         <h1 className="text-xl font-semibold tracking-tight">Profit & Loss</h1>
         {data && (
@@ -105,9 +105,9 @@ export function PnLPage() {
       </div>
 
       {!data ? (
-        <div className="py-16 text-center text-sm text-muted-foreground">Loading statement&hellip;</div>
+        <div className="py-16 text-sm text-muted-foreground">Loading statement&hellip;</div>
       ) : (
-        <div className="max-w-3xl mx-auto">
+        <div>
           {/* Health bar */}
           <div className="mb-8">
             <div className="flex items-end gap-4 mb-3">
@@ -122,18 +122,18 @@ export function PnLPage() {
               </div>
               <div className="ml-auto text-right">
                 <div className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">Profit</div>
-                <div className={`text-2xl font-bold font-mono tabular-nums ${data.net_profit >= 0 ? "text-emerald-500" : "text-destructive"}`}>
+                <div className={`text-2xl font-bold font-mono tabular-nums ${data.net_profit >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-destructive"}`}>
                   {KES(data.net_profit)}
                 </div>
               </div>
             </div>
             <div className="h-1.5 rounded-full bg-muted overflow-hidden flex">
               <div
-                className="h-full bg-emerald-500 rounded-full transition-all"
+                className="h-full bg-muted-foreground/40 transition-all"
                 style={{ width: `${Math.min(totalOut / Math.max(totalIn, 1) * 100, 60)}%` }}
               />
               <div
-                className={`h-full rounded-full transition-all ${data.net_profit >= 0 ? "bg-emerald-400" : "bg-destructive"}`}
+                className={`h-full transition-all ${data.net_profit >= 0 ? "bg-emerald-500 dark:bg-emerald-400" : "bg-destructive"}`}
                 style={{ width: `${Math.max(barRatio * 40, 2)}%` }}
               />
             </div>
@@ -141,7 +141,7 @@ export function PnLPage() {
               <span className="text-[10px] text-muted-foreground">
                 {totalIn > 0 ? ((totalOut / totalIn) * 100).toFixed(0) : 0}% cost ratio
               </span>
-              <span className={`text-[10px] font-semibold ${data.net_profit >= 0 ? "text-emerald-500" : "text-destructive"}`}>
+              <span className={`text-[10px] font-semibold ${data.net_profit >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-destructive"}`}>
                 {data.margin.toFixed(1)}% margin
               </span>
             </div>
@@ -174,7 +174,7 @@ export function PnLPage() {
             )}
             <div className="flex justify-between py-2 border-t border-border mt-1">
               <span className="text-sm font-semibold">Gross Profit</span>
-              <span className={`text-sm font-bold font-mono tabular-nums ${data.gross_profit >= 0 ? "text-emerald-500" : "text-destructive"}`}>
+              <span className={`text-sm font-bold font-mono tabular-nums ${data.gross_profit >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-destructive"}`}>
                 {KES(data.gross_profit)}
               </span>
             </div>
@@ -205,10 +205,10 @@ export function PnLPage() {
                 <div className="text-xs text-muted-foreground">Before tax &bull; {startDate} &ndash; {endDate}</div>
               </div>
               <div className="text-right">
-                <div className={`text-3xl font-bold font-mono tabular-nums ${data.net_profit >= 0 ? "text-emerald-500" : "text-destructive"}`}>
+                <div className={`text-3xl font-bold font-mono tabular-nums ${data.net_profit >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-destructive"}`}>
                   {KES(data.net_profit)}
                 </div>
-                <div className={`text-xs mt-0.5 ${data.net_profit >= 0 ? "text-emerald-500" : "text-destructive"}`}>
+                <div className={`text-xs mt-0.5 ${data.net_profit >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-destructive"}`}>
                   {data.margin.toFixed(1)}% of revenue
                 </div>
               </div>

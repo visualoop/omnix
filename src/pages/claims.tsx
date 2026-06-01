@@ -31,6 +31,7 @@ import {
 } from "@/services/insurance";
 import { exportToCSV } from "@/lib/export";
 import { toast } from "sonner";
+import { prompt } from "@/components/ui/confirm-dialog";
 
 export function ClaimsPage() {
   const [tab, setTab] = useState<"claims" | "batches">("claims");
@@ -430,7 +431,7 @@ function BatchesTab({ batches, onSettled }: { batches: InsuranceBatch[]; onSettl
   }
 
   const handleSettle = async (batchId: string, totalAmount: number) => {
-    const input = prompt(`Settled amount (default ${totalAmount.toFixed(2)}):`, totalAmount.toFixed(2));
+    const input = await prompt({ title: "Settle batch", description: `Enter the settled amount`, defaultValue: totalAmount.toFixed(2), placeholder: "Amount (KES)", required: true });
     if (!input) return;
     const amt = parseFloat(input);
     if (isNaN(amt)) return;

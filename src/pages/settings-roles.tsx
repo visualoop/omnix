@@ -14,6 +14,7 @@ import {
   type RoleRow,
 } from "@/services/rbac";
 import { cn } from "@/lib/utils";
+import { confirm, prompt } from "@/components/ui/confirm-dialog";
 
 const GROUPS: PermissionGroup[] = [
   "Sales", "Inventory", "Purchasing", "Customers", "Suppliers", "Pharmacy",
@@ -87,7 +88,7 @@ export function SettingsRolesPage() {
   };
 
   const handleCreate = async () => {
-    const name = prompt("New role name");
+    const name = await prompt({ title: "New role", placeholder: "Role name", required: true });
     if (!name?.trim()) return;
     try {
       const id = await createRole(name.trim());
@@ -99,7 +100,7 @@ export function SettingsRolesPage() {
 
   const handleClone = async () => {
     if (!selected) return;
-    const name = prompt(`Clone "${selected.name}" as`, `${selected.name} copy`);
+    const name = await prompt({ title: `Clone "${selected.name}"`, placeholder: "New role name", defaultValue: `${selected.name} copy`, required: true });
     if (!name?.trim()) return;
     try {
       const id = await cloneRole(selected.id, name.trim());
@@ -111,7 +112,7 @@ export function SettingsRolesPage() {
 
   const handleDelete = async () => {
     if (!selected || isSystem) return;
-    if (!confirm(`Delete role "${selected.name}"? Users with only this role lose its access.`)) return;
+    if (!(await confirm({ title: `Delete role "${selected.name}"?`, description: "Users with only this role lose its access.", variant: "destructive", confirmText: "Delete" }))) return;
     try {
       await deleteRole(selected.id);
       setSelectedId(null);

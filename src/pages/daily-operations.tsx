@@ -167,6 +167,12 @@ export function DailyOperationsPage() {
 
   return (
     <div className="space-y-5 max-w-4xl">
+      {/* Header */}
+      <div>
+        <h1 className="text-xl font-semibold tracking-tight">Daily Operations</h1>
+        <p className="text-sm text-muted-foreground mt-1">End-of-day summary: everything sold, payments, returns, and cash movement.</p>
+      </div>
+
       {/* Date picker */}
       <div className="flex items-center gap-3">
         <Calendar className="h-4 w-4 text-muted-foreground" />
@@ -227,9 +233,9 @@ export function DailyOperationsPage() {
             <FileText className="h-3.5 w-3.5 text-muted-foreground" /> Cash Movement
           </h3>
           <div className="space-y-1 text-sm">
-            {data.pettyIn > 0 && <Row label="Petty cash in" value={data.pettyIn} color="text-emerald-400" />}
-            {data.pettyOut > 0 && <Row label="Petty cash out" value={-data.pettyOut} color="text-rose-400" />}
-            {data.expenses > 0 && <Row label="Expenses" value={-data.expenses} color="text-rose-400" />}
+            {data.pettyIn > 0 && <Row label="Petty cash in" value={data.pettyIn} color="text-emerald-600 dark:text-emerald-400" />}
+            {data.pettyOut > 0 && <Row label="Petty cash out" value={-data.pettyOut} color="text-destructive" />}
+            {data.expenses > 0 && <Row label="Expenses" value={-data.expenses} color="text-destructive" />}
           </div>
         </section>
       )}
@@ -258,7 +264,7 @@ export function DailyOperationsPage() {
                     <td className="px-3 py-1.5 font-medium">{p.product_name}</td>
                     <td className="px-3 py-1.5 text-right font-mono tabular-nums">{p.qty_sold}</td>
                     <td className="px-3 py-1.5 text-right font-mono tabular-nums">{p.revenue.toFixed(2)}</td>
-                    <td className={`px-3 py-1.5 text-right font-mono tabular-nums ${p.profit >= 0 ? "text-emerald-400" : "text-rose-400"}`}>
+                    <td className={`px-3 py-1.5 text-right font-mono tabular-nums ${p.profit >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-destructive"}`}>
                       {p.profit.toFixed(2)}
                     </td>
                   </tr>

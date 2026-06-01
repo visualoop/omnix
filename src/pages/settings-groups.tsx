@@ -8,6 +8,7 @@ import {
   type GroupRow,
 } from "@/services/rbac";
 import { listUsers, type User } from "@/services/auth";
+import { prompt } from "@/components/ui/confirm-dialog";
 
 export function SettingsGroupsPage() {
   const [groups, setGroups] = useState<GroupRow[]>([]);
@@ -33,7 +34,7 @@ export function SettingsGroupsPage() {
   }, [selectedId]);
 
   const handleCreate = async () => {
-    const name = prompt("New group name (e.g. Nairobi Cashiers)");
+    const name = await prompt({ title: "New group", placeholder: "e.g. Nairobi Cashiers", required: true });
     if (!name?.trim()) return;
     try {
       const id = await createGroup(name.trim());
