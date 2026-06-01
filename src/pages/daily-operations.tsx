@@ -3,13 +3,16 @@
  * Shows ALL products sold, payments, returns, petty cash, shift status, expenses.
  */
 import { useEffect, useState } from "react";
-import { Calendar, Package, RotateCcw, Banknote, FileText } from "lucide-react";
+import { Calendar, Package, RotateCcw, Banknote, FileText, Printer, Download } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import { query } from "@/lib/db";
 import { getActiveBranchId } from "@/stores/active-branch";
 import { EmptyState } from "@/components/ui/empty-state";
 import { TableRowSkeleton } from "@/components/ui/skeletons";
+import { printPage, PrintHeader } from "@/lib/print";
+import { exportToCSV } from "@/lib/export";
 
 const KES = (n: number) => "KES " + (n || 0).toLocaleString("en-KE", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
@@ -165,16 +168,50 @@ export function DailyOperationsPage() {
 
   if (!data) return <EmptyState icon={Package} title="No data" description="No transactions for this date." />;
 
+  const handleExport = () => {
+    const rows: Array<Record<string, string | number>> = [];
+    rows.push({ Section: "PRODUCTS SOLD", Detail: "", Qty: "", Revenue: "", Cost: "", Profit: "" });
+    for (const p of data.productItems) {
+      rows.push({ Section: "", Detail: p.product_name, Qty: p.qty_sold, Revenue: p.revenue.toFixed(2), Cost: p.cost.toFixed(2), Profit: p.profit.toFixed(2) });
+    }
+    rows.push({ Section: "", Detail: "TOTAL", Qty: data.productItems.reduce((s, p) => s + p.qty_sold, 0), Revenue: data.totalSales.toFixed(2), Cost: "", Profit: "" });
+    rows.push({ Section: "", Detail: "", Qty: "", Revenue: "", Cost: "", Profit: "" });
+    rows.push({ Section: "PAYMENTS", Detail: "", Qty: "", Revenue: "", Cost: "", Profit: "" });
+    for (const p of data.payments) {
+      rows.push({ Section: "", Detail: `${p.method} (${p.count} txns)`, Qty: "", Revenue: p.total.toFixed(2), Cost: "", Profit: "" });
+    }
+    rows.push({ Section: "", Detail: "", Qty: "", Revenue: "", Cost: "", Profit: "" });
+    rows.push({ Section: "RETURNS", Detail: `${data.returnsCount} return(s)`, Qty: "", Revenue: data.returnsTotal.toFixed(2), Cost: "", Profit: "" });
+    rows.push({ Section: "EXPENSES", Detail: "", Qty: "", Revenue: data.expenses.toFixed(2), Cost: "", Profit: "" });
+    rows.push({ Section: "PETTY CASH IN", Detail: "", Qty: "", Revenue: data.pettyIn.toFixed(2), Cost: "", Profit: "" });
+    rows.push({ Section: "PETTY CASH OUT", Detail: "", Qty: "", Revenue: data.pettyOut.toFixed(2), Cost: "", Profit: "" });
+    rows.push({ Section: "NET CASH", Detail: "", Qty: "", Revenue: netCash.toFixed(2), Cost: "", Profit: "" });
+    exportToCSV(`day-book-${data.date}`, rows);
+  };
+
   return (
     <div className="space-y-5 max-w-4xl">
+      {/* Print-only header */}
+      <PrintHeader title="Daily Operations Report" subtitle={data.date} />
+
       {/* Header */}
-      <div>
-        <h1 className="text-xl font-semibold tracking-tight">Daily Operations</h1>
-        <p className="text-sm text-muted-foreground mt-1">End-of-day summary: everything sold, payments, returns, and cash movement.</p>
+      <div className="flex items-start justify-between print-hide">
+        <div>
+          <h1 className="text-xl font-semibold tracking-tight">Daily Operations</h1>
+          <p className="text-sm text-muted-foreground mt-1">End-of-day summary: everything sold, payments, returns, and cash movement.</p>
+        </div>
+        <div className="flex gap-2">
+          <Button variant="outline" size="sm" onClick={() => printPage(`Daily Operations — ${data.date}`)} className="cursor-pointer">
+            <Printer className="h-3.5 w-3.5 mr-1.5" /> Print
+          </Button>
+          <Button variant="outline" size="sm" onClick={handleExport} className="cursor-pointer">
+            <Download className="h-3.5 w-3.5 mr-1.5" /> Export CSV
+          </Button>
+        </div>
       </div>
 
       {/* Date picker */}
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-3 print-hide">
         <Calendar className="h-4 w-4 text-muted-foreground" />
         <Input
           type="date"

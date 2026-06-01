@@ -14,6 +14,7 @@ import {
   Wallet,
   ArrowLeftRight,
   Send,
+  BookOpen,
 } from "lucide-react";
 
 interface ReportLink {
@@ -33,9 +34,16 @@ const reports: ReportLink[] = [
     category: "sales",
   },
   {
+    to: "/reports/daily-operations",
+    title: "Day Book (End of Day)",
+    description: "Comprehensive close-of-day: every product sold (qty, revenue, profit), payments, returns, cash movement",
+    icon: BookOpen,
+    category: "sales",
+  },
+  {
     to: "/reports/zreport",
-    title: "Z-Report (End of Day)",
-    description: "Daily shift summary for cash reconciliation and handover",
+    title: "Z-Report",
+    description: "Minimal till summary for cash reconciliation and shift handover",
     icon: FileSpreadsheet,
     category: "sales",
   },
