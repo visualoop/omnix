@@ -30,6 +30,9 @@ import { prompt, confirm } from "@/components/ui/confirm-dialog";
 
 const KES = (n: number) => "KES " + n.toLocaleString("en-KE", { minimumFractionDigits: 0, maximumFractionDigits: 0 });
 
+/** Hospitality primary-action button colour (matches the rose dashboard/POS accent). */
+const BRAND_BTN = "bg-rose-700 hover:bg-rose-800 text-white";
+
 function PageHead({ icon: Icon, title, subtitle, action }: { icon: typeof UtensilsCrossed; title: string; subtitle: string; action?: React.ReactNode }) {
   return (
     <div className="flex items-start justify-between mb-5">
@@ -133,7 +136,7 @@ export function HospitalityTablesPage() {
         action={
           <div className="flex gap-1.5">
             <Button size="sm" variant="outline" className="cursor-pointer" onClick={addArea}><Plus className="h-3.5 w-3.5 mr-1" /> Area</Button>
-            <Button size="sm" className="cursor-pointer" onClick={addTable}><Plus className="h-3.5 w-3.5 mr-1" /> Table</Button>
+            <Button size="sm" className={cn("cursor-pointer", BRAND_BTN)} onClick={addTable}><Plus className="h-3.5 w-3.5 mr-1" /> Table</Button>
           </div>
         }
       />
@@ -200,7 +203,7 @@ export function HospitalityMenuPage() {
         icon={BookOpen}
         title="Menu"
         subtitle="Dishes, categories, and prices."
-        action={<Button size="sm" className="cursor-pointer" onClick={addItem}><Plus className="h-3.5 w-3.5 mr-1" /> Menu item</Button>}
+        action={<Button size="sm" className={cn("cursor-pointer", BRAND_BTN)} onClick={addItem}><Plus className="h-3.5 w-3.5 mr-1" /> Menu item</Button>}
       />
       {items.length === 0 ? (
         <EmptyHint text="No menu items yet." />
@@ -355,7 +358,7 @@ export function HospitalityOrdersPage() {
                     <span>Grand total</span>
                     <span className="font-mono tabular-nums">{KES(total + total * (scPct / 100) + tip)}</span>
                   </div>
-                  <Button size="sm" className="w-full cursor-pointer" disabled={paying || total <= 0} onClick={() => pay(total)}>
+                  <Button size="sm" className={cn("w-full cursor-pointer", BRAND_BTN)} disabled={paying || total <= 0} onClick={() => pay(total)}>
                     {paying ? "Processing…" : `Pay ${KES(total + total * (scPct / 100) + tip)}`}
                   </Button>
                 </div>
@@ -385,7 +388,7 @@ export function HospitalityOrdersPage() {
         icon={UtensilsCrossed}
         title="Orders"
         subtitle="Active tabs and tickets."
-        action={<Button size="sm" className="cursor-pointer" onClick={newOrder}><Plus className="h-3.5 w-3.5 mr-1" /> New order</Button>}
+        action={<Button size="sm" className={cn("cursor-pointer", BRAND_BTN)} onClick={newOrder}><Plus className="h-3.5 w-3.5 mr-1" /> New order</Button>}
       />
       {orders.length === 0 ? <EmptyHint text="No active orders. Open one to start." /> : (
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2.5">
@@ -496,7 +499,7 @@ export function HospitalityRoomsPage() {
       <PageHead icon={BedDouble} title="Rooms" subtitle="Room status board." action={
         <div className="flex gap-1.5">
           <Button size="sm" variant="outline" className="cursor-pointer" onClick={addType}><Plus className="h-3.5 w-3.5 mr-1" /> Type</Button>
-          <Button size="sm" className="cursor-pointer" onClick={addRoom}><Plus className="h-3.5 w-3.5 mr-1" /> Room</Button>
+          <Button size="sm" className={cn("cursor-pointer", BRAND_BTN)} onClick={addRoom}><Plus className="h-3.5 w-3.5 mr-1" /> Room</Button>
         </div>} />
       {rooms.length === 0 ? <EmptyHint text="No rooms yet. Add a room type, then rooms." /> : (
         <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2.5">
@@ -550,7 +553,7 @@ export function HospitalityBookingsPage() {
   return (
     <div>
       <PageHead icon={CalendarDays} title="Bookings" subtitle="Reservations, arrivals and departures." action={
-        <Button size="sm" className="cursor-pointer" onClick={newBooking}><Plus className="h-3.5 w-3.5 mr-1" /> New booking</Button>} />
+        <Button size="sm" className={cn("cursor-pointer", BRAND_BTN)} onClick={newBooking}><Plus className="h-3.5 w-3.5 mr-1" /> New booking</Button>} />
       {bookings.length === 0 ? <EmptyHint text="No active bookings." /> : (
         <div className="border border-border rounded-lg overflow-hidden">
           <table className="w-full text-[13px]">

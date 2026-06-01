@@ -20,6 +20,9 @@ import { query } from "@/lib/db";
 
 const KES = (n: number) => "KES " + n.toLocaleString("en-KE", { minimumFractionDigits: 0, maximumFractionDigits: 0 });
 
+/** Hardware primary-action button colour (matches the orange dashboard/POS accent). */
+const BRAND_BTN = "bg-orange-700 hover:bg-orange-800 text-white";
+
 function PageHead({ icon: Icon, title, subtitle, action }: { icon: typeof Wrench; title: string; subtitle: string; action?: React.ReactNode }) {
   return (
     <div className="flex items-start justify-between mb-5">
@@ -123,7 +126,7 @@ export function HardwareQuotationsPage() {
         icon={FileText}
         title="Quotations"
         subtitle="Create quotes for contractors; convert accepted quotes to sales."
-        action={<Button size="sm" className="cursor-pointer" onClick={() => toast.info("Use POS → Quote, or the contractor account page to build a quotation.")}><Plus className="h-3.5 w-3.5 mr-1.5" /> New quote</Button>}
+        action={<Button size="sm" className={cn("cursor-pointer", BRAND_BTN)} onClick={() => toast.info("Use POS → Quote, or the contractor account page to build a quotation.")}><Plus className="h-3.5 w-3.5 mr-1.5" /> New quote</Button>}
       />
       {loading ? <CenterSpin /> : quotes.length === 0 ? (
         <EmptyHint text="No quotations yet." />
