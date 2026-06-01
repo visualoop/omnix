@@ -574,7 +574,7 @@ function ActionPill({
       {value && <span className="font-mono bg-white/25 px-1.5 rounded">{value}</span>}
       {hotkey && <kbd className="text-[9px] opacity-70">{hotkey}</kbd>}
       {badge !== undefined && badge > 0 && (
-        <span className="bg-white text-foreground rounded-full text-[9px] h-4 min-w-[16px] px-1 flex items-center justify-center font-semibold">
+        <span className="bg-card text-foreground rounded-full text-[9px] h-4 min-w-[16px] px-1 flex items-center justify-center font-semibold">
           {badge}
         </span>
       )}
@@ -626,7 +626,7 @@ function CategoryButton({ active, label, icon: Icon, color, onClick }: {
       className={`w-full text-left px-2.5 py-2 flex items-center gap-2 text-[12px] transition border-l-2 ${
         active
           ? `${color.bg} ${color.fg} border-l-current font-semibold`
-          : "border-l-transparent hover:bg-stone-50 text-foreground"
+          : "border-l-transparent hover:bg-accent text-foreground"
       }`}
     >
       {Icon ? (
@@ -654,10 +654,10 @@ function ProductCard({ product, onClick }: {
     <button
       onClick={onClick}
       disabled={oos}
-      className={`text-left p-2 rounded-md border bg-white transition group relative ${
+      className={`text-left p-2 rounded-md border bg-card transition group relative ${
         oos
-          ? "opacity-50 cursor-not-allowed border-rose-200"
-          : `${cc.border} hover:bg-stone-50 hover:border-current ${cc.fg} hover:shadow-sm active:scale-[0.98]`
+          ? "opacity-50 cursor-not-allowed border-rose-500/30"
+          : `${cc.border} hover:bg-accent hover:border-current ${cc.fg} hover:shadow-sm active:scale-[0.98]`
       }`}
     >
       {/* Category dot top-left */}
@@ -694,7 +694,7 @@ function CartPanel({
   return (
     <>
       {/* Cart header */}
-      <div className="px-3 py-2 border-b border-border bg-stone-50 flex items-center justify-between">
+      <div className="px-3 py-2 border-b border-border bg-muted/50 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <ShoppingCart className="h-4 w-4 text-stone-600" />
           <h2 className="text-sm font-semibold">Cart</h2>
@@ -709,7 +709,7 @@ function CartPanel({
         </div>
         <Button variant="ghost" size="sm" onClick={onPark} className="text-xs h-6">
           <Pause className="h-3 w-3 mr-1" /> Park
-          {heldCount > 0 && <span className="ml-1 bg-stone-700 text-white rounded-full text-[9px] px-1.5 py-px font-semibold">{heldCount}</span>}
+          {heldCount > 0 && <span className="ml-1 bg-muted-foreground/20 text-white rounded-full text-[9px] px-1.5 py-px font-semibold">{heldCount}</span>}
         </Button>
       </div>
 
@@ -752,7 +752,7 @@ function CartPanel({
       </div>
 
       {/* Totals */}
-      <div className="border-t border-border px-3 py-2 space-y-1 bg-stone-50">
+      <div className="border-t border-border px-3 py-2 space-y-1 bg-muted/50">
         <Row label="Subtotal" value={subtotal.toFixed(2)} />
         {discount > 0 && (
           <Row
@@ -774,14 +774,14 @@ function CartPanel({
             <span className="font-mono tabular-nums">+{tip.toFixed(2)}</span>
           </button>
         )}
-        <div className={`flex justify-between text-base font-bold pt-1.5 border-t border-stone-300 ${accent.accentText}`}>
+        <div className={`flex justify-between text-base font-bold pt-1.5 border-t border-border ${accent.accentText}`}>
           <span>Total</span>
           <span className="font-mono tabular-nums">{KES(grandTotal)}</span>
         </div>
       </div>
 
       {/* Actions */}
-      <div className="px-3 py-2 border-t border-border space-y-1.5 bg-white">
+      <div className="px-3 py-2 border-t border-border space-y-1.5 bg-card">
         <Button
           variant="outline"
           className="w-full h-8 text-xs"
@@ -820,7 +820,7 @@ function CartLine({ idx, item, onRemove, onQty, onSub, showSubstitute }: {
   showSubstitute?: boolean;
 }) {
   return (
-    <div className="px-3 py-1.5 border-b border-stone-100 hover:bg-stone-50 transition group">
+    <div className="px-3 py-1.5 border-b border-border/50 hover:bg-muted/50 transition group">
       <div className="flex items-start gap-1.5">
         <span className="text-[10px] text-stone-400 font-mono pt-0.5 select-none">{idx}</span>
         <div className="flex-1 min-w-0">
@@ -849,7 +849,7 @@ function CartLine({ idx, item, onRemove, onQty, onSub, showSubstitute }: {
             <div className="flex items-center gap-0.5">
               <button
                 onClick={() => onQty(item.quantity - 1)}
-                className="h-5 w-5 rounded bg-stone-100 hover:bg-stone-200 flex items-center justify-center transition"
+                className="h-5 w-5 rounded bg-muted hover:bg-muted/80 flex items-center justify-center transition"
               >
                 <Minus className="h-2.5 w-2.5" />
               </button>
@@ -858,7 +858,7 @@ function CartLine({ idx, item, onRemove, onQty, onSub, showSubstitute }: {
               </span>
               <button
                 onClick={() => onQty(item.quantity + 1)}
-                className="h-5 w-5 rounded bg-stone-100 hover:bg-stone-200 flex items-center justify-center transition"
+                className="h-5 w-5 rounded bg-muted hover:bg-muted/80 flex items-center justify-center transition"
               >
                 <Plus className="h-2.5 w-2.5" />
               </button>

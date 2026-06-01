@@ -81,9 +81,9 @@ export function TipDialog({ open, onClose }: { open: boolean; onClose: () => voi
                     key={pct}
                     type="button"
                     onClick={() => setAmount(calc.toFixed(0))}
-                    className="p-2 rounded border border-border hover:border-rose-400 hover:bg-rose-50 transition text-center"
+                    className="p-2 rounded border border-border hover:border-rose-500/50 hover:bg-rose-500/10 transition text-center"
                   >
-                    <div className="text-sm font-bold text-rose-600">{pct}%</div>
+                    <div className="text-sm font-bold text-rose-400">{pct}%</div>
                     <div className="text-[9px] text-muted-foreground tabular-nums font-mono">
                       KES {calc.toFixed(0)}
                     </div>
@@ -116,16 +116,16 @@ export function TipDialog({ open, onClose }: { open: boolean; onClose: () => voi
 
           {/* Tip total preview */}
           {tipNum > 0 && (
-            <div className="bg-rose-50 border border-rose-200 rounded p-2 space-y-0.5 text-sm">
+            <div className="bg-rose-500/10 border border-rose-500/30 rounded p-2 space-y-0.5 text-sm">
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Bill</span>
                 <span className="font-mono">{total.toFixed(2)}</span>
               </div>
-              <div className="flex justify-between text-rose-700">
+              <div className="flex justify-between text-rose-400">
                 <span>+ Tip</span>
                 <span className="font-mono font-semibold">{tipNum.toFixed(2)}</span>
               </div>
-              <div className="flex justify-between font-bold border-t border-rose-200 pt-1">
+              <div className="flex justify-between font-bold border-t border-rose-500/30 pt-1">
                 <span>New total</span>
                 <span className="font-mono">{KES(total + tipNum)}</span>
               </div>
@@ -151,7 +151,7 @@ export function TipDialog({ open, onClose }: { open: boolean; onClose: () => voi
         </div>
         <DialogFooter>
           {cartTip > 0 && (
-            <Button variant="ghost" size="sm" onClick={remove} className="text-rose-600 mr-auto">
+            <Button variant="ghost" size="sm" onClick={remove} className="text-rose-400 mr-auto">
               <X className="h-3.5 w-3.5 mr-1" /> Remove tip
             </Button>
           )}

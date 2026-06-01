@@ -47,7 +47,7 @@ export function OpenShiftDialog({ open, onClose, onOpened }: {
       <DialogContent>
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Unlock className="h-4 w-4 text-emerald-600" /> Open Cash Shift
+            <Unlock className="h-4 w-4 text-emerald-400" /> Open Cash Shift
           </DialogTitle>
         </DialogHeader>
         <div className="space-y-3 py-2">
@@ -153,7 +153,7 @@ export function CloseShiftDialog({ open, onClose, onClosed }: {
       <DialogContent className="max-w-lg">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Lock className="h-4 w-4 text-rose-600" /> Close Cash Shift (End of Day)
+            <Lock className="h-4 w-4 text-rose-400" /> Close Cash Shift (End of Day)
           </DialogTitle>
         </DialogHeader>
         {!shift ? (
@@ -161,14 +161,14 @@ export function CloseShiftDialog({ open, onClose, onClosed }: {
         ) : (
           <>
             <div className="space-y-3 py-2">
-              <Card className="bg-stone-50">
+              <Card className="bg-muted/30">
                 <CardContent className="p-3 space-y-1.5">
                   <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Shift Summary</div>
                   <Row label="Opening cash" value={shift.opening_balance} />
-                  <Row label="+ Cash sales" value={stats?.cash_sales || 0} color="text-emerald-600" />
-                  <Row label="+ Petty cash in" value={stats?.petty_in || 0} color="text-emerald-600" />
-                  <Row label="− Petty cash out" value={-(stats?.petty_out || 0)} color="text-rose-600" />
-                  <div className="border-t border-stone-300 pt-1.5">
+                  <Row label="+ Cash sales" value={stats?.cash_sales || 0} color="text-emerald-400" />
+                  <Row label="+ Petty cash in" value={stats?.petty_in || 0} color="text-emerald-400" />
+                  <Row label="− Petty cash out" value={-(stats?.petty_out || 0)} color="text-rose-400" />
+                  <div className="border-t border-border pt-1.5">
                     <Row label="Expected cash in till" value={expectedCash} bold />
                   </div>
                 </CardContent>
@@ -205,13 +205,13 @@ export function CloseShiftDialog({ open, onClose, onClosed }: {
                 />
                 {actualCash !== "" && hasVariance && (
                   <div className={`text-sm font-mono p-2 rounded ${
-                    variance < 0 ? "bg-rose-50 text-rose-700" : "bg-amber-50 text-amber-700"
+                    variance < 0 ? "bg-rose-500/10 text-rose-400" : "bg-amber-500/10 text-amber-400"
                   }`}>
                     {variance < 0 ? "Short" : "Over"} by <b>{KES(Math.abs(variance))}</b>
                   </div>
                 )}
                 {actualCash !== "" && !hasVariance && (
-                  <div className="text-sm font-mono p-2 rounded bg-emerald-50 text-emerald-700">
+                  <div className="text-sm font-mono p-2 rounded bg-emerald-500/10 text-emerald-400">
                     ✓ Balanced
                   </div>
                 )}
@@ -322,8 +322,8 @@ export function PettyCashDialog({ open, onClose, onSaved }: {
               onClick={() => setType("expense")}
               className={`p-3 rounded-md border text-left transition ${
                 type === "expense"
-                  ? "border-rose-500 bg-rose-50 text-rose-700"
-                  : "border-border hover:bg-stone-50"
+                  ? "border-rose-500/50 bg-rose-500/10 text-rose-400"
+                  : "border-border hover:bg-muted/30"
               }`}
             >
               <ArrowUpFromLine className="h-4 w-4 mb-1" />
@@ -335,8 +335,8 @@ export function PettyCashDialog({ open, onClose, onSaved }: {
               onClick={() => setType("topup")}
               className={`p-3 rounded-md border text-left transition ${
                 type === "topup"
-                  ? "border-emerald-500 bg-emerald-50 text-emerald-700"
-                  : "border-border hover:bg-stone-50"
+                  ? "border-emerald-500/50 bg-emerald-500/10 text-emerald-400"
+                  : "border-border hover:bg-accent"
               }`}
             >
               <ArrowDownToLine className="h-4 w-4 mb-1" />
@@ -388,3 +388,4 @@ function Row({ label, value, color = "", bold }: { label: string; value: number;
     </div>
   );
 }
+
