@@ -1,40 +1,10 @@
-import { ArrowLeft, Building2, CreditCard, FileCheck, Shield, Users, Key, Database, Activity, Network, Boxes, ShieldCheck } from "lucide-react";
-import type { LucideIcon } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { useAuthStore } from "@/stores/auth";
-import { useActiveModule, type ModuleId } from "@/stores/active-module";
-import { hasPermission, type Permission } from "@/lib/permissions";
-
-interface SettingsNavItem {
-  to: string;
-  label: string;
-  description: string;
-  icon: LucideIcon;
-  permission: Permission;
-  group: "Business" | "Access" | "Finance" | "Operations" | "Dawa" | "Retail" | "Hospitality";
-  module?: ModuleId;
-}
-
-const SETTINGS_NAV: SettingsNavItem[] = [
-  { to: "/settings", label: "Business Profile", description: "Name, contacts, identity", icon: Building2, permission: "settings.business", group: "Business" },
-  { to: "/settings/branches", label: "Locations & Branches", description: "Branches and user access", icon: Building2, permission: "settings.business", group: "Business" },
-  { to: "/settings/users", label: "Users & Permissions", description: "Accounts, roles, branch access", icon: Users, permission: "users.view", group: "Access" },
-  { to: "/settings/roles", label: "Role Matrix", description: "What each role can do", icon: ShieldCheck, permission: "users.manage", group: "Access" },
-  { to: "/settings/payments", label: "Payment Methods", description: "Cash, M-Pesa, cards, bank", icon: CreditCard, permission: "settings.business", group: "Finance" },
-  { to: "/settings/taxes", label: "Tax & VAT", description: "Default rates, tax classes", icon: CreditCard, permission: "settings.business", group: "Finance" },
-  { to: "/settings/price-lists", label: "Price Lists", description: "Customer pricing tiers", icon: CreditCard, permission: "retail.price_lists.manage", group: "Finance" },
-  { to: "/settings/etims", label: "KRA eTIMS", description: "Tax invoice signing", icon: FileCheck, permission: "etims.view", group: "Finance" },
-  { to: "/settings/network", label: "LAN Multi-device", description: "Master/client mode", icon: Network, permission: "settings.network", group: "Operations" },
-  { to: "/settings/modules", label: "Modules", description: "Active vertical and roadmap", icon: Boxes, permission: "settings.modules", group: "Operations" },
-  { to: "/settings/backup", label: "Backup & Restore", description: "Protect business data", icon: Database, permission: "settings.backup", group: "Operations" },
-  { to: "/settings/customer-display", label: "Customer Display", description: "Second screen settings", icon: Database, permission: "settings.business", group: "Operations" },
-  { to: "/settings/audit", label: "Audit Log", description: "Security and compliance history", icon: Activity, permission: "audit.view", group: "Operations" },
-  { to: "/settings/license", label: "License", description: "Machine binding and updates", icon: Key, permission: "license.view", group: "Operations" },
-  { to: "/settings/insurance", label: "Insurance Providers", description: "SHA and private insurers", icon: Shield, permission: "claims.view", group: "Dawa", module: "dawa" },
-];
-
-const GROUPS: SettingsNavItem["group"][] = ["Business", "Access", "Finance", "Operations", "Dawa", "Retail", "Hospitality"];
+import { useActiveModule } from "@/stores/active-module";
+import { hasPermission } from "@/lib/permissions";
+import { settingsRegistry, SETTINGS_GROUPS } from "@/lib/settings-registry";
 
 export function SettingsLayout() {
   const navigate = useNavigate();
@@ -43,7 +13,7 @@ export function SettingsLayout() {
   const user = useAuthStore((s) => s.user);
   const activeModule = useActiveModule((s) => s.active);
 
-  const visible = SETTINGS_NAV.filter((item) => {
+  const visible = settingsRegistry().filter((item) => {
     if (item.module && item.module !== activeModule) return false;
     return hasPermission(user, item.permission);
   });
@@ -68,7 +38,7 @@ export function SettingsLayout() {
         </div>
 
         <nav className="flex-1 overflow-auto px-2 py-3 space-y-4">
-          {GROUPS.map((group) => {
+          {SETTINGS_GROUPS.map((group) => {
             const items = visible.filter((item) => item.group === group);
             if (items.length === 0) return null;
             return (

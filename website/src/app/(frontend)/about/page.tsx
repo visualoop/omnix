@@ -3,7 +3,7 @@ import { PageHero } from '@/components/marketing/page-hero'
 import { ClosingCtaSection } from '@/components/landing/closing-cta-section'
 
 export const metadata: Metadata = {
-  title: 'About — who builds Duka',
+  title: 'About — who builds Omnix',
   description: 'A small team in Nairobi building software for Kenyan owner-operators. Every line of code is ours.',
 }
 
@@ -19,7 +19,7 @@ export default function AboutPage() {
       <section className="section">
         <div className="container-text">
           <div className="space-y-6 text-[17px] leading-[1.65] text-[var(--color-fg-muted)]">
-            <p>We built Duka after watching shop owners we know — pharmacies in Westlands, mini-marts in Kisumu, salons in Eldoret — fight the same software all day and still close the till at midnight not knowing what they made.</p>
+            <p>We built Omnix after watching shop owners we know — pharmacies in Westlands, mini-marts in Kisumu, hardware shops in Eldoret — fight the same software all day and still close the till at midnight not knowing what they made.</p>
             <p>The brief was simple. One Windows app you download once. Runs offline. Files KRA receipts when the line comes back. Owns its own data on its own machine. Costs less than two months of any subscription.</p>
             <p>We&rsquo;re a small team in Nairobi. Every line of code is ours. If something breaks, you can write to me.</p>
           </div>

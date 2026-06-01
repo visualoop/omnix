@@ -324,7 +324,7 @@ export function QuickAddProductsPage() {
             })}
           </tbody>
         </table>
-        <div className="border-t border-border p-2 bg-stone-50">
+        <div className="border-t border-border p-2 bg-muted/40">
           <Button variant="outline" size="sm" onClick={addRow} className="w-full">
             <Plus className="h-3 w-3 mr-1" /> Add Row
           </Button>

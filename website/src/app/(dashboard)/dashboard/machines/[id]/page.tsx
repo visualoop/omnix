@@ -119,7 +119,7 @@ export default async function MachineDetailPage({
             value={`${machine.os ?? '?'} ${machine.osVersion ?? ''}`.trim()}
           />
           <Stat label="Architecture" value={machine.arch ?? '—'} />
-          <Stat label="Duka version" value={`v${machine.currentVersion ?? '?'}`} />
+          <Stat label="Omnix version" value={`v${machine.currentVersion ?? '?'}`} />
           <Stat label="Active module" value={machine.activeModule ?? '—'} />
           <Stat label="Branch" value={machine.branchName ?? '—'} />
           <Stat label="Network mode" value={machine.networkMode ?? '—'} />

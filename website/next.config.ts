@@ -42,8 +42,8 @@ const nextConfig: NextConfig = {
     remotePatterns: [
       // Cloudflare R2 in production
       { protocol: 'https', hostname: '*.r2.cloudflarestorage.com' },
-      { protocol: 'https', hostname: 'r2.sokoos.co.ke' },
-      { protocol: 'https', hostname: 'media.sokoos.co.ke' },
+      { protocol: 'https', hostname: 'r2.omnix.co.ke' },
+      { protocol: 'https', hostname: 'media.omnix.co.ke' },
     ],
   },
   webpack: (webpackConfig) => {

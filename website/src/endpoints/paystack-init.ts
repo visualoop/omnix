@@ -132,7 +132,7 @@ export const paystackInitEndpoint: Endpoint = {
     const currency = pricing.currency ?? 'KES'
 
     // Create the Payment record in pending state — webhook will update it
-    const reference = `DUKA-${Date.now()}-${Math.random().toString(36).slice(2, 8).toUpperCase()}`
+    const reference = `OMNIX-${Date.now()}-${Math.random().toString(36).slice(2, 8).toUpperCase()}`
     const customer = req.user as unknown as { id: string | number; email: string }
 
     await req.payload.create({
@@ -370,7 +370,7 @@ export async function applyPaymentSuccess(
       await sendEmail({
         payload,
         to: customer.email,
-        subject: `Receipt ${reference} — Duka payment`,
+        subject: `Receipt ${reference} — Omnix payment`,
         html: await renderEmail('PaymentReceipt', {
           name: customer.fullName ?? 'there',
           reference,

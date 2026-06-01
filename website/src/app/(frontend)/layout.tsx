@@ -54,7 +54,7 @@ export const metadata: Metadata = {
     template: `%s · ${BRAND_NAME}`,
   },
   description:
-    'All-in-one ERP for Kenyan businesses. One installer, one fee, every module included. Built in Nairobi for pharmacies, retailers, salons.',
+    'All-in-one ERP for Kenyan businesses. One installer, one fee, every module included. Built in Nairobi for pharmacies, retailers, hardware shops, and hospitality.',
   applicationName: BRAND_NAME,
   authors: [{ name: BRAND_NAME }],
   keywords: [

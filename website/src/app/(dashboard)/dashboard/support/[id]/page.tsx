@@ -163,7 +163,7 @@ function ThreadEntry({
               {senderName}
             </div>
             <div className="text-[10px] text-[var(--color-fg-subtle)]">
-              {sender === 'customer' ? 'You' : sender === 'system' ? 'System' : 'Duka support'}
+              {sender === 'customer' ? 'You' : sender === 'system' ? 'System' : 'Omnix support'}
             </div>
           </div>
         </div>

@@ -9,6 +9,7 @@ import { OmnixLogo } from "@/components/omnix-logo";
 import { ModuleLogo } from "@/components/module-logos";
 import { APP_NAME } from "@/lib/brand";
 import { useActiveModule, MODULE_DEFINITIONS, type ModuleId } from "@/stores/active-module";
+import { isModuleEntitled, entitledModules } from "@/stores/entitlements";
 
 interface SetupData {
   businessName: string;
@@ -25,6 +26,7 @@ interface SetupData {
 
 export function SetupWizard() {
   const [step, setStep] = useState(0);
+  const defaultModule = (entitledModules()[0] ?? "dawa") as ModuleId;
   const [data, setData] = useState<SetupData>({
     businessName: "",
     address: "",
@@ -35,7 +37,7 @@ export function SetupWizard() {
     password: "",
     confirmPassword: "",
     autostart: true,
-    moduleId: "dawa",
+    moduleId: defaultModule,
   });
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -126,6 +128,7 @@ export function SetupWizard() {
       <div className="space-y-2 max-h-[55vh] overflow-y-auto pr-1 -mr-1">
         {(Object.values(MODULE_DEFINITIONS) as Array<typeof MODULE_DEFINITIONS[ModuleId]>)
           .filter((m) => m.id !== "core")
+          .filter((m) => isModuleEntitled(m.id))
           .map((m) => {
             const isPlanned = m.status === "planned";
             const isSelected = data.moduleId === m.id;

@@ -43,7 +43,7 @@ export default async function LicensesPage() {
     <div className="space-y-8">
       <PageHeading
         title="Licences"
-        subtitle="Every Duka licence on your account, with status, modules, and quick actions."
+        subtitle="Every Omnix licence on your account, with status, modules, and quick actions."
         actions={
           <Button asChild>
             <Link href="/pricing">

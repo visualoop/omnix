@@ -43,6 +43,7 @@ import { RecurringInvoicesPage } from "@/pages/recurring-invoices";
 import { CustomerDisplayPage } from "@/pages/customer-display";
 import { DailyOperationsPage } from "@/pages/daily-operations";
 import { CustomerDisplaySettingsPage } from "@/pages/settings-customer-display";
+import { ReceiptSettingsPage } from "@/pages/settings-receipt";
 import { TaxSettingsPage } from "@/pages/settings-taxes";
 import { PriceListSettingsPage } from "@/pages/settings-price-lists";
 import { BankingPage } from "@/pages/banking";
@@ -68,6 +69,8 @@ import { SalesHistoryPage } from "@/pages/sales-history";
 import { UsersPage } from "@/pages/users";
 import { SettingsPage } from "@/pages/settings";
 import { SettingsRolesPage } from "@/pages/settings-roles";
+import { SettingsGroupsPage } from "@/pages/settings-groups";
+import { SettingsAccessAuditPage } from "@/pages/settings-access-audit";
 import { BackupPage } from "@/pages/backup";
 import { AuditLogPage } from "@/pages/audit";
 import { NetworkSettingsPage } from "@/pages/network-settings";
@@ -78,8 +81,31 @@ import { ReturnsPage, NewReturnPage } from "@/pages/returns";
 import { StockTakesPage, StockTakeDetailPage } from "@/pages/stock-take";
 import { PatientProfilePage } from "@/pages/patient-profile";
 import { ModulesPage } from "@/pages/modules";
+import {
+  HardwareDashboardPage, HardwareQuotationsPage, HardwareDeliveryNotesPage,
+  HardwareAccountsPage, HardwareCommissionsPage, HardwareReportsPage,
+} from "@/pages/hardware";
+import { HardwareSettingsPage } from "@/pages/settings-hardware";
+import {
+  HospitalityDashboardPage, HospitalityTablesPage, HospitalityMenuPage,
+  HospitalityOrdersPage, HospitalityKitchenPage,
+  HospitalityRoomsPage, HospitalityBookingsPage, HospitalityHousekeepingPage, HospitalityFoliosPage,
+  HospitalityRecipesPage, HospitalityReportsPage,
+} from "@/pages/hospitality";
+import { HospitalitySettingsPage } from "@/pages/settings-hospitality";
 
 function App() {
+  // Customer-facing display runs in a separate window with NO license/auth/setup
+  // guards — it must never show the activation or setup wizard to a customer.
+  if (window.location.pathname === "/customer-display") {
+    return (
+      <BrowserRouter>
+        <Routes>
+          <Route path="*" element={<CustomerDisplayPage />} />
+        </Routes>
+      </BrowserRouter>
+    );
+  }
   return (
     <LicenseGuard>
       <AppContent />
@@ -90,22 +116,18 @@ function App() {
 function AppContent() {
   const { user, isSetupComplete, setupChecked, refreshSetupState } = useAuthStore();
 
-  // Customer display — separate window, no auth/license guards
-  if (window.location.pathname === "/customer-display") {
-    return (
-      <BrowserRouter>
-        <Routes>
-          <Route path="/customer-display" element={<CustomerDisplayPage />} />
-          <Route path="*" element={<CustomerDisplayPage />} />
-        </Routes>
-      </BrowserRouter>
-    );
-  }
-
   useEffect(() => {
     // Initialize DB mode (detects standalone/client) before checking setup
     import("@/lib/db").then(({ initDb }) => {
-      initDb().then(() => refreshSetupState());
+      initDb().then(() => {
+        refreshSetupState();
+        // Seed the RBAC permission catalog + system-role grants (idempotent).
+        import("@/services/rbac").then(({ seedRbac }) => seedRbac().catch(() => {}));
+        // Restore effective-permission cache for a persisted session.
+        if (useAuthStore.getState().user) {
+          useAuthStore.getState().loadPermissions();
+        }
+      });
     });
   }, [refreshSetupState]);
 
@@ -196,6 +218,8 @@ function AppContent() {
             <Route path="branches" element={<RequireRole permission="settings.business"><BranchesPage /></RequireRole>} />
             <Route path="users" element={<RequireRole permission="users.view"><UsersPage /></RequireRole>} />
             <Route path="roles" element={<RequireRole permission="users.manage"><SettingsRolesPage /></RequireRole>} />
+            <Route path="groups" element={<RequireRole permission="users.manage"><SettingsGroupsPage /></RequireRole>} />
+            <Route path="access-audit" element={<RequireRole permission="users.manage"><SettingsAccessAuditPage /></RequireRole>} />
             <Route path="payments" element={<RequireRole permission="settings.business"><PaymentSettingsPage /></RequireRole>} />
             <Route path="etims" element={<RequireRole permission="etims.view"><EtimsSettingsPage /></RequireRole>} />
             <Route path="insurance" element={<RequireRole permission="claims.view"><InsuranceSettingsPage /></RequireRole>} />
@@ -205,10 +229,13 @@ function AppContent() {
             <Route path="taxes" element={<RequireRole permission="settings.business"><TaxSettingsPage /></RequireRole>} />
             <Route path="price-lists" element={<RequireRole permission="retail.price_lists.manage"><PriceListSettingsPage /></RequireRole>} />
             <Route path="customer-display" element={<RequireRole permission="settings.business"><CustomerDisplaySettingsPage /></RequireRole>} />
+            <Route path="receipt" element={<RequireRole permission="settings.business"><ReceiptSettingsPage /></RequireRole>} />
+            <Route path="hardware/units" element={<RequireRole permission="hardware.accounts.manage"><HardwareSettingsPage /></RequireRole>} />
+            <Route path="hospitality/service-charge" element={<RequireRole permission="hospitality.service_charge.manage"><HospitalitySettingsPage /></RequireRole>} />
             <Route path="audit" element={<RequireRole permission="audit.view"><AuditLogPage /></RequireRole>} />
             <Route path="license" element={<RequireRole permission="license.view"><LicensePage /></RequireRole>} />
           </Route>
-          <Route path="/audit" element={<RequireRole permission="audit.view"><AuditLogPage /></RequireRole>} />
+          <Route path="/audit" element={<Navigate to="/settings/audit" replace />} />
           <Route path="/suppliers" element={<RequireRole permission="suppliers.view"><SuppliersPage /></RequireRole>} />
           <Route path="/purchase-orders" element={<RequireRole permission="purchase_orders.view"><PurchaseOrdersPage /></RequireRole>} />
           <Route path="/purchase-orders/new" element={<RequireRole permission="purchase_orders.create"><NewPurchaseOrderPage /></RequireRole>} />
@@ -222,6 +249,26 @@ function AppContent() {
           <Route path="/claims" element={<RequireRole permission="claims.view"><ClaimsPage /></RequireRole>} />
           <Route path="/etims" element={<RequireRole permission="etims.view"><EtimsQueuePage /></RequireRole>} />
           <Route path="/vat-report" element={<RequireRole permission="reports.view"><VatReportPage /></RequireRole>} />
+          {/* Hardware module */}
+          <Route path="/hardware/dashboard" element={<RequireRole permission="hardware.reports.view"><HardwareDashboardPage /></RequireRole>} />
+          <Route path="/hardware/quotations" element={<RequireRole permission="hardware.quotations.manage"><HardwareQuotationsPage /></RequireRole>} />
+          <Route path="/hardware/delivery-notes" element={<RequireRole permission="hardware.delivery_notes.manage"><HardwareDeliveryNotesPage /></RequireRole>} />
+          <Route path="/hardware/accounts" element={<RequireRole permission="hardware.accounts.manage"><HardwareAccountsPage /></RequireRole>} />
+          <Route path="/hardware/commissions" element={<RequireRole permission="hardware.commissions.view"><HardwareCommissionsPage /></RequireRole>} />
+          <Route path="/hardware/reports" element={<RequireRole permission="hardware.reports.view"><HardwareReportsPage /></RequireRole>} />
+          {/* Hospitality module */}
+          <Route path="/hospitality/dashboard" element={<RequireRole permission="hospitality.reports.view"><HospitalityDashboardPage /></RequireRole>} />
+          <Route path="/hospitality/tables" element={<RequireRole permission="hospitality.tables.manage"><HospitalityTablesPage /></RequireRole>} />
+          <Route path="/hospitality/menu" element={<RequireRole permission="hospitality.menu.manage"><HospitalityMenuPage /></RequireRole>} />
+          <Route path="/hospitality/orders" element={<RequireRole permission="hospitality.orders.take"><HospitalityOrdersPage /></RequireRole>} />
+          <Route path="/hospitality/kitchen" element={<RequireRole permission="hospitality.kitchen.bump"><HospitalityKitchenPage /></RequireRole>} />
+          <Route path="/hospitality/rooms" element={<RequireRole permission="hospitality.bookings.manage"><HospitalityRoomsPage /></RequireRole>} />
+          <Route path="/hospitality/bookings" element={<RequireRole permission="hospitality.bookings.manage"><HospitalityBookingsPage /></RequireRole>} />
+          <Route path="/hospitality/checkin" element={<RequireRole permission="hospitality.checkin.manage"><HospitalityBookingsPage /></RequireRole>} />
+          <Route path="/hospitality/housekeeping" element={<RequireRole permission="hospitality.housekeeping.manage"><HospitalityHousekeepingPage /></RequireRole>} />
+          <Route path="/hospitality/folios" element={<RequireRole permission="hospitality.folios.manage"><HospitalityFoliosPage /></RequireRole>} />
+          <Route path="/hospitality/recipes" element={<RequireRole permission="hospitality.recipes.manage"><HospitalityRecipesPage /></RequireRole>} />
+          <Route path="/hospitality/reports" element={<RequireRole permission="hospitality.reports.view"><HospitalityReportsPage /></RequireRole>} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Route>
         {/* Customer-facing display — opens in separate window, no shell/sidebar */}

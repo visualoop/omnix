@@ -4,7 +4,7 @@ import { LoginForm } from '@/components/auth/login-form'
 
 export const metadata: Metadata = {
   title: 'Sign in',
-  description: 'Sign in to your Duka account.',
+  description: 'Sign in to your Omnix account.',
 }
 
 export default function LoginPage() {

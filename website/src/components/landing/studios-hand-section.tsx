@@ -5,7 +5,7 @@ import { motion } from 'framer-motion'
 /**
  * "The studio's hand" — 3 numbered steps in Fraunces 96px accent numerals.
  *
- * Composition (per DUKA-BRIEF §6.1 ⑥):
+ * Composition (per OMNIX-BRIEF §6.1 ⑥):
  *   eyebrow "How we work"
  *   3 numbered rows (01 / 02 / 03)
  *   each row: huge serif numeral on the left, one-sentence statement on the right

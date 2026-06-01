@@ -173,7 +173,7 @@ export default async function LicenseDetailPage({
         </header>
         {machines.length === 0 ? (
           <div className="px-6 py-12 text-center text-[13px] text-[var(--color-fg-muted)]">
-            No machines have activated this licence yet. Install Duka and paste the licence key
+            No machines have activated this licence yet. Install Omnix and paste the licence key
             on first launch.
           </div>
         ) : (

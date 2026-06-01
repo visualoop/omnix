@@ -11,9 +11,9 @@ import { StudiosHandSection } from '@/components/landing/studios-hand-section'
 import { ThreeQuotesSection } from '@/components/landing/three-quotes-section'
 
 /**
- * Duka homepage — long-scroll editorial.
+ * Omnix homepage — long-scroll editorial.
  *
- * Section order per DUKA-BRIEF.md §6.1.
+ * Section order per OMNIX-BRIEF.md §6.1.
  * Every section title is evocative (never literally "Features" / "Services").
  * Every section uses the editorial type utilities defined in globals.css.
  *

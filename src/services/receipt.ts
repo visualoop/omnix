@@ -31,6 +31,8 @@ export interface ReceiptData {
     invoice_no: string;
     internal_control_no: string;
   } | null;
+  footer?: string;
+  showPoweredBy?: boolean;
 }
 
 export interface BusinessRow {
@@ -93,6 +95,11 @@ export async function buildReceiptData(saleId: string): Promise<ReceiptData | nu
     internal_control_no: kraRows[0].kra_internal_control_no!,
   } : null;
 
+  const settingsRows = await query<{ key: string; value: string }>(
+    `SELECT key, value FROM settings WHERE key IN ('receipt.footer', 'receipt.show_powered_by')`,
+  );
+  const settingsMap = Object.fromEntries(settingsRows.map((r) => [r.key, r.value]));
+
   return {
     business: {
       name: business.name,
@@ -113,6 +120,8 @@ export async function buildReceiptData(saleId: string): Promise<ReceiptData | nu
     payments,
     customer: sale.customer_name ? { name: sale.customer_name, phone: sale.customer_phone } : null,
     kra,
+    footer: settingsMap["receipt.footer"] || "Thank you for shopping with us!",
+    showPoweredBy: settingsMap["receipt.show_powered_by"] !== "0",
   };
 }
 
@@ -301,8 +310,8 @@ async function renderReceiptHTML(d: ReceiptData): Promise<string> {
 
   <hr>
 
-  <div class="center sm">Thank you for shopping with us!</div>
-  <div class="center sm muted" style="margin-top:4px;">${BRAND.receipt.poweredBy}</div>
+  <div class="center sm">${escapeHtml(d.footer || "Thank you for shopping with us!")}</div>
+  ${d.showPoweredBy === false ? "" : `<div class="center sm muted" style="margin-top:4px;">${BRAND.receipt.poweredBy}</div>`}
 </body>
 </html>`;
 }

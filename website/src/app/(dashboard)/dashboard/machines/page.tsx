@@ -9,6 +9,7 @@ import {
   PageHeading,
   StatusPill,
 } from '@/components/dashboard/status-utils'
+import { DeactivateMachineButton } from '@/components/dashboard/deactivate-machine-button'
 
 export const metadata = { title: 'Machines' }
 
@@ -24,7 +25,14 @@ export default async function MachinesPage() {
     where: { customer: { equals: user.id } },
     limit: 50,
   })
-  const licenseIds = licenseRes.docs.map((l: unknown) => (l as { id: string }).id)
+  const licenses = licenseRes.docs as unknown as {
+    id: string
+    maxMachines?: number
+    rebindLimitPerWindow?: number
+    rebindWindowDays?: number
+    rebindCountInWindow?: number
+  }[]
+  const licenseIds = licenses.map((l) => l.id)
 
   const res = await payload.find({
     collection: 'machines',
@@ -34,6 +42,7 @@ export default async function MachinesPage() {
   })
   const machines = res.docs as unknown as {
     id: string
+    machineId?: string
     hostname?: string
     os?: string
     osVersion?: string
@@ -47,17 +56,29 @@ export default async function MachinesPage() {
     lastSeenAt?: string
   }[]
 
+  const seatsUsed = machines.filter((m) => m.status !== 'deactivated').length
+  const seatsTotal = licenses.reduce((sum, l) => sum + (l.maxMachines ?? 1), 0)
+  const rebindLimit = licenses.reduce((max, l) => Math.max(max, l.rebindLimitPerWindow ?? 0), 0)
+  const rebindUsed = licenses.reduce((sum, l) => sum + (l.rebindCountInWindow ?? 0), 0)
+
   return (
     <div className="space-y-8">
       <PageHeading
         title="Machines"
-        subtitle="Every PC running Duka against your licences. Deactivate from a machine to free a seat."
+        subtitle="Every PC running Omnix against your licences. Deactivate from a machine to free a seat."
       />
+
+      <div className="flex flex-wrap gap-4">
+        <SeatStat label="Seats in use" value={`${seatsUsed} / ${seatsTotal}`} />
+        {rebindLimit > 0 ? (
+          <SeatStat label="Rebinds used this period" value={`${rebindUsed} / ${rebindLimit}`} />
+        ) : null}
+      </div>
 
       {machines.length === 0 ? (
         <EmptyState
           title="No machines registered yet."
-          body="Once you install Duka and activate with a licence key, the machine appears here."
+          body="Once you install Omnix and activate with a licence key, the machine appears here."
         />
       ) : (
         <ul className="space-y-3">
@@ -91,17 +112,33 @@ export default async function MachinesPage() {
                   <Stat label="Last seen" value={formatRelative(m.lastSeenAt)} />
                 </dl>
               </div>
-              <Link
-                href={`/dashboard/machines/${m.id}`}
-                className="inline-flex shrink-0 items-center gap-1.5 text-[12px] font-medium text-[var(--color-fg-muted)] hover:text-[var(--color-accent)]"
-              >
-                Detail
-                <ArrowRight className="size-3.5" />
-              </Link>
+              <div className="flex shrink-0 items-center gap-4">
+                {m.status !== 'deactivated' && m.machineId ? (
+                  <DeactivateMachineButton machineId={m.machineId} />
+                ) : null}
+                <Link
+                  href={`/dashboard/machines/${m.id}`}
+                  className="inline-flex shrink-0 items-center gap-1.5 text-[12px] font-medium text-[var(--color-fg-muted)] hover:text-[var(--color-accent)]"
+                >
+                  Detail
+                  <ArrowRight className="size-3.5" />
+                </Link>
+              </div>
             </li>
           ))}
         </ul>
       )}
+    </div>
+  )
+}
+
+function SeatStat({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] px-5 py-4">
+      <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[var(--color-fg-subtle)]">
+        {label}
+      </div>
+      <div className="mt-1 font-mono text-[20px] tabular-nums text-[var(--color-fg)]">{value}</div>
     </div>
   )
 }

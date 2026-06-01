@@ -17,32 +17,32 @@ export interface BlogPostSeed {
 
 export const POSTS_SEED: BlogPostSeed[] = [
   {
-    slug: 'duka-rebrand',
-    title: "We're Duka now",
+    slug: 'omnix-rebrand',
+    title: "We're Omnix now",
     excerpt:
-      "After two years as SokoOS, we're settling on a name that every Kenyan business owner already says ten times a day. Here's why we picked it and what changes for current customers.",
+      "After two years as SokoOS, we're settling on a name that reflects what we've become — one platform for every Kenyan trade. Here's why, and what changes for current customers.",
     category: 'announcement',
     author: 'Justin, founder',
     publishedAt: '2026-05-15',
     readTime: 3,
     featured: true,
-    body: `When you're a Kenyan SME owner, the word "duka" never leaves your mouth. You go to the duka, you run the duka, you open a duka. It's the most-said word for "shop" in the country and it works for every variant — chemist, mini-mart, salon, hardware, restaurant. So we took it.
+    body: `We tried "SokoOS" for two years. It started life as a nickname between the founder and the first three customers. As we grew it stopped working: people couldn't pronounce it, it sounded vaguely techy in a way that put off the mama-running-three-branches who was supposed to feel at home, and it didn't capture what the product had become.
 
-We tried "SokoOS" for two years. It started life as a nickname between the founder and the first three customers. As we grew it stopped working: people couldn't pronounce it, it sounded vaguely techy in a way that put off the mama-running-three-branches who was supposed to feel at home, and it didn't fit any of the verticals we'd added beyond pharmacy.
+Because we're no longer one thing. What began as pharmacy software now runs mini-marts, hardware shops, restaurants, and hotels — the same Core ERP underneath, with a trade-specific module on top. One platform, many verticals.
 
-Duka does fit. Duka la dawa is your pharmacy. Duka is your shop. Duka la urembo is your salon. Same word, every trade. And it's already on every shop sign in the country, which means we don't have to teach anyone what we do — they understand the moment they see the name.
+Omnix says exactly that. "Omni" — all of it, one system for every counter in the country. It's short, it's easy to say, and it doesn't box us into a single trade the way a pharmacy-flavoured name would.
 
-Nothing changes for existing customers. Same licence keys, same desktop app, same auto-updates. The desktop app got a new wordmark in v0.2.0 and that's the most visible change you'll see. Your KRA filings, M-Pesa reconciliation, NHIF/SHA claims — all work exactly the same way they did yesterday.
+Nothing changes for existing customers. Same licence keys, same desktop app, same auto-updates. The desktop app got a new wordmark and that's the most visible change you'll see. Your KRA filings, M-Pesa reconciliation, and SHA claims work exactly the way they did yesterday.
 
-We held the website at omnix.co.ke for the moment because we paid for the .co.ke domain in 2024 and it still works. We'll add duka-named domains over the next few months without retiring the old one. Both will reach you to the same place.
+The website now lives at omnix.co.ke. Old links keep working — both reach the same place.
 
-Welcome to Duka.`,
+Welcome to Omnix.`,
   },
   {
     slug: 'kra-etims-2026-checklist',
     title: 'KRA eTIMS in 2026 — what you need to know',
     excerpt:
-      'KRA flipped a few rules around eTIMS in early 2026. Here are the changes that affect Kenyan SMEs day-to-day, and what Duka does about them automatically.',
+      'KRA flipped a few rules around eTIMS in early 2026. Here are the changes that affect Kenyan SMEs day-to-day, and what Omnix does about them automatically.',
     category: 'industry',
     author: 'Justin, founder',
     publishedAt: '2026-04-22',
@@ -55,17 +55,17 @@ If you're using a manual receipt printer plus an Excel file you bulk-upload at e
 
 Second: the receipt format gained two new fields. Buyer KRA PIN (was optional, now required for B2B sales above KES 50,000). And the receipt must include a QR-code link to the eTIMS verification page so the customer can verify legitimacy on their phone.
 
-What Duka does automatically:
+What Omnix does automatically:
 - Receipts issue at the till the same second the customer pays. There's no batch upload step.
 - KRA PIN field on the customer record auto-populates when present and warns the cashier on B2B sales above the threshold.
 - QR-code generation is built into the receipt template — no separate step.
 
 What you still have to do:
 - Add your KRA PIN to the company profile if you haven't already.
-- For B2B sales, ask the customer for their KRA PIN at the till. Duka prompts you above the threshold.
+- For B2B sales, ask the customer for their KRA PIN at the till. Omnix prompts you above the threshold.
 - File your monthly VAT return as before; eTIMS doesn't replace iTax, it feeds it.
 
-If you're not on Duka yet, talk to whatever software you use about real-time receipt issuance. If they batch-upload, you have a problem.`,
+If you're not on Omnix yet, talk to whatever software you use about real-time receipt issuance. If they batch-upload, you have a problem.`,
   },
   {
     slug: 'multi-branch-payroll-ke',
@@ -82,7 +82,7 @@ We built multi-branch payroll for the customer who finally lost a Saturday to it
 
 **Setup, once.** Add each branch and assign staff to them. Set commission and overtime rules per role. Configure your statutory rates (NSSF tier I and II, NHIF/SHA per band, PAYE). Configure your bank for direct debit (Equity, KCB, Co-op all work).
 
-**Monthly, ten minutes.** Open Payroll → Run for May. Duka pre-fills attendance from the time-clock module (or you import a CSV). Adjust the few rows that need fixing — overtime exceptions, mid-month joiners, leave settlement. Click Calculate. Review the variance against last month. Click Approve.
+**Monthly, ten minutes.** Open Payroll → Run for May. Omnix pre-fills attendance from the time-clock module (or you import a CSV). Adjust the few rows that need fixing — overtime exceptions, mid-month joiners, leave settlement. Click Calculate. Review the variance against last month. Click Approve.
 
 The output is three files: a bank batch CSV ready to upload to your business banking portal, a NHIF/SHA-formatted XML, and an NSSF Tier I + II batch. P9, P10 and PAYE filings are generated for the next month's iTax submission.
 
@@ -94,7 +94,7 @@ The module is included in the Business tier (KES 75,000 one-time). If you have t
   },
   {
     slug: 'offline-first-why',
-    title: 'Why we built Duka offline-first',
+    title: 'Why we built Omnix offline-first',
     excerpt:
       "The internet drops. Power flickers. The till has to keep running. Here's how the desktop app handles it — and why it'll never become a SaaS web app.",
     category: 'product',
@@ -105,7 +105,7 @@ The module is included in the Business tier (KES 75,000 one-time). If you have t
 
 That's the day we decided to build a desktop app instead of a web app.
 
-Offline-first is not a marketing line for Duka. It's the architecture. The desktop binary ships SQLite, your full database lives on your machine, every query is a few microseconds away, and a network drop is a non-event for the cashier. When the internet comes back, sync happens in the background.
+Offline-first is not a marketing line for Omnix. It's the architecture. The desktop binary ships SQLite, your full database lives on your machine, every query is a few microseconds away, and a network drop is a non-event for the cashier. When the internet comes back, sync happens in the background.
 
 This costs us things. Our update story is harder — we have to ship a real installer with code-signing and an auto-updater, not just push a deploy. Our cross-device collaboration is harder — we have to run a master/client topology over LAN with conflict resolution, not just rely on a server. Our audit story is harder — we have to be sure no sensitive data leaks through the diagnostic telemetry channel.
 
@@ -116,29 +116,23 @@ We won't add a "cloud version" that hosts the database centrally. The trade-off 
 The infrastructure of the country isn't ready for cloud-only software. Maybe it never needs to be.`,
   },
   {
-    slug: 'salon-module-roadmap',
-    title: 'Salon module: where we are, where we are going',
+    slug: 'hardware-hospitality-shipped',
+    title: 'Hardware and Hospitality are here',
     excerpt:
-      "Salons have been asking for the dedicated module for a year. Here's the state of the build and what to expect when it ships in Q3 2026.",
+      'Two new modules ship with Omnix: Hardware (quotations, contractor accounts, deliveries) and Hospitality (restaurant + hotel). Here is what they do.',
     category: 'product',
     author: 'Justin, founder',
     publishedAt: '2026-03-04',
     readTime: 4,
-    body: `Salons have been the most-requested vertical since shortly after we shipped Soko Retail. The reason is simple — salons are weird. They sell services more than products. Stylists earn commissions that vary per service. Bookings happen ahead of time. Client retention is everything. And payroll is half-commission, half-hourly, which doesn't fit the standard retail or pharmacy template.
+    body: `When we shipped Core, Dawa, and Soko Retail, two trades kept asking for more: hardware shops that live on quotations and contractor credit, and restaurants and small hotels that need a real kitchen-and-rooms workflow. Both are now live, on the same Core, unlocked per licence.
 
-Here's where we are: the appointment book is built and being tested by two beauty parlours in Westlands. Stylist commissions, retail-vs-services accounting, client membership packages — these are working but rough at the edges. The integration with M-Pesa STK push is solid. WhatsApp client reminders are stable.
+**Hardware.** Build a quotation, send it, and convert it to a sale in one click when the customer commits. Delivery notes track dispatch with vehicle and driver. Contractor accounts carry credit limits, running balances, and aged receivables (current / 30 / 60 / 90+). Tiered pricing means contractors and walk-ins see the right price automatically, and sales commissions accrue per salesperson on every sale.
 
-What we're still working on:
-- Partial-pay deposits at booking time (some salons require, some don't)
-- Stylist-specific calendars showing in the public booking link
-- Membership package depletion (e.g. "10 manicures for KES 8,000, used 4")
-- Multi-stylist appointments (e.g. "two-hour braiding session with two stylists")
+**Hospitality.** A table floor plan by area, an order lifecycle that runs from open through sent-to-kitchen to served, and a kitchen display grouped by station with a bump button. Service charge and tips are tracked separately from revenue and allocated to staff. For places with rooms: room types, bookings, check-in that opens a folio, restaurant charges posted to the room, and a check-out that requires a settled balance. Recipe costing shows food-cost %, and the reports cover occupancy, ADR, and RevPAR.
 
-Public release target is Q3 2026. Beta access is open to any salon willing to give us weekly feedback in exchange for a free year — email if interested.
+Both modules are perpetual — pay once, own them forever. They unlock only on a licence that includes them, so you only pay for the trades you run.
 
-After salon, the next vertical we'll tackle is restaurant. KOT printing, table layout, course timing, split bills, ingredient depletion. We've been quietly designing it in the margins.
-
-If you run a vertical we haven't named — agro-vet, fuel station, butchery, school — make a noise about it. We pick what to build next based on what real customers ask for.`,
+If you run a vertical we haven't built yet — agro-vet, fuel station, butchery, school — make a noise about it. We pick what to build next based on what real customers ask for.`,
   },
   {
     slug: 'sha-transition-guide',
@@ -157,7 +151,7 @@ If you run a vertical we haven't named — agro-vet, fuel station, butchery, sch
 
 **The provider numbering changed.** Existing NHIF provider codes were migrated to new SHA codes — most were preserved with a prefix change, but some facilities got new numbers entirely.
 
-**What Duka updated automatically (in v0.1.6, February 2026):**
+**What Omnix updated automatically (in v0.1.6, February 2026):**
 - New rate band table for SHA contributions
 - New XML claim format
 - Mapped your old NHIF provider code to the new SHA code (one-time auto-migration on first launch)

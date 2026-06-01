@@ -6,6 +6,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import type { Role } from "@/lib/permissions";
 import { useActiveModule, MODULE_DEFINITIONS } from "@/stores/active-module";
 import { getFeatureModule } from "@/lib/module-features";
+import { isModuleEntitled } from "@/stores/entitlements";
 
 interface Props {
   /** Required permission(s). User needs ANY ONE of these to access. */
@@ -37,6 +38,27 @@ export function RequireRole({ permission, roles, children }: Props) {
   // If this route belongs to a module that isn't currently active,
   // show a clear "feature not enabled" screen instead of granting access.
   const requiredModule = getFeatureModule(location.pathname);
+
+  // Hard licensing gate: a route for an UNLICENSED module is unreachable.
+  if (requiredModule && !isModuleEntitled(requiredModule)) {
+    const moduleDef = MODULE_DEFINITIONS[requiredModule];
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] px-6 text-center">
+        <div className="h-16 w-16 rounded-full bg-amber-500/15 flex items-center justify-center mb-4">
+          <Lock className="h-7 w-7 text-amber-700" />
+        </div>
+        <h2 className="text-lg font-semibold mb-1">{moduleDef.name} isn’t on your licence</h2>
+        <p className="text-sm text-muted-foreground max-w-md mb-4">
+          Your licence doesn’t include the <b>{moduleDef.name}</b> module. Add it from your
+          Omnix account to unlock these features.
+        </p>
+        <Button variant="outline" size="sm" onClick={() => navigate("/")}>
+          <ArrowLeft className="h-3.5 w-3.5 mr-1.5" /> Back to dashboard
+        </Button>
+      </div>
+    );
+  }
+
   if (requiredModule && requiredModule !== activeModule) {
     const moduleDef = MODULE_DEFINITIONS[requiredModule];
     return (

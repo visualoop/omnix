@@ -11,6 +11,7 @@ import { Users } from './collections/Users'
 import { Customers } from './collections/Customers'
 import { Licenses } from './collections/Licenses'
 import { Machines } from './collections/Machines'
+import { Activations } from './collections/Activations'
 import { Releases } from './collections/Releases'
 import { TelemetryEvents } from './collections/TelemetryEvents'
 import { Payments } from './collections/Payments'
@@ -48,6 +49,7 @@ export default buildConfig({
     Customers,
     Licenses,
     Machines,
+    Activations,
     Releases,
     TelemetryEvents,
     Payments,

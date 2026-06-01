@@ -10,7 +10,7 @@ export const metadata: Metadata = {
 
 const FAQS = [
   { q: 'How do I reset my password?', a: 'Click "Forgot password" on the login screen. We\'ll email you a reset link.' },
-  { q: 'Can I use Duka offline?', a: 'Yes. POS, inventory, payroll all run locally. Internet only needed for M-Pesa, eTIMS, and updates.' },
+  { q: 'Can I use Omnix offline?', a: 'Yes. POS, inventory, payroll all run locally. Internet only needed for M-Pesa, eTIMS, and updates.' },
   { q: 'How do I add a new branch?', a: 'Settings → Branches → Add branch. You\'ll need the extra-branch upgrade (KES 15,000 one-time) if you\'re past your licence limit.' },
   { q: 'Where is my data stored?', a: 'Locally on your Windows machine in an encrypted SQLite database. Cloud backup is optional (KES 500/month per branch).' },
 ]

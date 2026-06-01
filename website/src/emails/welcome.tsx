@@ -35,7 +35,7 @@ export function Welcome({ name }: WelcomeProps) {
             Karibu, {name}.
           </Heading>
           <Text style={p}>
-            Your 30-day Duka trial is live. Every module is unlocked. No card required, no
+            Your 30-day Omnix trial is live. Every module is unlocked. No card required, no
             surprises.
           </Text>
           <Text style={p}>

@@ -28,7 +28,10 @@
         { "url": "https://api.paystack.co/*" },
         { "url": "https://etims-api.kra.go.ke/*" },
         { "url": "https://etims-api-sbx.kra.go.ke/*" },
+        { "url": "https://omnix.co.ke/*" },
+        { "url": "https://*.omnix.co.ke/*" },
         { "url": "https://sokoos.co.ke/*" },
+        { "url": "http://localhost:3000/*" },
         { "url": "https://github.com/*" },
         { "url": "https://objects.githubusercontent.com/*" }
       ]

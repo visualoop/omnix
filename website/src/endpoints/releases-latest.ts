@@ -83,7 +83,7 @@ export const releasesLatestEndpoint: Endpoint = {
           url: release.windowsNsisUrl ?? '',
         },
       },
-      // Extra metadata for Duka client
+      // Extra metadata for Omnix client
       must_upgrade: (release.minMajorVersionToUpgrade ?? 0) > majorCap,
       requires_paid_license: Boolean(release.requiresPaidLicense),
       caller_license_status: licenseStatus,

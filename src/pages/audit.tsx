@@ -14,7 +14,7 @@ import { query } from "@/lib/db";
 
 interface AuditEntry {
   id: string;
-  type: "license" | "sale" | "void";
+  type: "license" | "sale" | "void" | "permission";
   event: string;
   description: string;
   user: string | null;
@@ -24,7 +24,7 @@ interface AuditEntry {
 
 export function AuditLogPage() {
   const [entries, setEntries] = useState<AuditEntry[]>([]);
-  const [filter, setFilter] = useState<"all" | "license" | "sale" | "void">("all");
+  const [filter, setFilter] = useState<"all" | "license" | "sale" | "void" | "permission">("all");
   const [loading, setLoading] = useState(true);
 
   const load = async () => {
@@ -56,7 +56,32 @@ export function AuditLogPage() {
        ORDER BY s.created_at DESC LIMIT 100`
     );
 
+    const permissionEvents = await query<{
+      id: string;
+      user_name: string | null;
+      permission_key: string;
+      outcome: string;
+      risk_level: string;
+      entity_type: string | null;
+      entity_id: string | null;
+      created_at: string;
+    }>(
+      "SELECT id, user_name, permission_key, outcome, risk_level, entity_type, entity_id, created_at FROM audit_log ORDER BY created_at DESC LIMIT 100"
+    );
+
     const all: AuditEntry[] = [
+      ...permissionEvents.map((e) => ({
+        id: `perm-${e.id}`,
+        type: "permission" as const,
+        event: e.outcome,
+        description:
+          `${e.outcome === "denied" ? "Blocked" : "Allowed"}: ${e.permission_key}` +
+          (e.entity_type ? ` on ${e.entity_type}${e.entity_id ? ` ${e.entity_id}` : ""}` : "") +
+          ` (${e.risk_level})`,
+        user: e.user_name,
+        metadata: null,
+        created_at: e.created_at,
+      })),
       ...licenseEvents.map((e) => ({
         id: `lic-${e.id}`,
         type: "license" as const,
@@ -106,7 +131,7 @@ export function AuditLogPage() {
       <div className="flex items-center gap-2">
         <Filter className="h-4 w-4 text-muted-foreground" />
         <div className="flex gap-1 border border-border rounded-md p-0.5">
-          {(["all", "sale", "void", "license"] as const).map((f) => (
+          {(["all", "permission", "sale", "void", "license"] as const).map((f) => (
             <button
               key={f}
               onClick={() => setFilter(f)}

@@ -17,8 +17,8 @@ const COLUMNS = [
     links: [
       { label: 'Pharmacy', href: '/modules/dawa-pharmacy' },
       { label: 'Retail', href: '/modules/soko-retail' },
-      { label: 'Salon (planned)', href: '/modules/salon-beauty' },
-      { label: 'Restaurant (planned)', href: '/modules/restaurant' },
+      { label: 'Hardware', href: '/modules/hardware' },
+      { label: 'Hospitality', href: '/modules/hospitality' },
     ],
   },
   {
@@ -123,21 +123,21 @@ export function SiteFooter() {
           </div>
           <div className="flex items-center gap-1">
             <a
-              href="https://twitter.com/duka"
+              href="https://twitter.com/omnix"
               aria-label="Twitter"
               className="inline-flex size-8 items-center justify-center rounded-md text-[var(--color-fg-subtle)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-fg)]"
             >
               <Icon.Twitter className="size-4" />
             </a>
             <a
-              href="https://linkedin.com/company/duka"
+              href="https://linkedin.com/company/omnix"
               aria-label="LinkedIn"
               className="inline-flex size-8 items-center justify-center rounded-md text-[var(--color-fg-subtle)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-fg)]"
             >
               <Icon.LinkedIn className="size-4" />
             </a>
             <a
-              href="https://github.com/duka"
+              href="https://github.com/omnix"
               aria-label="GitHub"
               className="inline-flex size-8 items-center justify-center rounded-md text-[var(--color-fg-subtle)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-fg)]"
             >

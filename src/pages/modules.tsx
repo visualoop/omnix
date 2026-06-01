@@ -6,8 +6,6 @@ import {
   Clock,
   Cpu,
   Wrench,
-  Smartphone,
-  Sparkles,
   UtensilsCrossed,
   ShoppingBag,
   ArrowLeft,
@@ -15,6 +13,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { APP_NAME, BRAND } from "@/lib/brand";
+import { isModuleEntitled } from "@/stores/entitlements";
 
 interface Module {
   id: string;
@@ -89,52 +88,30 @@ const MODULES: Module[] = [
     name: "Hardware Store",
     description: "Bulk pricing tiers, parts catalog, contractor accounts, project-based sales.",
     icon: Wrench,
-    status: "planned",
+    status: "installed",
     features: [
-      "Tiered pricing (retail / contractor / wholesale)",
-      "Parts catalog with cross-references",
-      "Project-based grouping",
-      "Bulk discount rules",
+      "Quotations → convert to sale",
+      "Delivery notes with dispatch tracking",
+      "Contractor accounts with credit & aging",
+      "Tiered / contractor pricing",
+      "Sales commissions",
     ],
+    routes: ["/hardware/dashboard", "/hardware/quotations", "/hardware/delivery-notes", "/hardware/accounts", "/hardware/commissions", "/hardware/reports"],
   },
   {
-    id: "electronics",
-    name: "Electronics",
-    description: "IMEI/serial tracking, warranty management, repair workflow.",
-    icon: Smartphone,
-    status: "planned",
-    features: [
-      "IMEI / serial number per unit",
-      "Warranty period tracking",
-      "Repair tickets with parts used",
-      "Trade-in / refurbished workflow",
-    ],
-  },
-  {
-    id: "salon",
-    name: "Salon / Spa",
-    description: "Appointment booking, services menu, staff commission tracking.",
-    icon: Sparkles,
-    status: "planned",
-    features: [
-      "Appointment calendar",
-      "Services with duration",
-      "Staff schedules + commissions",
-      "Customer service history",
-    ],
-  },
-  {
-    id: "restaurant",
-    name: "Restaurant",
-    description: "Kitchen Order Tickets, table management, recipe costing.",
+    id: "hospitality",
+    name: "Soko Hospitality",
+    description: "Restaurant POS, kitchen display, rooms, bookings, folios, recipe costing.",
     icon: UtensilsCrossed,
-    status: "planned",
+    status: "installed",
     features: [
-      "Kitchen Order Tickets (KOT)",
-      "Table & order management",
-      "Recipe BOM with food costing",
-      "Split bills & tips",
+      "Table floor plan & order lifecycle",
+      "Kitchen display with bump",
+      "Service charge, tips & split bills",
+      "Rooms, bookings, check-in/out & folios",
+      "Recipes, food-cost % & reports",
     ],
+    routes: ["/hospitality/dashboard", "/hospitality/tables", "/hospitality/orders", "/hospitality/kitchen", "/hospitality/rooms", "/hospitality/bookings", "/hospitality/folios", "/hospitality/reports"],
   },
 ];
 
@@ -174,6 +151,7 @@ export function ModulesPage() {
 }
 
 function ModuleCard({ module }: { module: Module }) {
+  const licensed = isModuleEntitled(module.id);
   return (
     <div className={`border rounded-lg p-4 ${
       module.status === "core" ? "border-primary/50 bg-primary/5" :
@@ -194,7 +172,17 @@ function ModuleCard({ module }: { module: Module }) {
             <p className="text-xs text-muted-foreground mt-0.5">{module.description}</p>
           </div>
         </div>
-        <ModuleBadge status={module.status} />
+        <div className="flex flex-col items-end gap-1.5">
+          <ModuleBadge status={module.status} />
+          {module.id !== "core" && (
+            <Badge
+              variant="outline"
+              className={licensed ? "border-emerald-500/50 text-emerald-700" : "text-muted-foreground"}
+            >
+              {licensed ? "Licensed" : "Not on licence"}
+            </Badge>
+          )}
+        </div>
       </div>
 
       <ul className="space-y-1 mt-3">

@@ -13,6 +13,14 @@ use sha2::Digest;
 const LICENSE_PUBLIC_KEY_PEM: &str = include_str!("../../../keys/license-public.pem");
 
 /// License payload — what the server signs and embeds in the key.
+///
+/// Schema versions:
+/// - v1: only `feat` (feature flags), implicitly the Dawa/pharmacy product.
+/// - v2: adds `modules` (paid verticals) + `max_devices` (seat count).
+///
+/// New fields use `#[serde(default)]` so v1 keys still deserialize. Use
+/// `effective_modules()` / `effective_max_devices()` to read entitlements
+/// regardless of the key's schema version.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct LicensePayload {
     pub kid: String,                 // license key ID (human-readable, e.g., "OMNIX-2026-A1B2-C3D4")
@@ -22,8 +30,49 @@ pub struct LicensePayload {
     pub maint_exp: String,           // maintenance expiry ISO date (when updates stop being free)
     #[serde(rename = "type")]
     pub license_type: String,        // "perpetual" | "trial" | "subscription"
-    pub feat: Vec<String>,           // enabled features
+    #[serde(default)]
+    pub feat: Vec<String>,           // enabled feature flags (v1; still used for compliance toggles)
+    #[serde(default)]
+    pub modules: Vec<String>,        // paid verticals (v2): dawa | retail | hardware | hospitality
+    #[serde(default)]
+    pub max_devices: u32,            // seat count (v2). 0 = treat as 1 for legacy keys.
     pub ver: u32,                    // payload schema version
+}
+
+impl LicensePayload {
+    /// Resolve the licensed modules regardless of schema version.
+    /// v2 keys carry `modules` directly. v1 keys are mapped from `feat`
+    /// (legacy keys were always the pharmacy/Dawa product).
+    pub fn effective_modules(&self) -> Vec<String> {
+        if !self.modules.is_empty() {
+            return self.modules.clone();
+        }
+        let mut out = Vec::new();
+        for f in &self.feat {
+            match f.as_str() {
+                "pharmacy" => out.push("dawa".to_string()),
+                "retail" => out.push("retail".to_string()),
+                "hardware" => out.push("hardware".to_string()),
+                "hospitality" => out.push("hospitality".to_string()),
+                _ => {}
+            }
+        }
+        if out.is_empty() {
+            // Legacy fallback: any v1 key without a recognizable module is Dawa.
+            out.push("dawa".to_string());
+        }
+        out
+    }
+
+    /// Seat count, defaulting to 1 for legacy/zero values.
+    #[allow(dead_code)] // consumed by the online-activation + seat-enforcement command layer
+    pub fn effective_max_devices(&self) -> u32 {
+        if self.max_devices == 0 {
+            1
+        } else {
+            self.max_devices
+        }
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -51,7 +100,10 @@ pub fn verify_license_key(key: &str) -> Result<VerifiedLicense, LicenseError> {
     // Strip ALL whitespace (not just trim) — copy-paste often inserts
     // line breaks mid-string when the email client / terminal wraps.
     let cleaned: String = key.chars().filter(|c| !c.is_whitespace()).collect();
-    let key_body = cleaned.strip_prefix("OMNIX-").unwrap_or(&cleaned);
+    let key_body = cleaned
+        .strip_prefix("OMNIX-")
+        .or_else(|| cleaned.strip_prefix("SOKO-")) // legacy keys issued before the Omnix rename
+        .unwrap_or(&cleaned);
 
     let parts: Vec<&str> = key_body.split('.').collect();
     if parts.len() != 2 {
@@ -153,6 +205,42 @@ mod tests {
         assert_eq!(verified.payload.email, "test@integration.local");
         assert_eq!(verified.payload.license_type, "perpetual");
         assert!(verified.payload.feat.contains(&"pharmacy".to_string()));
+    }
+
+    /// A real v2 key generated with `--modules hardware --max-devices 2`.
+    const VALID_V2_KEY: &str = "OMNIX-eyJraWQiOiJPTU5JWC0yMDI2LVlLN1ctWk5XOCIsIm5hbWUiOiJIYXJkd2FyZSBUZXN0IiwiZW1haWwiOiJod0BpbnRlZ3JhdGlvbi5sb2NhbCIsImlzc3VlZCI6IjIwMjYtMDYtMDEiLCJtYWludF9leHAiOiIyMDI3LTA2LTAxIiwidHlwZSI6InBlcnBldHVhbCIsImZlYXQiOlsiZXRpbXMiLCJpbnN1cmFuY2UiLCJsYW4iLCJyZXBvcnRzIl0sIm1vZHVsZXMiOlsiaGFyZHdhcmUiXSwibWF4X2RldmljZXMiOjIsInZlciI6Mn0.BE3vglO7KfMEu0Dx8WuZjugcS45dwprcNVapnGRDuI5sK_P5ok5LLWstCdqGiYdUOzdZJoVyBZ9SsFsG-jZ9kYlOqFVfb9kOFJ08lLMkXifmxotFmi7drv_pQV5vpEt4XaS1AH7XKugsKMSe6yGqsDGBeqR-CHn7x8amKuaLG_KxKVvWy-DvTWL_rTM4fDkTeYAGw7nnLwLojgP_t-vXTkY51utomhxQbRa-o0FoNYmuMRwnvbCSZYVnPcErtIjM1cIMAgW2CPz61A6LzX9Hk75rL-jVKmy_TQJhL0AnUQxaDTGBgmizOZm-_Onp-ACsAhdEahATuknLICCRVWIx_g";
+
+    #[test]
+    fn accepts_v2_key_with_entitlements() {
+        let verified = verify_license_key(VALID_V2_KEY).expect("v2 key must verify");
+        assert_eq!(verified.payload.ver, 2);
+        assert_eq!(verified.payload.effective_modules(), vec!["hardware".to_string()]);
+        assert_eq!(verified.payload.effective_max_devices(), 2);
+    }
+
+    #[test]
+    fn v1_key_maps_feat_to_modules_and_single_seat() {
+        // The v1 test key has feat=[pharmacy,...] and no modules/max_devices.
+        let verified = verify_license_key(VALID_TEST_KEY).expect("v1 key must verify");
+        assert_eq!(verified.payload.ver, 1);
+        assert_eq!(verified.payload.effective_modules(), vec!["dawa".to_string()]);
+        assert_eq!(verified.payload.effective_max_devices(), 1);
+    }
+
+    #[test]
+    fn rejects_tampered_modules() {
+        // Take the valid v2 key and flip a char inside the payload (modules region).
+        // Any payload mutation must break the signature.
+        let parts: Vec<&str> = VALID_V2_KEY.strip_prefix("OMNIX-").unwrap().split('.').collect();
+        let mut payload_chars: Vec<char> = parts[0].chars().collect();
+        let mid = payload_chars.len() / 2;
+        payload_chars[mid] = if payload_chars[mid] == 'A' { 'B' } else { 'A' };
+        let tampered: String = payload_chars.into_iter().collect();
+        let bad_key = format!("OMNIX-{}.{}", tampered, parts[1]);
+        assert!(matches!(
+            verify_license_key(&bad_key),
+            Err(LicenseError::SignatureInvalid) | Err(LicenseError::DecodeError(_))
+        ));
     }
 
     #[test]

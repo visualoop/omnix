@@ -4,7 +4,7 @@ import { Icon } from '@/components/icons'
 import { PageHero } from '@/components/marketing/page-hero'
 
 export const metadata: Metadata = {
-  title: 'Documentation — learn Duka',
+  title: 'Documentation — learn Omnix',
   description: 'Step-by-step guides for every feature. Installation, POS, inventory, payroll, KRA filings.',
 }
 
@@ -25,7 +25,7 @@ export default function DocsPage() {
     <>
       <PageHero
         eyebrow="Documentation"
-        title={<>Learn <em>Duka.</em></>}
+        title={<>Learn <em>Omnix.</em></>}
         description="Step-by-step guides for every feature. Installation, POS, inventory, payroll, KRA filings."
       />
 

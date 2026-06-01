@@ -8,7 +8,7 @@ const generateTicketNumber: CollectionBeforeChangeHook = async ({ data, operatio
     collection: 'support-tickets',
   })
   const padded = String(count.totalDocs + 1).padStart(6, '0')
-  data.ticketNumber = `DUKA-T-${year}-${padded}`
+  data.ticketNumber = `OMNIX-T-${year}-${padded}`
   return data
 }
 
@@ -45,7 +45,7 @@ export const SupportTickets: CollectionConfig = {
       name: 'ticketNumber',
       type: 'text',
       unique: true,
-      admin: { readOnly: true, description: 'Auto-generated. Format: DUKA-T-YYYY-NNNNNN.' },
+      admin: { readOnly: true, description: 'Auto-generated. Format: OMNIX-T-YYYY-NNNNNN.' },
     },
     { name: 'customer', type: 'relationship', relationTo: 'customers', required: true },
     { name: 'license', type: 'relationship', relationTo: 'licenses' },

@@ -1,6 +1,7 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { Loader2 } from "lucide-react";
-import { getLicenseStatus, type LicenseStatus } from "@/services/license";
+import { getLicenseStatus, revalidateLicense, type LicenseStatus } from "@/services/license";
+import { useEntitlements } from "@/stores/entitlements";
 import { LicenseActivationPage } from "@/pages/license-activation";
 
 interface Props {
@@ -24,6 +25,7 @@ export function LicenseGuard({ children }: Props) {
     try {
       const s = await getLicenseStatus();
       setStatus(s);
+      useEntitlements.getState().setModules(s.activated ? s.modules : []);
     } catch (e) {
       console.error("License check failed:", e);
       setStatus(null);
@@ -38,6 +40,21 @@ export function LicenseGuard({ children }: Props) {
     }
     refresh();
   }, [skipLicense]);
+
+  // Silent re-validation during the online window. Runs once after the guard
+  // confirms an activated license; offline failures are a no-op (offline-first).
+  useEffect(() => {
+    if (skipLicense || !status?.activated) return;
+    let cancelled = false;
+    revalidateLicense().then((result) => {
+      // Server gave a definitive answer (revoked or refreshed entitlements):
+      // re-pull status so the entitlements store + gate reflect it.
+      if (!cancelled && result !== null) refresh();
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [skipLicense, status?.activated]);
 
   if (skipLicense) return <>{children}</>;
 

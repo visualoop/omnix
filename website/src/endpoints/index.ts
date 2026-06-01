@@ -19,6 +19,8 @@ import { paystackWebhookEndpoint } from './paystack-webhook'
 import { paystackStatusEndpoint } from './paystack-status'
 import { licensesValidateEndpoint } from './licenses-validate'
 import { licensesActivateEndpoint } from './licenses-activate'
+import { licensesRebindEndpoint } from './licenses-rebind'
+import { trialsStartEndpoint } from './trials-start'
 import { telemetryEventsEndpoint } from './telemetry-events'
 import { telemetryHeartbeatEndpoint } from './telemetry-heartbeat'
 import { customersMeEndpoint } from './customers-me'
@@ -34,6 +36,8 @@ export const customEndpoints: Endpoint[] = [
   paystackStatusEndpoint,
   licensesValidateEndpoint,
   licensesActivateEndpoint,
+  licensesRebindEndpoint,
+  trialsStartEndpoint,
   telemetryEventsEndpoint,
   telemetryHeartbeatEndpoint,
   customersMeEndpoint,

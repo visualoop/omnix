@@ -28,7 +28,7 @@ export const MODULES_SEED: ModuleSeed[] = [
     moduleId: 'core',
     name: 'Core ERP',
     shortName: 'Core',
-    tagline: 'The spine of every Duka licence.',
+    tagline: 'The spine of every Omnix licence.',
     status: 'live',
     priority: 0,
     shortDescription:
@@ -91,7 +91,7 @@ export const MODULES_SEED: ModuleSeed[] = [
     pricing: {
       from: 100000,
       cadence: 'one-time',
-      note: 'Included in every Duka licence.',
+      note: 'Included in every Omnix licence.',
     },
   },
   {
@@ -260,121 +260,15 @@ export const MODULES_SEED: ModuleSeed[] = [
     },
   },
   {
-    slug: 'salon',
-    moduleId: 'salon',
-    name: 'Salon & Beauty',
-    shortName: 'Salon',
-    tagline: 'Run the chair. Pay the stylists.',
-    status: 'planned',
-    priority: 3,
-    shortDescription:
-      'Appointment book, stylist commissions, retail sales, products vs services tracking.',
-    for: [
-      'Salons and barber shops',
-      'Spa and beauty parlours',
-      'Independent stylists and braiders',
-    ],
-    features: [
-      {
-        title: 'Appointment book',
-        description: 'Drag-and-drop calendar per stylist. WhatsApp reminders to clients.',
-        icon: 'Calendar',
-      },
-      {
-        title: 'Stylist commissions',
-        description: 'Per-service or per-product commission rules. Auto-feeds payroll.',
-        icon: 'Percent',
-      },
-      {
-        title: 'Products vs services',
-        description: 'Track retail sales separately from service revenue. VAT applied correctly.',
-        icon: 'Sparkles',
-      },
-      {
-        title: 'Loyalty & memberships',
-        description: 'Frequent-client discounts and pre-paid membership packages.',
-        icon: 'Crown',
-      },
-    ],
-    compliance: [
-      'KRA eTIMS auto-receipt issuance',
-      'NHIF / SHA on sales staff',
-      'M-Pesa Till reconciliation',
-    ],
-    whatYouNeed: [
-      { label: 'KRA PIN', body: 'For statutory + receipts.' },
-      { label: 'M-Pesa Till', body: 'For client payments.' },
-      { label: 'Stylist roster', body: 'Names, ID numbers, commission rates.' },
-    ],
-    pricing: {
-      from: 100000,
-      cadence: 'one-time',
-      note: 'Available with Business licence when shipped (Q3 2026).',
-    },
-  },
-  {
-    slug: 'restaurant',
-    moduleId: 'restaurant',
-    name: 'Restaurant',
-    shortName: 'Restaurant',
-    tagline: 'KOT to plate. Plate to till.',
-    status: 'planned',
-    priority: 4,
-    shortDescription:
-      'KOT printing, table layout, course timing, split bills, ingredient depletion.',
-    for: [
-      'Cafes and quick-service restaurants',
-      'Sit-down restaurants and bistros',
-      'Fast-casual chains',
-    ],
-    features: [
-      {
-        title: 'KOT to kitchen printer',
-        description: 'Auto-print Kitchen Order Tickets to thermal printers per station.',
-        icon: 'ChefHat',
-      },
-      {
-        title: 'Table layout',
-        description: 'Drag-and-drop floor plan, table status, server assignment.',
-        icon: 'Grid3x3',
-      },
-      {
-        title: 'Recipe + ingredient depletion',
-        description: 'Each plate sold deducts ingredients per recipe.',
-        icon: 'Soup',
-      },
-      {
-        title: 'Split bills',
-        description: 'By person, by item, or evenly. Print or M-Pesa per share.',
-        icon: 'Split',
-      },
-    ],
-    compliance: [
-      'KRA eTIMS auto-receipt',
-      'PHIM / SHA on staff',
-      'County health licence reminders',
-    ],
-    whatYouNeed: [
-      { label: 'KRA PIN', body: 'For receipts and statutory.' },
-      { label: 'Kitchen thermal printer', body: 'USB or LAN Epson-compatible.' },
-      { label: 'Menu + recipes', body: 'Items, prices, ingredient breakdowns.' },
-    ],
-    pricing: {
-      from: 100000,
-      cadence: 'one-time',
-      note: 'Available with Business licence when shipped (Q4 2026).',
-    },
-  },
-  {
     slug: 'hardware',
     moduleId: 'hardware',
     name: 'Hardware',
     shortName: 'Hardware',
     tagline: 'Heavy stock. Heavier margins.',
-    status: 'planned',
-    priority: 5,
+    status: 'live',
+    priority: 3,
     shortDescription:
-      'Heavy stock units, supplier credit, delivery routing, bonded vs duty-paid ledger.',
+      'Quotations, delivery notes, contractor accounts with credit & aging, tiered pricing, commissions.',
     for: [
       'Hardware shops and timber yards',
       'Building supplies and tools',
@@ -382,41 +276,108 @@ export const MODULES_SEED: ModuleSeed[] = [
     ],
     features: [
       {
-        title: 'Heavy / loose stock',
-        description: 'Sell by length, weight, sheet, or pack — not just by piece.',
-        icon: 'Ruler',
+        title: 'Quotations → sale',
+        description: 'Build a quote, send it, convert it to a sale in one click when the customer commits.',
+        icon: 'FileText',
       },
       {
-        title: 'Supplier credit aging',
-        description:
-          'Track payables per supplier with payment schedule. Pay batches via Paystack.',
-        icon: 'Receipt',
-      },
-      {
-        title: 'Delivery routing',
-        description: 'Dispatch slip, driver assignment, delivery confirmation, fuel cards.',
+        title: 'Delivery notes',
+        description: 'Dispatch slip with vehicle + driver, mark dispatched and delivered.',
         icon: 'Truck',
       },
       {
-        title: 'Bonded vs duty-paid',
-        description: 'Separate registers for bonded warehouse stock vs cleared inventory.',
-        icon: 'Warehouse',
+        title: 'Contractor accounts',
+        description: 'Credit limits, running balance, aged receivables (current / 30 / 60 / 90+).',
+        icon: 'CreditCard',
+      },
+      {
+        title: 'Tiered / contractor pricing',
+        description: 'Per-customer price lists so contractors and walk-ins see the right price.',
+        icon: 'Ruler',
+      },
+      {
+        title: 'Sales commissions',
+        description: 'Commission rules per salesperson, accrued automatically on each sale.',
+        icon: 'Percent',
       },
     ],
     compliance: [
       'KRA eTIMS auto-receipt',
       'KEBS import standards mark',
-      'KRA bonded warehouse register',
+      'M-Pesa Till + Paybill reconciliation',
     ],
     whatYouNeed: [
       { label: 'KRA PIN', body: 'For receipts and statutory.' },
-      { label: 'KEBS records', body: 'Import standards mark per imported SKU.' },
-      { label: 'Vehicle list', body: 'For delivery routing.' },
+      { label: 'M-Pesa Till or Paybill', body: 'For collections and reconciliation.' },
+      { label: 'Customer list', body: 'Contractor accounts and credit terms.' },
     ],
     pricing: {
       from: 100000,
       cadence: 'one-time',
-      note: 'Available with Business licence when shipped (2027).',
+      note: 'Included in Business licence.',
+    },
+  },
+  {
+    slug: 'hospitality',
+    moduleId: 'hospitality',
+    name: 'Hospitality',
+    shortName: 'Hospitality',
+    tagline: 'Tables to kitchen. Rooms to folio.',
+    status: 'live',
+    priority: 4,
+    shortDescription:
+      'Restaurant POS, kitchen display, service charge & tips, rooms, bookings, folios, recipe costing.',
+    for: [
+      'Restaurants, cafes and bars',
+      'Hotels and guest houses',
+      'Lodges with rooms + dining',
+    ],
+    features: [
+      {
+        title: 'Table floor plan & orders',
+        description: 'Per-area tables, open an order, send to kitchen, track through to served.',
+        icon: 'Grid3x3',
+      },
+      {
+        title: 'Kitchen display',
+        description: 'Orders grouped by station with bump from preparing → ready → served.',
+        icon: 'ChefHat',
+      },
+      {
+        title: 'Service charge & tips',
+        description: 'Configurable service charge plus tips allocated to staff, separate from revenue.',
+        icon: 'Percent',
+      },
+      {
+        title: 'Rooms & bookings',
+        description: 'Room types, bookings, check-in assigns a room and opens a folio.',
+        icon: 'BedDouble',
+      },
+      {
+        title: 'Folios & check-out',
+        description: 'Post restaurant/bar charges to the room; check-out requires a settled balance.',
+        icon: 'FileText',
+      },
+      {
+        title: 'Recipes & reports',
+        description: 'Recipe costing with food-cost %, occupancy, ADR and RevPAR dashboards.',
+        icon: 'BarChart3',
+      },
+    ],
+    compliance: [
+      'KRA eTIMS auto-receipt',
+      'SHA on staff',
+      'County health licence reminders',
+    ],
+    whatYouNeed: [
+      { label: 'KRA PIN', body: 'For receipts and statutory.' },
+      { label: 'Kitchen thermal printer', body: 'USB or LAN Epson-compatible (optional).' },
+      { label: 'Menu + rooms', body: 'Menu items, prices, and room inventory.' },
+    ],
+    pricing: {
+      from: 100000,
+      cadence: 'one-time',
+      note: 'Included in Business licence.',
     },
   },
 ]

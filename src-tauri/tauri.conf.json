@@ -1,7 +1,7 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "Omnix",
-  "version": "0.2.6",
+  "version": "0.2.8",
   "identifier": "ke.co.sokoos.duka",
   "build": {
     "beforeDevCommand": "npm run dev",
@@ -30,8 +30,8 @@
     "updater": {
       "active": true,
       "endpoints": [
-        "https://sokoos.co.ke/api/releases/latest?license={{current_version}}",
-        "https://sokoos.co.ke/api/releases/latest"
+        "https://omnix.co.ke/api/releases/latest?license={{current_version}}",
+        "https://omnix.co.ke/api/releases/latest"
       ],
       "dialog": false,
       "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEIzNDQ1QzNDN0ZBNEIzQ0MKUldUTXM2Ui9QRnhFczgzZTZybVduQjNOUmFuODdWR3FWajRNd1Q3NWErT1lYandKRGNrRUxFVkEK"
@@ -43,10 +43,10 @@
     "targets": ["deb", "rpm", "appimage", "nsis", "msi", "dmg"],
     "category": "Business",
     "shortDescription": "ERP for Kenyan SMEs — pay once, use forever",
-    "longDescription": "Omnix is an offline-first ERP platform for Kenyan SMEs — pharmacies, mini-marts, salons, hardware shops. KRA eTIMS compliance, SHA insurance claims, M-Pesa payments via Daraja and Paystack, multi-branch sync over LAN. One licence, one fee, all modules included.",
+    "longDescription": "Omnix is an offline-first ERP platform for Kenyan SMEs — pharmacies, mini-marts, hardware shops, and hospitality (restaurants & hotels). KRA eTIMS compliance, SHA insurance claims, M-Pesa payments via Daraja and Paystack, multi-branch sync over LAN. Pay once, own the modules you choose forever.",
     "copyright": "© 2026 Omnix Technologies Ltd",
     "publisher": "Omnix",
-    "homepage": "https://sokoos.co.ke",
+    "homepage": "https://omnix.co.ke",
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",
@@ -85,7 +85,7 @@
     },
     "macOS": {
       "minimumSystemVersion": "10.15",
-      "exceptionDomain": "sokoos.co.ke"
+      "exceptionDomain": "omnix.co.ke"
     }
   }
 }

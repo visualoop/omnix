@@ -28,6 +28,13 @@ import {
   CalendarPlus,
   AlertTriangle,
   TrendingUp,
+  Wrench,
+  UtensilsCrossed,
+  LayoutGrid,
+  BookOpen,
+  ChefHat,
+  BedDouble,
+  Sparkles,
 } from "lucide-react";
 import { NavLink } from "react-router-dom";
 import { OmnixLogo } from "@/components/omnix-logo";
@@ -36,7 +43,9 @@ import { APP_NAME } from "@/lib/brand";
 import { useAuthStore } from "@/stores/auth";
 import { useActiveModule, MODULE_DEFINITIONS } from "@/stores/active-module";
 import { hasAnyPermission, type Permission } from "@/lib/permissions";
-import { isFeatureAvailable } from "@/lib/module-features";
+import { isFeatureAvailable, getFeatureModule } from "@/lib/module-features";
+import { isModuleEntitled } from "@/stores/entitlements";
+import { useEntitlements } from "@/stores/entitlements";
 
 interface NavItem {
   to: string;
@@ -78,6 +87,25 @@ const navItems: NavItem[] = [
   { to: "/retail/laybys", icon: CalendarClock, label: "Laybys", permissions: ["retail.laybys.use"] },
   { to: "/retail/special-orders", icon: CalendarPlus, label: "Special Orders", permissions: ["retail.special_orders.use"] },
   { to: "/retail/shrinkage", icon: AlertTriangle, label: "Shrinkage", permissions: ["retail.shrinkage.record"] },
+  // Hardware module (gated by entitlement + active module):
+  { to: "/hardware/dashboard", icon: Wrench, label: "Hardware", permissions: ["hardware.reports.view"] },
+  { to: "/hardware/quotations", icon: FileText, label: "Quotations", permissions: ["hardware.quotations.manage"] },
+  { to: "/hardware/delivery-notes", icon: Truck, label: "Delivery Notes", permissions: ["hardware.delivery_notes.manage"] },
+  { to: "/hardware/accounts", icon: Users, label: "Accounts", permissions: ["hardware.accounts.manage"] },
+  { to: "/hardware/commissions", icon: Tag, label: "Commissions", permissions: ["hardware.commissions.view"] },
+  { to: "/hardware/reports", icon: BarChart3, label: "HW Reports", permissions: ["hardware.reports.view"] },
+  // Hospitality module (gated by entitlement + active module):
+  { to: "/hospitality/dashboard", icon: UtensilsCrossed, label: "Hospitality", permissions: ["hospitality.reports.view"] },
+  { to: "/hospitality/tables", icon: LayoutGrid, label: "Tables", permissions: ["hospitality.tables.manage"] },
+  { to: "/hospitality/orders", icon: Receipt, label: "Orders", permissions: ["hospitality.orders.take"] },
+  { to: "/hospitality/kitchen", icon: ChefHat, label: "Kitchen", permissions: ["hospitality.kitchen.bump"] },
+  { to: "/hospitality/menu", icon: BookOpen, label: "Menu", permissions: ["hospitality.menu.manage"] },
+  { to: "/hospitality/rooms", icon: BedDouble, label: "Rooms", permissions: ["hospitality.bookings.manage"] },
+  { to: "/hospitality/bookings", icon: CalendarClock, label: "Bookings", permissions: ["hospitality.bookings.manage"] },
+  { to: "/hospitality/housekeeping", icon: Sparkles, label: "Housekeeping", permissions: ["hospitality.housekeeping.manage"] },
+  { to: "/hospitality/folios", icon: FileText, label: "Folios", permissions: ["hospitality.folios.manage"] },
+  { to: "/hospitality/recipes", icon: ClipboardCheck, label: "Recipes", permissions: ["hospitality.recipes.manage"] },
+  { to: "/hospitality/reports", icon: BarChart3, label: "Hosp Reports", permissions: ["hospitality.reports.view"] },
   // Continue core:
   { to: "/reports", icon: BarChart3, label: "Reports", permissions: ["reports.view", "reports.zreport"] },
   { to: "/reports/daily-operations", icon: BarChart3, label: "Daily Ops", permissions: ["reports.view"] },
@@ -93,17 +121,23 @@ export function Sidebar({ onCommandOpen }: { onCommandOpen: () => void }) {
   const activeModuleId = useActiveModule((s) => s.active);
   const loadModule = useActiveModule((s) => s.load);
   const activeModule = MODULE_DEFINITIONS[activeModuleId];
+  // Subscribe so the nav recomputes once entitlements hydrate from the license.
+  useEntitlements((s) => s.modules);
 
   // Lazy-load active module from DB on first mount
   if (!useActiveModule.getState().loaded) {
     loadModule().catch(() => {});
   }
 
-  const visibleNav = navItems.filter(
-    (item) =>
+  const visibleNav = navItems.filter((item) => {
+    const owner = getFeatureModule(item.to);
+    // Hide module items the licence doesn't include (owner undefined = core).
+    if (owner && !isModuleEntitled(owner)) return false;
+    return (
       (item.permissions.length === 0 || hasAnyPermission(user, item.permissions)) &&
-      isFeatureAvailable(item.to, activeModuleId),
-  );
+      isFeatureAvailable(item.to, activeModuleId)
+    );
+  });
 
   return (
     <aside

@@ -5,8 +5,8 @@ import { Button } from '@/components/ui/button'
 import { PageHero } from '@/components/marketing/page-hero'
 
 export const metadata: Metadata = {
-  title: 'Downloads — get Duka',
-  description: 'Download the latest Duka installer for Windows. Free 30-day trial, no credit card required.',
+  title: 'Downloads — get Omnix',
+  description: 'Download the latest Omnix installer for Windows. Free 30-day trial, no credit card required.',
 }
 
 export default function DownloadsPage() {
@@ -14,7 +14,7 @@ export default function DownloadsPage() {
     <>
       <PageHero
         eyebrow="Downloads"
-        title={<>Get <em>Duka.</em></>}
+        title={<>Get <em>Omnix.</em></>}
         description="Windows 10 / 11 · 64-bit · 18 MB installer · ~30s on most lines"
       />
 
@@ -27,7 +27,7 @@ export default function DownloadsPage() {
                   <span className="caption-mono">Latest release</span>
                   <span className="rounded-full border border-[var(--color-positive)]/40 bg-[var(--color-positive)]/10 px-2.5 py-0.5 font-[family-name:var(--font-ui)] text-[10px] font-semibold uppercase tracking-[0.18em] text-[var(--color-positive)]">Stable</span>
                 </div>
-                <h2 className="font-[family-name:var(--font-display)] mt-3 text-[clamp(32px,3.2vw,48px)] font-normal leading-tight text-[var(--color-fg)]">Duka v0.2.0</h2>
+                <h2 className="font-[family-name:var(--font-display)] mt-3 text-[clamp(32px,3.2vw,48px)] font-normal leading-tight text-[var(--color-fg)]">Omnix v0.2.0</h2>
                 <p className="mt-4 text-[15px] leading-[1.65] text-[var(--color-fg-muted)] max-w-[52ch]">Banking & Recurring Invoices shipped. M-Pesa reconciliation, scheduled invoices, multi-currency support.</p>
                 <div className="mt-6 flex flex-wrap items-center gap-x-6 gap-y-2 caption-mono">
                   <span>Released 2026-05-22</span>
@@ -61,7 +61,7 @@ export default function DownloadsPage() {
               <h3 className="font-[family-name:var(--font-display)] text-[24px] font-normal text-[var(--color-fg)]">Installation guide</h3>
               <ol className="mt-5 space-y-3 text-[15px] text-[var(--color-fg-muted)]">
                 <li className="flex items-start gap-3"><span className="font-[family-name:var(--font-mono)] text-[11px] text-[var(--color-accent)]">01</span><span>Download the installer (18 MB, ~30s)</span></li>
-                <li className="flex items-start gap-3"><span className="font-[family-name:var(--font-mono)] text-[11px] text-[var(--color-accent)]">02</span><span>Run <code className="font-[family-name:var(--font-mono)] text-[13px]">duka-setup.exe</code></span></li>
+                <li className="flex items-start gap-3"><span className="font-[family-name:var(--font-mono)] text-[11px] text-[var(--color-accent)]">02</span><span>Run <code className="font-[family-name:var(--font-mono)] text-[13px]">omnix-setup.exe</code></span></li>
                 <li className="flex items-start gap-3"><span className="font-[family-name:var(--font-mono)] text-[11px] text-[var(--color-accent)]">03</span><span>Sign in with your trial or paid licence</span></li>
                 <li className="flex items-start gap-3"><span className="font-[family-name:var(--font-mono)] text-[11px] text-[var(--color-accent)]">04</span><span>Import your product list (Excel, CSV, or scan)</span></li>
                 <li className="flex items-start gap-3"><span className="font-[family-name:var(--font-mono)] text-[11px] text-[var(--color-accent)]">05</span><span>Ring up your first sale</span></li>

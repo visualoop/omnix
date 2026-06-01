@@ -34,7 +34,7 @@ export function ReceiptProofSection() {
             What you ring up is <em>what KRA sees.</em>
           </h2>
           <p className="lede mx-auto mt-7 text-balance">
-            Every Duka sale prints a real eTIMS receipt with a KRA control unit signature. The
+            Every Omnix sale prints a real eTIMS receipt with a KRA control unit signature. The
             same row lands on KRA&rsquo;s line in the same minute. No batch upload, no
             month-end scramble, no &ldquo;sync now&rdquo; button to forget.
           </p>
@@ -74,7 +74,7 @@ export function ReceiptProofSection() {
             className="font-[family-name:var(--font-display)] text-[26px] italic font-light leading-snug text-[var(--color-fg-muted)] sm:text-[30px]"
             style={{ textIndent: '-0.5em', paddingLeft: '0.5em' }}
           >
-            &ldquo;The first month I switched to Duka, I stopped staying back to file
+            &ldquo;The first month I switched to Omnix, I stopped staying back to file
             returns. KRA had already read what I rang up.&rdquo;
           </p>
           <div className="caption-mono mt-5">
@@ -96,7 +96,7 @@ function ReceiptPanel() {
 
       <div className="relative rounded-[2px] border border-[var(--color-border-strong)] bg-[var(--color-fg)] p-7 font-[family-name:var(--font-mono)] text-[12px] leading-[1.7] text-[#1F1A14]">
         <div className="text-center">
-          <div className="text-[14px] font-semibold tracking-[0.05em]">DUKA PHARMACY</div>
+          <div className="text-[14px] font-semibold tracking-[0.05em]">OMNIX PHARMACY</div>
           <div className="text-[10px] tracking-[0.18em] uppercase opacity-60">
             Westlands · Nairobi
           </div>

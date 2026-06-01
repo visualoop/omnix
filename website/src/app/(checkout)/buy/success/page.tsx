@@ -37,7 +37,7 @@ export default async function CheckoutSuccessPage({
           <NextStep
             icon={Download}
             title="Download installer"
-            body="Get Duka for Windows. Install in under five minutes."
+            body="Get Omnix for Windows. Install in under five minutes."
             cta="Open downloads"
             href="/dashboard/downloads"
           />

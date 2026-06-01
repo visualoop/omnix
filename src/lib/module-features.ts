@@ -40,11 +40,35 @@ const FEATURE_OWNERS: Record<string, Exclude<ModuleId, "core">> = {
   "/retail/shrinkage": "retail",
   "/retail/dashboard": "retail",
 
-  // ─── Future modules (planned) ───────────────────────────
-  // "/hardware/...": "hardware",
-  // "/electronics/...": "electronics",
-  // "/salon/...": "salon",
-  // "/restaurant/...": "restaurant",
+  // ─── Hardware & Building Materials ──────────────────────
+  "/hardware/dashboard": "hardware",
+  "/hardware/quotations": "hardware",
+  "/hardware/delivery-notes": "hardware",
+  "/hardware/accounts": "hardware",
+  "/hardware/commissions": "hardware",
+  "/hardware/reports": "hardware",
+  "/settings/hardware/pricing": "hardware",
+  "/settings/hardware/units": "hardware",
+  "/settings/hardware/credit": "hardware",
+  "/settings/hardware/commissions": "hardware",
+
+  // ─── Hospitality (restaurant + hotel) ───────────────────
+  "/hospitality/dashboard": "hospitality",
+  "/hospitality/tables": "hospitality",
+  "/hospitality/orders": "hospitality",
+  "/hospitality/kitchen": "hospitality",
+  "/hospitality/menu": "hospitality",
+  "/hospitality/recipes": "hospitality",
+  "/hospitality/bookings": "hospitality",
+  "/hospitality/rooms": "hospitality",
+  "/hospitality/checkin": "hospitality",
+  "/hospitality/housekeeping": "hospitality",
+  "/hospitality/folios": "hospitality",
+  "/hospitality/wastage": "hospitality",
+  "/hospitality/reports": "hospitality",
+  "/settings/hospitality/tables": "hospitality",
+  "/settings/hospitality/menu": "hospitality",
+  "/settings/hospitality/service-charge": "hospitality",
 };
 
 /**

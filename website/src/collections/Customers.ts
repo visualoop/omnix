@@ -27,7 +27,7 @@ export const Customers: CollectionConfig = {
   admin: {
     useAsTitle: 'email',
     defaultColumns: ['email', 'fullName', 'businessName', 'status', 'createdAt'],
-    description: 'Customer accounts — anyone with a Duka license or trial.',
+    description: 'Customer accounts — anyone with a Omnix license or trial.',
   },
   access: {
     read: ({ req, id }) => {
@@ -80,7 +80,7 @@ export const Customers: CollectionConfig = {
           await sendEmail({
             payload: req.payload,
             to: customer.email,
-            subject: 'Karibu — your Duka trial is live',
+            subject: 'Karibu — your Omnix trial is live',
             html: await renderEmail('Welcome', {
               name: customer.fullName ?? customer.email.split('@')[0] ?? 'there',
             }),
@@ -156,11 +156,9 @@ export const Customers: CollectionConfig = {
       options: [
         { label: 'Pharmacy / Chemist', value: 'pharmacy' },
         { label: 'Mini-mart / Supermarket', value: 'mini_mart' },
-        { label: 'Duka / General shop', value: 'duka' },
-        { label: 'Salon / Beauty', value: 'salon' },
-        { label: 'Restaurant / Cafe', value: 'restaurant' },
+        { label: 'General shop / Duka', value: 'duka' },
+        { label: 'Restaurant / Hotel', value: 'restaurant' },
         { label: 'Hardware', value: 'hardware' },
-        { label: 'Electronics', value: 'electronics' },
         { label: 'Other', value: 'other' },
       ],
     },

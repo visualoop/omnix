@@ -35,8 +35,8 @@ export function FounderNoteSection() {
 
           <div className="mt-8 space-y-6 text-balance lede-italic">
             <p>
-              We built Duka after watching shop owners we know — pharmacies in Westlands,
-              mini-marts in Kisumu, salons in Eldoret — fight the same software all day and
+              We built Omnix after watching shop owners we know — pharmacies in Westlands,
+              mini-marts in Kisumu, hardware shops in Eldoret — fight the same software all day and
               still close the till at midnight not knowing what they made.
             </p>
             <p>

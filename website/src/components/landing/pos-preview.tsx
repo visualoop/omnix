@@ -34,7 +34,7 @@ export function PosPreview() {
             <span className="size-2.5 rounded-full bg-[var(--color-accent)]/70" />
           </div>
           <span className="ml-3 font-mono text-[11px] tracking-wide text-[var(--color-fg-subtle)]">
-            Duka — Westgate branch · Cashier 3
+            Omnix — Westgate branch · Cashier 3
           </span>
         </div>
 

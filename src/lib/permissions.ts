@@ -94,7 +94,28 @@ export type Permission =
   | "retail.price_lists.manage"
   | "retail.shrinkage.record"
   | "retail.laybys.use"
-  | "retail.special_orders.use";
+  | "retail.special_orders.use"
+  // Hardware
+  | "hardware.quotations.manage"
+  | "hardware.delivery_notes.manage"
+  | "hardware.accounts.manage"
+  | "hardware.pricing.manage"
+  | "hardware.commissions.view"
+  | "hardware.reports.view"
+  // Hospitality
+  | "hospitality.tables.manage"
+  | "hospitality.orders.take"
+  | "hospitality.orders.send_kitchen"
+  | "hospitality.orders.void"
+  | "hospitality.kitchen.bump"
+  | "hospitality.menu.manage"
+  | "hospitality.recipes.manage"
+  | "hospitality.bookings.manage"
+  | "hospitality.checkin.manage"
+  | "hospitality.folios.manage"
+  | "hospitality.housekeeping.manage"
+  | "hospitality.service_charge.manage"
+  | "hospitality.reports.view";
 
 const ALL_PERMISSIONS: Permission[] = [
   "pos.use", "sales.view", "sales.refund", "sales.void",
@@ -119,6 +140,13 @@ const ALL_PERMISSIONS: Permission[] = [
   "banking.view", "banking.manage", "banking.reconcile",
   "retail.brands.manage", "retail.variants.manage", "retail.price_lists.manage",
   "retail.shrinkage.record", "retail.laybys.use", "retail.special_orders.use",
+  "hardware.quotations.manage", "hardware.delivery_notes.manage", "hardware.accounts.manage",
+  "hardware.pricing.manage", "hardware.commissions.view", "hardware.reports.view",
+  "hospitality.tables.manage", "hospitality.orders.take", "hospitality.orders.send_kitchen",
+  "hospitality.orders.void", "hospitality.kitchen.bump", "hospitality.menu.manage",
+  "hospitality.recipes.manage", "hospitality.bookings.manage", "hospitality.checkin.manage",
+  "hospitality.folios.manage", "hospitality.housekeeping.manage", "hospitality.service_charge.manage",
+  "hospitality.reports.view",
 ];
 
 /** Permission matrix. Each role gets exactly the permissions it should have. */
@@ -147,6 +175,13 @@ const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     "banking.view", "banking.manage", "banking.reconcile",
     "retail.brands.manage", "retail.variants.manage", "retail.price_lists.manage",
     "retail.shrinkage.record", "retail.laybys.use", "retail.special_orders.use",
+    "hardware.quotations.manage", "hardware.delivery_notes.manage", "hardware.accounts.manage",
+    "hardware.pricing.manage", "hardware.commissions.view", "hardware.reports.view",
+    "hospitality.tables.manage", "hospitality.orders.take", "hospitality.orders.send_kitchen",
+    "hospitality.orders.void", "hospitality.kitchen.bump", "hospitality.menu.manage",
+    "hospitality.recipes.manage", "hospitality.bookings.manage", "hospitality.checkin.manage",
+    "hospitality.folios.manage", "hospitality.housekeeping.manage", "hospitality.service_charge.manage",
+    "hospitality.reports.view",
   ],
 
   // Cashier: POS-focused. Can sell, take customer payments, view today's sales.
@@ -159,6 +194,7 @@ const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     "reports.zreport",         // can run their end-of-day Z-report
     "hr.attendance.record",    // can clock self in/out
     "hr.leave.request",        // can request leave
+    "hospitality.orders.take", "hospitality.orders.send_kitchen",
   ],
 
   // Viewer: read-only. Reports, dashboards, no edits.
@@ -196,7 +232,9 @@ export type PermissionGroup =
   | "HR"
   | "Invoicing"
   | "Banking"
-  | "Retail";
+  | "Retail"
+  | "Hardware"
+  | "Hospitality";
 
 export type PermissionRisk = "low" | "normal" | "high" | "critical";
 
@@ -276,13 +314,44 @@ export const PERMISSION_CATALOG: PermissionMeta[] = [
   { key: "retail.shrinkage.record", label: "Record shrinkage", group: "Retail", risk: "high" },
   { key: "retail.laybys.use", label: "Use laybys", group: "Retail", risk: "normal" },
   { key: "retail.special_orders.use", label: "Use special orders", group: "Retail", risk: "normal" },
+  { key: "hardware.quotations.manage", label: "Manage quotations", group: "Hardware", risk: "normal" },
+  { key: "hardware.delivery_notes.manage", label: "Manage delivery notes", group: "Hardware", risk: "normal" },
+  { key: "hardware.accounts.manage", label: "Manage contractor accounts & credit", group: "Hardware", risk: "high" },
+  { key: "hardware.pricing.manage", label: "Manage contractor pricing", group: "Hardware", risk: "high" },
+  { key: "hardware.commissions.view", label: "View salesperson commissions", group: "Hardware", risk: "normal" },
+  { key: "hardware.reports.view", label: "View hardware reports", group: "Hardware", risk: "low" },
+  { key: "hospitality.tables.manage", label: "Manage tables & floor plan", group: "Hospitality", risk: "normal" },
+  { key: "hospitality.orders.take", label: "Take orders", group: "Hospitality", risk: "normal" },
+  { key: "hospitality.orders.send_kitchen", label: "Send orders to kitchen", group: "Hospitality", risk: "normal" },
+  { key: "hospitality.orders.void", label: "Void / comp order items", group: "Hospitality", risk: "high" },
+  { key: "hospitality.kitchen.bump", label: "Bump kitchen tickets", group: "Hospitality", risk: "low" },
+  { key: "hospitality.menu.manage", label: "Manage menu & modifiers", group: "Hospitality", risk: "normal" },
+  { key: "hospitality.recipes.manage", label: "Manage recipes & costing", group: "Hospitality", risk: "normal" },
+  { key: "hospitality.bookings.manage", label: "Manage bookings", group: "Hospitality", risk: "normal" },
+  { key: "hospitality.checkin.manage", label: "Check guests in/out", group: "Hospitality", risk: "normal" },
+  { key: "hospitality.folios.manage", label: "Manage guest folios", group: "Hospitality", risk: "high" },
+  { key: "hospitality.housekeeping.manage", label: "Update housekeeping status", group: "Hospitality", risk: "low" },
+  { key: "hospitality.service_charge.manage", label: "Manage service charge", group: "Hospitality", risk: "high" },
+  { key: "hospitality.reports.view", label: "View hospitality reports", group: "Hospitality", risk: "low" },
 ];
 
 export const ROLES: Role[] = ["owner", "manager", "cashier", "viewer"];
 
+/**
+ * Effective-permission cache, populated by the auth store after RBAC
+ * resolution. Kept here (not imported from the store) to avoid an import
+ * cycle. `null` = not resolved → fall back to the static role matrix.
+ */
+let cachedPermissions: Set<string> | null = null;
+export function setCachedPermissions(perms: string[] | null): void {
+  cachedPermissions = perms ? new Set(perms) : null;
+}
+
 export function hasPermission(user: User | null, permission: Permission): boolean {
   if (!user) return false;
   if (user.role === "owner") return true;          // owner shortcut
+  // Prefer the resolved dynamic RBAC set when available; else static matrix.
+  if (cachedPermissions) return cachedPermissions.has(permission);
   return ROLE_PERMISSIONS[user.role as Role]?.includes(permission) ?? false;
 }
 

@@ -12,7 +12,7 @@
 import { create } from "zustand";
 import { query, execute } from "@/lib/db";
 
-export type ModuleId = "dawa" | "retail" | "hardware" | "electronics" | "salon" | "restaurant" | "core";
+export type ModuleId = "dawa" | "retail" | "hardware" | "hospitality" | "core";
 
 export interface ModuleDefinition {
   id: ModuleId;
@@ -72,8 +72,8 @@ export const MODULE_DEFINITIONS: Record<ModuleId, ModuleDefinition> = {
     id: "hardware",
     name: "Hardware Store",
     shortName: "Hardware",
-    tagline: "Bulk pricing, parts catalog, contractor accounts",
-    status: "planned",
+    tagline: "Quotations, delivery notes, contractor accounts, bulk pricing",
+    status: "available",
     setupPlaceholders: {
       businessName: "e.g., Jua Kali Hardware",
       address: "e.g., Industrial Area, Nairobi",
@@ -81,43 +81,17 @@ export const MODULE_DEFINITIONS: Record<ModuleId, ModuleDefinition> = {
       email: "info@yourhardware.co.ke",
     },
   },
-  electronics: {
-    id: "electronics",
-    name: "Electronics",
-    shortName: "Electronics",
-    tagline: "IMEI tracking, warranty, repair tickets",
-    status: "planned",
+  hospitality: {
+    id: "hospitality",
+    name: "Soko Hospitality",
+    shortName: "Hospitality",
+    tagline: "Restaurant POS, kitchen, rooms, bookings, folios",
+    status: "available",
     setupPlaceholders: {
-      businessName: "e.g., TechHub Electronics",
-      address: "e.g., Tom Mboya Street, Nairobi",
-      phone: "0700 000 000",
-      email: "info@yourelectronics.co.ke",
-    },
-  },
-  salon: {
-    id: "salon",
-    name: "Salon & Spa",
-    shortName: "Salon",
-    tagline: "Appointments, services, staff commissions",
-    status: "planned",
-    setupPlaceholders: {
-      businessName: "e.g., Glamour Salon & Spa",
-      address: "e.g., Westlands, Nairobi",
-      phone: "0700 000 000",
-      email: "info@yoursalon.co.ke",
-    },
-  },
-  restaurant: {
-    id: "restaurant",
-    name: "Restaurant",
-    shortName: "Restaurant",
-    tagline: "Kitchen Order Tickets, tables, recipe costing",
-    status: "planned",
-    setupPlaceholders: {
-      businessName: "e.g., Mama Oliech Restaurant",
+      businessName: "e.g., Savanna Restaurant & Rooms",
       address: "e.g., Kenyatta Avenue, Nairobi",
       phone: "0700 000 000",
-      email: "info@yourrestaurant.co.ke",
+      email: "info@yourplace.co.ke",
     },
   },
 };
@@ -151,6 +125,12 @@ export const useActiveModule = create<ModuleStore>((set, get) => ({
   },
 
   setActive: async (id) => {
+    // Hard gate: never switch into a module the licence doesn't include
+    // (core is always allowed).
+    const { isModuleEntitled } = await import("@/stores/entitlements");
+    if (!isModuleEntitled(id)) {
+      throw new Error("This module is not included in your licence.");
+    }
     await execute(
       `INSERT INTO settings (key, value) VALUES (?1, ?2)
        ON CONFLICT(key) DO UPDATE SET value = excluded.value`,

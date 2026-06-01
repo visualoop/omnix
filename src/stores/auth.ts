@@ -11,22 +11,26 @@ interface AuthState {
   isSetupComplete: boolean;
   setupChecked: boolean;          // Have we queried the DB yet?
   loading: boolean;
+  /** Cached effective permission keys for the signed-in user (null = not loaded → fall back to static matrix). */
+  permissions: string[] | null;
   // actions
   refreshSetupState: () => Promise<void>;
   signIn: (username: string, password: string) => Promise<User>;
   signOut: () => void;
   setSetupComplete: (done: boolean) => void;
+  loadPermissions: () => Promise<void>;
   // Internal: bypass for setup wizard completion
   setUser: (user: User | null) => void;
 }
 
 export const useAuthStore = create<AuthState>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       user: null,
       isSetupComplete: false,
       setupChecked: false,
       loading: false,
+      permissions: null,
 
       refreshSetupState: async () => {
         const done = await checkSetupDb();
@@ -40,6 +44,8 @@ export const useAuthStore = create<AuthState>()(
           set({ user, loading: false });
           // Lazy-import to avoid circular dependency
           import("./active-branch").then((m) => m.useActiveBranch.getState().loadForUser(user.id));
+          // Resolve + cache effective RBAC permissions for this user.
+          get().loadPermissions();
           // Run recurring invoice schedule (once per session, async fire-and-forget)
           import("@/services/recurring-invoicing").then((m) =>
             m.runRecurringSchedule(user.id).then((r) => {
@@ -58,8 +64,31 @@ export const useAuthStore = create<AuthState>()(
       },
 
       signOut: () => {
-        set({ user: null });
+        set({ user: null, permissions: null });
+        import("@/lib/permissions").then((m) => m.setCachedPermissions(null));
         import("./active-branch").then((m) => m.useActiveBranch.getState().clear());
+      },
+
+      loadPermissions: async () => {
+        const user = get().user;
+        if (!user) {
+          set({ permissions: null });
+          return;
+        }
+        try {
+          const { resolveEffectivePermissions } = await import("@/services/rbac");
+          const branchId = (await import("./active-branch")).getActiveBranchId();
+          const active = (await import("./active-module")).useActiveModule.getState().active;
+          const perms = await resolveEffectivePermissions(user.id, { branchId, moduleId: active });
+          // If the user has no RBAC assignments yet, leave null so the static
+          // role matrix (users.role) remains the source of truth (back-compat).
+          const list = perms.size > 0 ? [...perms] : null;
+          const { setCachedPermissions } = await import("@/lib/permissions");
+          setCachedPermissions(list);
+          set({ permissions: list });
+        } catch {
+          set({ permissions: null });
+        }
       },
 
       setSetupComplete: (done) => set({ isSetupComplete: done }),

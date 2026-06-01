@@ -21,7 +21,7 @@ export function TrialEnded({ name }: Props) {
   return (
     <Html>
       <Head />
-      <Preview>Your Duka trial ended — pay to keep going</Preview>
+      <Preview>Your Omnix trial ended — pay to keep going</Preview>
       <Body style={{ backgroundColor: '#0B0907', margin: 0, padding: '40px 0' }}>
         <Container style={containerStyle}>
           <Section style={brand}>
@@ -36,7 +36,7 @@ export function TrialEnded({ name }: Props) {
           </Heading>
           <Text style={p}>Hi {name},</Text>
           <Text style={p}>
-            Your 30-day Duka trial just ended. The desktop app has switched to a soft-locked
+            Your 30-day Omnix trial just ended. The desktop app has switched to a soft-locked
             state — you can still see all your data, export, and sign back in once you pay.
           </Text>
           <Text style={p}>

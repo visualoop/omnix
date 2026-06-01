@@ -95,7 +95,7 @@ export function DoseCalculatorDialog({ open, onClose, defaultWeight }: {
           </div>
 
           {!valid && weight && (
-            <div className="flex items-center gap-2 text-amber-700 text-xs bg-amber-50 rounded p-2">
+            <div className="flex items-center gap-2 text-amber-600 dark:text-amber-400 text-xs bg-amber-500/10 rounded p-2">
               <AlertTriangle className="h-4 w-4" />
               {w > 100 ? "Weight unusually high — verify, then use adult dosing." : "Enter weight in kilograms."}
             </div>
@@ -113,8 +113,8 @@ export function DoseCalculatorDialog({ open, onClose, defaultWeight }: {
                       onClick={() => { setSelected(d); setCustomMgKg(""); }}
                       className={`text-left text-xs p-2 rounded border transition ${
                         drug?.name === d.name
-                          ? "border-violet-500 bg-violet-50 text-violet-700"
-                          : "border-border hover:bg-stone-50"
+                          ? "border-violet-500 bg-violet-500/10 text-violet-600 dark:text-violet-400"
+                          : "border-border hover:bg-accent"
                       }`}
                     >
                       <div className="font-medium">{d.name}</div>
@@ -137,14 +137,14 @@ export function DoseCalculatorDialog({ open, onClose, defaultWeight }: {
               </div>
 
               {result && (
-                <Card className="border-violet-200 bg-violet-50">
+                <Card className="border-violet-500/30 bg-violet-500/10">
                   <CardContent className="p-3 space-y-1.5">
-                    <div className="text-[10px] uppercase tracking-wider text-violet-700 font-semibold">Calculated Dose</div>
+                    <div className="text-[10px] uppercase tracking-wider text-violet-600 dark:text-violet-400 font-semibold">Calculated Dose</div>
                     <div className="text-2xl font-mono font-bold text-violet-900">
                       {result.min_per_dose === result.max_per_dose
                         ? `${result.min_per_dose.toFixed(1)} mg`
                         : `${result.min_per_dose.toFixed(1)} – ${result.max_per_dose.toFixed(1)} mg`}
-                      <span className="text-sm text-violet-700 font-normal ml-1">per dose</span>
+                      <span className="text-sm text-violet-600 dark:text-violet-400 font-normal ml-1">per dose</span>
                     </div>
                     {result.interval_h && (
                       <div className="text-xs text-violet-800">
@@ -157,12 +157,12 @@ export function DoseCalculatorDialog({ open, onClose, defaultWeight }: {
                       </div>
                     )}
                     {result.max_per_day && (
-                      <div className="text-xs text-rose-700 font-medium pt-1 border-t border-violet-200">
+                      <div className="text-xs text-rose-700 font-medium pt-1 border-t border-violet-500/30">
                         ⚠ Max {result.max_per_day.toFixed(0)} mg/day — do not exceed
                       </div>
                     )}
                     {drug && drug.formulations && (
-                      <div className="text-[11px] text-violet-700 pt-1 border-t border-violet-200">
+                      <div className="text-[11px] text-violet-600 dark:text-violet-400 pt-1 border-t border-violet-500/30">
                         <b>Common formulations:</b> {drug.formulations.join(" · ")}
                       </div>
                     )}

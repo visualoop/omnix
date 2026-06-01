@@ -8,7 +8,7 @@ import { cn } from '@/lib/cn'
 /**
  * "What we make" — four full-width alternating image/text rows.
  *
- * Per DUKA-BRIEF §6.1 ④ — replaces the previous Linear-bento.
+ * Per OMNIX-BRIEF §6.1 ④ — replaces the previous Linear-bento.
  * Each row: 6/12 image, 5/12 text with offset (2 / 5+offset / 5 / 5+offset).
  *
  * Imagery rule (per ai-slop-check skill):
@@ -49,24 +49,24 @@ const ROWS: ModuleRow[] = [
     for: 'mini-marts · hardware · electronics · grocery',
   },
   {
-    slug: 'salon-beauty',
-    name: 'Salon & Beauty',
-    tagline: 'Run the chair. Pay the stylists.',
+    slug: 'hardware',
+    name: 'Hardware',
+    tagline: 'Heavy stock. Heavier margins.',
     body:
-      'Bookings, walk-ins, stylist commissions, retail mixed with services. M-Pesa direct to till. Daily breakdown of who earned what.',
-    status: 'planned',
+      'Quotations that convert to sales, delivery notes, contractor accounts with credit and aged receivables, tiered pricing, and sales commissions. Built for the counter and the yard.',
+    status: 'live',
     size: '1440×900',
-    for: 'salons · barbershops · spas',
+    for: 'hardware · timber · building supplies',
   },
   {
-    slug: 'restaurant',
-    name: 'Restaurant',
-    tagline: 'KOT to plate. Plate to till.',
+    slug: 'hospitality',
+    name: 'Hospitality',
+    tagline: 'Tables to kitchen. Rooms to folio.',
     body:
-      'Tables, kitchen tickets, modifiers, splits, service charge, M-Pesa STK on the bill. Built to survive Friday rush.',
-    status: 'planned',
+      'Table floor plan, kitchen display, service charge and tips, rooms and bookings, folios, and recipe costing with food-cost %. Restaurant and hotel in one module.',
+    status: 'live',
     size: '1280×800',
-    for: 'restaurants · bars · cafés',
+    for: 'restaurants · bars · hotels · lodges',
   },
 ]
 
@@ -81,7 +81,7 @@ export function ModulesRowsSection() {
             One licence. <em>Four trades.</em>
           </h2>
           <p className="lede mt-6">
-            Every Duka install ships with the same Core. The trade-specific module decides
+            Every Omnix install ships with the same Core. The trade-specific module decides
             what your screens look like the day you open it.
           </p>
         </div>

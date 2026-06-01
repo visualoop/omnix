@@ -75,7 +75,7 @@ export const Licenses: CollectionConfig = {
       type: 'text',
       unique: true,
       admin: {
-        description: 'Auto-generated on creation. Format: DUKA-XXXX-XXXX-XXXX. Read-only after create.',
+        description: 'Auto-generated on creation. Format: OMNIX-XXXX-XXXX-XXXX. Read-only after create.',
         readOnly: true,
       },
     },
@@ -110,9 +110,8 @@ export const Licenses: CollectionConfig = {
         { label: 'Core ERP', value: 'core' },
         { label: 'Dawa Pharmacy', value: 'dawa' },
         { label: 'Soko Retail', value: 'retail' },
-        { label: 'Salon (planned)', value: 'salon' },
-        { label: 'Restaurant (planned)', value: 'restaurant' },
-        { label: 'Hardware (planned)', value: 'hardware' },
+        { label: 'Hardware & Building Materials', value: 'hardware' },
+        { label: 'Hospitality (restaurant + hotel)', value: 'hospitality' },
       ],
     },
     {
@@ -129,6 +128,35 @@ export const Licenses: CollectionConfig = {
       admin: {
         description: 'Number of PCs that can activate with this license key.',
       },
+    },
+
+    // ── Self-service rebind cooldown (anti-reseller) ───────────
+    {
+      name: 'rebindLimitPerWindow',
+      type: 'number',
+      defaultValue: 2,
+      min: 0,
+      admin: {
+        description: 'Max self-service machine rebinds allowed within rebindWindowDays. 0 = support-only.',
+      },
+    },
+    {
+      name: 'rebindWindowDays',
+      type: 'number',
+      defaultValue: 30,
+      min: 1,
+      admin: { description: 'Rolling window (days) over which rebindLimitPerWindow is counted.' },
+    },
+    {
+      name: 'rebindCountInWindow',
+      type: 'number',
+      defaultValue: 0,
+      admin: { readOnly: true, description: 'Rebinds used in the current window. Reset when the window rolls over.' },
+    },
+    {
+      name: 'rebindWindowStartedAt',
+      type: 'date',
+      admin: { readOnly: true, description: 'When the current rebind window started.' },
     },
 
     // ── Lifecycle ──────────────────────────────────────────────

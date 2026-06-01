@@ -3,7 +3,7 @@ import { LegalLayout } from '@/components/marketing/legal-layout'
 
 export const metadata: Metadata = {
   title: 'Privacy Policy',
-  description: 'How Duka collects, uses, and protects your data.',
+  description: 'How Omnix collects, uses, and protects your data.',
 }
 
 export default function PrivacyPage() {
@@ -11,7 +11,7 @@ export default function PrivacyPage() {
     <LegalLayout
       eyebrow="Legal"
       title="Privacy Policy"
-      description="How Duka collects, uses, and protects your data."
+      description="How Omnix collects, uses, and protects your data."
       lastUpdated="2026-05-01"
       sections={[
         {
@@ -19,8 +19,8 @@ export default function PrivacyPage() {
           heading: 'Overview',
           body: (
             <>
-              <p>Duka is desktop software that runs on your Windows machine. Your business data (customers, products, sales, prescriptions, employees) never leaves your device unless you explicitly enable cloud backup.</p>
-              <p>This policy covers what data we collect when you use Duka, how we use it, and your rights.</p>
+              <p>Omnix is desktop software that runs on your Windows machine. Your business data (customers, products, sales, prescriptions, employees) never leaves your device unless you explicitly enable cloud backup.</p>
+              <p>This policy covers what data we collect when you use Omnix, how we use it, and your rights.</p>
             </>
           ),
         },

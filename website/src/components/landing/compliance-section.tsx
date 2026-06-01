@@ -5,7 +5,7 @@ import { motion } from 'framer-motion'
 /**
  * "Built into the systems that run Kenya" — quiet integration grid.
  *
- * Per DUKA-BRIEF §6.1 ⑧:
+ * Per OMNIX-BRIEF §6.1 ⑧:
  *   - 4-col on desktop, 2-col on tablet, 1-col on mobile
  *   - NO icons (icons turn this into a "Trusted by 50+" trope)
  *   - Single rule between rows, no border between columns
@@ -46,7 +46,7 @@ export function ComplianceSection() {
           </h2>
           <p className="lede mt-6">
             Every integration below is part of the install. No plug-ins, no add-on fees, no
-            partner SDKs. Duka files, settles, and reconciles directly.
+            partner SDKs. Omnix files, settles, and reconciles directly.
           </p>
         </div>
 

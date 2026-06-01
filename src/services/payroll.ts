@@ -337,6 +337,8 @@ export async function createPayrollRun(input: {
 }
 
 export async function approvePayrollRun(id: string, userId: string): Promise<void> {
+  const { requirePermission } = await import("@/services/rbac");
+  await requirePermission("hr.payroll.approve", { entityType: "payroll_run", entityId: id });
   await execute(
     `UPDATE payroll_runs SET status = 'approved', approved_by = ?2 WHERE id = ?1 AND status = 'draft'`,
     [id, userId],

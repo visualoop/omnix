@@ -74,7 +74,7 @@ export function HeroSection() {
           className="lede mx-auto mt-9 text-center text-balance"
           style={{ maxWidth: '620px' }}
         >
-          Duka is the desktop ERP built for Kenyan owner-operators. POS, inventory, banking,
+          Omnix is the desktop ERP built for Kenyan owner-operators. POS, inventory, banking,
           payroll, KRA receipts — one Windows app you download, run offline, and own. One
           payment, no subscription.
         </motion.p>

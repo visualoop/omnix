@@ -22,7 +22,7 @@ export function TrialEndingSoon({ name, days }: Props) {
   return (
     <Html>
       <Head />
-      <Preview>Your Duka trial ends in {String(days)} day{days === 1 ? '' : 's'}</Preview>
+      <Preview>Your Omnix trial ends in {String(days)} day{days === 1 ? '' : 's'}</Preview>
       <Body style={{ backgroundColor: '#0B0907', margin: 0, padding: '40px 0' }}>
         <Container style={containerStyle}>
           <Section style={brand}>
@@ -37,7 +37,7 @@ export function TrialEndingSoon({ name, days }: Props) {
           </Heading>
           <Text style={p}>Hi {name},</Text>
           <Text style={p}>
-            Your free Duka trial wraps up{' '}
+            Your free Omnix trial wraps up{' '}
             <span style={accent}>
               in {days} day{days === 1 ? '' : 's'}
             </span>
@@ -64,7 +64,7 @@ export function TrialEndingSoon({ name, days }: Props) {
 
           <Hr style={hr} />
           <Text style={footer}>
-            If you've already decided Duka isn't the right fit, no worries — your data exports
+            If you've already decided Omnix isn't the right fit, no worries — your data exports
             from the desktop app at any time. Reply to this email if anything's stopping you
             from paying; we usually fix the issue and you decide later.
           </Text>

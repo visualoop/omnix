@@ -9,11 +9,9 @@ import { cn } from '@/lib/cn'
 const BUSINESS_TYPES = [
   { value: 'pharmacy', label: 'Pharmacy / Chemist' },
   { value: 'mini_mart', label: 'Mini-mart / Supermarket' },
-  { value: 'duka', label: 'Duka / General shop' },
-  { value: 'salon', label: 'Salon / Beauty' },
-  { value: 'restaurant', label: 'Restaurant / Cafe' },
+  { value: 'duka', label: 'General shop / Duka' },
+  { value: 'restaurant', label: 'Restaurant / Hotel' },
   { value: 'hardware', label: 'Hardware' },
-  { value: 'electronics', label: 'Electronics' },
   { value: 'other', label: 'Other' },
 ] as const
 

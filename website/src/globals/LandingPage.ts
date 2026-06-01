@@ -38,7 +38,7 @@ export const LandingPage: GlobalConfig = {
           name: 'subheadline',
           type: 'textarea',
           defaultValue:
-            'All-in-one ERP for Kenyan pharmacies, mini-marts, salons, and shops. Works offline. Costs less than your rent. No subscription forever.',
+            'All-in-one ERP for Kenyan pharmacies, mini-marts, hardware shops, restaurants, and hotels. Works offline. Costs less than your rent. No subscription forever.',
         },
         { name: 'primaryCtaLabel', type: 'text', defaultValue: 'Download free trial' },
         { name: 'primaryCtaHref', type: 'text', defaultValue: '/downloads' },
@@ -81,7 +81,7 @@ export const LandingPage: GlobalConfig = {
           name: 'description',
           type: 'textarea',
           defaultValue:
-            'Pick the module that fits your trade. Every Duka licence includes Core ERP plus the modules you choose.',
+            'Pick the module that fits your trade. Every Omnix licence includes Core ERP plus the modules you choose.',
         },
       ],
     },

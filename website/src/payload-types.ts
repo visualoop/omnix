@@ -72,6 +72,7 @@ export interface Config {
     customers: Customer;
     licenses: License;
     machines: Machine;
+    activations: Activation;
     releases: Release;
     'telemetry-events': TelemetryEvent;
     payments: Payment;
@@ -91,6 +92,7 @@ export interface Config {
     customers: CustomersSelect<false> | CustomersSelect<true>;
     licenses: LicensesSelect<false> | LicensesSelect<true>;
     machines: MachinesSelect<false> | MachinesSelect<true>;
+    activations: ActivationsSelect<false> | ActivationsSelect<true>;
     releases: ReleasesSelect<false> | ReleasesSelect<true>;
     'telemetry-events': TelemetryEventsSelect<false> | TelemetryEventsSelect<true>;
     payments: PaymentsSelect<false> | PaymentsSelect<true>;
@@ -198,7 +200,7 @@ export interface User {
   collection: 'users';
 }
 /**
- * Customer accounts — anyone with a Duka license or trial.
+ * Customer accounts — anyone with a Omnix license or trial.
  *
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "customers".
@@ -276,9 +278,7 @@ export interface Customer {
     | null;
   town?: string | null;
   physicalAddress?: string | null;
-  businessType?:
-    | ('pharmacy' | 'mini_mart' | 'duka' | 'salon' | 'restaurant' | 'hardware' | 'electronics' | 'other')
-    | null;
+  businessType?: ('pharmacy' | 'mini_mart' | 'duka' | 'restaurant' | 'hardware' | 'other') | null;
   employeeCount?: ('1' | '2-5' | '6-15' | '16-50' | '50+') | null;
   howDidYouHear?: ('google' | 'friend' | 'social' | 'reseller' | 'other') | null;
   newsletterOptIn?: boolean | null;
@@ -335,17 +335,33 @@ export interface Customer {
 export interface License {
   id: number;
   /**
-   * Auto-generated on creation. Format: DUKA-XXXX-XXXX-XXXX. Read-only after create.
+   * Auto-generated on creation. Format: OMNIX-XXXX-XXXX-XXXX. Read-only after create.
    */
   licenseKey?: string | null;
   customer: number | Customer;
   tier: 'trial' | 'starter' | 'business' | 'enterprise';
-  modules: ('core' | 'dawa' | 'retail' | 'salon' | 'restaurant' | 'hardware')[];
+  modules: ('core' | 'dawa' | 'retail' | 'hardware' | 'hospitality')[];
   maxBranches?: number | null;
   /**
    * Number of PCs that can activate with this license key.
    */
   maxMachines?: number | null;
+  /**
+   * Max self-service machine rebinds allowed within rebindWindowDays. 0 = support-only.
+   */
+  rebindLimitPerWindow?: number | null;
+  /**
+   * Rolling window (days) over which rebindLimitPerWindow is counted.
+   */
+  rebindWindowDays?: number | null;
+  /**
+   * Rebinds used in the current window. Reset when the window rolls over.
+   */
+  rebindCountInWindow?: number | null;
+  /**
+   * When the current rebind window started.
+   */
+  rebindWindowStartedAt?: string | null;
   status: 'trial' | 'active' | 'lapsed' | 'maintenance_expired' | 'suspended' | 'cancelled';
   trialStartedAt?: string | null;
   trialEndsAt?: string | null;
@@ -457,6 +473,33 @@ export interface Machine {
    * Owner-toggled. On next heartbeat the desktop app pulls a diagnostic dump and clears this flag.
    */
   requestDiagnostic?: boolean | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * Append-only licensing event log (activate / validate / rebind / reject).
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "activations".
+ */
+export interface Activation {
+  id: number;
+  /**
+   * Empty when the key did not resolve to a known license.
+   */
+  license?: (number | null) | License;
+  machine?: (number | null) | Machine;
+  /**
+   * Hardware fingerprint presented by the client.
+   */
+  machineId?: string | null;
+  event: 'activate' | 'validate' | 'rebind' | 'deactivate';
+  outcome: 'success' | 'rejected_seats' | 'rejected_cooldown' | 'rejected_invalid' | 'rejected_revoked';
+  /**
+   * Human-readable reason / error string.
+   */
+  detail?: string | null;
+  ip?: string | null;
   updatedAt: string;
   createdAt: string;
 }
@@ -719,7 +762,7 @@ export interface Payment {
 export interface SupportTicket {
   id: number;
   /**
-   * Auto-generated. Format: DUKA-T-YYYY-NNNNNN.
+   * Auto-generated. Format: OMNIX-T-YYYY-NNNNNN.
    */
   ticketNumber?: string | null;
   customer: number | Customer;
@@ -874,7 +917,7 @@ export interface BlogPost {
  */
 export interface Module {
   id: number;
-  moduleId: 'core' | 'dawa' | 'retail' | 'salon' | 'restaurant' | 'hardware' | 'electronics';
+  moduleId: 'core' | 'dawa' | 'retail' | 'hardware' | 'hospitality';
   /**
    * Display name, e.g. "Dawa Pharmacy".
    */
@@ -995,6 +1038,10 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'machines';
         value: number | Machine;
+      } | null)
+    | ({
+        relationTo: 'activations';
+        value: number | Activation;
       } | null)
     | ({
         relationTo: 'releases';
@@ -1156,6 +1203,10 @@ export interface LicensesSelect<T extends boolean = true> {
   modules?: T;
   maxBranches?: T;
   maxMachines?: T;
+  rebindLimitPerWindow?: T;
+  rebindWindowDays?: T;
+  rebindCountInWindow?: T;
+  rebindWindowStartedAt?: T;
   status?: T;
   trialStartedAt?: T;
   trialEndsAt?: T;
@@ -1219,6 +1270,21 @@ export interface MachinesSelect<T extends boolean = true> {
   deactivatedAt?: T;
   deactivationReason?: T;
   requestDiagnostic?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "activations_select".
+ */
+export interface ActivationsSelect<T extends boolean = true> {
+  license?: T;
+  machine?: T;
+  machineId?: T;
+  event?: T;
+  outcome?: T;
+  detail?: T;
+  ip?: T;
   updatedAt?: T;
   createdAt?: T;
 }

@@ -29,7 +29,7 @@ export function LicenseIssued({ name, licenseKey, tier, maintenanceUntil }: Prop
   return (
     <Html>
       <Head />
-      <Preview>Your Duka licence is active — {licenseKey}</Preview>
+      <Preview>Your Omnix licence is active — {licenseKey}</Preview>
       <Body style={{ backgroundColor: '#0B0907', margin: 0, padding: '40px 0' }}>
         <Container style={containerStyle}>
           <Section style={brand}>
@@ -43,7 +43,7 @@ export function LicenseIssued({ name, licenseKey, tier, maintenanceUntil }: Prop
             Welcome aboard, {name}.
           </Heading>
           <Text style={p}>
-            Your Duka licence is active. Paste the key below into the desktop app on first
+            Your Omnix licence is active. Paste the key below into the desktop app on first
             launch — it auto-fills if you sign in to your dashboard first.
           </Text>
 
@@ -70,7 +70,7 @@ export function LicenseIssued({ name, licenseKey, tier, maintenanceUntil }: Prop
                 fontWeight: 600,
               }}
             >
-              Download Duka →
+              Download Omnix →
             </Link>
           </Section>
 

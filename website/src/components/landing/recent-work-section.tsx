@@ -4,9 +4,9 @@ import { motion } from 'framer-motion'
 import { cn } from '@/lib/cn'
 
 /**
- * "Customers running Duka today" — 1-2-1 editorial layout.
+ * "Customers running Omnix today" — 1-2-1 editorial layout.
  *
- * Per DUKA-BRIEF §6.1 ⑦ — replaces a generic logo wall.
+ * Per OMNIX-BRIEF §6.1 ⑦ — replaces a generic logo wall.
  *
  * Layout pattern (1-2-1):
  *   row 1 — full-width tile
@@ -66,13 +66,13 @@ export function RecentWorkSection() {
         {/* Section header */}
         <div className="mb-16 flex flex-col items-start justify-between gap-6 md:flex-row md:items-end">
           <div className="max-w-[36rem]">
-            <span className="eyebrow">Customers running Duka today</span>
+            <span className="eyebrow">Customers running Omnix today</span>
             <h2 className="headline-section mt-5 text-balance">
               Real shops. <em>Real receipts.</em>
             </h2>
           </div>
           <p className="lede max-w-[28rem]">
-            Four of the businesses live on Duka right now. Photographs replace these panels
+            Four of the businesses live on Omnix right now. Photographs replace these panels
             once the owner uploads them.
           </p>
         </div>

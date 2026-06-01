@@ -1,8 +1,59 @@
-# UI Design Reference — SokoOS
+# UI Design Reference — Omnix
+
+> **Canonical design source of truth.** The persisted UI/UX Pro Max output lives at
+> `design-system/omnix/MASTER.md`. Where that generator's generic defaults conflict
+> with Omnix's established theme, **this document wins** — see Reconciliation below.
+
+## Omnix Design System (canonical tokens)
+
+Omnix is a Linear/Notion-grade desktop ERP. The theme is flat, dense, keyboard-first,
+dark+light, with a single configurable accent. These tokens are fixed:
+
+| Token | Omnix value | Notes |
+|-------|-------------|-------|
+| Body + UI font | **Inter** | NOT Fira Sans. Monospace only for numbers/codes/prices. |
+| Accent | **blue-600** (configurable per business) | One accent only; semantic green/amber/red for status. |
+| Cards | **flat, bordered, no drop shadow** | `border-border` + `bg-card`; shadows reserved for popovers/modals only. |
+| Radius | ≤ 8px | Architectural, not pill-shaped. |
+| Grid | 8px spacing system | xs4 / sm8 / md16 / lg24 / xl32. |
+| Buttons | flat fills, no gradients | hover = color/opacity shift, never layout-shifting scale. |
+| Theme | dark + light, system-aware | every surface must respect both. |
+
+### Reconciliation with the generated MASTER.md
+The `ui-ux-pro-max --design-system` run for Omnix (category: Analytics Dashboard) is a
+useful **interaction/structure** reference but its visual defaults are overridden:
+
+| Generator suggested | Omnix decision |
+|---------------------|----------------|
+| Fira Code / Fira Sans | ❌ Use **Inter** (mono for figures only). |
+| Card drop shadows (`--shadow-md` on `.card`) | ❌ **Flat bordered cards**; shadow only on overlays. |
+| `translateY(-2px)` hover lift | ❌ No layout-shifting hovers; use `bg-accent/30` row/cell hover. |
+| Generic `#1E40AF` blue + `#D97706` amber | ✅ Keep the app's themeable **blue-600** accent + semantic colors. |
+| Rounded 12–16px cards | ❌ Keep ≤ 8px. |
+
+**Adopt from the skill (theme-agnostic, genuinely useful):**
+- Data-dense layout: minimal padding, KPI cards, dense tables, filtering on every list.
+- Row/cell **hover highlighting** with 150–300ms transitions.
+- `cursor-pointer` on every clickable element; visible keyboard focus states.
+- Lucide SVG icons only — **no emoji as icons**.
+- Light-mode text contrast ≥ 4.5:1; respect `prefers-reduced-motion`.
+
+## Skills Gate (mandatory for every UI task)
+
+Before building any UI surface (Tasks 13, 16, 17, 18, 21, and all module pages):
+1. **Generate** — `python3 .kiro/skills/ui-ux-pro-max/scripts/search.py "<surface keywords>" --design-system` (and `--page "<name>"` to persist page overrides under `design-system/omnix/pages/`).
+2. **Build** — follow `website/.claude/skills/frontend-design` + `aesthetic-direction` + `hierarchy-rhythm`, plus the canonical tokens above (never the generator's generic font/shadows).
+3. **Check** — run `ai-slop-check` rules: no gradients/orbs/emoji, no generic AI patterns, intentional hierarchy.
+4. **Pre-delivery checklist** — no emoji icons, cursor-pointer, smooth hovers, 4.5:1 contrast, visible focus, reduced-motion, responsive.
+5. **Screenshot-verify** at **1280×720, 1024×768, 1920×1080** (customer display also tested at these). If a headless environment blocks screenshots, state that explicitly and rely on `vite build` + checklist review.
+
+Page-specific overrides live in `design-system/omnix/pages/<page>.md`; if present they override `MASTER.md` (but never these canonical tokens).
+
+---
 
 ## Design Philosophy
 
-SokoOS must feel like Linear, Notion, or Figma — NOT like a Windows Forms app, NOT like a Bootstrap admin template.
+Omnix must feel like Linear, Notion, or Figma — NOT like a Windows Forms app, NOT like a Bootstrap admin template.
 
 The standard: **Would this screen feel at home in Linear's interface?**
 If it looks like a WordPress admin panel, rebuild.

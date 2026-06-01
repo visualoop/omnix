@@ -2,6 +2,235 @@
 
 This tracks work done LOCALLY without GitHub pushes. We only push when the user explicitly says so.
 
+## Build/deploy hygiene (Vercel + CI determinism)
+- **Removed dual lockfiles**: deleted tracked `package-lock.json` at root and in `website/` — the toolchain (CI `pnpm install --frozen-lockfile`, linked Vercel project) standardised on **pnpm**, so the stale npm lockfiles were a non-deterministic-install hazard ("works locally, fails on Vercel"). Only `pnpm-lock.yaml` (v9.0) remains.
+- Pinned `packageManager: pnpm@9.15.4` in both `package.json` files so Vercel (corepack) and CI use the same pnpm major as the lockfile.
+- **Fixed Vercel-breaking `pnpm-workspace.yaml`**: `website/pnpm-workspace.yaml` was missing the required `packages` field (pnpm 9 errors `packages field missing or empty`) — added `packages: []`. Root workspace had a malformed `allowBuilds:` placeholder block ("set this to true or false") — replaced with a valid `onlyBuiltDependencies` list.
+- Verified `pnpm install --frozen-lockfile` + `pnpm build` pass for both root and `website/` (sharp builds for Vercel image optimisation). Vercel project link confirmed: `.vercel/project.json` → project `website`, root directory `website/`. Build artifacts (`.next`, `.vercel`, `*.tsbuildinfo`) correctly gitignored.
+
+## Post-completion hardening (Salon removal + first-run + e2e)
+
+### Salon removed completely (desktop + website)
+- **Desktop**: `ModuleId` union trimmed to `dawa | retail | hardware | hospitality | core` (dropped `salon`, `restaurant`, `electronics` — restaurant is covered by Hospitality, electronics was never built). `MODULE_DEFINITIONS`, `modules.tsx` cards, and `module-logos.tsx` (removed `SalonLogo` + cases) updated. Hardware + Hospitality cards now marked **installed** with real feature lists.
+- **Website**: `modules-seed.ts` now sells exactly the four live trades (Hardware + Hospitality promoted to `live` with real features, replacing planned salon/restaurant). `Modules` collection enum, `modules-rows-section`, `/modules` page, site-footer trade links, business-type selects (Customers/profile-form/signup-form, kept `duka`), and prose all salon-free. Replaced the stale `salon-module-roadmap` blog post with `hardware-hospitality-shipped`. `payload generate:types` re-run.
+- Verified: `grep '\bsalon\b'` across all `*.ts/*.tsx/*.rs` = **zero** (only historical `docs/*.md` + one generic "two salons" payroll example remain).
+
+### Desktop first-run screen [SKILLS GATE]
+- Ran UI/UX Pro Max → Flat Design / zero-elevation. Applied on Omnix theme tokens (override generic palette).
+- `license-activation.tsx`: removed left-hero gradient, trial-card gradient + blur orb; `rounded-xl→rounded-lg`, icon/select/textarea `→rounded-md`; `cursor-pointer` on all controls; emerald/amber `-700→-600 dark:-400`.
+- Correctness fixes: stale **"KES 30,000 + KES 12,000/year"** subscription pricing → **"KES 100,000 one-time · pay once, use forever · no subscription"**; buy link `/buy→/pricing`; version badge `v0.1.2`→"Pay once. Use forever."; `SOKO-`→`OMNIX-` placeholder; pharmacy-only feature list → module-agnostic. `brand.ts` company domain/website/support → `omnix.co.ke`.
+
+### End-to-end correctness pass
+- Dashboard welcome copy now lists all four trades. All client dashboard surfaces present (overview, downloads, licenses, billing, profile, support, machines, payments).
+- Verified green: desktop `tsc` + 17 Rust tests + `vite build`; website `tsc` + `next build` (51 routes).
+- **Open for release (Task 5)**: website still advertises published **v0.2.0** binary (downloads/changelog/KPI) — correct until a real signed **0.2.8** build is published. Desktop keyless trial is single-module (anti-farming) while the website account trial unlocks all modules — two intentional entry points.
+
+## In progress — Omnix Platform Completion (28-task plan)
+
+### Task 1 — License payload entitlements (v2)
+- `LicensePayload` (Rust `src-tauri/src/license/mod.rs`) gains `modules: Vec<String>` + `max_devices: u32` with `#[serde(default)]` for v1 compatibility; added `effective_modules()` (v1 `feat`→module map, default `dawa`) and `effective_max_devices()` (0→1).
+- Key prefix strip now accepts `OMNIX-` and legacy `SOKO-`.
+- `scripts/generate-license.mjs` emits `ver:2` keys with `--modules` and `--max-devices`, `OMNIX-` prefix.
+- TS mirror in `src/services/license.ts` + `licensePayloadModules()` helper.
+- 9 Rust license tests pass (v2 entitlements, v1→module compat, tampered-modules rejection).
+
+### Task 2 — Local entitlement store + selectors
+- Migration `027_license_entitlements.sql`: `license` table gains `modules_json`, `max_devices`, `activation_token`, `server_validated`, `last_server_check_at` (registered in `lib.rs`).
+- `activateLicense()` persists modules + max_devices; `LicenseStatus` now carries `modules`, `max_devices`, `server_validated`.
+- New async selectors `licensedModules()` and `isModuleLicensed(moduleId)` for app-wide gating.
+- Trial branch no longer hard-unlocks pharmacy (placeholder until Task 7).
+- `tsc` clean; `cargo check` warning-free (host target).
+
+### Task 3 — Website licensing data model
+- `website/src/collections/Licenses.ts`: modules options aligned to canonical set (`core/dawa/retail/hardware/hospitality`, dropped salon/restaurant-as-planned); fixed `OMNIX-` key doc string; added self-service rebind cooldown fields (`rebindLimitPerWindow` default 2, `rebindWindowDays` default 30, `rebindCountInWindow`, `rebindWindowStartedAt`).
+- New `website/src/collections/Activations.ts`: append-only audit log (activate/validate/rebind/deactivate × outcome), system-token write, owner/support read, registered in `payload.config.ts`.
+- Machines collection already covers fingerprint/token/seat tracking. Website `tsc` clean.
+
+### Task 4 — Activation endpoint with seat enforcement + entitlements
+- Rewrote `website/src/endpoints/licenses-activate.ts` (`POST /api/licenses/activate`): validates licence, rejects suspended/cancelled, idempotent re-activation (rotates token), enforces seat cap via active machine count vs `maxMachines`, registers machine, returns `{ ok, authToken, action, entitlements }` where `entitlements` = `entitlementsOf(license)` (modules, maxDevices, maxBranches, maintenanceUntil, trialEndsAt, majorVersionCap, status).
+- Added `logActivation()` + `clientIp()` helpers to `_auth.ts`; every activate outcome (success/rejected_invalid/rejected_revoked/rejected_seats) writes an `Activations` row.
+- Regenerated `payload-types.ts` so `activations` collection is typed. Website `tsc` clean.
+
+### Task 5 — Desktop online activation + offline fallback
+- `src/services/license.ts`: added `@tauri-apps/plugin-http` fetch + `ACTIVATION_API_BASE` (`VITE_OMNIX_API` override, default `https://omnix.co.ke`). `activateLicense()` now: verifies signature locally → `activateOnline()` POSTs to `/api/licenses/activate` → on server reject (409 seat cap / revoked) hard-fails without activating → on success stores `activation_token` + `server_validated=1` + server entitlements → on network failure stores signed-key-only with `server_validated=0` and returns `{ ok, pending:true }`.
+- Added `revalidateLicense()` (foundation for Task 6): POSTs `/api/licenses/validate`, refreshes modules/seats/maintenance, clears pending flag, strips modules if server reports suspended/cancelled; no-op when offline.
+- `src/pages/license-activation.tsx`: shows an "activated offline, will verify later" toast when `pending`.
+- `src-tauri/capabilities/default.json`: http allowlist adds `omnix.co.ke`, `*.omnix.co.ke`, `localhost:3000` (kept `sokoos.co.ke`).
+- `tsc` clean. Desktop has no frontend test runner; activation branching is covered by the Task 28 e2e.
+
+### Task 6 — Silent re-validation + self-service rebind with cooldown
+- New `website/src/endpoints/licenses-rebind.ts` (`POST /api/licenses/rebind`, customer-auth): verifies machine ownership, enforces rolling rebind window (`rebindLimitPerWindow`/`rebindWindowDays`), deactivates the machine to free a seat, advances `rebindCountInWindow`/`rebindWindowStartedAt`, logs to `Activations`; returns 429 with `windowResetsAt` when the cooldown is hit. Registered in `endpoints/index.ts`.
+- Dashboard machines page now Omnix-branded, shows seats-in-use and rebinds-used summary, and a client `DeactivateMachineButton` that calls the rebind endpoint and refreshes.
+- Desktop `LicenseGuard` runs `revalidateLicense()` once after confirming activation (online window); a server-revoked result re-pulls status to lock the app. Offline = no-op.
+- Website + desktop `tsc` clean.
+
+### Task 7 — Single-module, server-registered trial
+- Migration `028_trial_module.sql`: `trial_state` gains `module` (default `dawa`) + `server_registered` (registered in `lib.rs` as version 28).
+- `src/services/license.ts`: `startTrial(moduleId)` records the chosen module and best-effort registers the fingerprint via `POST /api/trials/start`; `getTrialState()` returns `modules: [module]` only while active. The `getLicenseStatus` trial branch already surfaces `trial.modules`, so a trial now unlocks exactly one vertical (plus ungated Core).
+- New `website/src/endpoints/trials-start.ts`: rejects (409) if the fingerprint already activated or has a prior trial (dedupe via `Activations` log), preventing trial farming across reinstalls.
+- `license-activation.tsx`: added a module chooser to the trial CTA; copy updated to "one module".
+- Phase A complete. Desktop + website `tsc` clean; `cargo check` warning-free.
+
+## Phase B — Hard Module Gating
+
+### Task 8 — Entitlement-driven module gate
+- New `src/stores/entitlements.ts`: synchronous zustand store (`useEntitlements`) + `isModuleEntitled(moduleId)` / `entitledModules()`. Core never gated; `VITE_SKIP_LICENSE=1` unlocks all in dev.
+- `LicenseGuard` hydrates the store from `getLicenseStatus().modules` and re-pulls after revalidation.
+- `RequireRole` now hard-blocks routes for unlicensed modules with an "isn't on your licence" screen (before the active-module switch screen).
+- Sidebar nav + command-palette pages filter out unlicensed module items; both subscribe to the store so they recompute on hydrate.
+- `active-module.ts` `setActive()` throws if the target module isn't entitled.
+- Modules settings page shows a Licensed / Not-on-licence pill per module.
+- Setup wizard only offers entitled modules and defaults to the first entitled one.
+- `tsc` clean.
+
+### Task 9 — Backend enforcement of module-scoped commands
+- New Rust command `verify_module_entitled(key, module)` in `src-tauri/src/commands/license.rs`: re-verifies the RSA signature (cannot be spoofed from JS) and checks module membership via `effective_modules()`; `core` always entitled, invalid key denies. Registered in `lib.rs`. 4 new Rust tests pass (17 total).
+- TS `assertModuleEntitled(moduleId)` in `src/services/license.ts`: reads the stored key, calls the backend guard, throws if not licensed (falls back to local check for keyless trials; no-op under `VITE_SKIP_LICENSE`). Module-scoped service writes call this for defense beyond the UI gate.
+- Skill: installed UI/UX Pro Max **v2.5.0** (161 palettes) into `.kiro/skills/ui-ux-pro-max` (primary reference) and refreshed `.codex/skills/ui-ux-pro-max`; generator verified runnable.
+- `tsc` clean; `cargo check` warning-free.
+
+## Phase C — Granular RBAC
+
+### Task 10 — RBAC schema migration + seed
+- Migration `029_rbac.sql`: `roles, permissions, role_permissions, groups, group_members, user_roles, group_roles, permission_overrides` (per plan 09 §6) + indexes; seeds 4 system roles (`is_system=1`). `users.role` kept for compat. Registered as version 29 in `lib.rs`.
+- New `src/services/rbac.ts` `seedRbac()`: idempotently mirrors the TS `PERMISSION_CATALOG` (module derived from key prefix, resource/action split, risk level) and re-syncs system-role grants from `getPermissionsForRole`; runs on boot after DB init. `catalogByGroup()` helper for the Task 13 role-builder UI.
+- `tsc` clean; `cargo check` warning-free.
+
+### Task 11 — Effective-permission resolver + cache
+- `src/services/rbac.ts` `resolveEffectivePermissions(userId, {branchId, moduleId})`: unions role grants from direct `user_roles` + group `group_roles` (via `group_members`), branch/module scoped (NULL = all), applies `permission_overrides` (user/group/role subjects); precedence override-deny > override-allow > role-deny > role-allow; Owner role short-circuits to all permissions.
+- Auth store (`src/stores/auth.ts`) gains a `permissions` cache + `loadPermissions()` (resolves for active branch+module); loaded on sign-in and restored on boot for persisted sessions; cleared on sign-out.
+- `src/lib/permissions.ts` `hasPermission()` consults a decoupled `setCachedPermissions()` cache when present, else falls back to the static role matrix (back-compat for users without RBAC assignments). No import cycle.
+- `tsc` clean.
+
+### Task 12 — Permission enforcement for critical actions + audit
+- Migration `030_audit_log.sql`: append-only `audit_log` (user, permission_key, action, outcome allowed/denied, risk_level, branch, entity, metadata) + indexes. Registered version 30.
+- `src/services/rbac.ts`: `auditLog(permission, outcome, ctx)` (best-effort writer) + `requirePermission(permission, ctx)` — checks `hasPermission` for the current user, writes an audit row (allowed/denied), and throws to block the action on denial.
+- Wired into critical service ops as exemplars: `voidSale` → `sales.void`; `approvePayrollRun` → `hr.payroll.approve`. (Pattern reused by other high/critical ops + future module writes.)
+- Audit page (`src/pages/audit.tsx`) now reads `audit_log` and adds a "permission" filter so allowed/denied critical actions are visible.
+- Note: business mutations run in JS via tauri-plugin-sql (Rust has no DB handle), so the service-layer `requirePermission` is the authoritative guard; module entitlement (Task 9) is the part enforced in Rust via signature verification.
+- `tsc` clean; `cargo check` warning-free.
+
+### Task 13 — RBAC management UI [SKILLS GATE]
+- Ran `ui-ux-pro-max --design-system` for the admin/RBAC surface (data-dense dashboard pattern); applied its rules (minimal padding, row-hover, risk badges, filtering, cursor-pointer, no emoji, dark-mode contrast) on the app's existing Linear/Notion theme tokens.
+- RBAC CRUD added to `src/services/rbac.ts`: `listRoles/listGroups`, `rolePermissionKeys`, `createRole/cloneRole/deleteRole`, `setRolePermission`, `createGroup/addGroupMember/removeGroupMember/groupMemberIds`, `assignUserRole/removeUserRole/userRoleIds`, and `explainPermission()` for the access viewer. All mutating ops call `requirePermission('users.manage')`.
+- `src/pages/settings-roles.tsx` rewritten into a dynamic role builder: role list + create/clone/delete, per-permission toggle for custom roles (grouped, searchable, risk-badged), system roles read-only, Owner implicit-all.
+- New `src/pages/settings-groups.tsx` (group create + membership) and `src/pages/settings-access-audit.tsx` (Access Explorer: pick a user → see allowed/denied per permission with "granted via role X" explanations).
+- Routes `/settings/groups`, `/settings/access-audit` registered (users.manage); settings nav adds Roles / Groups / Access Explorer.
+- `tsc` clean; `vite build` succeeds. Screenshot verification not possible in this headless env — skill rules applied in code and checked against `ai-slop-check`.
+- **Phase C (granular RBAC) complete.**
+
+## Phase D — Settings Consolidation
+
+### Task 14 — Settings registry + consolidation
+- New `src/lib/settings-registry.ts`: declarative `SettingsNavItem[]` (route, label, description, icon, permission, group, optional owning module) + `SETTINGS_GROUPS` order + `registerSettings()` so module sub-registries (Task 15) contribute, and `settingsRegistry()` accessor.
+- `settings-layout.tsx` refactored to render from the registry (was an inline array); still permission- + active-module-gated; back button → `/`.
+- Audited all settings surfaces — every one already lives under `/settings/*`. Removed the duplicate top-level `/audit` route (now redirects to `/settings/audit`) so the shell is the single home.
+- Customer Display nav icon fixed to `Monitor`.
+- `tsc` clean.
+
+### Task 15 — Fill settings gaps + module settings slots
+- Filled the receipt-template gap: new `/settings/receipt` page (`settings-receipt.tsx`) configures a custom receipt footer + "Powered by Omnix" toggle, stored in the settings KV table.
+- `services/receipt.ts` now loads `receipt.footer` / `receipt.show_powered_by` and renders them (was a hardcoded "Thank you" + powered-by line). Registered in the core registry under Operations + routed in `App.tsx`.
+- Module settings slots: the `registerSettings()` mechanism (Task 14) is the contribution point; Hardware (Task 21) and Hospitality (Task 22+) call it with `module:'hardware'/'hospitality'` + permission so their settings appear in the shell only when the module is licensed+active. UOM/credit-terms/commissions/service-charge homes ship with their owning modules (Tasks 20–24) to avoid orphaned pages now.
+- `tsc` clean. **Phase D (settings consolidation) complete.**
+
+## Phase E — Design System & Customer Display
+
+### Task 16 — Persist the Omnix design system [SKILLS GATE]
+- Ran `ui-ux-pro-max --design-system --persist -p "Omnix"` → `design-system/omnix/MASTER.md` (category: Analytics Dashboard).
+- `docs/ui-design-reference.md` retitled SokoOS→Omnix and prepended a **canonical design-system section**: fixed Omnix tokens (Inter font, flat bordered cards/no shadows, ≤8px radius, themeable blue-600 accent, 8px grid) + a Reconciliation table that overrides the generator's generic defaults (Fira Code, card shadows, translateY hovers, generic blue/amber) while adopting its theme-agnostic guidance (data density, row-hover, filtering, a11y).
+- Codified the **mandatory skills gate** (generate → build per frontend-design/aesthetic-direction/hierarchy-rhythm → ai-slop-check → pre-delivery checklist → screenshot 1280×720/1024×768/1920×1080) as the binding checklist for all UI tasks.
+- Added an Omnix-override banner to the generated `MASTER.md` so its generic defaults aren't applied blindly. No app code.
+
+### Task 17 — Customer-facing display redesign + module registry [SKILLS GATE]
+- Ran skills gate (`--page customer-display`); took distance-legible/premium-dark/Inter cues, rejected the "Liquid Glass" blur/morph suggestion per canonical flat-dark rule.
+- `App.tsx`: lifted the `/customer-display` route **above `LicenseGuard`** so the second screen never flashes the activation or setup wizard; removed the now-dead in-`AppContent` check.
+- Expanded `src/lib/display-registry.ts` (Plan 09 §8): `CustomerDisplayModuleConfig` with `accentLine/accentText`, idle title/subtitle/hint, active labels, `privacyMode`+`privacyLabel`, optional `lineMetadata`, and `successMessage` — for core/dawa/retail/hardware/hospitality.
+- Rewrote `src/pages/customer-display.tsx`: fully registry-driven **idle / active-order / payment-success** states (success detected on cart non-empty→empty transition), flat premium dark, big distance-legible totals, module accent line, Dawa privacy hides item names. Reads canonical `customer_display.privacy` key written by settings.
+- Added `hospitality` to the `ModuleId` union + `MODULE_DEFINITIONS` (status available).
+- `tsc` clean; `vite build` succeeds. Screenshots not possible in headless env — design rules applied in code + checked against `ai-slop-check`.
+
+### Task 18 — Global UI polish pass [SKILLS GATE]
+- Swept `src/pages` + `src/components` for hardcoded light-only colors/gradients against the canonical tokens. The v0.2.8 theme-fix had already cleaned most surfaces, so only a few remained.
+- Fixed dark-mode breakers: `quick-add` footer (`bg-stone-50`→`bg-muted/40`); `dose-calculator` selected/hover/badge fills (`bg-violet-50`→`bg-violet-500/10`, `bg-amber-50`→`bg-amber-500/10`, `border-violet-200`→`border-violet-500/30`, `text-*-700`→`text-*-600 dark:text-*-400`, `hover:bg-stone-50`→`hover:bg-accent`).
+- Left intentional cases as-is per the design system: subtle on-tone `from-primary/5` gradients (allowed), the white switch thumb, and the `bg-gray-500` status dot.
+- `tsc` clean; `vite build` succeeds. **Phase E (design system + customer display) complete.**
+
+## Phase F — Hardware Module
+
+### Task 19 — Hardware module plan doc + registration
+- Wrote `docs/plans/10-hardware-module.md` (mirrors plan 08): Core-vs-Hardware boundary, "promote quotations/delivery-notes/credit to Core" decision, permissions, settings routes, migration `031_hardware.sql` schema (quotations, delivery_notes, customer_accounts, account_ledger, commission_rules, commission_accruals), services, pages, build order.
+- Registered hardware: `MODULE_DEFINITIONS.hardware` status → **available**; added hardware routes to `FEATURE_OWNERS` (`/hardware/{dashboard,quotations,delivery-notes,accounts,commissions,reports}` + `/settings/hardware/*`).
+- Permissions: added 6 `hardware.*` keys to the `Permission` union, `ALL_PERMISSIONS`, manager grants, new `Hardware` `PermissionGroup`, and `PERMISSION_CATALOG` entries (with risk levels). `moduleOf()` already maps `hardware.*`→hardware for the RBAC seed.
+- `tsc` clean.
+
+### Task 20 — Hardware data model + services
+- Migration `031_hardware.sql` (version 31): `quotations`, `quotation_items`, `delivery_notes`, `delivery_note_items`, `customer_accounts`, `account_ledger`, `commission_rules`, `commission_accruals` (+indexes). Extends Core via FKs only.
+- New `src/services/hardware.ts` — all mutating ops call `assertModuleEntitled('hardware')` + `requirePermission(...)`:
+  - Quotations: `createQuotation`, `listQuotations`, `convertQuoteToSale` (builds a Core sale via `completeSale`, marks quote converted).
+  - Delivery notes: `createDeliveryNote`, `markDispatched`, `markDelivered`.
+  - Contractor accounts: `getAccount` (lazy-create), `setCreditLimit`, `creditCheck` (limit + on-hold), `postCharge`/`postPayment` (ledger + running balance), `agedReceivables(asOf)` → current/1-30/31-60/61-90/90+ buckets.
+  - Commissions: `commissionForSale` accrues per active `commission_rules`.
+  - Pricing reuses the Retail `resolvePrice` engine (contractor/wholesale lists assigned to customers).
+- `tsc` clean; `cargo check` warning-free.
+
+### Task 21 — Hardware pages + reports + settings [SKILLS GATE]
+- Ran skills gate; kept the established flat data-dense theme (ignored "Liquid Glass").
+- `src/pages/hardware.tsx`: 6 pages — Dashboard (KPIs + aging), Quotations (list + status badges), Delivery Notes (dispatch/deliver actions), Contractor Accounts (limit/balance/available/hold), Commissions (per-salesperson accruals), Reports (quote conversion + aged receivables). All use `bg-card`/`border-border`, row-hover, `cursor-pointer`, Lucide icons, dark-aware status badges.
+- `src/pages/settings-hardware.tsx`: sellable bulk units + default credit terms (settings KV).
+- Routes registered in `App.tsx` (`/hardware/*` + `/settings/hardware/units`), each `RequireRole` permission-gated; sidebar nav items added (auto-gated by `getFeatureModule` + `isModuleEntitled`); settings-registry `registerSettings([...])` entry (module:'hardware').
+- `tsc` clean; `vite build` succeeds. **Phase F (Hardware module) complete.** Screenshots not possible headless — design rules applied + checked vs `ai-slop-check`.
+
+## Phase G — Hospitality Module
+
+### Task 22 — Hospitality registration + restaurant foundation (plan 08 Batches 1–2)
+- Registered hospitality: `FEATURE_OWNERS` routes (`/hospitality/{dashboard,tables,orders,kitchen,menu,recipes,bookings,rooms,checkin,housekeeping,folios,wastage,reports}` + `/settings/hospitality/*`). `MODULE_DEFINITIONS.hospitality` + display registry already in place (Task 17).
+- Permissions: 13 `hospitality.*` keys added to the `Permission` union, `ALL_PERMISSIONS`, manager grants (all) + cashier grants (orders.take/send_kitchen), new `Hospitality` `PermissionGroup`, and `PERMISSION_CATALOG`.
+- Migration `032_hospitality_core.sql` (version 32): `dining_areas`, `dining_tables`, `kitchen_stations`, `menu_items`, `menu_modifiers`, `menu_modifier_options`, `menu_item_modifiers` (+indexes).
+- New `src/services/hospitality.ts`: areas/tables CRUD + `setTableStatus`, kitchen stations, menu items CRUD + `setMenuItemActive`. All mutating ops `assertModuleEntitled('hospitality')` + `requirePermission`.
+- Pages `src/pages/hospitality.tsx`: Dashboard (table/menu KPIs), Tables (floor plan by area, tap-to-cycle status), Menu (item list + add + active toggle). Routes + sidebar nav added; `hospitality` mapped to the restaurant logo.
+- `tsc` clean; `cargo check` warning-free; `vite build` succeeds.
+
+### Task 23 — Restaurant order lifecycle + kitchen (plan 08 Batch 3) [SKILLS GATE]
+- Migration `033_hospitality_orders.sql` (version 33): `hospitality_orders` (order_number, table, type dine_in/takeaway/delivery/room_service, status open→sent→preparing→ready→served→paid→voided, waiter, sale link), `hospitality_order_items` (per-item status + sent/ready/served timestamps), `hospitality_order_item_modifiers` (+indexes).
+- `hospitality.ts` lifecycle: `openOrder` (occupies dine-in table), `listActiveOrders`, `listOrderItems`, `addOrderItem`, `sendToKitchen` (only `new`→`sent`), `kitchenQueue` (sent/preparing/ready joined w/ station + order #), `bumpItem` (sent→preparing→ready w/ ready_at), `markServed`, `voidOrderItem` (requires `hospitality.orders.void`). Permission-gated throughout.
+- Pages: Orders (active tabs → open order → tap menu grid to add items → send to kitchen, live totals) + Kitchen Display (tickets grouped by station, 10s auto-refresh, bump/served). `orderType`/`tableId` stay within hospitality — no leak into Dawa/Retail POS.
+- Routes + sidebar nav (Orders, Kitchen) added. `tsc` clean; `cargo check` warning-free; `vite build` succeeds.
+
+### Task 24 — Payment, tips & service charge (plan 08 Batch 4)
+- Migration `034_hospitality_service_charge.sql` (version 34): `service_charge_rules` (percent, applies_to dine_in/room_service/all) + `service_charge_allocations` (sale/order/employee, method waiter/pool/manual, payroll_period).
+- `hospitality.ts`: `serviceChargePercent(orderType)` + `payOrder(orderId, payments, userId, {serviceChargePercent, tipAmount, tipEmployeeId})` — builds `CartItem[]` from non-voided items, calls `completeSale` (Core sale, with tip), records a waiter service-charge allocation (kept out of product revenue), marks the order `paid` + links `sale_id`, frees the table. Tips reuse the existing `024_tips.sql` model via `completeSale`.
+- Orders page: pay panel (service-charge % + tip inputs, grand total, Pay button using the first payment method). New `settings-hospitality.tsx` service-charge rule editor, registered in the shell (module:'hospitality').
+- `tsc` clean; `cargo check` warning-free; `vite build` succeeds. (Split-bill by item/seat deferred — single full payment + service charge + tip is functional; itemized split can layer on the same `payOrder`.)
+
+### Task 25 — Rooms, bookings, folios (plan 08 Batches 5–6) [SKILLS GATE]
+- Migrations `035_hospitality_rooms.sql` (room_types, rooms, rate_plans, guests, bookings) + `036_hospitality_folios.sql` (guest_folios, folio_charges, folio_payments), versions 35/36.
+- `hospitality.ts`: room types/rooms CRUD + `setRoomStatus`, `listBookings`/`createBooking` (creates guest + reserves room type), `checkIn` (assigns room → occupied, opens folio), `postFolioCharge`, `chargeOrderToRoom` (posts a restaurant order to a folio + frees table), `folioBalance`, `postFolioPayment`, `checkOut` (requires zero balance unless `managerOverride`, frees room → dirty).
+- Pages: Rooms board (tap to cycle clean/dirty), Bookings (create + check-in assigns first free room + check-out with override prompt), Housekeeping (dirty/maintenance rooms → mark ready), Folios (open folios + balances + settle). Routes (`/hospitality/{rooms,bookings,checkin,housekeeping,folios}`) + sidebar nav added.
+- `tsc` clean; `cargo check` warning-free; `vite build` succeeds.
+
+### Task 26 — Recipes/costing + hospitality reports (plan 08 Batches 7–8) [SKILLS GATE]
+- Migration `037_hospitality_recipes.sql` (version 37): `recipes`, `recipe_ingredients` (qty/unit/wastage%), `hospitality_wastage` (reason prep_waste/spoilage/burnt/breakage/staff_meal/comped).
+- `hospitality.ts`: `createRecipe`/`listRecipes`, `recipeCost` (Σ qty × `buying_price` × (1+wastage%)), `recordWastage`, `restaurantReport` (paid orders, covers, avg ticket, top menu categories), `hotelReport` (occupancy %, ADR = room revenue/nights, RevPAR). v1 defers auto ingredient deduction.
+- Pages: Recipes & Costing (per-dish cost + food-cost % badge with green/amber/red bands) + Reports (restaurant + hotel dashboards). Routes + sidebar nav added.
+- `tsc` clean; `cargo check` warning-free; `vite build` succeeds; 17 Rust tests pass (37 migrations register). **Phase G (Hospitality module) complete.**
+
+### Task 27 — Duka→Omnix website rename
+- Replaced every brand reference across `website/src` (143 hits in 53 files): capitalized `Duka`→`Omnix` and `DUKA`→`OMNIX` (licence-key format, support-ticket format `OMNIX-T-YYYY-NNNNNN`, Paystack reference prefix, email copy, page/doc/blog/seed content, dashboard copy).
+- Rewrote the `omnix-rebrand` blog post (was `duka-rebrand`) into a coherent SokoOS→Omnix narrative — the blanket rename had left a self-contradictory "we took the word *duka*" story; new copy explains the multi-vertical "Omni" rationale.
+- Social links → `/omnix`; installer filename `duka-setup.exe`→`omnix-setup.exe`; `next.config.ts` image hosts `r2/media.sokoos.co.ke`→`*.omnix.co.ke`.
+- Preserved the `business_type` enum **value** `'duka'` (Swahili for shop — a real shop type) and relabelled it "General shop / Duka"; kept the "Run your duka" Swahili taglines as intentional local flavour.
+- `APP_IDENTIFIER` left as `ke.co.sokoos.duka` (stable bundle id; updater chain) — domain/identifier hygiene handled in Task 28.
+- Regenerated `payload-types.ts`; website `tsc` clean; `next build` succeeds (all routes prerendered).
+
+### Task 28 — End-to-end purchase→activation→gated run + version hygiene
+- **Version drift fixed**: `src-tauri/tauri.conf.json` `0.2.6`→`0.2.8` (now matches `package.json` + `Cargo.toml`).
+- **Domain hygiene**: updater endpoints, `bundle.homepage`, and macOS `exceptionDomain` `sokoos.co.ke`→`omnix.co.ke`; `longDescription` refreshed (hardware + hospitality, drops "salon").
+- **Bundle identifier deliberately kept** `ke.co.sokoos.duka`: it shipped in every tagged release (v0.2.4–v0.2.8) and the SQLite DB resolves to `$APPDATA/{identifier}/omnix.db`; changing it would orphan existing customer databases and break updater continuity (destructive migration, out of scope). Reverse-DNS IDs are internal stable keys that survive rebrands. Flagged a pre-existing mismatch: `lib.rs::ensure_app_data_dir()` hardcodes `ke.co.sokoos.app` ≠ the real id — left untouched (shipped behaviour, needs a deliberate data-migration check).
+- **Runbook**: new `docs/plans/11-licensing-runbook.md` documents purchase→activation→silent-revalidation/rebind→gated-run, plus the three revenue invariants.
+- **Invariants verified** (no e2e runner exists per AGENTS §9 — verified via Rust tests + code trace): (1) over-seat block → `409 rejected_seats` in `licenses-activate.ts`; (2) rebind cooldown → `429 windowResetsAt` in `licenses-rebind.ts`; (3) hardware-only licence keeps Hospitality locked — Rust test `not_entitled_for_unlicensed_module` (embedded `HW_KEY`) passes.
+- `cargo test` 17/17 pass (37 migrations register); desktop `tsc` clean; `vite build` succeeds. **Phase H complete — all 28 tasks done.**
+
 ## v0.1.6 (last pushed/built)
 See git log for details. This is our baseline.
 

@@ -102,9 +102,9 @@ export default async function DashboardOverviewPage({
                 Your free 30-day trial is active.
               </h2>
               <p className="mt-2 text-[14px] leading-[1.55] text-[var(--color-fg-muted)]">
-                Download Duka for Windows below. Use the licence key on this dashboard to
-                activate. Every module is unlocked during the trial — try Dawa or Soko Retail,
-                or both.
+                Download Omnix for Windows below. Use the licence key on this dashboard to
+                activate. Every module is unlocked during the trial — Dawa, Soko Retail,
+                Hardware, or Hospitality.
               </p>
               <div className="mt-5 flex flex-col gap-3 sm:flex-row">
                 <Button asChild size="default">
@@ -203,7 +203,7 @@ export default async function DashboardOverviewPage({
                   Trial ends in {trialDaysLeft} day{trialDaysLeft === 1 ? '' : 's'}.
                 </div>
                 <p className="mt-1 text-[13px] text-[var(--color-fg-muted)]">
-                  Pay now to keep using Duka without interruption. Your data stays where it is.
+                  Pay now to keep using Omnix without interruption. Your data stays where it is.
                 </p>
               </div>
               <Button asChild size="sm">

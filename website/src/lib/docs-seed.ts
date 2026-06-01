@@ -15,29 +15,29 @@ export const DOCS_SEED: DocSeed[] = [
     slug: 'install-troubleshooting',
     title: 'Install troubleshooting on Windows',
     excerpt:
-      'SmartScreen warnings, antivirus false positives, and the rare cases where Duka refuses to start.',
+      'SmartScreen warnings, antivirus false positives, and the rare cases where Omnix refuses to start.',
     category: 'troubleshooting',
-    body: `Most Duka installs succeed in a single click. When they don't, it's almost always one of these.
+    body: `Most Omnix installs succeed in a single click. When they don't, it's almost always one of these.
 
 ## SmartScreen warning
 
-Windows 10 and 11 show a "Windows protected your PC" dialog when you run any installer that isn't signed by an extended-validation certificate. Duka is signed by Tauri's signing scheme, but EV certificates cost over USD 350/year, which we currently can't justify for a small Kenyan vendor.
+Windows 10 and 11 show a "Windows protected your PC" dialog when you run any installer that isn't signed by an extended-validation certificate. Omnix is signed by Tauri's signing scheme, but EV certificates cost over USD 350/year, which we currently can't justify for a small Kenyan vendor.
 
 Click **More info** under the warning, then **Run anyway**. The installer is verified through our own SHA-256 hash, which you can check on the downloads page.
 
 ## Antivirus false positive
 
-Some antivirus tools — Avast, AVG, Kaspersky, occasionally Windows Defender on first sight — flag the Duka installer because it bundles SQLite and writes to a local data directory. This is a heuristic false positive, not a real threat.
+Some antivirus tools — Avast, AVG, Kaspersky, occasionally Windows Defender on first sight — flag the Omnix installer because it bundles SQLite and writes to a local data directory. This is a heuristic false positive, not a real threat.
 
 Add the installer to your AV exclusions, or wait 24 hours: most AV vendors auto-clear flags within a day for installers being downloaded by many users.
 
-## "Duka cannot start because of a missing DLL"
+## "Omnix cannot start because of a missing DLL"
 
 This appears on very old Windows builds. Open Windows Update and apply all pending updates. The required Visual C++ runtime ships with Windows updates from 2021 onward.
 
 ## "Database is locked"
 
-Rare. Happens if Duka is force-killed while writing. Restart your machine; SQLite recovers cleanly on next launch. If the problem persists, send us the diagnostic dump from Settings → Help → Send diagnostic and we'll investigate.
+Rare. Happens if Omnix is force-killed while writing. Restart your machine; SQLite recovers cleanly on next launch. If the problem persists, send us the diagnostic dump from Settings → Help → Send diagnostic and we'll investigate.
 
 ## Still stuck?
 
@@ -48,7 +48,7 @@ WhatsApp the owner — usually replies within an hour during Kenyan business hou
     title: 'Where to find your licence key',
     excerpt: 'In the desktop app and on the website. Two places, one key.',
     category: 'setup',
-    body: `Your licence key is one string in the format **DUKA-XXXX-XXXX-XXXX**. It's emailed to you when you pay, and it's visible in two places:
+    body: `Your licence key is one string in the format **OMNIX-XXXX-XXXX-XXXX**. It's emailed to you when you pay, and it's visible in two places:
 
 ## In the desktop app
 
@@ -104,7 +104,7 @@ That's a sale. Z-report at the end of the day will show it.`,
     title: 'Setting up M-Pesa STK push',
     excerpt: 'Daraja credentials, sandbox testing, and going live.',
     category: 'integrations',
-    body: `Duka uses Safaricom Daraja to power M-Pesa Till and Paybill payments. You need a registered M-Pesa business account and Daraja credentials.
+    body: `Omnix uses Safaricom Daraja to power M-Pesa Till and Paybill payments. You need a registered M-Pesa business account and Daraja credentials.
 
 ## What you'll need
 
@@ -116,10 +116,10 @@ That's a sale. Z-report at the end of the day will show it.`,
 ## Step by step
 
 1. Sign up at developer.safaricom.co.ke
-2. Create an app under "My Apps" — give it any name, e.g. "Duka POS"
+2. Create an app under "My Apps" — give it any name, e.g. "Omnix POS"
 3. Copy the consumer key and consumer secret
 4. In the Daraja portal go to "STK Push" → "Get LipaNaMpesaPasskey" → copy the passkey
-5. In Duka: Settings → Integrations → M-Pesa, paste all four
+5. In Omnix: Settings → Integrations → M-Pesa, paste all four
 6. Enter sandbox first to test, then switch to live when verified
 
 Sandbox accepts test phone +254708374149 with PIN 12345 — useful for verification before going live.
@@ -135,39 +135,39 @@ Sandbox accepts test phone +254708374149 with PIN 12345 — useful for verificat
     title: 'Configuring KRA eTIMS',
     excerpt: 'Receipt issuance from your till to KRA in real time, automatically.',
     category: 'integrations',
-    body: `KRA's electronic Tax Invoice Management System (eTIMS) requires VAT-registered businesses to issue receipts to KRA in real time at point of sale. Duka does this automatically once configured.
+    body: `KRA's electronic Tax Invoice Management System (eTIMS) requires VAT-registered businesses to issue receipts to KRA in real time at point of sale. Omnix does this automatically once configured.
 
 ## Prerequisites
 
 - KRA PIN (your business PIN, not personal)
 - VAT registration certificate
-- iTax credentials (for ongoing filing — Duka issues receipts; you still file VAT returns)
+- iTax credentials (for ongoing filing — Omnix issues receipts; you still file VAT returns)
 - For high-turnover businesses: a registered eTIMS endpoint (we help configure)
 
-## How Duka issues receipts
+## How Omnix issues receipts
 
 Every successful sale at the POS triggers eTIMS receipt issuance in the background. You don't see a separate step. The receipt prints (or displays on screen) with the KRA control unit signature, the QR-code verification link, and the receipt number from KRA's system.
 
 ## What if eTIMS is down?
 
-KRA's system has occasional outages. Duka queues receipts locally and re-issues them when KRA is back. Customers get an interim receipt with "eTIMS pending" — when KRA confirms, the receipt is automatically updated and the customer can re-print.
+KRA's system has occasional outages. Omnix queues receipts locally and re-issues them when KRA is back. Customers get an interim receipt with "eTIMS pending" — when KRA confirms, the receipt is automatically updated and the customer can re-print.
 
 The 24-hour ceiling on late issuance still applies. If KRA is down for more than 24 hours, you have a problem we'll help triage by phone.
 
 ## Verifying a receipt
 
-Customers (or KRA auditors) can scan the QR code on any Duka receipt and verify it directly on KRA's portal. Receipts that don't pass verification mean either KRA hasn't confirmed yet (queued state) or the receipt was tampered with.`,
+Customers (or KRA auditors) can scan the QR code on any Omnix receipt and verify it directly on KRA's portal. Receipts that don't pass verification mean either KRA hasn't confirmed yet (queued state) or the receipt was tampered with.`,
   },
   {
     slug: 'multi-branch',
     title: 'Setting up multi-branch with LAN sync',
     excerpt: 'Master / client topology, branch transfers, role-based access per branch.',
     category: 'modules',
-    body: `When you have two or more branches, you have decisions to make. Duka's LAN-based topology is designed for the common Kenyan SME case: branches on local internet connections, occasionally syncing across.
+    body: `When you have two or more branches, you have decisions to make. Omnix's LAN-based topology is designed for the common Kenyan SME case: branches on local internet connections, occasionally syncing across.
 
 ## The model
 
-Each branch runs its own copy of Duka with its own SQLite database. One machine per branch is the master; others are clients. Cross-branch operations (transfers, consolidated reports, central payroll) go through a designated "main" branch.
+Each branch runs its own copy of Omnix with its own SQLite database. One machine per branch is the master; others are clients. Cross-branch operations (transfers, consolidated reports, central payroll) go through a designated "main" branch.
 
 ## Setup at the first branch
 
@@ -175,7 +175,7 @@ Settings → Branches → Add. Set this branch as the main branch. Add staff, pr
 
 ## Setting up a second branch
 
-Install Duka on the new branch's machines. On first launch, choose "Join existing organisation" → enter the licence key + the main-branch URL (LAN IP or internet domain). The new branch syncs the product catalogue, supplier list, and shared customer records.
+Install Omnix on the new branch's machines. On first launch, choose "Join existing organisation" → enter the licence key + the main-branch URL (LAN IP or internet domain). The new branch syncs the product catalogue, supplier list, and shared customer records.
 
 ## Branch transfers
 

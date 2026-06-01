@@ -5,7 +5,7 @@ import { PageHero } from '@/components/marketing/page-hero'
 
 export const metadata: Metadata = {
   title: 'Changelog — what shipped',
-  description: 'Every Duka release, newest first. Download links, SHA-256 hashes, and what changed.',
+  description: 'Every Omnix release, newest first. Download links, SHA-256 hashes, and what changed.',
 }
 
 const RELEASES = [
@@ -21,7 +21,7 @@ export default function ChangelogPage() {
       <PageHero
         eyebrow="Changelog"
         title={<>What <em>shipped.</em></>}
-        description="Every Duka release, newest first. Download links, SHA-256 hashes, and what changed."
+        description="Every Omnix release, newest first. Download links, SHA-256 hashes, and what changed."
       />
 
       <section className="section">

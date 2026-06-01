@@ -4,7 +4,7 @@
  * To rebrand, edit BRAND_NAME and BRAND_DOMAIN here. Every UI string,
  * every metadata block, every page title imports from this file.
  *
- * Verify after rename:  grep -ri "Duka" src/ | grep -v lib/brand.ts
+ * Verify after rename:  grep -ri "Omnix" src/ | grep -v lib/brand.ts
  * (should return zero matches)
  */
 

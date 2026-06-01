@@ -45,7 +45,9 @@ const license = buildLicense({
   name: args.name,
   email: args.email,
   maintMonths: parseInt(args["maint-months"] || "12", 10),
-  features: (args.features || "pharmacy,etims,insurance,lan,reports").split(","),
+  modules: (args.modules || "dawa").split(","),
+  features: (args.features || "etims,insurance,lan,reports").split(","),
+  maxDevices: parseInt(args["max-devices"] || "1", 10),
   type: args.type || "perpetual",
 });
 
@@ -56,6 +58,8 @@ console.log(`│ License ID:            ${license.payload.kid}`);
 console.log(`│ Type:                  ${license.payload.type}`);
 console.log(`│ Issued:                ${license.payload.issued}`);
 console.log(`│ Maintenance until:     ${license.payload.maint_exp}`);
+console.log(`│ Modules:               ${license.payload.modules.join(", ")}`);
+console.log(`│ Max devices:           ${license.payload.max_devices}`);
 console.log(`│ Features:              ${license.payload.feat.join(", ")}`);
 console.log("└────────────────────────────────────────────────────────────\n");
 console.log("Send this key to the customer:\n");
@@ -66,20 +70,22 @@ console.log("");
 // Implementation
 // ============================================================
 
-function buildLicense({ name, email, maintMonths, features, type }) {
+function buildLicense({ name, email, maintMonths, modules, features, maxDevices, type }) {
   const today = new Date();
   const maintExp = new Date(today);
   maintExp.setMonth(maintExp.getMonth() + maintMonths);
 
   const payload = {
-    kid: `SOKO-${today.getFullYear()}-${randomBlock(4)}-${randomBlock(4)}`,
+    kid: `OMNIX-${today.getFullYear()}-${randomBlock(4)}-${randomBlock(4)}`,
     name,
     email,
     issued: today.toISOString().slice(0, 10),
     maint_exp: maintExp.toISOString().slice(0, 10),
     type,
     feat: features.map((f) => f.trim()).filter(Boolean),
-    ver: 1,
+    modules: modules.map((m) => m.trim()).filter(Boolean),
+    max_devices: maxDevices,
+    ver: 2,
   };
 
   const payloadJson = JSON.stringify(payload);
@@ -93,7 +99,7 @@ function buildLicense({ name, email, maintMonths, features, type }) {
 
   return {
     payload,
-    key: `SOKO-${payloadB64}.${signatureB64}`,
+    key: `OMNIX-${payloadB64}.${signatureB64}`,
   };
 }
 
@@ -136,7 +142,7 @@ function parseArgs(argv) {
 
 function printUsage() {
   console.log(`
-SokoOS License Generator
+Omnix License Generator
 
 Usage:
   node scripts/generate-license.mjs --name <name> --email <email> [options]
@@ -146,15 +152,18 @@ Required:
   --email            Customer email
 
 Options:
+  --modules list     Comma-separated paid modules (default: dawa)
+                     Available: dawa,retail,hardware,hospitality
+  --max-devices N    Seat count / activations allowed (default: 1)
   --maint-months N   Maintenance period in months (default: 12)
-  --features list    Comma-separated features (default: all)
-                     Available: pharmacy,etims,insurance,lan,reports
+  --features list    Comma-separated compliance feature flags (default: etims,insurance,lan,reports)
   --type type        License type: perpetual | trial | subscription (default: perpetual)
   --help, -h         Show this help
 
 Examples:
-  node scripts/generate-license.mjs --name "Afya Pharmacy" --email owner@afya.co.ke
-  node scripts/generate-license.mjs --name "Trial User" --email trial@example.com --type trial --maint-months 1
+  node scripts/generate-license.mjs --name "Afya Pharmacy" --email owner@afya.co.ke --modules dawa
+  node scripts/generate-license.mjs --name "Jua Kali Hardware" --email shop@jk.co.ke --modules hardware --max-devices 2
+  node scripts/generate-license.mjs --name "Trial User" --email trial@example.com --type trial --modules hardware --maint-months 1
 `);
 }
 

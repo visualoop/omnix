@@ -10,7 +10,8 @@ import {
 } from "lucide-react";
 import { query } from "@/lib/db";
 import { useActiveModule } from "@/stores/active-module";
-import { filterByActiveModule } from "@/lib/module-features";
+import { filterByActiveModule, getFeatureModule } from "@/lib/module-features";
+import { isModuleEntitled } from "@/stores/entitlements";
 
 interface Props {
   open: boolean;
@@ -324,6 +325,10 @@ export function CommandPalette({ open, onOpenChange }: Props) {
           <Command.Group heading="Pages">
             <div className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground px-2 py-1.5">Pages</div>
             {filterByActiveModule(pages, activeModule)
+              .filter((page) => {
+                const owner = getFeatureModule(page.to);
+                return !owner || isModuleEntitled(owner);
+              })
               .map((page) => (
               <Command.Item
                 key={page.to}

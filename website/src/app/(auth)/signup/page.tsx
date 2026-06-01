@@ -55,7 +55,7 @@ export default function SignupPage() {
         <div className="mx-auto max-w-md">
           <Sparkles className="size-8 text-[var(--color-accent)]" />
           <blockquote className="mt-8 font-display text-[28px] leading-snug text-[var(--color-fg)]">
-            "I cancelled three subscriptions the day Duka went live. POS, payroll and
+            "I cancelled three subscriptions the day Omnix went live. POS, payroll and
             inventory in one place — and I own it."
           </blockquote>
           <div className="mt-6 flex items-center gap-3">

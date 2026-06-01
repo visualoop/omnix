@@ -37,7 +37,7 @@ export function MaintenanceEndingSoon({ name, days }: Props) {
           </Heading>
           <Text style={p}>Hi {name},</Text>
           <Text style={p}>
-            Your Duka maintenance subscription is up for renewal in{' '}
+            Your Omnix maintenance subscription is up for renewal in{' '}
             <span style={accent}>{days} day{days === 1 ? '' : 's'}</span>. Renew to keep
             statutory updates (KRA, NHIF, SHA, NSSF) flowing automatically.
           </Text>

@@ -29,9 +29,9 @@ export const BRAND = {
   // Company / publisher information
   company: {
     name: "Omnix Ltd.",
-    domain: "sokoos.co.ke",
-    website: "https://sokoos.co.ke",
-    supportEmail: "support@sokoos.co.ke",
+    domain: "omnix.co.ke",
+    website: "https://omnix.co.ke",
+    supportEmail: "support@omnix.co.ke",
   },
 
   // Receipt header (override per tenant via setup wizard later if desired)

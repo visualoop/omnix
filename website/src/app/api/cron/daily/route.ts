@@ -66,7 +66,7 @@ export async function GET() {
       await sendEmail({
         payload,
         to: license.customer.email,
-        subject: 'Your Duka trial ended — pay to keep going',
+        subject: 'Your Omnix trial ended — pay to keep going',
         html: await renderEmail('TrialEnded', {
           name: license.customer.fullName ?? 'there',
         }),
@@ -99,7 +99,7 @@ export async function GET() {
       await sendEmail({
         payload,
         to: license.customer.email,
-        subject: `Your Duka trial ends in ${days} day${days === 1 ? '' : 's'}`,
+        subject: `Your Omnix trial ends in ${days} day${days === 1 ? '' : 's'}`,
         html: await renderEmail('TrialEndingSoon', {
           name: license.customer.fullName ?? 'there',
           days,

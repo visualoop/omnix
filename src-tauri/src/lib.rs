@@ -268,6 +268,72 @@ fn run_inner() {
             sql: include_str!("../migrations/026_payment_provider_extensions.sql"),
             kind: MigrationKind::Up,
         },
+        Migration {
+            version: 27,
+            description: "License entitlements: modules, max_devices, activation token",
+            sql: include_str!("../migrations/027_license_entitlements.sql"),
+            kind: MigrationKind::Up,
+        },
+        Migration {
+            version: 28,
+            description: "Single-module trial: module + server_registered columns",
+            sql: include_str!("../migrations/028_trial_module.sql"),
+            kind: MigrationKind::Up,
+        },
+        Migration {
+            version: 29,
+            description: "Granular RBAC: roles, permissions, groups, scopes, overrides",
+            sql: include_str!("../migrations/029_rbac.sql"),
+            kind: MigrationKind::Up,
+        },
+        Migration {
+            version: 30,
+            description: "Audit log for high/critical permission-gated actions",
+            sql: include_str!("../migrations/030_audit_log.sql"),
+            kind: MigrationKind::Up,
+        },
+        Migration {
+            version: 31,
+            description: "Hardware module: quotations, delivery notes, accounts, commissions",
+            sql: include_str!("../migrations/031_hardware.sql"),
+            kind: MigrationKind::Up,
+        },
+        Migration {
+            version: 32,
+            description: "Hospitality core: dining areas/tables, kitchen stations, menu",
+            sql: include_str!("../migrations/032_hospitality_core.sql"),
+            kind: MigrationKind::Up,
+        },
+        Migration {
+            version: 33,
+            description: "Hospitality orders: order lifecycle + kitchen items",
+            sql: include_str!("../migrations/033_hospitality_orders.sql"),
+            kind: MigrationKind::Up,
+        },
+        Migration {
+            version: 34,
+            description: "Hospitality service charge rules + allocations",
+            sql: include_str!("../migrations/034_hospitality_service_charge.sql"),
+            kind: MigrationKind::Up,
+        },
+        Migration {
+            version: 35,
+            description: "Hospitality rooms: room types, rooms, rate plans, guests, bookings",
+            sql: include_str!("../migrations/035_hospitality_rooms.sql"),
+            kind: MigrationKind::Up,
+        },
+        Migration {
+            version: 36,
+            description: "Hospitality folios: guest folios, charges, payments",
+            sql: include_str!("../migrations/036_hospitality_folios.sql"),
+            kind: MigrationKind::Up,
+        },
+        Migration {
+            version: 37,
+            description: "Hospitality recipes, costing & wastage",
+            sql: include_str!("../migrations/037_hospitality_recipes.sql"),
+            kind: MigrationKind::Up,
+        },
     ];
 
     tauri::Builder::default()
@@ -296,6 +362,7 @@ fn run_inner() {
             commands::verify_password,
             commands::get_machine_info,
             commands::verify_license,
+            commands::verify_module_entitled,
             commands::create_backup,
             commands::list_backups,
             commands::delete_backup,

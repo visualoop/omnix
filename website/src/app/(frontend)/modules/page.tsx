@@ -8,7 +8,7 @@ import { cn } from '@/lib/cn'
 
 export const metadata: Metadata = {
   title: 'Modules — trade-specific ERP',
-  description: 'Four modules built for Kenyan trades. Pharmacy, retail, salon, restaurant. One licence unlocks them all.',
+  description: 'Four modules built for Kenyan trades. Pharmacy, retail, hardware, hospitality. One licence unlocks the trades you run.',
 }
 
 export default function ModulesPage() {
@@ -17,7 +17,7 @@ export default function ModulesPage() {
       <PageHero
         eyebrow="Modules"
         title={<>One licence. <em>Four trades.</em></>}
-        description="Every Duka install ships with the same Core. The trade-specific module decides what your screens look like the day you open it."
+        description="Every Omnix install ships with the same Core. The trade-specific module decides what your screens look like the day you open it."
       />
 
       <section className="section">

@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button'
 /**
  * Closing CTA — full-bleed dark band.
  *
- * Per DUKA-BRIEF §6.1 ⑫:
+ * Per OMNIX-BRIEF §6.1 ⑫:
  *   - Single line in Fraunces italic 64px (clamp 40-72px)
  *   - One filled accent CTA underneath
  *   - Small WhatsApp text link as the only secondary
@@ -62,7 +62,7 @@ export function ClosingCtaSection() {
             </Button>
 
             <Link
-              href="https://wa.me/254700000000?text=Hi%20Duka%2C%20I%27d%20like%20to%20talk%20to%20someone%20before%20I%20install."
+              href="https://wa.me/254700000000?text=Hi%20Omnix%2C%20I%27d%20like%20to%20talk%20to%20someone%20before%20I%20install."
               target="_blank"
               rel="noopener"
               className="caption-mono inline-flex items-center gap-2 transition-colors hover:text-[var(--color-fg)]"

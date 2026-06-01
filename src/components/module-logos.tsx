@@ -105,31 +105,6 @@ export function ElectronicsLogo({ size = 32, className = "", rounded = true }: L
   );
 }
 
-// ─── Salon / Spa — Scissors ──────────────────────────────────────────
-export function SalonLogo({ size = 32, className = "", rounded = true }: LogoProps) {
-  const id = `sl-${size}`;
-  return (
-    <svg width={size} height={size} viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg" className={className} aria-label="Salon">
-      <defs>
-        <linearGradient id={`${id}-bg`} x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0%" stopColor="#A21CAF" />
-          <stop offset="100%" stopColor="#581C87" />
-        </linearGradient>
-      </defs>
-      <rect x="0" y="0" width="512" height="512" rx={rounded ? ROUNDED_RX : 0} fill={`url(#${id}-bg)`} />
-      {/* Scissor blades */}
-      <g stroke="#FBCFE8" strokeWidth="36" fill="none" strokeLinecap="round">
-        <line x1="160" y1="160" x2="380" y2="380" />
-        <line x1="160" y1="380" x2="380" y2="160" strokeOpacity="0.85" />
-      </g>
-      {/* Scissor rings */}
-      <circle cx="160" cy="160" r="48" fill="none" stroke="#FBCFE8" strokeWidth="32" />
-      <circle cx="160" cy="380" r="48" fill="none" stroke="#FBCFE8" strokeWidth="32" />
-      <circle cx="270" cy="270" r="14" fill="#FBCFE8" />
-    </svg>
-  );
-}
-
 // ─── Restaurant — Fork & Knife / Plate ───────────────────────────────
 export function RestaurantLogo({ size = 32, className = "", rounded = true }: LogoProps) {
   const id = `rt-${size}`;
@@ -172,11 +147,8 @@ export function ModuleLogo({ moduleId, size = 32, className = "", rounded = true
       return <RetailLogo size={size} className={className} rounded={rounded} />;
     case "hardware":
       return <HardwareLogo size={size} className={className} rounded={rounded} />;
-    case "electronics":
-      return <ElectronicsLogo size={size} className={className} rounded={rounded} />;
-    case "salon":
-      return <SalonLogo size={size} className={className} rounded={rounded} />;
     case "restaurant":
+    case "hospitality":
       return <RestaurantLogo size={size} className={className} rounded={rounded} />;
     default:
       return null;

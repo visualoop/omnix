@@ -69,3 +69,39 @@ export async function readJson<T = Record<string, unknown>>(req: PayloadRequest)
   }
   return null
 }
+
+/** Client IP from proxy headers (city-level geo / audit only). */
+export function clientIp(req: PayloadRequest): string | null {
+  return req.headers?.get?.('x-forwarded-for')?.split(',')[0]?.trim() ?? null
+}
+
+type ActivationEvent = 'activate' | 'validate' | 'rebind' | 'deactivate'
+type ActivationOutcome =
+  | 'success'
+  | 'rejected_seats'
+  | 'rejected_cooldown'
+  | 'rejected_invalid'
+  | 'rejected_revoked'
+
+/** Append a row to the Activations audit log. Never throws (best-effort). */
+export async function logActivation(
+  req: PayloadRequest,
+  data: {
+    event: ActivationEvent
+    outcome: ActivationOutcome
+    license?: string | number
+    machine?: string | number
+    machineId?: string
+    detail?: string
+  },
+): Promise<void> {
+  try {
+    await req.payload.create({
+      collection: 'activations',
+      data: { ...data, ip: clientIp(req) ?? undefined } as never,
+      overrideAccess: true,
+    })
+  } catch {
+    // audit logging must never break the request path
+  }
+}

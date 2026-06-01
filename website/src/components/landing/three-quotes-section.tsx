@@ -5,7 +5,7 @@ import { motion } from 'framer-motion'
 /**
  * "Three quotes" — three Fraunces italic 32px pull quotes hung off-grid.
  *
- * Per DUKA-BRIEF §6.1 ⑨ — replaces the marquee testimonial pattern.
+ * Per OMNIX-BRIEF §6.1 ⑨ — replaces the marquee testimonial pattern.
  *
  * Why this composition:
  *   - No avatars (avatars are the "Trusted by" cliché)
@@ -26,14 +26,14 @@ interface Quote {
 const QUOTES: Quote[] = [
   {
     text:
-      'Before Duka, my pharmacist filed receipts at midnight. We installed it on a Wednesday. By Friday she went home at six.',
+      'Before Omnix, my pharmacist filed receipts at midnight. We installed it on a Wednesday. By Friday she went home at six.',
     name: 'Naliaka Wamalwa',
     role: 'Owner, Mama Brenda Pharmacy',
     meta: 'Kasarani · since Mar 2025',
   },
   {
     text:
-      'I have used Sage. I have used Quickbooks. The first thing I noticed about Duka is that it actually works when the line drops. The till never blinks.',
+      'I have used Sage. I have used Quickbooks. The first thing I noticed about Omnix is that it actually works when the line drops. The till never blinks.',
     name: 'Peter Mwangi',
     role: 'Founder, Sokoni Stores',
     meta: 'Westlands · since Nov 2024',

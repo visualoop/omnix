@@ -4,7 +4,7 @@ import { ownerOnly } from '../access'
 /**
  * Modules — the marketable verticals on the website.
  *
- * Owner can add a new module page (Hardware, Salon, etc.) without
+ * Owner can add a new module page (Hardware, Hospitality, etc.) without
  * code changes. Each entry powers /modules/[slug] + the module bento
  * on the landing page.
  */
@@ -30,10 +30,8 @@ export const Modules: CollectionConfig = {
         { label: 'Core ERP', value: 'core' },
         { label: 'Dawa Pharmacy', value: 'dawa' },
         { label: 'Soko Retail', value: 'retail' },
-        { label: 'Salon', value: 'salon' },
-        { label: 'Restaurant', value: 'restaurant' },
         { label: 'Hardware', value: 'hardware' },
-        { label: 'Electronics', value: 'electronics' },
+        { label: 'Hospitality', value: 'hospitality' },
       ],
     },
     { name: 'name', type: 'text', required: true, admin: { description: 'Display name, e.g. "Dawa Pharmacy".' } },

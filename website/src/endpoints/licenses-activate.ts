@@ -1,23 +1,40 @@
 import { randomBytes } from 'crypto'
 import type { Endpoint } from 'payload'
-import { errorResponse, hashToken, jsonResponse, readJson } from './_auth'
+import { errorResponse, hashToken, jsonResponse, logActivation, readJson } from './_auth'
+
+type LicenseDoc = {
+  id: string | number
+  status: string
+  modules?: string[]
+  maxMachines?: number
+  maxBranches?: number
+  maintenanceUntil?: string
+  trialEndsAt?: string
+  majorVersionCap?: number
+}
+
+/** Canonical entitlement payload returned to the desktop app on activate/validate. */
+export function entitlementsOf(license: LicenseDoc) {
+  return {
+    modules: license.modules ?? [],
+    maxDevices: license.maxMachines ?? 1,
+    maxBranches: license.maxBranches ?? 1,
+    maintenanceUntil: license.maintenanceUntil ?? null,
+    trialEndsAt: license.trialEndsAt ?? null,
+    majorVersionCap: license.majorVersionCap ?? 1,
+    status: license.status,
+  }
+}
 
 /**
  * POST /api/licenses/activate
  *
- * Called by the Tauri desktop app once on first launch.
- * Registers the machine against the licence and returns a long-lived
- * machine token for subsequent telemetry / heartbeat calls.
+ * One-time online activation. Validates the licence, enforces the seat cap,
+ * registers the machine, and returns a machine-bound token + canonical
+ * entitlements (modules, seats, maintenance) so the desktop can gate offline.
  *
- * Body: {
- *   licenseKey,
- *   machineId,         // hardware fingerprint
- *   hostname,
- *   os, osVersion, arch,
- *   currentVersion
- * }
- *
- * Response: { authToken } — store in OS keychain on the desktop.
+ * Body: { licenseKey, machineId, hostname, os, osVersion, arch, currentVersion }
+ * Response: { ok, authToken, action, entitlements }
  */
 export const licensesActivateEndpoint: Endpoint = {
   path: '/licenses/activate',
@@ -37,27 +54,35 @@ export const licensesActivateEndpoint: Endpoint = {
       return errorResponse('Missing licenseKey or machineId', 400)
     }
 
-    // Find the licence
     const licRes = await req.payload.find({
       collection: 'licenses',
       where: { licenseKey: { equals: body.licenseKey } },
       limit: 1,
       depth: 0,
     })
-    const license = licRes.docs[0] as unknown as
-      | undefined
-      | {
-          id: string | number
-          status: string
-          maxMachines?: number
-        }
-    if (!license) return errorResponse('Licence key not recognised', 404)
+    const license = licRes.docs[0] as unknown as LicenseDoc | undefined
+    if (!license) {
+      await logActivation(req, {
+        event: 'activate',
+        outcome: 'rejected_invalid',
+        machineId: body.machineId,
+        detail: 'Licence key not recognised',
+      })
+      return errorResponse('Licence key not recognised', 404)
+    }
 
     if (license.status === 'suspended' || license.status === 'cancelled') {
+      await logActivation(req, {
+        event: 'activate',
+        outcome: 'rejected_revoked',
+        license: license.id,
+        machineId: body.machineId,
+        detail: `Licence ${license.status}`,
+      })
       return errorResponse('Licence is suspended', 403)
     }
 
-    // Existing registration?
+    // Existing registration → idempotent re-activation (token rotates).
     const existingRes = await req.payload.find({
       collection: 'machines',
       where: { machineId: { equals: body.machineId } },
@@ -66,16 +91,16 @@ export const licensesActivateEndpoint: Endpoint = {
     })
     const existing = existingRes.docs[0] as unknown as
       | undefined
-      | { id: string | number; license: string | { id: string | number } }
+      | { id: string | number }
 
     if (existing) {
-      // Re-issue a fresh token (rotates on every activation)
       const token = randomBytes(32).toString('hex')
       await req.payload.update({
         collection: 'machines',
         id: existing.id,
         data: {
           authToken: hashToken(token),
+          license: license.id as never,
           status: 'active',
           deactivatedAt: undefined,
           lastSeenAt: new Date().toISOString(),
@@ -83,10 +108,23 @@ export const licensesActivateEndpoint: Endpoint = {
         },
         overrideAccess: true,
       })
-      return jsonResponse({ ok: true, authToken: token, action: 'reactivated' })
+      await logActivation(req, {
+        event: 'activate',
+        outcome: 'success',
+        license: license.id,
+        machine: existing.id,
+        machineId: body.machineId,
+        detail: 'reactivated',
+      })
+      return jsonResponse({
+        ok: true,
+        authToken: token,
+        action: 'reactivated',
+        entitlements: entitlementsOf(license),
+      })
     }
 
-    // Capacity check
+    // Seat cap.
     const countRes = await req.payload.count({
       collection: 'machines',
       where: {
@@ -96,18 +134,24 @@ export const licensesActivateEndpoint: Endpoint = {
         ],
       },
     })
-    if (countRes.totalDocs >= (license.maxMachines ?? 3)) {
+    const cap = license.maxMachines ?? 1
+    if (countRes.totalDocs >= cap) {
+      await logActivation(req, {
+        event: 'activate',
+        outcome: 'rejected_seats',
+        license: license.id,
+        machineId: body.machineId,
+        detail: `At seat cap (${cap})`,
+      })
       return errorResponse(
-        `Licence is at machine cap (${license.maxMachines ?? 3}). Deactivate an old machine first or buy an extra seat.`,
+        `Seat limit reached (${cap} of ${cap} used). Deactivate an existing machine from your dashboard or buy an extra seat.`,
         409,
       )
     }
 
-    // Create new machine
+    // Register new machine.
     const token = randomBytes(32).toString('hex')
-    const ip = req.headers?.get?.('x-forwarded-for')?.split(',')[0]?.trim() ?? null
-
-    await req.payload.create({
+    const created = await req.payload.create({
       collection: 'machines',
       data: {
         machineId: body.machineId,
@@ -120,12 +164,25 @@ export const licensesActivateEndpoint: Endpoint = {
         currentVersion: body.currentVersion,
         firstSeenAt: new Date().toISOString(),
         lastSeenAt: new Date().toISOString(),
-        lastIp: ip ?? undefined,
         status: 'active',
       },
       overrideAccess: true,
     })
 
-    return jsonResponse({ ok: true, authToken: token, action: 'registered' })
+    await logActivation(req, {
+      event: 'activate',
+      outcome: 'success',
+      license: license.id,
+      machine: (created as { id: string | number }).id,
+      machineId: body.machineId,
+      detail: 'registered',
+    })
+
+    return jsonResponse({
+      ok: true,
+      authToken: token,
+      action: 'registered',
+      entitlements: entitlementsOf(license),
+    })
   },
 }

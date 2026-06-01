@@ -7,7 +7,7 @@ import { Icon } from '@/components/icons'
 /**
  * "One price" — replaces the 3-card pricing strip.
  *
- * Per DUKA-BRIEF §6.1 ⑩:
+ * Per OMNIX-BRIEF §6.1 ⑩:
  *   - eyebrow "Pricing"
  *   - single huge KES 100,000 in Fraunces 144px (number-display utility)
  *   - italic line "Once. For the whole product."

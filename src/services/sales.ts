@@ -180,6 +180,9 @@ export async function getSales(limit = 50, branchId?: string): Promise<Sale[]> {
 }
 
 export async function voidSale(saleId: string): Promise<void> {
+  const { requirePermission } = await import("@/services/rbac");
+  await requirePermission("sales.void", { entityType: "sale", entityId: saleId });
+
   const existing = await query<{ status: string }>(
     "SELECT status FROM sales WHERE id = ?1",
     [saleId],

@@ -7,7 +7,7 @@ import { cn } from '@/lib/cn'
 /**
  * FAQ — accordion with Fraunces 22px questions.
  *
- * Per DUKA-BRIEF §6.1 ⑪:
+ * Per OMNIX-BRIEF §6.1 ⑪:
  *   - 8 honest questions
  *   - question typeset Fraunces 22px regular
  *   - plus glyph rotates to × on open (no chevron)
@@ -24,12 +24,12 @@ const FAQS: { q: string; a: string }[] = [
     a: 'KES 100,000 buys a perpetual licence for Core ERP plus every trade module you select. You receive every minor and patch release within the same major version for free, and one year of priority support. There is no remote kill switch on a paid licence.',
   },
   {
-    q: 'Do I need internet to run Duka?',
+    q: 'Do I need internet to run Omnix?',
     a: 'No. POS, inventory, payroll, banking — all run locally on the Windows machine. You only need internet for syncing across branches, M-Pesa STK, eTIMS submission, and updates. When the line drops, the till keeps ringing; everything reconciles the moment you reconnect.',
   },
   {
     q: 'Is there a refund policy?',
-    a: 'You get 30 days free to try every module before you pay anything. If you pay and decide within 14 days that Duka is not the right fit, we refund the full amount minus the Paystack processing fee — no questions asked.',
+    a: 'You get 30 days free to try every module before you pay anything. If you pay and decide within 14 days that Omnix is not the right fit, we refund the full amount minus the Paystack processing fee — no questions asked.',
   },
   {
     q: 'Can I move my licence to a new computer?',
@@ -41,7 +41,7 @@ const FAQS: { q: string; a: string }[] = [
   },
   {
     q: 'How does cloud backup work?',
-    a: 'Optional add-on at KES 500 per month per branch. Each night an encrypted snapshot of your local database uploads to Cloudflare R2 storage we operate from London. If your machine is lost, you reinstall Duka and restore the snapshot in minutes. The encryption key never leaves your hands.',
+    a: 'Optional add-on at KES 500 per month per branch. Each night an encrypted snapshot of your local database uploads to Cloudflare R2 storage we operate from London. If your machine is lost, you reinstall Omnix and restore the snapshot in minutes. The encryption key never leaves your hands.',
   },
   {
     q: 'Do you offer discounts for cooperatives, NGOs, or schools?',

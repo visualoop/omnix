@@ -49,7 +49,7 @@ export default async function DashboardDownloadsPage() {
             {activeLicense.licenseKey}
           </code>
           <p className="mt-2 text-[12px] text-[var(--color-fg-muted)]">
-            Paste this into Duka on first launch to activate.
+            Paste this into Omnix on first launch to activate.
           </p>
         </div>
       ) : null}

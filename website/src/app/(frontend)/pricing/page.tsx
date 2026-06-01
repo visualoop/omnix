@@ -25,7 +25,7 @@ const TIERS = [
     primary: false,
   },
   {
-    name: 'Duka licence',
+    name: 'Omnix licence',
     cadence: 'one-time · perpetual',
     price: 'KES 100,000',
     body: 'The whole product. Every live module. Up to 5 branches, 10 PCs. One year of free maintenance. Pay it like rent — except you pay it once.',
@@ -137,7 +137,7 @@ export default function PricingPage() {
                 <tr className="border-b border-[var(--color-border-strong)]">
                   <th className="py-5 pr-6 font-[family-name:var(--font-display)] text-[16px] font-normal text-[var(--color-fg)]">Capability</th>
                   <th className="px-6 py-5 text-center text-[var(--color-fg-muted)]">Free trial</th>
-                  <th className="px-6 py-5 text-center text-[var(--color-accent)]">Duka licence</th>
+                  <th className="px-6 py-5 text-center text-[var(--color-accent)]">Omnix licence</th>
                   <th className="px-6 py-5 text-center text-[var(--color-fg-muted)]">Custom</th>
                 </tr>
               </thead>
