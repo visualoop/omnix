@@ -2,6 +2,10 @@
 
 This tracks work done LOCALLY without GitHub pushes. We only push when the user explicitly says so.
 
+## Release v0.2.9 (pushed + tagged)
+- Pushed all platform-completion + hardening work to `origin/main` (account `visualoop`) and tagged `v0.2.9` to trigger the CI build/sign/release workflow (Windows MSI/NSIS + `latest.json` updater manifest).
+- Version bumped 0.2.8 → **0.2.9** across `package.json`, `src-tauri/Cargo.toml`, `src-tauri/tauri.conf.json`, `Cargo.lock` (the pre-existing `v0.2.8` GitHub release was already published with drifted 0.2.6 assets, so a clean new version was required rather than retagging).
+
 ## Build/deploy hygiene (Vercel + CI determinism)
 - **Removed dual lockfiles**: deleted tracked `package-lock.json` at root and in `website/` — the toolchain (CI `pnpm install --frozen-lockfile`, linked Vercel project) standardised on **pnpm**, so the stale npm lockfiles were a non-deterministic-install hazard ("works locally, fails on Vercel"). Only `pnpm-lock.yaml` (v9.0) remains.
 - Pinned `packageManager: pnpm@9.15.4` in both `package.json` files so Vercel (corepack) and CI use the same pnpm major as the lockfile.
