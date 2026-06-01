@@ -16,7 +16,6 @@ import {
   Shield,
   Receipt,
   FileText,
-  Banknote,
   Truck,
   Users,
   ClipboardCheck,
@@ -38,6 +37,27 @@ import {
   BedDouble,
   Sparkles,
   ShoppingBag,
+  // Newly distinct icons (duplicate-fix sweep):
+  Landmark,         // Banking
+  Coins,            // Petty Cash
+  Banknote,         // Cash Register
+  CircleDollarSign, // Payroll
+  BadgePercent,     // Promotions
+  Scale,            // P&L
+  UserCog,          // Employees
+  Building2,        // Suppliers
+  Handshake,        // Hardware Accounts
+  Percent,          // Hardware Commissions
+  ShoppingBasket,   // Purchases
+  ClipboardList,    // Daily Ops
+  Send,             // eTIMS
+  Gauge,            // Module Overview (hardware/hospitality)
+  FileSignature,    // Quotations
+  LineChart,        // Hardware Reports
+  PieChart,         // Hospitality Reports
+  Soup,             // Hospitality Orders
+  FolderOpen,       // Folios
+  ScrollText,       // Recipes
 } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
 import { OmnixLogo } from "@/components/omnix-logo";
@@ -77,25 +97,25 @@ const CORE_NAV: NavItem[] = [
   { to: "/returns", icon: RotateCcw, label: "Returns", permissions: ["sales.refund"] },
   { to: "/inventory", icon: Package, label: "Inventory", permissions: ["inventory.view"] },
   { to: "/stock-transfers", icon: ArrowRightLeft, label: "Transfers", permissions: ["inventory.view"] },
-  { to: "/purchase-orders", icon: Truck, label: "Purchases", permissions: ["purchase_orders.view"] },
+  { to: "/purchase-orders", icon: ShoppingBasket, label: "Purchases", permissions: ["purchase_orders.view"] },
   { to: "/stock-take", icon: ClipboardCheck, label: "Stock Take", permissions: ["stock_take.use"] },
-  { to: "/suppliers", icon: Truck, label: "Suppliers", permissions: ["suppliers.view"] },
+  { to: "/suppliers", icon: Building2, label: "Suppliers", permissions: ["suppliers.view"] },
   { to: "/customers", icon: Users, label: "Customers", permissions: ["customers.view"] },
   { to: "/invoicing", icon: FileText, label: "Invoicing", permissions: ["invoicing.view"] },
-  { to: "/banking", icon: Banknote, label: "Banking", permissions: ["banking.view"] },
+  { to: "/banking", icon: Landmark, label: "Banking", permissions: ["banking.view"] },
   { to: "/expenses", icon: Wallet, label: "Expenses", permissions: ["expenses.view"] },
-  { to: "/pnl", icon: TrendingUp, label: "P&L", permissions: ["reports.pnl"] },
-  { to: "/hr/employees", icon: Users, label: "Employees", permissions: ["hr.employees.view"] },
+  { to: "/pnl", icon: Scale, label: "P&L", permissions: ["reports.pnl"] },
+  { to: "/hr/employees", icon: UserCog, label: "Employees", permissions: ["hr.employees.view"] },
   { to: "/hr/attendance", icon: Clock, label: "Attendance", permissions: ["hr.attendance.view","hr.attendance.record"] },
   { to: "/hr/leave", icon: Plane, label: "Leave", permissions: ["hr.leave.request","hr.leave.approve"] },
-  { to: "/hr/payroll", icon: Wallet, label: "Payroll", permissions: ["hr.payroll.view"] },
-  { to: "/petty-cash", icon: Receipt, label: "Petty Cash", permissions: ["petty_cash.use"] },
+  { to: "/hr/payroll", icon: CircleDollarSign, label: "Payroll", permissions: ["hr.payroll.view"] },
+  { to: "/petty-cash", icon: Coins, label: "Petty Cash", permissions: ["petty_cash.use"] },
   { to: "/cash-register", icon: Banknote, label: "Cash Register", permissions: ["cash_register.use"] },
-  { to: "/promotions", icon: Tag, label: "Promotions", permissions: ["promotions.manage"] },
+  { to: "/promotions", icon: BadgePercent, label: "Promotions", permissions: ["promotions.manage"] },
   { to: "/reports", icon: BarChart3, label: "Reports", permissions: ["reports.view", "reports.zreport"] },
-  { to: "/reports/daily-operations", icon: BarChart3, label: "Daily Ops", permissions: ["reports.view"] },
+  { to: "/reports/daily-operations", icon: ClipboardList, label: "Daily Ops", permissions: ["reports.view"] },
   { to: "/vat-report", icon: FileCheck, label: "VAT Report", permissions: ["reports.view"] },
-  { to: "/etims", icon: FileCheck, label: "eTIMS", permissions: ["etims.view"] },
+  { to: "/etims", icon: Send, label: "eTIMS", permissions: ["etims.view"] },
 ];
 
 /**
@@ -131,12 +151,12 @@ const MODULE_GROUPS: Partial<Record<ModuleId, ModuleNavGroup>> = {
     icon: Wrench,
     label: "Hardware",
     items: [
-      { to: "/hardware/dashboard", icon: LayoutDashboard, label: "Overview", permissions: ["hardware.reports.view"] },
-      { to: "/hardware/quotations", icon: FileText, label: "Quotations", permissions: ["hardware.quotations.manage"] },
+      { to: "/hardware/dashboard", icon: Gauge, label: "Overview", permissions: ["hardware.reports.view"] },
+      { to: "/hardware/quotations", icon: FileSignature, label: "Quotations", permissions: ["hardware.quotations.manage"] },
       { to: "/hardware/delivery-notes", icon: Truck, label: "Delivery Notes", permissions: ["hardware.delivery_notes.manage"] },
-      { to: "/hardware/accounts", icon: Users, label: "Accounts", permissions: ["hardware.accounts.manage"] },
-      { to: "/hardware/commissions", icon: Tag, label: "Commissions", permissions: ["hardware.commissions.view"] },
-      { to: "/hardware/reports", icon: BarChart3, label: "Reports", permissions: ["hardware.reports.view"] },
+      { to: "/hardware/accounts", icon: Handshake, label: "Accounts", permissions: ["hardware.accounts.manage"] },
+      { to: "/hardware/commissions", icon: Percent, label: "Commissions", permissions: ["hardware.commissions.view"] },
+      { to: "/hardware/reports", icon: LineChart, label: "Reports", permissions: ["hardware.reports.view"] },
     ],
   },
   hospitality: {
@@ -144,17 +164,17 @@ const MODULE_GROUPS: Partial<Record<ModuleId, ModuleNavGroup>> = {
     icon: UtensilsCrossed,
     label: "Hospitality",
     items: [
-      { to: "/hospitality/dashboard", icon: LayoutDashboard, label: "Overview", permissions: ["hospitality.reports.view"] },
+      { to: "/hospitality/dashboard", icon: Gauge, label: "Overview", permissions: ["hospitality.reports.view"] },
       { to: "/hospitality/tables", icon: LayoutGrid, label: "Tables", permissions: ["hospitality.tables.manage"] },
-      { to: "/hospitality/orders", icon: Receipt, label: "Orders", permissions: ["hospitality.orders.take"] },
+      { to: "/hospitality/orders", icon: Soup, label: "Orders", permissions: ["hospitality.orders.take"] },
       { to: "/hospitality/kitchen", icon: ChefHat, label: "Kitchen", permissions: ["hospitality.kitchen.bump"] },
       { to: "/hospitality/menu", icon: BookOpen, label: "Menu", permissions: ["hospitality.menu.manage"] },
       { to: "/hospitality/rooms", icon: BedDouble, label: "Rooms", permissions: ["hospitality.bookings.manage"] },
       { to: "/hospitality/bookings", icon: CalendarClock, label: "Bookings", permissions: ["hospitality.bookings.manage"] },
       { to: "/hospitality/housekeeping", icon: Sparkles, label: "Housekeeping", permissions: ["hospitality.housekeeping.manage"] },
-      { to: "/hospitality/folios", icon: FileText, label: "Folios", permissions: ["hospitality.folios.manage"] },
-      { to: "/hospitality/recipes", icon: ClipboardCheck, label: "Recipes", permissions: ["hospitality.recipes.manage"] },
-      { to: "/hospitality/reports", icon: BarChart3, label: "Reports", permissions: ["hospitality.reports.view"] },
+      { to: "/hospitality/folios", icon: FolderOpen, label: "Folios", permissions: ["hospitality.folios.manage"] },
+      { to: "/hospitality/recipes", icon: ScrollText, label: "Recipes", permissions: ["hospitality.recipes.manage"] },
+      { to: "/hospitality/reports", icon: PieChart, label: "Reports", permissions: ["hospitality.reports.view"] },
     ],
   },
 };

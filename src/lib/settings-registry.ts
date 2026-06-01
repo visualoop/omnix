@@ -9,6 +9,13 @@
 import {
   Building2, CreditCard, FileCheck, Shield, Users, Key, Database, Activity,
   Network, Boxes, ShieldCheck, Monitor, Ruler, Percent,
+  // Distinct icons for settings duplicate-fix:
+  MapPin,        // Locations & Branches
+  UsersRound,    // Groups
+  KeyRound,      // Access Explorer
+  Calculator,    // Tax & VAT
+  ListChecks,    // Price Lists
+  Printer,       // Receipt Template
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import type { ModuleId } from "@/stores/active-module";
@@ -36,20 +43,20 @@ export const SETTINGS_GROUPS: SettingsGroup[] = [
 
 const CORE_SETTINGS: SettingsNavItem[] = [
   { to: "/settings", label: "Business Profile", description: "Name, contacts, identity", icon: Building2, permission: "settings.business", group: "Business" },
-  { to: "/settings/branches", label: "Locations & Branches", description: "Branches and user access", icon: Building2, permission: "settings.business", group: "Business" },
+  { to: "/settings/branches", label: "Locations & Branches", description: "Branches and user access", icon: MapPin, permission: "settings.business", group: "Business" },
   { to: "/settings/users", label: "Users & Permissions", description: "Accounts, roles, branch access", icon: Users, permission: "users.view", group: "Access" },
   { to: "/settings/roles", label: "Roles", description: "Build roles and permissions", icon: ShieldCheck, permission: "users.manage", group: "Access" },
-  { to: "/settings/groups", label: "Groups", description: "Bulk-assign roles to users", icon: Users, permission: "users.manage", group: "Access" },
-  { to: "/settings/access-audit", label: "Access Explorer", description: "Why a user can or can't", icon: ShieldCheck, permission: "users.manage", group: "Access" },
+  { to: "/settings/groups", label: "Groups", description: "Bulk-assign roles to users", icon: UsersRound, permission: "users.manage", group: "Access" },
+  { to: "/settings/access-audit", label: "Access Explorer", description: "Why a user can or can't", icon: KeyRound, permission: "users.manage", group: "Access" },
   { to: "/settings/payments", label: "Payment Methods", description: "Cash, M-Pesa, cards, bank", icon: CreditCard, permission: "settings.business", group: "Finance" },
-  { to: "/settings/taxes", label: "Tax & VAT", description: "Default rates, tax classes", icon: CreditCard, permission: "settings.business", group: "Finance" },
-  { to: "/settings/price-lists", label: "Price Lists", description: "Customer pricing tiers", icon: CreditCard, permission: "retail.price_lists.manage", group: "Finance" },
+  { to: "/settings/taxes", label: "Tax & VAT", description: "Default rates, tax classes", icon: Calculator, permission: "settings.business", group: "Finance" },
+  { to: "/settings/price-lists", label: "Price Lists", description: "Customer pricing tiers", icon: ListChecks, permission: "retail.price_lists.manage", group: "Finance" },
   { to: "/settings/etims", label: "KRA eTIMS", description: "Tax invoice signing", icon: FileCheck, permission: "etims.view", group: "Finance" },
   { to: "/settings/network", label: "LAN Multi-device", description: "Master/client mode", icon: Network, permission: "settings.network", group: "Operations" },
   { to: "/settings/modules", label: "Modules", description: "Active vertical and roadmap", icon: Boxes, permission: "settings.modules", group: "Operations" },
   { to: "/settings/backup", label: "Backup & Restore", description: "Protect business data", icon: Database, permission: "settings.backup", group: "Operations" },
   { to: "/settings/customer-display", label: "Customer Display", description: "Second screen settings", icon: Monitor, permission: "settings.business", group: "Operations" },
-  { to: "/settings/receipt", label: "Receipt Template", description: "Footer message and branding", icon: FileCheck, permission: "settings.business", group: "Operations" },
+  { to: "/settings/receipt", label: "Receipt Template", description: "Footer message and branding", icon: Printer, permission: "settings.business", group: "Operations" },
   { to: "/settings/audit", label: "Audit Log", description: "Security and compliance history", icon: Activity, permission: "audit.view", group: "Operations" },
   { to: "/settings/license", label: "License", description: "Machine binding and updates", icon: Key, permission: "license.view", group: "Operations" },
   { to: "/settings/insurance", label: "Insurance Providers", description: "SHA and private insurers", icon: Shield, permission: "claims.view", group: "Dawa", module: "dawa" },
