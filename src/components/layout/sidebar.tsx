@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 import {
   LayoutDashboard,
@@ -9,6 +9,8 @@ import {
   Settings,
   ChevronsLeft,
   ChevronsRight,
+  ChevronDown,
+  ChevronRight,
   Search,
   FileCheck,
   Shield,
@@ -35,13 +37,14 @@ import {
   ChefHat,
   BedDouble,
   Sparkles,
+  ShoppingBag,
 } from "lucide-react";
-import { NavLink } from "react-router-dom";
+import { NavLink, useLocation } from "react-router-dom";
 import { OmnixLogo } from "@/components/omnix-logo";
 import { ModuleLogo } from "@/components/module-logos";
 import { APP_NAME } from "@/lib/brand";
 import { useAuthStore } from "@/stores/auth";
-import { useActiveModule, MODULE_DEFINITIONS } from "@/stores/active-module";
+import { useActiveModule, MODULE_DEFINITIONS, type ModuleId } from "@/stores/active-module";
 import { hasAnyPermission, type Permission } from "@/lib/permissions";
 import { isFeatureAvailable, getFeatureModule } from "@/lib/module-features";
 import { isModuleEntitled } from "@/stores/entitlements";
@@ -55,10 +58,19 @@ interface NavItem {
   permissions: Permission[];
 }
 
-// Module gating is handled centrally by lib/module-features.ts.
-// Just declare nav items here with their `to` path; the registry decides
-// whether they belong to core/dawa/retail/etc.
-const navItems: NavItem[] = [
+interface ModuleNavGroup {
+  id: ModuleId;
+  icon: typeof LayoutDashboard;
+  label: string;
+  items: NavItem[];
+}
+
+/**
+ * Core nav — every install sees these (gated only by permissions).
+ * Module-specific items live in MODULE_GROUPS below and only appear
+ * inside the collapsible group for the active module.
+ */
+const CORE_NAV: NavItem[] = [
   { to: "/", icon: LayoutDashboard, label: "Dashboard", permissions: [] },
   { to: "/pos", icon: ShoppingCart, label: "POS", permissions: ["pos.use"] },
   { to: "/sales", icon: Receipt, label: "Sales", permissions: ["sales.view"] },
@@ -80,43 +92,79 @@ const navItems: NavItem[] = [
   { to: "/petty-cash", icon: Receipt, label: "Petty Cash", permissions: ["petty_cash.use"] },
   { to: "/cash-register", icon: Banknote, label: "Cash Register", permissions: ["cash_register.use"] },
   { to: "/promotions", icon: Tag, label: "Promotions", permissions: ["promotions.manage"] },
-  // Module-specific (gated by registry):
-  { to: "/pharmacy", icon: Pill, label: "Pharmacy", permissions: ["pharmacy.dispense"] },
-  { to: "/retail/dashboard", icon: TrendingUp, label: "Retail Insights", permissions: ["reports.view"] },
-  { to: "/retail/brands", icon: Tag, label: "Brands", permissions: ["retail.brands.manage"] },
-  { to: "/retail/laybys", icon: CalendarClock, label: "Laybys", permissions: ["retail.laybys.use"] },
-  { to: "/retail/special-orders", icon: CalendarPlus, label: "Special Orders", permissions: ["retail.special_orders.use"] },
-  { to: "/retail/shrinkage", icon: AlertTriangle, label: "Shrinkage", permissions: ["retail.shrinkage.record"] },
-  // Hardware module (gated by entitlement + active module):
-  { to: "/hardware/dashboard", icon: Wrench, label: "Hardware", permissions: ["hardware.reports.view"] },
-  { to: "/hardware/quotations", icon: FileText, label: "Quotations", permissions: ["hardware.quotations.manage"] },
-  { to: "/hardware/delivery-notes", icon: Truck, label: "Delivery Notes", permissions: ["hardware.delivery_notes.manage"] },
-  { to: "/hardware/accounts", icon: Users, label: "Accounts", permissions: ["hardware.accounts.manage"] },
-  { to: "/hardware/commissions", icon: Tag, label: "Commissions", permissions: ["hardware.commissions.view"] },
-  { to: "/hardware/reports", icon: BarChart3, label: "HW Reports", permissions: ["hardware.reports.view"] },
-  // Hospitality module (gated by entitlement + active module):
-  { to: "/hospitality/dashboard", icon: UtensilsCrossed, label: "Hospitality", permissions: ["hospitality.reports.view"] },
-  { to: "/hospitality/tables", icon: LayoutGrid, label: "Tables", permissions: ["hospitality.tables.manage"] },
-  { to: "/hospitality/orders", icon: Receipt, label: "Orders", permissions: ["hospitality.orders.take"] },
-  { to: "/hospitality/kitchen", icon: ChefHat, label: "Kitchen", permissions: ["hospitality.kitchen.bump"] },
-  { to: "/hospitality/menu", icon: BookOpen, label: "Menu", permissions: ["hospitality.menu.manage"] },
-  { to: "/hospitality/rooms", icon: BedDouble, label: "Rooms", permissions: ["hospitality.bookings.manage"] },
-  { to: "/hospitality/bookings", icon: CalendarClock, label: "Bookings", permissions: ["hospitality.bookings.manage"] },
-  { to: "/hospitality/housekeeping", icon: Sparkles, label: "Housekeeping", permissions: ["hospitality.housekeeping.manage"] },
-  { to: "/hospitality/folios", icon: FileText, label: "Folios", permissions: ["hospitality.folios.manage"] },
-  { to: "/hospitality/recipes", icon: ClipboardCheck, label: "Recipes", permissions: ["hospitality.recipes.manage"] },
-  { to: "/hospitality/reports", icon: BarChart3, label: "Hosp Reports", permissions: ["hospitality.reports.view"] },
-  // Continue core:
   { to: "/reports", icon: BarChart3, label: "Reports", permissions: ["reports.view", "reports.zreport"] },
   { to: "/reports/daily-operations", icon: BarChart3, label: "Daily Ops", permissions: ["reports.view"] },
   { to: "/vat-report", icon: FileCheck, label: "VAT Report", permissions: ["reports.view"] },
   { to: "/etims", icon: FileCheck, label: "eTIMS", permissions: ["etims.view"] },
-  { to: "/claims", icon: Shield, label: "Insurance Claims", permissions: ["claims.view"] },
-  { to: "/settings", icon: Settings, label: "Settings", permissions: ["settings.business"] },
 ];
+
+/**
+ * Module-specific groups. The sidebar shows ONLY the active module's group
+ * (collapsed by default; auto-expands when on one of its sub-routes).
+ * Pharmacy/Retail/Hardware/Hospitality each become a single line that opens
+ * to reveal the module's screens — same pattern as Settings.
+ */
+const MODULE_GROUPS: Partial<Record<ModuleId, ModuleNavGroup>> = {
+  dawa: {
+    id: "dawa",
+    icon: Pill,
+    label: "Pharmacy",
+    items: [
+      { to: "/pharmacy", icon: Pill, label: "Dispensing", permissions: ["pharmacy.dispense"] },
+      { to: "/claims", icon: Shield, label: "Insurance Claims", permissions: ["claims.view"] },
+    ],
+  },
+  retail: {
+    id: "retail",
+    icon: ShoppingBag,
+    label: "Retail",
+    items: [
+      { to: "/retail/dashboard", icon: TrendingUp, label: "Insights", permissions: ["reports.view"] },
+      { to: "/retail/brands", icon: Tag, label: "Brands", permissions: ["retail.brands.manage"] },
+      { to: "/retail/laybys", icon: CalendarClock, label: "Laybys", permissions: ["retail.laybys.use"] },
+      { to: "/retail/special-orders", icon: CalendarPlus, label: "Special Orders", permissions: ["retail.special_orders.use"] },
+      { to: "/retail/shrinkage", icon: AlertTriangle, label: "Shrinkage", permissions: ["retail.shrinkage.record"] },
+    ],
+  },
+  hardware: {
+    id: "hardware",
+    icon: Wrench,
+    label: "Hardware",
+    items: [
+      { to: "/hardware/dashboard", icon: LayoutDashboard, label: "Overview", permissions: ["hardware.reports.view"] },
+      { to: "/hardware/quotations", icon: FileText, label: "Quotations", permissions: ["hardware.quotations.manage"] },
+      { to: "/hardware/delivery-notes", icon: Truck, label: "Delivery Notes", permissions: ["hardware.delivery_notes.manage"] },
+      { to: "/hardware/accounts", icon: Users, label: "Accounts", permissions: ["hardware.accounts.manage"] },
+      { to: "/hardware/commissions", icon: Tag, label: "Commissions", permissions: ["hardware.commissions.view"] },
+      { to: "/hardware/reports", icon: BarChart3, label: "Reports", permissions: ["hardware.reports.view"] },
+    ],
+  },
+  hospitality: {
+    id: "hospitality",
+    icon: UtensilsCrossed,
+    label: "Hospitality",
+    items: [
+      { to: "/hospitality/dashboard", icon: LayoutDashboard, label: "Overview", permissions: ["hospitality.reports.view"] },
+      { to: "/hospitality/tables", icon: LayoutGrid, label: "Tables", permissions: ["hospitality.tables.manage"] },
+      { to: "/hospitality/orders", icon: Receipt, label: "Orders", permissions: ["hospitality.orders.take"] },
+      { to: "/hospitality/kitchen", icon: ChefHat, label: "Kitchen", permissions: ["hospitality.kitchen.bump"] },
+      { to: "/hospitality/menu", icon: BookOpen, label: "Menu", permissions: ["hospitality.menu.manage"] },
+      { to: "/hospitality/rooms", icon: BedDouble, label: "Rooms", permissions: ["hospitality.bookings.manage"] },
+      { to: "/hospitality/bookings", icon: CalendarClock, label: "Bookings", permissions: ["hospitality.bookings.manage"] },
+      { to: "/hospitality/housekeeping", icon: Sparkles, label: "Housekeeping", permissions: ["hospitality.housekeeping.manage"] },
+      { to: "/hospitality/folios", icon: FileText, label: "Folios", permissions: ["hospitality.folios.manage"] },
+      { to: "/hospitality/recipes", icon: ClipboardCheck, label: "Recipes", permissions: ["hospitality.recipes.manage"] },
+      { to: "/hospitality/reports", icon: BarChart3, label: "Reports", permissions: ["hospitality.reports.view"] },
+    ],
+  },
+};
+
+/** Where the active-module group renders within CORE_NAV (after this index). */
+const MODULE_GROUP_INSERT_AFTER = "/pos";
 
 export function Sidebar({ onCommandOpen }: { onCommandOpen: () => void }) {
   const [collapsed, setCollapsed] = useState(false);
+  const location = useLocation();
   const user = useAuthStore((s) => s.user);
   const activeModuleId = useActiveModule((s) => s.active);
   const loadModule = useActiveModule((s) => s.load);
@@ -129,21 +177,46 @@ export function Sidebar({ onCommandOpen }: { onCommandOpen: () => void }) {
     loadModule().catch(() => {});
   }
 
-  const visibleNav = navItems.filter((item) => {
+  // Module group for the active vertical (none for core).
+  const activeGroup =
+    activeModuleId !== "core" ? MODULE_GROUPS[activeModuleId] : undefined;
+
+  // Auto-expand the group when the user is on one of its sub-routes.
+  const onModuleSubRoute =
+    activeGroup?.items.some((i) => location.pathname.startsWith(i.to)) ?? false;
+  const [groupOpen, setGroupOpen] = useState<boolean>(onModuleSubRoute);
+  // Re-expand whenever the user navigates into a module sub-route.
+  useEffect(() => {
+    if (onModuleSubRoute) setGroupOpen(true);
+  }, [onModuleSubRoute]);
+
+  const itemVisible = (item: NavItem) => {
     const owner = getFeatureModule(item.to);
-    // Hide module items the licence doesn't include (owner undefined = core).
     if (owner && !isModuleEntitled(owner)) return false;
     return (
       (item.permissions.length === 0 || hasAnyPermission(user, item.permissions)) &&
       isFeatureAvailable(item.to, activeModuleId)
     );
-  });
+  };
+
+  const visibleCore = CORE_NAV.filter(itemVisible);
+  const visibleGroupItems = activeGroup
+    ? activeGroup.items.filter(
+        (i) =>
+          i.permissions.length === 0 || hasAnyPermission(user, i.permissions),
+      )
+    : [];
+
+  const insertIdx =
+    visibleCore.findIndex((i) => i.to === MODULE_GROUP_INSERT_AFTER) + 1;
+  const before = visibleCore.slice(0, insertIdx || visibleCore.length);
+  const after = visibleCore.slice(insertIdx || visibleCore.length);
 
   return (
     <aside
       className={cn(
         "flex flex-col border-r border-border bg-sidebar h-full transition-all duration-200",
-        collapsed ? "w-[52px]" : "w-[200px]"
+        collapsed ? "w-[52px]" : "w-[200px]",
       )}
     >
       {/* Logo + Active Module */}
@@ -172,8 +245,8 @@ export function Sidebar({ onCommandOpen }: { onCommandOpen: () => void }) {
         onClick={onCommandOpen}
         data-tour="cmd-k"
         className={cn(
-          "mx-2 mt-2 flex items-center gap-2 rounded-md px-2 py-1.5 text-xs text-muted-foreground hover:bg-accent transition-colors",
-          collapsed && "justify-center"
+          "mx-2 mt-2 flex items-center gap-2 rounded-md px-2 py-1.5 text-xs text-muted-foreground hover:bg-accent transition-colors cursor-pointer",
+          collapsed && "justify-center",
         )}
       >
         <Search className="h-3.5 w-3.5 shrink-0" />
@@ -187,32 +260,41 @@ export function Sidebar({ onCommandOpen }: { onCommandOpen: () => void }) {
 
       {/* Nav */}
       <nav className="flex-1 mt-2 px-2 space-y-0.5 overflow-auto min-h-0 pb-2">
-        {visibleNav.map((item) => (
-          <NavLink
-            key={item.to}
-            to={item.to}
-            end={item.to === "/"}
-            title={collapsed ? item.label : undefined}
-            className={({ isActive }) =>
-              cn(
-                "flex items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-colors",
-                isActive
-                  ? "bg-accent text-accent-foreground font-medium"
-                  : "text-muted-foreground hover:bg-accent/50 hover:text-foreground",
-                collapsed && "justify-center"
-              )
-            }
-          >
-            <item.icon className="h-4 w-4 shrink-0" />
-            {!collapsed && <span>{item.label}</span>}
-          </NavLink>
+        {before.map((item) => (
+          <NavRow key={item.to} item={item} collapsed={collapsed} />
         ))}
+
+        {/* Active-module group (single expandable entry) */}
+        {activeGroup && visibleGroupItems.length > 0 && (
+          <ModuleGroup
+            group={{ ...activeGroup, items: visibleGroupItems }}
+            collapsed={collapsed}
+            open={groupOpen}
+            onToggle={() => setGroupOpen((v) => !v)}
+            currentPath={location.pathname}
+          />
+        )}
+
+        {after.map((item) => (
+          <NavRow key={item.to} item={item} collapsed={collapsed} />
+        ))}
+
+        {/* Settings (always last, always single row — its own shell) */}
+        <NavRow
+          item={{
+            to: "/settings",
+            icon: Settings,
+            label: "Settings",
+            permissions: ["settings.business"],
+          }}
+          collapsed={collapsed}
+        />
       </nav>
 
       {/* Collapse toggle */}
       <button
         onClick={() => setCollapsed(!collapsed)}
-        className="flex items-center justify-center h-10 border-t border-border text-muted-foreground hover:text-foreground transition-colors"
+        className="flex items-center justify-center h-10 border-t border-border text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
       >
         {collapsed ? (
           <ChevronsRight className="h-4 w-4" />
@@ -221,5 +303,108 @@ export function Sidebar({ onCommandOpen }: { onCommandOpen: () => void }) {
         )}
       </button>
     </aside>
+  );
+}
+
+function NavRow({ item, collapsed }: { item: NavItem; collapsed: boolean }) {
+  return (
+    <NavLink
+      to={item.to}
+      end={item.to === "/"}
+      title={collapsed ? item.label : undefined}
+      className={({ isActive }) =>
+        cn(
+          "flex items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-colors cursor-pointer",
+          isActive
+            ? "bg-accent text-accent-foreground font-medium"
+            : "text-muted-foreground hover:bg-accent/50 hover:text-foreground",
+          collapsed && "justify-center",
+        )
+      }
+    >
+      <item.icon className="h-4 w-4 shrink-0" />
+      {!collapsed && <span>{item.label}</span>}
+    </NavLink>
+  );
+}
+
+function ModuleGroup({
+  group,
+  collapsed,
+  open,
+  onToggle,
+  currentPath,
+}: {
+  group: ModuleNavGroup;
+  collapsed: boolean;
+  open: boolean;
+  onToggle: () => void;
+  currentPath: string;
+}) {
+  const Icon = group.icon;
+  const onSubRoute = group.items.some((i) => currentPath.startsWith(i.to));
+
+  // Collapsed sidebar: show ONE icon row that links to the module's first item.
+  // Expanding the sub-list when the whole sidebar is collapsed would look broken.
+  if (collapsed) {
+    return (
+      <NavLink
+        to={group.items[0].to}
+        title={group.label}
+        className={({ isActive }) =>
+          cn(
+            "flex items-center justify-center rounded-md px-2 py-1.5 text-sm transition-colors cursor-pointer",
+            isActive || onSubRoute
+              ? "bg-accent text-accent-foreground font-medium"
+              : "text-muted-foreground hover:bg-accent/50 hover:text-foreground",
+          )
+        }
+      >
+        <Icon className="h-4 w-4 shrink-0" />
+      </NavLink>
+    );
+  }
+
+  return (
+    <div>
+      <button
+        onClick={onToggle}
+        className={cn(
+          "w-full flex items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-colors cursor-pointer",
+          onSubRoute
+            ? "text-foreground font-medium"
+            : "text-muted-foreground hover:bg-accent/50 hover:text-foreground",
+        )}
+      >
+        <Icon className="h-4 w-4 shrink-0" />
+        <span className="flex-1 text-left">{group.label}</span>
+        {open ? (
+          <ChevronDown className="h-3.5 w-3.5 shrink-0" />
+        ) : (
+          <ChevronRight className="h-3.5 w-3.5 shrink-0" />
+        )}
+      </button>
+      {open && (
+        <div className="mt-0.5 ml-2 pl-2 border-l border-border space-y-0.5">
+          {group.items.map((item) => (
+            <NavLink
+              key={item.to}
+              to={item.to}
+              className={({ isActive }) =>
+                cn(
+                  "flex items-center gap-2 rounded-md px-2 py-1.5 text-[13px] transition-colors cursor-pointer",
+                  isActive
+                    ? "bg-accent text-accent-foreground font-medium"
+                    : "text-muted-foreground hover:bg-accent/50 hover:text-foreground",
+                )
+              }
+            >
+              <item.icon className="h-3.5 w-3.5 shrink-0" />
+              <span>{item.label}</span>
+            </NavLink>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }

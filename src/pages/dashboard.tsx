@@ -23,6 +23,18 @@ function useModuleAccent() {
     primaryBg: "bg-amber-500/10",
     label: "Soko Retail",
   };
+  if (m === "hardware") return {
+    headerBg: "bg-orange-700",
+    primary: "text-orange-700 dark:text-orange-400",
+    primaryBg: "bg-orange-500/10",
+    label: "Hardware",
+  };
+  if (m === "hospitality") return {
+    headerBg: "bg-rose-700",
+    primary: "text-rose-700 dark:text-rose-400",
+    primaryBg: "bg-rose-500/10",
+    label: "Hospitality",
+  };
   return {
     headerBg: "bg-primary",
     primary: "text-primary",

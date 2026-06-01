@@ -61,6 +61,24 @@ function useModuleAccent() {
     isPharmacy: false,
     isRetail: true,
   };
+  if (m === "hardware") return {
+    pay: "bg-orange-700 hover:bg-orange-800",
+    accentText: "text-orange-700 dark:text-orange-400",
+    accentBg: "bg-orange-500/10",
+    accentRing: "ring-orange-500/30",
+    headerBg: "bg-orange-700",
+    isPharmacy: false,
+    isRetail: false,
+  };
+  if (m === "hospitality") return {
+    pay: "bg-rose-700 hover:bg-rose-800",
+    accentText: "text-rose-700 dark:text-rose-400",
+    accentBg: "bg-rose-500/10",
+    accentRing: "ring-rose-500/30",
+    headerBg: "bg-rose-700",
+    isPharmacy: false,
+    isRetail: false,
+  };
   return {
     pay: "bg-primary hover:bg-primary/90",
     accentText: "text-primary",

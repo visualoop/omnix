@@ -35,7 +35,7 @@ function PageHead({ icon: Icon, title, subtitle, action }: { icon: typeof Utensi
     <div className="flex items-start justify-between mb-5">
       <div>
         <h1 className="text-xl font-semibold tracking-tight flex items-center gap-2">
-          <Icon className="h-5 w-5 text-emerald-600" /> {title}
+          <Icon className="h-5 w-5 text-rose-600 dark:text-rose-400" /> {title}
         </h1>
         <p className="text-sm text-muted-foreground mt-1">{subtitle}</p>
       </div>
