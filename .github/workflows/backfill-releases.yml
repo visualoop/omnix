@@ -1,0 +1,30 @@
+name: Backfill Releases
+
+# Manual one-shot: syncs every existing GitHub Release into Payload's
+# `releases` collection, so the in-app updater + /downloads page have data
+# for versions that shipped before the auto Notify-Payload step existed.
+# Idempotent — safe to re-run; updates rows in place.
+
+on:
+  workflow_dispatch:
+
+jobs:
+  backfill:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Run backfill
+        env:
+          PAYLOAD_SYSTEM_TOKEN: ${{ secrets.PAYLOAD_SYSTEM_TOKEN }}
+          PAYLOAD_BASE: ${{ vars.PAYLOAD_BASE_URL || 'https://omnix.co.ke' }}
+          GH_REPO: ${{ github.repository }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if [ -z "$PAYLOAD_SYSTEM_TOKEN" ]; then
+            echo "::error::PAYLOAD_SYSTEM_TOKEN repo secret not set"
+            exit 1
+          fi
+          chmod +x scripts/backfill-releases.sh
+          ./scripts/backfill-releases.sh
