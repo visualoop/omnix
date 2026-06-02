@@ -3,52 +3,130 @@ import Link from 'next/link'
 import { Icon } from '@/components/icons'
 import { Button } from '@/components/ui/button'
 import { PageHero } from '@/components/marketing/page-hero'
+import { getPayload } from 'payload'
+import config from '@/payload.config'
 
 export const metadata: Metadata = {
   title: 'Downloads — get Omnix',
   description: 'Download the latest Omnix installer for Windows. Free 30-day trial, no credit card required.',
 }
 
-export default function DownloadsPage() {
+export const revalidate = 60
+
+interface ReleaseRow {
+  version: string
+  publishedAt?: string
+  title?: string
+  summary?: string
+  windowsNsisUrl?: string
+  windowsMsiUrl?: string
+  windowsNsisSize?: number
+  windowsMsiSize?: number
+}
+
+function formatBytes(n?: number): string {
+  if (!n || n <= 0) return ''
+  return `${(n / (1024 * 1024)).toFixed(1)} MB`
+}
+
+function formatDate(d?: string): string {
+  if (!d) return ''
+  return new Date(d).toLocaleDateString('en-KE', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+  })
+}
+
+export default async function DownloadsPage() {
+  const payloadConfig = await config
+  const payload = await getPayload({ config: payloadConfig })
+  const result = await payload.find({
+    collection: 'releases',
+    where: {
+      and: [
+        { status: { equals: 'published' } },
+        { channel: { equals: 'stable' } },
+      ],
+    },
+    sort: '-publishedAt',
+    limit: 1,
+    depth: 0,
+  })
+  const latest = (result.docs[0] as unknown as ReleaseRow | undefined) ?? null
+
   return (
     <>
       <PageHero
         eyebrow="Downloads"
         title={<>Get <em>Omnix.</em></>}
-        description="Windows 10 / 11 · 64-bit · 18 MB installer · ~30s on most lines"
+        description="Windows 10 / 11 · 64-bit · ~30s on most lines"
       />
 
       <section className="section">
         <div className="container-default">
-          <div className="rounded-xl border border-[var(--color-border-strong)] bg-[var(--color-surface)] p-8 lg:p-12">
-            <div className="grid grid-cols-1 gap-8 lg:grid-cols-[1fr_auto] lg:items-center">
-              <div>
-                <div className="flex items-center gap-3">
-                  <span className="caption-mono">Latest release</span>
-                  <span className="rounded-full border border-[var(--color-positive)]/40 bg-[var(--color-positive)]/10 px-2.5 py-0.5 font-[family-name:var(--font-ui)] text-[10px] font-semibold uppercase tracking-[0.18em] text-[var(--color-positive)]">Stable</span>
+          {latest ? (
+            <div className="rounded-xl border border-[var(--color-border-strong)] bg-[var(--color-surface)] p-8 lg:p-12">
+              <div className="grid grid-cols-1 gap-8 lg:grid-cols-[1fr_auto] lg:items-center">
+                <div>
+                  <div className="flex items-center gap-3">
+                    <span className="caption-mono">Latest release</span>
+                    <span className="rounded-full border border-[var(--color-positive)]/40 bg-[var(--color-positive)]/10 px-2.5 py-0.5 font-[family-name:var(--font-ui)] text-[10px] font-semibold uppercase tracking-[0.18em] text-[var(--color-positive)]">
+                      Stable
+                    </span>
+                  </div>
+                  <h2 className="font-[family-name:var(--font-display)] mt-3 text-[clamp(32px,3.2vw,48px)] font-normal leading-tight text-[var(--color-fg)]">
+                    Omnix v{latest.version}
+                  </h2>
+                  {latest.summary ? (
+                    <p className="mt-4 text-[15px] leading-[1.65] text-[var(--color-fg-muted)] max-w-[52ch]">
+                      {latest.summary}
+                    </p>
+                  ) : null}
+                  <div className="mt-6 flex flex-wrap items-center gap-x-6 gap-y-2 caption-mono">
+                    {latest.publishedAt ? <span>Released {formatDate(latest.publishedAt)}</span> : null}
+                    {latest.windowsNsisSize ? (
+                      <>
+                        <span aria-hidden>·</span>
+                        <span>{formatBytes(latest.windowsNsisSize)}</span>
+                      </>
+                    ) : null}
+                    <span aria-hidden>·</span>
+                    <span>Tauri-signed</span>
+                  </div>
                 </div>
-                <h2 className="font-[family-name:var(--font-display)] mt-3 text-[clamp(32px,3.2vw,48px)] font-normal leading-tight text-[var(--color-fg)]">Omnix v0.2.0</h2>
-                <p className="mt-4 text-[15px] leading-[1.65] text-[var(--color-fg-muted)] max-w-[52ch]">Banking & Recurring Invoices shipped. M-Pesa reconciliation, scheduled invoices, multi-currency support.</p>
-                <div className="mt-6 flex flex-wrap items-center gap-x-6 gap-y-2 caption-mono">
-                  <span>Released 2026-05-22</span>
-                  <span aria-hidden>·</span>
-                  <span>18.4 MB</span>
-                  <span aria-hidden>·</span>
-                  <span>SHA-256 verified</span>
-                </div>
+                {latest.windowsNsisUrl ? (
+                  <Button asChild size="xl" className="ring-inset-soft lg:w-auto">
+                    <a href={latest.windowsNsisUrl} className="gap-2">
+                      <Icon.Download className="size-4" weight="bold" />
+                      Download for Windows
+                    </a>
+                  </Button>
+                ) : null}
               </div>
-              <Button asChild size="xl" className="ring-inset-soft lg:w-auto">
-                <a href="/api/releases/latest/download" className="gap-2">
-                  <Icon.Download className="size-4" weight="bold" />
-                  Download for Windows
-                </a>
-              </Button>
+              {latest.windowsMsiUrl ? (
+                <div className="mt-4 text-[12px] text-[var(--color-fg-subtle)]">
+                  IT-managed install? Use the{' '}
+                  <a href={latest.windowsMsiUrl} className="underline hover:text-[var(--color-accent)]">
+                    MSI ({formatBytes(latest.windowsMsiSize)})
+                  </a>
+                  .
+                </div>
+              ) : null}
             </div>
-          </div>
+          ) : (
+            <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-8 text-center">
+              <p className="text-[15px] text-[var(--color-fg-muted)]">
+                A new release is being prepared. Check back shortly.
+              </p>
+            </div>
+          )}
 
           <div className="mt-16 grid grid-cols-1 gap-8 md:grid-cols-2">
             <div>
-              <h3 className="font-[family-name:var(--font-display)] text-[24px] font-normal text-[var(--color-fg)]">System requirements</h3>
+              <h3 className="font-[family-name:var(--font-display)] text-[24px] font-normal text-[var(--color-fg)]">
+                System requirements
+              </h3>
               <ul className="mt-5 space-y-3 text-[15px] text-[var(--color-fg-muted)]">
                 <li className="flex items-start gap-3"><Icon.Check className="mt-0.5 size-4 shrink-0 text-[var(--color-accent)]" weight="bold" /><span>Windows 10 (build 1809+) or Windows 11</span></li>
                 <li className="flex items-start gap-3"><Icon.Check className="mt-0.5 size-4 shrink-0 text-[var(--color-accent)]" weight="bold" /><span>64-bit processor (x86_64)</span></li>
@@ -60,7 +138,7 @@ export default function DownloadsPage() {
             <div>
               <h3 className="font-[family-name:var(--font-display)] text-[24px] font-normal text-[var(--color-fg)]">Installation guide</h3>
               <ol className="mt-5 space-y-3 text-[15px] text-[var(--color-fg-muted)]">
-                <li className="flex items-start gap-3"><span className="font-[family-name:var(--font-mono)] text-[11px] text-[var(--color-accent)]">01</span><span>Download the installer (18 MB, ~30s)</span></li>
+                <li className="flex items-start gap-3"><span className="font-[family-name:var(--font-mono)] text-[11px] text-[var(--color-accent)]">01</span><span>Download the installer</span></li>
                 <li className="flex items-start gap-3"><span className="font-[family-name:var(--font-mono)] text-[11px] text-[var(--color-accent)]">02</span><span>Run <code className="font-[family-name:var(--font-mono)] text-[13px]">omnix-setup.exe</code></span></li>
                 <li className="flex items-start gap-3"><span className="font-[family-name:var(--font-mono)] text-[11px] text-[var(--color-accent)]">03</span><span>Sign in with your trial or paid licence</span></li>
                 <li className="flex items-start gap-3"><span className="font-[family-name:var(--font-mono)] text-[11px] text-[var(--color-accent)]">04</span><span>Import your product list (Excel, CSV, or scan)</span></li>

@@ -51,6 +51,22 @@ export default async function DashboardOverviewPage({
     sort: '-createdAt',
   })
 
+  const releasesRes = await payload.find({
+    collection: 'releases',
+    where: {
+      and: [
+        { status: { equals: 'published' } },
+        { channel: { equals: 'stable' } },
+      ],
+    },
+    sort: '-publishedAt',
+    limit: 1,
+    depth: 0,
+  })
+  const latestRelease = (releasesRes.docs[0] as unknown as
+    | { version?: string; publishedAt?: string }
+    | undefined) ?? null
+
   const params = await searchParams
   const showWelcome = params.welcome === '1'
 
@@ -145,8 +161,12 @@ export default async function DashboardOverviewPage({
         <Kpi
           icon={Download}
           label="Latest version"
-          value="v0.2.0"
-          meta="Updated 12 Apr 2026"
+          value={latestRelease ? `v${latestRelease.version}` : '—'}
+          meta={
+            latestRelease?.publishedAt
+              ? `Released ${new Date(latestRelease.publishedAt).toLocaleDateString('en-KE', { day: 'numeric', month: 'short', year: 'numeric' })}`
+              : 'No release published'
+          }
         />
         <Kpi
           icon={Receipt}
