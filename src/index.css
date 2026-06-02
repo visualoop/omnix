@@ -210,4 +210,116 @@
     box-shadow: 0 1px 0 oklch(from var(--foreground) l c h / 0.06),
                 0 4px 8px oklch(from var(--foreground) l c h / 0.08);
   }
+
+  /* ─── Liquid Glass material system ─────────────────────────────────
+     Apple-inspired translucent surfaces. Use SELECTIVELY:
+     - on heroes, overlays, sidebars, single-card focus screens
+     - NOT on dense tables / forms (clarity > flair)
+
+     Each level: backdrop-filter + saturated bg tint + 1px hairline +
+     top-edge inner highlight + soft-rounded continuous corners.
+   */
+
+  .glass {
+    background: color-mix(in oklch, var(--card) 70%, transparent);
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    border: 1px solid color-mix(in oklch, var(--border) 80%, transparent);
+    box-shadow:
+      inset 0 1px 0 0 oklch(from var(--foreground) l c h / 0.05),
+      0 1px 2px oklch(from var(--foreground) l c h / 0.04),
+      0 8px 32px oklch(from var(--foreground) l c h / 0.06);
+  }
+  .dark .glass {
+    background: color-mix(in oklch, var(--card) 55%, transparent);
+    box-shadow:
+      inset 0 1px 0 0 oklch(from var(--foreground) l c h / 0.08),
+      0 1px 2px oklch(from var(--foreground) l c h / 0.4),
+      0 24px 48px oklch(from var(--foreground) l c h / 0.18);
+  }
+
+  .glass-thin {
+    background: color-mix(in oklch, var(--card) 50%, transparent);
+    backdrop-filter: blur(10px) saturate(160%);
+    -webkit-backdrop-filter: blur(10px) saturate(160%);
+    border: 1px solid color-mix(in oklch, var(--border) 60%, transparent);
+    box-shadow: inset 0 1px 0 0 oklch(from var(--foreground) l c h / 0.04);
+  }
+  .dark .glass-thin {
+    background: color-mix(in oklch, var(--card) 40%, transparent);
+    border: 1px solid color-mix(in oklch, var(--border) 50%, transparent);
+    box-shadow: inset 0 1px 0 0 oklch(from var(--foreground) l c h / 0.06);
+  }
+
+  .glass-thick {
+    background: color-mix(in oklch, var(--card) 88%, transparent);
+    backdrop-filter: blur(40px) saturate(200%);
+    -webkit-backdrop-filter: blur(40px) saturate(200%);
+    border: 1px solid color-mix(in oklch, var(--border) 90%, transparent);
+    box-shadow:
+      inset 0 1px 0 0 oklch(from var(--foreground) l c h / 0.07),
+      inset 0 -1px 0 0 oklch(from var(--foreground) l c h / 0.02),
+      0 2px 4px oklch(from var(--foreground) l c h / 0.06),
+      0 24px 48px oklch(from var(--foreground) l c h / 0.1);
+  }
+  .dark .glass-thick {
+    background: color-mix(in oklch, var(--card) 75%, transparent);
+    border: 1px solid color-mix(in oklch, var(--border) 70%, transparent);
+    box-shadow:
+      inset 0 1px 0 0 oklch(from var(--foreground) l c h / 0.1),
+      inset 0 -1px 0 0 oklch(from var(--foreground) l c h / 0.03),
+      0 2px 4px oklch(from var(--foreground) l c h / 0.5),
+      0 32px 64px oklch(from var(--foreground) l c h / 0.25);
+  }
+
+  /* Atmospheric gradient backdrop — used behind glass cards on
+     full-page hero surfaces (license activation, setup, customer
+     display payment-success). Adapts to light/dark.
+   */
+  .glass-canvas {
+    position: relative;
+    isolation: isolate;
+    background:
+      radial-gradient(60% 50% at 12% 0%, color-mix(in oklch, var(--primary) 18%, transparent), transparent 60%),
+      radial-gradient(50% 60% at 92% 100%, color-mix(in oklch, var(--accent) 16%, transparent), transparent 60%),
+      var(--background);
+  }
+  .dark .glass-canvas {
+    background:
+      radial-gradient(60% 50% at 12% 0%, color-mix(in oklch, var(--primary) 28%, transparent), transparent 60%),
+      radial-gradient(50% 60% at 92% 100%, oklch(0.45 0.18 250 / 0.25), transparent 60%),
+      var(--background);
+  }
+
+  /* Liquid hover shine — used on glass buttons / cards.
+     A soft top-edge highlight that brightens on hover. */
+  .glass-shine {
+    position: relative;
+    overflow: hidden;
+  }
+  .glass-shine::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background: linear-gradient(180deg, oklch(from var(--foreground) l c h / 0.06) 0%, transparent 40%);
+    opacity: 0.6;
+    transition: opacity 250ms ease;
+  }
+  .glass-shine:hover::before { opacity: 1; }
+
+  /* Continuous-corner squircles for the core glass surfaces */
+  .rounded-glass { border-radius: 18px; }
+  .rounded-glass-lg { border-radius: 22px; }
+  .rounded-glass-xl { border-radius: 28px; }
+
+  /* prefers-reduced-motion: drop blurs (perf + a11y) */
+  @media (prefers-reduced-motion: reduce) {
+    .glass, .glass-thin, .glass-thick {
+      backdrop-filter: none;
+      -webkit-backdrop-filter: none;
+      background: var(--card);
+    }
+    .dark .glass, .dark .glass-thin, .dark .glass-thick { background: var(--card); }
+  }
 }

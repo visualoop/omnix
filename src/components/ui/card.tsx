@@ -4,23 +4,33 @@ import { cn } from "@/lib/utils"
 /**
  * Native-feel Card primitives.
  *
- * Default: flat, single 1px border, no shadow (Windows native cards
- * are usually flat surfaces with a subtle border, not floating).
- * Use `elevated` prop for cards that should pop (rare).
+ * - Default (`variant="flat"`): single 1px border, no shadow. Best for
+ *   dense data surfaces (tables, dashboards, inventory).
+ * - `variant="elevated"`: subtle native shadow. Use for cards that should
+ *   pop slightly (KPI tiles, callouts).
+ * - `variant="glass"`: liquid-glass material (translucent, backdrop-blur,
+ *   top-edge highlight, soft 22px continuous corner). Use on heroes,
+ *   floating panels, single-card focus screens. NOT on dense data.
  */
 
 interface CardProps extends React.ComponentProps<"div"> {
+  /** @deprecated use variant="elevated" */
   elevated?: boolean
+  variant?: "flat" | "elevated" | "glass"
 }
 
-function Card({ className, elevated, ...props }: CardProps) {
+function Card({ className, elevated, variant, ...props }: CardProps) {
+  const v = variant ?? (elevated ? "elevated" : "flat")
   return (
     <div
       data-slot="card"
+      data-variant={v}
       className={cn(
-        "rounded-md border border-border bg-card text-card-foreground",
-        elevated && "shadow-native",
-        className
+        v === "glass"
+          ? "glass rounded-glass-lg text-card-foreground"
+          : "rounded-md border border-border bg-card text-card-foreground",
+        v === "elevated" && "shadow-native",
+        className,
       )}
       {...props}
     />

@@ -112,7 +112,7 @@ export function SetupWizard() {
           The operating system for your business. Let's get you set up.
         </p>
       </div>
-      <Button onClick={() => setStep(1)} className="w-full h-10">
+      <Button onClick={() => setStep(1)} className="w-full h-11 rounded-xl shadow-native cursor-pointer">
         Get Started
       </Button>
     </div>,
@@ -138,12 +138,12 @@ export function SetupWizard() {
                 type="button"
                 disabled={isPlanned}
                 onClick={() => update("moduleId", m.id)}
-                className={`w-full text-left flex items-center gap-3 rounded-md border p-3 transition ${
+                className={`w-full text-left flex items-center gap-3 rounded-2xl border p-3.5 transition-all duration-200 ${
                   isSelected
-                    ? "border-primary bg-primary/5"
+                    ? "border-primary bg-primary/8 ring-2 ring-primary/15"
                     : isPlanned
                       ? "border-border opacity-50 cursor-not-allowed"
-                      : "border-border hover:border-primary/40 hover:bg-accent/30"
+                      : "border-border/60 hover:border-primary/40 hover:bg-foreground/[0.03]"
                 }`}
               >
                 <ModuleLogo moduleId={m.id} size={36} />
@@ -164,8 +164,8 @@ export function SetupWizard() {
           })}
       </div>
       <div className="flex gap-2">
-        <Button variant="outline" onClick={() => setStep(0)} className="flex-1">Back</Button>
-        <Button onClick={() => setStep(2)} className="flex-1">Continue</Button>
+        <Button variant="outline" onClick={() => setStep(0)} className="flex-1 rounded-xl cursor-pointer">Back</Button>
+        <Button onClick={() => setStep(2)} className="flex-1 rounded-xl cursor-pointer">Continue</Button>
       </div>
     </div>,
 
@@ -210,10 +210,10 @@ export function SetupWizard() {
         </Field>
       </div>
       <div className="flex gap-2">
-        <Button variant="outline" onClick={() => setStep(1)} className="flex-1">Back</Button>
+        <Button variant="outline" onClick={() => setStep(1)} className="flex-1 rounded-xl cursor-pointer">Back</Button>
         <Button
           onClick={() => setStep(3)}
-          className="flex-1"
+          className="flex-1 rounded-xl cursor-pointer"
           disabled={!data.businessName}
         >
           Continue
@@ -293,7 +293,7 @@ export function SetupWizard() {
             setError(null);
             setStep(4);
           }}
-          className="flex-1"
+          className="flex-1 rounded-xl cursor-pointer"
           disabled={submitting || !data.ownerName || !data.username || !data.password || !data.confirmPassword}
         >
           Continue
@@ -357,15 +357,19 @@ export function SetupWizard() {
   ];
 
   return (
-    <div className="flex h-screen w-screen items-center justify-center bg-background p-6">
-      <div className="w-full max-w-[440px] space-y-6">
+    <div className="glass-canvas relative flex h-screen w-screen items-center justify-center p-6">
+      <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">
+        <div className="absolute -top-32 -left-32 h-80 w-80 rounded-full bg-primary/15 blur-[120px]" />
+        <div className="absolute -bottom-32 -right-32 h-96 w-96 rounded-full bg-blue-500/10 blur-[140px]" />
+      </div>
+      <div className="relative z-10 w-full max-w-[460px] glass-thick rounded-glass-xl p-7 space-y-6">
         {/* Progress */}
-        <div className="flex gap-1">
+        <div className="flex gap-1.5">
           {[0, 1, 2, 3, 4].map((i) => (
             <div
               key={i}
-              className={`h-1 flex-1 rounded-full transition-colors ${
-                i <= step ? "bg-primary" : "bg-muted"
+              className={`h-1 flex-1 rounded-full transition-all duration-300 ${
+                i <= step ? "bg-primary" : "bg-foreground/10"
               }`}
             />
           ))}

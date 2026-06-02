@@ -12,6 +12,7 @@ import {
 import { OmnixLogo } from "@/components/omnix-logo";
 import { APP_NAME, BRAND } from "@/lib/brand";
 import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 
 interface Props {
   onActivated: () => void;
@@ -104,7 +105,6 @@ export function LicenseActivationPage({ onActivated }: Props) {
   };
 
   const handlePaste = async (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
-    // Auto-clean on paste so visible whitespace doesn't break decode
     e.preventDefault();
     const pasted = e.clipboardData.getData("text");
     setKey(pasted.replace(/\s+/g, ""));
@@ -115,84 +115,88 @@ export function LicenseActivationPage({ onActivated }: Props) {
   const trialActive = trial?.active === true;
 
   return (
-    <div className="min-h-screen bg-background">
-      <div className="grid min-h-screen grid-cols-1 lg:grid-cols-[1.1fr_1fr]">
-        {/* ─── LEFT: Hero / value prop ───────────────────────── */}
-        <div className="relative bg-muted/30 border-r border-border p-8 lg:p-12 flex flex-col">
-          {/* Top bar with logo */}
+    <div className="glass-canvas min-h-screen w-full">
+      {/* Decorative ambient orbs (sit BEHIND glass cards, give the canvas depth) */}
+      <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">
+        <div className="absolute -top-32 -left-32 h-96 w-96 rounded-full bg-primary/15 blur-[140px]" />
+        <div className="absolute -bottom-40 -right-32 h-[28rem] w-[28rem] rounded-full bg-blue-500/10 blur-[160px]" />
+      </div>
+
+      <div className="relative z-10 mx-auto grid min-h-screen w-full max-w-6xl grid-cols-1 gap-8 px-6 py-10 lg:grid-cols-[1.1fr_1fr] lg:items-center lg:gap-12 lg:px-12">
+        {/* ─── LEFT: Hero ─────────────────────────────────────── */}
+        <div className="flex flex-col gap-8">
+          {/* Brand chip */}
           <div className="flex items-center gap-3">
-            <OmnixLogo size={36} />
+            <div className="glass rounded-2xl p-2.5">
+              <OmnixLogo size={32} />
+            </div>
             <div>
-              <div className="font-semibold tracking-tight">{APP_NAME}</div>
-              <div className="text-xs text-muted-foreground">{BRAND.tagline}</div>
+              <div className="text-base font-semibold tracking-tight">{APP_NAME}</div>
+              <div className="text-[11px] text-muted-foreground">{BRAND.tagline}</div>
             </div>
           </div>
 
-          <div className="flex-1 flex flex-col justify-center max-w-lg mt-12">
-            <div className="inline-flex items-center gap-1.5 self-start text-xs font-medium text-primary bg-primary/10 px-2.5 py-1 rounded-md mb-4">
-              <Sparkles className="h-3 w-3" /> Pay once. Use forever.
+          {/* Headline */}
+          <div className="space-y-4">
+            <div className="inline-flex items-center gap-1.5 self-start rounded-full glass-thin px-3 py-1 text-[11px] font-medium text-foreground">
+              <Sparkles className="h-3 w-3 text-primary" /> Pay once. Use forever.
             </div>
-
-            <h1 className="text-3xl lg:text-4xl font-semibold tracking-tight leading-[1.15]">
-              The operating system for your business.
+            <h1 className="text-[40px] font-semibold tracking-tight leading-[1.05] text-foreground lg:text-[44px]">
+              The operating system for<br />
+              <span className="bg-gradient-to-r from-primary to-blue-500 bg-clip-text text-transparent">your business.</span>
             </h1>
-            <p className="text-muted-foreground mt-3 leading-relaxed">
-              POS, inventory, accounting, and KRA compliance in one Windows app that works
-              offline — built for the realities of running an SME in Kenya.
+            <p className="max-w-md text-[15px] leading-relaxed text-muted-foreground">
+              POS, inventory, accounting, and KRA compliance in one Windows app that
+              works offline — built for the realities of running an SME in Kenya.
             </p>
+          </div>
 
-            {/* Feature grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-8">
+          {/* Feature grid in glass */}
+          <div className="glass rounded-glass-lg p-5">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               {FEATURES.map((f) => (
-                <div key={f.label} className="flex items-start gap-2.5">
-                  <div className="h-7 w-7 rounded-md bg-primary/10 flex items-center justify-center shrink-0 mt-0.5">
-                    <f.icon className="h-3.5 w-3.5 text-primary" />
+                <div key={f.label} className="flex items-start gap-3">
+                  <div className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-primary/12 text-primary ring-1 ring-inset ring-primary/15">
+                    <f.icon className="h-4 w-4" />
                   </div>
-                  <div>
-                    <div className="text-sm font-medium">{f.label}</div>
-                    <div className="text-xs text-muted-foreground leading-snug">{f.text}</div>
+                  <div className="min-w-0">
+                    <div className="text-[13px] font-medium leading-tight">{f.label}</div>
+                    <div className="text-[11.5px] leading-snug text-muted-foreground mt-0.5">{f.text}</div>
                   </div>
                 </div>
               ))}
             </div>
           </div>
 
-          {/* Pricing footer */}
-          <div className="mt-12 pt-6 border-t border-border">
-            <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-xs text-muted-foreground">
-              <div className="flex items-center gap-1.5">
-                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500"></span>
-                Offline-first SQLite
-              </div>
-              <div className="flex items-center gap-1.5">
-                <span className="h-1.5 w-1.5 rounded-full bg-blue-500"></span>
-                Auto-updates
-              </div>
-              <div className="flex items-center gap-1.5">
-                <span className="h-1.5 w-1.5 rounded-full bg-amber-500"></span>
-                LAN sync
-              </div>
-              <div className="flex items-center gap-1.5">
-                <span className="h-1.5 w-1.5 rounded-full bg-violet-500"></span>
-                Single key activation
-              </div>
-            </div>
+          {/* Status pills */}
+          <div className="flex flex-wrap items-center gap-2">
+            {[
+              { dot: "bg-emerald-500", label: "Offline-first SQLite" },
+              { dot: "bg-blue-500", label: "Auto-updates" },
+              { dot: "bg-amber-500", label: "LAN sync" },
+              { dot: "bg-violet-500", label: "Single-key activation" },
+            ].map((p) => (
+              <span key={p.label} className="inline-flex items-center gap-1.5 rounded-full glass-thin px-2.5 py-1 text-[11px] text-muted-foreground">
+                <span className={cn("h-1.5 w-1.5 rounded-full", p.dot)} />
+                {p.label}
+              </span>
+            ))}
           </div>
         </div>
 
-        {/* ─── RIGHT: Activation form ────────────────────────── */}
-        <div className="p-8 lg:p-12 flex flex-col justify-center">
-          <div className="max-w-md w-full mx-auto space-y-6">
+        {/* ─── RIGHT: Activation panel ─────────────────────────── */}
+        <div className="glass-thick rounded-glass-xl p-6 lg:p-7">
+          <div className="space-y-5">
             {/* Trial CTA — primary */}
             {!trialAlreadyUsed && !trialActive && (
-              <div className="rounded-lg border border-primary/30 bg-primary/5 p-5 space-y-3">
-                <div className="flex items-center gap-2">
-                  <div className="h-9 w-9 rounded-md bg-primary/15 flex items-center justify-center">
-                    <Zap className="h-4 w-4 text-primary" />
+              <div className="space-y-3">
+                <div className="flex items-center gap-3">
+                  <div className="grid h-10 w-10 place-items-center rounded-xl bg-primary/12 text-primary ring-1 ring-inset ring-primary/15">
+                    <Zap className="h-4 w-4" />
                   </div>
                   <div>
-                    <div className="font-semibold text-sm">Try free for 30 days</div>
-                    <div className="text-xs text-muted-foreground">One month. No card. One module. Full features.</div>
+                    <div className="text-[14px] font-semibold leading-tight">Start free for 30 days</div>
+                    <div className="text-[11.5px] text-muted-foreground leading-tight mt-0.5">No card. One module. Full features.</div>
                   </div>
                 </div>
                 <label className="block text-[11px] font-medium text-muted-foreground">
@@ -200,7 +204,7 @@ export function LicenseActivationPage({ onActivated }: Props) {
                   <select
                     value={trialModule}
                     onChange={(e) => setTrialModule(e.target.value)}
-                    className="mt-1 w-full h-9 rounded-md border border-input bg-background px-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring cursor-pointer"
+                    className="mt-1.5 w-full h-10 rounded-xl glass-thin px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 cursor-pointer"
                   >
                     {TRIAL_MODULES.map((m) => (
                       <option key={m.id} value={m.id}>{m.label}</option>
@@ -210,10 +214,10 @@ export function LicenseActivationPage({ onActivated }: Props) {
                 <Button
                   onClick={handleStartTrial}
                   disabled={startingTrial}
-                  className="w-full h-10 cursor-pointer"
+                  className="w-full h-11 rounded-xl shadow-native cursor-pointer"
                 >
                   {startingTrial ? (
-                    <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Starting trial...</>
+                    <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Starting trial…</>
                   ) : (
                     <>Start free trial <ArrowRight className="h-4 w-4 ml-1.5" /></>
                   )}
@@ -224,98 +228,94 @@ export function LicenseActivationPage({ onActivated }: Props) {
               </div>
             )}
 
-            {/* Trial active state */}
+            {/* Trial active */}
             {trialActive && trial && (
-              <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/5 p-4 flex items-center gap-3">
-                <div className="h-9 w-9 rounded-full bg-emerald-500/15 flex items-center justify-center">
-                  <Clock className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+              <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/8 p-4 flex items-center gap-3">
+                <div className="grid h-10 w-10 place-items-center rounded-xl bg-emerald-500/15 text-emerald-600 dark:text-emerald-400">
+                  <Clock className="h-4 w-4" />
                 </div>
                 <div className="flex-1">
-                  <div className="text-sm font-medium">Trial active — {trial.days_remaining} days remaining</div>
-                  <div className="text-xs text-muted-foreground">Activate a licence now to lock in pricing.</div>
+                  <div className="text-[13px] font-medium">Trial active — {trial.days_remaining} days remaining</div>
+                  <div className="text-[11px] text-muted-foreground">Activate a licence now to lock in pricing.</div>
                 </div>
                 <Button size="sm" variant="outline" onClick={onActivated} className="cursor-pointer">Continue</Button>
               </div>
             )}
 
-            {/* Trial expired state */}
+            {/* Trial expired */}
             {trialAlreadyUsed && (
-              <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-4 flex items-start gap-3">
+              <div className="rounded-2xl border border-amber-500/30 bg-amber-500/8 p-4 flex items-start gap-3">
                 <Clock className="h-4 w-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
                 <div>
-                  <div className="text-sm font-medium">Trial used on this machine</div>
-                  <div className="text-xs text-muted-foreground mt-0.5">Enter a licence below to continue, or buy at <a href={BRAND.company.website} className="underline">{BRAND.company.domain}</a>.</div>
+                  <div className="text-[13px] font-medium">Trial used on this machine</div>
+                  <div className="text-[11px] text-muted-foreground mt-0.5">Enter a licence below to continue, or buy at <a href={BRAND.company.website} className="underline hover:text-foreground">{BRAND.company.domain}</a>.</div>
                 </div>
               </div>
             )}
 
-            <div className="relative flex items-center gap-3">
-              <div className="flex-1 h-px bg-border" />
-              <span className="text-[11px] text-muted-foreground uppercase tracking-wider font-medium">
-                {trialActive ? "Or activate now" : trialAlreadyUsed ? "Enter license" : "Have a license?"}
+            {/* Divider */}
+            <div className="flex items-center gap-3">
+              <div className="flex-1 h-px bg-border/50" />
+              <span className="text-[10px] text-muted-foreground uppercase tracking-[0.14em] font-medium">
+                {trialActive ? "Or activate now" : trialAlreadyUsed ? "Enter licence" : "Have a licence?"}
               </span>
-              <div className="flex-1 h-px bg-border" />
+              <div className="flex-1 h-px bg-border/50" />
             </div>
 
             {/* License key input */}
-            <div className="space-y-3">
+            <div className="space-y-2.5">
               <div className="flex items-center gap-2">
-                <Key className="h-4 w-4 text-primary" />
-                <h2 className="text-sm font-medium">License Key</h2>
+                <Key className="h-3.5 w-3.5 text-primary" />
+                <span className="text-[12px] font-medium">Licence key</span>
               </div>
-
               <textarea
                 value={key}
                 onChange={(e) => { setKey(e.target.value); setError(null); }}
                 onPaste={handlePaste}
-                placeholder="OMNIX-eyJraWQiOiJPTU5JWC0yMD...XYZ.MEUCIQ..."
-                className="w-full min-h-[110px] rounded-md border border-input bg-background p-3 text-xs font-mono resize-y focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent transition"
+                placeholder="OMNIX-eyJraWQiOiJPTU5JWC0yMD…XYZ.MEUCIQ…"
+                className="w-full min-h-[110px] rounded-xl glass-thin p-3 text-[11.5px] font-mono leading-relaxed resize-y focus:outline-none focus:ring-2 focus:ring-primary/40 transition"
                 spellCheck={false}
               />
-
               {key && cleanedKey.length < 50 && (
-                <p className="text-[11px] text-muted-foreground">
-                  Key looks short — make sure you copied it all.
-                </p>
+                <p className="text-[11px] text-muted-foreground">Key looks short — make sure you copied it all.</p>
               )}
-
               {error && (
-                <div className="rounded-md border border-red-500/40 bg-red-500/5 p-2.5 flex items-start gap-2">
-                  <AlertCircle className="h-3.5 w-3.5 text-red-600 shrink-0 mt-0.5" />
-                  <p className="text-xs text-red-700 leading-relaxed">{error}</p>
+                <div className="rounded-xl border border-red-500/40 bg-red-500/8 p-2.5 flex items-start gap-2">
+                  <AlertCircle className="h-3.5 w-3.5 text-red-600 dark:text-red-400 shrink-0 mt-0.5" />
+                  <p className="text-[12px] text-red-700 dark:text-red-300 leading-relaxed">{error}</p>
                 </div>
               )}
-
               <Button
                 onClick={handleActivate}
                 disabled={!canActivate}
                 variant={trialAlreadyUsed ? "default" : "outline"}
-                className="w-full h-10 cursor-pointer"
+                className="w-full h-10 rounded-xl cursor-pointer"
               >
                 {activating ? (
-                  <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Activating...</>
+                  <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Activating…</>
                 ) : (
                   <>Activate licence</>
                 )}
               </Button>
             </div>
 
-            {/* Machine ID */}
+            {/* Machine ID — collapsible glass row */}
             {machine && (
-              <details className="rounded-lg border border-border">
-                <summary className="cursor-pointer px-4 py-2.5 text-xs font-medium flex items-center gap-2 hover:bg-muted/30 rounded-lg">
+              <details className="group rounded-xl glass-thin">
+                <summary className="cursor-pointer list-none px-3.5 py-2.5 flex items-center gap-2 text-[12px] font-medium hover:bg-foreground/[0.03] rounded-xl transition-colors">
                   <Cpu className="h-3.5 w-3.5 text-muted-foreground" />
                   Machine ID for support
+                  <ArrowRight className="h-3 w-3 ml-auto text-muted-foreground transition-transform group-open:rotate-90" />
                 </summary>
-                <div className="px-4 pb-4 space-y-2 border-t border-border pt-3">
-                  <p className="text-[11px] text-muted-foreground">
-                    The license binds to this machine. Share this ID with support to transfer.
+                <div className="px-3.5 pb-3 pt-1 space-y-2 border-t border-border/40">
+                  <p className="text-[11px] text-muted-foreground pt-2">
+                    The licence binds to this machine. Share this ID with support to transfer.
                   </p>
                   <div className="flex items-center gap-2">
-                    <code className="flex-1 bg-muted px-2.5 py-1.5 rounded font-mono text-xs tracking-wide">
+                    <code className="flex-1 bg-foreground/[0.04] px-2.5 py-1.5 rounded-lg font-mono text-[11px] tracking-wide selectable">
                       {machine.formatted}
                     </code>
-                    <Button variant="outline" size="sm" onClick={handleCopyMachineId} className="shrink-0">
+                    <Button variant="outline" size="sm" onClick={handleCopyMachineId} className="shrink-0 cursor-pointer">
                       {copied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
                     </Button>
                   </div>
@@ -324,19 +324,17 @@ export function LicenseActivationPage({ onActivated }: Props) {
             )}
 
             {/* Buy CTA */}
-            <div className="text-center text-xs text-muted-foreground space-y-1">
-              <p>
-                <a
-                  href={`${BRAND.company.website}/pricing`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-primary inline-flex items-center gap-0.5 hover:underline cursor-pointer"
-                >
-                  Buy {APP_NAME} <ExternalLink className="h-2.5 w-2.5" />
-                </a>
-              </p>
-              <p className="text-[11px]">
-                <strong>KES 100,000</strong> one-time · pay once, use forever · no subscription
+            <div className="text-center text-[11px] text-muted-foreground space-y-1 pt-1">
+              <a
+                href={`${BRAND.company.website}/pricing`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-primary inline-flex items-center gap-1 hover:underline cursor-pointer font-medium"
+              >
+                Buy {APP_NAME} <ExternalLink className="h-2.5 w-2.5" />
+              </a>
+              <p className="text-[10.5px]">
+                <strong className="font-semibold">KES 100,000</strong> one-time · pay once, use forever · no subscription
               </p>
             </div>
           </div>

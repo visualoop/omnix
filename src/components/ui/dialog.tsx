@@ -31,8 +31,9 @@ function DialogOverlay({
     <DialogPrimitive.Backdrop
       data-slot="dialog-overlay"
       className={cn(
-        // Native dim — subtler than 50% black, matches Win11 system overlays
-        "fixed inset-0 isolate z-50 bg-foreground/15 duration-100",
+        // Liquid: thin dim + backdrop blur for system-overlay feel
+        "fixed inset-0 isolate z-50 bg-foreground/15 backdrop-blur-md duration-150",
+        "supports-[not(backdrop-filter:blur(0))]:bg-foreground/35",
         "data-open:animate-in data-open:fade-in-0 data-closed:animate-out data-closed:fade-out-0",
         className
       )}
