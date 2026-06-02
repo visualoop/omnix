@@ -77,6 +77,8 @@ const main = async () => {
       name: m.name,
       shortName: m.shortName,
       tagline: m.tagline,
+      shortDescription: m.shortDescription,
+      longDescription: m.longDescription,
       available: m.status,
       priority: m.priority,
     })
