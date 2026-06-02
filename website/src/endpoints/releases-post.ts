@@ -30,7 +30,7 @@ import { errorResponse, isSystem, jsonResponse, readJson } from './_auth'
  * }
  */
 export const releasesPostEndpoint: Endpoint = {
-  path: '/releases',
+  path: '/releases-sync',
   method: 'post',
   handler: async (req) => {
     if (!isSystem(req)) {

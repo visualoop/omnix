@@ -77,9 +77,9 @@ gh release list --repo "$GH_REPO" --limit 50 --json tagName,publishedAt,isDraft,
           forcePublish: true
         } | with_entries(select(.value != null))')
 
-      echo "[$TAG] POST $PAYLOAD_BASE/api/releases"
+      echo "[$TAG] POST $PAYLOAD_BASE/api/releases-sync"
       HTTP_CODE=$(curl -s -o /tmp/payload-resp.json -w "%{http_code}" \
-        -X POST "$PAYLOAD_BASE/api/releases" \
+        -X POST "$PAYLOAD_BASE/api/releases-sync" \
         -H "x-system-token: $PAYLOAD_SYSTEM_TOKEN" \
         -H "Content-Type: application/json" \
         -d "$BODY")

@@ -1,0 +1,45 @@
+name: Publish Release Drafts
+
+# One-shot: flips any 'draft' Release rows to 'published' so the in-app
+# updater + downloads page see them. Used after the initial backfill or
+# any time a Release is stuck in draft.
+
+on:
+  workflow_dispatch:
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Publish draft releases
+        env:
+          PAYLOAD_SYSTEM_TOKEN: ${{ secrets.PAYLOAD_SYSTEM_TOKEN }}
+          PAYLOAD_BASE: ${{ vars.PAYLOAD_BASE_URL || 'https://website-blyss-studio.vercel.app' }}
+        run: |
+          set -e
+          if [ -z "$PAYLOAD_SYSTEM_TOKEN" ]; then
+            echo "PAYLOAD_SYSTEM_TOKEN not set" >&2
+            exit 1
+          fi
+
+          # Find all draft releases
+          DRAFTS=$(curl -s -H "x-system-token: $PAYLOAD_SYSTEM_TOKEN" \
+            "$PAYLOAD_BASE/api/releases?where[status][equals]=draft&limit=100&depth=0" \
+            | jq -c '.docs[] | {id, version}')
+
+          if [ -z "$DRAFTS" ]; then
+            echo "no drafts to publish"
+            exit 0
+          fi
+
+          echo "$DRAFTS" | while read -r row; do
+            ID=$(echo "$row" | jq -r .id)
+            VER=$(echo "$row" | jq -r .version)
+            NOW=$(date -u +%Y-%m-%dT%H:%M:%S.%3NZ)
+            HTTP=$(curl -s -o /tmp/r.json -w "%{http_code}" \
+              -X PATCH "$PAYLOAD_BASE/api/releases/$ID" \
+              -H "x-system-token: $PAYLOAD_SYSTEM_TOKEN" \
+              -H "Content-Type: application/json" \
+              -d "{\"status\":\"published\",\"publishedAt\":\"$NOW\"}")
+            echo "$VER (id=$ID) → HTTP $HTTP"
+          done
