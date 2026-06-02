@@ -1,0 +1,38 @@
+name: DB Push (Payload schema → Postgres)
+
+# Manual: pushes the Payload schema to DATABASE_URL using `pushDevSchema`.
+# Run after adding/changing collections so the production Postgres has all
+# required tables/columns. Idempotent and additive (won't drop existing data).
+
+on:
+  workflow_dispatch:
+
+jobs:
+  push:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          run_install: false
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: pnpm
+          cache-dependency-path: website/pnpm-lock.yaml
+
+      - name: Install
+        working-directory: website
+        run: pnpm install --frozen-lockfile
+
+      - name: Push schema
+        working-directory: website
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          PAYLOAD_SECRET: ${{ secrets.PAYLOAD_SECRET || 'ci-temporary-secret-for-schema-push' }}
+        run: pnpm exec tsx scripts/push-schema.ts
