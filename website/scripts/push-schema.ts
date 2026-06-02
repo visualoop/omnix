@@ -11,7 +11,7 @@
  */
 import { pushDevSchema } from '@payloadcms/drizzle'
 import { getPayload } from 'payload'
-import config from './src/payload.config.ts'
+import config from '../src/payload.config.ts'
 
 const main = async () => {
   if (!process.env.DATABASE_URL) {
