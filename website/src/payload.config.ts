@@ -1,3 +1,7 @@
+// MUST be the first import — patches neonConfig before any DB connection.
+// No-op in production (HTTPS_PROXY unset on Vercel).
+import './lib/neon-proxy'
+
 import { vercelPostgresAdapter } from '@payloadcms/db-vercel-postgres'
 import { lexicalEditor } from '@payloadcms/richtext-lexical'
 import { resendAdapter } from '@payloadcms/email-resend'

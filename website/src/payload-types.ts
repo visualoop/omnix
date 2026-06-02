@@ -1690,7 +1690,7 @@ export interface Setting {
     showPricing?: boolean | null;
     maintenanceMode?: boolean | null;
     /**
-     * When on, CI-created releases skip "draft" and publish immediately.
+     * When on, CI-created releases skip "draft" and publish immediately. Default ON.
      */
     autoPublishReleases?: boolean | null;
   };

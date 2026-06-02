@@ -1,13 +1,17 @@
 /**
  * Idempotent CMS seed for omnix.
  *
- * Populates Modules, BlogPosts, Pages (docs), Settings, and the LandingPage
- * global with the canonical content from src/lib/*-seed.ts. Re-running updates
- * existing rows by slug — no duplicates.
+ * Populates the metadata side of Modules, BlogPosts (title/slug/category),
+ * and Pages (title/slug/kind) from src/lib/*-seed.ts so the live site has
+ * non-empty collections out of the gate.
+ *
+ * Body content (richText) is intentionally NOT seeded — the owner edits
+ * those in Payload admin to use the proper lexical editor. Re-running this
+ * script updates titles/categories without overwriting body.
  *
  * Usage:
- *   pnpm seed                     # local
- *   tsx scripts/seed.mts          # CI (DATABASE_URL + PAYLOAD_SECRET in env)
+ *   pnpm seed                   # local
+ *   pnpm exec tsx scripts/seed.mts   # CI (DATABASE_URL + PAYLOAD_SECRET in env)
  */
 
 import { getPayload } from 'payload'
@@ -17,6 +21,46 @@ import { POSTS_SEED } from '../src/lib/blog-seed.ts'
 import { DOCS_SEED } from '../src/lib/docs-seed.ts'
 
 const log = (msg: string) => console.log(`[seed] ${msg}`)
+const warn = (msg: string) => console.warn(`[seed] WARN: ${msg}`)
+
+const upsert = async (
+  payload: Awaited<ReturnType<typeof getPayload>>,
+  collection: string,
+  uniqueField: string,
+  uniqueValue: string,
+  data: Record<string, unknown>,
+) => {
+  try {
+    const existing = await payload.find({
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      collection: collection as any,
+      where: { [uniqueField]: { equals: uniqueValue } },
+      limit: 1,
+    })
+    if (existing.docs[0]) {
+      await payload.update({
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        collection: collection as any,
+        id: (existing.docs[0] as { id: string | number }).id,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        data: data as any,
+        overrideAccess: true,
+      })
+      log(`${collection} updated: ${uniqueValue}`)
+    } else {
+      await payload.create({
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        collection: collection as any,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        data: data as any,
+        overrideAccess: true,
+      })
+      log(`${collection} created: ${uniqueValue}`)
+    }
+  } catch (e) {
+    warn(`${collection}/${uniqueValue}: ${(e as Error).message}`)
+  }
+}
 
 const main = async () => {
   if (!process.env.DATABASE_URL) {
@@ -28,12 +72,7 @@ const main = async () => {
 
   // ── Modules ───────────────────────────────────────────────
   for (const m of MODULES_SEED) {
-    const existing = await payload.find({
-      collection: 'modules',
-      where: { slug: { equals: m.slug } },
-      limit: 1,
-    })
-    const data = {
+    await upsert(payload, 'modules', 'slug', m.slug, {
       slug: m.slug,
       moduleId: m.moduleId,
       name: m.name,
@@ -41,80 +80,28 @@ const main = async () => {
       tagline: m.tagline,
       available: m.status,
       priority: m.priority,
-    } as never
-    if (existing.docs[0]) {
-      await payload.update({
-        collection: 'modules',
-        id: (existing.docs[0] as { id: string | number }).id,
-        data,
-        overrideAccess: true,
-      })
-      log(`module updated: ${m.slug}`)
-    } else {
-      await payload.create({ collection: 'modules', data, overrideAccess: true })
-      log(`module created: ${m.slug}`)
-    }
+    })
   }
 
-  // ── Blog posts ────────────────────────────────────────────
+  // ── Blog posts (metadata only; body filled in admin) ──────
   for (const p of POSTS_SEED) {
-    const existing = await payload.find({
-      collection: 'blog-posts',
-      where: { slug: { equals: p.slug } },
-      limit: 1,
-    })
-    const data = {
+    await upsert(payload, 'blog-posts', 'slug', p.slug, {
       slug: p.slug,
       title: p.title,
       excerpt: p.excerpt,
       category: p.category,
-      author: p.author,
       publishedAt: p.publishedAt,
-      readTime: p.readTime,
-      featured: Boolean(p.featured),
-      body: p.body,
       status: 'published',
-    } as never
-    if (existing.docs[0]) {
-      await payload.update({
-        collection: 'blog-posts',
-        id: (existing.docs[0] as { id: string | number }).id,
-        data,
-        overrideAccess: true,
-      })
-      log(`post updated: ${p.slug}`)
-    } else {
-      await payload.create({ collection: 'blog-posts', data, overrideAccess: true })
-      log(`post created: ${p.slug}`)
-    }
+    })
   }
 
-  // ── Docs (stored as Pages with category=docs) ────────────
+  // ── Docs (Pages with kind=help; body filled in admin) ────
   for (const d of DOCS_SEED) {
-    const existing = await payload.find({
-      collection: 'pages',
-      where: { slug: { equals: d.slug } },
-      limit: 1,
-    })
-    const data = {
+    await upsert(payload, 'pages', 'slug', d.slug, {
       slug: d.slug,
       title: d.title,
-      kind: 'doc',
-      body: d.body,
-      status: 'published',
-    } as never
-    if (existing.docs[0]) {
-      await payload.update({
-        collection: 'pages',
-        id: (existing.docs[0] as { id: string | number }).id,
-        data,
-        overrideAccess: true,
-      })
-      log(`doc updated: ${d.slug}`)
-    } else {
-      await payload.create({ collection: 'pages', data, overrideAccess: true })
-      log(`doc created: ${d.slug}`)
-    }
+      kind: 'help',
+    })
   }
 
   log('done.')

@@ -1,7 +1,7 @@
 import type { Endpoint } from 'payload'
 import { createHmac, timingSafeEqual } from 'crypto'
 import { errorResponse, jsonResponse } from './_auth'
-import { applyPaymentSuccess } from './paystack-init'
+import { applyPaymentSuccess } from '../lib/paystack'
 
 /**
  * POST /api/paystack/webhook

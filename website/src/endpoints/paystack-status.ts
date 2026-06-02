@@ -1,6 +1,6 @@
 import type { Endpoint } from 'payload'
 import { errorResponse, jsonResponse } from './_auth'
-import { applyPaymentSuccess, paystackVerify } from './paystack-init'
+import { applyPaymentSuccess, verify as paystackVerify } from '../lib/paystack'
 
 /**
  * GET /api/paystack/status/:reference
@@ -27,17 +27,18 @@ export const paystackStatusEndpoint: Endpoint = {
     }
 
     // Otherwise verify with Paystack
-    const verify = await paystackVerify(reference)
-    if (!verify.ok) {
+    let verifyResult: Awaited<ReturnType<typeof paystackVerify>>
+    try {
+      verifyResult = await paystackVerify(reference)
+    } catch {
       return jsonResponse({ status: 'pending' })
     }
 
-    const pStatus = (verify.data?.status as string) ?? 'pending'
-    if (pStatus === 'success') {
-      await applyPaymentSuccess(req.payload, reference, verify.data ?? {})
+    if (verifyResult.status === 'success') {
+      await applyPaymentSuccess(req.payload, reference, verifyResult.raw)
       return jsonResponse({ status: 'success' })
     }
-    if (pStatus === 'failed' || pStatus === 'reversed') {
+    if (verifyResult.status === 'failed') {
       await req.payload.update({
         collection: 'payments',
         where: { paystackReference: { equals: reference } },
