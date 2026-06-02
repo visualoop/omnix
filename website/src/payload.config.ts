@@ -67,7 +67,9 @@ export default buildConfig({
   },
   db: postgresAdapter({
     pool: { connectionString: process.env.DATABASE_URL || '' },
-    push: process.env.NODE_ENV !== 'production',
+    // Auto-sync schema. Acceptable while the product is pre-1.0 and we're still
+    // adding collections rapidly; revisit with proper migrations before scale.
+    push: true,
   }),
   sharp,
   endpoints: customEndpoints,
