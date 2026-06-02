@@ -35,11 +35,11 @@ import { BRAND_NAME } from './lib/brand'
 const filename = fileURLToPath(import.meta.url)
 const dirname = path.dirname(filename)
 
-const useR2 = Boolean(
-  process.env.R2_ACCESS_KEY_ID &&
-    process.env.R2_SECRET_ACCESS_KEY &&
-    process.env.R2_ENDPOINT &&
-    process.env.R2_MEDIA_BUCKET,
+const useS3 = Boolean(
+  process.env.S3_ACCESS_KEY_ID &&
+    process.env.S3_SECRET_ACCESS_KEY &&
+    process.env.S3_ENDPOINT &&
+    process.env.S3_BUCKET,
 )
 
 export default buildConfig({
@@ -83,19 +83,19 @@ export default buildConfig({
         defaultFromName: BRAND_NAME,
       })
     : undefined,
-  /* ── Storage: Cloudflare R2 in prod, local disk in dev ── */
+  /* ── Storage: Cloudflare R2 (via S3 API) in prod, local disk in dev ── */
   plugins: [
-    ...(useR2
+    ...(useS3
       ? [
           s3Storage({
             collections: { media: { prefix: 'media' } },
-            bucket: process.env.R2_MEDIA_BUCKET!,
+            bucket: process.env.S3_BUCKET!,
             config: {
-              endpoint: process.env.R2_ENDPOINT!,
-              region: 'auto',
+              endpoint: process.env.S3_ENDPOINT!,
+              region: process.env.S3_REGION || 'auto',
               credentials: {
-                accessKeyId: process.env.R2_ACCESS_KEY_ID!,
-                secretAccessKey: process.env.R2_SECRET_ACCESS_KEY!,
+                accessKeyId: process.env.S3_ACCESS_KEY_ID!,
+                secretAccessKey: process.env.S3_SECRET_ACCESS_KEY!,
               },
               forcePathStyle: true,
             },
