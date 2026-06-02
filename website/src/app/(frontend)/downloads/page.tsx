@@ -97,7 +97,13 @@ export default async function DownloadsPage() {
                 </div>
                 {latest.windowsNsisUrl ? (
                   <Button asChild size="xl" className="ring-inset-soft lg:w-auto">
-                    <a href={latest.windowsNsisUrl} className="gap-2">
+                    <a
+                      href={latest.windowsNsisUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      download
+                      className="gap-2 cursor-pointer"
+                    >
                       <Icon.Download className="size-4" weight="bold" />
                       Download for Windows
                     </a>
@@ -107,7 +113,13 @@ export default async function DownloadsPage() {
               {latest.windowsMsiUrl ? (
                 <div className="mt-4 text-[12px] text-[var(--color-fg-subtle)]">
                   IT-managed install? Use the{' '}
-                  <a href={latest.windowsMsiUrl} className="underline hover:text-[var(--color-accent)]">
+                  <a
+                    href={latest.windowsMsiUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    download
+                    className="underline hover:text-[var(--color-accent)] cursor-pointer"
+                  >
                     MSI ({formatBytes(latest.windowsMsiSize)})
                   </a>
                   .

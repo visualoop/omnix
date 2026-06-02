@@ -194,6 +194,13 @@ jobs:
           VERSION: ${{ steps.ctx.outputs.version }}
           TAG: ${{ steps.ctx.outputs.tag }}
           REPO: ${{ github.repository }}
+          # R2 mirror (so installers stay public after the repo goes private)
+          S3_ACCESS_KEY_ID: ${{ secrets.S3_ACCESS_KEY_ID }}
+          S3_SECRET_ACCESS_KEY: ${{ secrets.S3_SECRET_ACCESS_KEY }}
+          S3_ENDPOINT: ${{ vars.S3_ENDPOINT || secrets.S3_ENDPOINT }}
+          S3_BUCKET: ${{ vars.S3_BUCKET || 'omnix-media' }}
+          S3_REGION: ${{ vars.S3_REGION || 'auto' }}
+          S3_PUBLIC_URL: ${{ vars.S3_PUBLIC_URL || 'https://media.omnix.co.ke' }}
         run: |
           set -e
 
@@ -215,10 +222,41 @@ jobs:
 
           NSIS_NAME=$(basename "$NSIS")
           MSI_NAME=$(basename "$MSI" 2>/dev/null || echo "")
-          NSIS_URL="https://github.com/$REPO/releases/download/$TAG/$NSIS_NAME"
-          MSI_URL=""
-          if [ -n "$MSI_NAME" ]; then
-            MSI_URL="https://github.com/$REPO/releases/download/$TAG/$MSI_NAME"
+
+          # ── Mirror to R2 (media.omnix.co.ke) so downloads survive
+          #    making the GitHub repo private. R2 creds come from GH secrets.
+          if [ -n "${S3_ACCESS_KEY_ID:-}" ] && [ -n "${S3_SECRET_ACCESS_KEY:-}" ] && [ -n "${S3_ENDPOINT:-}" ] && [ -n "${S3_BUCKET:-}" ]; then
+            export AWS_ACCESS_KEY_ID="$S3_ACCESS_KEY_ID"
+            export AWS_SECRET_ACCESS_KEY="$S3_SECRET_ACCESS_KEY"
+            export AWS_DEFAULT_REGION="${S3_REGION:-auto}"
+
+            R2_PREFIX="releases/$TAG"
+            echo "Mirroring installers → r2://$S3_BUCKET/$R2_PREFIX/"
+
+            aws s3 cp "$NSIS"          "s3://$S3_BUCKET/$R2_PREFIX/$NSIS_NAME"          --endpoint-url "$S3_ENDPOINT" --content-type application/octet-stream --no-progress
+            aws s3 cp "$NSIS_SIG_FILE" "s3://$S3_BUCKET/$R2_PREFIX/${NSIS_NAME}.sig"    --endpoint-url "$S3_ENDPOINT" --content-type text/plain --no-progress
+            if [ -n "$MSI" ]; then
+              aws s3 cp "$MSI" "s3://$S3_BUCKET/$R2_PREFIX/$MSI_NAME" --endpoint-url "$S3_ENDPOINT" --content-type application/octet-stream --no-progress
+              MSI_SIG_FILE=$(ls "${MSI}.sig" 2>/dev/null | head -1)
+              [ -n "$MSI_SIG_FILE" ] && aws s3 cp "$MSI_SIG_FILE" "s3://$S3_BUCKET/$R2_PREFIX/${MSI_NAME}.sig" --endpoint-url "$S3_ENDPOINT" --content-type text/plain --no-progress
+            fi
+
+            # Pretty serving URL (custom domain)
+            NSIS_URL="${S3_PUBLIC_URL:-https://media.omnix.co.ke}/$R2_PREFIX/$NSIS_NAME"
+            if [ -n "$MSI_NAME" ]; then
+              MSI_URL="${S3_PUBLIC_URL:-https://media.omnix.co.ke}/$R2_PREFIX/$MSI_NAME"
+            else
+              MSI_URL=""
+            fi
+            echo "✓ R2 NSIS_URL=$NSIS_URL"
+            [ -n "$MSI_URL" ] && echo "✓ R2 MSI_URL=$MSI_URL"
+          else
+            echo "⚠ R2 secrets missing — falling back to GitHub release URLs (will 404 once repo is private!)"
+            NSIS_URL="https://github.com/$REPO/releases/download/$TAG/$NSIS_NAME"
+            MSI_URL=""
+            if [ -n "$MSI_NAME" ]; then
+              MSI_URL="https://github.com/$REPO/releases/download/$TAG/$MSI_NAME"
+            fi
           fi
 
           NSIS_SIZE=$(stat -c '%s' "$NSIS" 2>/dev/null || stat -f '%z' "$NSIS")

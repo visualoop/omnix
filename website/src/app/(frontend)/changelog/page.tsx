@@ -52,7 +52,7 @@ export default async function ChangelogPage() {
       ],
     },
     sort: '-publishedAt',
-    limit: 100,
+    limit: 20,
     depth: 0,
   })
   const releases = result.docs as unknown as ReleaseRow[]
@@ -96,14 +96,17 @@ export default async function ChangelogPage() {
                         ) : null}
                         {downloadUrl ? (
                           <div className="mt-6 flex flex-wrap items-center gap-4">
-                            <Link
+                            <a
                               href={downloadUrl}
-                              className="font-[family-name:var(--font-ui)] inline-flex items-center gap-2 rounded-md border border-[var(--color-border-strong)] px-4 py-2 text-[13px] font-medium text-[var(--color-fg)] transition-colors hover:border-[var(--color-accent)] hover:text-[var(--color-accent)]"
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              download
+                              className="font-[family-name:var(--font-ui)] inline-flex items-center gap-2 rounded-md border border-[var(--color-border-strong)] px-4 py-2 text-[13px] font-medium text-[var(--color-fg)] transition-colors hover:border-[var(--color-accent)] hover:text-[var(--color-accent)] cursor-pointer"
                             >
                               <Icon.Download className="size-3.5" weight="bold" />
                               Download
                               {r.windowsNsisSize ? ` (${formatBytes(r.windowsNsisSize)})` : ''}
-                            </Link>
+                            </a>
                             <span className="caption-mono">Tauri-signed</span>
                           </div>
                         ) : null}
