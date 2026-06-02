@@ -1,0 +1,111 @@
+name: DB Bootstrap (migrate + seed)
+
+# Manual one-shot: drops + recreates the production schema using Payload
+# migrations, then seeds canonical CMS content (modules, blog posts, docs).
+#
+# Use cases:
+#   - First-time setup of a fresh Neon database
+#   - Schema drift / structural change requires a clean reset (pre-1.0 only)
+#
+# Inputs:
+#   reset       — if true, runs migrate:fresh (DROPS ALL DATA). Default false.
+#   seed        — if true, runs the seed script after migrating. Default true.
+#   create      — if true, generates a new migration first via migrate:create.
+
+on:
+  workflow_dispatch:
+    inputs:
+      reset:
+        description: 'Drop all tables and re-run migrations (destructive!)'
+        required: true
+        default: 'false'
+        type: choice
+        options: [ 'false', 'true' ]
+      seed:
+        description: 'Run the seed script after migrating'
+        required: true
+        default: 'true'
+        type: choice
+        options: [ 'true', 'false' ]
+      create:
+        description: 'Generate a new migration file first (committed automatically)'
+        required: true
+        default: 'false'
+        type: choice
+        options: [ 'false', 'true' ]
+
+permissions:
+  contents: write
+
+jobs:
+  bootstrap:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          run_install: false
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: pnpm
+          cache-dependency-path: website/pnpm-lock.yaml
+
+      - name: Install
+        working-directory: website
+        run: pnpm install --frozen-lockfile
+
+      # ── Generate migration if requested ──────────────────────────
+      - name: Create migration
+        if: ${{ inputs.create == 'true' }}
+        working-directory: website
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          PAYLOAD_SECRET: ${{ secrets.PAYLOAD_SECRET }}
+        run: pnpm payload migrate:create --skip-empty
+
+      - name: Commit new migration
+        if: ${{ inputs.create == 'true' }}
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add website/src/migrations
+          if git diff --cached --quiet; then
+            echo 'no migration changes to commit'
+          else
+            git commit -m 'chore(db): autogenerate migration'
+            git push origin main
+          fi
+
+      # ── Apply (or reset+apply) ──────────────────────────────────
+      - name: Migrate
+        if: ${{ inputs.reset == 'false' }}
+        working-directory: website
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          PAYLOAD_SECRET: ${{ secrets.PAYLOAD_SECRET }}
+        run: pnpm payload migrate
+
+      - name: Migrate fresh (drops all tables)
+        if: ${{ inputs.reset == 'true' }}
+        working-directory: website
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          PAYLOAD_SECRET: ${{ secrets.PAYLOAD_SECRET }}
+        run: pnpm payload migrate:fresh --forceAcceptWarning
+
+      # ── Seed canonical CMS content ──────────────────────────────
+      - name: Seed
+        if: ${{ inputs.seed == 'true' }}
+        working-directory: website
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          PAYLOAD_SECRET: ${{ secrets.PAYLOAD_SECRET }}
+        run: pnpm exec tsx scripts/seed.mts

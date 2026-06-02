@@ -1,4 +1,4 @@
-import { postgresAdapter } from '@payloadcms/db-postgres'
+import { vercelPostgresAdapter } from '@payloadcms/db-vercel-postgres'
 import { lexicalEditor } from '@payloadcms/richtext-lexical'
 import { resendAdapter } from '@payloadcms/email-resend'
 import { s3Storage } from '@payloadcms/storage-s3'
@@ -65,11 +65,9 @@ export default buildConfig({
   typescript: {
     outputFile: path.resolve(dirname, 'payload-types.ts'),
   },
-  db: postgresAdapter({
+  db: vercelPostgresAdapter({
     pool: { connectionString: process.env.DATABASE_URL || '' },
-    // Auto-sync schema. Acceptable while the product is pre-1.0 and we're still
-    // adding collections rapidly; revisit with proper migrations before scale.
-    push: true,
+    migrationDir: path.resolve(dirname, 'migrations'),
   }),
   sharp,
   endpoints: customEndpoints,
