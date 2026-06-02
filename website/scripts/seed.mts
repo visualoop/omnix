@@ -72,8 +72,7 @@ const main = async () => {
 
   // ── Modules ───────────────────────────────────────────────
   for (const m of MODULES_SEED) {
-    await upsert(payload, 'modules', 'slug', m.slug, {
-      slug: m.slug,
+    await upsert(payload, 'modules', 'moduleId', m.moduleId, {
       moduleId: m.moduleId,
       name: m.name,
       shortName: m.shortName,
