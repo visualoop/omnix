@@ -88,8 +88,8 @@ export const Settings: GlobalConfig = {
         {
           name: 'autoPublishReleases',
           type: 'checkbox',
-          defaultValue: false,
-          admin: { description: 'When on, CI-created releases skip "draft" and publish immediately.' },
+          defaultValue: true,
+          admin: { description: 'When on, CI-created releases skip "draft" and publish immediately. Default ON.' },
         },
       ],
     },

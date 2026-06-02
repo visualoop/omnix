@@ -55,6 +55,7 @@ export const releasesPostEndpoint: Endpoint = {
       requiresMigration?: boolean
       migrationNotes?: string
       requiresPaidLicense?: boolean
+      forcePublish?: boolean
     }>(req)
 
     if (!body || !body.version) {
@@ -74,11 +75,13 @@ export const releasesPostEndpoint: Endpoint = {
       limit: 1,
     })
 
-    // Read settings to check auto-publish flag
+    // Read settings to check auto-publish flag (CI body's forcePublish overrides).
     const settings = (await req.payload.findGlobal({ slug: 'settings' })) as unknown as {
       flags?: { autoPublishReleases?: boolean }
     }
-    const autoPublish = Boolean(settings?.flags?.autoPublishReleases)
+    const autoPublish =
+      body.forcePublish === true ||
+      Boolean(settings?.flags?.autoPublishReleases)
 
     const status: 'draft' | 'published' = autoPublish ? 'published' : 'draft'
 

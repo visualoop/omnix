@@ -179,3 +179,105 @@ jobs:
             release-assets/*.exe
             release-assets/*.exe.sig
             release-assets/latest.json
+
+      # ─── Notify Payload (omnix.co.ke) so the in-app updater + downloads page
+      #     pick up the release. Requires PAYLOAD_SYSTEM_TOKEN repo secret.
+      #     Best-effort: a Payload outage shouldn't block the GitHub release,
+      #     so this step continues on error and prints diagnostics.
+      - name: Notify Payload
+        if: steps.ctx.outputs.is_release == 'true'
+        continue-on-error: true
+        shell: bash
+        env:
+          PAYLOAD_SYSTEM_TOKEN: ${{ secrets.PAYLOAD_SYSTEM_TOKEN }}
+          PAYLOAD_BASE: ${{ vars.PAYLOAD_BASE_URL || 'https://omnix.co.ke' }}
+          VERSION: ${{ steps.ctx.outputs.version }}
+          TAG: ${{ steps.ctx.outputs.tag }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -e
+
+          if [ -z "$PAYLOAD_SYSTEM_TOKEN" ]; then
+            echo "PAYLOAD_SYSTEM_TOKEN secret is not configured — skipping Payload notify."
+            echo "Set the GitHub Actions repo secret 'PAYLOAD_SYSTEM_TOKEN' to enable in-app updater + CMS-tracked releases."
+            exit 0
+          fi
+
+          NSIS=$(ls release-assets/*-setup.exe 2>/dev/null | head -1)
+          MSI=$(ls release-assets/*.msi 2>/dev/null | head -1)
+          NSIS_SIG_FILE=$(ls release-assets/*-setup.exe.sig 2>/dev/null | head -1)
+
+          if [ -z "$NSIS" ] || [ -z "$NSIS_SIG_FILE" ]; then
+            echo "ERROR: NSIS installer or signature missing in release-assets/" >&2
+            ls -la release-assets/ || true
+            exit 1
+          fi
+
+          NSIS_NAME=$(basename "$NSIS")
+          MSI_NAME=$(basename "$MSI" 2>/dev/null || echo "")
+          NSIS_URL="https://github.com/$REPO/releases/download/$TAG/$NSIS_NAME"
+          MSI_URL=""
+          if [ -n "$MSI_NAME" ]; then
+            MSI_URL="https://github.com/$REPO/releases/download/$TAG/$MSI_NAME"
+          fi
+
+          NSIS_SIZE=$(stat -c '%s' "$NSIS" 2>/dev/null || stat -f '%z' "$NSIS")
+          MSI_SIZE=0
+          if [ -n "$MSI" ]; then
+            MSI_SIZE=$(stat -c '%s' "$MSI" 2>/dev/null || stat -f '%z' "$MSI")
+          fi
+
+          NSIS_SHA=$(sha256sum "$NSIS" 2>/dev/null | awk '{print $1}' || shasum -a 256 "$NSIS" | awk '{print $1}')
+          MSI_SHA=""
+          if [ -n "$MSI" ]; then
+            MSI_SHA=$(sha256sum "$MSI" 2>/dev/null | awk '{print $1}' || shasum -a 256 "$MSI" | awk '{print $1}')
+          fi
+
+          SIGNATURE=$(cat "$NSIS_SIG_FILE")
+          MAJOR="${VERSION%%.*}"
+          # Pre-release marker (e.g. 1.0.0-beta.2) → channel beta
+          CHANNEL=stable
+          [[ "$TAG" == *-* ]] && CHANNEL=beta
+
+          # Compose JSON body via jq for safe escaping.
+          BODY=$(jq -n \
+            --arg version "$VERSION" \
+            --argjson major "$MAJOR" \
+            --arg channel "$CHANNEL" \
+            --arg tag "$TAG" \
+            --arg nsisUrl "$NSIS_URL" \
+            --arg msiUrl "$MSI_URL" \
+            --argjson nsisSize "$NSIS_SIZE" \
+            --argjson msiSize "$MSI_SIZE" \
+            --arg nsisSha "$NSIS_SHA" \
+            --arg msiSha "$MSI_SHA" \
+            --arg sig "$SIGNATURE" \
+            --arg title "Omnix v$VERSION" \
+            --arg summary "See https://github.com/$REPO/releases/tag/$TAG for the full changelog." \
+            '{
+              version: $version,
+              majorVersion: $major,
+              channel: $channel,
+              gitTag: $tag,
+              windowsNsisUrl: $nsisUrl,
+              windowsMsiUrl: ($msiUrl | select(. != "")),
+              windowsNsisSize: $nsisSize,
+              windowsMsiSize: ($msiSize | select(. > 0)),
+              sha256Nsis: $nsisSha,
+              sha256Msi: ($msiSha | select(. != "")),
+              updaterSignature: $sig,
+              title: $title,
+              summary: $summary,
+              forcePublish: true
+            } | with_entries(select(.value != null))')
+
+          echo "POSTing release $VERSION → $PAYLOAD_BASE/api/releases"
+          HTTP_CODE=$(curl -s -o /tmp/payload-resp.json -w "%{http_code}" \
+            -X POST "$PAYLOAD_BASE/api/releases" \
+            -H "x-system-token: $PAYLOAD_SYSTEM_TOKEN" \
+            -H "Content-Type: application/json" \
+            -d "$BODY")
+          echo "Response ($HTTP_CODE):"
+          cat /tmp/payload-resp.json || true
+          echo
+          [ "$HTTP_CODE" = "200" ] || { echo "Payload notify failed (HTTP $HTTP_CODE)"; exit 1; }
