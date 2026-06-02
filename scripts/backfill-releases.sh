@@ -34,6 +34,7 @@ gh release list --repo "$GH_REPO" --limit 50 --json tagName,publishedAt,isDraft,
       MAJOR="${VERSION%%.*}"
       CHANNEL=stable
       [[ "$TAG" == *-* ]] && CHANNEL=beta
+      PUBLISHED_AT=$(echo "$row" | jq -r .publishedAt)
 
       ASSETS=$(gh release view "$TAG" --repo "$GH_REPO" --json assets --jq '.assets[].name')
 
@@ -64,6 +65,7 @@ gh release list --repo "$GH_REPO" --limit 50 --json tagName,publishedAt,isDraft,
         --arg sig "$SIGNATURE" \
         --arg title "Omnix v$VERSION" \
         --arg summary "See https://github.com/$GH_REPO/releases/tag/$TAG for the full changelog." \
+        --arg publishedAt "$PUBLISHED_AT" \
         '{
           version: $version,
           majorVersion: $major,
@@ -74,6 +76,7 @@ gh release list --repo "$GH_REPO" --limit 50 --json tagName,publishedAt,isDraft,
           updaterSignature: $sig,
           title: $title,
           summary: $summary,
+          publishedAt: $publishedAt,
           forcePublish: true
         } | with_entries(select(.value != null))')
 

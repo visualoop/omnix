@@ -56,6 +56,7 @@ export const releasesPostEndpoint: Endpoint = {
       migrationNotes?: string
       requiresPaidLicense?: boolean
       forcePublish?: boolean
+      publishedAt?: string
     }>(req)
 
     if (!body || !body.version) {
@@ -104,7 +105,7 @@ export const releasesPostEndpoint: Endpoint = {
       requiresMigration: Boolean(body.requiresMigration),
       migrationNotes: body.migrationNotes,
       requiresPaidLicense: Boolean(body.requiresPaidLicense),
-      publishedAt: autoPublish ? new Date().toISOString() : undefined,
+      publishedAt: autoPublish ? body.publishedAt ?? new Date().toISOString() : undefined,
     }
 
     let release
