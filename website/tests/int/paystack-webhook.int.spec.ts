@@ -37,8 +37,8 @@ const makeFakePayload = () => {
         purpose: 'license_fee',
         amount: 100_000,
         license: 'lic_1',
-      },
-    ],
+      } as Record<string, unknown> & { id: string },
+    ] as Array<Record<string, unknown> & { id: string }>,
     licenses: [
       { id: 'lic_1', tier: 'starter', status: 'pending_payment', majorVersionCap: 1 },
     ] as Array<Record<string, unknown> & { id: string }>,
