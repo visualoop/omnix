@@ -15,7 +15,7 @@ import { errorResponse, jsonResponse } from './_auth'
  *   - channel   (optional) — "stable" (default) | "beta" — for testers.
  */
 export const releasesLatestEndpoint: Endpoint = {
-  path: '/releases/latest',
+  path: '/releases-latest',
   method: 'get',
   handler: async (req) => {
     const url = new URL(req.url ?? '', 'http://localhost')
