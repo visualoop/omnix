@@ -33,7 +33,7 @@ export const Activations: CollectionConfig = {
       type: 'relationship',
       relationTo: 'machines',
     },
-    { name: 'machineId', type: 'text', admin: { description: 'Hardware fingerprint presented by the client.' } },
+    { name: 'fingerprint', type: 'text', admin: { description: 'Hardware fingerprint string presented by the client.' } },
     {
       name: 'event',
       type: 'select',

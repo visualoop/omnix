@@ -91,14 +91,15 @@ export async function logActivation(
     outcome: ActivationOutcome
     license?: string | number
     machine?: string | number
-    machineId?: string
+    machineId?: string // hardware fingerprint string from caller; mapped to `fingerprint` field
     detail?: string
   },
 ): Promise<void> {
   try {
+    const { machineId, ...rest } = data
     await req.payload.create({
       collection: 'activations',
-      data: { ...data, ip: clientIp(req) ?? undefined } as never,
+      data: { ...rest, fingerprint: machineId, ip: clientIp(req) ?? undefined } as never,
       overrideAccess: true,
     })
   } catch {
