@@ -53,21 +53,17 @@ function SheetContent({
         data-slot="sheet-content"
         data-side={side}
         className={cn(
-          "fixed z-50 flex flex-col bg-popover bg-clip-padding text-sm text-popover-foreground",
-          "transition-transform duration-120 ease-[cubic-bezier(0.2,0,0,1)]",
+          "fixed z-50 flex flex-col glass-thick text-sm text-popover-foreground",
+          "transition-transform duration-150 ease-[cubic-bezier(0.2,0,0,1)]",
           "data-ending-style:opacity-0 data-starting-style:opacity-0",
-          "data-[side=bottom]:inset-x-0 data-[side=bottom]:bottom-0 data-[side=bottom]:h-auto data-[side=bottom]:max-h-[85vh] data-[side=bottom]:border-t",
+          "data-[side=bottom]:inset-x-0 data-[side=bottom]:bottom-0 data-[side=bottom]:h-auto data-[side=bottom]:max-h-[85vh] data-[side=bottom]:rounded-t-2xl",
           "data-[side=bottom]:data-ending-style:translate-y-2 data-[side=bottom]:data-starting-style:translate-y-2",
-          "data-[side=left]:inset-y-0 data-[side=left]:left-0 data-[side=left]:h-full data-[side=left]:w-[440px] data-[side=left]:max-w-[88vw] data-[side=left]:border-r",
+          "data-[side=left]:inset-y-0 data-[side=left]:left-0 data-[side=left]:h-full data-[side=left]:w-[440px] data-[side=left]:max-w-[88vw] data-[side=left]:rounded-r-2xl",
           "data-[side=left]:data-ending-style:-translate-x-4 data-[side=left]:data-starting-style:-translate-x-4",
-          "data-[side=right]:inset-y-0 data-[side=right]:right-0 data-[side=right]:h-full data-[side=right]:w-[440px] data-[side=right]:max-w-[88vw] data-[side=right]:border-l",
+          "data-[side=right]:inset-y-0 data-[side=right]:right-0 data-[side=right]:h-full data-[side=right]:w-[440px] data-[side=right]:max-w-[88vw] data-[side=right]:rounded-l-2xl",
           "data-[side=right]:data-ending-style:translate-x-4 data-[side=right]:data-starting-style:translate-x-4",
-          "data-[side=top]:inset-x-0 data-[side=top]:top-0 data-[side=top]:h-auto data-[side=top]:max-h-[85vh] data-[side=top]:border-b",
+          "data-[side=top]:inset-x-0 data-[side=top]:top-0 data-[side=top]:h-auto data-[side=top]:max-h-[85vh] data-[side=top]:rounded-b-2xl",
           "data-[side=top]:data-ending-style:-translate-y-2 data-[side=top]:data-starting-style:-translate-y-2",
-          "shadow-[0_1px_0_rgb(0_0_0_/_0.04),-2px_0_8px_rgb(0_0_0_/_0.06)]",
-          "data-[side=left]:shadow-[0_1px_0_rgb(0_0_0_/_0.04),2px_0_8px_rgb(0_0_0_/_0.06)]",
-          "data-[side=top]:shadow-[0_2px_8px_rgb(0_0_0_/_0.06)]",
-          "data-[side=bottom]:shadow-[0_-2px_8px_rgb(0_0_0_/_0.06)]",
           className
         )}
         {...props}
@@ -100,8 +96,8 @@ function SheetHeader({ className, ...props }: React.ComponentProps<"div">) {
     <div
       data-slot="sheet-header"
       className={cn(
-        // Tighter native padding, single bottom border like Office side panels
-        "flex flex-col gap-0.5 py-3 border-b border-border",
+        // Glass-friendly: softer hairline, no muted fill
+        "flex flex-col gap-0.5 py-3 border-b border-border/40",
         className
       )}
       {...props}
@@ -114,7 +110,7 @@ function SheetFooter({ className, ...props }: React.ComponentProps<"div">) {
     <div
       data-slot="sheet-footer"
       className={cn(
-        "mt-auto flex flex-row gap-2 px-4 py-3 border-t border-border bg-muted/20 justify-end",
+        "mt-auto flex flex-row gap-2 px-4 py-3 border-t border-border/40 justify-end",
         className
       )}
       {...props}

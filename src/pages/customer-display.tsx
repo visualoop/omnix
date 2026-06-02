@@ -71,12 +71,18 @@ export function CustomerDisplayPage() {
   // ── Payment success ──────────────────────────────────────────────
   if (paidTotal !== null) {
     return (
-      <div className="min-h-screen bg-stone-950 text-white flex flex-col items-center justify-center p-12">
-        <div className={`h-1 w-24 ${cfg.accentLine} rounded-full mb-10`} />
-        <CheckCircle2 className={`h-24 w-24 ${cfg.accentText}`} strokeWidth={1.5} />
-        <div className="text-2xl text-stone-400 mt-8">Paid</div>
-        <div className="text-7xl font-bold font-mono tabular-nums mt-2">{KES(paidTotal)}</div>
-        <div className="text-xl text-stone-400 mt-8">{cfg.successMessage}</div>
+      <div className="relative min-h-screen bg-stone-950 text-white flex flex-col items-center justify-center p-12 overflow-hidden">
+        {/* Atmospheric ambient glow — module-tinted */}
+        <div aria-hidden className="pointer-events-none absolute inset-0">
+          <div className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 h-[60vmin] w-[60vmin] rounded-full ${cfg.accentLine} opacity-20 blur-[140px]`} />
+        </div>
+        <div className="relative z-10 glass-thick rounded-glass-xl px-16 py-14 flex flex-col items-center bg-white/5 dark:bg-white/[0.02]">
+          <div className={`h-1 w-24 ${cfg.accentLine} rounded-full mb-10`} />
+          <CheckCircle2 className={`h-24 w-24 ${cfg.accentText}`} strokeWidth={1.5} />
+          <div className="text-2xl text-stone-400 mt-8">Paid</div>
+          <div className="text-7xl font-bold font-mono tabular-nums mt-2 tracking-tight">{KES(paidTotal)}</div>
+          <div className="text-xl text-stone-300 mt-8">{cfg.successMessage}</div>
+        </div>
       </div>
     );
   }
@@ -84,19 +90,28 @@ export function CustomerDisplayPage() {
   // ── Idle ─────────────────────────────────────────────────────────
   if (items.length === 0) {
     return (
-      <div className="min-h-screen bg-stone-950 text-stone-200 flex flex-col items-center justify-center p-12">
-        <ModuleLogo moduleId={moduleId} size={120} />
-        <h1 className="text-5xl font-bold mt-6 text-white tracking-tight">{businessName}</h1>
-        <p className="text-xl text-stone-400 mt-3">{cfg.idleSubtitle}</p>
-        <div className={`mt-12 h-1 w-24 ${cfg.accentLine} rounded-full`} />
-        <div className="mt-8 text-base text-stone-500">
-          {now.toLocaleDateString("en-KE", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
+      <div className="relative min-h-screen bg-stone-950 text-stone-200 flex flex-col items-center justify-center p-12 overflow-hidden">
+        {/* Ambient module-tinted glow */}
+        <div aria-hidden className="pointer-events-none absolute inset-0">
+          <div className={`absolute top-[15%] left-[15%] h-[40vmin] w-[40vmin] rounded-full ${cfg.accentLine} opacity-10 blur-[160px]`} />
+          <div className={`absolute bottom-[10%] right-[15%] h-[36vmin] w-[36vmin] rounded-full ${cfg.accentLine} opacity-10 blur-[180px]`} />
         </div>
-        <div className="mt-1 text-3xl font-mono tabular-nums text-stone-300">{clock}</div>
-        {privacyMode && (
-          <p className="mt-10 text-stone-500 text-sm">Privacy mode · item names hidden</p>
-        )}
-        <p className="mt-8 text-stone-600 text-sm">{cfg.idleHint}</p>
+        <div className="relative z-10 flex flex-col items-center">
+          <div className="glass-thick rounded-glass-xl bg-white/5 dark:bg-white/[0.02] p-8 mb-2">
+            <ModuleLogo moduleId={moduleId} size={120} />
+          </div>
+          <h1 className="text-5xl font-bold mt-6 text-white tracking-tight">{businessName}</h1>
+          <p className="text-xl text-stone-400 mt-3">{cfg.idleSubtitle}</p>
+          <div className={`mt-12 h-1 w-24 ${cfg.accentLine} rounded-full`} />
+          <div className="mt-8 text-base text-stone-500">
+            {now.toLocaleDateString("en-KE", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
+          </div>
+          <div className="mt-1 text-3xl font-mono tabular-nums text-stone-300">{clock}</div>
+          {privacyMode && (
+            <p className="mt-10 text-stone-500 text-sm">Privacy mode · item names hidden</p>
+          )}
+          <p className="mt-8 text-stone-600 text-sm">{cfg.idleHint}</p>
+        </div>
       </div>
     );
   }

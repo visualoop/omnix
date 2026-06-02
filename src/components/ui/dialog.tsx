@@ -56,14 +56,13 @@ function DialogContent({
       <DialogPrimitive.Popup
         data-slot="dialog-content"
         className={cn(
-          // Native dialog: smaller radius (Win11 = 8px / rounded-lg), thin border, layered shadow
+          // Liquid sheet: glass-thick translucent panel with continuous corners.
+          // The backdrop already blurs the page behind, so this floats cleanly.
           "fixed top-1/2 left-1/2 z-50 grid w-full max-w-[calc(100%-2rem)] -translate-x-1/2 -translate-y-1/2 gap-3",
-          "rounded-lg border border-border bg-popover p-4 text-sm text-popover-foreground",
-          // Native shadow — small distance, low spread, two layers
-          "shadow-[0_2px_4px_rgb(0_0_0_/_0.08),0_8px_24px_rgb(0_0_0_/_0.12)]",
+          "glass-thick rounded-2xl p-4 text-sm text-popover-foreground",
           "outline-none sm:max-w-md",
           // Faster, less bouncy enter/exit (no big zoom)
-          "duration-120 data-open:animate-in data-open:fade-in-0 data-open:zoom-in-[0.98]",
+          "duration-150 data-open:animate-in data-open:fade-in-0 data-open:zoom-in-[0.98]",
           "data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-[0.98]",
           className
         )}
@@ -112,8 +111,8 @@ function DialogFooter({
     <div
       data-slot="dialog-footer"
       className={cn(
-        // Native footer — flat, no muted bg fill, just a top border line
-        "-mx-4 -mb-4 mt-2 flex flex-col-reverse gap-2 rounded-b-lg border-t border-border px-4 py-3 sm:flex-row sm:justify-end",
+        // Glass footer — thin top hairline only; no muted fill (would muddy the glass)
+        "-mx-4 -mb-4 mt-2 flex flex-col-reverse gap-2 border-t border-border/40 px-4 py-3 sm:flex-row sm:justify-end",
         className
       )}
       {...props}

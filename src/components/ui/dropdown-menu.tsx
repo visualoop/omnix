@@ -44,8 +44,8 @@ function DropdownMenuContent({
           className={cn(
             // Native menu — small radius, single border, layered shadow, fast transition
             "z-50 max-h-(--available-height) w-(--anchor-width) min-w-[180px] origin-(--transform-origin) overflow-x-hidden overflow-y-auto",
-            "rounded-md border border-border bg-popover p-1 text-popover-foreground",
-            "shadow-[0_2px_4px_rgb(0_0_0_/_0.06),0_8px_16px_rgb(0_0_0_/_0.1)]",
+            "rounded-xl glass-thick p-1 text-popover-foreground",
+            // shadow comes from glass-thick
             "duration-80 outline-none",
             "data-[side=bottom]:slide-in-from-top-1 data-[side=top]:slide-in-from-bottom-1",
             "data-[side=left]:slide-in-from-right-1 data-[side=right]:slide-in-from-left-1",
@@ -154,7 +154,7 @@ function DropdownMenuSubContent({
   return (
     <DropdownMenuContent
       data-slot="dropdown-menu-sub-content"
-      className={cn("w-auto min-w-[96px] rounded-lg bg-popover p-1 text-popover-foreground shadow-lg ring-1 ring-foreground/10 duration-100 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95", className )}
+      className={cn("w-auto min-w-[96px] rounded-xl glass-thick p-1 text-popover-foreground duration-100 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95", className )}
       align={align}
       alignOffset={alignOffset}
       side={side}

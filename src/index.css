@@ -313,13 +313,54 @@
   .rounded-glass-lg { border-radius: 22px; }
   .rounded-glass-xl { border-radius: 28px; }
 
+  /* Sidebar: translucent vertical strip with a hairline right edge.
+     Subtler than .glass — sidebars need to recede, not compete. */
+  .glass-sidebar {
+    background: color-mix(in oklch, var(--sidebar) 78%, transparent);
+    backdrop-filter: blur(24px) saturate(170%);
+    -webkit-backdrop-filter: blur(24px) saturate(170%);
+    border-right: 1px solid color-mix(in oklch, var(--sidebar-border) 70%, transparent);
+    box-shadow: inset -1px 0 0 0 oklch(from var(--foreground) l c h / 0.02);
+  }
+  .dark .glass-sidebar {
+    background: color-mix(in oklch, var(--sidebar) 65%, transparent);
+    border-right: 1px solid color-mix(in oklch, var(--sidebar-border) 50%, transparent);
+    box-shadow: inset -1px 0 0 0 oklch(from var(--foreground) l c h / 0.04);
+  }
+
+  /* Topbar / page header: thin horizontal glass strip. */
+  .glass-topbar {
+    background: color-mix(in oklch, var(--background) 72%, transparent);
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    border-bottom: 1px solid color-mix(in oklch, var(--border) 70%, transparent);
+  }
+  .dark .glass-topbar {
+    background: color-mix(in oklch, var(--background) 60%, transparent);
+    border-bottom: 1px solid color-mix(in oklch, var(--border) 60%, transparent);
+  }
+
+  /* Refined focus glow — soft 3px halo + 1px primary border.
+     Add `.focus-soft` to inputs/selects/textareas to opt in. */
+  .focus-soft {
+    transition: box-shadow 150ms ease, border-color 150ms ease;
+  }
+  .focus-soft:focus,
+  .focus-soft:focus-visible {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px color-mix(in oklch, var(--primary) 18%, transparent);
+  }
+
   /* prefers-reduced-motion: drop blurs (perf + a11y) */
   @media (prefers-reduced-motion: reduce) {
-    .glass, .glass-thin, .glass-thick {
+    .glass, .glass-thin, .glass-thick, .glass-sidebar, .glass-topbar {
       backdrop-filter: none;
       -webkit-backdrop-filter: none;
-      background: var(--card);
     }
+    .glass, .glass-thin, .glass-thick { background: var(--card); }
     .dark .glass, .dark .glass-thin, .dark .glass-thick { background: var(--card); }
+    .glass-sidebar { background: var(--sidebar); }
+    .glass-topbar { background: var(--background); }
   }
 }

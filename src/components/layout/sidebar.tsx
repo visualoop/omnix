@@ -235,12 +235,12 @@ export function Sidebar({ onCommandOpen }: { onCommandOpen: () => void }) {
   return (
     <aside
       className={cn(
-        "flex flex-col border-r border-border bg-sidebar h-full transition-all duration-200",
+        "flex flex-col glass-sidebar h-full transition-all duration-200",
         collapsed ? "w-[52px]" : "w-[200px]",
       )}
     >
       {/* Logo + Active Module */}
-      <div className="flex items-center h-12 px-3 border-b border-border gap-2">
+      <div className="flex items-center h-12 px-3 border-b border-border/60 gap-2">
         {activeModule && activeModule.id !== "core" ? (
           <ModuleLogo moduleId={activeModule.id} size={22} rounded />
         ) : (
@@ -265,7 +265,7 @@ export function Sidebar({ onCommandOpen }: { onCommandOpen: () => void }) {
         onClick={onCommandOpen}
         data-tour="cmd-k"
         className={cn(
-          "mx-2 mt-2 flex items-center gap-2 rounded-md px-2 py-1.5 text-xs text-muted-foreground hover:bg-accent transition-colors cursor-pointer",
+          "mx-2 mt-2 flex items-center gap-2 rounded-lg px-2 py-1.5 text-xs text-muted-foreground hover:bg-foreground/[0.04] hover:text-foreground transition-all duration-150 cursor-pointer",
           collapsed && "justify-center",
         )}
       >
@@ -314,7 +314,7 @@ export function Sidebar({ onCommandOpen }: { onCommandOpen: () => void }) {
       {/* Collapse toggle */}
       <button
         onClick={() => setCollapsed(!collapsed)}
-        className="flex items-center justify-center h-10 border-t border-border text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+        className="flex items-center justify-center h-10 border-t border-border/60 text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
       >
         {collapsed ? (
           <ChevronsRight className="h-4 w-4" />
@@ -334,10 +334,10 @@ function NavRow({ item, collapsed }: { item: NavItem; collapsed: boolean }) {
       title={collapsed ? item.label : undefined}
       className={({ isActive }) =>
         cn(
-          "flex items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-colors cursor-pointer",
+          "flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm transition-all duration-150 cursor-pointer",
           isActive
-            ? "bg-accent text-accent-foreground font-medium"
-            : "text-muted-foreground hover:bg-accent/50 hover:text-foreground",
+            ? "bg-primary/10 text-foreground font-medium shadow-[inset_0_1px_0_rgb(255_255_255_/_0.06)]"
+            : "text-muted-foreground hover:bg-foreground/[0.04] hover:text-foreground",
           collapsed && "justify-center",
         )
       }
@@ -373,10 +373,10 @@ function ModuleGroup({
         title={group.label}
         className={({ isActive }) =>
           cn(
-            "flex items-center justify-center rounded-md px-2 py-1.5 text-sm transition-colors cursor-pointer",
+            "flex items-center justify-center rounded-lg px-2 py-1.5 text-sm transition-all duration-150 cursor-pointer",
             isActive || onSubRoute
-              ? "bg-accent text-accent-foreground font-medium"
-              : "text-muted-foreground hover:bg-accent/50 hover:text-foreground",
+              ? "bg-primary/10 text-foreground font-medium shadow-[inset_0_1px_0_rgb(255_255_255_/_0.06)]"
+              : "text-muted-foreground hover:bg-foreground/[0.04] hover:text-foreground",
           )
         }
       >
@@ -390,10 +390,10 @@ function ModuleGroup({
       <button
         onClick={onToggle}
         className={cn(
-          "w-full flex items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-colors cursor-pointer",
+          "w-full flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm transition-all duration-150 cursor-pointer",
           onSubRoute
             ? "text-foreground font-medium"
-            : "text-muted-foreground hover:bg-accent/50 hover:text-foreground",
+            : "text-muted-foreground hover:bg-foreground/[0.04] hover:text-foreground",
         )}
       >
         <Icon className="h-4 w-4 shrink-0" />
@@ -405,17 +405,17 @@ function ModuleGroup({
         )}
       </button>
       {open && (
-        <div className="mt-0.5 ml-2 pl-2 border-l border-border space-y-0.5">
+        <div className="mt-0.5 ml-2 pl-2 border-l border-border/40 space-y-0.5">
           {group.items.map((item) => (
             <NavLink
               key={item.to}
               to={item.to}
               className={({ isActive }) =>
                 cn(
-                  "flex items-center gap-2 rounded-md px-2 py-1.5 text-[13px] transition-colors cursor-pointer",
+                  "flex items-center gap-2 rounded-lg px-2 py-1.5 text-[13px] transition-all duration-150 cursor-pointer",
                   isActive
-                    ? "bg-accent text-accent-foreground font-medium"
-                    : "text-muted-foreground hover:bg-accent/50 hover:text-foreground",
+                    ? "bg-primary/10 text-foreground font-medium"
+                    : "text-muted-foreground hover:bg-foreground/[0.04] hover:text-foreground",
                 )
               }
             >
