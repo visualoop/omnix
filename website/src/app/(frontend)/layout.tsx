@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import { Fraunces, Geist, JetBrains_Mono, Plus_Jakarta_Sans } from 'next/font/google'
+import { GoogleAnalytics } from '@next/third-parties/google'
 
 import { BRAND, BRAND_NAME, BRAND_TAGLINE } from '@/lib/brand'
 import { SiteHeader } from '@/components/layout/site-header'
@@ -76,9 +77,13 @@ export const metadata: Metadata = {
   twitter: { card: 'summary_large_image', title: `${BRAND_NAME} — ${BRAND_TAGLINE}` },
   icons: { icon: '/favicon.ico' },
   robots: { index: true, follow: true },
+  verification: {
+    google: process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION || undefined,
+  },
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
+  const gaId = process.env.NEXT_PUBLIC_GA_ID
   return (
     <html
       lang="en"
@@ -89,6 +94,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <SiteHeader />
         <main>{children}</main>
         <SiteFooter />
+        {gaId && <GoogleAnalytics gaId={gaId} />}
       </body>
     </html>
   )
