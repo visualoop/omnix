@@ -1,0 +1,52 @@
+name: Website Tests
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'website/**'
+      - '.github/workflows/website-tests.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'website/**'
+
+concurrency:
+  group: website-tests-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: vitest (no-db)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: website
+    env:
+      # Tests that need these read from env via the Settings resolver fallback.
+      # Real keys live in Vercel; these are CI-only test values that work for
+      # mocked tests (most of the suite). The 4 paystack-live tests are excluded.
+      PAYLOAD_SECRET: ci_payload_secret_value_long_enough
+      PAYLOAD_SYSTEM_TOKEN: ci_system_token_value
+      PAYSTACK_SECRET_KEY: ${{ secrets.PAYSTACK_SECRET_KEY }}
+      PAYSTACK_PUBLIC_KEY: ${{ secrets.PAYSTACK_PUBLIC_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: pnpm
+          cache-dependency-path: website/pnpm-lock.yaml
+
+      - name: Install
+        run: pnpm install --frozen-lockfile --ignore-workspace
+
+      - name: TypeScript check
+        run: pnpm exec tsc --noEmit
+
+      - name: Vitest (excludes db-bound + live paystack)
+        run: pnpm run test:int:nodb
