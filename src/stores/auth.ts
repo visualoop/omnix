@@ -48,9 +48,16 @@ export const useAuthStore = create<AuthState>()(
           // Used by the cloud-backup auto-scheduler so we don't have to re-prompt.
           // Best-effort — never blocks sign-in.
           if (user.role === "owner") {
-            import("@tauri-apps/api/core").then(({ invoke }) =>
-              invoke("cloud_backup_set_session_key", { password }).catch(() => {}),
-            );
+            Promise.all([
+              import("@tauri-apps/api/core").then((m) => m.invoke),
+              import("@/services/license").then((m) => m.getLicenseKey()),
+            ]).then(([invoke, licenseKey]) => {
+              if (!licenseKey) return; // licence not yet activated; backups not possible anyway
+              (invoke as (cmd: string, args: Record<string, unknown>) => Promise<unknown>)(
+                "cloud_backup_set_session_key",
+                { password, licenseKey },
+              ).catch(() => {});
+            }).catch(() => {});
           }
           // Resolve + cache effective RBAC permissions for this user.
           get().loadPermissions();

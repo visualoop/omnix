@@ -61,15 +61,18 @@ const nextConfig: NextConfig = {
   // CSP is intentionally permissive on connect-src/img-src for our own
   // R2 bucket + Paystack; everything else is locked down.
   async headers() {
+    const isProd = process.env.NODE_ENV === 'production'
+    // unsafe-eval is required by Next.js HMR in dev; production drops it.
+    const scriptSrc = isProd
+      ? "script-src 'self' 'unsafe-inline' https://js.paystack.co https://api.paystack.co https://www.googletagmanager.com"
+      : "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.paystack.co https://api.paystack.co"
     const csp = [
       "default-src 'self'",
-      // Next inlines a small bootstrap script per page; 'self' covers our static.
-      // Paystack inline.js loads from js.paystack.co; allow it for checkout.
-      "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.paystack.co https://api.paystack.co",
+      scriptSrc,
       "style-src 'self' 'unsafe-inline'",
       "img-src 'self' data: blob: https://media.omnix.co.ke https://*.r2.cloudflarestorage.com https://www.googletagmanager.com",
       "font-src 'self' data:",
-      "connect-src 'self' https://api.paystack.co https://omnix.co.ke https://media.omnix.co.ke",
+      "connect-src 'self' https://api.paystack.co https://omnix.co.ke https://media.omnix.co.ke https://www.google-analytics.com",
       "frame-src https://standard.paystack.co",
       "object-src 'none'",
       "base-uri 'self'",

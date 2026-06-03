@@ -33,7 +33,6 @@ use std::sync::Mutex;
 use std::time::SystemTime;
 use tauri::Manager;
 
-use crate::license::format_fingerprint;
 
 const NONCE_LEN: usize = 12;
 
@@ -114,13 +113,21 @@ fn temp_dir(app: &tauri::AppHandle) -> Result<PathBuf, String> {
     Ok(t)
 }
 
-/// Derive a 32-byte AES-256 key from password + machineId.
-/// SHA-256(password || ":" || machineId). Deterministic so future restores work.
-fn derive_key(password: &str, machine_id: &str) -> [u8; 32] {
+/// Derive a 32-byte AES-256 key from password + license_key.
+///
+/// IMPORTANT: we use the LICENSE KEY (stable across devices) — not the
+/// machine fingerprint — so a backup uploaded from device A can be
+/// decrypted on device B as long as the same licence + password are used.
+/// This is the cross-device restore scenario (e.g. a customer reinstalls
+/// on a new laptop after a hardware failure).
+///
+/// SHA-256(password || ":" || license_key). Deterministic so future restores
+/// work without storing the key on disk.
+fn derive_key(password: &str, license_key: &str) -> [u8; 32] {
     let mut h = Sha256::new();
     h.update(password.as_bytes());
     h.update(b":");
-    h.update(machine_id.as_bytes());
+    h.update(license_key.as_bytes());
     let out = h.finalize();
     let mut key = [0u8; 32];
     key.copy_from_slice(&out);
@@ -212,18 +219,22 @@ fn sha256_hex(bytes: &[u8]) -> String {
 ///
 /// `api_base`: e.g. "https://omnix.co.ke"
 /// `auth_token`: machine bearer (the one returned from /licenses/activate).
-/// `password`: the customer's encryption secret (derived in JS from owner password
-///             or a dedicated "backup password"). NEVER persisted.
+/// `password`: the customer's encryption secret. NEVER persisted.
+/// `license_key`: stable identifier — used in key derivation so the backup
+///                can be decrypted on a different machine with the same licence.
 #[tauri::command]
 pub async fn cloud_backup_upload(
     app: tauri::AppHandle,
     api_base: String,
     auth_token: String,
     password: String,
+    license_key: String,
     desktop_version: Option<String>,
 ) -> Result<CloudBackupResult, String> {
-    let machine_id = format_fingerprint(&crate::license::get_machine_fingerprint());
-    let key = derive_key(&password, &machine_id);
+    if license_key.is_empty() {
+        return Err("license_key is required for key derivation".to_string());
+    }
+    let key = derive_key(&password, &license_key);
     let hint = key_hint(&key);
 
     // 1. Snapshot
@@ -328,6 +339,7 @@ pub async fn cloud_backup_restore(
     auth_token: String,
     backup_id: String,
     password: String,
+    license_key: String,
 ) -> Result<String, String> {
     // 1. Get presigned download URL
     let url = format!(
@@ -369,9 +381,11 @@ pub async fn cloud_backup_restore(
         }
     }
 
-    // 4. Decrypt + gunzip
-    let machine_id = format_fingerprint(&crate::license::get_machine_fingerprint());
-    let key = derive_key(&password, &machine_id);
+    // 4. Decrypt + gunzip — use license_key (portable across devices)
+    if license_key.is_empty() {
+        return Err("license_key is required to decrypt the backup".to_string());
+    }
+    let key = derive_key(&password, &license_key);
     let raw = unpack_blob(&blob, &key)?;
 
     // 5. Write to a restore-staging file. Caller invokes restore_backup with this.
@@ -425,24 +439,60 @@ mod tests {
     }
 
     #[test]
-    fn derive_key_is_deterministic_per_password_and_machine() {
-        let a = derive_key("hunter2", "MACHINE-X");
-        let b = derive_key("hunter2", "MACHINE-X");
+    fn derive_key_is_deterministic_per_password_and_license_key() {
+        let a = derive_key("hunter2", "OMNIX-LIC-AAA");
+        let b = derive_key("hunter2", "OMNIX-LIC-AAA");
         assert_eq!(a, b);
     }
 
     #[test]
-    fn derive_key_changes_with_machine_id() {
-        let a = derive_key("hunter2", "MACHINE-X");
-        let b = derive_key("hunter2", "MACHINE-Y");
+    fn derive_key_changes_with_license_key() {
+        let a = derive_key("hunter2", "OMNIX-LIC-AAA");
+        let b = derive_key("hunter2", "OMNIX-LIC-BBB");
         assert_ne!(a, b);
     }
 
     #[test]
     fn derive_key_changes_with_password() {
-        let a = derive_key("hunter2", "M");
-        let b = derive_key("hunter3", "M");
+        let a = derive_key("hunter2", "L");
+        let b = derive_key("hunter3", "L");
         assert_ne!(a, b);
+    }
+
+    #[test]
+    fn cross_device_restore_works_when_license_and_password_match() {
+        // Simulate: device A creates a backup, device B restores with same
+        // licence + password but a totally different machine fingerprint.
+        // The fact that the key is derived from license_key (not machineId)
+        // is the contract this test enforces.
+        let device_a_key = derive_key("user-secret", "OMNIX-PORTABLE-LICENCE");
+        let device_b_key = derive_key("user-secret", "OMNIX-PORTABLE-LICENCE");
+        assert_eq!(device_a_key, device_b_key);
+
+        // And ensure it's NOT machine-bound: another machine with same
+        // licence + password decrypts the blob correctly.
+        let tmp = unique_tmp("omnix-cross-device");
+        fs::write(&tmp, b"sample sqlite content").unwrap();
+        let blob = pack_blob(&tmp, &device_a_key).unwrap();
+        let recovered = unpack_blob(&blob, &device_b_key).unwrap();
+        assert_eq!(recovered, b"sample sqlite content");
+        let _ = fs::remove_file(&tmp);
+    }
+
+    #[test]
+    fn cross_device_restore_fails_with_wrong_license() {
+        // A backup encrypted under licence A cannot be restored with licence B
+        // (even if the password is the same).
+        let key_a = derive_key("same-password", "LICENCE-A");
+        let key_b = derive_key("same-password", "LICENCE-B");
+        assert_ne!(key_a, key_b);
+
+        let tmp = unique_tmp("omnix-wrong-licence");
+        fs::write(&tmp, b"sensitive").unwrap();
+        let blob = pack_blob(&tmp, &key_a).unwrap();
+        let err = unpack_blob(&blob, &key_b).unwrap_err();
+        assert!(err.contains("decrypt"));
+        let _ = fs::remove_file(&tmp);
     }
 
     #[test]
@@ -526,10 +576,13 @@ pub struct CloudBackupSession {
 #[tauri::command]
 pub fn cloud_backup_set_session_key(
     password: String,
+    license_key: String,
     state: tauri::State<'_, std::sync::Arc<CloudBackupSession>>,
 ) -> Result<String, String> {
-    let machine_id = format_fingerprint(&crate::license::get_machine_fingerprint());
-    let key = derive_key(&password, &machine_id);
+    if license_key.is_empty() {
+        return Err("license_key is required".to_string());
+    }
+    let key = derive_key(&password, &license_key);
     let hint = key_hint(&key);
     *state.key.lock().map_err(|e| e.to_string())? = Some(key);
     Ok(hint)
@@ -568,7 +621,6 @@ pub async fn cloud_backup_auto_upload(
             None => return Err("no-key".to_string()),
         }
     };
-    let machine_id = format_fingerprint(&crate::license::get_machine_fingerprint());
     let hint = key_hint(&key);
 
     let snap = snapshot_db(&app)?;
@@ -622,7 +674,6 @@ pub async fn cloud_backup_auto_upload(
         .error_for_status()
         .map_err(|e| format!("Finalize HTTP error: {}", e))?;
 
-    let _ = machine_id; // silence unused warning if compiler picks it up
     Ok(CloudBackupResult {
         object_key: presign.object_key,
         size_bytes,

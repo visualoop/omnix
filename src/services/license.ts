@@ -545,3 +545,16 @@ export async function getMachineAuthToken(): Promise<string | null> {
   );
   return rows[0]?.activation_token ?? null;
 }
+
+
+/**
+ * Read the active licence key from local SQLite. Used to derive the
+ * cloud-backup encryption key (the licence key is the stable, cross-device
+ * identifier so backups remain decryptable on a fresh install).
+ */
+export async function getLicenseKey(): Promise<string | null> {
+  const rows = await query<{ license_key: string | null }>(
+    `SELECT license_key FROM license WHERE id = 'active' LIMIT 1`,
+  );
+  return rows[0]?.license_key ?? null;
+}

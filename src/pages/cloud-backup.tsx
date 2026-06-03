@@ -116,10 +116,18 @@ export function CloudBackupPage() {
 
     setUploading(true);
     try {
+      const licenseKey = await invoke<string | null>("get_license_key").catch(() => null) ??
+        (await import("@/services/license").then((m) => m.getLicenseKey()));
+      if (!licenseKey) {
+        toast.error("Licence not activated — can't derive backup key.");
+        setUploading(false);
+        return;
+      }
       const result = await invoke<UploadResult>("cloud_backup_upload", {
         apiBase: API_BASE,
         authToken,
         password,
+        licenseKey,
         desktopVersion: __APP_VERSION__,
       });
       toast.success(
@@ -155,11 +163,17 @@ export function CloudBackupPage() {
     if (!password) return;
 
     try {
+      const licenseKey = (await import("@/services/license").then((m) => m.getLicenseKey()));
+      if (!licenseKey) {
+        toast.error("Licence not activated — can't decrypt backup.");
+        return;
+      }
       const stagingFile = await invoke<string>("cloud_backup_restore", {
         apiBase: API_BASE,
         authToken,
         backupId: row.id,
         password,
+        licenseKey,
       });
       // Apply the staged file over the live DB (with safety snapshot).
       const safetyPath = await invoke<string>("apply_cloud_restore", {

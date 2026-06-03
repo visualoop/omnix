@@ -111,6 +111,22 @@ export function LicenseActivationPage({ onActivated }: Props) {
     setError(null);
   };
 
+  const openBuyPage = async () => {
+    // Send the customer to the marketing /buy page with the machine fingerprint
+    // so the licence can be pre-bound to this device. After payment they'll get
+    // a key by email, paste it below, and activate.
+    const url = new URL("/buy", BRAND.company.website);
+    if (machine?.fingerprint) url.searchParams.set("machine", machine.fingerprint);
+    if (trialModule) url.searchParams.set("module", trialModule);
+    try {
+      const { openUrl } = await import("@tauri-apps/plugin-opener");
+      await openUrl(url.toString());
+    } catch {
+      // Fallback for non-Tauri context (preview / tests) — open in same window
+      window.location.href = url.toString();
+    }
+  };
+
   const trialAlreadyUsed = trial?.consumed && !trial?.active;
   const trialActive = trial?.active === true;
 
@@ -230,26 +246,56 @@ export function LicenseActivationPage({ onActivated }: Props) {
 
             {/* Trial active */}
             {trialActive && trial && (
-              <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/8 p-4 flex items-center gap-3">
-                <div className="grid h-10 w-10 place-items-center rounded-xl bg-emerald-500/15 text-emerald-600 dark:text-emerald-400">
-                  <Clock className="h-4 w-4" />
+              <div className="space-y-3">
+                <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/8 p-4 flex items-center gap-3">
+                  <div className="grid h-10 w-10 place-items-center rounded-xl bg-emerald-500/15 text-emerald-600 dark:text-emerald-400">
+                    <Clock className="h-4 w-4" />
+                  </div>
+                  <div className="flex-1">
+                    <div className="text-[13px] font-medium">Trial active — {trial.days_remaining} days remaining</div>
+                    <div className="text-[11px] text-muted-foreground">Lock in your licence now — paste the key below when you receive it.</div>
+                  </div>
+                  <Button size="sm" variant="outline" onClick={onActivated} className="cursor-pointer">Continue</Button>
                 </div>
-                <div className="flex-1">
-                  <div className="text-[13px] font-medium">Trial active — {trial.days_remaining} days remaining</div>
-                  <div className="text-[11px] text-muted-foreground">Activate a licence now to lock in pricing.</div>
+                {/* Buy CTA — opens website in default browser, pre-fills machine ID */}
+                <div className="rounded-2xl glass-thin p-4 flex items-center gap-3">
+                  <div className="grid h-10 w-10 place-items-center rounded-xl bg-primary/12 text-primary ring-1 ring-inset ring-primary/15">
+                    <Sparkles className="h-4 w-4" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-[13px] font-medium leading-tight">Ready to keep going?</div>
+                    <div className="text-[11px] text-muted-foreground leading-snug mt-0.5">
+                      Buy now — KES 100,000 once, no subscription. Your key arrives instantly via email.
+                    </div>
+                  </div>
+                  <Button
+                    size="sm"
+                    onClick={openBuyPage}
+                    className="rounded-xl cursor-pointer shadow-native"
+                  >
+                    Buy now <ExternalLink className="h-3 w-3 ml-1" />
+                  </Button>
                 </div>
-                <Button size="sm" variant="outline" onClick={onActivated} className="cursor-pointer">Continue</Button>
               </div>
             )}
 
             {/* Trial expired */}
             {trialAlreadyUsed && (
-              <div className="rounded-2xl border border-amber-500/30 bg-amber-500/8 p-4 flex items-start gap-3">
-                <Clock className="h-4 w-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
-                <div>
-                  <div className="text-[13px] font-medium">Trial used on this machine</div>
-                  <div className="text-[11px] text-muted-foreground mt-0.5">Enter a licence below to continue, or buy at <a href={BRAND.company.website} className="underline hover:text-foreground">{BRAND.company.domain}</a>.</div>
+              <div className="space-y-3">
+                <div className="rounded-2xl border border-amber-500/30 bg-amber-500/8 p-4 flex items-start gap-3">
+                  <Clock className="h-4 w-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+                  <div className="flex-1">
+                    <div className="text-[13px] font-medium">Trial used on this machine</div>
+                    <div className="text-[11px] text-muted-foreground mt-0.5">Enter a licence below to continue, or buy a new one — KES 100,000 once.</div>
+                  </div>
                 </div>
+                <Button
+                  size="sm"
+                  onClick={openBuyPage}
+                  className="w-full h-10 rounded-xl shadow-native cursor-pointer"
+                >
+                  Buy a licence <ExternalLink className="h-3 w-3 ml-1.5" />
+                </Button>
               </div>
             )}
 
