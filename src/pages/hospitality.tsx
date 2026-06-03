@@ -26,7 +26,9 @@ import {
 import { getPaymentMethods, type PaymentMethod } from "@/services/sales";
 import { useAuthStore } from "@/stores/auth";
 import { query } from "@/lib/db";
-import { prompt, confirm } from "@/components/ui/confirm-dialog";
+import { confirm } from "@/components/ui/confirm-dialog";
+import { MenuItemDialog, type MenuItemFormValues } from "@/components/hospitality/menu-item-dialog";
+import { CompactFormDialog } from "@/components/hospitality/compact-form-dialog";
 
 const KES = (n: number) => "KES " + n.toLocaleString("en-KE", { minimumFractionDigits: 0, maximumFractionDigits: 0 });
 
@@ -99,6 +101,8 @@ export function HospitalityTablesPage() {
   const [areas, setAreas] = useState<DiningArea[]>([]);
   const [tables, setTables] = useState<DiningTable[]>([]);
   const [loading, setLoading] = useState(true);
+  const [areaDialog, setAreaDialog] = useState(false);
+  const [tableDialog, setTableDialog] = useState(false);
 
   const load = () => {
     setLoading(true);
@@ -106,19 +110,6 @@ export function HospitalityTablesPage() {
   };
   useEffect(() => { load(); }, []);
 
-  const addArea = async () => {
-    const name = await prompt({ title: "New dining area", placeholder: "e.g. Main Hall, Terrace", required: true });
-    if (!name?.trim()) return;
-    try { await createArea(name.trim()); load(); } catch (e) { toast.error(String(e)); }
-  };
-  const addTable = async () => {
-    const code = await prompt({ title: "New table", placeholder: "Table code, e.g. T1", required: true });
-    if (!code?.trim()) return;
-    try {
-      await createTable({ areaId: areas[0]?.id ?? null, code: code.trim(), name: `Table ${code.trim()}`, seats: 4 });
-      load();
-    } catch (e) { toast.error(String(e)); }
-  };
   const cycleStatus = async (t: DiningTable) => {
     const order = ["available", "occupied", "reserved", "cleaning"];
     const next = order[(order.indexOf(t.status) + 1) % order.length];
@@ -135,8 +126,8 @@ export function HospitalityTablesPage() {
         subtitle="Floor plan and table status. Tap a table to cycle its status."
         action={
           <div className="flex gap-1.5">
-            <Button size="sm" variant="outline" className="cursor-pointer" onClick={addArea}><Plus className="h-3.5 w-3.5 mr-1" /> Area</Button>
-            <Button size="sm" className={cn("cursor-pointer", BRAND_BTN)} onClick={addTable}><Plus className="h-3.5 w-3.5 mr-1" /> Table</Button>
+            <Button size="sm" variant="outline" className="cursor-pointer" onClick={() => setAreaDialog(true)}><Plus className="h-3.5 w-3.5 mr-1" /> Area</Button>
+            <Button size="sm" className={cn("cursor-pointer", BRAND_BTN)} onClick={() => setTableDialog(true)}><Plus className="h-3.5 w-3.5 mr-1" /> Table</Button>
           </div>
         }
       />
@@ -168,6 +159,43 @@ export function HospitalityTablesPage() {
           })}
         </div>
       )}
+
+      <CompactFormDialog
+        open={areaDialog}
+        onClose={() => setAreaDialog(false)}
+        title="New dining area"
+        description="Group tables by location — e.g. Main Hall, Terrace, Garden."
+        fields={[
+          { name: "name", label: "Area name", placeholder: "Main Hall", required: true },
+        ]}
+        onSubmit={async (v) => { await createArea(v.name.trim()); load(); }}
+      />
+
+      <CompactFormDialog
+        open={tableDialog}
+        onClose={() => setTableDialog(false)}
+        title="New table"
+        description="One screen — code, seats, and which area it's in."
+        fields={[
+          { name: "code", label: "Table code", placeholder: "T1", required: true },
+          { name: "seats", label: "Seats", type: "number", defaultValue: "4", min: 1, required: true },
+          ...(areas.length > 0 ? [{
+            name: "areaId",
+            label: "Area",
+            type: "select" as const,
+            options: areas.map((a) => ({ value: String(a.id), label: a.name })),
+            defaultValue: String(areas[0].id),
+          }] : []),
+        ]}
+        submitLabel="Add table"
+        onSubmit={async (v) => {
+          const code = v.code.trim();
+          const seats = parseInt(v.seats || "4", 10) || 4;
+          const areaId = v.areaId ? v.areaId : (areas[0]?.id ?? null);
+          await createTable({ areaId, code, name: `Table ${code}`, seats });
+          load();
+        }}
+      />
     </div>
   );
 }
@@ -177,19 +205,14 @@ export function HospitalityTablesPage() {
 export function HospitalityMenuPage() {
   const [items, setItems] = useState<MenuItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [itemDialog, setItemDialog] = useState(false);
 
   const load = () => { setLoading(true); listMenuItems().then(setItems).finally(() => setLoading(false)); };
   useEffect(() => { load(); }, []);
 
-  const addItem = async () => {
-    const name = await prompt({ title: "New menu item", placeholder: "Item name", required: true });
-    if (!name?.trim()) return;
-    const priceStr = await prompt({ title: `Dine-in price for "${name.trim()}"`, placeholder: "Price (KES)", defaultValue: "0" });
-    if (priceStr === null) return;
-    try {
-      await createMenuItem({ name: name.trim(), dineInPrice: parseFloat(priceStr || "0") || 0 });
-      load();
-    } catch (e) { toast.error(String(e)); }
+  const handleSubmit = async (v: MenuItemFormValues) => {
+    await createMenuItem({ name: v.name, dineInPrice: v.dineInPrice });
+    load();
   };
   const toggle = async (m: MenuItem) => {
     try { await setMenuItemActive(m.id, !m.active); load(); } catch (e) { toast.error(String(e)); }
@@ -203,8 +226,9 @@ export function HospitalityMenuPage() {
         icon={BookOpen}
         title="Menu"
         subtitle="Dishes, categories, and prices."
-        action={<Button size="sm" className={cn("cursor-pointer", BRAND_BTN)} onClick={addItem}><Plus className="h-3.5 w-3.5 mr-1" /> Menu item</Button>}
+        action={<Button size="sm" className={cn("cursor-pointer", BRAND_BTN)} onClick={() => setItemDialog(true)}><Plus className="h-3.5 w-3.5 mr-1" /> Menu item</Button>}
       />
+      <MenuItemDialog open={itemDialog} onClose={() => setItemDialog(false)} onSubmit={handleSubmit} />
       {items.length === 0 ? (
         <EmptyHint text="No menu items yet." />
       ) : (
@@ -475,19 +499,11 @@ export function HospitalityRoomsPage() {
   const [rooms, setRooms] = useState<Room[]>([]);
   const [types, setTypes] = useState<RoomType[]>([]);
   const [loading, setLoading] = useState(true);
+  const [typeDialog, setTypeDialog] = useState(false);
+  const [roomDialog, setRoomDialog] = useState(false);
   const load = () => Promise.all([listRooms(), listRoomTypes()]).then(([r, t]) => { setRooms(r); setTypes(t); }).finally(() => setLoading(false));
   useEffect(() => { load(); }, []);
 
-  const addType = async () => {
-    const name = await prompt({ title: "New room type", placeholder: "e.g. Standard, Deluxe", required: true }); if (!name?.trim()) return;
-    const rate = await prompt({ title: `Base rate for "${name.trim()}"`, placeholder: "Rate per night (KES)", defaultValue: "0" }); if (rate === null) return;
-    try { await createRoomType({ name: name.trim(), baseRate: parseFloat(rate || "0") || 0 }); load(); } catch (e) { toast.error(String(e)); }
-  };
-  const addRoom = async () => {
-    if (types.length === 0) { toast.error("Create a room type first"); return; }
-    const num = await prompt({ title: "New room", placeholder: "Room number, e.g. 101", required: true }); if (!num?.trim()) return;
-    try { await createRoom({ roomTypeId: types[0].id, roomNumber: num.trim() }); load(); } catch (e) { toast.error(String(e)); }
-  };
   const cycle = async (r: Room) => {
     const next = r.status === "available" ? "dirty" : "available";
     try { await setRoomStatus(r.id, next); load(); } catch (e) { toast.error(String(e)); }
@@ -498,9 +514,51 @@ export function HospitalityRoomsPage() {
     <div>
       <PageHead icon={BedDouble} title="Rooms" subtitle="Room status board." action={
         <div className="flex gap-1.5">
-          <Button size="sm" variant="outline" className="cursor-pointer" onClick={addType}><Plus className="h-3.5 w-3.5 mr-1" /> Type</Button>
-          <Button size="sm" className={cn("cursor-pointer", BRAND_BTN)} onClick={addRoom}><Plus className="h-3.5 w-3.5 mr-1" /> Room</Button>
+          <Button size="sm" variant="outline" className="cursor-pointer" onClick={() => setTypeDialog(true)}><Plus className="h-3.5 w-3.5 mr-1" /> Type</Button>
+          <Button size="sm" className={cn("cursor-pointer", BRAND_BTN)} onClick={() => {
+            if (types.length === 0) { toast.error("Create a room type first"); return; }
+            setRoomDialog(true);
+          }}><Plus className="h-3.5 w-3.5 mr-1" /> Room</Button>
         </div>} />
+
+      <CompactFormDialog
+        open={typeDialog}
+        onClose={() => setTypeDialog(false)}
+        title="New room type"
+        description="Group rooms with the same base rate (e.g. Standard, Deluxe, Suite)."
+        fields={[
+          { name: "name", label: "Type name", placeholder: "Standard", required: true },
+          { name: "rate", label: "Base rate (KES per night)", type: "number", defaultValue: "0", min: 0, step: "0.01", required: true },
+        ]}
+        submitLabel="Add type"
+        onSubmit={async (v) => {
+          await createRoomType({ name: v.name.trim(), baseRate: parseFloat(v.rate || "0") || 0 });
+          load();
+        }}
+      />
+
+      <CompactFormDialog
+        open={roomDialog}
+        onClose={() => setRoomDialog(false)}
+        title="New room"
+        description="One screen — number + which type."
+        fields={[
+          { name: "roomNumber", label: "Room number", placeholder: "101", required: true },
+          ...(types.length > 0 ? [{
+            name: "typeId",
+            label: "Room type",
+            type: "select" as const,
+            options: types.map((t) => ({ value: String(t.id), label: t.name })),
+            defaultValue: String(types[0].id),
+          }] : []),
+        ]}
+        submitLabel="Add room"
+        onSubmit={async (v) => {
+          const typeId = v.typeId ? v.typeId : types[0].id;
+          await createRoom({ roomTypeId: typeId, roomNumber: v.roomNumber.trim() });
+          load();
+        }}
+      />
       {rooms.length === 0 ? <EmptyHint text="No rooms yet. Add a room type, then rooms." /> : (
         <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2.5">
           {rooms.map((r) => (
@@ -523,20 +581,10 @@ export function HospitalityBookingsPage() {
   const [types, setTypes] = useState<RoomType[]>([]);
   const [rooms, setRooms] = useState<Room[]>([]);
   const [loading, setLoading] = useState(true);
+  const [bookingDialog, setBookingDialog] = useState(false);
   const load = () => Promise.all([listBookings(), listRoomTypes(), listRooms()]).then(([b, t, r]) => { setBookings(b); setTypes(t); setRooms(r); }).finally(() => setLoading(false));
   useEffect(() => { load(); }, []);
 
-  const newBooking = async () => {
-    if (types.length === 0) { toast.error("Create a room type first (Rooms page)"); return; }
-    const guest = await prompt({ title: "New booking", placeholder: "Guest name", required: true }); if (!guest?.trim()) return;
-    const inDate = await prompt({ title: "Check-in date", placeholder: "YYYY-MM-DD", defaultValue: new Date().toISOString().slice(0, 10), required: true });
-    const outDate = await prompt({ title: "Check-out date", placeholder: "YYYY-MM-DD", defaultValue: new Date(Date.now() + 86400000).toISOString().slice(0, 10), required: true });
-    if (!inDate || !outDate) return;
-    try {
-      await createBooking({ guestName: guest.trim(), roomTypeId: types[0].id, checkIn: inDate, checkOut: outDate, ratePerNight: types[0].base_rate, userId });
-      load(); toast.success("Booking created");
-    } catch (e) { toast.error(String(e)); }
-  };
   const doCheckIn = async (b: Booking) => {
     const free = rooms.filter((r) => r.room_type_id === b.room_type_id && r.status === "available");
     if (free.length === 0) { toast.error("No available room of this type"); return; }
@@ -550,10 +598,48 @@ export function HospitalityBookingsPage() {
   };
 
   if (loading) return <CenterSpin />;
+  const todayIso = new Date().toISOString().slice(0, 10);
+  const tomorrowIso = new Date(Date.now() + 86400000).toISOString().slice(0, 10);
   return (
     <div>
       <PageHead icon={CalendarDays} title="Bookings" subtitle="Reservations, arrivals and departures." action={
-        <Button size="sm" className={cn("cursor-pointer", BRAND_BTN)} onClick={newBooking}><Plus className="h-3.5 w-3.5 mr-1" /> New booking</Button>} />
+        <Button size="sm" className={cn("cursor-pointer", BRAND_BTN)} onClick={() => {
+          if (types.length === 0) { toast.error("Create a room type first (Rooms page)"); return; }
+          setBookingDialog(true);
+        }}><Plus className="h-3.5 w-3.5 mr-1" /> New booking</Button>} />
+
+      <CompactFormDialog
+        open={bookingDialog}
+        onClose={() => setBookingDialog(false)}
+        title="New booking"
+        description="Guest, room type, and stay dates — all on one screen."
+        fields={[
+          { name: "guest", label: "Guest name", placeholder: "Jane Mwangi", required: true },
+          ...(types.length > 0 ? [{
+            name: "typeId",
+            label: "Room type",
+            type: "select" as const,
+            options: types.map((t) => ({ value: String(t.id), label: `${t.name} — KES ${t.base_rate}/night` })),
+            defaultValue: String(types[0].id),
+          }] : []),
+          { name: "checkIn", label: "Check-in date", placeholder: "YYYY-MM-DD", defaultValue: todayIso, required: true },
+          { name: "checkOut", label: "Check-out date", placeholder: "YYYY-MM-DD", defaultValue: tomorrowIso, required: true },
+        ]}
+        submitLabel="Create booking"
+        onSubmit={async (v) => {
+          const type = types.find((t) => String(t.id) === v.typeId) ?? types[0];
+          await createBooking({
+            guestName: v.guest.trim(),
+            roomTypeId: type.id,
+            checkIn: v.checkIn,
+            checkOut: v.checkOut,
+            ratePerNight: type.base_rate,
+            userId,
+          });
+          load();
+          toast.success("Booking created");
+        }}
+      />
       {bookings.length === 0 ? <EmptyHint text="No active bookings." /> : (
         <div className="border border-border rounded-lg overflow-hidden">
           <table className="w-full text-[13px]">

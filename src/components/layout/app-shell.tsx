@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { Outlet, useLocation } from "react-router-dom";
 import { Sidebar } from "./sidebar";
 import { Topbar } from "./topbar";
@@ -8,20 +8,43 @@ import { ShortcutsOverlay } from "@/components/shortcuts-overlay";
 import { IdleAutoLock } from "@/components/idle-auto-lock";
 import { useAutoCloudBackup } from "@/hooks/use-auto-cloud-backup";
 
+/** Return the top-level route prefix, e.g. "/settings/license" → "settings". */
+function sectionOf(pathname: string): string {
+  const m = pathname.match(/^\/([^/]+)/);
+  return m ? m[1] : "";
+}
+
 export function AppShell() {
   const [cmdOpen, setCmdOpen] = useState(false);
   const openCmd = useCallback(() => setCmdOpen(true), []);
   const location = useLocation();
+  // routeKey is what we set on the <Outlet> wrapper to drive the
+  // animate-in animation. Within a section (e.g. /settings/*), we keep the
+  // SAME key + drop the slide so the inner content doesn't shake/scroll.
+  const prevSection = useRef(sectionOf(location.pathname));
+  const stableSectionKey = useRef(prevSection.current);
   const [routeKey, setRouteKey] = useState(location.pathname);
-  const [transitionClass, setTransitionClass] = useState("animate-in fade-in-0 duration-200");
+  const [transitionClass, setTransitionClass] = useState("animate-in fade-in-0 duration-150");
   const isSettingsRoute = location.pathname.startsWith("/settings");
 
-  // Background cloud-backup scheduler — runs while the owner is signed in.
   useAutoCloudBackup();
 
   useEffect(() => {
-    setRouteKey(location.pathname);
-    setTransitionClass("animate-in fade-in-0 slide-in-from-bottom-1 duration-200");
+    const nextSection = sectionOf(location.pathname);
+    const isIntraSection = nextSection === prevSection.current;
+
+    if (isIntraSection) {
+      // Stay within the section: keep the section-stable key, no slide.
+      // Outlet content updates in place; settings layout's own scroll persists.
+      setRouteKey(stableSectionKey.current);
+      setTransitionClass("");
+    } else {
+      // New section: re-key + animate.
+      setRouteKey(location.pathname);
+      stableSectionKey.current = location.pathname;
+      setTransitionClass("animate-in fade-in-0 slide-in-from-bottom-1 duration-200");
+    }
+    prevSection.current = nextSection;
   }, [location.pathname]);
 
   return (
