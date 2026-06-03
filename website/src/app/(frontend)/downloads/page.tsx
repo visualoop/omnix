@@ -11,6 +11,7 @@ export const metadata: Metadata = {
   description: 'Download the latest Omnix installer for Windows. Free 30-day trial, no credit card required.',
 }
 
+export const dynamic = 'force-dynamic'
 export const revalidate = 60
 
 interface ReleaseRow {

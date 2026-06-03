@@ -11,6 +11,10 @@ export const metadata: Metadata = {
 }
 
 // Re-fetch every minute so a fresh tag shows up quickly without a redeploy.
+// Render at request time — this page reads from Payload (needs PAYLOAD_SECRET
+// at runtime, which isn't present during build prerender). force-dynamic with
+// a short cache keeps it fresh without a build-time DB dependency.
+export const dynamic = 'force-dynamic'
 export const revalidate = 60
 
 interface ReleaseRow {

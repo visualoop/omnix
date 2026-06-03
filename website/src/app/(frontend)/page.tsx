@@ -32,6 +32,7 @@ import { ThreeQuotesSection } from '@/components/landing/three-quotes-section'
 import { getPayload } from 'payload'
 import config from '@/payload.config'
 
+export const dynamic = 'force-dynamic'
 export const revalidate = 60
 
 export default async function HomePage() {
