@@ -7,7 +7,7 @@
  * registries (Hardware, Hospitality) contribute via `registerSettings()`.
  */
 import {
-  Building2, CreditCard, FileCheck, Shield, Users, Key, Database, Activity,
+  Building2, CreditCard, FileCheck, Shield, Users, Key, Database, Cloud, Activity,
   Network, Boxes, ShieldCheck, Monitor, Ruler, Percent,
   // Distinct icons for settings duplicate-fix:
   MapPin,        // Locations & Branches
@@ -55,6 +55,7 @@ const CORE_SETTINGS: SettingsNavItem[] = [
   { to: "/settings/network", label: "LAN Multi-device", description: "Master/client mode", icon: Network, permission: "settings.network", group: "Operations" },
   { to: "/settings/modules", label: "Modules", description: "Active vertical and roadmap", icon: Boxes, permission: "settings.modules", group: "Operations" },
   { to: "/settings/backup", label: "Backup & Restore", description: "Protect business data", icon: Database, permission: "settings.backup", group: "Operations" },
+  { to: "/settings/cloud-backup", label: "Cloud Backup", description: "Encrypted offsite copies", icon: Cloud, permission: "settings.backup", group: "Operations" },
   { to: "/settings/customer-display", label: "Customer Display", description: "Second screen settings", icon: Monitor, permission: "settings.business", group: "Operations" },
   { to: "/settings/receipt", label: "Receipt Template", description: "Footer message and branding", icon: Printer, permission: "settings.business", group: "Operations" },
   { to: "/settings/audit", label: "Audit Log", description: "Security and compliance history", icon: Activity, permission: "audit.view", group: "Operations" },

@@ -72,6 +72,7 @@ import { SettingsRolesPage } from "@/pages/settings-roles";
 import { SettingsGroupsPage } from "@/pages/settings-groups";
 import { SettingsAccessAuditPage } from "@/pages/settings-access-audit";
 import { BackupPage } from "@/pages/backup";
+import { CloudBackupPage } from "@/pages/cloud-backup";
 import { AuditLogPage } from "@/pages/audit";
 import { NetworkSettingsPage } from "@/pages/network-settings";
 import { SuppliersPage } from "@/pages/suppliers";
@@ -226,6 +227,7 @@ function AppContent() {
             <Route path="network" element={<RequireRole permission="settings.network"><NetworkSettingsPage /></RequireRole>} />
             <Route path="modules" element={<RequireRole permission="settings.modules"><ModulesPage /></RequireRole>} />
             <Route path="backup" element={<RequireRole permission="settings.backup"><BackupPage /></RequireRole>} />
+            <Route path="cloud-backup" element={<RequireRole permission="settings.backup"><CloudBackupPage /></RequireRole>} />
             <Route path="taxes" element={<RequireRole permission="settings.business"><TaxSettingsPage /></RequireRole>} />
             <Route path="price-lists" element={<RequireRole permission="retail.price_lists.manage"><PriceListSettingsPage /></RequireRole>} />
             <Route path="customer-display" element={<RequireRole permission="settings.business"><CustomerDisplaySettingsPage /></RequireRole>} />
