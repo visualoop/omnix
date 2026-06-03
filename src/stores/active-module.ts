@@ -57,7 +57,7 @@ export const MODULE_DEFINITIONS: Record<ModuleId, ModuleDefinition> = {
   },
   retail: {
     id: "retail",
-    name: "Soko Retail",
+    name: "Omnix Retail",
     shortName: "Retail",
     tagline: "Brands, variants, laybys, special orders, shrinkage tracking",
     status: "available",
@@ -83,7 +83,7 @@ export const MODULE_DEFINITIONS: Record<ModuleId, ModuleDefinition> = {
   },
   hospitality: {
     id: "hospitality",
-    name: "Soko Hospitality",
+    name: "Omnix Hospitality",
     shortName: "Hospitality",
     tagline: "Restaurant POS, kitchen, rooms, bookings, folios",
     status: "available",

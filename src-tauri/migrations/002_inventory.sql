@@ -1,4 +1,4 @@
--- SokoOS Inventory Schema
+-- Omnix Inventory Schema
 
 -- Categories (nested)
 CREATE TABLE IF NOT EXISTS categories (

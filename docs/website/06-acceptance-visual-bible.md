@@ -214,7 +214,7 @@ All served via Cloudflare R2 with Cloudflare's image-resize transformations (`/c
 | Next.js + Payload admin | Vercel (Pro plan eventually) | Edge runtime for /api/releases/latest, ISR for marketing pages, native Payload support |
 | Postgres | Neon (free tier → scale up at 1k customers) | Serverless, zero-cold-start branches for staging |
 | Object storage (installers, media, screenshots) | Cloudflare R2 | Egress-free, S3-compatible, cheap at scale |
-| DNS + CDN | Cloudflare | Already controlling the zone for `sokoos.co.ke` |
+| DNS + CDN | Cloudflare | Already controlling the zone for `omnix.co.ke` |
 | Email | Resend | Best DX, fits with React Email templates |
 | Analytics | PostHog Cloud (EU region) | Privacy-friendly, no extra cookie banner |
 | Errors | Sentry | Industry standard, integrates with Vercel |
@@ -222,9 +222,9 @@ All served via Cloudflare R2 with Cloudflare's image-resize transformations (`/c
 
 ### 3.2 Domain plan
 
-- `sokoos.co.ke` → Vercel (Next.js + Payload admin at `/admin`) — current domain, kept
-- `r2.sokoos.co.ke` → Cloudflare R2 bucket `duka-releases` (custom domain via Cloudflare proxy)
-- `media.sokoos.co.ke` → Cloudflare R2 bucket `duka-media` (Payload upload destination)
+- `omnix.co.ke` → Vercel (Next.js + Payload admin at `/admin`) — current domain, kept
+- `r2.omnix.co.ke` → Cloudflare R2 bucket `duka-releases` (custom domain via Cloudflare proxy)
+- `media.omnix.co.ke` → Cloudflare R2 bucket `duka-media` (Payload upload destination)
 - Future rebrand swap: change DNS, update `BRAND_DOMAIN` constant, redeploy. Single edit per service.
 
 ### 3.3 Environment matrix
@@ -236,7 +236,7 @@ production:
   database: Neon project main branch
   r2: duka-releases (live)
   resend: prod API key
-  payload admin URL: https://sokoos.co.ke/admin
+  payload admin URL: https://omnix.co.ke/admin
 
 staging:
   branch: staging
@@ -244,7 +244,7 @@ staging:
   database: Neon branch 'staging' (created via neonctl)
   r2: duka-releases-staging (separate bucket — never share with prod)
   resend: test API key (sends to delivered@resend.dev only)
-  payload admin URL: https://staging.sokoos.co.ke/admin
+  payload admin URL: https://staging.omnix.co.ke/admin
 
 preview (per PR):
   branch: <PR branch>
@@ -261,10 +261,10 @@ DATABASE_URL                 (Neon connection string, pooled)
 DATABASE_URL_DIRECT          (Neon direct, for migrations)
 PAYLOAD_SECRET               (cookie signing, 32+ char random)
 PAYLOAD_SYSTEM_TOKEN         (for CI to POST releases)
-NEXT_PUBLIC_SITE_URL         (e.g. https://sokoos.co.ke)
+NEXT_PUBLIC_SITE_URL         (e.g. https://omnix.co.ke)
 NEXT_PUBLIC_BRAND_NAME       (Duka — single-source-of-truth fallback)
 RESEND_API_KEY
-RESEND_FROM_EMAIL            (e.g. notifications@sokoos.co.ke)
+RESEND_FROM_EMAIL            (e.g. notifications@omnix.co.ke)
 PAYSTACK_SECRET_KEY
 PAYSTACK_PUBLIC_KEY
 PAYSTACK_WEBHOOK_SECRET
@@ -306,7 +306,7 @@ This section is targeted at the owner directly. Once the website launches, this 
 
 ### 4.1 Logging in
 
-- Owner: `https://sokoos.co.ke/admin` → email + password (you set these on first launch).
+- Owner: `https://omnix.co.ke/admin` → email + password (you set these on first launch).
 - Forgot password: `/admin/forgot` — sends reset to your email.
 - 2FA: Settings → Account → Security → Enable 2FA. Use an authenticator app (Aegis on Android). **Strongly recommended before launch.**
 
@@ -515,7 +515,7 @@ These are the bright lines. Reviewing PRs? Reject the PR if any are violated.
 
 The website project is "done" (v1.0 launched) when:
 
-1. `https://sokoos.co.ke` resolves to the new Next.js + Payload site, dark theme, content from CMS.
+1. `https://omnix.co.ke` resolves to the new Next.js + Payload site, dark theme, content from CMS.
 2. `/admin` is accessible to the owner with 2FA enabled.
 3. All 14 collections + 4 globals from Plan 02 exist with seed data.
 4. All marketing pages from Plan 03 § 3 render with placeholder copy ready for swap.
@@ -530,7 +530,7 @@ The website project is "done" (v1.0 launched) when:
 13. Privacy policy and Terms reviewed.
 14. Owner has done a paid transaction end-to-end with their own KES 100 to verify Paystack live mode works.
 
-When 14/14 ticked, **the website launches**. Old GitHub-Releases-only download flow gets a 30-day deprecation banner ("This download method will retire on 2026-MM-DD; use sokoos.co.ke instead") then redirects.
+When 14/14 ticked, **the website launches**. Old GitHub-Releases-only download flow gets a 30-day deprecation banner ("This download method will retire on 2026-MM-DD; use omnix.co.ke instead") then redirects.
 
 ---
 

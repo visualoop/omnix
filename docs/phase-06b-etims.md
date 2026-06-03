@@ -1,11 +1,11 @@
 # Phase 6B — KRA eTIMS Compliance (MANDATORY)
 
 ## Why This Is Non-Negotiable
-Every business in Kenya is legally required to generate eTIMS-compliant tax invoices since 2024. A pharmacy cannot legally sell without this. If SokoOS doesn't have eTIMS, no pharmacy will buy it.
+Every business in Kenya is legally required to generate eTIMS-compliant tax invoices since 2024. A pharmacy cannot legally sell without this. If Omnix doesn't have eTIMS, no pharmacy will buy it.
 
 ## Architecture
 
-SokoOS uses **VSCU (Virtual Sales Control Unit)** — a software-based integration that signs invoices via KRA's API.
+Omnix uses **VSCU (Virtual Sales Control Unit)** — a software-based integration that signs invoices via KRA's API.
 
 ```
 Sale completed → Invoice generated → 

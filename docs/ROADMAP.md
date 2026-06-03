@@ -1,9 +1,9 @@
-# Duka (formerly SokoOS) — Master Roadmap
+# Duka (formerly Omnix) — Master Roadmap
 
 This is the index. Each line links to a plan file.
 The desktop application is feature-complete (Phases 1–8). The website + ops platform is now fully planned across 6 documents and implementation can begin.
 
-> **Brand transition**: project codename `SokoOS` is being retired in favour of `Duka` (Swahili for shop). The brand name lives in a single TypeScript constant; swapping is a one-line edit.
+> **Brand transition**: project codename `Omnix` is being retired in favour of `Duka` (Swahili for shop). The brand name lives in a single TypeScript constant; swapping is a one-line edit.
 
 ---
 

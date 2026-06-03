@@ -94,7 +94,7 @@ API (Next.js route handlers, app/api/*)
 ```
 PRODUCT          MODULES         RESOURCES        COMPANY          CONNECT
 Pricing          Dawa            Documentation    About            WhatsApp
-Downloads        Soko Retail     Changelog        Blog             support@…
+Downloads        Omnix Retail     Changelog        Blog             support@…
 Changelog        Salon (soon)    Status           Contact          Twitter
 Security         Hardware        Help center      Careers          GitHub
 
@@ -178,7 +178,7 @@ Each spotlight: 60/40 split, screenshot left or right alternating, eyebrow-h2-pa
 **Section F — Module deep dive teaser**
 2-card grid:
 - **For pharmacies → Dawa** (compliance-first card)
-- **For shops → Soko Retail** (volume-first card)
+- **For shops → Omnix Retail** (volume-first card)
 
 Each card has 3 selling points + photograph of the actual industry (real, not stock).
 

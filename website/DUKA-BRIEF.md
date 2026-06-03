@@ -1,6 +1,6 @@
 # DUKA — Comprehensive Build Brief
 
-**The desktop ERP for Kenyan businesses · sokoos.co.ke**
+**The desktop ERP for Kenyan businesses · omnix.co.ke**
 
 This document is a complete instruction set for the AI agent. Read it end-to-end before writing a single line. Do not produce an MVP. Build the production-grade product described here.
 
@@ -16,7 +16,7 @@ The audience has already seen ten foreign-SaaS-translated-to-KE landing pages. T
 
 If a section looks like a generic Bootstrap template, rebuild it. If a screen looks like a Calendly clone, rebuild it. The reference is **Linear / Stripe / Vercel / Cereal magazine**, not B2B WordPress.
 
-Brand contact (visible across the site): WhatsApp `+254 700 000 000`, `hello@sokoos.co.ke`, Nairobi, Kenya. Categories displayed: *Software for Kenyan SMEs · Pharmacy · Retail · Banking · Payroll*.
+Brand contact (visible across the site): WhatsApp `+254 700 000 000`, `hello@omnix.co.ke`, Nairobi, Kenya. Categories displayed: *Software for Kenyan SMEs · Pharmacy · Retail · Banking · Payroll*.
 
 ---
 
@@ -211,7 +211,7 @@ Already exist (don't redesign — they're correct):
 | `telemetry-events` | Append-only log, severity-tagged, 90/365-day retention |
 | `pages` | Legal + help articles |
 | `blog-posts` | Marketing content |
-| `modules` | Per-trade marketing pages (Dawa, Soko Retail, Salon …) |
+| `modules` | Per-trade marketing pages (Dawa, Omnix Retail, Salon …) |
 | `media` | Uploads → Cloudflare R2 |
 
 Globals: `Settings`, `Pricing`, `LandingPage`. All editable from `/admin` — owner never touches code.
@@ -236,7 +236,7 @@ Section order, exactly:
 
 3. **A note from the studio** (NEW — replaces the stats row) — full-bleed warm surface, single column 60ch centred. Three short paragraphs in Geist 19px italic introducing the product, signed `— Justin, founder`. No CTA.
 
-4. **What we make** (NOT "Modules") — eyebrow "What we make". Four full-width image-and-text rows alternating image-left / image-right: Dawa Pharmacy, Soko Retail, Salon (planned badge), Restaurant (planned badge). Each row: 6/12 image col, 5/12 text col with offset. Title in Fraunces 56px. Body Geist 17px. `Read more →` underline link.
+4. **What we make** (NOT "Modules") — eyebrow "What we make". Four full-width image-and-text rows alternating image-left / image-right: Dawa Pharmacy, Omnix Retail, Salon (planned badge), Restaurant (planned badge). Each row: 6/12 image col, 5/12 text col with offset. Title in Fraunces 56px. Body Geist 17px. `Read more →` underline link.
 
 5. **The receipt is the proof** (NEW dark-mode-within-dark) — surface bumps to `--surface-2`. Side-by-side: real eTIMS receipt UI on the left, the same data filed with KRA on the right, with a horizontal divider rule. Caption in Fraunces italic 26px hung off-grid: *"What you ring up is what KRA sees."*
 
@@ -275,7 +275,7 @@ Already built and correct. No changes needed except the same hero treatment on `
 ## 7. FORMS & SUBMISSIONS
 
 `@payloadcms/plugin-form-builder` for:
-- **Contact** (`/contact`) — name, email, phone, business, category, message → writes to FormSubmissions, emails sales@sokoos.co.ke + customer confirmation via Resend.
+- **Contact** (`/contact`) — name, email, phone, business, category, message → writes to FormSubmissions, emails sales@omnix.co.ke + customer confirmation via Resend.
 - **Demo request** (`/contact?type=demo`) — same fields plus preferred time → routes to sales calendar.
 - **Public support** (when not logged in) — name, email, license key (optional), description → routes to either an existing customer's tickets if license matches, otherwise FormSubmissions for triage.
 

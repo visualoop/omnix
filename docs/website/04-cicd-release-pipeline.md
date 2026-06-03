@@ -12,7 +12,7 @@ Everything else happens automatically. The website's `/downloads` page shows the
 
 ## 1. CURRENT STATE (audited)
 
-The desktop repo (`sokoOS/`) already has a working CI pipeline. To not break what works, this plan **extends** it rather than replacing it.
+The desktop repo (`omnix/`) already has a working CI pipeline. To not break what works, this plan **extends** it rather than replacing it.
 
 ### What's there today
 
@@ -25,16 +25,16 @@ The desktop repo (`sokoOS/`) already has a working CI pipeline. To not break wha
 - Currently disabled (workflow_dispatch only). We will leave this disabled.
 
 `tauri.conf.json`:
-- `productName: "SokoOS"` ← needs rename to brand const
-- `bundle.publisher: "SokoOS"` ← rename
-- `plugins.updater.endpoints: ["https://github.com/justinelut/sokoOS/releases/latest/download/latest.json"]` ← change to Payload-served endpoint
+- `productName: "Omnix"` ← needs rename to brand const
+- `bundle.publisher: "Omnix"` ← rename
+- `plugins.updater.endpoints: ["https://github.com/visualoop/omnix/releases/latest/download/latest.json"]` ← change to Payload-served endpoint
 
 ### What's missing
 
-1. **Cloudflare R2 upload** — currently artifacts only live on GitHub Releases. We want them on `r2.duka.sokoos.co.ke` so Payload can hand out the URL and we can rotate hosting later.
+1. **Cloudflare R2 upload** — currently artifacts only live on GitHub Releases. We want them on `r2.duka.omnix.co.ke` so Payload can hand out the URL and we can rotate hosting later.
 2. **Payload Release-creation webhook** — no `Release` document is created automatically; the `/downloads` page can't see new versions.
 3. **Tauri updater pointing at Payload** — currently points at GitHub. Switching it lets Payload enforce: trial users blocked from latest, lapsed licences blocked from latest, major-version cap enforcement.
-4. **Brand rename** — `SokoOS` → `Duka` in `tauri.conf.json`. Single change, source-controlled.
+4. **Brand rename** — `Omnix` → `Duka` in `tauri.conf.json`. Single change, source-controlled.
 
 This plan adds those four pieces.
 
@@ -98,7 +98,7 @@ Single bucket, public-read, lifecycle-controlled.
 - Name: `duka-releases` (or whatever brand swap dictates — keep it generic)
 - Region: WEUR or NAM (closest to Vercel edge — both fine for global CDN)
 - Public access: enabled via R2 custom domain (NOT direct .r2.cloudflarestorage.com URL — bare-domain subdomain for clean URLs)
-- Custom domain: `r2.sokoos.co.ke` (CNAME to `<bucket>.r2.cloudflarestorage.com`) — DNS in Cloudflare zone
+- Custom domain: `r2.omnix.co.ke` (CNAME to `<bucket>.r2.cloudflarestorage.com`) — DNS in Cloudflare zone
 - CORS: allow `GET, HEAD` from any origin (artifacts are downloaded by browsers + Tauri)
 - Lifecycle: object age > 730 days → transitioned to infrequent-access. Old major version artifacts are NEVER deleted (we owe them to existing licence holders).
 
@@ -280,7 +280,7 @@ jobs:
             NSIS_SIG=$(cat "${NSIS_FILE}.sig" 2>/dev/null || echo "")
 
             # URLs we just uploaded to
-            BASE_URL="https://r2.sokoos.co.ke/${CHANNEL}/${CIRCLE_TAG}"
+            BASE_URL="https://r2.omnix.co.ke/${CHANNEL}/${CIRCLE_TAG}"
 
             JSON_PAYLOAD=$(jq -n \
               --arg version "$VERSION" \
@@ -374,9 +374,9 @@ In CircleCI org settings → Contexts:
 |---|---|
 | `github-release` (existing) | `GITHUB_TOKEN` |
 | `r2-credentials` (new) | `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_ENDPOINT`, `R2_BUCKET` |
-| `payload-system` (new) | `PAYLOAD_URL` (e.g. `https://sokoos.co.ke`), `PAYLOAD_SYSTEM_TOKEN` (long random secret) |
+| `payload-system` (new) | `PAYLOAD_URL` (e.g. `https://omnix.co.ke`), `PAYLOAD_SYSTEM_TOKEN` (long random secret) |
 
-Restrict each context to project `justinelut/sokoOS` only.
+Restrict each context to project `visualoop/omnix` only.
 
 ---
 
@@ -500,14 +500,14 @@ Switch from GitHub Releases to Payload.
 ```jsonc
 {
   "productName": "Duka",                                         // ← changed
-  "identifier": "ke.co.sokoos.duka",                             // ← changed
+  "identifier": "ke.co.omnix.duka",                             // ← changed
   "publisher": "Duka",                                           // ← changed
-  "homepage": "https://sokoos.co.ke",
+  "homepage": "https://omnix.co.ke",
   "plugins": {
     "updater": {
       "active": true,
       "endpoints": [
-        "https://sokoos.co.ke/api/releases/latest?current={{current_version}}"
+        "https://omnix.co.ke/api/releases/latest?current={{current_version}}"
       ],
       "dialog": false,                                            // ← we drive UI ourselves
       "pubkey": "<unchanged>"
@@ -608,7 +608,7 @@ The promote action is a custom admin field component that reads the beta doc, cr
 - **Tauri signing key** (`updater.key`) — already in `keys/`. Encrypted via password. Password lives in CircleCI secrets only. **Never** in repo. Compromise = attacker can ship malicious update; rotation requires re-signing all extant artifacts and bumping the public key in `tauri.conf.json` (forces customers to re-install).
 - **System token** (`PAYLOAD_SYSTEM_TOKEN`) — long random string (32+ bytes). Quarterly rotation. Compromise = attacker can create fake Release docs but cannot publish them (status stays draft until owner clicks). Cannot read other collections.
 - **R2 token** — write-only to releases bucket. Compromise = attacker can upload binaries but they have no signature, so Tauri rejects them.
-- **HTTPS everywhere** — `r2.sokoos.co.ke` has Cloudflare-managed cert; `sokoos.co.ke` Vercel cert.
+- **HTTPS everywhere** — `r2.omnix.co.ke` has Cloudflare-managed cert; `omnix.co.ke` Vercel cert.
 - **Signature verification at install time** — Tauri does this automatically.
 - **SHA-256 verification on `/downloads`** — UI shows the hash; user can verify pre-install.
 

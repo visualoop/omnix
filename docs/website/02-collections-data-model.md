@@ -611,7 +611,7 @@ Single instance. Editable from `/admin/globals/pricing`.
     { name: 'brandName', type: 'text', defaultValue: 'Duka', admin: { readOnly: true } },
     { name: 'tagline', type: 'text' },
     // Contact channels
-    { name: 'supportEmail', type: 'email', defaultValue: 'support@sokoos.co.ke' },
+    { name: 'supportEmail', type: 'email', defaultValue: 'support@omnix.co.ke' },
     { name: 'salesEmail', type: 'email' },
     { name: 'whatsappNumber', type: 'text' },                           // +254... shown as wa.me link
     { name: 'phoneNumber', type: 'text' },

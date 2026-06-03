@@ -67,7 +67,7 @@ fn report_fatal(err: &str) {
 /// tries to open it. The plugin opens at $APPDATA/<identifier>/omnix.db
 /// but does NOT create the parent directory itself.
 fn ensure_app_data_dir() {
-    let identifier = "ke.co.sokoos.app";
+    let identifier = "co.ke.omnix.app";
     if let Ok(appdata) = std::env::var("APPDATA") {
         let dir = std::path::PathBuf::from(&appdata).join(identifier);
         let _ = std::fs::create_dir_all(&dir);

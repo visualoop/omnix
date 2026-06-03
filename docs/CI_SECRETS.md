@@ -31,7 +31,7 @@ Copy the entire contents (including the `untrusted comment` lines) and paste int
 
 The password for the updater key.
 
-If the keypair was generated **without** a password (the default for SokoOS dev), set this secret
+If the keypair was generated **without** a password (the default for Omnix dev), set this secret
 to an **empty string** (just leave the value blank when creating it).
 
 If you regenerate with a password, update this secret to match.
@@ -40,7 +40,7 @@ If you regenerate with a password, update this secret to match.
 
 ### `WINDOWS_CODE_SIGNING_CERT` / `WINDOWS_CODE_SIGNING_PASSWORD`
 
-Not currently used. When SokoOS gets an EV code-signing certificate (recommended once you start
+Not currently used. When Omnix gets an EV code-signing certificate (recommended once you start
 selling, ~$300-500/year) these will sign the `.msi` and `.exe` so Windows SmartScreen doesn't
 warn users. Update `build.yml` and `release.yml` to use `signtool` or the `windows-codesigning`
 GitHub action.

@@ -1,4 +1,4 @@
-# 05 — Soko Retail Module Plan
+# 05 — Omnix Retail Module Plan
 
 **Goal:** A new module for general retail — beauty shops, mini-marts, dukas, cosmetics, electronics-light, hardware-light, gift shops, butcheries.
 

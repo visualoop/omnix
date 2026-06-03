@@ -3,7 +3,7 @@ import { Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { getSalesByDay, getTopProducts, getSalesByPaymentMethod, type SalesByDay, type TopProduct, type SalesByPaymentMethod } from "@/services/reports";
 import { exportToCSV } from "@/lib/export";
-import { SokoAreaChart, SokoPieChart, SokoBarChart } from "@/components/charts";
+import { AreaChart, PieChart, BarChart } from "@/components/charts";
 import { ComparisonPanel } from "@/components/shared/comparison-panel";
 
 export function ReportsPage() {
@@ -66,7 +66,7 @@ export function ReportsPage() {
         {salesByDay.length === 0 ? (
           <p className="text-xs text-muted-foreground text-center py-6">No data</p>
         ) : (
-          <SokoAreaChart data={salesByDay} xKey="date" yKey="total" height={260} />
+          <AreaChart data={salesByDay} xKey="date" yKey="total" height={260} />
         )}
       </div>
 
@@ -87,7 +87,7 @@ export function ReportsPage() {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* Bar chart */}
-            <SokoBarChart
+            <BarChart
               data={topProducts.slice(0, 8).map((p) => ({ name: p.product_name.slice(0, 15), revenue: p.total_revenue }))}
               xKey="name"
               yKey="revenue"
@@ -135,7 +135,7 @@ export function ReportsPage() {
           <p className="text-xs text-muted-foreground text-center py-6">No payments in this period</p>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-center">
-            <SokoPieChart
+            <PieChart
               data={paymentMix.map((p) => ({ name: p.method_name, value: p.total }))}
               height={240}
             />

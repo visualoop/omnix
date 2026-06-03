@@ -1,4 +1,4 @@
--- SokoOS Pharmacy (Dawa) Schema
+-- Omnix Pharmacy (Dawa) Schema
 
 -- Pharmacy-specific product attributes
 CREATE TABLE IF NOT EXISTS pharmacy_products (

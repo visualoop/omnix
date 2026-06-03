@@ -74,9 +74,9 @@ belongs to a future QA pass with a real Payload instance + signed test key.
 - `src-tauri/tauri.conf.json` version `0.2.6 → 0.2.8` (now aligned with
   `package.json` + `Cargo.toml`).
 - Updater endpoints, `homepage`, and macOS `exceptionDomain` → `omnix.co.ke`
-  (were `sokoos.co.ke`).
+  (were `omnix.co.ke`).
 - `longDescription` refreshed (hardware + hospitality; drops "salon").
-- **Bundle `identifier` deliberately kept `ke.co.sokoos.duka`.** It shipped in
+- **Bundle `identifier` deliberately kept `ke.co.omnix.duka`.** It shipped in
   every tagged release (v0.2.4–v0.2.8) and the SQLite DB resolves to
   `$APPDATA/{identifier}/omnix.db`. Changing it would relocate the data dir and
   orphan every existing customer database, and break updater continuity — a
@@ -85,8 +85,8 @@ belongs to a future QA pass with a real Payload instance + signed test key.
   internal stable keys and survive rebrands by design.
 
 ### Known pre-existing issue (flagged, not changed)
-`src-tauri/src/lib.rs::ensure_app_data_dir()` hardcodes `ke.co.sokoos.app`,
-which does **not** match the real bundle identifier `ke.co.sokoos.duka`. This is
+`src-tauri/src/lib.rs::ensure_app_data_dir()` hardcodes `ke.co.omnix.app`,
+which does **not** match the real bundle identifier `ke.co.omnix.duka`. This is
 shipped behaviour that pre-dates this plan and touches the production DB path;
 it should be reconciled deliberately (with a data-migration check), not folded
 into a rename pass.

@@ -31,8 +31,8 @@ For each, enable **Public access** *only* on `duka-releases` and `duka-media`. `
 
 Under each bucket → **Settings → Custom domains**:
 
-- `duka-releases` → `r2.sokoos.co.ke`
-- `duka-media` → `media.sokoos.co.ke`
+- `duka-releases` → `r2.omnix.co.ke`
+- `duka-media` → `media.omnix.co.ke`
 
 Cloudflare auto-creates the DNS records and SSL.
 
@@ -70,7 +70,7 @@ Each public bucket → **Settings → CORS Policy**:
 In CircleCI **Organization Settings → Contexts**, create three contexts:
 
 ### 2.1 `r2-credentials`
-Restrict to `justinelut/sokoOS` project only. Add env vars:
+Restrict to `visualoop/omnix` project only. Add env vars:
 
 | Key | Value |
 |---|---|
@@ -78,7 +78,7 @@ Restrict to `justinelut/sokoOS` project only. Add env vars:
 | `R2_SECRET_ACCESS_KEY` | from token `R2_CI_UPLOAD` |
 | `R2_ENDPOINT` | `https://<accountid>.r2.cloudflarestorage.com` |
 | `R2_BUCKET` | `duka-releases` |
-| `R2_PUBLIC_HOST` | `r2.sokoos.co.ke` |
+| `R2_PUBLIC_HOST` | `r2.omnix.co.ke` |
 
 ### 2.2 `payload-system`
 Same project restriction. Generate a long random secret:
@@ -89,7 +89,7 @@ openssl rand -base64 32
 
 | Key | Value |
 |---|---|
-| `PAYLOAD_URL` | `https://sokoos.co.ke` (no trailing slash) |
+| `PAYLOAD_URL` | `https://omnix.co.ke` (no trailing slash) |
 | `PAYLOAD_SYSTEM_TOKEN` | the generated secret |
 
 Save the same `PAYLOAD_SYSTEM_TOKEN` value for use in Vercel below.
@@ -116,11 +116,11 @@ Enable **Point-in-Time Restore** (free 24h on hobby tier; upgrade to 7-day on Pr
 
 In **resend.com**:
 
-1. Add domain `sokoos.co.ke` (or your final brand domain)
+1. Add domain `omnix.co.ke` (or your final brand domain)
 2. Add the SPF, DKIM, MX records Resend gives you to Cloudflare DNS
 3. Wait for verification (usually 30 min)
-4. Generate an API key — full-access scoped to `sokoos.co.ke` only
-5. Set the from address: `notifications@sokoos.co.ke` (or `noreply@…`)
+4. Generate an API key — full-access scoped to `omnix.co.ke` only
+5. Set the from address: `notifications@omnix.co.ke` (or `noreply@…`)
 
 ---
 
@@ -131,7 +131,7 @@ In **dashboard.paystack.com**:
 1. Switch to **Live mode** when ready
 2. **Settings → API Keys & Webhooks**:
    - Copy `Public key` and `Secret key`
-   - Add webhook URL: `https://sokoos.co.ke/api/paystack/webhook`
+   - Add webhook URL: `https://omnix.co.ke/api/paystack/webhook`
 3. Verify your business documents (KRA PIN, business registration cert, ID).
 
 ---
@@ -140,7 +140,7 @@ In **dashboard.paystack.com**:
 
 In **vercel.com**:
 
-1. Import the `sokoOS` repo, set **Root Directory** = `website/`
+1. Import the `Omnix` repo, set **Root Directory** = `website/`
 2. Set **Build Command** = `pnpm build`, **Output** = `.next`
 3. Add env vars (all sensitive ones to "Production" only; some need "Preview" too):
 
@@ -152,12 +152,12 @@ DATABASE_URL_DIRECT           = postgres://...neon.tech...?sslmode=require
 # Payload
 PAYLOAD_SECRET                = openssl rand -base64 64
 PAYLOAD_SYSTEM_TOKEN          = same as CircleCI payload-system context
-NEXT_PUBLIC_SITE_URL          = https://sokoos.co.ke
+NEXT_PUBLIC_SITE_URL          = https://omnix.co.ke
 NEXT_PUBLIC_BRAND_NAME        = Duka
 
 # Resend
 RESEND_API_KEY                = re_...
-RESEND_FROM_EMAIL             = notifications@sokoos.co.ke
+RESEND_FROM_EMAIL             = notifications@omnix.co.ke
 
 # Paystack
 PAYSTACK_SECRET_KEY           = sk_live_...
@@ -168,7 +168,7 @@ R2_ACCESS_KEY_ID              = from R2_PAYLOAD_MEDIA token
 R2_SECRET_ACCESS_KEY          = from R2_PAYLOAD_MEDIA token
 R2_ENDPOINT                   = https://<accountid>.r2.cloudflarestorage.com
 R2_MEDIA_BUCKET               = duka-media
-R2_PUBLIC_URL                 = https://media.sokoos.co.ke
+R2_PUBLIC_URL                 = https://media.omnix.co.ke
 
 # Cron protection
 CRON_SECRET                   = openssl rand -base64 32
@@ -180,7 +180,7 @@ NEXT_PUBLIC_POSTHOG_HOST      = https://eu.i.posthog.com
 ```
 
 4. Deploy. The first build will run Payload migrations because `db.push:true` only applies in dev.
-5. Add custom domain `sokoos.co.ke` → Vercel.
+5. Add custom domain `omnix.co.ke` → Vercel.
 
 ---
 
@@ -188,7 +188,7 @@ NEXT_PUBLIC_POSTHOG_HOST      = https://eu.i.posthog.com
 
 After the first deploy:
 
-1. Visit `https://sokoos.co.ke/admin`
+1. Visit `https://omnix.co.ke/admin`
 2. Create the first user — this becomes the owner
 3. Set `role = owner` on yourself
 4. Open `/admin/globals/settings` and fill:
@@ -207,7 +207,7 @@ After the first deploy:
 
 Smoke test before the first real release:
 
-1. From `sokoOS/` (the desktop repo), tag a fake version:
+1. From `omnix/` (the desktop repo), tag a fake version:
 
    ```bash
    git tag v0.0.0-test.1
@@ -221,7 +221,7 @@ Smoke test before the first real release:
    - `upload-to-r2` (artifacts to R2)
    - `notify-payload` (POST to /api/releases creates a draft)
 
-3. Verify in `https://sokoos.co.ke/admin/collections/releases`:
+3. Verify in `https://omnix.co.ke/admin/collections/releases`:
    - A new draft Release `v0.0.0-test.1`
    - Highlights from CHANGELOG.md
    - R2 URLs for MSI + EXE
@@ -260,7 +260,7 @@ Quarterly rotation schedule (set a calendar reminder):
 |---|---|---|
 | `notify-payload` returns 401 | `PAYLOAD_SYSTEM_TOKEN` mismatch | Verify CircleCI context matches Vercel env var |
 | `upload-to-r2` returns 403 | R2 token lacks Write on `duka-releases` | Re-create token, update context |
-| Tauri auto-updater can't reach `releases/latest` | Custom domain DNS not propagated | Check `r2.sokoos.co.ke` resolves; allow 30 min |
+| Tauri auto-updater can't reach `releases/latest` | Custom domain DNS not propagated | Check `r2.omnix.co.ke` resolves; allow 30 min |
 | Paystack webhook isn't called | URL not configured or mode mismatch (test vs live) | Re-add webhook in Paystack settings |
 | Customer didn't get welcome email | `RESEND_API_KEY` missing or domain unverified | Check Vercel env var; verify domain in Resend |
 | Cron jobs not firing | `vercel.json` not committed or plan is hobby | Confirm vercel.json on main branch; Vercel hobby tier supports daily crons |

@@ -33,7 +33,7 @@ const FEATURE_OWNERS: Record<string, Exclude<ModuleId, "core">> = {
   "/patients": "dawa",
   "/settings/insurance": "dawa",
 
-  // ─── Soko Retail ────────────────────────────────────────
+  // ─── Omnix Retail ────────────────────────────────────────
   "/retail/brands": "retail",
   "/retail/laybys": "retail",
   "/retail/special-orders": "retail",

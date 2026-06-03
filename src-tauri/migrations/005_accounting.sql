@@ -1,4 +1,4 @@
--- SokoOS Accounting Schema
+-- Omnix Accounting Schema
 
 -- Expense categories
 CREATE TABLE IF NOT EXISTS expense_categories (

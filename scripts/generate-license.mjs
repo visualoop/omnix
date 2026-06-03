@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 /**
- * SokoOS License Generator
+ * Omnix License Generator
  *
- * Generates RSA-signed license keys for SokoOS customers.
+ * Generates RSA-signed license keys for Omnix customers.
  * Used by the marketing site backend after a successful purchase.
  *
  * Usage:

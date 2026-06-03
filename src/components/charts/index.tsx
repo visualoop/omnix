@@ -1,11 +1,11 @@
 import {
-  LineChart,
+  LineChart as RechartsLineChart,
   Line,
-  AreaChart,
+  AreaChart as RechartsAreaChart,
   Area,
-  BarChart,
+  BarChart as RechartsBarChart,
   Bar,
-  PieChart,
+  PieChart as RechartsPieChart,
   Pie,
   Cell,
   XAxis,
@@ -43,25 +43,25 @@ interface LineChartProps {
   height?: number;
 }
 
-export function SokoLineChart({ data, xKey, yKey, color = CHART_COLORS.primary, height = 240 }: LineChartProps) {
+export function LineChart({ data, xKey, yKey, color = CHART_COLORS.primary, height = 240 }: LineChartProps) {
   return (
     <ResponsiveContainer width="100%" height={height}>
-      <LineChart data={data} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+      <RechartsLineChart data={data} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
         <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
         <XAxis dataKey={xKey} stroke={CHART_COLORS.muted} fontSize={11} />
         <YAxis stroke={CHART_COLORS.muted} fontSize={11} />
         <Tooltip contentStyle={tooltipStyle} />
         <Line type="monotone" dataKey={yKey} stroke={color} strokeWidth={2} dot={{ r: 3 }} />
-      </LineChart>
+      </RechartsLineChart>
     </ResponsiveContainer>
   );
 }
 
 /* ==================== AREA CHART ==================== */
-export function SokoAreaChart({ data, xKey, yKey, color = CHART_COLORS.primary, height = 240 }: LineChartProps) {
+export function AreaChart({ data, xKey, yKey, color = CHART_COLORS.primary, height = 240 }: LineChartProps) {
   return (
     <ResponsiveContainer width="100%" height={height}>
-      <AreaChart data={data} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+      <RechartsAreaChart data={data} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
         <defs>
           <linearGradient id={`gradient-${yKey}`} x1="0" y1="0" x2="0" y2="1">
             <stop offset="5%" stopColor={color} stopOpacity={0.3} />
@@ -73,7 +73,7 @@ export function SokoAreaChart({ data, xKey, yKey, color = CHART_COLORS.primary, 
         <YAxis stroke={CHART_COLORS.muted} fontSize={11} />
         <Tooltip contentStyle={tooltipStyle} />
         <Area type="monotone" dataKey={yKey} stroke={color} strokeWidth={2} fill={`url(#gradient-${yKey})`} />
-      </AreaChart>
+      </RechartsAreaChart>
     </ResponsiveContainer>
   );
 }
@@ -88,10 +88,10 @@ interface BarChartProps {
   horizontal?: boolean;
 }
 
-export function SokoBarChart({ data, xKey, yKey, color = CHART_COLORS.primary, height = 240, horizontal = false }: BarChartProps) {
+export function BarChart({ data, xKey, yKey, color = CHART_COLORS.primary, height = 240, horizontal = false }: BarChartProps) {
   return (
     <ResponsiveContainer width="100%" height={height}>
-      <BarChart
+      <RechartsBarChart
         data={data}
         layout={horizontal ? "vertical" : "horizontal"}
         margin={{ top: 10, right: 10, left: horizontal ? 60 : 0, bottom: 0 }}
@@ -110,7 +110,7 @@ export function SokoBarChart({ data, xKey, yKey, color = CHART_COLORS.primary, h
         )}
         <Tooltip contentStyle={tooltipStyle} />
         <Bar dataKey={yKey} fill={color} radius={[4, 4, 0, 0]} />
-      </BarChart>
+      </RechartsBarChart>
     </ResponsiveContainer>
   );
 }
@@ -122,10 +122,10 @@ interface PieChartProps {
   donut?: boolean;
 }
 
-export function SokoPieChart({ data, height = 240, donut = true }: PieChartProps) {
+export function PieChart({ data, height = 240, donut = true }: PieChartProps) {
   return (
     <ResponsiveContainer width="100%" height={height}>
-      <PieChart>
+      <RechartsPieChart>
         <Pie
           data={data}
           cx="50%"
@@ -141,7 +141,7 @@ export function SokoPieChart({ data, height = 240, donut = true }: PieChartProps
         </Pie>
         <Tooltip contentStyle={tooltipStyle} />
         <Legend wrapperStyle={{ fontSize: "11px" }} />
-      </PieChart>
+      </RechartsPieChart>
     </ResponsiveContainer>
   );
 }
@@ -154,10 +154,10 @@ interface ComparisonProps {
   height?: number;
 }
 
-export function SokoComparisonBar({ data, xKey, series, height = 240 }: ComparisonProps) {
+export function ComparisonBar({ data, xKey, series, height = 240 }: ComparisonProps) {
   return (
     <ResponsiveContainer width="100%" height={height}>
-      <BarChart data={data} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+      <RechartsBarChart data={data} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
         <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
         <XAxis dataKey={xKey} stroke={CHART_COLORS.muted} fontSize={11} />
         <YAxis stroke={CHART_COLORS.muted} fontSize={11} />
@@ -172,7 +172,7 @@ export function SokoComparisonBar({ data, xKey, series, height = 240 }: Comparis
             radius={[4, 4, 0, 0]}
           />
         ))}
-      </BarChart>
+      </RechartsBarChart>
     </ResponsiveContainer>
   );
 }

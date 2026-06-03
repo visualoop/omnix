@@ -1,10 +1,10 @@
-# SokoOS
+# Omnix
 
-[![Build (Windows)](https://github.com/justinelut/sokoOS/actions/workflows/build.yml/badge.svg)](https://github.com/justinelut/sokoOS/actions/workflows/build.yml)
+[![Build (Windows)](https://github.com/visualoop/omnix/actions/workflows/build.yml/badge.svg)](https://github.com/visualoop/omnix/actions/workflows/build.yml)
 
 **Offline-first ERP platform for Kenyan SMEs.**
 
-SokoOS is built as a modular platform. Each business vertical is delivered as a module that
+Omnix is built as a modular platform. Each business vertical is delivered as a module that
 plugs into the same core (inventory, sales, customers, suppliers, accounting, payments, tax,
 licensing, multi-device sync).
 
@@ -43,7 +43,7 @@ of the same engine.
 ## Pricing
 
 KES 30,000 one-time license + KES 12,000/year for compliance updates.
-Buy at [sokoos.co.ke](https://sokoos.co.ke).
+Buy at [omnix.co.ke](https://omnix.co.ke).
 
 ## Tech
 

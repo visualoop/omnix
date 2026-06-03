@@ -1,4 +1,4 @@
-# Core Modules — SokoOS ERP Platform
+# Core Modules — Omnix ERP Platform
 
 ## Shared Core (Every Business Type Gets These)
 

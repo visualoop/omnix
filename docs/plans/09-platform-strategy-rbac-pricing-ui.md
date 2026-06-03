@@ -508,7 +508,7 @@ Recommendation:
 Suggested skill stack:
 - Existing `imagegen` skill for generating module/customer-display visual assets when useful.
 - Official/open-source frontend design skill only after reviewing its contents.
-- Custom `sokoos-ui-quality` skill for this repo, containing:
+- Custom `omnix-ui-quality` skill for this repo, containing:
   - Linear/Notion-grade desktop rules.
   - No gradients/orbs/slop rule.
   - Settings shell pattern.

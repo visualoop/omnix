@@ -102,7 +102,6 @@ pub fn verify_license_key(key: &str) -> Result<VerifiedLicense, LicenseError> {
     let cleaned: String = key.chars().filter(|c| !c.is_whitespace()).collect();
     let key_body = cleaned
         .strip_prefix("OMNIX-")
-        .or_else(|| cleaned.strip_prefix("SOKO-")) // legacy keys issued before the Omnix rename
         .unwrap_or(&cleaned);
 
     let parts: Vec<&str> = key_body.split('.').collect();

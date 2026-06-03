@@ -1,5 +1,5 @@
 # DUKA WEBSITE — Comprehensive Build Brief
-**Public marketing site + customer dashboard + admin/telemetry platform for the Duka ERP product family · sokoos.co.ke**
+**Public marketing site + customer dashboard + admin/telemetry platform for the Duka ERP product family · omnix.co.ke**
 
 This document is a complete instruction set for an AI coding agent (Cursor, Claude Code, Bolt, v0). Read it end-to-end before writing a single line. Do not produce an MVP. Build the production-grade product described here.
 
@@ -55,20 +55,20 @@ The Next.js frontend lives in `app/(frontend)/`. Payload mounts at `/admin`. **D
 
 ## 2. THE BRAND NAME PROBLEM
 
-The name "SokoOS" is being retired. The replacement candidate is **Duka** — Swahili for shop/store. Single Kenyan word, every business owner already says it daily, works for pharmacy (duka la dawa), retail (duka), salon (duka la urembo), mini-mart, anything.
+The name "Omnix" is being retired. The replacement candidate is **Duka** — Swahili for shop/store. Single Kenyan word, every business owner already says it daily, works for pharmacy (duka la dawa), retail (duka), salon (duka la urembo), mini-mart, anything.
 
 **`BRAND_NAME` MUST live in a single TypeScript constant** so swapping is one-line:
 
 ```ts
 // src/lib/brand.ts
 export const BRAND_NAME = "Duka" as const;
-export const BRAND_DOMAIN = "sokoos.co.ke" as const;          // current domain — can swap later
+export const BRAND_DOMAIN = "omnix.co.ke" as const;          // current domain — can swap later
 export const BRAND_TAGLINE = "Run your business. From your duka." as const;
 ```
 
 Every UI string that mentions the brand MUST import from this file. The agent must NOT hardcode "Duka" anywhere else. The owner can rename to any other word — `BRAND_NAME = "Tindo"`, `BRAND_NAME = "Bidhaa"` — by editing this one file. Agent: verify with `grep -ri "Duka" src/ | grep -v lib/brand.ts` before declaring done; expected output is zero.
 
-**Module names** stay as-is (Dawa, Soko Retail) — they're descriptive, not the umbrella brand.
+**Module names** stay as-is (Dawa, Omnix Retail) — they're descriptive, not the umbrella brand.
 
 ---
 
@@ -229,7 +229,7 @@ Voice should sound like the owner (justinelut) wrote it personally — not a mar
 Before drafting Payload collections + page-by-page spec (Plan 02 + 03), I need:
 
 1. **Brand name confirm**: Going with `BRAND_NAME = "Duka"`? Yes / pick from {Tindo, Bidhaa, Hesabu, Soko, Kibanda} / I'll suggest more.
-2. **Domain at launch**: `sokoos.co.ke` (existing) or do you want to register `duka.co.ke` / `dukaapp.com` / `getduka.com` at the same time?
+2. **Domain at launch**: `omnix.co.ke` (existing) or do you want to register `duka.co.ke` / `dukaapp.com` / `getduka.com` at the same time?
 3. **Trial → paid lockout behavior**: When 30-day trial ends and customer hasn't paid:
    - (a) Soft lock — POS stops, customer can still see existing data + export, must pay to resume sales
    - (b) Read-only — full app browsable but no new sales/data entry

@@ -36,7 +36,7 @@
 - Server displays connection URL + QR code for easy client setup
 
 ### 8.3 Client Node Behavior
-- Client installs same SokoOS application
+- Client installs same Omnix application
 - On first run: "Join existing business" option
 - Connects to server, authenticates, receives license validation
 - Maintains local SQLite cache for offline resilience

@@ -53,7 +53,7 @@ This is so big it gets its own plan file.
 - Attach scanned receipts to expenses
 - Attach delivery notes to GRNs
 - Attach invoices to PO
-- Stored in `%APPDATA%/sokoos/attachments/` with hash filename
+- Stored in `%APPDATA%/omnix/attachments/` with hash filename
 
 ### 10. Quotations / Estimates 🔴 CRITICAL for retail/hardware
 - Issue a quotation before sale

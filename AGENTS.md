@@ -1,4 +1,4 @@
-# AGENTS.md — SokoOS Project Rules
+# AGENTS.md — Omnix Project Rules
 
 Every AI agent working on this project must follow these rules without exception.
 
@@ -6,7 +6,7 @@ Every AI agent working on this project must follow these rules without exception
 
 ## 0. Product Identity
 
-- **Product:** SokoOS
+- **Product:** Omnix
 - **First Module:** Dawa (Pharmacy Management)
 - **Architecture:** Tauri v2 desktop app + React (Vite) frontend + SQLite backend
 - **Target:** Kenyan SME pharmacies (single + same-network chains)
@@ -162,7 +162,7 @@ Component composition     File system operations
 ## 6. File Organization
 
 ```
-sokoOS/
+omnix/
 ├── src/                        # React frontend
 │   ├── components/
 │   │   ├── ui/                # shadcn/ui components

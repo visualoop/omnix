@@ -10,7 +10,7 @@
 
 ### 0.1 Scaffold the project
 ```bash
-pnpm create tauri-app sokoos --template react-ts --manager pnpm
+pnpm create tauri-app omnix --template react-ts --manager pnpm
 ```
 - Tauri v2 with React + TypeScript + Vite
 - Rust backend bootstrapped automatically
@@ -51,7 +51,7 @@ See `docs/skills-and-mcps.md`
 
 ### 0.6 Project structure after Phase 0
 ```
-sokoOS/
+omnix/
 ├── src/                    # React frontend
 │   ├── components/
 │   │   └── ui/            # shadcn components

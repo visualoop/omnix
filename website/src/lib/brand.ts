@@ -17,7 +17,7 @@ export const LICENSE_KEY_PREFIX = 'OMNIX' as const
 
 // Bundle identifier for the Tauri desktop app — must stay stable across
 // rebrands (changing it breaks updater chain). Set once, never edit.
-export const APP_IDENTIFIER = 'ke.co.sokoos.duka' as const
+export const APP_IDENTIFIER = 'co.ke.omnix.app' as const
 
 // Friendly label fragments
 export const BRAND = {

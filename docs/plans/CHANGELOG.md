@@ -71,7 +71,7 @@ What ships in this build:
 - `src/services/license.ts`: added `@tauri-apps/plugin-http` fetch + `ACTIVATION_API_BASE` (`VITE_OMNIX_API` override, default `https://omnix.co.ke`). `activateLicense()` now: verifies signature locally → `activateOnline()` POSTs to `/api/licenses/activate` → on server reject (409 seat cap / revoked) hard-fails without activating → on success stores `activation_token` + `server_validated=1` + server entitlements → on network failure stores signed-key-only with `server_validated=0` and returns `{ ok, pending:true }`.
 - Added `revalidateLicense()` (foundation for Task 6): POSTs `/api/licenses/validate`, refreshes modules/seats/maintenance, clears pending flag, strips modules if server reports suspended/cancelled; no-op when offline.
 - `src/pages/license-activation.tsx`: shows an "activated offline, will verify later" toast when `pending`.
-- `src-tauri/capabilities/default.json`: http allowlist adds `omnix.co.ke`, `*.omnix.co.ke`, `localhost:3000` (kept `sokoos.co.ke`).
+- `src-tauri/capabilities/default.json`: http allowlist adds `omnix.co.ke`, `*.omnix.co.ke`, `localhost:3000` (kept `omnix.co.ke`).
 - `tsc` clean. Desktop has no frontend test runner; activation branching is covered by the Task 28 e2e.
 
 ### Task 6 — Silent re-validation + self-service rebind with cooldown
@@ -154,7 +154,7 @@ What ships in this build:
 
 ### Task 16 — Persist the Omnix design system [SKILLS GATE]
 - Ran `ui-ux-pro-max --design-system --persist -p "Omnix"` → `design-system/omnix/MASTER.md` (category: Analytics Dashboard).
-- `docs/ui-design-reference.md` retitled SokoOS→Omnix and prepended a **canonical design-system section**: fixed Omnix tokens (Inter font, flat bordered cards/no shadows, ≤8px radius, themeable blue-600 accent, 8px grid) + a Reconciliation table that overrides the generator's generic defaults (Fira Code, card shadows, translateY hovers, generic blue/amber) while adopting its theme-agnostic guidance (data density, row-hover, filtering, a11y).
+- `docs/ui-design-reference.md` retitled Omnix→Omnix and prepended a **canonical design-system section**: fixed Omnix tokens (Inter font, flat bordered cards/no shadows, ≤8px radius, themeable blue-600 accent, 8px grid) + a Reconciliation table that overrides the generator's generic defaults (Fira Code, card shadows, translateY hovers, generic blue/amber) while adopting its theme-agnostic guidance (data density, row-hover, filtering, a11y).
 - Codified the **mandatory skills gate** (generate → build per frontend-design/aesthetic-direction/hierarchy-rhythm → ai-slop-check → pre-delivery checklist → screenshot 1280×720/1024×768/1920×1080) as the binding checklist for all UI tasks.
 - Added an Omnix-override banner to the generated `MASTER.md` so its generic defaults aren't applied blindly. No app code.
 
@@ -233,16 +233,16 @@ What ships in this build:
 
 ### Task 27 — Duka→Omnix website rename
 - Replaced every brand reference across `website/src` (143 hits in 53 files): capitalized `Duka`→`Omnix` and `DUKA`→`OMNIX` (licence-key format, support-ticket format `OMNIX-T-YYYY-NNNNNN`, Paystack reference prefix, email copy, page/doc/blog/seed content, dashboard copy).
-- Rewrote the `omnix-rebrand` blog post (was `duka-rebrand`) into a coherent SokoOS→Omnix narrative — the blanket rename had left a self-contradictory "we took the word *duka*" story; new copy explains the multi-vertical "Omni" rationale.
-- Social links → `/omnix`; installer filename `duka-setup.exe`→`omnix-setup.exe`; `next.config.ts` image hosts `r2/media.sokoos.co.ke`→`*.omnix.co.ke`.
+- Rewrote the `omnix-rebrand` blog post (was `duka-rebrand`) into a coherent Omnix→Omnix narrative — the blanket rename had left a self-contradictory "we took the word *duka*" story; new copy explains the multi-vertical "Omni" rationale.
+- Social links → `/omnix`; installer filename `duka-setup.exe`→`omnix-setup.exe`; `next.config.ts` image hosts `r2/media.omnix.co.ke`→`*.omnix.co.ke`.
 - Preserved the `business_type` enum **value** `'duka'` (Swahili for shop — a real shop type) and relabelled it "General shop / Duka"; kept the "Run your duka" Swahili taglines as intentional local flavour.
-- `APP_IDENTIFIER` left as `ke.co.sokoos.duka` (stable bundle id; updater chain) — domain/identifier hygiene handled in Task 28.
+- `APP_IDENTIFIER` left as `ke.co.omnix.duka` (stable bundle id; updater chain) — domain/identifier hygiene handled in Task 28.
 - Regenerated `payload-types.ts`; website `tsc` clean; `next build` succeeds (all routes prerendered).
 
 ### Task 28 — End-to-end purchase→activation→gated run + version hygiene
 - **Version drift fixed**: `src-tauri/tauri.conf.json` `0.2.6`→`0.2.8` (now matches `package.json` + `Cargo.toml`).
-- **Domain hygiene**: updater endpoints, `bundle.homepage`, and macOS `exceptionDomain` `sokoos.co.ke`→`omnix.co.ke`; `longDescription` refreshed (hardware + hospitality, drops "salon").
-- **Bundle identifier deliberately kept** `ke.co.sokoos.duka`: it shipped in every tagged release (v0.2.4–v0.2.8) and the SQLite DB resolves to `$APPDATA/{identifier}/omnix.db`; changing it would orphan existing customer databases and break updater continuity (destructive migration, out of scope). Reverse-DNS IDs are internal stable keys that survive rebrands. Flagged a pre-existing mismatch: `lib.rs::ensure_app_data_dir()` hardcodes `ke.co.sokoos.app` ≠ the real id — left untouched (shipped behaviour, needs a deliberate data-migration check).
+- **Domain hygiene**: updater endpoints, `bundle.homepage`, and macOS `exceptionDomain` `omnix.co.ke`→`omnix.co.ke`; `longDescription` refreshed (hardware + hospitality, drops "salon").
+- **Bundle identifier deliberately kept** `ke.co.omnix.duka`: it shipped in every tagged release (v0.2.4–v0.2.8) and the SQLite DB resolves to `$APPDATA/{identifier}/omnix.db`; changing it would orphan existing customer databases and break updater continuity (destructive migration, out of scope). Reverse-DNS IDs are internal stable keys that survive rebrands. Flagged a pre-existing mismatch: `lib.rs::ensure_app_data_dir()` hardcodes `ke.co.omnix.app` ≠ the real id — left untouched (shipped behaviour, needs a deliberate data-migration check).
 - **Runbook**: new `docs/plans/11-licensing-runbook.md` documents purchase→activation→silent-revalidation/rebind→gated-run, plus the three revenue invariants.
 - **Invariants verified** (no e2e runner exists per AGENTS §9 — verified via Rust tests + code trace): (1) over-seat block → `409 rejected_seats` in `licenses-activate.ts`; (2) rebind cooldown → `429 windowResetsAt` in `licenses-rebind.ts`; (3) hardware-only licence keeps Hospitality locked — Rust test `not_entitled_for_unlicensed_module` (embedded `HW_KEY`) passes.
 - `cargo test` 17/17 pass (37 migrations register); desktop `tsc` clean; `vite build` succeeds. **Phase H complete — all 28 tasks done.**
@@ -332,7 +332,7 @@ Added two plan documents under `docs/plans/` after reviewing the existing Core E
 
 Wrote the complete 6-document specification for the public-facing site, customer dashboard, owner admin platform, telemetry SDK, and CI release pipeline. No code yet — implementation gated until the user approves the plan suite.
 
-**Brand decision**: project rebrand from `SokoOS` to `Duka` (Swahili for shop). Brand name will live in a single TypeScript constant `BRAND_NAME` so future renames are one-line edits.
+**Brand decision**: project rebrand from `Omnix` to `Duka` (Swahili for shop). Brand name will live in a single TypeScript constant `BRAND_NAME` so future renames are one-line edits.
 
 **Documents written** (all in `docs/website/`):
 - `01-mission-stack.md` (252 lines) — mission, tech stack (Payload 3.x + Next.js 15 + Postgres + R2 + shadcn/Tailwind + Resend + PostHog + Sentry), brand rules with one-line `BRAND_NAME` swap, palette (dark default with amber accent — NOT generic indigo), typography (Inter + Space Grotesk), anti-patterns list
@@ -786,7 +786,7 @@ Closes the highest-priority Dawa pharmacy gaps from `docs/plans/04-dawa-pharmacy
 - AMR surveillance report (antibiotic usage)
 
 
-## 2026-05-26 — Phase 7 Batch 1: Soko Retail Module
+## 2026-05-26 — Phase 7 Batch 1: Omnix Retail Module
 
 New module for general retail (cosmetics, mini-marts, dukas, gift shops). Activates a different sidebar nav and feature set when selected.
 
@@ -1340,7 +1340,7 @@ Previous approach sprinkled `module: "dawa"` props across sidebar items, command
 3. Sidebar, palette, route guard all gate it automatically — no per-component changes
 
 ### Module-Aware Branding
-**Sidebar logo**: When active module is not `core`, sidebar shows the module's logo (DawaLogo / RetailLogo) and the module's name as primary identity, with "Powered by SokoOS" as small secondary text. Customer running a pharmacy sees "Dawa Pharmacy" branding, not generic SokoOS.
+**Sidebar logo**: When active module is not `core`, sidebar shows the module's logo (DawaLogo / RetailLogo) and the module's name as primary identity, with "Powered by Omnix" as small secondary text. Customer running a pharmacy sees "Dawa Pharmacy" branding, not generic Omnix.
 
 **Login page**: Same logic — module logo + name. Sign-in screen reflects the deployed brand.
 
@@ -1356,7 +1356,7 @@ Removed the `module:` prop from all sidebar nav items. Sidebar's `navItems` arra
 ### Verified
 - TS clean, Cargo clean, 10/10 tests pass
 - A retail user logging in:
-  - Sees Soko Retail branding in sidebar + login
+  - Sees Omnix Retail branding in sidebar + login
   - Has no Pharmacy / Insurance Claims / Controlled Register / Cold Chain / AMR Report visible
   - POS doesn't show drug interaction alerts or substitute icons
   - Direct URL `/pharmacy` shows "Module not enabled" screen

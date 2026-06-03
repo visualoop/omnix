@@ -68,7 +68,7 @@ const MODULES: Module[] = [
   },
   {
     id: "retail",
-    name: "Soko Retail",
+    name: "Omnix Retail",
     description: "General retail: cosmetics, mini-marts, dukas, gift shops. Variants, brands, laybys.",
     icon: ShoppingBag,
     status: "installed",
@@ -100,7 +100,7 @@ const MODULES: Module[] = [
   },
   {
     id: "hospitality",
-    name: "Soko Hospitality",
+    name: "Omnix Hospitality",
     description: "Restaurant POS, kitchen display, rooms, bookings, folios, recipe costing.",
     icon: UtensilsCrossed,
     status: "installed",

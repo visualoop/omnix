@@ -143,7 +143,6 @@ export function ModuleLogo({ moduleId, size = 32, className = "", rounded = true
     case "pharmacy":
       return <DawaLogo size={size} className={className} rounded={rounded} />;
     case "retail":
-    case "soko":
       return <RetailLogo size={size} className={className} rounded={rounded} />;
     case "hardware":
       return <HardwareLogo size={size} className={className} rounded={rounded} />;
@@ -155,11 +154,11 @@ export function ModuleLogo({ moduleId, size = 32, className = "", rounded = true
   }
 }
 
-// ─── Retail (Soko) — Shopping Bag with Sparkle ───────────────────────
+// ─── Retail (Omnix) — Shopping Bag with Sparkle ───────────────────────
 export function RetailLogo({ size = 32, className = "", rounded = true }: LogoProps) {
   const id = `retail-${size}`;
   return (
-    <svg width={size} height={size} viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg" className={className} aria-label="Soko Retail">
+    <svg width={size} height={size} viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg" className={className} aria-label="Omnix Retail">
       <defs>
         <linearGradient id={`${id}-bg`} x1="0" y1="0" x2="1" y2="1">
           <stop offset="0%" stopColor="#F97316" />

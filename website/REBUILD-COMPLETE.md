@@ -8,7 +8,7 @@
 
 ## What was rebuilt
 
-The entire public-facing Duka website at `sokoos.co.ke` — marketing, homepage, pricing, and shared components — per the user's directive: *"the ui the cards component look extremely ugly the hero everything nothing shows confidence this aint a senior developer or product designer who build it absolutely shit"*.
+The entire public-facing Duka website at `omnix.co.ke` — marketing, homepage, pricing, and shared components — per the user's directive: *"the ui the cards component look extremely ugly the hero everything nothing shows confidence this aint a senior developer or product designer who build it absolutely shit"*.
 
 The rebuild followed **DUKA-BRIEF.md** (15-section plan template structure) and activated **every skill** (frontend-design, ai-slop-check, hierarchy-rhythm, aesthetic-direction, ui-ux-pro-max, design, payload, webapp-testing) to eliminate AI-template aesthetics.
 
@@ -43,7 +43,7 @@ The rebuild followed **DUKA-BRIEF.md** (15-section plan template structure) and 
 
 ### Layout
 - `src/components/layout/site-header.tsx` — 3-col grid, nav truly centred, CTA hard right, sign-in as quiet text link
-- `src/components/layout/site-footer.tsx` — corrected module slugs (dawa-pharmacy, soko-retail)
+- `src/components/layout/site-footer.tsx` — corrected module slugs (dawa-pharmacy, retail)
 
 ### Landing sections (11 new)
 1. `src/components/landing/hero-section.tsx` — single-CTA editorial, italic-word headline, mono caption, no above-fold price cards
@@ -137,15 +137,15 @@ None of these block production deployment. The site is shippable now.
 3. **Machine activation on first launch** — POST to `/api/licenses/activate`, store returned `authToken` in stronghold
 4. **Updater dialog UI** — replace default Tauri prompt with custom in-app banner
 5. **First-launch consent modal** — Settings → Privacy → "Send anonymous diagnostics" toggle
-6. **Cargo.toml package rename** — SokoOS → Duka (mirrors tauri.conf.json change)
+6. **Cargo.toml package rename** — Omnix → Duka (mirrors tauri.conf.json change)
 
 ### Production deployment (per `docs/website/RUNBOOK-deployment.md`)
 1. Cloudflare R2: create 3 buckets, 3 tokens, custom domains, CORS policy
 2. CircleCI: register `r2-credentials` + `payload-system` contexts
 3. Neon Postgres: create production project + branch
-4. Resend: verify domain `sokoos.co.ke`, generate API key
-5. Paystack: live mode, register webhook `https://sokoos.co.ke/api/paystack/webhook`
-6. Vercel: import `sokoOS` repo with root=`website/`, set 24 env vars, attach domain
+4. Resend: verify domain `omnix.co.ke`, generate API key
+5. Paystack: live mode, register webhook `https://omnix.co.ke/api/paystack/webhook`
+6. Vercel: import `omnix` repo with root=`website/`, set 24 env vars, attach domain
 7. Visit `/admin`, create first owner user, populate Settings + Pricing + LandingPage globals
 8. Dry-run release: tag `v0.0.0-test.1`, watch full pipeline, confirm draft Release in admin
 9. Clean up test artifacts, tag real first release

@@ -3,7 +3,7 @@ import { Download, Package } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { getStockValuation, getReorderList, getDeadStock, getStockMovementsByDay, type StockMovementByDay } from "@/services/reports";
 import { exportToCSV } from "@/lib/export";
-import { SokoComparisonBar } from "@/components/charts";
+import { ComparisonBar } from "@/components/charts";
 
 export function InventoryReportsPage() {
   const [valuation, setValuation] = useState<{ at_cost: number; at_retail: number; total_items: number } | null>(null);
@@ -79,7 +79,7 @@ export function InventoryReportsPage() {
             <EmptyState icon={Package} text="No stock movements yet" />
           ) : (
             <div className="border border-border rounded-lg p-4">
-              <SokoComparisonBar
+              <ComparisonBar
                 data={movements}
                 xKey="date"
                 series={[

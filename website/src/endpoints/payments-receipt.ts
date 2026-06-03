@@ -168,7 +168,7 @@ function renderReceipt(args: {
   </table>
 
   <div class="footer">
-    Issued by SokoOS Technologies Ltd · KRA PIN P051234567A · Nairobi, Kenya<br />
+    Issued by Omnix Technologies Ltd · KRA PIN P051234567A · Nairobi, Kenya<br />
     For billing questions: billing@${BRAND.domain}<br />
     <em>Use your browser's "Print → Save as PDF" to keep a copy.</em>
   </div>

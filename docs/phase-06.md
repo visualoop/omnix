@@ -10,7 +10,7 @@
 
 ```
 Customer pays M-Pesa → Paystack handles STK push → 
-Paystack confirms → SokoOS marks sale as paid
+Paystack confirms → Omnix marks sale as paid
 ```
 
 **Internet required** for automated M-Pesa. Cash sales always work offline.
@@ -52,7 +52,7 @@ The system includes an in-app guide:
 1. Create Paystack account at paystack.com
 2. Complete KYC verification
 3. Add M-Pesa as payment channel
-4. Copy API keys into SokoOS settings
+4. Copy API keys into Omnix settings
 5. Test with a small transaction
 
 ### 6.6 Database Schema (Payments Extension)

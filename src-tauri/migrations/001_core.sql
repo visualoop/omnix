@@ -1,4 +1,4 @@
--- SokoOS Core Schema v1
+-- Omnix Core Schema v1
 -- Business & Settings
 CREATE TABLE IF NOT EXISTS business (
     id TEXT PRIMARY KEY,

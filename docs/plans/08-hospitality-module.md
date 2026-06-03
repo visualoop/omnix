@@ -31,7 +31,7 @@ This is a vertical module like Dawa and Retail. Core ERP remains shared. Hospita
 ## Module identity
 
 - Module ID: `hospitality`
-- Display name: `Soko Hospitality`
+- Display name: `Omnix Hospitality`
 - Short name: `Hospitality`
 - Primary workflows: Restaurant POS, kitchen orders, table management, rooms and bookings, guest folios, menu costing.
 - Suggested accent: deep green or burgundy, but keep the global one-accent rule configurable.

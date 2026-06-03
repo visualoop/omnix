@@ -2,7 +2,7 @@
 
 **Goal:** Full employee management for a Kenyan SME — staff records, contracts, attendance, leave, payroll with statutory deductions, commissions.
 
-This is **separate from the user/login system**. A user is "someone who can log in to SokoOS"; an employee is "someone we pay". Often the same person but not always (e.g. a delivery driver is an employee but never logs in).
+This is **separate from the user/login system**. A user is "someone who can log in to Omnix"; an employee is "someone we pay". Often the same person but not always (e.g. a delivery driver is an employee but never logs in).
 
 ## Why we need this
 

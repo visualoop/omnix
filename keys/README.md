@@ -1,6 +1,6 @@
 # Keys
 
-This directory holds cryptographic keys used by SokoOS.
+This directory holds cryptographic keys used by Omnix.
 
 | File | Committed? | Purpose |
 |------|------------|---------|

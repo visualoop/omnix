@@ -1,4 +1,4 @@
--- SokoOS Sales & POS Schema
+-- Omnix Sales & POS Schema
 
 -- Payment methods (configurable)
 CREATE TABLE IF NOT EXISTS payment_methods (

@@ -1,4 +1,4 @@
-# Architecture Decision Record — SokoOS
+# Architecture Decision Record — Omnix
 
 ## ADR-001: Tauri v2 over Electron
 
@@ -143,7 +143,7 @@
 
 ## ADR-009: No Monorepo (For Now)
 
-**Decision:** SokoOS desktop app is a standalone project. Marketing site is separate.
+**Decision:** Omnix desktop app is a standalone project. Marketing site is separate.
 
 **Why:**
 - Different tech stacks (Tauri+Vite vs Next.js)

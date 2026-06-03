@@ -21,7 +21,7 @@ interface Props {
 /** Modules a customer can trial (Core is always included, never gated). */
 const TRIAL_MODULES = [
   { id: "dawa", label: "Dawa — Pharmacy" },
-  { id: "retail", label: "Soko — Retail" },
+  { id: "retail", label: "Omnix — Retail" },
   { id: "hardware", label: "Hardware & Building" },
   { id: "hospitality", label: "Hospitality — Restaurant & Hotel" },
 ] as const;

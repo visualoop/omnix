@@ -1,8 +1,8 @@
-# SokoOS — Master Build Plan
+# Omnix — Master Build Plan
 
 ## Product Identity
 
-- **Name:** SokoOS
+- **Name:** Omnix
 - **Tagline:** The operating system for your business
 - **First Module:** Dawa (Pharmacy Management)
 - **Target:** Single pharmacies and same-network pharmacy chains in Kenya

@@ -1,10 +1,10 @@
 # Module Architecture
 
-SokoOS is a modular ERP platform. The **core** ships in every install. Each business vertical
+Omnix is a modular ERP platform. The **core** ships in every install. Each business vertical
 (pharmacy, hardware store, electronics, salon, restaurant, ...) is a **module** that plugs in
 on top of the core.
 
-## What "module" means in SokoOS
+## What "module" means in Omnix
 
 A module is a layered extension that:
 

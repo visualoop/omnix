@@ -10,7 +10,7 @@ Deferred. We work on this AFTER:
 
 - `/website` directory exists (user installed Next.js + Payload)
 - Not touched in this session
-- Will host marketing site at sokoos.co.ke + admin panel for license management
+- Will host marketing site at omnix.co.ke + admin panel for license management
 
 ## What this site needs to do
 

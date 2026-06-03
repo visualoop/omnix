@@ -1,4 +1,4 @@
-# Pricing & Business Model — SokoOS
+# Pricing & Business Model — Omnix
 
 ## Target Customer
 - Single-location pharmacies in Kenya
@@ -16,7 +16,7 @@ Additional POS device:    KES 10,000  (one-time, per extra terminal on LAN)
 ```
 
 ### What the License Includes
-- Full SokoOS:Dawa system (all features)
+- Full Omnix:Dawa system (all features)
 - 1 device activation
 - First year of maintenance included (so first payment = KES 30,000 total)
 - Free installation support (remote)
@@ -83,7 +83,7 @@ By Year 3, **renewals alone cover KES 480K** — nearly half your target with ze
 
 ## Competitive Pitch (vs PharmaSync)
 
-| | PharmaSync | SokoOS |
+| | PharmaSync | Omnix |
 |---|---|---|
 | Monthly cost | KES 5,999/mo | KES 0 (after purchase) |
 | Year 1 total | KES 71,988 | KES 30,000 |

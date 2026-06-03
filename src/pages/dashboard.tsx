@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { TrendingUp, ShoppingCart, AlertTriangle, Package, Users, Banknote, FileText } from "lucide-react";
 import { getDashboardKPIs, getSalesByDay, getTopProducts, getSalesByPaymentMethod, type DashboardKPIs, type SalesByDay, type TopProduct, type SalesByPaymentMethod } from "@/services/reports";
-import { SokoAreaChart, SokoPieChart } from "@/components/charts";
+import { AreaChart, PieChart } from "@/components/charts";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useActiveBranch } from "@/stores/active-branch";
 import { useActiveModule } from "@/stores/active-module";
@@ -21,7 +21,7 @@ function useModuleAccent() {
     headerBg: "bg-amber-700",
     primary: "text-amber-700 dark:text-amber-400",
     primaryBg: "bg-amber-500/10",
-    label: "Soko Retail",
+    label: "Omnix Retail",
   };
   if (m === "hardware") return {
     headerBg: "bg-orange-700",
@@ -168,7 +168,7 @@ export function DashboardPage() {
           {salesByDay.length === 0 ? (
             <EmptyMini text="No sales yet" />
           ) : (
-            <SokoAreaChart data={salesByDay} xKey="date" yKey="total" height={220} />
+            <AreaChart data={salesByDay} xKey="date" yKey="total" height={220} />
           )}
         </Card>
 
@@ -177,7 +177,7 @@ export function DashboardPage() {
           {paymentMix.length === 0 ? (
             <EmptyMini text="No sales yet" />
           ) : (
-            <SokoPieChart
+            <PieChart
               data={paymentMix.map((p) => ({ name: p.method_name, value: p.total }))}
               height={220}
             />
