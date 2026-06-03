@@ -67,7 +67,7 @@ export default async function DownloadsPage() {
         <div className="container-default">
           {latest ? (
             <div className="rounded-xl border border-[var(--color-border-strong)] bg-[var(--color-surface)] p-8 lg:p-12">
-              <div className="grid grid-cols-1 gap-8 lg:grid-cols-[1fr_auto] lg:items-center">
+              <div className="grid grid-cols-1 gap-8 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
                 <div>
                   <div className="flex items-center gap-3">
                     <span className="caption-mono">Latest release</span>

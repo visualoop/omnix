@@ -204,7 +204,7 @@ export function VariantsDialog({ product, onClose, onSaved }: Props) {
           ) : (
             <>
               {/* Headers */}
-              <div className="grid grid-cols-[16px_1fr_120px_110px_90px_28px] gap-2 px-2 pt-1 pb-1 text-[11px] font-medium text-muted-foreground uppercase tracking-wide">
+              <div className="grid grid-cols-[16px_2fr_1fr_110px_90px_28px] gap-2 px-2 pt-1 pb-1 text-[11px] font-medium text-muted-foreground uppercase tracking-wide">
                 <span />
                 <span>Name</span>
                 <span>SKU</span>
@@ -217,7 +217,7 @@ export function VariantsDialog({ product, onClose, onSaved }: Props) {
                 <div
                   key={r.key}
                   className={cn(
-                    "grid grid-cols-[16px_1fr_120px_110px_90px_28px] gap-2 items-center rounded-lg border px-2 py-1.5 transition-colors",
+                    "grid grid-cols-[16px_2fr_1fr_110px_90px_28px] gap-2 items-center rounded-lg border px-2 py-1.5 transition-colors",
                     r.dirty ? "border-primary/40 bg-primary/[0.03]" : "border-border/60",
                   )}
                 >

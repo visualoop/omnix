@@ -78,7 +78,7 @@ export default async function ChangelogPage() {
                     key={r.id}
                     className={i === releases.length - 1 ? '' : 'border-b border-[var(--color-border)] pb-12'}
                   >
-                    <div className="grid grid-cols-1 gap-6 lg:grid-cols-[auto_1fr]">
+                    <div className="grid grid-cols-1 gap-6 lg:grid-cols-[auto_minmax(0,1fr)]">
                       <div className="lg:w-32">
                         <div className="caption-mono">{formatDate(r.publishedAt)}</div>
                         <div className="font-[family-name:var(--font-mono)] mt-2 text-[20px] tabular-nums text-[var(--color-accent)]">
