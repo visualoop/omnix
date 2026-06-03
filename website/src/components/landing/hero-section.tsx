@@ -5,22 +5,35 @@ import Link from 'next/link'
 import { Icon } from '@/components/icons'
 import { Button } from '@/components/ui/button'
 import { PosPreview } from './pos-preview'
+import { PayloadImage, type PayloadMedia } from '@/components/marketing/payload-image'
+
+export interface HeroContent {
+  eyebrow?: string | null
+  headline?: string | null
+  subheadline?: string | null
+  primaryCtaLabel?: string | null
+  primaryCtaHref?: string | null
+  screenshot?: PayloadMedia | null
+}
 
 /**
- * Editorial hero — Linear/Cereal composition.
+ * Editorial hero. Content is CMS-editable via the `landing-page` global
+ * (owner edits headline, lede, CTA + uploads a hero screenshot in /admin).
+ * Falls back to the shipped defaults when a field is empty.
  *
- * Composition:
- *   eyebrow pill (changelog link)
- *   headline · 2 lines · italic word emphasis on line 2
- *   lede · 1 paragraph · max-w 620px
- *   ONE primary CTA · "Start free trial"
- *   mono caption · system req + price hint
- *   PosPreview window · max-w 1080
- *
- * No 3-card pricing strip above the fold (moved to its own section later).
- * No secondary CTA, no logo cloud, no "Trusted by" — confidence shows through restraint.
+ * The uploaded screenshot renders inside BrowserFrame (Windows Chrome chrome);
+ * when no screenshot is set we fall back to the hand-built PosPreview.
  */
-export function HeroSection() {
+export function HeroSection({ content }: { content?: HeroContent }) {
+  const eyebrow = content?.eyebrow?.trim() || 'Banking & Recurring Invoices shipped'
+  const headline = content?.headline?.trim()
+  const subheadline =
+    content?.subheadline?.trim() ||
+    'Omnix is the desktop ERP built for Kenyan owner-operators. POS, inventory, banking, payroll, KRA receipts — one Windows app you download, run offline, and own. One payment, no subscription.'
+  const ctaLabel = content?.primaryCtaLabel?.trim() || 'Start free trial'
+  const ctaHref = content?.primaryCtaHref?.trim() || '/signup'
+  const screenshot = content?.screenshot ?? null
+
   return (
     <section className="relative overflow-hidden pt-28 pb-20 sm:pt-36 lg:pt-44 lg:pb-28">
       {/* Atmosphere — soft warm pool of accent behind the headline */}
@@ -38,14 +51,14 @@ export function HeroSection() {
           className="mb-10 flex justify-center"
         >
           <Link
-            href="/changelog#v0.2.0"
+            href="/changelog"
             className="group inline-flex items-center gap-3 rounded-full border border-[var(--color-border-strong)] bg-[var(--color-surface)]/70 py-1.5 pr-4 pl-1.5 backdrop-blur-md transition-colors hover:border-[var(--color-accent)]"
           >
             <span className="rounded-full bg-[var(--color-accent)] px-2.5 py-0.5 font-[family-name:var(--font-mono)] text-[10px] font-semibold uppercase tracking-[0.18em] text-[var(--color-accent-foreground)]">
-              v0.2.0
+              New
             </span>
             <span className="font-[family-name:var(--font-ui)] text-[12px] font-medium text-[var(--color-fg-muted)] transition-colors group-hover:text-[var(--color-fg)]">
-              Banking & Recurring Invoices shipped
+              {eyebrow}
             </span>
             <Icon.ArrowRight
               className="size-3 text-[var(--color-fg-subtle)] transition-transform group-hover:translate-x-0.5 group-hover:text-[var(--color-fg)]"
@@ -61,9 +74,15 @@ export function HeroSection() {
           transition={{ duration: 0.6, delay: 0.05 }}
           className="headline-hero mx-auto max-w-[14ch] text-balance text-center"
         >
-          Run your duka.
-          <br />
-          <em>Pay yourself.</em>
+          {headline ? (
+            headline
+          ) : (
+            <>
+              Run your duka.
+              <br />
+              <em>Pay yourself.</em>
+            </>
+          )}
         </motion.h1>
 
         {/* Lede — single paragraph, no proof bullets */}
@@ -74,9 +93,7 @@ export function HeroSection() {
           className="lede mx-auto mt-9 text-center text-balance"
           style={{ maxWidth: '620px' }}
         >
-          Omnix is the desktop ERP built for Kenyan owner-operators. POS, inventory, banking,
-          payroll, KRA receipts — one Windows app you download, run offline, and own. One
-          payment, no subscription.
+          {subheadline}
         </motion.p>
 
         {/* Primary CTA — single, centred. No competing secondary. */}
@@ -87,8 +104,8 @@ export function HeroSection() {
           className="mt-11 flex justify-center"
         >
           <Button asChild size="xl" className="ring-inset-soft">
-            <Link href="/signup" className="gap-2">
-              Start free trial
+            <Link href={ctaHref} className="gap-2">
+              {ctaLabel}
               <Icon.ArrowRight className="size-4" weight="bold" />
             </Link>
           </Button>
@@ -108,9 +125,13 @@ export function HeroSection() {
           <span className="text-[var(--color-fg-muted)]">KES 100,000 once</span>
         </motion.p>
 
-        {/* Product preview — hand-built window, max-w 1080 */}
+        {/* Product preview — CMS screenshot in BrowserFrame, or the hand-built window */}
         <div className="mx-auto mt-24 max-w-[1080px]">
-          <PosPreview />
+          {screenshot?.url ? (
+            <PayloadImage media={screenshot} url="omnix.co.ke/dashboard" />
+          ) : (
+            <PosPreview />
+          )}
         </div>
       </div>
     </section>

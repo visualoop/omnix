@@ -29,10 +29,34 @@ import { ThreeQuotesSection } from '@/components/landing/three-quotes-section'
  * 10. FAQ                 — accordion, plus glyph rotates to ×
  * 11. Closing CTA         — full-bleed dark band, italic 64px, one CTA + WhatsApp
  */
-export default function HomePage() {
+import { getPayload } from 'payload'
+import config from '@/payload.config'
+
+export const revalidate = 60
+
+export default async function HomePage() {
+  let heroContent: Parameters<typeof HeroSection>[0]["content"] = undefined
+  try {
+    const payload = await getPayload({ config: await config })
+    const lp = (await payload.findGlobal({ slug: 'landing-page', depth: 1 })) as unknown as {
+      hero?: {
+        eyebrow?: string
+        headline?: string
+        subheadline?: string
+        primaryCtaLabel?: string
+        primaryCtaHref?: string
+        screenshot?: { url?: string; width?: number; height?: number; alt?: string } | null
+      }
+    }
+    heroContent = lp?.hero
+  } catch {
+    // Payload unavailable (cold boot / build) — fall back to shipped defaults
+    heroContent = undefined
+  }
+
   return (
     <>
-      <HeroSection />
+      <HeroSection content={heroContent} />
       <FounderNoteSection />
       <ModulesRowsSection />
       <ReceiptProofSection />
