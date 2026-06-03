@@ -254,7 +254,7 @@ describe('paystack webhook: hardening', () => {
       // share state with the first DB so every call sees the same license/payment row
       req.payload.db.licenses[0] = sharedReq.payload.db.licenses[0]
       req.payload.db.payments[0] = sharedReq.payload.db.payments[0]
-      const res = await (handler as (r: typeof req) => Promise<Response>)(req)
+      const res = await handler(req as never)
       expect(res.status).toBe(200)
     }
 
