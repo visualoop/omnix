@@ -77,12 +77,18 @@ export default async function BuyEntryPage({
 
   // No license yet — auto-issue a trial seat (the customer signup hook
   // usually does this, but if for some reason it didn't, do it here).
+  const validModules = ['core', 'dawa', 'retail', 'hardware', 'hospitality'] as const
+  type ValidModule = (typeof validModules)[number]
+  const modules: ValidModule[] = mod && validModules.includes(mod as ValidModule)
+    ? (['core', mod] as ValidModule[])
+    : (['core', 'dawa', 'retail'] as ValidModule[])
+
   const created = (await payload.create({
     collection: 'licenses',
     data: {
       customer: user.id as never,
       tier: 'trial',
-      modules: mod ? ['core', mod] : ['core', 'dawa', 'retail'],
+      modules,
       status: 'trial',
       maxBranches: 5,
       maxMachines: 10,
