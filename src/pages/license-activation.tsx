@@ -27,12 +27,12 @@ const TRIAL_MODULES = [
 ] as const;
 
 const FEATURES = [
-  { icon: Receipt, label: "Point of Sale", text: "Fast checkout with M-Pesa, card, and cash" },
-  { icon: Package, label: "Inventory & stock", text: "Batches, expiry, stock takes, multi-branch transfers" },
-  { icon: FileCheck, label: "eTIMS compliant", text: "KRA invoicing built in. No third-party plugin" },
-  { icon: Shield, label: "Insurance claims", text: "NHIF / SHA workflow with payer reconciliation" },
-  { icon: Wifi, label: "LAN multi-device", text: "Pair tablets and second tills offline" },
-  { icon: BarChart3, label: "Pro reports", text: "P&L, Z-report, inventory valuation, margins" },
+  { icon: Receipt,   label: "Point of Sale",     text: "Fast checkout with M-Pesa, card, and cash",            tint: "from-emerald-500/30 to-emerald-500/5",  glow: "text-emerald-400" },
+  { icon: Package,   label: "Inventory & stock", text: "Batches, expiry, stock takes, multi-branch transfers", tint: "from-blue-500/30 to-blue-500/5",        glow: "text-blue-400" },
+  { icon: FileCheck, label: "eTIMS compliant",   text: "KRA invoicing built in. No third-party plugin",        tint: "from-amber-500/30 to-amber-500/5",      glow: "text-amber-400" },
+  { icon: Shield,    label: "Insurance claims",  text: "NHIF / SHA workflow with payer reconciliation",        tint: "from-rose-500/30 to-rose-500/5",        glow: "text-rose-400" },
+  { icon: Wifi,      label: "LAN multi-device",  text: "Pair tablets and second tills offline",                tint: "from-violet-500/30 to-violet-500/5",    glow: "text-violet-400" },
+  { icon: BarChart3, label: "Pro reports",       text: "P&L, Z-report, inventory valuation, margins",          tint: "from-cyan-500/30 to-cyan-500/5",        glow: "text-cyan-400" },
 ];
 
 export function LicenseActivationPage({ onActivated }: Props) {
@@ -156,8 +156,8 @@ export function LicenseActivationPage({ onActivated }: Props) {
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               {FEATURES.map((f) => (
                 <div key={f.label} className="flex items-start gap-3">
-                  <div className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-primary/12 text-primary ring-1 ring-inset ring-primary/15">
-                    <f.icon className="h-4 w-4" />
+                  <div className={`relative grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-gradient-to-br ${f.tint} ring-1 ring-inset ring-white/5 shadow-[inset_0_1px_0_rgb(255_255_255_/_0.08)]`}>
+                    <f.icon className={`h-[18px] w-[18px] ${f.glow}`} strokeWidth={2.25} />
                   </div>
                   <div className="min-w-0">
                     <div className="text-[13px] font-medium leading-tight">{f.label}</div>

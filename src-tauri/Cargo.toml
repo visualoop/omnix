@@ -1,6 +1,6 @@
 [package]
 name = "omnix"
-version = "0.2.16"
+version = "0.2.17"
 description = "Omnix — The desktop ERP for Kenyan businesses"
 authors = ["Omnix"]
 edition = "2021"
@@ -39,8 +39,10 @@ dirs = "5"
 # Licensing
 rsa = { version = "0.9", features = ["sha2"] }
 sha2 = "0.10"
-base64 = "0.22"
+aes-gcm = "0.10"
+flate2 = "1"
 hex = "0.4"
+base64 = "0.22"
 sysinfo = "0.32"
 machine-uid = "0.5"
 
