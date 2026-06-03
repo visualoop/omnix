@@ -376,6 +376,7 @@ fn run_inner() {
             commands::cloud_backup_clear_session_key,
             commands::cloud_backup_has_session_key,
             commands::cloud_backup_auto_upload,
+            commands::apply_cloud_restore,
             commands::start_lan_server,
             commands::stop_lan_server,
             commands::lan_server_status,

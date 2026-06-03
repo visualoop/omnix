@@ -1,0 +1,66 @@
+name: Desktop Tests
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'src/**'
+      - 'src-tauri/src/**'
+      - 'src-tauri/Cargo.*'
+      - 'tests/**'
+      - 'package.json'
+      - 'vitest.config.ts'
+      - '.github/workflows/desktop-tests.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'src/**'
+      - 'src-tauri/src/**'
+      - 'tests/**'
+
+concurrency:
+  group: desktop-tests-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  vitest:
+    name: vitest (frontend hooks + utils)
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+      - name: Install
+        run: pnpm install --frozen-lockfile --ignore-workspace
+      - name: TypeScript check
+        run: pnpm exec tsc --noEmit
+      - name: Vitest
+        run: pnpm test
+
+  cargo-test:
+    name: cargo test (Rust commands)
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Linux deps for tauri build target
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libgtk-3-dev libsoup-3.0-dev libjavascriptcoregtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev pkg-config
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Cache cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            src-tauri/target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('src-tauri/Cargo.lock') }}
+      - name: cargo test
+        working-directory: src-tauri
+        run: cargo test --lib

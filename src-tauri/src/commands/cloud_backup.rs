@@ -423,6 +423,43 @@ mod tests {
         assert_eq!(key_hint(&k).len(), 8);
         assert!(key_hint(&k).chars().all(|c| c.is_ascii_hexdigit()));
     }
+
+    #[test]
+    fn derive_key_is_deterministic_per_password_and_machine() {
+        let a = derive_key("hunter2", "MACHINE-X");
+        let b = derive_key("hunter2", "MACHINE-X");
+        assert_eq!(a, b);
+    }
+
+    #[test]
+    fn derive_key_changes_with_machine_id() {
+        let a = derive_key("hunter2", "MACHINE-X");
+        let b = derive_key("hunter2", "MACHINE-Y");
+        assert_ne!(a, b);
+    }
+
+    #[test]
+    fn derive_key_changes_with_password() {
+        let a = derive_key("hunter2", "M");
+        let b = derive_key("hunter3", "M");
+        assert_ne!(a, b);
+    }
+
+    #[test]
+    fn cloud_backup_session_default_has_no_key() {
+        let sess = CloudBackupSession::default();
+        assert!(sess.key.lock().unwrap().is_none());
+    }
+
+    #[test]
+    fn cloud_backup_session_set_then_clear() {
+        let sess = CloudBackupSession::default();
+        let k = derive_key("hunter2", "M");
+        *sess.key.lock().unwrap() = Some(k);
+        assert!(sess.key.lock().unwrap().is_some());
+        *sess.key.lock().unwrap() = None;
+        assert!(sess.key.lock().unwrap().is_none());
+    }
 }
 
 /* ─── Auto-backup state + commands ───────────────────────────────────────
@@ -433,6 +470,53 @@ mod tests {
    on sign-out. The scheduler then uploads silently in the background as
    long as the app is open and signed-in.
 */
+
+/// Apply a previously-restored staging file over the live DB.
+/// Takes a safety snapshot of the current DB first — that snapshot lives
+/// in the regular backups dir as `pre-cloud-restore-<ts>.db` so the user
+/// can roll forward if anything goes wrong.
+///
+/// `staging_path` is the absolute path returned by `cloud_backup_restore`.
+/// Returns the path of the safety snapshot we just created.
+#[tauri::command]
+pub fn apply_cloud_restore(
+    app: tauri::AppHandle,
+    staging_path: String,
+) -> Result<String, String> {
+    let staging = std::path::PathBuf::from(&staging_path);
+    if !staging.exists() {
+        return Err(format!("Staging file not found: {}", staging_path));
+    }
+    // Defence: only allow files inside the app's tmp/ dir
+    let tmp = temp_dir(&app)?;
+    let canon_staging = staging.canonicalize().map_err(|e| format!("canon staging: {}", e))?;
+    let canon_tmp = tmp.canonicalize().map_err(|e| format!("canon tmp: {}", e))?;
+    if !canon_staging.starts_with(&canon_tmp) {
+        return Err("Staging path is outside the temp directory".to_string());
+    }
+
+    // Take a safety snapshot of current DB into the regular backups dir
+    let live = db_path(&app)?;
+    let backups = app
+        .path()
+        .app_data_dir()
+        .map_err(|e| e.to_string())?
+        .join("backups");
+    if !backups.exists() {
+        fs::create_dir_all(&backups).map_err(|e| e.to_string())?;
+    }
+    let safety = backups.join(format!("pre-cloud-restore-{}.db", now_iso()));
+    if live.exists() {
+        fs::copy(&live, &safety).map_err(|e| format!("Safety snapshot failed: {}", e))?;
+    }
+
+    // Replace live DB with the staging file
+    fs::copy(&staging, &live).map_err(|e| format!("Restore copy failed: {}", e))?;
+    // Clean up the staging file — the data has been applied
+    let _ = fs::remove_file(&staging);
+
+    Ok(safety.to_string_lossy().to_string())
+}
 
 #[derive(Default)]
 pub struct CloudBackupSession {

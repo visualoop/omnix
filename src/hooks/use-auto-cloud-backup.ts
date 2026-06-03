@@ -33,10 +33,12 @@ export async function getScheduleConfig(): Promise<ScheduleConfig> {
     [`${SETTINGS_KEY_PREFIX}%`],
   );
   const map = new Map(rows.map((r) => [r.key, r.value]));
+  const intRaw = parseInt(map.get(`${SETTINGS_KEY_PREFIX}interval_hours`) ?? "24", 10);
+  const lastRaw = parseInt(map.get(`${SETTINGS_KEY_PREFIX}last_run`) ?? "0", 10);
   return {
     enabled: map.get(`${SETTINGS_KEY_PREFIX}enabled`) === "1",
-    intervalHours: parseInt(map.get(`${SETTINGS_KEY_PREFIX}interval_hours`) ?? "24", 10),
-    lastRun: parseInt(map.get(`${SETTINGS_KEY_PREFIX}last_run`) ?? "0", 10),
+    intervalHours: Number.isFinite(intRaw) && intRaw > 0 ? intRaw : 24,
+    lastRun: Number.isFinite(lastRaw) && lastRaw >= 0 ? lastRaw : 0,
   };
 }
 
@@ -94,8 +96,24 @@ export function useAutoCloudBackup() {
             desktopVersion: __APP_VERSION__,
           });
           await setScheduleConfig({ lastRun: Date.now() });
+          // Quiet success — sonner toast for transparency without being noisy.
+          import("sonner").then(({ toast }) =>
+            toast.success("Cloud backup uploaded", { duration: 4000 }),
+          );
         } catch (e) {
-          // Silent failure for auto-backup; surfaced via Settings page.
+          // Loud failure — owner needs to know if backups are silently failing.
+          const msg = String(e);
+          import("sonner").then(({ toast }) => {
+            if (msg.includes("no-key")) return; // benign — key just isn't loaded
+            toast.error("Auto cloud-backup failed", {
+              description: msg.includes("402")
+                ? "Cloud backup not active on your licence."
+                : msg.includes("403")
+                  ? "Cloud backup is disabled site-wide."
+                  : msg.slice(0, 120),
+              duration: 8000,
+            });
+          });
           // eslint-disable-next-line no-console
           console.warn("auto-backup failed:", e);
         }

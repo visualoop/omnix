@@ -161,14 +161,13 @@ export function CloudBackupPage() {
         backupId: row.id,
         password,
       });
-      // Hand off to the local restore_backup which copies over omnix.db.
-      // It expects a filename relative to the backups dir, but our staging
-      // file is absolute — the cloud restore writes it under app_data/tmp/.
-      // We need a follow-up command to copy from arbitrary path; for now we
-      // tell the user we've staged the restore + ask them to relaunch.
-      toast.success("Backup decrypted and staged. Restart Omnix to apply.", {
-        description: stagingFile,
-        duration: 10_000,
+      // Apply the staged file over the live DB (with safety snapshot).
+      const safetyPath = await invoke<string>("apply_cloud_restore", {
+        stagingPath: stagingFile,
+      });
+      toast.success("Restore applied. Restart Omnix to load the restored database.", {
+        description: `Safety snapshot: ${safetyPath.split("/").pop()}`,
+        duration: 12_000,
       });
     } catch (e) {
       const msg = String(e);
