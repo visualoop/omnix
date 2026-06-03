@@ -532,3 +532,16 @@ export async function startTrial(moduleId: string = "dawa"): Promise<TrialState>
   );
   return getTrialState();
 }
+
+
+/**
+ * Read the machine bearer token from local SQLite (set by activateLicense).
+ * Used by cloud-backup endpoints + any other server-bound machine API call.
+ * Returns null when the licence is offline-only (signed key without online activation).
+ */
+export async function getMachineAuthToken(): Promise<string | null> {
+  const rows = await query<{ activation_token: string | null }>(
+    `SELECT activation_token FROM license WHERE id = 'active' LIMIT 1`,
+  );
+  return rows[0]?.activation_token ?? null;
+}

@@ -16,6 +16,7 @@ import { useEffect, useRef } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { query, execute } from "@/lib/db";
 import { useAuthStore } from "@/stores/auth";
+import { getMachineAuthToken } from "@/services/license";
 
 const TICK_MS = 60_000; // check every minute
 const SETTINGS_KEY_PREFIX = "cloud_backup_auto.";
@@ -85,7 +86,7 @@ export function useAutoCloudBackup() {
         // Verify session key + auth token are present
         const hasKey = await invoke<boolean>("cloud_backup_has_session_key");
         if (!hasKey) return;
-        const authToken = localStorage.getItem("omnix-machine-auth-token") ?? "";
+        const authToken = await getMachineAuthToken();
         if (!authToken) return;
 
         running.current = true;

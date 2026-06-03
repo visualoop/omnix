@@ -22,6 +22,7 @@ import { Switch } from "@/components/ui/switch";
 import { confirm, prompt } from "@/components/ui/confirm-dialog";
 import { toast } from "sonner";
 import { getScheduleConfig, setScheduleConfig, nextRunAt } from "@/hooks/use-auto-cloud-backup";
+import { getMachineAuthToken } from "@/services/license";
 
 interface CloudBackupRow {
   id: string;
@@ -69,9 +70,8 @@ export function CloudBackupPage() {
   useEffect(() => {
     (async () => {
       try {
-        // Stored by licenses-activate handler. Surfaced by license service.
-        const stored = localStorage.getItem("omnix-machine-auth-token") ?? "";
-        setAuthToken(stored);
+        const token = (await getMachineAuthToken()) ?? "";
+        setAuthToken(token);
       } catch {
         setAuthToken("");
       }
