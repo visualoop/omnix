@@ -52,13 +52,13 @@ const fakeFind = (col: string, store: { releases: Release[]; licenses: License[]
     limit?: number
     and?: Array<Record<string, { equals?: unknown; less_than_equal?: number }>>
   } & { and?: Array<Record<string, { equals?: unknown; less_than_equal?: number }>> }) => {
-    const data = (col === 'releases' ? store.releases : col === 'licenses' ? store.licenses : []) as Array<Record<string, unknown>>
+    const data = (col === 'releases' ? store.releases : col === 'licenses' ? store.licenses : []) as unknown as Array<Record<string, unknown>>
     const conditions: Array<[string, { equals?: unknown; less_than_equal?: number }]> = []
     if (where) {
       if (where.and && Array.isArray(where.and)) {
-        for (const c of where.and) for (const [k, v] of Object.entries(c)) conditions.push([k, v])
+        for (const c of where.and) for (const [k, v] of Object.entries(c)) conditions.push([k, v as { equals?: unknown; less_than_equal?: number }])
       } else {
-        for (const [k, v] of Object.entries(where)) conditions.push([k, v])
+        for (const [k, v] of Object.entries(where)) conditions.push([k, v as { equals?: unknown; less_than_equal?: number }])
       }
     }
     let docs = data.filter((d) =>

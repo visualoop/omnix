@@ -95,7 +95,7 @@ const buildPayload = (db: Db) => {
       let docs = (db[collection] as Array<Record<string, unknown>>) ?? []
       if (where) {
         if ('and' in where && Array.isArray((where as { and?: unknown[] }).and)) {
-          for (const c of (where as { and: Array<Record<string, { equals: unknown }>> }).and) {
+          for (const c of (where as unknown as { and: Array<Record<string, { equals: unknown }>> }).and) {
             docs = docs.filter((d) => matches(d, c))
           }
         } else {
