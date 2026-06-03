@@ -269,4 +269,88 @@ describe('customers/me', () => {
     expect(c.businessName).toBe('New Shop')
     expect(c.email).toBe('c1@example.com') // unchanged
   })
+
+  it('drops every escalation-prone field silently', async () => {
+    const db = seed()
+    const original = { ...db.customers[0] }
+    const req = buildReq(
+      db,
+      {
+        // Allowed — should land
+        fullName: 'New Name',
+        // Blocked — should be silently dropped
+        email: 'attacker@evil.com',
+        status: 'banned',
+        role: 'owner',
+        collection: 'users',
+        id: 'forged-id',
+        password: 'hijack',
+        createdAt: '2020-01-01',
+        verified: true,
+        loginAttempts: 0,
+      },
+      { user: { collection: 'customers', id: 'c1' } },
+    )
+    const res = await customersMeEndpoint.handler(req)
+    expect(res.status).toBe(200)
+    const c = db.customers[0]
+    expect(c.fullName).toBe('New Name')
+    expect(c.email).toBe(original.email)
+    expect(c.status ?? null).toBe(original.status ?? null)
+    expect((c as Record<string, unknown>).role).toBeUndefined()
+    expect(c.id).toBe('c1')
+    expect((c as Record<string, unknown>).password).toBeUndefined()
+  })
+
+  it('unknown fields are silently dropped (forward-compat)', async () => {
+    const db = seed()
+    const req = buildReq(
+      db,
+      { phone: '+254700000000', futureField: 'something', anotherUnknown: 42 },
+      { user: { collection: 'customers', id: 'c1' } },
+    )
+    const res = await customersMeEndpoint.handler(req)
+    expect(res.status).toBe(200)
+    const c = db.customers[0] as Record<string, unknown>
+    expect(c.phone).toBe('+254700000000')
+    expect(c.futureField).toBeUndefined()
+    expect(c.anotherUnknown).toBeUndefined()
+  })
+
+  it('allows ALL whitelisted fields', async () => {
+    const db = seed()
+    const allowed = {
+      fullName: 'Jane',
+      businessName: 'Janes shop',
+      phone: '+254700000001',
+      whatsapp: '+254700000002',
+      kraPin: 'A012345678X',
+      county: 'Nairobi',
+      town: 'Westlands',
+      physicalAddress: 'Plot 1',
+      businessType: 'duka',
+      employeeCount: 5,
+      newsletterOptIn: true,
+    }
+    const req = buildReq(db, allowed, { user: { collection: 'customers', id: 'c1' } })
+    const res = await customersMeEndpoint.handler(req)
+    expect(res.status).toBe(200)
+    const c = db.customers[0] as Record<string, unknown>
+    for (const [k, v] of Object.entries(allowed)) {
+      expect(c[k]).toBe(v)
+    }
+  })
+
+  it('rejects empty body (400)', async () => {
+    const db = seed()
+    const req = {
+      payload: buildPayload(db),
+      headers: headers({}),
+      json: async () => null,
+      text: async () => 'null',
+      user: { collection: 'customers', id: 'c1' },
+    } as unknown as Parameters<typeof customersMeEndpoint.handler>[0]
+    const res = await customersMeEndpoint.handler(req)
+    expect(res.status).toBe(400)
+  })
 })

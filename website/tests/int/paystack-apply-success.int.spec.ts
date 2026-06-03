@@ -226,3 +226,47 @@ describe('applyPaymentSuccess: edge cases', () => {
     expect(payload.db.licenses[0].status).toBe('pending_payment')
   })
 })
+
+describe('applyPaymentSuccess: extra_branch / extra_machine purposes', () => {
+  it('extra_branch payment marks success but does NOT extend any license dates', async () => {
+    const before = Date.now()
+    payload = makeFakePayload({
+      payments: [basePayment({ purpose: 'extra_branch', amount: 15_000 })],
+      licenses: [baseLicense({ status: 'active', maintenanceUntil: '2027-01-01T00:00:00Z' })],
+    })
+    await applyPaymentSuccess(payload as never, 'OMNIX-TEST-1', paystackData())
+    expect(payload.db.payments[0].status).toBe('success')
+    // License left unchanged
+    expect(payload.db.licenses[0].maintenanceUntil).toBe('2027-01-01T00:00:00Z')
+    expect(payload.db.licenses[0].status).toBe('active')
+    // sanity: time didn't reset majorVersionCap
+    expect(payload.db.licenses[0].majorVersionCap).toBe(1)
+    expect(Date.now()).toBeGreaterThanOrEqual(before)
+  })
+
+  it('extra_machine payment marks success but does NOT extend any license dates', async () => {
+    payload = makeFakePayload({
+      payments: [basePayment({ purpose: 'extra_machine', amount: 5_000 })],
+      licenses: [baseLicense({ status: 'active', maintenanceUntil: '2027-06-01T00:00:00Z' })],
+    })
+    await applyPaymentSuccess(payload as never, 'OMNIX-TEST-1', paystackData())
+    expect(payload.db.payments[0].status).toBe('success')
+    expect(payload.db.licenses[0].maintenanceUntil).toBe('2027-06-01T00:00:00Z')
+  })
+
+  it('M-Pesa fees converted from kobo to KES on every purpose', async () => {
+    for (const purpose of ['license_fee', 'maintenance_renewal', 'extra_branch', 'extra_machine'] as const) {
+      payload = makeFakePayload({
+        payments: [basePayment({ purpose })],
+        licenses: [baseLicense()],
+      })
+      await applyPaymentSuccess(
+        payload as never,
+        'OMNIX-TEST-1',
+        paystackData({ fees: 350_000, channel: 'mobile_money' }),
+      )
+      expect(payload.db.payments[0].channel).toBe('mpesa')
+      expect(payload.db.payments[0].paystackFees).toBe(3500) // 350_000 / 100
+    }
+  })
+})

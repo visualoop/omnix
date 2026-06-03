@@ -240,6 +240,76 @@ describe('releases-latest: gates', () => {
     // 1.0.0 was filtered out; latest matching majorVersion <= 0 is 0.2.14
     expect(body.version).toBe('0.2.14')
   })
+
+  it('lapsed license treated as trial — paid-only release blocked', async () => {
+    const store = {
+      releases: [seedReleases()[2]],
+      licenses: [{ id: 'l1', licenseKey: 'LAPSED', status: 'lapsed' }],
+    }
+    const req = {
+      url: 'http://localhost/api/releases-latest?license=LAPSED',
+      payload: {
+        find: vi.fn(async ({ collection, ...rest }: { collection: string; [k: string]: unknown }) =>
+          fakeFind(collection, store)(rest as never),
+        ),
+      },
+      headers: headers({}),
+    } as never
+    const res = await handlerOf(releasesLatestEndpoint)(req)
+    expect(res.status).toBe(402)
+  })
+
+  it('alpha channel — empty when no alpha release published', async () => {
+    const store = { releases: seedReleases(), licenses: [] }
+    const req = {
+      url: 'http://localhost/api/releases-latest?channel=alpha',
+      payload: {
+        find: vi.fn(async ({ collection, ...rest }: { collection: string; [k: string]: unknown }) =>
+          fakeFind(collection, store)(rest as never),
+        ),
+      },
+      headers: headers({}),
+    } as never
+    const res = await handlerOf(releasesLatestEndpoint)(req)
+    expect(res.status).toBe(404)
+  })
+
+  it('unknown license param falls back to default major cap (99)', async () => {
+    const store = { releases: seedReleases(), licenses: [] }
+    const req = {
+      url: 'http://localhost/api/releases-latest?license=DOES-NOT-EXIST',
+      payload: {
+        find: vi.fn(async ({ collection, ...rest }: { collection: string; [k: string]: unknown }) =>
+          fakeFind(collection, store)(rest as never),
+        ),
+      },
+      headers: headers({}),
+    } as never
+    const res = await handlerOf(releasesLatestEndpoint)(req)
+    expect(res.status).toBe(200)
+    const body = await res.json()
+    // Default cap = 99 → returns latest (1.0.0)
+    expect(body.version).toBe('1.0.0')
+  })
+
+  it('caller_license_status echoed in response', async () => {
+    const store = {
+      releases: [seedReleases()[0]],
+      licenses: [{ id: 'l1', licenseKey: 'ACT', status: 'active' }],
+    }
+    const req = {
+      url: 'http://localhost/api/releases-latest?license=ACT',
+      payload: {
+        find: vi.fn(async ({ collection, ...rest }: { collection: string; [k: string]: unknown }) =>
+          fakeFind(collection, store)(rest as never),
+        ),
+      },
+      headers: headers({}),
+    } as never
+    const res = await handlerOf(releasesLatestEndpoint)(req)
+    const body = await res.json()
+    expect(body.caller_license_status).toBe('active')
+  })
 })
 
 /* ─── /api/releases-sync ────────────────────────────────────────────── */
