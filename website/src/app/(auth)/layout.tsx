@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { BRAND_NAME } from '@/lib/brand'
+import '../(frontend)/globals.css'
 
 /**
  * Layout for /signup, /login, /forgot-password, /verify-email/[token].

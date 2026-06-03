@@ -1,5 +1,5 @@
 import type { CollectionConfig } from 'payload'
-import { ownerOnly } from '../access'
+import { allowSystem, ownerOnly } from '../access'
 
 /**
  * Payments — every Paystack transaction.
@@ -20,7 +20,7 @@ export const Payments: CollectionConfig = {
       }
       return false
     },
-    create: () => true, // webhook + dashboard purchase flow both create here
+    create: ({ req }) => allowSystem(req) || (req.user?.collection === 'users' && (req.user as unknown as { role?: string }).role === 'owner'), // server endpoints use overrideAccess; public create is blocked
     update: ownerOnly,
     delete: ownerOnly,
   },
