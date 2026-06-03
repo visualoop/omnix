@@ -27,6 +27,12 @@ import { telemetryHeartbeatEndpoint } from './telemetry-heartbeat'
 import { customersMeEndpoint } from './customers-me'
 import { supportTicketsReplyEndpoint } from './support-tickets-reply'
 import { paymentsReceiptEndpoint } from './payments-receipt'
+import {
+  cloudBackupPresignEndpoint,
+  cloudBackupFinalizeEndpoint,
+  cloudBackupListEndpoint,
+  cloudBackupDownloadEndpoint,
+} from './cloud-backups'
 
 export const customEndpoints: Endpoint[] = [
   releasesPostEndpoint,
@@ -45,4 +51,8 @@ export const customEndpoints: Endpoint[] = [
   customersMeEndpoint,
   supportTicketsReplyEndpoint,
   paymentsReceiptEndpoint,
+  cloudBackupPresignEndpoint,
+  cloudBackupFinalizeEndpoint,
+  cloudBackupListEndpoint,
+  cloudBackupDownloadEndpoint,
 ]

@@ -24,6 +24,7 @@ import { Pages } from './collections/Pages'
 import { BlogPosts } from './collections/BlogPosts'
 import { Modules } from './collections/Modules'
 import { Media } from './collections/Media'
+import { CloudBackups } from './collections/CloudBackups'
 
 import { Settings } from './globals/Settings'
 import { Pricing } from './globals/Pricing'
@@ -62,6 +63,7 @@ export default buildConfig({
     BlogPosts,
     Modules,
     Media,
+    CloudBackups,
   ],
   globals: [Settings, Pricing, LandingPage],
   editor: lexicalEditor(),

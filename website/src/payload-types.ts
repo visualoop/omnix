@@ -81,6 +81,7 @@ export interface Config {
     'blog-posts': BlogPost;
     modules: Module;
     media: Media;
+    'cloud-backups': CloudBackup;
     'payload-kv': PayloadKv;
     'payload-locked-documents': PayloadLockedDocument;
     'payload-preferences': PayloadPreference;
@@ -101,6 +102,7 @@ export interface Config {
     'blog-posts': BlogPostsSelect<false> | BlogPostsSelect<true>;
     modules: ModulesSelect<false> | ModulesSelect<true>;
     media: MediaSelect<false> | MediaSelect<true>;
+    'cloud-backups': CloudBackupsSelect<false> | CloudBackupsSelect<true>;
     'payload-kv': PayloadKvSelect<false> | PayloadKvSelect<true>;
     'payload-locked-documents': PayloadLockedDocumentsSelect<false> | PayloadLockedDocumentsSelect<true>;
     'payload-preferences': PayloadPreferencesSelect<false> | PayloadPreferencesSelect<true>;
@@ -490,9 +492,9 @@ export interface Activation {
   license?: (number | null) | License;
   machine?: (number | null) | Machine;
   /**
-   * Hardware fingerprint presented by the client.
+   * Hardware fingerprint string presented by the client.
    */
-  machineId?: string | null;
+  fingerprint?: string | null;
   event: 'activate' | 'validate' | 'rebind' | 'deactivate';
   outcome: 'success' | 'rejected_seats' | 'rejected_cooldown' | 'rejected_invalid' | 'rejected_revoked';
   /**
@@ -609,7 +611,6 @@ export interface Media {
   id: number;
   alt: string;
   caption?: string | null;
-  prefix?: string | null;
   updatedAt: string;
   createdAt: string;
   url?: string | null;
@@ -1000,6 +1001,68 @@ export interface Module {
   createdAt: string;
 }
 /**
+ * Encrypted SQLite backups uploaded by paid customers.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "cloud-backups".
+ */
+export interface CloudBackup {
+  id: number;
+  license: number | License;
+  customer: number | Customer;
+  /**
+   * Hardware fingerprint of the device that uploaded.
+   */
+  machineId: string;
+  /**
+   * Linked Machine record (if registered).
+   */
+  machine?: (number | null) | Machine;
+  /**
+   * R2 object key, e.g. backups/<licenseId>/<machineId>/<isoTs>-<id>.sqlite.gz.enc
+   */
+  objectKey: string;
+  /**
+   * R2 bucket name. Defaults to omnix-backups.
+   */
+  bucket?: string | null;
+  /**
+   * Final encrypted+gzipped size in bytes. Set on finalize.
+   */
+  sizeBytes?: number | null;
+  /**
+   * SHA-256 of the encrypted blob. Verified on restore.
+   */
+  sha256?: string | null;
+  /**
+   * Hint for which encryption key the client used (e.g. first 8 chars of HMAC). Helps customers identify which password to use on restore. Never the key itself.
+   */
+  clientKeyHint?: string | null;
+  status?: ('pending' | 'uploaded' | 'pruned' | 'quarantined') | null;
+  /**
+   * When this backup is eligible for pruning. Set on upload from Settings.cloudBackupRetentionDays.
+   */
+  pruneAfter?: string | null;
+  /**
+   * Timestamp the desktop confirmed upload via /finalize.
+   */
+  finalizedAt?: string | null;
+  /**
+   * Omnix version on the device that uploaded.
+   */
+  desktopVersion?: string | null;
+  /**
+   * Rough row count from main tables, optional.
+   */
+  sourceRows?: number | null;
+  /**
+   * Plaintext SQLite size, optional.
+   */
+  sourceSizeBytes?: number | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "payload-kv".
  */
@@ -1074,6 +1137,10 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'media';
         value: number | Media;
+      } | null)
+    | ({
+        relationTo: 'cloud-backups';
+        value: number | CloudBackup;
       } | null);
   globalSlug?: string | null;
   user:
@@ -1280,7 +1347,7 @@ export interface MachinesSelect<T extends boolean = true> {
 export interface ActivationsSelect<T extends boolean = true> {
   license?: T;
   machine?: T;
-  machineId?: T;
+  fingerprint?: T;
   event?: T;
   outcome?: T;
   detail?: T;
@@ -1533,7 +1600,6 @@ export interface ModulesSelect<T extends boolean = true> {
 export interface MediaSelect<T extends boolean = true> {
   alt?: T;
   caption?: T;
-  prefix?: T;
   updatedAt?: T;
   createdAt?: T;
   url?: T;
@@ -1589,6 +1655,29 @@ export interface MediaSelect<T extends boolean = true> {
               filename?: T;
             };
       };
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "cloud-backups_select".
+ */
+export interface CloudBackupsSelect<T extends boolean = true> {
+  license?: T;
+  customer?: T;
+  machineId?: T;
+  machine?: T;
+  objectKey?: T;
+  bucket?: T;
+  sizeBytes?: T;
+  sha256?: T;
+  clientKeyHint?: T;
+  status?: T;
+  pruneAfter?: T;
+  finalizedAt?: T;
+  desktopVersion?: T;
+  sourceRows?: T;
+  sourceSizeBytes?: T;
+  updatedAt?: T;
+  createdAt?: T;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
@@ -1695,6 +1784,47 @@ export interface Setting {
     autoPublishReleases?: boolean | null;
   };
   trialLockoutMode?: ('soft' | 'readonly' | 'hard') | null;
+  /**
+   * API keys and integration toggles. Secrets here override env vars at runtime.
+   */
+  integrations?: {
+    /**
+     * pk_live_… or pk_test_… — safe to expose to client.
+     */
+    paystackPublicKey?: string | null;
+    /**
+     * sk_live_… or sk_test_… — server-only. Owner can read, support can't.
+     */
+    paystackSecretKey?: string | null;
+    /**
+     * Optional. If set, used for webhook HMAC verify; otherwise paystackSecretKey is used.
+     */
+    paystackWebhookSecret?: string | null;
+    /**
+     * re_… — for transactional emails (receipts, password resets).
+     */
+    resendApiKey?: string | null;
+    /**
+     * e.g. "Omnix <noreply@omnix.co.ke>".
+     */
+    resendFromEmail?: string | null;
+    /**
+     * G-XXXXXXXXXX. Set to inject the GA tag in the public layout.
+     */
+    googleAnalyticsId?: string | null;
+    /**
+     * Master switch. When off, paid customers see backup as "coming soon".
+     */
+    cloudBackupEnabled?: boolean | null;
+    /**
+     * KES per device per month.
+     */
+    cloudBackupPriceMonthly?: number | null;
+    /**
+     * How long to keep backups before pruning. Min 14.
+     */
+    cloudBackupRetentionDays?: number | null;
+  };
   updatedAt?: string | null;
   createdAt?: string | null;
 }
@@ -1871,6 +2001,19 @@ export interface SettingsSelect<T extends boolean = true> {
         autoPublishReleases?: T;
       };
   trialLockoutMode?: T;
+  integrations?:
+    | T
+    | {
+        paystackPublicKey?: T;
+        paystackSecretKey?: T;
+        paystackWebhookSecret?: T;
+        resendApiKey?: T;
+        resendFromEmail?: T;
+        googleAnalyticsId?: T;
+        cloudBackupEnabled?: T;
+        cloudBackupPriceMonthly?: T;
+        cloudBackupRetentionDays?: T;
+      };
   updatedAt?: T;
   createdAt?: T;
   globalType?: T;

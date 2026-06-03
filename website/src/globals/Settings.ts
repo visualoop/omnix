@@ -105,5 +105,91 @@ export const Settings: GlobalConfig = {
         { label: 'Hard — splash screen only', value: 'hard' },
       ],
     },
+
+    // ── Integrations (runtime secrets) ─────────────────────────
+    // Owner-only read+write on the secret fields. The runtime resolver
+    // (src/lib/settings.ts) reads from here first, falls back to env.
+    // Keeps secrets in one place that owners can rotate without redeploys.
+    {
+      name: 'integrations',
+      type: 'group',
+      admin: {
+        description: 'API keys and integration toggles. Secrets here override env vars at runtime.',
+      },
+      fields: [
+        // ── Paystack ────────────────────────────────────────────
+        {
+          name: 'paystackPublicKey',
+          type: 'text',
+          admin: { description: 'pk_live_… or pk_test_… — safe to expose to client.' },
+        },
+        {
+          name: 'paystackSecretKey',
+          type: 'text',
+          admin: {
+            description: 'sk_live_… or sk_test_… — server-only. Owner can read, support can\'t.',
+          },
+          access: {
+            // Hide the secret value from non-owners even when reading the global.
+            read: ({ req }) => req.user?.collection === 'users' && req.user?.role === 'owner',
+            update: ({ req }) => req.user?.collection === 'users' && req.user?.role === 'owner',
+          },
+        },
+        {
+          name: 'paystackWebhookSecret',
+          type: 'text',
+          admin: {
+            description: 'Optional. If set, used for webhook HMAC verify; otherwise paystackSecretKey is used.',
+          },
+          access: {
+            read: ({ req }) => req.user?.collection === 'users' && req.user?.role === 'owner',
+            update: ({ req }) => req.user?.collection === 'users' && req.user?.role === 'owner',
+          },
+        },
+
+        // ── Email (Resend) ──────────────────────────────────────
+        {
+          name: 'resendApiKey',
+          type: 'text',
+          admin: { description: 're_… — for transactional emails (receipts, password resets).' },
+          access: {
+            read: ({ req }) => req.user?.collection === 'users' && req.user?.role === 'owner',
+            update: ({ req }) => req.user?.collection === 'users' && req.user?.role === 'owner',
+          },
+        },
+        {
+          name: 'resendFromEmail',
+          type: 'email',
+          admin: { description: 'e.g. "Omnix <noreply@omnix.co.ke>".' },
+        },
+
+        // ── Analytics ──────────────────────────────────────────
+        {
+          name: 'googleAnalyticsId',
+          type: 'text',
+          admin: { description: 'G-XXXXXXXXXX. Set to inject the GA tag in the public layout.' },
+        },
+
+        // ── Cloud backup ──────────────────────────────────────
+        {
+          name: 'cloudBackupEnabled',
+          type: 'checkbox',
+          defaultValue: false,
+          admin: { description: 'Master switch. When off, paid customers see backup as "coming soon".' },
+        },
+        {
+          name: 'cloudBackupPriceMonthly',
+          type: 'number',
+          defaultValue: 500,
+          admin: { description: 'KES per device per month.' },
+        },
+        {
+          name: 'cloudBackupRetentionDays',
+          type: 'number',
+          defaultValue: 30,
+          admin: { description: 'How long to keep backups before pruning. Min 14.' },
+        },
+      ],
+    },
   ],
 }

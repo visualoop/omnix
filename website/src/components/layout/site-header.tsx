@@ -50,7 +50,7 @@ export function SiteHeader() {
           : 'bg-transparent',
       )}
     >
-      <div className="container-wide grid h-[72px] grid-cols-[1fr_auto_1fr] items-center gap-6">
+      <div className="container-wide flex h-[72px] items-center justify-between gap-6 lg:grid lg:grid-cols-[1fr_auto_1fr]">
         {/* Wordmark — Fraunces 24px + amber dot */}
         <Link
           href="/"
