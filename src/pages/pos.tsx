@@ -13,6 +13,7 @@ import { useShallow } from "zustand/react/shallow";
 import { useAuthStore } from "@/stores/auth";
 import { useActiveBranch } from "@/stores/active-branch";
 import { useActiveModule } from "@/stores/active-module";
+import { useScanner } from "@/hooks/use-scanner";
 import { getProducts, getCategories, type Product, type Category } from "@/services/inventory";
 import { getUomByBarcode } from "@/services/retail";
 import { toast } from "sonner";
@@ -184,6 +185,15 @@ export function POSPage() {
   }, [payOpen]);
 
   useEffect(() => { countHeldSales().then(setHeldCount); }, [heldOpen, payOpen]);
+
+  // Global barcode scanner — works even when the search input isn't focused.
+  // The hook ignores keystrokes typed into INPUT/TEXTAREA, so normal typing
+  // still flows into the search field as before.
+  useScanner((payload) => {
+    setSearch(payload);
+    // Auto-focus the search input after a scan so the user can keep working.
+    requestAnimationFrame(() => searchRef.current?.focus());
+  });
 
   // Search products — handles barcode scans for products, variants, and pack/carton barcodes
   useEffect(() => {

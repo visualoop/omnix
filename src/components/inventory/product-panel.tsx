@@ -183,7 +183,12 @@ export function ProductPanel({ open, onClose, productId, onSaved }: Props) {
                   <Input value={form.sku} onChange={(e) => update("sku", e.target.value)} placeholder="Optional" />
                 </Field>
                 <Field label="Barcode">
-                  <Input value={form.barcode} onChange={(e) => update("barcode", e.target.value)} placeholder="Scan or type" />
+                  <Input
+                    value={form.barcode}
+                    onChange={(e) => update("barcode", e.target.value)}
+                    placeholder="Scan or type"
+                    autoFocus={!isEdit}
+                  />
                 </Field>
               </div>
               <Field label="Category">
