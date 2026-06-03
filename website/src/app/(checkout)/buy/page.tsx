@@ -4,18 +4,13 @@
  * Receives ?machine=<fingerprint>&module=<dawa|retail|hardware|hospitality>
  * and resolves the customer's license to send them to /buy/[licenseId].
  *
- *  Flow:
- *    1. Not signed in → redirect to /signup?next=/buy?machine=…&module=…
- *    2. Signed in + has a license → /buy/[licenseId]
- *    3. Signed in + no license  → auto-issue trial license, /buy/[licenseId]
- *
- *  The machine fingerprint is stored in a short-lived cookie so the success
- *  page (after Paystack returns) can pre-bind the licence to that device.
+ * Decision logic lives in src/lib/buy-resolver.ts (unit-tested).
  */
 import { headers, cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
 import { getPayload } from 'payload'
 import config from '@/payload.config'
+import { decideBuyDestination, isValidMachineId } from '@/lib/buy-resolver'
 
 export const metadata = { title: 'Buy Omnix' }
 
@@ -32,11 +27,10 @@ export default async function BuyEntryPage({
   const { machine, module: mod } = await searchParams
   const reqHeaders = await headers()
 
-  // Stash the machine fingerprint for /buy/success → license activation
-  // (httpOnly so JS can't tamper, 30 min cookie).
-  if (machine && /^[A-Z0-9-]{8,128}$/i.test(machine)) {
+  // Stash the machine fingerprint for /buy/success → licence binding.
+  if (isValidMachineId(machine)) {
     const c = await cookies()
-    c.set('omnix-buy-machine', machine, {
+    c.set('omnix-buy-machine', machine!, {
       httpOnly: true,
       sameSite: 'lax',
       maxAge: 30 * 60,
@@ -44,51 +38,39 @@ export default async function BuyEntryPage({
     })
   }
 
-  const payloadConfig = await config
-  const payload = await getPayload({ config: payloadConfig })
+  const payload = await getPayload({ config: await config })
   const { user } = await payload.auth({ headers: reqHeaders })
+  const isCustomer = user?.collection === 'customers'
 
-  // Anonymous → signup with full continue path
-  if (!user || user.collection !== 'customers') {
-    const next = `/buy${
-      machine || mod
-        ? `?${new URLSearchParams({
-            ...(machine ? { machine } : {}),
-            ...(mod ? { module: mod } : {}),
-          }).toString()}`
-        : ''
-    }`
-    redirect(`/signup?next=${encodeURIComponent(next)}`)
+  // Look up an existing licence for a signed-in customer
+  let existingLicenseId: string | number | null = null
+  if (isCustomer) {
+    const result = await payload.find({
+      collection: 'licenses',
+      where: { customer: { equals: user!.id } },
+      sort: '-createdAt',
+      limit: 1,
+      depth: 0,
+    })
+    existingLicenseId = (result.docs[0] as { id?: string | number } | undefined)?.id ?? null
   }
 
-  // Find an existing license for this customer
-  const result = await payload.find({
-    collection: 'licenses',
-    where: { customer: { equals: user.id } },
-    sort: '-createdAt',
-    limit: 1,
-    depth: 0,
-  })
-  const existing = result.docs[0] as unknown as { id: string | number } | undefined
+  const decision = decideBuyDestination({ isCustomer, existingLicenseId, machine, module: mod })
 
-  if (existing) {
-    redirect(`/buy/${existing.id}`)
+  if (decision.kind === 'signup') {
+    redirect(`/signup?next=${encodeURIComponent(decision.next)}`)
+  }
+  if (decision.kind === 'checkout') {
+    redirect(`/buy/${decision.licenseId}`)
   }
 
-  // No license yet — auto-issue a trial seat (the customer signup hook
-  // usually does this, but if for some reason it didn't, do it here).
-  const validModules = ['core', 'dawa', 'retail', 'hardware', 'hospitality'] as const
-  type ValidModule = (typeof validModules)[number]
-  const modules: ValidModule[] = mod && validModules.includes(mod as ValidModule)
-    ? (['core', mod] as ValidModule[])
-    : (['core', 'dawa', 'retail'] as ValidModule[])
-
+  // create-then-checkout
   const created = (await payload.create({
     collection: 'licenses',
     data: {
-      customer: user.id as never,
+      customer: user!.id as never,
       tier: 'trial',
-      modules,
+      modules: decision.modules,
       status: 'trial',
       maxBranches: 5,
       maxMachines: 10,
