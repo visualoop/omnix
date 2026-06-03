@@ -53,6 +53,8 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y libwebkit2gtk-4.1-dev libgtk-3-dev libsoup-3.0-dev libjavascriptcoregtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev pkg-config
       - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-unknown-linux-gnu
       - name: Cache cargo
         uses: actions/cache@v4
         with:
@@ -63,4 +65,8 @@ jobs:
           key: ${{ runner.os }}-cargo-${{ hashFiles('src-tauri/Cargo.lock') }}
       - name: cargo test
         working-directory: src-tauri
-        run: cargo test --lib
+        # The repo's .cargo/config.toml forces a Windows cross-target for
+        # release builds; override it with the Linux host target for unit tests.
+        env:
+          CARGO_BUILD_TARGET: x86_64-unknown-linux-gnu
+        run: cargo test --lib --target x86_64-unknown-linux-gnu
