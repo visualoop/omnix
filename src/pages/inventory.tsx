@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { Plus, Search, Package, Upload, Edit3, Zap, PackagePlus } from "lucide-react";
+import { Plus, Search, Package, Upload, Edit3, Zap, PackagePlus, Layers } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -8,6 +8,7 @@ import { getProducts, getCategories, type Product, type Category } from "@/servi
 import { ProductPanel } from "@/components/inventory/product-panel";
 import { BulkEditDialog } from "@/components/inventory/bulk-edit-dialog";
 import { ReceiveStockDialog } from "@/components/inventory/receive-stock-dialog";
+import { VariantsDialog } from "@/components/inventory/variants-dialog";
 import { Can } from "@/components/require-role";
 
 export function InventoryPage() {
@@ -18,6 +19,7 @@ export function InventoryPage() {
   const [bulkOpen, setBulkOpen] = useState(false);
   const [receiveOpen, setReceiveOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [variantsProduct, setVariantsProduct] = useState<Product | null>(null);
   const [selected, setSelected] = useState<Set<string>>(new Set());
 
   const load = useCallback(async () => {
@@ -163,8 +165,18 @@ export function InventoryPage() {
                     <Button
                       variant="ghost"
                       size="sm"
+                      onClick={(e) => { e.stopPropagation(); setVariantsProduct(p); }}
+                      className="ml-1 h-7 w-7 p-0 cursor-pointer"
+                      title="Manage variants (sizes, weights, options)"
+                    >
+                      <Layers className="h-3 w-3" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
                       onClick={(e) => { e.stopPropagation(); openEdit(p.id); }}
-                      className="ml-2 h-7 w-7 p-0"
+                      className="ml-1 h-7 w-7 p-0 cursor-pointer"
+                      title="Edit product"
                     >
                       <Edit3 className="h-3 w-3" />
                     </Button>
@@ -194,6 +206,11 @@ export function InventoryPage() {
         open={receiveOpen}
         onClose={() => setReceiveOpen(false)}
         onSaved={() => { setReceiveOpen(false); load(); }}
+      />
+      <VariantsDialog
+        product={variantsProduct}
+        onClose={() => setVariantsProduct(null)}
+        onSaved={load}
       />
     </div>
   );

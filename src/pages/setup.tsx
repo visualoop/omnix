@@ -102,16 +102,30 @@ export function SetupWizard() {
 
   const steps = [
     // Step 0: Welcome
-    <div key="welcome" className="space-y-5 text-center">
+    <div key="welcome" className="space-y-6 text-center">
       <div className="inline-flex items-center justify-center">
-        <OmnixLogo size={64} />
+        <OmnixLogo size={72} />
       </div>
-      <div>
-        <h2 className="text-xl font-semibold">Welcome to {APP_NAME}</h2>
-        <p className="text-sm text-muted-foreground mt-1">
-          The operating system for your business. Let's get you set up.
+      <div className="space-y-2">
+        <h2 className="text-2xl font-semibold tracking-tight">Welcome to {APP_NAME}</h2>
+        <p className="text-sm text-muted-foreground max-w-[320px] mx-auto leading-relaxed">
+          The operating system for your business — POS, inventory, accounting and KRA compliance, in one offline-first Windows app.
         </p>
       </div>
+      <div className="flex flex-wrap items-center justify-center gap-1.5">
+        {[
+          { dot: "bg-emerald-500", label: "Works offline" },
+          { dot: "bg-blue-500", label: "M-Pesa + card" },
+          { dot: "bg-amber-500", label: "eTIMS built-in" },
+          { dot: "bg-violet-500", label: "Pay once" },
+        ].map((p) => (
+          <span key={p.label} className="inline-flex items-center gap-1.5 rounded-full glass-thin px-2.5 py-1 text-[11px] text-muted-foreground">
+            <span className={`h-1.5 w-1.5 rounded-full ${p.dot}`} />
+            {p.label}
+          </span>
+        ))}
+      </div>
+      <p className="text-[11px] text-muted-foreground">Takes about 60 seconds.</p>
       <Button onClick={() => setStep(1)} className="w-full h-11 rounded-xl shadow-native cursor-pointer">
         Get Started
       </Button>
@@ -120,9 +134,9 @@ export function SetupWizard() {
     // Step 1: Module selection
     <div key="module" className="space-y-4">
       <div>
-        <h2 className="text-lg font-semibold">What kind of business?</h2>
-        <p className="text-xs text-muted-foreground mt-0.5">
-          Pick the vertical that fits — we'll customize the app for you. You can switch modules later from Settings.
+        <h2 className="text-lg font-semibold tracking-tight">Pick your trade</h2>
+        <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
+          Omnix tailors itself to your business. Pick one to start — switch any time from Settings.
         </p>
       </div>
       <div className="space-y-2 max-h-[55vh] overflow-y-auto pr-1 -mr-1">
@@ -172,9 +186,9 @@ export function SetupWizard() {
     // Step 2: Business info
     <div key="business" className="space-y-4">
       <div>
-        <h2 className="text-lg font-semibold">Your Business</h2>
-        <p className="text-xs text-muted-foreground mt-0.5">
-          Tell us about your {MODULE_DEFINITIONS[data.moduleId].shortName.toLowerCase()}
+        <h2 className="text-lg font-semibold tracking-tight">Your business</h2>
+        <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
+          This appears on receipts, invoices, and eTIMS submissions.
         </p>
       </div>
       <div className="space-y-3">
@@ -224,9 +238,9 @@ export function SetupWizard() {
     // Step 3: Owner account
     <div key="owner" className="space-y-4">
       <div>
-        <h2 className="text-lg font-semibold">Owner Account</h2>
-        <p className="text-xs text-muted-foreground mt-0.5">
-          You'll use this to sign in to {APP_NAME}
+        <h2 className="text-lg font-semibold tracking-tight">Owner account</h2>
+        <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
+          You'll sign in with this. Only you (the owner) can reset other users' passwords or change billing.
         </p>
       </div>
       <div className="space-y-3">
