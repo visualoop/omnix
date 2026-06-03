@@ -44,6 +44,14 @@ export const useAuthStore = create<AuthState>()(
           set({ user, loading: false });
           // Lazy-import to avoid circular dependency
           import("./active-branch").then((m) => m.useActiveBranch.getState().loadForUser(user.id));
+          // Hold the password-derived backup key in memory while the app is open.
+          // Used by the cloud-backup auto-scheduler so we don't have to re-prompt.
+          // Best-effort — never blocks sign-in.
+          if (user.role === "owner") {
+            import("@tauri-apps/api/core").then(({ invoke }) =>
+              invoke("cloud_backup_set_session_key", { password }).catch(() => {}),
+            );
+          }
           // Resolve + cache effective RBAC permissions for this user.
           get().loadPermissions();
           // Run recurring invoice schedule (once per session, async fire-and-forget)
@@ -67,6 +75,11 @@ export const useAuthStore = create<AuthState>()(
         set({ user: null, permissions: null });
         import("@/lib/permissions").then((m) => m.setCachedPermissions(null));
         import("./active-branch").then((m) => m.useActiveBranch.getState().clear());
+        // Clear the in-memory cloud-backup key so a different user logging
+        // in next can't accidentally use the previous owner's backup key.
+        import("@tauri-apps/api/core").then(({ invoke }) =>
+          invoke("cloud_backup_clear_session_key").catch(() => {}),
+        );
       },
 
       loadPermissions: async () => {

@@ -57,6 +57,41 @@ const nextConfig: NextConfig = {
   turbopack: {
     root: path.resolve(dirname),
   },
+  // Security headers — applied to every response.
+  // CSP is intentionally permissive on connect-src/img-src for our own
+  // R2 bucket + Paystack; everything else is locked down.
+  async headers() {
+    const csp = [
+      "default-src 'self'",
+      // Next inlines a small bootstrap script per page; 'self' covers our static.
+      // Paystack inline.js loads from js.paystack.co; allow it for checkout.
+      "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.paystack.co https://api.paystack.co",
+      "style-src 'self' 'unsafe-inline'",
+      "img-src 'self' data: blob: https://media.omnix.co.ke https://*.r2.cloudflarestorage.com https://www.googletagmanager.com",
+      "font-src 'self' data:",
+      "connect-src 'self' https://api.paystack.co https://omnix.co.ke https://media.omnix.co.ke",
+      "frame-src https://standard.paystack.co",
+      "object-src 'none'",
+      "base-uri 'self'",
+      "form-action 'self'",
+      "frame-ancestors 'none'", // we never embed in others' iframes
+      "upgrade-insecure-requests",
+    ].join('; ')
+    return [
+      {
+        source: '/:path*',
+        headers: [
+          { key: 'Content-Security-Policy', value: csp },
+          { key: 'Strict-Transport-Security', value: 'max-age=63072000; includeSubDomains; preload' },
+          { key: 'X-Content-Type-Options', value: 'nosniff' },
+          { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
+          { key: 'X-Frame-Options', value: 'DENY' },
+          { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=(), payment=(self "https://api.paystack.co")' },
+          { key: 'X-DNS-Prefetch-Control', value: 'on' },
+        ],
+      },
+    ]
+  },
 }
 
 export default withPayload(nextConfig, { devBundleServerPackages: false })

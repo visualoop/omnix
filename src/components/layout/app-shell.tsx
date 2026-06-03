@@ -6,6 +6,7 @@ import { CommandPalette } from "@/components/layout/command-palette";
 import { OnboardingTour } from "@/components/onboarding-tour";
 import { ShortcutsOverlay } from "@/components/shortcuts-overlay";
 import { IdleAutoLock } from "@/components/idle-auto-lock";
+import { useAutoCloudBackup } from "@/hooks/use-auto-cloud-backup";
 
 export function AppShell() {
   const [cmdOpen, setCmdOpen] = useState(false);
@@ -14,6 +15,9 @@ export function AppShell() {
   const [routeKey, setRouteKey] = useState(location.pathname);
   const [transitionClass, setTransitionClass] = useState("animate-in fade-in-0 duration-200");
   const isSettingsRoute = location.pathname.startsWith("/settings");
+
+  // Background cloud-backup scheduler — runs while the owner is signed in.
+  useAutoCloudBackup();
 
   useEffect(() => {
     setRouteKey(location.pathname);

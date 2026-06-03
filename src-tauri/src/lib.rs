@@ -338,6 +338,7 @@ fn run_inner() {
 
     tauri::Builder::default()
         .manage(std::sync::Arc::new(commands::NetworkState::default()))
+        .manage(std::sync::Arc::new(commands::CloudBackupSession::default()))
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_http::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
@@ -371,6 +372,10 @@ fn run_inner() {
             commands::cloud_backup_upload,
             commands::cloud_backup_list,
             commands::cloud_backup_restore,
+            commands::cloud_backup_set_session_key,
+            commands::cloud_backup_clear_session_key,
+            commands::cloud_backup_has_session_key,
+            commands::cloud_backup_auto_upload,
             commands::start_lan_server,
             commands::stop_lan_server,
             commands::lan_server_status,

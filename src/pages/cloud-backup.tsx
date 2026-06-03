@@ -14,12 +14,14 @@ import { useEffect, useState, useCallback } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import {
   Cloud, CloudUpload, CloudDownload, Loader2, Lock, AlertTriangle,
-  Calendar, HardDrive, CheckCircle2, RefreshCw,
+  Calendar, HardDrive, CheckCircle2, RefreshCw, Clock, Power,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
 import { confirm, prompt } from "@/components/ui/confirm-dialog";
 import { toast } from "sonner";
+import { getScheduleConfig, setScheduleConfig, nextRunAt } from "@/hooks/use-auto-cloud-backup";
 
 interface CloudBackupRow {
   id: string;
@@ -219,6 +221,8 @@ export function CloudBackupPage() {
         </Button>
       </div>
 
+      <AutoScheduleCard />
+
       {/* Backup list */}
       <div className="rounded-2xl border border-border/60 bg-card/80 backdrop-blur-sm overflow-hidden">
         <div className="flex items-center justify-between px-4 py-2.5 border-b border-border/50">
@@ -319,3 +323,115 @@ export function CloudBackupPage() {
 
 // Vite injects this. Falls back to "dev" when the constant isn't defined.
 declare const __APP_VERSION__: string | undefined;
+
+function AutoScheduleCard() {
+  const [enabled, setEnabled] = useState(false);
+  const [intervalHours, setIntervalHoursLocal] = useState(24);
+  const [lastRun, setLastRun] = useState(0);
+  const [hasKey, setHasKey] = useState(false);
+
+  const refresh = useCallback(async () => {
+    const cfg = await getScheduleConfig();
+    setEnabled(cfg.enabled);
+    setIntervalHoursLocal(cfg.intervalHours);
+    setLastRun(cfg.lastRun);
+    try {
+      setHasKey(await invoke<boolean>("cloud_backup_has_session_key"));
+    } catch {
+      setHasKey(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    refresh();
+  }, [refresh]);
+
+  const onToggle = async (next: boolean) => {
+    setEnabled(next);
+    await setScheduleConfig({ enabled: next });
+    if (next && !hasKey) {
+      toast.warning("Auto-backup needs your sign-in password.", {
+        description: "Sign out and back in so the key is loaded into memory.",
+        duration: 8000,
+      });
+    } else if (next) {
+      toast.success("Auto-backup enabled.");
+    }
+  };
+
+  const onIntervalChange = async (n: number) => {
+    setIntervalHoursLocal(n);
+    await setScheduleConfig({ intervalHours: n });
+  };
+
+  const next = nextRunAt({ enabled, intervalHours, lastRun });
+  const formatDelta = (ms: number) => {
+    if (ms <= 0) return "due now";
+    const m = Math.round(ms / 60_000);
+    if (m < 60) return `in ${m} min`;
+    const h = Math.round(m / 60);
+    if (h < 48) return `in ${h} h`;
+    return `in ${Math.round(h / 24)} d`;
+  };
+
+  return (
+    <div className="rounded-2xl border border-border/60 bg-card/80 backdrop-blur-sm p-5 space-y-4">
+      <div className="flex items-start gap-3">
+        <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-gradient-to-br from-violet-500/30 to-violet-500/5 ring-1 ring-inset ring-violet-500/15">
+          <Clock className="h-4 w-4 text-violet-500" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="text-sm font-semibold leading-tight">Daily auto-backup</div>
+          <p className="text-[11.5px] text-muted-foreground leading-snug mt-0.5">
+            Runs in the background while you're signed in. Uses the password from your sign-in — no extra prompts.
+          </p>
+        </div>
+        <div className="flex items-center gap-2 pt-0.5">
+          <Switch checked={enabled} onCheckedChange={onToggle} />
+        </div>
+      </div>
+
+      {/* Controls */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-[12px]">
+        <div className="rounded-xl border border-border/40 bg-foreground/[0.02] px-3 py-2.5">
+          <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">Interval</div>
+          <select
+            value={intervalHours}
+            onChange={(e) => onIntervalChange(parseInt(e.target.value, 10))}
+            disabled={!enabled}
+            className="w-full bg-transparent text-[13px] font-medium focus:outline-none disabled:opacity-50 cursor-pointer"
+          >
+            <option value={1}>Every hour</option>
+            <option value={6}>Every 6 hours</option>
+            <option value={12}>Every 12 hours</option>
+            <option value={24}>Every 24 hours</option>
+            <option value={168}>Every 7 days</option>
+          </select>
+        </div>
+        <div className="rounded-xl border border-border/40 bg-foreground/[0.02] px-3 py-2.5">
+          <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">Last run</div>
+          <div className="text-[13px] font-medium">
+            {lastRun ? new Date(lastRun).toLocaleString("en-KE", { hour: "2-digit", minute: "2-digit", day: "numeric", month: "short" }) : "Never"}
+          </div>
+        </div>
+        <div className="rounded-xl border border-border/40 bg-foreground/[0.02] px-3 py-2.5">
+          <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">Next run</div>
+          <div className="text-[13px] font-medium">
+            {enabled ? formatDelta(next - Date.now()) : "Off"}
+          </div>
+        </div>
+      </div>
+
+      {/* Key status */}
+      {!hasKey && enabled && (
+        <div className="rounded-xl border border-amber-500/30 bg-amber-500/8 px-3 py-2 flex items-center gap-2 text-[12px]">
+          <Power className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" />
+          <span>
+            Encryption key not loaded — sign out and back in so backups can run unattended.
+          </span>
+        </div>
+      )}
+    </div>
+  );
+}
+

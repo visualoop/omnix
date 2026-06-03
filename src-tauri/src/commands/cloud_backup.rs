@@ -29,6 +29,7 @@ use sha2::{Digest, Sha256};
 use std::fs;
 use std::io::{Read, Write};
 use std::path::PathBuf;
+use std::sync::Mutex;
 use std::time::SystemTime;
 use tauri::Manager;
 
@@ -422,4 +423,125 @@ mod tests {
         assert_eq!(key_hint(&k).len(), 8);
         assert!(key_hint(&k).chars().all(|c| c.is_ascii_hexdigit()));
     }
+}
+
+/* ─── Auto-backup state + commands ───────────────────────────────────────
+   The owner password is needed to derive the encryption key. Rather than
+   persist it on disk (insecure), we hold the *derived 32-byte key* in
+   memory only. The frontend calls `cloud_backup_set_session_key(password)`
+   right after the user signs in, and `cloud_backup_clear_session_key()`
+   on sign-out. The scheduler then uploads silently in the background as
+   long as the app is open and signed-in.
+*/
+
+#[derive(Default)]
+pub struct CloudBackupSession {
+    pub key: Mutex<Option<[u8; 32]>>,
+}
+
+#[tauri::command]
+pub fn cloud_backup_set_session_key(
+    password: String,
+    state: tauri::State<'_, std::sync::Arc<CloudBackupSession>>,
+) -> Result<String, String> {
+    let machine_id = format_fingerprint(&crate::license::get_machine_fingerprint());
+    let key = derive_key(&password, &machine_id);
+    let hint = key_hint(&key);
+    *state.key.lock().map_err(|e| e.to_string())? = Some(key);
+    Ok(hint)
+}
+
+#[tauri::command]
+pub fn cloud_backup_clear_session_key(
+    state: tauri::State<'_, std::sync::Arc<CloudBackupSession>>,
+) -> Result<(), String> {
+    *state.key.lock().map_err(|e| e.to_string())? = None;
+    Ok(())
+}
+
+#[tauri::command]
+pub fn cloud_backup_has_session_key(
+    state: tauri::State<'_, std::sync::Arc<CloudBackupSession>>,
+) -> Result<bool, String> {
+    Ok(state.key.lock().map_err(|e| e.to_string())?.is_some())
+}
+
+/// Upload using the in-memory session key (set by `set_session_key`).
+/// Used by the scheduler so we don't have to prompt the user for a password
+/// on every auto-backup. Returns 'no-key' if the key isn't loaded.
+#[tauri::command]
+pub async fn cloud_backup_auto_upload(
+    app: tauri::AppHandle,
+    api_base: String,
+    auth_token: String,
+    desktop_version: Option<String>,
+    state: tauri::State<'_, std::sync::Arc<CloudBackupSession>>,
+) -> Result<CloudBackupResult, String> {
+    let key = {
+        let guard = state.key.lock().map_err(|e| e.to_string())?;
+        match guard.as_ref() {
+            Some(k) => *k,
+            None => return Err("no-key".to_string()),
+        }
+    };
+    let machine_id = format_fingerprint(&crate::license::get_machine_fingerprint());
+    let hint = key_hint(&key);
+
+    let snap = snapshot_db(&app)?;
+    let source_size = fs::metadata(&snap).map(|m| m.len()).unwrap_or(0);
+    let blob = pack_blob(&snap, &key)?;
+    let _ = fs::remove_file(&snap);
+    let size_bytes = blob.len() as u64;
+    let sha256 = sha256_hex(&blob);
+
+    let client = reqwest::Client::new();
+    let presign_url = format!("{}/api/cloud-backups/presign", api_base.trim_end_matches('/'));
+    let presign: CloudBackupPresignResp = client
+        .post(&presign_url)
+        .bearer_auth(&auth_token)
+        .json(&serde_json::json!({
+            "sourceSizeBytes": source_size,
+            "desktopVersion": desktop_version,
+            "clientKeyHint": hint,
+        }))
+        .send()
+        .await
+        .map_err(|e| format!("Presign request: {}", e))?
+        .error_for_status()
+        .map_err(|e| format!("Presign HTTP error: {}", e))?
+        .json()
+        .await
+        .map_err(|e| format!("Presign decode: {}", e))?;
+
+    let put = client
+        .put(&presign.upload_url)
+        .header("content-type", "application/octet-stream")
+        .body(blob)
+        .send()
+        .await
+        .map_err(|e| format!("Upload PUT: {}", e))?;
+    if !put.status().is_success() {
+        return Err(format!("Upload PUT failed: HTTP {}", put.status()));
+    }
+
+    client
+        .post(&format!("{}/api/cloud-backups/finalize", api_base.trim_end_matches('/')))
+        .bearer_auth(&auth_token)
+        .json(&serde_json::json!({
+            "objectKey": presign.object_key,
+            "sizeBytes": size_bytes,
+            "sha256": sha256,
+        }))
+        .send()
+        .await
+        .map_err(|e| format!("Finalize: {}", e))?
+        .error_for_status()
+        .map_err(|e| format!("Finalize HTTP error: {}", e))?;
+
+    let _ = machine_id; // silence unused warning if compiler picks it up
+    Ok(CloudBackupResult {
+        object_key: presign.object_key,
+        size_bytes,
+        sha256,
+    })
 }
