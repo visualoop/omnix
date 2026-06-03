@@ -6,6 +6,7 @@ import { vercelPostgresAdapter } from '@payloadcms/db-vercel-postgres'
 import { lexicalEditor } from '@payloadcms/richtext-lexical'
 import { resendAdapter } from '@payloadcms/email-resend'
 import { s3Storage } from '@payloadcms/storage-s3'
+import { seoPlugin } from '@payloadcms/plugin-seo'
 import path from 'path'
 import { buildConfig } from 'payload'
 import { fileURLToPath } from 'url'
@@ -104,6 +105,14 @@ export default buildConfig({
           }),
         ]
       : []),
+    seoPlugin({
+      collections: ['pages', 'blog-posts', 'modules'],
+      uploadsCollection: 'media',
+      generateTitle: ({ doc }: { doc?: Record<string, unknown> }) =>
+        doc?.title ? `${doc.title as string} · ${BRAND_NAME}` : BRAND_NAME,
+      generateDescription: ({ doc }: { doc?: Record<string, unknown> }) =>
+        (doc?.excerpt as string) || (doc?.summary as string) || 'The operating system for Kenyan SMEs.',
+    }),
   ],
   cors: '*',
   csrf: [
