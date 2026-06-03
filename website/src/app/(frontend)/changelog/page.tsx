@@ -40,6 +40,17 @@ function formatDate(d?: string): string {
   })
 }
 
+/** Strip any bare URL from legacy summaries (older rows embedded a GitHub link
+ *  that overflowed the layout). Repo is private now, so the link is dead anyway. */
+function cleanSummary(s?: string): string {
+  if (!s) return ''
+  return s
+    .replace(/See\s+https?:\/\/\S+\s+for the full changelog\.?/i, '')
+    .replace(/https?:\/\/\S+/g, '')
+    .replace(/\s{2,}/g, ' ')
+    .trim()
+}
+
 export default async function ChangelogPage() {
   const payloadConfig = await config
   const payload = await getPayload({ config: payloadConfig })
@@ -89,9 +100,9 @@ export default async function ChangelogPage() {
                         <h3 className="font-[family-name:var(--font-display)] text-[clamp(24px,2.2vw,32px)] font-normal leading-tight text-[var(--color-fg)]">
                           {r.title ?? `Omnix v${r.version}`}
                         </h3>
-                        {r.summary ? (
-                          <p className="mt-3 text-[15px] leading-[1.65] text-[var(--color-fg-muted)] max-w-[60ch]">
-                            {r.summary}
+                        {cleanSummary(r.summary) ? (
+                          <p className="mt-3 text-[15px] leading-[1.65] text-[var(--color-fg-muted)] max-w-[60ch] break-words">
+                            {cleanSummary(r.summary)}
                           </p>
                         ) : null}
                         {downloadUrl ? (

@@ -291,7 +291,7 @@ jobs:
             --arg msiSha "$MSI_SHA" \
             --arg sig "$SIGNATURE" \
             --arg title "Omnix v$VERSION" \
-            --arg summary "See https://github.com/$REPO/releases/tag/$TAG for the full changelog." \
+            --arg summary "Omnix $VERSION — bug fixes and improvements. Update from inside the app or download below." \
             '{
               version: $version,
               majorVersion: $major,

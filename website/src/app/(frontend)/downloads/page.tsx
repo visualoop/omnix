@@ -38,6 +38,16 @@ function formatDate(d?: string): string {
   })
 }
 
+/** Strip bare URLs from legacy summaries so they can't overflow the layout. */
+function cleanSummary(s?: string): string {
+  if (!s) return ''
+  return s
+    .replace(/See\s+https?:\/\/\S+\s+for the full changelog\.?/i, '')
+    .replace(/https?:\/\/\S+/g, '')
+    .replace(/\s{2,}/g, ' ')
+    .trim()
+}
+
 export default async function DownloadsPage() {
   const payloadConfig = await config
   const payload = await getPayload({ config: payloadConfig })
@@ -78,9 +88,9 @@ export default async function DownloadsPage() {
                   <h2 className="font-[family-name:var(--font-display)] mt-3 text-[clamp(32px,3.2vw,48px)] font-normal leading-tight text-[var(--color-fg)]">
                     Omnix v{latest.version}
                   </h2>
-                  {latest.summary ? (
-                    <p className="mt-4 text-[15px] leading-[1.65] text-[var(--color-fg-muted)] max-w-[52ch]">
-                      {latest.summary}
+                  {cleanSummary(latest.summary) ? (
+                    <p className="mt-4 text-[15px] leading-[1.65] text-[var(--color-fg-muted)] max-w-[52ch] break-words">
+                      {cleanSummary(latest.summary)}
                     </p>
                   ) : null}
                   <div className="mt-6 flex flex-wrap items-center gap-x-6 gap-y-2 caption-mono">
