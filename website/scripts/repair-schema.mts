@@ -50,7 +50,62 @@ async function main() {
   }
   console.log('[repair] meta columns OK')
 
-  // ── 3. payload_locked_documents_rels needs cloud_backups_id (the new collection)
+  // ── 3. cloud_backups table + payload_locked_documents_rels.cloud_backups_id
+  await q(`
+    DO $$ BEGIN
+      CREATE TYPE "public"."enum_cloud_backups_status" AS ENUM('pending', 'uploaded', 'pruned', 'quarantined');
+    EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+  `)
+  await q(`
+    CREATE TABLE IF NOT EXISTS "cloud_backups" (
+      "id" serial PRIMARY KEY NOT NULL,
+      "license_id" integer NOT NULL,
+      "customer_id" integer NOT NULL,
+      "machine_id" integer,
+      "object_key" varchar NOT NULL,
+      "bucket" varchar DEFAULT 'omnix-backups',
+      "size_bytes" numeric,
+      "sha256" varchar,
+      "client_key_hint" varchar,
+      "status" "enum_cloud_backups_status" DEFAULT 'pending',
+      "prune_after" timestamp(3) with time zone,
+      "finalized_at" timestamp(3) with time zone,
+      "desktop_version" varchar,
+      "source_rows" numeric,
+      "source_size_bytes" numeric,
+      "updated_at" timestamp(3) with time zone DEFAULT now() NOT NULL,
+      "created_at" timestamp(3) with time zone DEFAULT now() NOT NULL
+    );
+  `)
+  // FKs and indexes (idempotent)
+  for (const [name, ref] of [
+    ['cloud_backups_license_id_licenses_id_fk', '"licenses"("id")'],
+    ['cloud_backups_customer_id_customers_id_fk', '"customers"("id")'],
+    ['cloud_backups_machine_id_machines_id_fk', '"machines"("id")'],
+  ] as const) {
+    const col = name.split('_')[2] + '_id'
+    await q(`
+      DO $$ BEGIN
+        ALTER TABLE "cloud_backups"
+          ADD CONSTRAINT "${name}"
+          FOREIGN KEY ("${col}") REFERENCES "public".${ref}
+          ON DELETE set null ON UPDATE no action;
+      EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+    `)
+  }
+  for (const [idx, col, unique] of [
+    ['cloud_backups_license_idx', 'license_id', false],
+    ['cloud_backups_customer_idx', 'customer_id', false],
+    ['cloud_backups_machine_idx', 'machine_id', false],
+    ['cloud_backups_object_key_idx', 'object_key', true],
+    ['cloud_backups_status_idx', 'status', false],
+    ['cloud_backups_updated_at_idx', 'updated_at', false],
+    ['cloud_backups_created_at_idx', 'created_at', false],
+  ] as const) {
+    await q(`CREATE ${unique ? 'UNIQUE ' : ''}INDEX IF NOT EXISTS "${idx}" ON "cloud_backups" USING btree ("${col}");`)
+  }
+  console.log('[repair] cloud_backups table OK')
+
   await q(`ALTER TABLE "payload_locked_documents_rels" ADD COLUMN IF NOT EXISTS "cloud_backups_id" integer;`)
   await q(`
     DO $$ BEGIN
