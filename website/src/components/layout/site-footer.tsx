@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import { Icon } from '@/components/icons'
 import { BRAND, BRAND_NAME } from '@/lib/brand'
-import { BrandLogo } from '@/components/brand-logo'
+import { BrandWordmark } from '@/components/brand-logo'
 
 const COLUMNS = [
   {
@@ -51,14 +51,10 @@ export function SiteFooter() {
           <div>
             <Link
               href="/"
-              className="group flex items-center gap-3"
+              className="group flex items-center"
               aria-label={`${BRAND_NAME} home`}
             >
-              <BrandLogo className="h-10 w-10 shrink-0" />
-              <span className="font-[family-name:var(--font-display)] text-[44px] font-normal leading-none text-[var(--color-fg)]">
-                {BRAND_NAME}
-              </span>
-              <span aria-hidden className="size-2 rounded-full bg-[var(--color-accent)]" />
+              <BrandWordmark className="h-12 w-auto text-[var(--color-fg)]" />
             </Link>
             <p className="mt-5 max-w-md font-[family-name:var(--font-display)] text-[20px] italic font-light leading-snug text-[var(--color-fg-muted)]">
               {BRAND.tagline}

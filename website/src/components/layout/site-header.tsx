@@ -7,7 +7,7 @@ import { Icon } from '@/components/icons'
 import { cn } from '@/lib/cn'
 import { BRAND_NAME } from '@/lib/brand'
 import { Button } from '@/components/ui/button'
-import { BrandLogo } from '@/components/brand-logo'
+import { BrandWordmark } from '@/components/brand-logo'
 
 const NAV = [
   { label: 'Modules', href: '/modules' },
@@ -52,20 +52,13 @@ export function SiteHeader() {
       )}
     >
       <div className="container-wide flex h-[72px] items-center justify-between gap-6 lg:grid lg:grid-cols-[1fr_auto_1fr]">
-        {/* Wordmark — logo + Fraunces 24px + amber dot */}
+        {/* Wordmark — single SVG with icon + "Omnix" + amber dot baked in */}
         <Link
           href="/"
           aria-label={`${BRAND_NAME} home`}
-          className="group flex w-fit items-center gap-2"
+          className="group flex w-fit items-center"
         >
-          <BrandLogo className="h-7 w-7 shrink-0" />
-          <span className="font-[family-name:var(--font-display)] text-[24px] font-medium leading-none tracking-[-0.02em] text-[var(--color-fg)]">
-            {BRAND_NAME}
-          </span>
-          <span
-            aria-hidden
-            className="size-1.5 -translate-y-0.5 rounded-full bg-[var(--color-accent)] transition-transform group-hover:translate-y-0"
-          />
+          <BrandWordmark className="h-7 w-auto text-[var(--color-fg)]" />
         </Link>
 
         {/* Nav — truly centred */}

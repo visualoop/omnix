@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { BRAND_NAME } from '@/lib/brand'
+import { BrandWordmark } from '@/components/brand-logo'
 import '../(frontend)/globals.css'
 
 /**
@@ -13,13 +14,10 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
         <div className="mx-auto flex h-16 max-w-[1180px] items-center justify-between px-6 sm:px-8">
           <Link
             href="/"
-            className="flex items-baseline gap-1.5"
+            className="flex items-center"
             aria-label={`${BRAND_NAME} home`}
           >
-            <span className="font-display text-[20px] font-semibold leading-none text-[var(--color-fg)]">
-              {BRAND_NAME}
-            </span>
-            <span aria-hidden className="size-1.5 rounded-full bg-[var(--color-accent)]" />
+            <BrandWordmark className="h-6 w-auto text-[var(--color-fg)]" />
           </Link>
           <Link
             href="/contact"
