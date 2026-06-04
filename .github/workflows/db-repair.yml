@@ -1,0 +1,29 @@
+name: DB Repair Schema (one-shot)
+
+# Manual one-shot: applies missing columns idempotently and repairs the
+# payload_migrations ledger so `payload migrate` works again. Non-destructive.
+
+on:
+  workflow_dispatch: {}
+
+jobs:
+  repair:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          run_install: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: pnpm
+          cache-dependency-path: website/pnpm-lock.yaml
+      - name: Install
+        working-directory: website
+        run: pnpm install --frozen-lockfile
+      - name: Repair
+        working-directory: website
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: pnpm exec tsx scripts/repair-schema.mts
