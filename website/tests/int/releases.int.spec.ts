@@ -343,7 +343,7 @@ describe('releases-sync: gate', () => {
         ),
         create: fakeCreate(store),
         update: fakeUpdate(store),
-        findGlobal: fakeFindGlobal(true),
+        findGlobal: fakeFindGlobal(false),
       },
     } as unknown as Parameters<typeof releasesPostEndpoint.handler>[0]
     const res = await releasesPostEndpoint.handler(req)
@@ -356,7 +356,7 @@ describe('releases-sync: upsert', () => {
     const store = { releases: [] as Release[], licenses: [] as License[] }
     const req = {
       headers: headers({ 'x-system-token': SYS_TOKEN }),
-      json: async () => ({ version: '0.4.0', windowsNsisUrl: 'https://media.omnix.co.ke/x.exe' }),
+      json: async () => ({ version: '0.4.0', windowsNsisUrl: 'https://media.omnix.co.ke/x.exe', updaterSignature: 'sig' }),
       payload: {
         find: vi.fn(async ({ collection, ...rest }: { collection: string; [k: string]: unknown }) =>
           fakeFind(collection, store)(rest as never),
@@ -382,6 +382,7 @@ describe('releases-sync: upsert', () => {
       json: async () => ({
         version: '0.4.0',
         windowsNsisUrl: 'https://media.omnix.co.ke/v0.4.0/setup.exe',
+        updaterSignature: 'sig',
         forcePublish: true,
       }),
       payload: {
