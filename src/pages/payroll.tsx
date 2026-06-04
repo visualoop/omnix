@@ -7,6 +7,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu";
+import { printPage } from "@/lib/print";
 import { TableRowSkeleton } from "@/components/ui/skeletons";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Can } from "@/components/require-role";
@@ -473,7 +474,7 @@ function PayslipDialog({ payslip, onClose, run }: {
           <Button variant="outline" size="sm" onClick={() => downloadPayslipPdf(payslip, run)}>
             <Download className="h-3.5 w-3.5 mr-1.5" /> Download PDF
           </Button>
-          <Button variant="outline" size="sm" onClick={() => window.print()}>
+          <Button variant="outline" size="sm" onClick={() => printPage(`Payslip — ${payslip.employee_name ?? "Employee"}`)}>
             <Printer className="h-3.5 w-3.5 mr-1.5" /> Print
           </Button>
           <Button size="sm" onClick={onClose}>Close</Button>

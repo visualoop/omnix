@@ -50,8 +50,18 @@ async function main() {
   }
   console.log('[repair] meta columns OK')
 
-  // ── 3. cloud_backups table (already existed per 403 proof, but ensure cols) ─
-  // No-op if the CREATE in migration 2 already ran (it did, partially).
+  // ── 3. payload_locked_documents_rels needs cloud_backups_id (the new collection)
+  await q(`ALTER TABLE "payload_locked_documents_rels" ADD COLUMN IF NOT EXISTS "cloud_backups_id" integer;`)
+  await q(`
+    DO $$ BEGIN
+      ALTER TABLE "payload_locked_documents_rels"
+        ADD CONSTRAINT "payload_locked_documents_rels_cloud_backups_fk"
+        FOREIGN KEY ("cloud_backups_id") REFERENCES "public"."cloud_backups"("id")
+        ON DELETE cascade ON UPDATE no action;
+    EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+  `)
+  await q(`CREATE INDEX IF NOT EXISTS "payload_locked_documents_rels_cloud_backups_id_idx" ON "payload_locked_documents_rels" USING btree ("cloud_backups_id");`)
+  console.log('[repair] payload_locked_documents_rels.cloud_backups_id OK')
 
   // ── 4. Repair migration ledger ───────────────────────────────────────────
   // Remove the dev-push marker (batch=-1) that forces the interactive prompt.

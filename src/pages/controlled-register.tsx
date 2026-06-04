@@ -6,6 +6,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { TableRowSkeleton } from "@/components/ui/skeletons";
 import { query } from "@/lib/db";
+import { printPage } from "@/lib/print";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 
@@ -127,7 +128,7 @@ export function ControlledRegisterPage() {
           <Button variant="outline" onClick={exportPdf}>
             <Download className="h-3.5 w-3.5 mr-1.5" /> PDF
           </Button>
-          <Button variant="outline" onClick={() => window.print()}>
+          <Button variant="outline" onClick={() => printPage("Controlled Substances Register")}>
             <Printer className="h-3.5 w-3.5 mr-1.5" /> Print
           </Button>
         </div>

@@ -9,6 +9,7 @@
  * On lock, navigates to /login and clears the session.
  */
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { Lock } from "lucide-react";
 import { useAuthStore } from "@/stores/auth";
 import { useNavigate } from "react-router-dom";
@@ -85,65 +86,70 @@ export function IdleAutoLock() {
   };
 
   return (
-    <div className="glass-canvas fixed inset-0 z-[200] flex items-center justify-center overflow-hidden">
-      {/* Atmospheric ambient orbs */}
-      <div aria-hidden className="pointer-events-none absolute inset-0">
-        <div className="absolute -top-40 -left-40 h-[28rem] w-[28rem] rounded-full bg-primary/15 blur-[160px]" />
-        <div className="absolute -bottom-40 -right-40 h-[32rem] w-[32rem] rounded-full bg-blue-500/10 blur-[180px]" />
-      </div>
-
-      <div className="relative z-10 w-full max-w-[400px] glass-thick rounded-glass-xl p-7 space-y-5">
-        {/* Lock icon in a glass chip */}
-        <div className="flex flex-col items-center text-center space-y-3">
-          <div className="glass rounded-2xl p-4">
-            <Lock className="h-7 w-7 text-primary" strokeWidth={1.75} />
+    <>
+      {createPortal(
+        <div className="glass-canvas fixed inset-0 z-[200] flex items-center justify-center overflow-hidden">
+          {/* Atmospheric ambient orbs */}
+          <div aria-hidden className="pointer-events-none absolute inset-0">
+            <div className="absolute -top-40 -left-40 h-[28rem] w-[28rem] rounded-full bg-primary/15 blur-[160px]" />
+            <div className="absolute -bottom-40 -right-40 h-[32rem] w-[32rem] rounded-full bg-blue-500/10 blur-[180px]" />
           </div>
-          <div>
-            <h1 className="text-xl font-semibold tracking-tight">Locked</h1>
-            <p className="text-xs text-muted-foreground mt-1.5 leading-relaxed">
-              Inactivity timeout. Enter your password to continue.
-            </p>
-          </div>
-        </div>
 
-        {/* Active user pill */}
-        <div className="rounded-2xl glass-thin px-3.5 py-2.5 flex items-center gap-3">
-          <div className="h-9 w-9 rounded-full bg-primary/12 ring-1 ring-inset ring-primary/15 flex items-center justify-center text-sm font-semibold text-primary">
-            {(user.full_name?.charAt(0) || user.username.charAt(0)).toUpperCase()}
-          </div>
-          <div className="flex-1 min-w-0 leading-tight">
-            <div className="text-[13px] font-medium truncate">{user.full_name || user.username}</div>
-            <div className="text-[11px] text-muted-foreground truncate font-mono">{user.username}</div>
-          </div>
-        </div>
+          <div className="relative z-10 w-full max-w-[400px] glass-thick rounded-glass-xl p-7 space-y-5">
+            {/* Lock icon in a glass chip */}
+            <div className="flex flex-col items-center text-center space-y-3">
+              <div className="glass rounded-2xl p-4">
+                <Lock className="h-7 w-7 text-primary" strokeWidth={1.75} />
+              </div>
+              <div>
+                <h1 className="text-xl font-semibold tracking-tight">Locked</h1>
+                <p className="text-xs text-muted-foreground mt-1.5 leading-relaxed">
+                  Inactivity timeout. Enter your password to continue.
+                </p>
+              </div>
+            </div>
 
-        {/* Password + unlock */}
-        <div className="space-y-2.5">
-          <Input
-            type="password"
-            value={pin}
-            onChange={(e) => setPin(e.target.value)}
-            placeholder="Password"
-            autoFocus
-            onKeyDown={(e) => e.key === "Enter" && handleUnlock()}
-            className="h-10 rounded-xl"
-          />
-          <Button
-            onClick={handleUnlock}
-            className="w-full h-11 rounded-xl shadow-native cursor-pointer"
-            disabled={!pin.trim()}
-          >
-            Unlock
-          </Button>
-        </div>
+            {/* Active user pill */}
+            <div className="rounded-2xl glass-thin px-3.5 py-2.5 flex items-center gap-3">
+              <div className="h-9 w-9 rounded-full bg-primary/12 ring-1 ring-inset ring-primary/15 flex items-center justify-center text-sm font-semibold text-primary">
+                {(user.full_name?.charAt(0) || user.username.charAt(0)).toUpperCase()}
+              </div>
+              <div className="flex-1 min-w-0 leading-tight">
+                <div className="text-[13px] font-medium truncate">{user.full_name || user.username}</div>
+                <div className="text-[11px] text-muted-foreground truncate font-mono">{user.username}</div>
+              </div>
+            </div>
 
-        <button
-          onClick={handleSwitchUser}
-          className="block w-full text-center text-[11px] text-muted-foreground hover:text-foreground transition-colors py-1 cursor-pointer"
-        >
-          Switch user
-        </button>
-      </div>
-    </div>
+            {/* Password + unlock */}
+            <div className="space-y-2.5">
+              <Input
+                type="password"
+                value={pin}
+                onChange={(e) => setPin(e.target.value)}
+                placeholder="Password"
+                autoFocus
+                onKeyDown={(e) => e.key === "Enter" && handleUnlock()}
+                className="h-10 rounded-xl"
+              />
+              <Button
+                onClick={handleUnlock}
+                className="w-full h-11 rounded-xl shadow-native cursor-pointer"
+                disabled={!pin.trim()}
+              >
+                Unlock
+              </Button>
+            </div>
+
+            <button
+              onClick={handleSwitchUser}
+              className="block w-full text-center text-[11px] text-muted-foreground hover:text-foreground transition-colors py-1 cursor-pointer"
+            >
+              Switch user
+            </button>
+          </div>
+        </div>,
+        document.body,
+      )}
+    </>
   );
 }
