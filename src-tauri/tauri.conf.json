@@ -1,7 +1,7 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "Omnix",
-  "version": "0.2.28",
+  "version": "0.2.29",
   "identifier": "co.ke.omnix.app",
   "build": {
     "beforeDevCommand": "npm run dev",
@@ -34,7 +34,7 @@
         "https://omnix.co.ke/api/releases-latest"
       ],
       "dialog": false,
-      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEIzNDQ1QzNDN0ZBNEIzQ0MKUldUTXM2Ui9QRnhFczgzZTZybVduQjNOUmFuODdWR3FWajRNd1Q3NWErT1lYandKRGNrRUxFVkEK"
+      "pubkey": "ZFc1MGNuVnpkR1ZrSUdOdmJXMWxiblE2SUcxcGJtbHphV2R1SUhCMVlteHBZeUJyWlhrNklEUTFOVFkzTXprNVJqZERNVVl3TWpVS1VsZFJiRGhOU0ROdFdFNVhVbU5sYkc4NVJ6UldVbWxCYzJsVFJUTk1Va3N2UzNoSWNsZHhPRWRqT0RJMVkyOHJUa05QTTBKa2JYQUs="
     }
   },
   "bundle": {

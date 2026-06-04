@@ -17,7 +17,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
             className="flex items-center"
             aria-label={`${BRAND_NAME} home`}
           >
-            <BrandWordmark className="h-6 w-auto text-[var(--color-fg)]" />
+            <BrandWordmark className="text-[20px]" />
           </Link>
           <Link
             href="/contact"

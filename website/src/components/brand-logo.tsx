@@ -1,65 +1,51 @@
 /**
- * Omnix brand assets — single source of truth, kept in lockstep with the
- * actual desktop app icon (src-tauri/icons/icon.png): a flat black rounded
- * square with a single amber dot near the top. No ring, no gradient, no
- * extra ornamentation — matches what users see when the app is installed.
+ * Omnix brand assets — uses the actual desktop app icon file directly.
  *
- *   <BrandLogo>      square mark (favicon, OG image, compact spaces)
- *   <BrandWordmark>  horizontal lockup with "Omnix" baked into the SVG
+ *   <BrandLogo>      square mark, served from /icon.png (the exact PNG
+ *                    shipped inside the Tauri app)
+ *   <BrandWordmark>  horizontal lockup: same icon + "Omnix" text in
+ *                    Fraunces (display font)
+ *
+ * The logo is intentionally NOT redrawn — we serve src-tauri/icons/icon.png
+ * verbatim so the website and the installed app are pixel-identical.
  */
 
-const BG = '#000000'
-const DOT = '#FBBF24'
+import Image from 'next/image'
 
-/** Square brand mark — matches the desktop app's icon exactly. */
+/** Square brand mark — the exact PNG used by the desktop app. */
 export function BrandLogo({ className }: { className?: string }) {
   return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      viewBox="0 0 512 512"
-      fill="none"
-      className={className}
+    <Image
+      src="/icon.png"
+      alt=""
       aria-hidden
-    >
-      <rect x="0" y="0" width="512" height="512" rx="112" fill={BG} />
-      <circle cx="256" cy="156" r="16" fill={DOT} />
-    </svg>
+      width={64}
+      height={64}
+      className={className}
+      priority
+    />
   )
 }
 
 /**
- * Horizontal wordmark: icon + "Omnix" text, all inline in one SVG.
- *
- * ViewBox 0 0 1180 320 → ~3.7:1. Caller controls size with className
- * (e.g. h-7 in header, h-12 in footer hero). The text uses
- * fill="currentColor" so it adapts to theme; the icon is intentionally
- * always-black to match the installed app.
+ * Horizontal wordmark: app icon + "Omnix" word, side by side.
+ * Caller controls icon size via className (the text size scales with it).
  */
 export function BrandWordmark({ className }: { className?: string }) {
   return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      viewBox="0 0 1180 320"
-      fill="none"
-      className={className}
-      aria-label="Omnix"
-      role="img"
-    >
-      {/* Icon — same geometry as BrandLogo, scaled to 320×320 in slot 0,0 */}
-      <rect x="0" y="0" width="320" height="320" rx="70" fill={BG} />
-      <circle cx="160" cy="98" r="10" fill={DOT} />
-      {/* Wordmark — Fraunces (display font), centred to icon baseline */}
-      <text
-        x="370"
-        y="220"
-        fontFamily="Fraunces, ui-serif, Georgia, serif"
-        fontSize="220"
-        fontWeight="500"
-        letterSpacing="-4"
-        fill="currentColor"
-      >
+    <span className={`inline-flex items-center gap-3 ${className ?? ''}`}>
+      <Image
+        src="/icon.png"
+        alt=""
+        aria-hidden
+        width={64}
+        height={64}
+        className="h-[1.2em] w-[1.2em]"
+        priority
+      />
+      <span className="font-[family-name:var(--font-display)] font-medium leading-none tracking-[-0.02em]">
         Omnix
-      </text>
-    </svg>
+      </span>
+    </span>
   )
 }

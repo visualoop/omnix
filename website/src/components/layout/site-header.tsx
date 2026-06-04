@@ -58,7 +58,7 @@ export function SiteHeader() {
           aria-label={`${BRAND_NAME} home`}
           className="group flex w-fit items-center"
         >
-          <BrandWordmark className="h-7 w-auto text-[var(--color-fg)]" />
+          <BrandWordmark className="text-[24px]" />
         </Link>
 
         {/* Nav — truly centred */}

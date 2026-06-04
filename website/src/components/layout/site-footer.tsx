@@ -54,7 +54,7 @@ export function SiteFooter() {
               className="group flex items-center"
               aria-label={`${BRAND_NAME} home`}
             >
-              <BrandWordmark className="h-12 w-auto text-[var(--color-fg)]" />
+              <BrandWordmark className="text-[44px]" />
             </Link>
             <p className="mt-5 max-w-md font-[family-name:var(--font-display)] text-[20px] italic font-light leading-snug text-[var(--color-fg-muted)]">
               {BRAND.tagline}
