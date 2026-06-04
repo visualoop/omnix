@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { CalendarClock, Plus, Loader2, X, DollarSign, Trash2 } from "lucide-react";
+import { CalendarClock, Plus, Loader2, X, DollarSign, Trash2, ShoppingCart } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
@@ -12,11 +13,13 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { confirm } from "@/components/ui/confirm-dialog";
 import {
   listLaybys, getLayby, createLayby, recordLaybyPayment, cancelLayby,
+  prepareLaybyForPosCheckout,
   type Layby, type LaybyItem, type LaybyPayment,
 } from "@/services/retail";
 import { listCustomers } from "@/services/erp";
 import { getProducts, type Product } from "@/services/inventory";
 import { useAuthStore } from "@/stores/auth";
+import { useCartStore } from "@/stores/cart";
 import { toast } from "sonner";
 
 const KES = (n: number) => "KES " + n.toLocaleString("en-KE", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -418,6 +421,7 @@ function LaybyDetailSheet({ laybyId, onClose, onChange }: {
   onChange: () => void;
 }) {
   const userId = useAuthStore((s) => s.user?.id);
+  const navigate = useNavigate();
   const [data, setData] = useState<{ layby: Layby; items: LaybyItem[]; payments: LaybyPayment[] } | null>(null);
   const [showPayment, setShowPayment] = useState(false);
 
@@ -548,9 +552,26 @@ function LaybyDetailSheet({ laybyId, onClose, onChange }: {
           )}
 
           {layby.status === "active" && (
-            <Button variant="ghost" className="w-full text-red-600" onClick={cancel}>
-              <X className="h-3.5 w-3.5 mr-1.5" /> Cancel Layby
-            </Button>
+            <div className="flex flex-col gap-2">
+              {layby.balance_due <= 0 && (
+                <Button className="w-full" onClick={async () => {
+                  try {
+                    const checkout = await prepareLaybyForPosCheckout(layby.id);
+                    if (!checkout) { toast.error("Cannot checkout this layby"); return; }
+                    useCartStore.getState().loadSnapshot(checkout.items, 0, checkout.customerId, {
+                      source: { type: "layby", id: layby.id, label: `LB ${checkout.laybyNumber} — ${checkout.customerName}` },
+                    });
+                    toast.success("Layby loaded into POS cart");
+                    navigate("/pos");
+                  } catch (e) { toast.error(String(e)); }
+                }}>
+                  <ShoppingCart className="h-3.5 w-3.5 mr-1.5" /> Checkout via POS
+                </Button>
+              )}
+              <Button variant="ghost" className="w-full text-red-600" onClick={cancel}>
+                <X className="h-3.5 w-3.5 mr-1.5" /> Cancel Layby
+              </Button>
+            </div>
           )}
         </div>
         <SheetFooter>

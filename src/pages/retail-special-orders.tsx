@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { CalendarPlus, Plus, Loader2, Phone, Check, X } from "lucide-react";
+import { CalendarPlus, Plus, Loader2, Phone, Check, X, ShoppingCart } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter } from "@/components/ui/sheet";
@@ -8,10 +9,12 @@ import { TableRowSkeleton } from "@/components/ui/skeletons";
 import { EmptyState } from "@/components/ui/empty-state";
 import {
   listSpecialOrders, createSpecialOrder, updateSpecialOrderStatus, parseSpecialOrderItems,
+  prepareSpecialOrderForPosCheckout,
   type SpecialOrder, type SpecialOrderItem,
 } from "@/services/retail";
 import { listCustomers } from "@/services/erp";
 import { useAuthStore } from "@/stores/auth";
+import { useCartStore } from "@/stores/cart";
 import { toast } from "sonner";
 
 const STATUS_LABELS: Record<SpecialOrder["status"], string> = {
@@ -27,6 +30,7 @@ export function SpecialOrdersPage() {
   const [orders, setOrders] = useState<SpecialOrder[]>([]);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
+  const navigate = useNavigate();
 
   const load = async () => {
     setLoading(true);
@@ -135,9 +139,24 @@ export function SpecialOrdersPage() {
                               <Button variant="outline" size="sm" onClick={() => advance(o.id, "received")}>Mark Received</Button>
                             )}
                             {o.status === "received" && (
-                              <Button size="sm" onClick={() => advance(o.id, "fulfilled")}>
-                                <Check className="h-3 w-3 mr-1" /> Fulfill
-                              </Button>
+                              <div className="flex gap-1">
+                                <Button size="sm" onClick={async () => {
+                                  try {
+                                    const checkout = await prepareSpecialOrderForPosCheckout(o.id);
+                                    if (!checkout) { toast.error("Cannot fulfill this order"); return; }
+                                    useCartStore.getState().loadSnapshot(checkout.items, 0, checkout.customerId, {
+                                      source: { type: "special_order", id: o.id, label: `SO — ${checkout.customerName || "Special Order"}` },
+                                    });
+                                    toast.success("Special order loaded into POS cart");
+                                    navigate("/pos");
+                                  } catch (e) { toast.error(String(e)); }
+                                }}>
+                                  <ShoppingCart className="h-3 w-3 mr-1" /> Fulfill via POS
+                                </Button>
+                                <Button variant="ghost" size="sm" onClick={() => advance(o.id, "fulfilled")}>
+                                  <Check className="h-3 w-3 mr-1" /> Quick fulfill
+                                </Button>
+                              </div>
                             )}
                           </div>
                         </td>

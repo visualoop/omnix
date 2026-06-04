@@ -35,7 +35,7 @@ interface PaymentSnapshot {
   tip: number;
   tipEmployeeId: string | null;
   serviceChargeAmount: number;
-  sourceType: "hospitality_order" | "prescription" | null;
+  sourceType: "hospitality_order" | "prescription" | "layby" | "special_order" | "folio" | null;
   sourceId: string | null;
 }
 
@@ -148,6 +148,27 @@ export function PaymentModal({ open, onClose }: Props) {
       amount: parseFloat(amount) || saleSnapshot.total,
     }];
 
+    const creditPayments = finalPayments.filter((p) => p.method_id === "credit");
+    if (creditPayments.length > 0) {
+      if (!saleSnapshot.customerId) {
+        toast.error("A customer account is required for credit payments");
+        return;
+      }
+      try {
+        const { creditCheck } = await import("@/services/hardware");
+        for (const cp of creditPayments) {
+          const result = await creditCheck(saleSnapshot.customerId, cp.amount);
+          if (!result.ok) {
+            toast.error(result.reason || "Credit check failed");
+            return;
+          }
+        }
+      } catch (e) {
+        toast.error("Credit check failed: " + e);
+        return;
+      }
+    }
+
     setProcessing(true);
     try {
       const { saleId, saleItemIds } = await completeSale(
@@ -168,6 +189,25 @@ export function PaymentModal({ open, onClose }: Props) {
       if (saleSnapshot.sourceType === "prescription" && saleSnapshot.sourceId) {
         const { dispensePrescription } = await import("@/services/pharmacy");
         await dispensePrescription(saleSnapshot.sourceId, saleId);
+      }
+
+      if (saleSnapshot.sourceType === "layby" && saleSnapshot.sourceId) {
+        const { completeLaybyFromPos } = await import("@/services/retail");
+        await completeLaybyFromPos(saleSnapshot.sourceId, saleId);
+      }
+
+      if (saleSnapshot.sourceType === "special_order" && saleSnapshot.sourceId) {
+        const { completeSpecialOrderFromPos } = await import("@/services/retail");
+        await completeSpecialOrderFromPos(saleSnapshot.sourceId, saleId);
+      }
+
+      // Hardware contractor credit: post charge to account ledger
+      const creditPayments = finalPayments.filter((p) => p.method_id === "credit");
+      if (creditPayments.length > 0 && saleSnapshot.customerId) {
+        const { postCharge } = await import("@/services/hardware");
+        for (const cp of creditPayments) {
+          await postCharge(saleSnapshot.customerId, cp.amount, { saleId, userId: user!.id });
+        }
       }
 
       if (insurance) {

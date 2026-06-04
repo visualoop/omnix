@@ -3,6 +3,7 @@
  */
 import { query, execute } from "@/lib/db";
 import { getActiveBranchId } from "@/stores/active-branch";
+import type { CartItem } from "@/services/sales";
 
 // ─── Brands ────────────────────────────────────────────────────────────
 export interface Brand {
@@ -530,6 +531,92 @@ export async function cancelLayby(id: string, refundAmount?: number, userId?: st
       [crypto.randomUUID(), id, -refundAmount, userId],
     );
   }
+}
+
+export async function prepareLaybyForPosCheckout(laybyId: string): Promise<{
+  items: CartItem[]; laybyNumber: string; customerName: string; customerId: string | null
+} | null> {
+  const result = await getLayby(laybyId);
+  if (!result) return null;
+  const { layby, items } = result;
+  if (layby.status === "cancelled" || layby.status === "expired") return null;
+
+  const productIds = [...new Set(items.map((it) => it.product_id))];
+  const placeholders = productIds.map(() => "?").join(",");
+  const prices = await query<{ id: string; tax_rate: number }>(
+    `SELECT id, COALESCE(tax_rate, 0) AS tax_rate FROM products WHERE id IN (${placeholders})`,
+    productIds,
+  );
+  const taxMap = new Map(prices.map((p) => [p.id, p.tax_rate]));
+
+  const cartItems: CartItem[] = items.map((it) => {
+    const tax = taxMap.get(it.product_id) || 0;
+    return {
+      id: crypto.randomUUID(),
+      product_id: it.product_id,
+      name: it.product_name,
+      quantity: it.quantity,
+      unit_price: it.unit_price,
+      discount: 0,
+      tax_rate: tax,
+      total: it.unit_price * it.quantity,
+    };
+  });
+
+  return { items: cartItems, laybyNumber: layby.layby_number, customerName: layby.customer_name, customerId: layby.customer_id };
+}
+
+export async function completeLaybyFromPos(laybyId: string, saleId: string): Promise<void> {
+  await execute(
+    `UPDATE laybys SET status = 'completed', completed_at = datetime('now'), sale_id = ?2 WHERE id = ?1`,
+    [laybyId, saleId],
+  );
+}
+
+export async function prepareSpecialOrderForPosCheckout(orderId: string): Promise<{
+  items: CartItem[]; customerName: string; customerId: string | null
+} | null> {
+  const rows = await query<{ id: string; customer_id: string | null; customer_name: string | null; items_json: string; status: string }>(
+    `SELECT id, customer_id, customer_name, items_json, status FROM special_orders WHERE id = ?1`,
+    [orderId],
+  );
+  if (!rows[0]) return null;
+  const so = rows[0];
+  if (so.status === "cancelled" || so.status === "fulfilled") return null;
+
+  const raw = parseSpecialOrderItems(so.items_json);
+  if (!raw.length) return null;
+
+  const productIds = [...new Set(raw.map((it) => it.product_id).filter(Boolean))];
+  const taxMap = new Map<string, number>();
+  if (productIds.length > 0) {
+    const placeholders = productIds.map(() => "?").join(",");
+    const prices = await query<{ id: string; tax_rate: number }>(
+      `SELECT id, COALESCE(tax_rate, 0) AS tax_rate FROM products WHERE id IN (${placeholders})`,
+      productIds,
+    );
+    prices.forEach((p) => taxMap.set(p.id, p.tax_rate));
+  }
+
+  const cartItems: CartItem[] = raw.map((it) => ({
+    id: crypto.randomUUID(),
+    product_id: it.product_id || "",
+    name: it.product_name,
+    quantity: it.quantity,
+    unit_price: 0,
+    discount: 0,
+    tax_rate: it.product_id ? (taxMap.get(it.product_id) || 0) : 0,
+    total: 0,
+  }));
+
+  return { items: cartItems, customerName: so.customer_name || "", customerId: so.customer_id };
+}
+
+export async function completeSpecialOrderFromPos(orderId: string, saleId: string): Promise<void> {
+  await execute(
+    `UPDATE special_orders SET status = 'fulfilled', fulfilled_at = datetime('now'), sale_id = ?2 WHERE id = ?1`,
+    [orderId, saleId],
+  );
 }
 
 // ─── Special Orders ────────────────────────────────────────────────────

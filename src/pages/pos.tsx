@@ -751,14 +751,23 @@ function CartPanel({
       </div>
 
       {sourceLabel && (
-        <div className={`px-3 py-2 border-b border-border text-xs ${sourceType === "prescription" ? "bg-teal-500/5" : "bg-rose-500/5"}`}>
-          <div className="text-[10px] uppercase tracking-wide text-muted-foreground">
-            {sourceType === "prescription" ? "Pharmacy Dispense" : "Hospitality checkout"}
-          </div>
-          <div className={`font-medium truncate ${sourceType === "prescription" ? "text-teal-700 dark:text-teal-400" : "text-rose-700 dark:text-rose-400"}`}>
-            {sourceLabel}
-          </div>
-        </div>
+        (() => {
+          type Banner = { bg: string; label: string; text: string };
+          const map: Record<string, Banner> = {
+            prescription: { bg: "bg-teal-500/5", label: "Pharmacy Dispense", text: "text-teal-700 dark:text-teal-400" },
+            hospitality_order: { bg: "bg-rose-500/5", label: "Hospitality checkout", text: "text-rose-700 dark:text-rose-400" },
+            layby: { bg: "bg-amber-500/5", label: "Layby Checkout", text: "text-amber-700 dark:text-amber-400" },
+            special_order: { bg: "bg-amber-500/5", label: "Special Order", text: "text-amber-700 dark:text-amber-400" },
+            folio: { bg: "bg-indigo-500/5", label: "Folio Settlement", text: "text-indigo-700 dark:text-indigo-400" },
+          };
+          const banner = map[sourceType ?? ""] ?? { bg: "bg-rose-500/5", label: "Source Checkout", text: "text-rose-700 dark:text-rose-400" };
+          return (
+            <div className={`px-3 py-2 border-b border-border text-xs ${banner.bg}`}>
+              <div className="text-[10px] uppercase tracking-wide text-muted-foreground">{banner.label}</div>
+              <div className={`font-medium truncate ${banner.text}`}>{sourceLabel}</div>
+            </div>
+          );
+        })()
       )}
 
       {/* Customer */}

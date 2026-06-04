@@ -17,7 +17,7 @@ interface CartPayload {
   tip: number;
   tipEmployeeId: string | null;
   serviceChargeAmount: number;
-  sourceType: "hospitality_order" | "prescription" | null;
+  sourceType: "hospitality_order" | "prescription" | "layby" | "special_order" | "folio" | null;
   sourceId: string | null;
   sourceLabel: string | null;
   revision: number;
@@ -74,7 +74,7 @@ interface CartState {
   tip: number;
   tipEmployeeId: string | null;
   serviceChargeAmount: number;
-  sourceType: "hospitality_order" | "prescription" | null;
+  sourceType: "hospitality_order" | "prescription" | "layby" | "special_order" | "folio" | null;
   sourceId: string | null;
   sourceLabel: string | null;
   revision: number;
@@ -87,7 +87,7 @@ interface CartState {
   setTip: (amount: number, employeeId?: string | null) => void;
   setServiceCharge: (amount: number) => void;
   setCustomer: (id: string | null) => void;
-  setSource: (source: { type: "hospitality_order" | "prescription"; id: string; label: string } | null) => void;
+  setSource: (source: { type: "hospitality_order" | "prescription" | "layby" | "special_order" | "folio"; id: string; label: string } | null) => void;
   loadSnapshot: (
     items: CartItem[],
     discount: number,
@@ -96,7 +96,7 @@ interface CartState {
       tip?: number;
       tipEmployeeId?: string | null;
       serviceChargeAmount?: number;
-      source?: { type: "hospitality_order" | "prescription"; id: string; label: string } | null;
+      source?: { type: "hospitality_order" | "prescription" | "layby" | "special_order" | "folio"; id: string; label: string } | null;
     },
   ) => void;
   clear: () => void;

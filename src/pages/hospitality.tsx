@@ -14,7 +14,7 @@ import {
   listAreas, listTables, createArea, createTable, setTableStatus,
   listMenuItems, createMenuItem, setMenuItemActive,
   openOrder, listActiveOrders, listOrderItems, addOrderItem, sendToKitchen,
-  kitchenQueue, bumpItem, markServed, prepareOrderForPosCheckout,
+  kitchenQueue, bumpItem, markServed, prepareOrderForPosCheckout, chargeOrderToRoom,
   listRoomTypes, createRoomType, listRooms, createRoom, setRoomStatus,
   listBookings, createBooking, checkIn, checkOut, folioBalance, postFolioPayment,
   listRecipes, recipeCost, restaurantReport, hotelReport,
@@ -288,6 +288,10 @@ export function HospitalityOrdersPage() {
   const [checkingOut, setCheckingOut] = useState(false);
   const [scPct, setScPct] = useState(0);
   const [tip, setTip] = useState(0);
+  const [orderType, setOrderType] = useState<"dine_in" | "room_service">("dine_in");
+  const [roomFolios, setRoomFolios] = useState<Array<{ id: string; room: string; guest: string; balance: number }>>([]);
+  const [showRoomPicker, setShowRoomPicker] = useState(false);
+  const [chargingRoom, setChargingRoom] = useState<string | null>(null);
 
   const loadOrders = () => listActiveOrders().then(setOrders);
   useEffect(() => { Promise.all([loadOrders(), listMenuItems().then(setMenu)]).finally(() => setLoading(false)); }, []);
@@ -301,10 +305,10 @@ export function HospitalityOrdersPage() {
 
   const newOrder = async () => {
     try {
-      const id = await openOrder({ orderType: "dine_in", userId });
+      const id = await openOrder({ orderType, userId });
       await loadOrders();
       setSelected(id);
-      toast.success("Order opened");
+      toast.success(`${orderType === "room_service" ? "Room service" : "Dine-in"} order opened`);
     } catch (e) { toast.error(String(e)); }
   };
   const addItem = async (m: MenuItem) => {
@@ -387,6 +391,28 @@ export function HospitalityOrdersPage() {
                   <Button size="sm" className={cn("w-full cursor-pointer", BRAND_BTN)} disabled={checkingOut || total <= 0} onClick={sendToPosCheckout}>
                     {checkingOut ? "Loading POS…" : `Send to POS ${KES(total + total * (scPct / 100) + tip)}`}
                   </Button>
+                  <Button size="sm" variant="outline" className="w-full" disabled={total <= 0 || chargingRoom !== null} onClick={async () => {
+                    const rows = await query<{ id: string; room_number: string; guest_name: string }>(
+                      `SELECT gf.id, r.room_number, gf.guest_name FROM guest_folios gf JOIN rooms r ON r.id = gf.room_id WHERE gf.status = 'open' ORDER BY r.room_number`);
+                    if (rows.length === 0) { toast.error("No open guest folios — check in a guest first"); return; }
+                    setRoomFolios(rows.map((r) => ({ id: r.id, room: r.room_number, guest: r.guest_name, balance: 0 })));
+                    setShowRoomPicker(true);
+                  }}>
+                    <BedDouble className="h-3.5 w-3.5 mr-1" /> Charge to Room
+                  </Button>
+                  {showRoomPicker && (
+                    <RoomPickerDialog
+                      folios={roomFolios}
+                      onSelect={async (folioId) => {
+                        setShowRoomPicker(false);
+                        setChargingRoom(folioId);
+                        try { await chargeOrderToRoom(selected, folioId, userId); toast.success("Charged to room"); loadOrders(); setSelected(null); }
+                        catch (e) { toast.error(String(e)); }
+                        finally { setChargingRoom(null); }
+                      }}
+                      onClose={() => setShowRoomPicker(false)}
+                    />
+                  )}
                 </div>
               </div>
             )}
@@ -414,7 +440,7 @@ export function HospitalityOrdersPage() {
         icon={UtensilsCrossed}
         title="Orders"
         subtitle="Active tabs and tickets."
-        action={<Button size="sm" className={cn("cursor-pointer", BRAND_BTN)} onClick={newOrder}><Plus className="h-3.5 w-3.5 mr-1" /> New order</Button>}
+        action={<div className="flex items-center gap-2"><select value={orderType} onChange={(e) => setOrderType(e.target.value as "dine_in" | "room_service")} className="h-8 rounded border border-input bg-background px-2 text-xs"><option value="dine_in">Dine-in</option><option value="room_service">Room service</option></select><Button size="sm" className={cn("cursor-pointer", BRAND_BTN)} onClick={newOrder}><Plus className="h-3.5 w-3.5 mr-1" /> New order</Button></div>}
       />
       {orders.length === 0 ? <EmptyHint text="No active orders. Open one to start." /> : (
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2.5">
@@ -879,6 +905,25 @@ export function HospitalityReportsPage() {
 }
 
 // ─── Shared ──────────────────────────────────────────────────────────────────
+
+function RoomPickerDialog({ folios, onSelect, onClose }: { folios: Array<{ id: string; room: string; guest: string; balance: number }>; onSelect: (id: string) => void; onClose: () => void }) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={onClose}>
+      <div className="bg-background border border-border rounded-lg shadow-lg w-80 p-4" onClick={(e) => e.stopPropagation()}>
+        <div className="text-sm font-medium mb-3">Charge to room</div>
+        <div className="space-y-1.5 max-h-60 overflow-auto">
+          {folios.map((f) => (
+            <button key={f.id} onClick={() => onSelect(f.id)} className="w-full text-left rounded-md border border-border p-2.5 hover:bg-accent/30 transition-colors cursor-pointer">
+              <div className="text-sm font-medium">Room {f.room}</div>
+              <div className="text-xs text-muted-foreground">{f.guest}</div>
+            </button>
+          ))}
+        </div>
+        <Button variant="outline" size="sm" className="mt-3 w-full" onClick={onClose}>Cancel</Button>
+      </div>
+    </div>
+  );
+}
 
 function CenterSpin() {
   return <div className="flex justify-center py-16"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>;
