@@ -18,6 +18,7 @@ import {
   listRoomTypes, createRoomType, listRooms, createRoom, setRoomStatus,
   listBookings, createBooking, checkIn, checkOut, folioBalance, postFolioPayment,
   listRecipes, recipeCost, restaurantReport, hotelReport,
+  menuAvailability, type MenuAvailability,
   type DiningArea, type DiningTable, type MenuItem,
   type HospitalityOrder, type HospitalityOrderItem,
   type RoomType, type Room, type Booking, type RecipeRow,
@@ -292,9 +293,17 @@ export function HospitalityOrdersPage() {
   const [roomFolios, setRoomFolios] = useState<Array<{ id: string; room: string; guest: string; balance: number }>>([]);
   const [showRoomPicker, setShowRoomPicker] = useState(false);
   const [chargingRoom, setChargingRoom] = useState<string | null>(null);
+  const [availability, setAvailability] = useState<Map<string, MenuAvailability>>(new Map());
 
   const loadOrders = () => listActiveOrders().then(setOrders);
-  useEffect(() => { Promise.all([loadOrders(), listMenuItems().then(setMenu)]).finally(() => setLoading(false)); }, []);
+  const loadAvailability = () => menuAvailability().then(setAvailability).catch(() => setAvailability(new Map()));
+  useEffect(() => {
+    Promise.all([
+      loadOrders(),
+      listMenuItems().then(setMenu),
+      loadAvailability(),
+    ]).finally(() => setLoading(false));
+  }, []);
   useEffect(() => { if (selected) listOrderItems(selected).then(setItems); else setItems([]); }, [selected]);
   useEffect(() => {
     if (!selected) return;
@@ -421,12 +430,41 @@ export function HospitalityOrdersPage() {
           <div>
             <div className="text-[11px] uppercase tracking-wide text-muted-foreground mb-2">Menu</div>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-              {menu.map((m) => (
-                <button key={m.id} onClick={() => addItem(m)} className="rounded-lg border border-border p-3 text-left hover:bg-accent/30 transition-colors cursor-pointer">
-                  <div className="text-[13px] font-medium truncate">{m.menu_name}</div>
-                  <div className="text-[11px] text-muted-foreground font-mono">{m.dine_in_price != null ? KES(m.dine_in_price) : "—"}</div>
-                </button>
-              ))}
+              {menu.map((m) => {
+                const av = availability.get(m.id);
+                const max = av?.max_servings ?? Infinity;
+                const isOut = max === 0;
+                const isLow = max !== Infinity && max > 0 && max <= 3;
+                return (
+                  <button
+                    key={m.id}
+                    onClick={async () => { await addItem(m); loadAvailability(); }}
+                    disabled={isOut}
+                    className={cn(
+                      "rounded-lg border border-border p-3 text-left transition-colors",
+                      isOut
+                        ? "opacity-50 cursor-not-allowed bg-muted/30"
+                        : "hover:bg-accent/30 cursor-pointer",
+                    )}
+                  >
+                    <div className="text-[13px] font-medium truncate">{m.menu_name}</div>
+                    <div className="flex items-center justify-between mt-0.5">
+                      <div className="text-[11px] text-muted-foreground font-mono">
+                        {m.dine_in_price != null ? KES(m.dine_in_price) : "—"}
+                      </div>
+                      {isOut ? (
+                        <span className="text-[10px] font-medium text-rose-600 dark:text-rose-400">
+                          Out{av?.bottleneck_product_name ? ` — ${av.bottleneck_product_name}` : ""}
+                        </span>
+                      ) : isLow ? (
+                        <span className="text-[10px] font-medium text-amber-700 dark:text-amber-400">
+                          Last {max}
+                        </span>
+                      ) : null}
+                    </div>
+                  </button>
+                );
+              })}
             </div>
           </div>
         </div>

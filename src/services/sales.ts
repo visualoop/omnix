@@ -4,6 +4,9 @@ import { getActiveBranchId } from "@/stores/active-branch";
 export interface CartItem {
   id: string;
   product_id: string;
+  /** When this line came from a hospitality menu item, the menu_items.id —
+   *  used to consume recipe ingredients on sale completion (kind=menu_item). */
+  menu_item_id?: string | null;
   name: string;
   quantity: number;
   unit_price: number;
@@ -58,6 +61,8 @@ export async function completeSale(
   tipAmount = 0,
   tipEmployeeId: string | null = null,
   serviceChargeAmount = 0,
+  sourceType: string | null = null,
+  sourceId: string | null = null,
 ): Promise<{ saleId: string; saleItemIds: string[] }> {
   const saleId = crypto.randomUUID();
   const saleNumber = await getNextSaleNumber();
@@ -71,9 +76,9 @@ export async function completeSale(
 
   // Insert sale
   await execute(
-    `INSERT INTO sales (id, sale_number, customer_id, user_id, branch_id, subtotal, discount_amount, tax_amount, total, payment_status, tip_amount, tip_employee_id, service_charge_amount)
-     VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13)`,
-    [saleId, saleNumber, customerId, userId, getActiveBranchId(), subtotal, discountAmount, taxAmount, total, paymentStatus, tipAmount, tipEmployeeId, serviceChargeAmount]
+    `INSERT INTO sales (id, sale_number, customer_id, user_id, branch_id, subtotal, discount_amount, tax_amount, total, payment_status, tip_amount, tip_employee_id, service_charge_amount, source_type, source_id)
+     VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15)`,
+    [saleId, saleNumber, customerId, userId, getActiveBranchId(), subtotal, discountAmount, taxAmount, total, paymentStatus, tipAmount, tipEmployeeId, serviceChargeAmount, sourceType, sourceId]
   );
 
   // Insert items + deduct stock
@@ -81,12 +86,30 @@ export async function completeSale(
     const itemId = crypto.randomUUID();
     saleItemIds.push(itemId);
     await execute(
-      `INSERT INTO sale_items (id, sale_id, product_id, product_name, quantity, unit_price, discount, tax_rate, total)
-       VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)`,
-      [itemId, saleId, item.product_id, item.name, item.quantity, item.unit_price, item.discount, item.tax_rate, item.total]
+      `INSERT INTO sale_items (id, sale_id, product_id, product_name, quantity, unit_price, discount, tax_rate, total, menu_item_id)
+       VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)`,
+      [itemId, saleId, item.product_id, item.name, item.quantity, item.unit_price, item.discount, item.tax_rate, item.total, item.menu_item_id ?? null]
     );
 
-    // Deduct from oldest batch (FIFO)
+    if (item.menu_item_id) {
+      // Hospitality menu line — don't batch-deduct (the menu product has no
+      // batches); consume the recipe ingredients instead.
+      try {
+        const { consumeRecipe } = await import("./hospitality");
+        const result = await consumeRecipe(item.menu_item_id, item.quantity, saleId);
+        if (result.missing.length > 0) {
+          console.warn(
+            `[sale ${saleNumber}] menu_item ${item.menu_item_id}: insufficient ingredients`,
+            result.missing,
+          );
+        }
+      } catch (e) {
+        console.error("Recipe consumption failed for menu item:", e);
+      }
+      continue;
+    }
+
+    // Physical product: deduct from oldest batch (FIFO)
     let remaining = item.quantity;
     const batches = await query<{ id: string; quantity: number }>(
       "SELECT id, quantity FROM batches WHERE product_id = ?1 AND quantity > 0 ORDER BY received_at ASC",

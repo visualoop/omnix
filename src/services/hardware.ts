@@ -126,6 +126,63 @@ export async function convertQuoteToSale(
   return saleId;
 }
 
+/**
+ * Hardware → POS bridge. Returns the cart payload + a customer label so the
+ * caller can `loadSnapshot()` it and route the cashier to /pos. Payment is
+ * collected through the standard POS flow (cash, M-Pesa, customer credit).
+ */
+export interface HardwareCheckoutPayload {
+  quote: { id: string; quote_number: string; customer_id: string | null; customer_name: string | null; discount: number };
+  items: CartItem[];
+}
+
+export async function prepareQuoteForPosCheckout(quoteId: string): Promise<HardwareCheckoutPayload> {
+  await assertModuleEntitled("hardware");
+  await requirePermission("hardware.quotations.manage", { entityType: "quotation", entityId: quoteId });
+
+  const [q] = await query<{ id: string; quote_number: string; customer_id: string | null; customer_name: string | null; status: string; discount: number }>(
+    `SELECT q.id, q.quote_number, q.customer_id, c.name AS customer_name, q.status, q.discount
+       FROM quotations q LEFT JOIN customers c ON c.id = q.customer_id
+      WHERE q.id = ?1`,
+    [quoteId],
+  );
+  if (!q) throw new Error("Quotation not found");
+  if (q.status === "converted") throw new Error("Quotation already converted");
+  if (q.status === "cancelled" || q.status === "expired") throw new Error(`Cannot check out a ${q.status} quote`);
+
+  const items = await query<{ product_id: string | null; name: string; quantity: number; unit_price: number; discount: number; tax_rate: number; line_total: number }>(
+    `SELECT product_id, name, quantity, unit_price, discount, tax_rate, line_total FROM quotation_items WHERE quotation_id = ?1`,
+    [quoteId],
+  );
+  if (items.length === 0) throw new Error("No items on this quote");
+
+  const cart: CartItem[] = items.map((i) => ({
+    id: uid(),
+    product_id: i.product_id ?? "",
+    name: i.name,
+    quantity: i.quantity,
+    unit_price: i.unit_price,
+    discount: i.discount,
+    tax_rate: i.tax_rate,
+    total: i.line_total,
+  }));
+
+  return {
+    quote: { id: q.id, quote_number: q.quote_number, customer_id: q.customer_id, customer_name: q.customer_name, discount: q.discount },
+    items: cart,
+  };
+}
+
+/** Called by POS payment flow to close out the quote once the sale is paid. */
+export async function markQuotePaidFromPos(quoteId: string, saleId: string): Promise<void> {
+  await assertModuleEntitled("hardware");
+  await requirePermission("hardware.quotations.manage", { entityType: "quotation", entityId: quoteId });
+  await execute(
+    `UPDATE quotations SET status = 'converted', converted_sale_id = ?2 WHERE id = ?1`,
+    [quoteId, saleId],
+  );
+}
+
 // ─── Delivery notes ──────────────────────────────────────────────────────────
 
 export async function createDeliveryNote(input: {

@@ -17,6 +17,8 @@ import {
   type Quotation, type AgingBuckets,
 } from "@/services/hardware";
 import { query } from "@/lib/db";
+import { useNavigate } from "react-router-dom";
+import { useCartStore } from "@/stores/cart";
 
 const KES = (n: number) => "KES " + n.toLocaleString("en-KE", { minimumFractionDigits: 0, maximumFractionDigits: 0 });
 
@@ -116,9 +118,32 @@ function Kpi({ label, value, tone = "default" }: { label: string; value: string;
 export function HardwareQuotationsPage() {
   const [quotes, setQuotes] = useState<Quotation[]>([]);
   const [loading, setLoading] = useState(true);
+  const [busy, setBusy] = useState<string | null>(null);
+  const navigate = useNavigate();
+  const loadSnapshot = useCartStore((s) => s.loadSnapshot);
 
   const load = () => { setLoading(true); listQuotations().then(setQuotes).finally(() => setLoading(false)); };
   useEffect(() => { load(); }, []);
+
+  const sendToPos = async (q: Quotation) => {
+    setBusy(q.id);
+    try {
+      const { prepareQuoteForPosCheckout } = await import("@/services/hardware");
+      const payload = await prepareQuoteForPosCheckout(q.id);
+      const label = payload.quote.customer_name
+        ? `${payload.quote.quote_number} — ${payload.quote.customer_name}`
+        : payload.quote.quote_number;
+      loadSnapshot(payload.items, payload.quote.discount, payload.quote.customer_id, {
+        source: { type: "hardware_quote", id: payload.quote.id, label },
+      });
+      toast.success(`Quote ${payload.quote.quote_number} loaded in POS`);
+      navigate("/pos");
+    } catch (e) {
+      toast.error(String(e));
+    } finally {
+      setBusy(null);
+    }
+  };
 
   return (
     <div>
@@ -139,17 +164,36 @@ export function HardwareQuotationsPage() {
                 <th className="text-left px-3 py-2">Status</th>
                 <th className="text-right px-3 py-2">Total</th>
                 <th className="text-left px-3 py-2">Valid until</th>
+                <th className="text-right px-3 py-2 w-44">Action</th>
               </tr>
             </thead>
             <tbody>
-              {quotes.map((q) => (
-                <tr key={q.id} className="border-t border-border hover:bg-accent/30 transition-colors">
-                  <td className="px-3 py-2 font-mono">{q.quote_number}</td>
-                  <td className="px-3 py-2"><Badge variant="outline" className={cn("text-[10px]", STATUS_STYLE[q.status])}>{q.status}</Badge></td>
-                  <td className="px-3 py-2 text-right font-mono tabular-nums">{KES(q.total)}</td>
-                  <td className="px-3 py-2 text-muted-foreground">{q.valid_until ?? "—"}</td>
-                </tr>
-              ))}
+              {quotes.map((q) => {
+                const canSend = q.status === "draft" || q.status === "sent" || q.status === "accepted";
+                return (
+                  <tr key={q.id} className="border-t border-border hover:bg-accent/30 transition-colors">
+                    <td className="px-3 py-2 font-mono">{q.quote_number}</td>
+                    <td className="px-3 py-2"><Badge variant="outline" className={cn("text-[10px]", STATUS_STYLE[q.status])}>{q.status}</Badge></td>
+                    <td className="px-3 py-2 text-right font-mono tabular-nums">{KES(q.total)}</td>
+                    <td className="px-3 py-2 text-muted-foreground">{q.valid_until ?? "—"}</td>
+                    <td className="px-3 py-2 text-right">
+                      {canSend ? (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          disabled={busy === q.id}
+                          onClick={() => sendToPos(q)}
+                          className="cursor-pointer"
+                        >
+                          {busy === q.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Send to POS"}
+                        </Button>
+                      ) : (
+                        <span className="text-[11px] text-muted-foreground">{q.status}</span>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>

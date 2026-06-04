@@ -35,7 +35,7 @@ interface PaymentSnapshot {
   tip: number;
   tipEmployeeId: string | null;
   serviceChargeAmount: number;
-  sourceType: "hospitality_order" | "prescription" | "layby" | "special_order" | "folio" | null;
+  sourceType: "hospitality_order" | "prescription" | "layby" | "special_order" | "folio" | "hardware_quote" | null;
   sourceId: string | null;
 }
 
@@ -180,6 +180,8 @@ export function PaymentModal({ open, onClose }: Props) {
         saleSnapshot.tip,
         saleSnapshot.tipEmployeeId,
         saleSnapshot.serviceChargeAmount,
+        saleSnapshot.sourceType,
+        saleSnapshot.sourceId,
       );
 
       if (saleSnapshot.sourceType === "hospitality_order" && saleSnapshot.sourceId) {
@@ -199,6 +201,11 @@ export function PaymentModal({ open, onClose }: Props) {
       if (saleSnapshot.sourceType === "special_order" && saleSnapshot.sourceId) {
         const { completeSpecialOrderFromPos } = await import("@/services/retail");
         await completeSpecialOrderFromPos(saleSnapshot.sourceId, saleId);
+      }
+
+      if (saleSnapshot.sourceType === "hardware_quote" && saleSnapshot.sourceId) {
+        const { markQuotePaidFromPos } = await import("@/services/hardware");
+        await markQuotePaidFromPos(saleSnapshot.sourceId, saleId);
       }
 
       // Hardware contractor credit: post charge to account ledger

@@ -255,3 +255,48 @@ export async function getSalesComparison(
 
   return { current, previous };
 }
+
+
+// ─── Sales by source (module breakdown) ──────────────────────────────────────
+
+/**
+ * Revenue split by the upstream module workflow that produced each sale —
+ * hospitality (kitchen orders), pharmacy (prescriptions), retail (laybys /
+ * special orders), hardware (quotes), or NULL = walk-in POS sale.
+ *
+ * Lets reports answer questions like "how much of last week was restaurant
+ * versus pharmacy?" without inferring from line composition.
+ */
+export interface SalesBySource {
+  source_type: string;        // e.g. 'hospitality_order'
+  label: string;              // human label
+  revenue: number;
+  transactions: number;
+}
+
+const SOURCE_LABELS: Record<string, string> = {
+  hospitality_order: "Hospitality (kitchen)",
+  prescription: "Pharmacy (prescriptions)",
+  layby: "Retail (laybys)",
+  special_order: "Retail (special orders)",
+  folio: "Hospitality (room folios)",
+  hardware_quote: "Hardware (quotes)",
+};
+
+export async function getSalesBySource(days: number = 30): Promise<SalesBySource[]> {
+  const rows = await query<{ source_type: string | null; revenue: number; transactions: number }>(
+    `SELECT source_type, COALESCE(SUM(total), 0) as revenue, COUNT(*) as transactions
+       FROM sales
+      WHERE julianday('now') - julianday(created_at) < ?1
+        AND payment_status = 'paid'
+      GROUP BY source_type
+      ORDER BY revenue DESC`,
+    [days],
+  );
+  return rows.map((r) => ({
+    source_type: r.source_type ?? "walk_in",
+    label: r.source_type ? (SOURCE_LABELS[r.source_type] ?? r.source_type) : "Walk-in POS",
+    revenue: r.revenue,
+    transactions: r.transactions,
+  }));
+}

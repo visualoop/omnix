@@ -27,6 +27,7 @@ export function CustomerDisplayPage() {
   const taxTotal = useCartStore((s) => s.taxTotal());
   const grandTotal = useCartStore((s) => s.grandTotal());
   const tip = useCartStore((s) => s.tip);
+  const sourceLabel = useCartStore((s) => s.sourceLabel);
   const moduleId = useActiveModule((s) => s.active);
   const cfg = getDisplayConfig(moduleId);
 
@@ -43,15 +44,24 @@ export function CustomerDisplayPage() {
     return () => clearInterval(t);
   }, []);
 
+  // Per-module privacy: setting key is `customer_display.privacy.<moduleId>`
+  // (e.g. `customer_display.privacy.dawa`). If the per-module key isn't set,
+  // fall back to the registry default — privacyMode is OFF for retail /
+  // hospitality / hardware so customers see real item names. Only Dawa
+  // defaults to ON for medication-name privacy.
   useEffect(() => {
     Promise.all([
       query<{ value: string }>(`SELECT value FROM settings WHERE key = 'business.name'`),
-      query<{ value: string }>(`SELECT value FROM settings WHERE key = 'customer_display.privacy'`),
+      query<{ value: string }>(
+        `SELECT value FROM settings WHERE key = ?1`,
+        [`customer_display.privacy.${moduleId}`],
+      ),
     ]).then(([nameRows, privacyRows]) => {
       if (nameRows[0]?.value) setBusinessName(nameRows[0].value);
       if (privacyRows[0]) setPrivacyMode(privacyRows[0].value === "1");
+      else setPrivacyMode(cfg.privacyMode);
     }).catch(() => {});
-  }, []);
+  }, [moduleId, cfg.privacyMode]);
 
   // Detect order completion: cart drops from non-empty to empty → show success.
   useEffect(() => {
@@ -126,7 +136,10 @@ export function CustomerDisplayPage() {
             <ModuleLogo moduleId={moduleId} size={40} />
             <div>
               <div className="text-base font-medium text-white">{businessName}</div>
-              <div className="text-sm text-stone-500">{cfg.activeLabels.orderTitle}</div>
+              <div className="text-sm text-stone-500">
+                {cfg.activeLabels.orderTitle}
+                {sourceLabel && <span className="ml-2 text-stone-400">· {sourceLabel}</span>}
+              </div>
             </div>
           </div>
           <div className="text-right">

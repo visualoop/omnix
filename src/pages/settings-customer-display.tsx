@@ -1,6 +1,10 @@
 /**
  * Customer display settings page.
  * Controls what shows on the second-screen customer display.
+ *
+ * Privacy mode is PER MODULE — Dawa defaults to ON (medication-name privacy
+ * required), retail / hospitality / hardware default to OFF (customers need
+ * to see what they're paying for and what's coming from the kitchen).
  */
 import { useEffect, useState } from "react";
 import { Monitor, Eye, Receipt, User } from "lucide-react";
@@ -10,22 +14,39 @@ import { query, execute } from "@/lib/db";
 import { openCustomerDisplay, closeCustomerDisplay, isCustomerDisplayOpen } from "@/lib/customer-display";
 import { toast } from "sonner";
 
+const MODULES = [
+  { id: "core" as const, label: "Core (POS only)", defaultPrivacy: false },
+  { id: "dawa" as const, label: "Dawa — Pharmacy", defaultPrivacy: true },
+  { id: "retail" as const, label: "Retail (Soko)", defaultPrivacy: false },
+  { id: "hardware" as const, label: "Hardware", defaultPrivacy: false },
+  { id: "hospitality" as const, label: "Hospitality", defaultPrivacy: false },
+];
+
 export function CustomerDisplaySettingsPage() {
-  const [privacy, setPrivacy] = useState(false);
+  const [privacyByModule, setPrivacyByModule] = useState<Record<string, boolean>>({});
   const [showTax, setShowTax] = useState(true);
   const [showCustomer, setShowCustomer] = useState(true);
   const [displayOpen, setDisplayOpen] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    const keys = MODULES.map((m) => `customer_display.privacy.${m.id}`)
+      .concat(["customer_display.show_tax", "customer_display.show_customer"]);
+    const placeholders = keys.map((_, i) => `?${i + 1}`).join(",");
     Promise.all([
       query<{ key: string; value: string }>(
-        `SELECT key, value FROM settings WHERE key IN ('customer_display.privacy','customer_display.show_tax','customer_display.show_customer')`,
+        `SELECT key, value FROM settings WHERE key IN (${placeholders})`,
+        keys,
       ),
       isCustomerDisplayOpen(),
     ]).then(([rows, open]) => {
       const map = Object.fromEntries(rows.map((r) => [r.key, r.value]));
-      setPrivacy(map["customer_display.privacy"] === "1");
+      const pm: Record<string, boolean> = {};
+      for (const m of MODULES) {
+        const v = map[`customer_display.privacy.${m.id}`];
+        pm[m.id] = v === undefined ? m.defaultPrivacy : v === "1";
+      }
+      setPrivacyByModule(pm);
       setShowTax(map["customer_display.show_tax"] !== "0");
       setShowCustomer(map["customer_display.show_customer"] !== "0");
       setDisplayOpen(open);
@@ -77,13 +98,32 @@ export function CustomerDisplaySettingsPage() {
 
       <div className="border-t border-border" />
 
-      <SettingToggle
-        icon={Eye}
-        label="Privacy mode (pharmacy)"
-        description="When enabled, product names are hidden on the customer display in pharmacy mode."
-        checked={privacy}
-        onChange={(v) => { setPrivacy(v); save("customer_display.privacy", v ? "1" : "0"); }}
-      />
+      <div>
+        <h3 className="text-sm font-medium flex items-center gap-2 mb-1">
+          <Eye className="h-4 w-4" /> Privacy mode (per module)
+        </h3>
+        <p className="text-[11px] text-muted-foreground mb-3">
+          When ON, item names are hidden on the customer display for that module
+          (e.g. for Dawa to keep medications private). Off elsewhere so the
+          customer can confirm what's being prepared or rung up.
+        </p>
+        <div className="space-y-3 pl-6">
+          {MODULES.map((m) => (
+            <div key={m.id} className="flex items-center justify-between gap-4">
+              <div className="text-sm">{m.label}</div>
+              <Switch
+                checked={privacyByModule[m.id] ?? m.defaultPrivacy}
+                onCheckedChange={(v) => {
+                  setPrivacyByModule((p) => ({ ...p, [m.id]: v }));
+                  save(`customer_display.privacy.${m.id}`, v ? "1" : "0");
+                }}
+              />
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="border-t border-border" />
 
       <SettingToggle
         icon={Receipt}

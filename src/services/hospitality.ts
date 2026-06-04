@@ -111,7 +111,7 @@ async function createMenuProduct(name: string, sellingPrice: number): Promise<st
   const productId = uid();
   const sku = `HOSP-${productId.slice(0, 8).toUpperCase()}`;
   await execute(
-    `INSERT INTO products (id, name, sku, unit, tax_rate, active) VALUES (?1, ?2, ?3, 'serving', 0, 1)`,
+    `INSERT INTO products (id, name, sku, unit, tax_rate, active, kind) VALUES (?1, ?2, ?3, 'serving', 0, 1, 'menu_item')`,
     [productId, name, sku],
   );
   await execute(
@@ -352,6 +352,7 @@ export async function prepareOrderForPosCheckout(orderId: string): Promise<Hospi
   const items: CartItem[] = rows.map((item) => ({
     id: item.id,
     product_id: item.product_id ?? "",
+    menu_item_id: item.menu_item_id ?? null,
     name: item.name,
     quantity: item.quantity,
     unit_price: item.unit_price,
@@ -548,6 +549,133 @@ export async function recipeCost(recipeId: string): Promise<number> {
     [recipeId],
   );
   return rows.reduce((s, r) => s + r.quantity * r.buying_price * (1 + r.wastage_percent / 100), 0);
+}
+
+/**
+ * Consume recipe ingredients from inventory when a menu item is sold.
+ *
+ * For each ingredient, deducts `(recipe_qty × wastage_factor × servings)` from
+ * the oldest non-empty batch (FIFO), and writes a `stock_movements` row with
+ * `type='recipe_consume'` and `reference_type='sale'` so reports can attribute
+ * usage back to the originating sale.
+ *
+ * Returns `{ consumed, missing }` — `missing` lists ingredient products that
+ * had insufficient stock so the caller (sales.ts) can warn but not block.
+ */
+export async function consumeRecipe(
+  menuItemId: string,
+  servings: number,
+  saleId: string,
+): Promise<{ consumed: Array<{ product_id: string; quantity: number }>; missing: Array<{ product_id: string; needed: number; available: number }> }> {
+  const recipeRows = await query<{ id: string }>(
+    `SELECT id FROM recipes WHERE menu_item_id = ?1 AND active = 1 LIMIT 1`,
+    [menuItemId],
+  );
+  if (!recipeRows[0]) return { consumed: [], missing: [] };
+  const recipeId = recipeRows[0].id;
+
+  const ingredients = await query<{ product_id: string; quantity: number; wastage_percent: number }>(
+    `SELECT product_id, quantity, wastage_percent FROM recipe_ingredients WHERE recipe_id = ?1`,
+    [recipeId],
+  );
+
+  const consumed: Array<{ product_id: string; quantity: number }> = [];
+  const missing: Array<{ product_id: string; needed: number; available: number }> = [];
+
+  for (const ing of ingredients) {
+    const needed = ing.quantity * (1 + ing.wastage_percent / 100) * servings;
+    let remaining = needed;
+
+    const batches = await query<{ id: string; quantity: number }>(
+      `SELECT id, quantity FROM batches WHERE product_id = ?1 AND quantity > 0 ORDER BY received_at ASC`,
+      [ing.product_id],
+    );
+    const available = batches.reduce((s, b) => s + b.quantity, 0);
+
+    if (available + 1e-9 < needed) {
+      // Insufficient ingredient — record what we can but flag the shortfall.
+      missing.push({ product_id: ing.product_id, needed, available });
+    }
+
+    for (const batch of batches) {
+      if (remaining <= 0) break;
+      const deduct = Math.min(remaining, batch.quantity);
+      await execute(`UPDATE batches SET quantity = quantity - ?1 WHERE id = ?2`, [deduct, batch.id]);
+      await execute(
+        `INSERT INTO stock_movements (id, product_id, batch_id, type, quantity, reference_type, reference_id, notes)
+         VALUES (?1, ?2, ?3, 'recipe_consume', ?4, 'sale', ?5, ?6)`,
+        [uid(), ing.product_id, batch.id, -deduct, saleId, `recipe ${recipeId}`],
+      );
+      remaining -= deduct;
+    }
+
+    consumed.push({ product_id: ing.product_id, quantity: needed - Math.max(0, remaining) });
+  }
+
+  return { consumed, missing };
+}
+
+/**
+ * Compute "max servings I can make right now" for each menu item, based on
+ * current ingredient stock. A menu item with no recipe defined returns
+ * `Infinity` (we don't know — don't block selling it). One with insufficient
+ * stock for any ingredient returns 0.
+ *
+ *   floor(min over ingredients of (on_hand / (recipe_qty × wastage_factor)))
+ */
+export interface MenuAvailability {
+  menu_item_id: string;
+  max_servings: number;            // Infinity = no recipe, sell freely
+  bottleneck_product_id: string | null;
+  bottleneck_product_name: string | null;
+}
+
+export async function menuAvailability(): Promise<Map<string, MenuAvailability>> {
+  const rows = await query<{
+    menu_item_id: string;
+    recipe_id: string | null;
+    product_id: string | null;
+    product_name: string | null;
+    recipe_qty: number | null;
+    wastage_percent: number | null;
+    on_hand: number | null;
+  }>(
+    `SELECT m.id AS menu_item_id,
+            r.id AS recipe_id,
+            ri.product_id AS product_id,
+            p.name AS product_name,
+            ri.quantity AS recipe_qty,
+            ri.wastage_percent AS wastage_percent,
+            (SELECT COALESCE(SUM(b.quantity), 0)
+               FROM batches b WHERE b.product_id = ri.product_id) AS on_hand
+       FROM menu_items m
+  LEFT JOIN recipes r ON r.menu_item_id = m.id AND r.active = 1
+  LEFT JOIN recipe_ingredients ri ON ri.recipe_id = r.id
+  LEFT JOIN products p ON p.id = ri.product_id
+      WHERE m.active = 1`,
+  );
+
+  const out = new Map<string, MenuAvailability>();
+  for (const row of rows) {
+    const cur = out.get(row.menu_item_id);
+    if (!row.recipe_id || !row.product_id || row.recipe_qty == null) {
+      // No recipe / no ingredients yet — leave max_servings = Infinity
+      if (!cur) out.set(row.menu_item_id, { menu_item_id: row.menu_item_id, max_servings: Infinity, bottleneck_product_id: null, bottleneck_product_name: null });
+      continue;
+    }
+    const factor = 1 + (row.wastage_percent ?? 0) / 100;
+    const perServing = row.recipe_qty * factor;
+    const possible = perServing > 0 ? Math.floor((row.on_hand ?? 0) / perServing) : Infinity;
+    if (!cur || possible < cur.max_servings) {
+      out.set(row.menu_item_id, {
+        menu_item_id: row.menu_item_id,
+        max_servings: possible,
+        bottleneck_product_id: row.product_id,
+        bottleneck_product_name: row.product_name,
+      });
+    }
+  }
+  return out;
 }
 
 export interface RecipeRow { id: string; menu_item_id: string; menu_name: string; dine_in_price: number | null; yield_quantity: number; }

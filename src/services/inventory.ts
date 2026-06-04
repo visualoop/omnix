@@ -50,7 +50,7 @@ export async function getProducts(search?: string): Promise<Product[]> {
     FROM products p
     LEFT JOIN product_prices pp ON pp.product_id = p.id AND pp.price_list_id = 'default'
     LEFT JOIN categories c ON c.id = p.category_id
-    WHERE p.active = 1
+    WHERE p.active = 1 AND p.kind = 'physical'
     ${search ? "AND (p.name LIKE ?1 OR p.barcode LIKE ?1 OR p.sku LIKE ?1)" : ""}
     ORDER BY p.name ASC
   `;
