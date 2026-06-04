@@ -16,6 +16,10 @@ interface CartPayload {
   discountType: "amount" | "percent";
   tip: number;
   tipEmployeeId: string | null;
+  serviceChargeAmount: number;
+  sourceType: "hospitality_order" | "prescription" | null;
+  sourceId: string | null;
+  sourceLabel: string | null;
   revision: number;
 }
 
@@ -32,6 +36,10 @@ function serializeCart(): CartPayload {
     discountType: s.discountType,
     tip: s.tip,
     tipEmployeeId: s.tipEmployeeId,
+    serviceChargeAmount: s.serviceChargeAmount,
+    sourceType: s.sourceType,
+    sourceId: s.sourceId,
+    sourceLabel: s.sourceLabel,
     revision: s.revision,
   };
 }
@@ -65,6 +73,10 @@ interface CartState {
   discountType: "amount" | "percent";
   tip: number;
   tipEmployeeId: string | null;
+  serviceChargeAmount: number;
+  sourceType: "hospitality_order" | "prescription" | null;
+  sourceId: string | null;
+  sourceLabel: string | null;
   revision: number;
   addItem: (product: CartProduct) => void;
   addItemWithQuantity: (product: CartProduct, quantity?: number) => void;
@@ -73,8 +85,20 @@ interface CartState {
   setLineDiscount: (id: string, discount: number) => void;
   setDiscount: (amount: number, type?: "amount" | "percent") => void;
   setTip: (amount: number, employeeId?: string | null) => void;
+  setServiceCharge: (amount: number) => void;
   setCustomer: (id: string | null) => void;
-  loadSnapshot: (items: CartItem[], discount: number, customerId: string | null) => void;
+  setSource: (source: { type: "hospitality_order" | "prescription"; id: string; label: string } | null) => void;
+  loadSnapshot: (
+    items: CartItem[],
+    discount: number,
+    customerId: string | null,
+    options?: {
+      tip?: number;
+      tipEmployeeId?: string | null;
+      serviceChargeAmount?: number;
+      source?: { type: "hospitality_order" | "prescription"; id: string; label: string } | null;
+    },
+  ) => void;
   clear: () => void;
   subtotal: () => number;
   taxTotal: () => number;
@@ -95,6 +119,10 @@ export const useCartStore = create<CartState>()(
       discountType: "amount",
       tip: 0,
       tipEmployeeId: null,
+      serviceChargeAmount: 0,
+      sourceType: null,
+      sourceId: null,
+      sourceLabel: null,
       revision: 0,
 
       addItem: (product) => get().addItemWithQuantity(product, 1),
@@ -151,8 +179,26 @@ export const useCartStore = create<CartState>()(
 
       setDiscount: (amount, type = "amount") => set((state) => ({ discount: amount, discountType: type, revision: nextRevision(state) })),
       setTip: (amount, employeeId) => set((state) => ({ tip: amount, tipEmployeeId: employeeId ?? null, revision: nextRevision(state) })),
+      setServiceCharge: (amount) => set((state) => ({ serviceChargeAmount: Math.max(0, amount), revision: nextRevision(state) })),
       setCustomer: (id) => set((state) => ({ customerId: id, revision: nextRevision(state) })),
-      loadSnapshot: (items, discount, customerId) => set((state) => ({ items, discount, customerId, revision: nextRevision(state) })),
+      setSource: (source) => set((state) => ({
+        sourceType: source?.type ?? null,
+        sourceId: source?.id ?? null,
+        sourceLabel: source?.label ?? null,
+        revision: nextRevision(state),
+      })),
+      loadSnapshot: (items, discount, customerId, options) => set((state) => ({
+        items,
+        discount,
+        customerId,
+        tip: options?.tip ?? 0,
+        tipEmployeeId: options?.tipEmployeeId ?? null,
+        serviceChargeAmount: options?.serviceChargeAmount ?? 0,
+        sourceType: options?.source?.type ?? null,
+        sourceId: options?.source?.id ?? null,
+        sourceLabel: options?.source?.label ?? null,
+        revision: nextRevision(state),
+      })),
       clear: () => {
         set((state) => ({
           items: [],
@@ -161,6 +207,10 @@ export const useCartStore = create<CartState>()(
           discountType: "amount",
           tip: 0,
           tipEmployeeId: null,
+          serviceChargeAmount: 0,
+          sourceType: null,
+          sourceId: null,
+          sourceLabel: null,
           revision: nextRevision(state),
         }));
         broadcastNow();
@@ -187,7 +237,7 @@ export const useCartStore = create<CartState>()(
           const lineAfterCartDisc = lineNet - cartDisc * lineShare;
           return s + (lineAfterCartDisc * i.tax_rate / 100);
         }, 0);
-        return taxableBase + tax + (get().tip || 0);
+        return taxableBase + tax + (get().tip || 0) + (get().serviceChargeAmount || 0);
       },
     }),
     {
@@ -199,6 +249,10 @@ export const useCartStore = create<CartState>()(
         discountType: s.discountType,
         tip: s.tip,
         tipEmployeeId: s.tipEmployeeId,
+        serviceChargeAmount: s.serviceChargeAmount,
+        sourceType: s.sourceType,
+        sourceId: s.sourceId,
+        sourceLabel: s.sourceLabel,
         revision: s.revision,
       }),
     },
@@ -222,6 +276,10 @@ if (typeof window !== "undefined") {
         discountType: incoming.discountType || "amount",
         tip: incoming.tip || 0,
         tipEmployeeId: incoming.tipEmployeeId ?? null,
+        serviceChargeAmount: incoming.serviceChargeAmount || 0,
+        sourceType: incoming.sourceType ?? null,
+        sourceId: incoming.sourceId ?? null,
+        sourceLabel: incoming.sourceLabel ?? null,
         revision: incoming.revision || 0,
       });
       applyingRemote = false;

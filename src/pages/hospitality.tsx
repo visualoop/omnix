@@ -14,7 +14,7 @@ import {
   listAreas, listTables, createArea, createTable, setTableStatus,
   listMenuItems, createMenuItem, setMenuItemActive,
   openOrder, listActiveOrders, listOrderItems, addOrderItem, sendToKitchen,
-  kitchenQueue, bumpItem, markServed, payOrder, serviceChargePercent,
+  kitchenQueue, bumpItem, markServed, prepareOrderForPosCheckout,
   listRoomTypes, createRoomType, listRooms, createRoom, setRoomStatus,
   listBookings, createBooking, checkIn, checkOut, folioBalance, postFolioPayment,
   listRecipes, recipeCost, restaurantReport, hotelReport,
@@ -23,12 +23,13 @@ import {
   type RoomType, type Room, type Booking, type RecipeRow,
   type RestaurantReport, type HotelReport,
 } from "@/services/hospitality";
-import { getPaymentMethods, type PaymentMethod } from "@/services/sales";
 import { useAuthStore } from "@/stores/auth";
+import { useCartStore } from "@/stores/cart";
 import { query } from "@/lib/db";
 import { confirm } from "@/components/ui/confirm-dialog";
 import { MenuItemDialog, type MenuItemFormValues } from "@/components/hospitality/menu-item-dialog";
 import { CompactFormDialog } from "@/components/hospitality/compact-form-dialog";
+import { useNavigate } from "react-router-dom";
 
 const KES = (n: number) => "KES " + n.toLocaleString("en-KE", { minimumFractionDigits: 0, maximumFractionDigits: 0 });
 
@@ -277,23 +278,25 @@ const ITEM_STATUS: Record<string, string> = {
 };
 
 export function HospitalityOrdersPage() {
+  const navigate = useNavigate();
   const userId = useAuthStore((s) => s.user?.id);
   const [orders, setOrders] = useState<HospitalityOrder[]>([]);
   const [menu, setMenu] = useState<MenuItem[]>([]);
   const [selected, setSelected] = useState<string | null>(null);
   const [items, setItems] = useState<HospitalityOrderItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [methods, setMethods] = useState<PaymentMethod[]>([]);
-  const [paying, setPaying] = useState(false);
+  const [checkingOut, setCheckingOut] = useState(false);
   const [scPct, setScPct] = useState(0);
   const [tip, setTip] = useState(0);
 
   const loadOrders = () => listActiveOrders().then(setOrders);
-  useEffect(() => { Promise.all([loadOrders(), listMenuItems().then(setMenu), getPaymentMethods().then(setMethods)]).finally(() => setLoading(false)); }, []);
+  useEffect(() => { Promise.all([loadOrders(), listMenuItems().then(setMenu)]).finally(() => setLoading(false)); }, []);
   useEffect(() => { if (selected) listOrderItems(selected).then(setItems); else setItems([]); }, [selected]);
   useEffect(() => {
-    const o = orders.find((x) => x.id === selected);
-    if (o) serviceChargePercent(o.order_type).then(setScPct);
+    if (!selected) return;
+    prepareOrderForPosCheckout(selected)
+      .then((payload) => setScPct(payload.serviceChargePercent))
+      .catch(() => setScPct(0));
   }, [selected, orders]);
 
   const newOrder = async () => {
@@ -316,23 +319,22 @@ export function HospitalityOrdersPage() {
     try { await sendToKitchen(selected); listOrderItems(selected).then(setItems); loadOrders(); toast.success("Sent to kitchen"); }
     catch (e) { toast.error(String(e)); }
   };
-  const pay = async (total: number) => {
-    if (!selected || !methods[0]) { toast.error("No payment method configured"); return; }
-    setPaying(true);
-    const sc = total * (scPct / 100);
-    const grand = total + sc + tip;
+  const sendToPosCheckout = async () => {
+    if (!selected) return;
+    setCheckingOut(true);
     try {
-      await payOrder(
-        selected,
-        [{ method_id: methods[0].id, method_name: methods[0].name, amount: grand }],
-        userId ?? "",
-        { serviceChargePercent: scPct, tipAmount: tip },
-      );
-      toast.success("Paid & table freed");
-      setSelected(null);
-      setTip(0);
-      loadOrders();
-    } catch (e) { toast.error(String(e)); } finally { setPaying(false); }
+      const payload = await prepareOrderForPosCheckout(selected);
+      const label = payload.order.table_code
+        ? `${payload.order.order_number} / Table ${payload.order.table_code}`
+        : payload.order.order_number;
+      useCartStore.getState().loadSnapshot(payload.items, 0, payload.order.customer_id, {
+        tip,
+        serviceChargeAmount: payload.serviceChargeAmount,
+        source: { type: "hospitality_order", id: selected, label },
+      });
+      toast.success("Order loaded in POS checkout");
+      navigate("/pos");
+    } catch (e) { toast.error(String(e)); } finally { setCheckingOut(false); }
   };
 
   if (loading) return <CenterSpin />;
@@ -382,8 +384,8 @@ export function HospitalityOrdersPage() {
                     <span>Grand total</span>
                     <span className="font-mono tabular-nums">{KES(total + total * (scPct / 100) + tip)}</span>
                   </div>
-                  <Button size="sm" className={cn("w-full cursor-pointer", BRAND_BTN)} disabled={paying || total <= 0} onClick={() => pay(total)}>
-                    {paying ? "Processing…" : `Pay ${KES(total + total * (scPct / 100) + tip)}`}
+                  <Button size="sm" className={cn("w-full cursor-pointer", BRAND_BTN)} disabled={checkingOut || total <= 0} onClick={sendToPosCheckout}>
+                    {checkingOut ? "Loading POS…" : `Send to POS ${KES(total + total * (scPct / 100) + tip)}`}
                   </Button>
                 </div>
               </div>

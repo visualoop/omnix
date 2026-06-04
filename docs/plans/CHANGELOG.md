@@ -2,6 +2,14 @@
 
 This tracks work done LOCALLY without GitHub pushes. We only push when the user explicitly says so.
 
+## Local fix — Hospitality orders route through POS checkout
+
+- Recovered the recent Kiro CLI session from `~/.kiro/sessions/cli`; the latest Omnix session stopped on website release-sync/backfill repair after prod DB schema repair, with release backfill/latest verification still pending.
+- Hospitality Orders now hand off payable orders to `/pos` instead of completing payment inside the Hospitality page.
+- POS cart state now records checkout source metadata (`hospitality_order`) plus sale-level service charge, so the cashier sees the source order and POS remains the checkout center.
+- POS payment completion now marks the linked hospitality order paid, stores `sale_id`, frees the table, marks items served, and records service-charge allocation.
+- Added migration `038_sales_service_charge.sql` and wired it into Tauri migrations so service charge contributes to sale totals without becoming product revenue.
+
 ## Release v0.2.10 — UI consistency
 
 What ships in this build:

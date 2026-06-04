@@ -334,6 +334,12 @@ fn run_inner() {
             sql: include_str!("../migrations/037_hospitality_recipes.sql"),
             kind: MigrationKind::Up,
         },
+        Migration {
+            version: 38,
+            description: "Sales service charge amount",
+            sql: include_str!("../migrations/038_sales_service_charge.sql"),
+            kind: MigrationKind::Up,
+        },
     ];
 
     tauri::Builder::default()

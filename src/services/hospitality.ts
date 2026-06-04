@@ -97,13 +97,28 @@ export async function createMenuItem(input: {
   await assertModuleEntitled("hospitality");
   await requirePermission("hospitality.menu.manage", { entityType: "menu_item", metadata: { name: input.name } });
   const id = uid();
+  const productId = input.productId ?? await createMenuProduct(input.name, input.dineInPrice ?? input.takeawayPrice ?? 0);
   await execute(
     `INSERT INTO menu_items (id, product_id, branch_id, menu_name, category, station_id, prep_minutes, dine_in_price, takeaway_price)
      VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)`,
-    [id, input.productId ?? null, getActiveBranchId(), input.name, input.category ?? null,
+    [id, productId, getActiveBranchId(), input.name, input.category ?? null,
      input.stationId ?? null, input.prepMinutes ?? null, input.dineInPrice ?? null, input.takeawayPrice ?? null],
   );
   return id;
+}
+
+async function createMenuProduct(name: string, sellingPrice: number): Promise<string> {
+  const productId = uid();
+  const sku = `HOSP-${productId.slice(0, 8).toUpperCase()}`;
+  await execute(
+    `INSERT INTO products (id, name, sku, unit, tax_rate, active) VALUES (?1, ?2, ?3, 'serving', 0, 1)`,
+    [productId, name, sku],
+  );
+  await execute(
+    `INSERT INTO product_prices (product_id, price_list_id, buying_price, selling_price) VALUES (?1, 'default', 0, ?2)`,
+    [productId, sellingPrice],
+  );
+  return productId;
 }
 
 export async function setMenuItemActive(itemId: string, active: boolean): Promise<void> {
@@ -124,6 +139,14 @@ export interface HospitalityOrderItem {
   station_id: string | null; name: string; quantity: number; unit_price: number;
   modifier_total: number; discount: number; tax_rate: number; line_total: number;
   status: string; notes: string | null;
+}
+
+export interface HospitalityCheckoutPayload {
+  order: HospitalityOrder & { table_code: string | null };
+  items: CartItem[];
+  serviceChargePercent: number;
+  serviceChargeAmount: number;
+  totalBeforeServiceCharge: number;
 }
 
 export async function openOrder(input: { tableId?: string | null; orderType: OrderType; waiterId?: string | null; customerId?: string | null; userId?: string }): Promise<string> {
@@ -257,11 +280,21 @@ export async function payOrder(
     quantity: i.quantity, unit_price: i.unit_price, discount: i.discount, tax_rate: i.tax_rate, total: i.line_total,
   }));
 
-  const { saleId } = await completeSale(cart, payments, order.customer_id, userId, 0, opts.tipAmount ?? 0, opts.tipEmployeeId ?? null);
-
-  // Service charge → allocation to the waiter (kept out of product revenue).
   const subtotal = items.reduce((s, i) => s + i.line_total, 0);
   const scPct = opts.serviceChargePercent ?? 0;
+  const serviceChargeAmount = subtotal * (scPct / 100);
+  const { saleId } = await completeSale(
+    cart,
+    payments,
+    order.customer_id,
+    userId,
+    0,
+    opts.tipAmount ?? 0,
+    opts.tipEmployeeId ?? null,
+    serviceChargeAmount,
+  );
+
+  // Service charge → allocation to the waiter (kept out of product revenue).
   if (scPct > 0 && order.waiter_id) {
     await execute(
       `INSERT INTO service_charge_allocations (id, sale_id, order_id, employee_id, amount, allocation_method)
@@ -275,6 +308,87 @@ export async function payOrder(
   if (order.table_id) await execute(`UPDATE dining_tables SET status = 'available' WHERE id = ?1`, [order.table_id]);
 
   return saleId;
+}
+
+export async function prepareOrderForPosCheckout(orderId: string): Promise<HospitalityCheckoutPayload> {
+  await assertModuleEntitled("hospitality");
+  await requirePermission("hospitality.orders.take", { entityType: "hospitality_order", entityId: orderId });
+
+  const [order] = await query<HospitalityOrder & { table_code: string | null }>(
+    `SELECT o.id, o.order_number, o.table_id, o.customer_id, o.order_type, o.status,
+            o.waiter_id, o.opened_at, o.notes, t.table_code
+     FROM hospitality_orders o
+     LEFT JOIN dining_tables t ON t.id = o.table_id
+     WHERE o.id = ?1`,
+    [orderId],
+  );
+  if (!order) throw new Error("Order not found");
+  if (order.status === "paid") throw new Error("Order is already paid");
+  if (order.status === "voided") throw new Error("Voided orders cannot be checked out");
+
+  const rows = await query<HospitalityOrderItem>(
+    `SELECT id, order_id, product_id, menu_item_id, station_id, name, quantity, unit_price,
+            modifier_total, discount, tax_rate, line_total, status, notes
+     FROM hospitality_order_items
+     WHERE order_id = ?1 AND status != 'voided'
+     ORDER BY rowid`,
+    [orderId],
+  );
+  if (rows.length === 0) throw new Error("No payable items on this order");
+
+  for (const item of rows) {
+    if (item.product_id) continue;
+    const productId = await createMenuProduct(item.name, item.unit_price);
+    item.product_id = productId;
+    await execute(`UPDATE hospitality_order_items SET product_id = ?2 WHERE id = ?1`, [item.id, productId]);
+    if (item.menu_item_id) {
+      await execute(`UPDATE menu_items SET product_id = ?2 WHERE id = ?1 AND product_id IS NULL`, [item.menu_item_id, productId]);
+    }
+  }
+
+  const totalBeforeServiceCharge = rows.reduce((sum, item) => sum + item.line_total, 0);
+  const scPct = await serviceChargePercent(order.order_type);
+  const serviceChargeAmount = totalBeforeServiceCharge * (scPct / 100);
+  const items: CartItem[] = rows.map((item) => ({
+    id: item.id,
+    product_id: item.product_id ?? "",
+    name: item.name,
+    quantity: item.quantity,
+    unit_price: item.unit_price,
+    discount: item.discount,
+    tax_rate: item.tax_rate,
+    total: item.line_total,
+  }));
+
+  return { order, items, serviceChargePercent: scPct, serviceChargeAmount, totalBeforeServiceCharge };
+}
+
+export async function markOrderPaidFromPos(orderId: string, saleId: string): Promise<void> {
+  await assertModuleEntitled("hospitality");
+  await requirePermission("hospitality.orders.take", { entityType: "hospitality_order", entityId: orderId });
+
+  const [order] = await query<{ table_id: string | null; waiter_id: string | null; status: string }>(
+    `SELECT table_id, waiter_id, status FROM hospitality_orders WHERE id = ?1`,
+    [orderId],
+  );
+  if (!order) throw new Error("Order not found");
+  if (order.status === "paid") return;
+
+  const [sale] = await query<{ service_charge_amount: number }>(
+    `SELECT COALESCE(service_charge_amount, 0) AS service_charge_amount FROM sales WHERE id = ?1`,
+    [saleId],
+  );
+  if (sale && sale.service_charge_amount > 0 && order.waiter_id) {
+    await execute(
+      `INSERT INTO service_charge_allocations (id, sale_id, order_id, employee_id, amount, allocation_method)
+       VALUES (?1, ?2, ?3, ?4, ?5, 'waiter')`,
+      [uid(), saleId, orderId, order.waiter_id, sale.service_charge_amount],
+    );
+  }
+
+  await execute(`UPDATE hospitality_orders SET status = 'paid', sale_id = ?2, closed_at = datetime('now') WHERE id = ?1`, [orderId, saleId]);
+  await execute(`UPDATE hospitality_order_items SET status = 'served' WHERE order_id = ?1 AND status NOT IN ('voided','served')`, [orderId]);
+  if (order.table_id) await execute(`UPDATE dining_tables SET status = 'available' WHERE id = ?1`, [order.table_id]);
 }
 
 // ─── Rooms, bookings, folios (Batches 5-6) ───────────────────────────────────

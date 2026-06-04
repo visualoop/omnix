@@ -73,14 +73,22 @@ export const releasesLatestEndpoint: Endpoint = {
       return errorResponse('This release requires a paid licence', 402)
     }
 
+    // Build platform entry — Tauri NSIS bundles look for the -nsis suffix first
+    const platformUrl = release.windowsNsisUrl ?? ''
+    const platformSig = release.updaterSignature ?? ''
+
     return jsonResponse({
       version: release.version,
       pub_date: release.publishedAt,
       notes: release.summary ?? '',
       platforms: {
+        'windows-x86_64-nsis': {
+          signature: platformSig,
+          url: platformUrl,
+        },
         'windows-x86_64': {
-          signature: release.updaterSignature ?? '',
-          url: release.windowsNsisUrl ?? '',
+          signature: platformSig,
+          url: platformUrl,
         },
       },
       // Extra metadata for Omnix client

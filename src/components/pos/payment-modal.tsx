@@ -9,6 +9,7 @@ import { getPaystackConfig } from "@/services/paystack";
 import { getDarajaConfig } from "@/services/daraja";
 import { createClaim, type InsuranceProvider, type InsuranceMember } from "@/services/insurance";
 import { buildReceiptData, printReceipt } from "@/services/receipt";
+import { markOrderPaidFromPos } from "@/services/hospitality";
 import { PaystackMpesaCharge } from "@/components/pos/paystack-mpesa";
 import { DarajaMpesaCharge } from "@/components/pos/daraja-mpesa";
 import { InsuranceVerifyPanel } from "@/components/pos/insurance-verify";
@@ -33,6 +34,9 @@ interface PaymentSnapshot {
   total: number;
   tip: number;
   tipEmployeeId: string | null;
+  serviceChargeAmount: number;
+  sourceType: "hospitality_order" | "prescription" | null;
+  sourceId: string | null;
 }
 
 export function PaymentModal({ open, onClose }: Props) {
@@ -67,6 +71,9 @@ export function PaymentModal({ open, onClose }: Props) {
         total: cart.grandTotal(),
         tip: cart.tip,
         tipEmployeeId: cart.tipEmployeeId,
+        serviceChargeAmount: cart.serviceChargeAmount,
+        sourceType: cart.sourceType,
+        sourceId: cart.sourceId,
       };
       setSnapshot(nextSnapshot);
       getPaymentMethods().then(setMethods);
@@ -124,6 +131,9 @@ export function PaymentModal({ open, onClose }: Props) {
         total: cart.grandTotal(),
         tip: cart.tip,
         tipEmployeeId: cart.tipEmployeeId,
+        serviceChargeAmount: cart.serviceChargeAmount,
+        sourceType: cart.sourceType,
+        sourceId: cart.sourceId,
       };
     })();
 
@@ -148,7 +158,17 @@ export function PaymentModal({ open, onClose }: Props) {
         saleSnapshot.discountAmount,
         saleSnapshot.tip,
         saleSnapshot.tipEmployeeId,
+        saleSnapshot.serviceChargeAmount,
       );
+
+      if (saleSnapshot.sourceType === "hospitality_order" && saleSnapshot.sourceId) {
+        await markOrderPaidFromPos(saleSnapshot.sourceId, saleId);
+      }
+
+      if (saleSnapshot.sourceType === "prescription" && saleSnapshot.sourceId) {
+        const { dispensePrescription } = await import("@/services/pharmacy");
+        await dispensePrescription(saleSnapshot.sourceId, saleId);
+      }
 
       if (insurance) {
         await createClaim({

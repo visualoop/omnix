@@ -86,6 +86,18 @@ export const releasesPostEndpoint: Endpoint = {
 
     const status: 'draft' | 'published' = autoPublish ? 'published' : 'draft'
 
+    // Validate: cannot auto-publish without download URLs and updater signature
+    const nsisUrl = body.windowsNsisUrl?.trim()
+    const updaterSig = body.updaterSignature?.trim()
+    if (status === 'published') {
+      if (!nsisUrl) {
+        return errorResponse('Cannot auto-publish: missing windowsNsisUrl', 400)
+      }
+      if (!updaterSig) {
+        return errorResponse('Cannot auto-publish: missing updaterSignature', 400)
+      }
+    }
+
     const data = {
       version: body.version,
       majorVersion,

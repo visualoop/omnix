@@ -1,11 +1,13 @@
 import { useState, useEffect, useCallback } from "react";
-import { Plus, Search, FileText, AlertTriangle, Tag, Calculator } from "lucide-react";
+import { Plus, Search, FileText, AlertTriangle, Tag, Calculator, ShoppingCart } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { getPrescriptions, getExpiringItems, type Prescription, type ExpiryItem } from "@/services/pharmacy";
+import { getPrescriptions, getExpiringItems, preparePrescriptionForPosCheckout, type Prescription, type ExpiryItem } from "@/services/pharmacy";
 import { printDrugLabels } from "@/services/drug-labels";
 import { PrescriptionPanel } from "@/components/pharmacy/prescription-panel";
+import { useCartStore } from "@/stores/cart";
 import { DoseCalculatorDialog } from "@/components/pos/dose-calculator";
 import { Link } from "react-router-dom";
 import { toast } from "sonner";
@@ -16,6 +18,9 @@ export function PharmacyPage() {
   const [search, setSearch] = useState("");
   const [panelOpen, setPanelOpen] = useState(false);
   const [doseOpen, setDoseOpen] = useState(false);
+  const [dispensing, setDispensing] = useState<string | null>(null);
+  const navigate = useNavigate();
+  const loadSnapshot = useCartStore((s) => s.loadSnapshot);
 
   const load = useCallback(async () => {
     const [rxs, exps] = await Promise.all([
@@ -27,6 +32,26 @@ export function PharmacyPage() {
   }, [search]);
 
   useEffect(() => { load(); }, [load]);
+
+  const handleDispense = async (rx: Prescription) => {
+    setDispensing(rx.id);
+    try {
+      const checkout = await preparePrescriptionForPosCheckout(rx.id);
+      if (!checkout) {
+        toast.error("This prescription has already been dispensed or has no items.");
+        return;
+      }
+      loadSnapshot(checkout.items, 0, null, {
+        source: { type: "prescription", id: rx.id, label: `Rx #${rx.rx_number} — ${rx.patient_name}` },
+      });
+      toast.success(`Prescription #${rx.rx_number} loaded into POS cart`);
+      navigate("/pos");
+    } catch (e) {
+      toast.error(String(e));
+    } finally {
+      setDispensing(null);
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -98,7 +123,8 @@ export function PharmacyPage() {
                 <th className="text-left px-4 py-2.5 font-medium">Patient</th>
                 <th className="text-left px-4 py-2.5 font-medium">Doctor</th>
                 <th className="text-left px-4 py-2.5 font-medium">Date</th>
-                <th className="text-right px-4 py-2.5 font-medium">Status</th>
+                <th className="text-left px-4 py-2.5 font-medium">Status</th>
+                <th className="text-right px-4 py-2.5 font-medium">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -113,11 +139,25 @@ export function PharmacyPage() {
                   </td>
                   <td className="px-4 py-2.5 text-muted-foreground">{rx.doctor_name || "—"}</td>
                   <td className="px-4 py-2.5 text-xs text-muted-foreground">{rx.created_at}</td>
+                  <td className="px-4 py-2.5">
+                    <Badge variant={rx.status === "dispensed" ? "default" : "secondary"} className="text-xs">
+                      {rx.status}
+                    </Badge>
+                  </td>
                   <td className="px-4 py-2.5 text-right">
                     <div className="flex items-center justify-end gap-2">
-                      <Badge variant={rx.status === "dispensed" ? "default" : "secondary"} className="text-xs">
-                        {rx.status}
-                      </Badge>
+                      {rx.status !== "dispensed" && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          disabled={dispensing === rx.id}
+                          onClick={() => handleDispense(rx)}
+                          className="h-7 text-xs"
+                        >
+                          <ShoppingCart className="h-3 w-3 mr-1" />
+                          {dispensing === rx.id ? "Loading..." : "Dispense"}
+                        </Button>
+                      )}
                       {rx.status === "dispensed" && (
                         <Button
                           variant="ghost"

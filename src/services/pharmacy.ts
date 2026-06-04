@@ -1,4 +1,5 @@
 import { query, execute } from "@/lib/db";
+import type { CartItem } from "@/services/sales";
 
 export interface Prescription {
   id: string;
@@ -113,6 +114,55 @@ export async function dispensePrescription(prescriptionId: string, saleId: strin
     `UPDATE prescription_items SET quantity_dispensed = quantity_prescribed WHERE prescription_id = ?1`,
     [prescriptionId]
   );
+}
+
+export async function preparePrescriptionForPosCheckout(
+  prescriptionId: string
+): Promise<{ items: CartItem[]; prescriptionNumber: number; patientName: string } | null> {
+  const rxs = await query<Prescription>("SELECT * FROM prescriptions WHERE id = ?1", [prescriptionId]);
+  if (rxs.length === 0) return null;
+  const rx = rxs[0];
+  if (rx.status === "dispensed") return null;
+
+  const items = await query<PrescriptionItem>(
+    "SELECT * FROM prescription_items WHERE prescription_id = ?1",
+    [prescriptionId]
+  );
+  if (items.length === 0) return null;
+
+  const cartItems: CartItem[] = items.map((it) => ({
+    id: crypto.randomUUID(),
+    product_id: it.product_id,
+    name: it.product_name,
+    quantity: it.quantity_prescribed,
+    unit_price: 0,
+    discount: 0,
+    tax_rate: 0,
+    total: 0,
+  }));
+
+  const productIds = [...new Set(items.map((it) => it.product_id))];
+  const placeholders = productIds.map(() => "?").join(",");
+  const prices = await query<{ id: string; selling_price: number; tax_rate: number }>(
+    `SELECT id, COALESCE(selling_price, 0) AS selling_price, COALESCE(tax_rate, 0) AS tax_rate FROM products WHERE id IN (${placeholders})`,
+    productIds
+  );
+  const priceMap = new Map(prices.map((p) => [p.id, p]));
+
+  for (const item of cartItems) {
+    const p = priceMap.get(item.product_id);
+    if (p) {
+      item.unit_price = p.selling_price;
+      item.tax_rate = p.tax_rate;
+    }
+    item.total = item.unit_price * item.quantity - item.discount;
+  }
+
+  return {
+    items: cartItems,
+    prescriptionNumber: rx.rx_number,
+    patientName: rx.patient_name,
+  };
 }
 
 // Pharmacy product extensions

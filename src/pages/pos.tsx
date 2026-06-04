@@ -134,6 +134,9 @@ export function POSPage() {
     cartDiscountAmount,
     customerId,
     tip,
+    serviceChargeAmount,
+    sourceType,
+    sourceLabel,
   } = useCartStore(useShallow((s) => ({
     items: s.items,
     addItemWithQuantity: s.addItemWithQuantity,
@@ -148,6 +151,9 @@ export function POSPage() {
     cartDiscountAmount: s.cartDiscountAmount,
     customerId: s.customerId,
     tip: s.tip,
+    serviceChargeAmount: s.serviceChargeAmount,
+    sourceType: s.sourceType,
+    sourceLabel: s.sourceLabel,
   })));
   const user = useAuthStore((s) => s.user);
   const branch = useActiveBranch((s) => s.active);
@@ -478,6 +484,9 @@ export function POSPage() {
             shift={shift}
             qtyMultiplier={qtyMultiplier}
             tip={tip}
+            serviceChargeAmount={serviceChargeAmount}
+            sourceType={sourceType}
+            sourceLabel={sourceLabel}
             subtotal={subtotal()}
             taxTotal={taxTotal()}
             grandTotal={grandTotal()}
@@ -714,7 +723,7 @@ function ProductCard({ product, onClick }: {
 }
 
 function CartPanel({
-  accent, items, customerId, heldCount, shift, qtyMultiplier, tip,
+  accent, items, customerId, heldCount, shift, qtyMultiplier, tip, serviceChargeAmount, sourceType, sourceLabel,
   subtotal, taxTotal, grandTotal, discount, discountType, cartDiscountAmount,
   onRemoveItem, onUpdateQty, onSubFor,
   onPark, onDiscount, onTip, onPay,
@@ -740,6 +749,17 @@ function CartPanel({
           {heldCount > 0 && <span className="ml-1 bg-muted-foreground/20 text-white rounded-full text-[9px] px-1.5 py-px font-semibold">{heldCount}</span>}
         </Button>
       </div>
+
+      {sourceLabel && (
+        <div className={`px-3 py-2 border-b border-border text-xs ${sourceType === "prescription" ? "bg-teal-500/5" : "bg-rose-500/5"}`}>
+          <div className="text-[10px] uppercase tracking-wide text-muted-foreground">
+            {sourceType === "prescription" ? "Pharmacy Dispense" : "Hospitality checkout"}
+          </div>
+          <div className={`font-medium truncate ${sourceType === "prescription" ? "text-teal-700 dark:text-teal-400" : "text-rose-700 dark:text-rose-400"}`}>
+            {sourceLabel}
+          </div>
+        </div>
+      )}
 
       {/* Customer */}
       <div className="px-3 py-2 border-b border-border">
@@ -790,6 +810,7 @@ function CartPanel({
           />
         )}
         {taxTotal > 0 && <Row label="Tax" value={taxTotal.toFixed(2)} />}
+        {serviceChargeAmount > 0 && <Row label="Service charge" value={`+${serviceChargeAmount.toFixed(2)}`} color="text-rose-700" />}
         {tip > 0 && (
           <button
             onClick={onTip}

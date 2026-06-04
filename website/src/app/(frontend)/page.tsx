@@ -37,6 +37,7 @@ export const revalidate = 60
 
 export default async function HomePage() {
   let heroContent: Parameters<typeof HeroSection>[0]["content"] = undefined
+  let latestRelease: Parameters<typeof HeroSection>[0]["latestRelease"] = undefined
   try {
     const payload = await getPayload({ config: await config })
     const lp = (await payload.findGlobal({ slug: 'landing-page', depth: 1 })) as unknown as {
@@ -50,6 +51,30 @@ export default async function HomePage() {
       }
     }
     heroContent = lp?.hero
+
+    const releasesResult = await payload.find({
+      collection: 'releases',
+      where: {
+        and: [
+          { status: { equals: 'published' } },
+          { channel: { equals: 'stable' } },
+        ],
+      },
+      sort: '-publishedAt',
+      limit: 1,
+    })
+    const release = releasesResult.docs[0] as unknown as {
+      version?: string
+      title?: string
+      summary?: string
+    }
+    if (release) {
+      latestRelease = {
+        version: release.version ?? '',
+        title: release.title ?? '',
+        summary: release.summary ?? '',
+      }
+    }
   } catch {
     // Payload unavailable (cold boot / build) — fall back to shipped defaults
     heroContent = undefined
@@ -57,7 +82,7 @@ export default async function HomePage() {
 
   return (
     <>
-      <HeroSection content={heroContent} />
+      <HeroSection content={heroContent} latestRelease={latestRelease} />
       <FounderNoteSection />
       <ModulesRowsSection />
       <ReceiptProofSection />

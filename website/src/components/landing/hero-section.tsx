@@ -16,6 +16,12 @@ export interface HeroContent {
   screenshot?: PayloadMedia | null
 }
 
+export interface LatestRelease {
+  version: string
+  title?: string
+  summary?: string
+}
+
 /**
  * Editorial hero. Content is CMS-editable via the `landing-page` global
  * (owner edits headline, lede, CTA + uploads a hero screenshot in /admin).
@@ -24,8 +30,12 @@ export interface HeroContent {
  * The uploaded screenshot renders inside BrowserFrame (Windows Chrome chrome);
  * when no screenshot is set we fall back to the hand-built PosPreview.
  */
-export function HeroSection({ content }: { content?: HeroContent }) {
-  const eyebrow = content?.eyebrow?.trim() || 'Banking & Recurring Invoices shipped'
+export function HeroSection({ content, latestRelease }: { content?: HeroContent; latestRelease?: LatestRelease }) {
+  const cmsEyebrow = content?.eyebrow?.trim() || 'Banking & Recurring Invoices shipped'
+  const releaseEyebrow = latestRelease
+    ? `NEW · v${latestRelease.version} — ${latestRelease.title || latestRelease.summary || 'Latest release'}`
+    : null
+  const eyebrow = releaseEyebrow || cmsEyebrow
   const headline = content?.headline?.trim()
   const subheadline =
     content?.subheadline?.trim() ||

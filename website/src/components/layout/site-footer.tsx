@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { Icon } from '@/components/icons'
 import { BRAND, BRAND_NAME } from '@/lib/brand'
+import { BrandLogo } from '@/components/brand-logo'
 
 const COLUMNS = [
   {
@@ -50,9 +51,10 @@ export function SiteFooter() {
           <div>
             <Link
               href="/"
-              className="group flex items-baseline gap-1.5"
+              className="group flex items-center gap-3"
               aria-label={`${BRAND_NAME} home`}
             >
+              <BrandLogo className="h-10 w-10 shrink-0" />
               <span className="font-[family-name:var(--font-display)] text-[44px] font-normal leading-none text-[var(--color-fg)]">
                 {BRAND_NAME}
               </span>

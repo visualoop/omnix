@@ -33,6 +33,7 @@ export interface Sale {
   discount_amount: number;
   tax_amount: number;
   total: number;
+  service_charge_amount?: number;
   payment_status: string;
   status: string;
   created_at: string;
@@ -56,22 +57,23 @@ export async function completeSale(
   discountAmount: number,
   tipAmount = 0,
   tipEmployeeId: string | null = null,
+  serviceChargeAmount = 0,
 ): Promise<{ saleId: string; saleItemIds: string[] }> {
   const saleId = crypto.randomUUID();
   const saleNumber = await getNextSaleNumber();
 
   const subtotal = items.reduce((s, i) => s + i.unit_price * i.quantity, 0);
   const taxAmount = items.reduce((s, i) => s + (i.unit_price * i.quantity * i.tax_rate / 100), 0);
-  const total = subtotal - discountAmount + taxAmount + tipAmount;
+  const total = subtotal - discountAmount + taxAmount + tipAmount + serviceChargeAmount;
   const paidAmount = payments.reduce((s, p) => s + p.amount, 0);
   const paymentStatus = paidAmount >= total ? "paid" : paidAmount > 0 ? "partial" : "unpaid";
   const saleItemIds: string[] = [];
 
   // Insert sale
   await execute(
-    `INSERT INTO sales (id, sale_number, customer_id, user_id, branch_id, subtotal, discount_amount, tax_amount, total, payment_status, tip_amount, tip_employee_id)
-     VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12)`,
-    [saleId, saleNumber, customerId, userId, getActiveBranchId(), subtotal, discountAmount, taxAmount, total, paymentStatus, tipAmount, tipEmployeeId]
+    `INSERT INTO sales (id, sale_number, customer_id, user_id, branch_id, subtotal, discount_amount, tax_amount, total, payment_status, tip_amount, tip_employee_id, service_charge_amount)
+     VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13)`,
+    [saleId, saleNumber, customerId, userId, getActiveBranchId(), subtotal, discountAmount, taxAmount, total, paymentStatus, tipAmount, tipEmployeeId, serviceChargeAmount]
   );
 
   // Insert items + deduct stock

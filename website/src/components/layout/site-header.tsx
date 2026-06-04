@@ -7,6 +7,7 @@ import { Icon } from '@/components/icons'
 import { cn } from '@/lib/cn'
 import { BRAND_NAME } from '@/lib/brand'
 import { Button } from '@/components/ui/button'
+import { BrandLogo } from '@/components/brand-logo'
 
 const NAV = [
   { label: 'Modules', href: '/modules' },
@@ -51,12 +52,13 @@ export function SiteHeader() {
       )}
     >
       <div className="container-wide flex h-[72px] items-center justify-between gap-6 lg:grid lg:grid-cols-[1fr_auto_1fr]">
-        {/* Wordmark — Fraunces 24px + amber dot */}
+        {/* Wordmark — logo + Fraunces 24px + amber dot */}
         <Link
           href="/"
           aria-label={`${BRAND_NAME} home`}
-          className="group flex w-fit items-baseline gap-1.5"
+          className="group flex w-fit items-center gap-2"
         >
+          <BrandLogo className="h-7 w-7 shrink-0" />
           <span className="font-[family-name:var(--font-display)] text-[24px] font-medium leading-none tracking-[-0.02em] text-[var(--color-fg)]">
             {BRAND_NAME}
           </span>
