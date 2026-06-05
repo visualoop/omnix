@@ -86,25 +86,28 @@ export default buildConfig({
         defaultFromName: BRAND_NAME,
       })
     : undefined,
-  /* ── Storage: Cloudflare R2 (via S3 API) in prod, local disk in dev ── */
+  /* ── Storage: Cloudflare R2 (via S3 API) in prod, local disk in dev ──
+     Plugin is ALWAYS registered (with enabled toggled by env-var presence)
+     so the generated importMap is deterministic — otherwise local
+     `generate:importmap` runs without S3 env vars produce a map missing
+     `S3ClientUploadHandler`, and the admin crashes at runtime when env
+     vars ARE present. */
   plugins: [
-    ...(useS3
-      ? [
-          s3Storage({
-            collections: { media: { prefix: 'media' } },
-            bucket: process.env.S3_BUCKET!,
-            config: {
-              endpoint: process.env.S3_ENDPOINT!,
-              region: process.env.S3_REGION || 'auto',
-              credentials: {
-                accessKeyId: process.env.S3_ACCESS_KEY_ID!,
-                secretAccessKey: process.env.S3_SECRET_ACCESS_KEY!,
-              },
-              forcePathStyle: true,
-            },
-          }),
-        ]
-      : []),
+    s3Storage({
+      enabled: useS3,
+      alwaysInsertFields: true,
+      collections: { media: { prefix: 'media' } },
+      bucket: process.env.S3_BUCKET || 'placeholder',
+      config: {
+        endpoint: process.env.S3_ENDPOINT || 'https://placeholder.example.com',
+        region: process.env.S3_REGION || 'auto',
+        credentials: {
+          accessKeyId: process.env.S3_ACCESS_KEY_ID || 'placeholder',
+          secretAccessKey: process.env.S3_SECRET_ACCESS_KEY || 'placeholder',
+        },
+        forcePathStyle: true,
+      },
+    }),
     seoPlugin({
       collections: ['pages', 'blog-posts', 'modules'],
       uploadsCollection: 'media',
