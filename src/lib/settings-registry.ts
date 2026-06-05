@@ -16,6 +16,7 @@ import {
   Calculator,    // Tax & VAT
   ListChecks,    // Price Lists
   Printer,       // Receipt Template
+  Sparkles,      // AI integration
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import type { ModuleId } from "@/stores/active-module";
@@ -57,6 +58,7 @@ const CORE_SETTINGS: SettingsNavItem[] = [
   { to: "/settings/backup", label: "Backup & Restore", description: "Protect business data", icon: Database, permission: "settings.backup", group: "Operations" },
   { to: "/settings/cloud-backup", label: "Cloud Backup", description: "Encrypted offsite copies", icon: Cloud, permission: "settings.backup", group: "Operations" },
   { to: "/settings/customer-display", label: "Customer Display", description: "Second screen settings", icon: Monitor, permission: "settings.business", group: "Operations" },
+  { to: "/settings/ai", label: "AI Integration", description: "Provider keys, features, activity", icon: Sparkles, permission: "settings.business", group: "Operations" },
   { to: "/settings/receipt", label: "Receipt Template", description: "Footer message and branding", icon: Printer, permission: "settings.business", group: "Operations" },
   { to: "/settings/audit", label: "Audit Log", description: "Security and compliance history", icon: Activity, permission: "audit.view", group: "Operations" },
   { to: "/settings/license", label: "License", description: "Machine binding and updates", icon: Key, permission: "license.view", group: "Operations" },

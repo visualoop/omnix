@@ -8,7 +8,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
-import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import type { AiProvider } from "@/services/ai/types";
 import { updateProvider, pingProvider } from "@/services/ai";

@@ -43,6 +43,7 @@ import { RecurringInvoicesPage } from "@/pages/recurring-invoices";
 import { CustomerDisplayPage } from "@/pages/customer-display";
 import { DailyOperationsPage } from "@/pages/daily-operations";
 import { CustomerDisplaySettingsPage } from "@/pages/settings-customer-display";
+import { AiSettingsPage } from "@/pages/settings-ai";
 import { ReceiptSettingsPage } from "@/pages/settings-receipt";
 import { TaxSettingsPage } from "@/pages/settings-taxes";
 import { PriceListSettingsPage } from "@/pages/settings-price-lists";
@@ -231,6 +232,7 @@ function AppContent() {
             <Route path="taxes" element={<RequireRole permission="settings.business"><TaxSettingsPage /></RequireRole>} />
             <Route path="price-lists" element={<RequireRole permission="retail.price_lists.manage"><PriceListSettingsPage /></RequireRole>} />
             <Route path="customer-display" element={<RequireRole permission="settings.business"><CustomerDisplaySettingsPage /></RequireRole>} />
+            <Route path="ai" element={<RequireRole permission="settings.business"><AiSettingsPage /></RequireRole>} />
             <Route path="receipt" element={<RequireRole permission="settings.business"><ReceiptSettingsPage /></RequireRole>} />
             <Route path="hardware/units" element={<RequireRole permission="hardware.accounts.manage"><HardwareSettingsPage /></RequireRole>} />
             <Route path="hospitality/service-charge" element={<RequireRole permission="hospitality.service_charge.manage"><HospitalitySettingsPage /></RequireRole>} />
