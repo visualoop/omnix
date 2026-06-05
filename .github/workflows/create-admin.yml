@@ -1,0 +1,48 @@
+name: Create First Admin (one-shot)
+
+# Manual one-shot: creates an owner-role user in the `users` collection so
+# /admin login works on first deploy. Idempotent — re-running with the same
+# email is a no-op.
+
+on:
+  workflow_dispatch:
+    inputs:
+      email:
+        description: 'Admin email'
+        required: true
+        type: string
+      password:
+        description: 'Admin password (min 12 chars recommended)'
+        required: true
+        type: string
+      name:
+        description: 'Display name'
+        required: true
+        default: 'Admin'
+        type: string
+
+jobs:
+  ensure-admin:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          run_install: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: pnpm
+          cache-dependency-path: website/pnpm-lock.yaml
+      - name: Install
+        working-directory: website
+        run: pnpm install --frozen-lockfile
+      - name: Create admin
+        working-directory: website
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          PAYLOAD_SECRET: ${{ secrets.PAYLOAD_SECRET }}
+          ADMIN_EMAIL: ${{ inputs.email }}
+          ADMIN_PASSWORD: ${{ inputs.password }}
+          ADMIN_NAME: ${{ inputs.name }}
+        run: pnpm exec tsx scripts/ensure-admin.mts
