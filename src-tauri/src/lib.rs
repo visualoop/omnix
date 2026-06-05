@@ -340,6 +340,30 @@ fn run_inner() {
             sql: include_str!("../migrations/038_sales_service_charge.sql"),
             kind: MigrationKind::Up,
         },
+        Migration {
+            version: 39,
+            description: "Module sale bridge: sale_id FKs on laybys / special_orders / folio_payments",
+            sql: include_str!("../migrations/039_module_sale_bridge.sql"),
+            kind: MigrationKind::Up,
+        },
+        Migration {
+            version: 40,
+            description: "Menu kind: products.kind + sale_items.menu_item_id (hospitality recipes)",
+            sql: include_str!("../migrations/040_menu_kind.sql"),
+            kind: MigrationKind::Up,
+        },
+        Migration {
+            version: 41,
+            description: "Sales source tracking: sales.source_type + source_id",
+            sql: include_str!("../migrations/041_sales_source.sql"),
+            kind: MigrationKind::Up,
+        },
+        Migration {
+            version: 42,
+            description: "AI integration: providers, features, cache, calls, settings",
+            sql: include_str!("../migrations/042_ai.sql"),
+            kind: MigrationKind::Up,
+        },
     ];
 
     tauri::Builder::default()
