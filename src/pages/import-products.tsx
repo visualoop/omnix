@@ -4,6 +4,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { createProduct, type CreateProductInput } from "@/services/inventory";
 import { toast } from "sonner";
+import { AiButton } from "@/components/ai/AiButton";
+import { ai } from "@/services/ai";
 
 interface ParsedRow {
   rowIndex: number;
@@ -132,9 +134,34 @@ export function ImportProductsPage() {
             Bulk import products from a CSV file
           </p>
         </div>
-        <Button variant="outline" onClick={downloadTemplate}>
-          <Download className="h-4 w-4 mr-2" /> Download Template
-        </Button>
+        <div className="flex items-center gap-2">
+          <AiButton
+            label="Auto-map columns"
+            hint="Let AI map your CSV's headers to Omnix fields"
+            disabled={!csvText.trim()}
+            onRun={async () => {
+              const lines = csvText.split(/\r?\n/).filter((l) => l.trim());
+              if (lines.length === 0) { toast.error("Upload or paste a CSV first"); return; }
+              const headers = lines[0].split(",").map((h) => h.trim());
+              const mappings = await ai.normalizeImport(headers);
+              const newHeaders = headers.map((h) => {
+                const m = mappings.find((mm) => mm.source_header === h);
+                return m?.target_field ?? h.toLowerCase();
+              });
+              const rest = lines.slice(1).join("\n");
+              const newCsv = newHeaders.join(",") + "\n" + rest;
+              setCsvText(newCsv);
+              parseCSV(newCsv);
+              const matched = mappings.filter((m) => m.target_field).length;
+              toast.success(`Mapped ${matched}/${headers.length} columns`, {
+                description: "Review the preview rows below before importing.",
+              });
+            }}
+          />
+          <Button variant="outline" onClick={downloadTemplate}>
+            <Download className="h-4 w-4 mr-2" /> Download Template
+          </Button>
+        </div>
       </div>
 
       {imported ? (

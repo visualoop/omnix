@@ -10,11 +10,13 @@ export { listCalls, callStats } from "./audit";
 export { invoke, pingProvider } from "./router";
 export { purgeExpired } from "./cache";
 
-import { enrichProduct } from "./tasks/enrich-product";
-import { normalizeImport } from "./tasks/normalize-import";
-import { explainEtims } from "./tasks/explain-etims";
-import { docsQa } from "./tasks/docs-qa";
-import { setupAssist } from "./tasks/setup-assist";
+import { enrichProduct, type EnrichProductResult } from "./tasks/enrich-product";
+import { normalizeImport, type ImportMapping, type OmnixField } from "./tasks/normalize-import";
+import { explainEtims, type EtimsExplanation } from "./tasks/explain-etims";
+import { docsQa, type DocsAnswer } from "./tasks/docs-qa";
+import { setupAssist, type SetupSuggestion } from "./tasks/setup-assist";
+
+export type { EnrichProductResult, ImportMapping, OmnixField, EtimsExplanation, DocsAnswer, SetupSuggestion };
 
 export const ai = {
   enrichProduct,

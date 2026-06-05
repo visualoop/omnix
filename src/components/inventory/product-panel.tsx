@@ -3,6 +3,9 @@ import { Trash2, Plus, Loader2 } from "lucide-react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { AiButton } from "@/components/ai/AiButton";
+import { ai } from "@/services/ai";
+import { toast } from "sonner";
 import { Tabs, TabsList, TabsTrigger, TabsPanel } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -18,7 +21,6 @@ import {
 } from "@/services/retail";
 import { useActiveModule } from "@/stores/active-module";
 import { execute } from "@/lib/db";
-import { toast } from "sonner";
 
 interface Props {
   open: boolean;
@@ -176,7 +178,25 @@ export function ProductPanel({ open, onClose, productId, onSaved }: Props) {
 
             <TabsPanel value="general" className="mt-3 space-y-3">
               <Field label="Product name *">
-                <Input value={form.name} onChange={(e) => update("name", e.target.value)} placeholder="e.g. Paracetamol 500mg" autoFocus />
+                <div className="flex gap-2">
+                  <Input value={form.name} onChange={(e) => update("name", e.target.value)} placeholder="e.g. Paracetamol 500mg" autoFocus className="flex-1" />
+                  <AiButton
+                    label="Enrich"
+                    hint="Auto-fill category, unit and tax rate from the product name"
+                    disabled={!form.name.trim()}
+                    onRun={async () => {
+                      const result = await ai.enrichProduct(form.name);
+                      const updates: Partial<typeof form> = {};
+                      if (result.name && result.name !== form.name) updates.name = result.name;
+                      if (result.unit && !form.unit) updates.unit = result.unit;
+                      // Apply updates
+                      setForm((p) => ({ ...p, ...updates }));
+                      toast.success(`Enriched (${result.confidence} confidence)`, {
+                        description: result.notes ?? "Review the suggested values before saving.",
+                      });
+                    }}
+                  />
+                </div>
               </Field>
               <div className="grid grid-cols-2 gap-2">
                 <Field label="SKU">

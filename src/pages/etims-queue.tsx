@@ -3,11 +3,15 @@ import { RefreshCw, CheckCircle2, XCircle, Clock, AlertTriangle, FileCheck } fro
 import { Button } from "@/components/ui/button";
 import { getRecentInvoices, retryQueuedInvoices, type EtimsInvoice } from "@/services/etims";
 import { Badge } from "@/components/ui/badge";
+import { AiButton } from "@/components/ai/AiButton";
+import { AiSuggestionDialog } from "@/components/ai/AiSuggestionDialog";
+import { ai, type EtimsExplanation } from "@/services/ai";
 import { toast } from "sonner";
 
 export function EtimsQueuePage() {
   const [invoices, setInvoices] = useState<EtimsInvoice[]>([]);
   const [filter, setFilter] = useState<"all" | "signed" | "queued" | "failed" | "pending">("all");
+  const [explanation, setExplanation] = useState<{ invoice: string; result: EtimsExplanation } | null>(null);
   const [retrying, setRetrying] = useState(false);
   const [loading, setLoading] = useState(true);
 
@@ -147,13 +151,46 @@ export function EtimsQueuePage() {
           <summary className="text-sm font-medium cursor-pointer">Recent errors</summary>
           <div className="mt-2 space-y-1">
             {filtered.filter(i => i.error_message).slice(0, 5).map((inv) => (
-              <div key={inv.id} className="text-xs">
-                <span className="font-mono text-muted-foreground">{inv.invoice_number}:</span>{" "}
-                <span className="text-red-600">{inv.error_message}</span>
+              <div key={inv.id} className="text-xs flex items-start gap-2">
+                <span className="font-mono text-muted-foreground">{inv.invoice_number}:</span>
+                <span className="text-red-600 flex-1">{inv.error_message}</span>
+                <AiButton
+                  hint="Explain this error in plain English"
+                  size="sm"
+                  variant="ghost"
+                  onRun={async () => {
+                    const result = await ai.explainEtims("ETIMS_FAIL", inv.error_message ?? "");
+                    setExplanation({ invoice: inv.invoice_number, result });
+                  }}
+                />
               </div>
             ))}
           </div>
         </details>
+      )}
+
+      {explanation && (
+        <AiSuggestionDialog<EtimsExplanation>
+          open={!!explanation}
+          onOpenChange={(v) => !v && setExplanation(null)}
+          title={`Explain: ${explanation.invoice}`}
+          suggestion={explanation.result}
+          meta={null}
+          onApply={() => setExplanation(null)}
+          applyLabel="Got it"
+          renderPreview={(s) => (
+            <div className="space-y-3">
+              <div className="text-sm font-medium">{s.summary}</div>
+              <div className="text-[11px] text-muted-foreground flex items-center gap-2">
+                <Badge variant="outline" className="text-[10px]">severity: {s.severity}</Badge>
+                <Badge variant="outline" className="text-[10px]">owner: {s.owner}</Badge>
+              </div>
+              <ol className="text-sm list-decimal list-inside space-y-1">
+                {s.steps.map((step, i) => (<li key={i}>{step}</li>))}
+              </ol>
+            </div>
+          )}
+        />
       )}
     </div>
   );
