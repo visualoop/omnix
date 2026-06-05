@@ -4,7 +4,6 @@ import { motion } from 'framer-motion'
 import Link from 'next/link'
 import { Icon } from '@/components/icons'
 import { Button } from '@/components/ui/button'
-import { PosPreview } from './pos-preview'
 import { PayloadImage, type PayloadMedia } from '@/components/marketing/payload-image'
 
 export interface HeroContent {
@@ -45,7 +44,7 @@ export function HeroSection({ content, latestRelease }: { content?: HeroContent;
   const screenshot = content?.screenshot ?? null
 
   return (
-    <section className="relative overflow-hidden pt-28 pb-20 sm:pt-36 lg:pt-44 lg:pb-28">
+    <section className="relative overflow-hidden pt-20 pb-16 sm:pt-24 lg:pt-28 lg:pb-20">
       {/* Atmosphere — soft warm pool of accent behind the headline */}
       <div aria-hidden className="pointer-events-none absolute inset-0 -z-10">
         <div className="absolute left-1/2 top-[-12%] h-[720px] w-[1200px] -translate-x-1/2 rounded-full bg-[radial-gradient(closest-side,var(--color-accent-soft),transparent_72%)] blur-3xl" />
@@ -135,14 +134,14 @@ export function HeroSection({ content, latestRelease }: { content?: HeroContent;
           <span className="text-[var(--color-fg-muted)]">KES 100,000 once</span>
         </motion.p>
 
-        {/* Product preview — CMS screenshot in BrowserFrame, or the hand-built window */}
-        <div className="mx-auto mt-24 max-w-[1080px]">
-          {screenshot?.url ? (
+        {/* Product preview — only renders when a screenshot is uploaded in
+            /admin → Landing Page → Hero → Screenshot. Until then the section
+            stays empty so we don't ship a fake mock that misrepresents the app. */}
+        {screenshot?.url && (
+          <div className="mx-auto mt-24 max-w-[1080px]">
             <PayloadImage media={screenshot} url="omnix.co.ke/dashboard" />
-          ) : (
-            <PosPreview />
-          )}
-        </div>
+          </div>
+        )}
       </div>
     </section>
   )

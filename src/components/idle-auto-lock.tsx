@@ -7,9 +7,13 @@
  *
  * Activity = mousemove, keydown, click, scroll, touchstart.
  * On lock, navigates to /login and clears the session.
+ *
+ * Implementation: Base UI Dialog (managed Portal + Backdrop) so the lock
+ * overlay always fills the viewport regardless of which page is mounted
+ * or which backdrop-filter ancestor exists in the tree.
  */
 import { useEffect, useState } from "react";
-import { createPortal } from "react-dom";
+import { Dialog as DialogPrimitive } from "@base-ui/react/dialog";
 import { Lock } from "lucide-react";
 import { useAuthStore } from "@/stores/auth";
 import { useNavigate } from "react-router-dom";
@@ -41,14 +45,12 @@ export function IdleAutoLock() {
   useEffect(() => {
     if (!user) return;
     const minutes = getIdleLockMinutes();
-    if (minutes === 0) return; // disabled
+    if (minutes === 0) return;
 
     let timer: ReturnType<typeof setTimeout>;
     const reset = () => {
       clearTimeout(timer);
-      timer = setTimeout(() => {
-        setLocked(true);
-      }, minutes * 60 * 1000);
+      timer = setTimeout(() => setLocked(true), minutes * 60 * 1000);
     };
     reset();
 
@@ -63,7 +65,7 @@ export function IdleAutoLock() {
     };
   }, [user]);
 
-  if (!locked || !user) return null;
+  if (!user) return null;
 
   const handleUnlock = async () => {
     if (!pin.trim()) return;
@@ -74,7 +76,6 @@ export function IdleAutoLock() {
       setPin("");
     } catch {
       setPin("");
-      // Still locked
     }
   };
 
@@ -85,17 +86,30 @@ export function IdleAutoLock() {
     navigate("/login");
   };
 
+  // Controlled open with a no-op onOpenChange means click-outside / Escape
+  // can't close the lock screen — only successful unlock / sign-out toggles
+  // the `locked` state.
   return (
-    <>
-      {createPortal(
-        <div className="glass-canvas fixed inset-0 z-[200] flex items-center justify-center overflow-hidden">
+    <DialogPrimitive.Root
+      open={locked}
+      onOpenChange={() => { /* ignore — only unlock/switch closes */ }}
+    >
+      <DialogPrimitive.Portal>
+        <DialogPrimitive.Backdrop
+          className="fixed inset-0 z-[200] bg-stone-950/95 backdrop-blur-md data-open:animate-in data-open:fade-in-0"
+        />
+        <DialogPrimitive.Popup
+          className="fixed inset-0 z-[201] flex items-center justify-center p-6 outline-none data-open:animate-in data-open:fade-in-0"
+        >
           {/* Atmospheric ambient orbs */}
-          <div aria-hidden className="pointer-events-none absolute inset-0">
+          <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">
             <div className="absolute -top-40 -left-40 h-[28rem] w-[28rem] rounded-full bg-primary/15 blur-[160px]" />
             <div className="absolute -bottom-40 -right-40 h-[32rem] w-[32rem] rounded-full bg-blue-500/10 blur-[180px]" />
           </div>
 
           <div className="relative z-10 w-full max-w-[400px] glass-thick rounded-glass-xl p-7 space-y-5">
+            <DialogPrimitive.Title className="sr-only">Locked</DialogPrimitive.Title>
+
             {/* Lock icon in a glass chip */}
             <div className="flex flex-col items-center text-center space-y-3">
               <div className="glass rounded-2xl p-4">
@@ -147,9 +161,8 @@ export function IdleAutoLock() {
               Switch user
             </button>
           </div>
-        </div>,
-        document.body,
-      )}
-    </>
+        </DialogPrimitive.Popup>
+      </DialogPrimitive.Portal>
+    </DialogPrimitive.Root>
   );
 }

@@ -53,7 +53,7 @@ export default async function BlogPostPage({
 
   return (
     <>
-      <article className="pt-28 sm:pt-32">
+      <article className="pt-24 sm:pt-28">
         <Container width="default">
           <Link
             href="/blog"

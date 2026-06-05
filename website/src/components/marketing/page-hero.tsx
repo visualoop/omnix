@@ -29,7 +29,7 @@ export function PageHero({
   children,
 }: PageHeroProps) {
   return (
-    <section className="relative overflow-hidden border-b border-[var(--color-border)] pt-32 pb-20 sm:pt-40 sm:pb-28">
+    <section className="relative overflow-hidden border-b border-[var(--color-border)] pt-24 pb-16 sm:pt-28 sm:pb-20">
       {pattern === 'glow' ? (
         <div aria-hidden className="pointer-events-none absolute inset-0 -z-10">
           <div className="absolute left-1/2 top-0 h-[420px] w-[1100px] -translate-x-1/2 rounded-full bg-[radial-gradient(closest-side,var(--color-accent-soft),transparent_72%)] blur-3xl" />

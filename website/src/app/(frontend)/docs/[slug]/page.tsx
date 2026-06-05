@@ -39,7 +39,7 @@ export default async function DocPage({
   const others = DOCS_SEED.filter((d) => d.category === doc.category && d.slug !== slug).slice(0, 3)
 
   return (
-    <article className="pt-28 sm:pt-32">
+    <article className="pt-24 sm:pt-28">
       <Container width="wide">
         <Link
           href="/docs"
