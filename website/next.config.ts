@@ -70,7 +70,7 @@ const nextConfig: NextConfig = {
       "default-src 'self'",
       scriptSrc,
       "style-src 'self' 'unsafe-inline'",
-      "img-src 'self' data: blob: https://media.omnix.co.ke https://*.r2.cloudflarestorage.com https://www.googletagmanager.com",
+      "img-src 'self' data: blob: https:",
       "font-src 'self' data:",
       "connect-src 'self' https://api.paystack.co https://omnix.co.ke https://media.omnix.co.ke https://www.google-analytics.com",
       "frame-src https://standard.paystack.co",
