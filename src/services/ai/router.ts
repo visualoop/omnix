@@ -34,6 +34,50 @@ function modelForTask(p: AiProvider, kind: TaskKind): string | null {
   return p.preferred_text_model;
 }
 
+/**
+ * Per-provider fallback model chains. When the primary preferred model
+ * returns 429 (rate-limited at the upstream/router level), we walk this
+ * chain trying each alternate before falling out to the next provider.
+ * Order: most-capable first, smaller/faster after.
+ */
+const FALLBACK_MODELS: Record<string, Partial<Record<TaskKind, string[]>>> = {
+  openrouter: {
+    text: [
+      "openai/gpt-oss-20b:free",
+      "google/gemma-4-26b-a4b-it:free",
+      "qwen/qwen3-coder:free",
+      "nvidia/nemotron-nano-9b-v2:free",
+      "meta-llama/llama-3.3-70b-instruct:free",
+    ],
+    vision: [
+      "meta-llama/llama-3.2-90b-vision-instruct:free",
+      "nvidia/nemotron-nano-12b-v2-vl:free",
+    ],
+    reasoning: [
+      "z-ai/glm-4.5-air:free",
+      "openai/gpt-oss-120b:free",
+      "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free",
+    ],
+  },
+  groq: {
+    text: ["llama-3.3-70b-versatile", "llama-3.1-8b-instant", "mixtral-8x7b-32768"],
+    vision: ["llama-3.2-90b-vision-preview", "llama-3.2-11b-vision-preview"],
+    reasoning: ["qwen-qwq-32b", "deepseek-r1-distill-llama-70b"],
+  },
+};
+
+/** Build the ordered model list for a provider+task: primary, then fallbacks. */
+function modelsForProviderTask(p: AiProvider, kind: TaskKind): string[] {
+  const primary = modelForTask(p, kind);
+  const fallbacks = FALLBACK_MODELS[p.id]?.[kind] ?? [];
+  const out: string[] = [];
+  if (primary) out.push(primary);
+  for (const m of fallbacks) {
+    if (!out.includes(m)) out.push(m);
+  }
+  return out;
+}
+
 /** Estimate USD cost from token counts using a rough per-million-token table. */
 const COST_TABLE: Record<string, { in: number; out: number }> = {
   // Free tiers
@@ -79,14 +123,18 @@ async function resolveCandidates(feature: AiFeature, freeOnly: boolean): Promise
     if (p) out.push({ provider: p, model: feature.preferred_model });
   }
 
-  // 2. All enabled providers, with their preferred model for this task_kind.
+  // 2. Walk every enabled provider, emitting one route per fallback model.
+  //    `modelsForProviderTask` returns [primary, ...alternates] — when the
+  //    primary 429s we automatically try the next free model on the same
+  //    provider before giving up and crossing provider boundaries.
   for (const p of enabled) {
-    const model = modelForTask(p, feature.task_kind);
-    if (!model) continue;
-    if (freeOnly && !model.endsWith(":free") && !["groq", "google", "custom"].includes(p.id)) continue;
-    if (out.some((r) => r.provider.id === p.id && r.model === model)) continue;
     if (p.rate_limited_until && new Date(p.rate_limited_until) > new Date()) continue;
-    out.push({ provider: p, model });
+    const models = modelsForProviderTask(p, feature.task_kind);
+    for (const model of models) {
+      if (freeOnly && !model.endsWith(":free") && !["groq", "google", "custom"].includes(p.id)) continue;
+      if (out.some((r) => r.provider.id === p.id && r.model === model)) continue;
+      out.push({ provider: p, model });
+    }
   }
   return out;
 }
@@ -134,6 +182,17 @@ async function callProvider(
     parsed = JSON.parse(text);
   } catch {
     throw new AiError("error", `${route.provider.id}: invalid JSON response`, route.provider.id);
+  }
+  // Some gateways (notably OpenRouter) return HTTP 200 even when the
+  // upstream provider rate-limited — the body has `error.code === 429`
+  // but no `choices`. Detect and surface that as a rate_limit so the
+  // router falls through to the next candidate.
+  const inlineErr = (parsed as unknown as { error?: { code?: number; message?: string } }).error;
+  if (inlineErr && inlineErr.code === 429) {
+    throw new AiError("rate_limited", `${route.provider.id}: upstream rate-limited (${inlineErr.message ?? "429"})`, route.provider.id);
+  }
+  if (inlineErr || !parsed.choices?.length) {
+    throw new AiError("error", `${route.provider.id}: ${inlineErr?.message ?? "no choices in response"}`, route.provider.id);
   }
   const content = parsed.choices?.[0]?.message?.content ?? "";
   let json: unknown | null = null;

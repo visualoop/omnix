@@ -148,33 +148,73 @@ describe('invoke() — no provider', () => {
 })
 
 describe('invoke() — provider fallback chain', () => {
-  it('falls through to next provider on 429', async () => {
+  it('falls through to fallback model on same provider when primary 429s', async () => {
     mockedQuery.mockResolvedValueOnce([FEATURE_LOW])
     mockedQuery.mockResolvedValueOnce(SETTINGS_DEFAULT)
-    mockedQuery.mockResolvedValueOnce([PROVIDER_GROQ, PROVIDER_OR])
+    mockedQuery.mockResolvedValueOnce([PROVIDER_GROQ])
     mockedQuery.mockResolvedValueOnce([]) // cache miss
 
+    // Primary llama-3.3-70b 429s, fallback llama-3.1-8b succeeds
     mockFetch
       .mockResolvedValueOnce(jsonResponse({ error: 'rate' }, 429))
-      .mockResolvedValueOnce(jsonResponse(OPENAI_OK_REPLY))
+      .mockResolvedValueOnce(jsonResponse({
+        ...OPENAI_OK_REPLY,
+        model: 'llama-3.1-8b-instant',
+      }))
 
     const r = await invoke('enrich_product', { messages: [{ role: 'user', content: 'hi' }] })
-    expect(r.provider).toBe('openrouter')
+    expect(r.provider).toBe('groq')
+    expect(r.model).toBe('llama-3.1-8b-instant')
     expect(mockFetch).toHaveBeenCalledTimes(2)
   })
 
-  it('returns final error when all providers fail', async () => {
+  it('switches to next provider when entire model chain on first provider fails', async () => {
     mockedQuery.mockResolvedValueOnce([FEATURE_LOW])
     mockedQuery.mockResolvedValueOnce(SETTINGS_DEFAULT)
     mockedQuery.mockResolvedValueOnce([PROVIDER_GROQ, PROVIDER_OR])
     mockedQuery.mockResolvedValueOnce([])
 
+    // Groq fails on all 3 fallback models, OpenRouter primary succeeds.
     mockFetch
+      .mockResolvedValueOnce(jsonResponse({ error: 'rate' }, 429))
+      .mockResolvedValueOnce(jsonResponse({ error: 'rate' }, 429))
+      .mockResolvedValueOnce(jsonResponse({ error: 'rate' }, 429))
+      .mockResolvedValueOnce(jsonResponse(OPENAI_OK_REPLY))
+
+    const r = await invoke('enrich_product', { messages: [{ role: 'user', content: 'hi' }] })
+    expect(r.provider).toBe('openrouter')
+  })
+
+  it('returns final error when all providers and models fail', async () => {
+    mockedQuery.mockResolvedValueOnce([FEATURE_LOW])
+    mockedQuery.mockResolvedValueOnce(SETTINGS_DEFAULT)
+    mockedQuery.mockResolvedValueOnce([PROVIDER_GROQ])
+    mockedQuery.mockResolvedValueOnce([])
+
+    // Groq's entire chain (3 models) fails
+    mockFetch
+      .mockResolvedValueOnce(jsonResponse({ error: 'rate' }, 429))
       .mockResolvedValueOnce(jsonResponse({ error: 'rate' }, 429))
       .mockResolvedValueOnce(jsonResponse({ error: 'server' }, 500))
 
     await expect(invoke('enrich_product', { messages: [{ role: 'user', content: 'hi' }] }))
       .rejects.toBeInstanceOf(AiError)
+  })
+
+  it('detects inline 429 wrapped in HTTP 200 (OpenRouter pattern)', async () => {
+    mockedQuery.mockResolvedValueOnce([FEATURE_LOW])
+    mockedQuery.mockResolvedValueOnce(SETTINGS_DEFAULT)
+    mockedQuery.mockResolvedValueOnce([PROVIDER_OR])
+    mockedQuery.mockResolvedValueOnce([])
+
+    // OpenRouter wraps an upstream 429 in a 200 response with error.code === 429.
+    // First fallback model returns inline 429; second succeeds.
+    mockFetch
+      .mockResolvedValueOnce(jsonResponse({ error: { code: 429, message: 'upstream rate' } }))
+      .mockResolvedValueOnce(jsonResponse(OPENAI_OK_REPLY))
+
+    const r = await invoke('enrich_product', { messages: [{ role: 'user', content: 'hi' }] })
+    expect(r.provider).toBe('openrouter')
   })
 })
 

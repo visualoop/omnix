@@ -93,7 +93,7 @@ VALUES
    'llama-3.3-70b-versatile', 'llama-3.2-90b-vision-preview', 'qwen-qwq-32b',
    'Generous free tier with very fast inference. Sign up at console.groq.com.'),
   ('openrouter', 'OpenRouter', 0, 'https://openrouter.ai/api/v1', 20,
-   'meta-llama/llama-3.1-70b-instruct:free', 'meta-llama/llama-3.2-90b-vision-instruct:free', 'deepseek/deepseek-r1-distill-llama-70b:free',
+   'openai/gpt-oss-20b:free', 'meta-llama/llama-3.2-90b-vision-instruct:free', 'z-ai/glm-4.5-air:free',
    'Aggregator with free-tier models from many providers. Sign up at openrouter.ai.'),
   ('deepseek', 'DeepSeek', 0, 'https://api.deepseek.com/v1', 30,
    'deepseek-chat', NULL, 'deepseek-reasoner',
