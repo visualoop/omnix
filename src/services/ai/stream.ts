@@ -11,7 +11,7 @@
  * once at end with totals).
  */
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
-import { streamText, type ModelMessage } from "ai";
+import { streamText, stepCountIs, type ModelMessage, type ToolSet } from "ai";
 import { listProviders, getFeature, loadSettings, setProviderRuntimeState } from "./config";
 import { recordCall } from "./audit";
 import { redactMessages } from "./redact";
@@ -90,6 +90,10 @@ export interface StreamProgress {
   model?: string;
   tokensIn?: number;
   tokensOut?: number;
+  /** Tool call requested by the model. Emitted as soon as the model starts a tool call. */
+  toolCall?: { id: string; name: string; args: Record<string, unknown> };
+  /** Result returned to the model after a tool call. */
+  toolResult?: { id: string; name: string; result: unknown };
 }
 
 /**
@@ -97,11 +101,15 @@ export interface StreamProgress {
  * and one final {done:true} object with usage data. Walks the provider
  * fallback chain on initial-call errors only — once a stream starts we
  * commit to that provider.
+ *
+ * Pass `tools` to give the model agent capabilities. The function will
+ * loop up to `maxSteps` times: streamText handles tool execution + result
+ * forwarding internally.
  */
 export async function* streamInvoke(
   featureId: string,
   messages: ChatMessage[],
-  opts: InvokeOptions = {},
+  opts: InvokeOptions & { tools?: ToolSet; maxSteps?: number } = {},
 ): AsyncGenerator<StreamProgress, void, undefined> {
   const feature = await getFeature(featureId);
   if (!feature) throw new AiError("error", `Unknown feature ${featureId}`);
@@ -144,6 +152,7 @@ export async function* streamInvoke(
         model: provider(route.model),
         messages: toModelMessages(safeMessages),
         temperature: 0.4,
+        ...(opts.tools ? { tools: opts.tools, stopWhen: stepCountIs(opts.maxSteps ?? 5) } : {}),
       });
 
       // Reset runtime state — successful stream start
@@ -151,9 +160,34 @@ export async function* streamInvoke(
 
       const t0 = performance.now();
       let acc = "";
-      for await (const delta of result.textStream) {
-        acc += delta;
-        yield { text: acc, delta, done: false, provider: route.provider.id, model: route.model };
+      // Use fullStream so we can emit tool-call + tool-result deltas in
+      // addition to plain text deltas. textStream alone hides tool events.
+      for await (const part of result.fullStream) {
+        if (part.type === "text-delta") {
+          const delta = (part as unknown as { text: string }).text;
+          acc += delta;
+          yield { text: acc, delta, done: false, provider: route.provider.id, model: route.model };
+        } else if (part.type === "tool-call") {
+          const tc = part as unknown as { toolCallId: string; toolName: string; input: Record<string, unknown> };
+          yield {
+            text: acc,
+            delta: "",
+            done: false,
+            provider: route.provider.id,
+            model: route.model,
+            toolCall: { id: tc.toolCallId, name: tc.toolName, args: tc.input },
+          };
+        } else if (part.type === "tool-result") {
+          const tr = part as unknown as { toolCallId: string; toolName: string; output: unknown };
+          yield {
+            text: acc,
+            delta: "",
+            done: false,
+            provider: route.provider.id,
+            model: route.model,
+            toolResult: { id: tr.toolCallId, name: tr.toolName, result: tr.output },
+          };
+        }
       }
 
       // Final usage + audit

@@ -14,8 +14,8 @@
  * Markdown: AssistantMarkdown turns backtick routes into clickable chips,
  * shortcuts into kbd pills, code blocks + lists into proper formatting.
  */
-import { useEffect, useRef, useState, useCallback } from "react"
-import { useLocation } from "react-router-dom"
+import { useEffect, useRef, useState, useCallback, useMemo } from "react"
+import { useLocation, useNavigate } from "react-router-dom"
 import { Sparkles, X, ArrowUp, Loader2, Plus, History, Trash2, Pin } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
@@ -24,6 +24,7 @@ import { useActiveModule } from "@/stores/active-module"
 import { useActiveBranch } from "@/stores/active-branch"
 import { streamInvoke, AiError, type ChatMessage } from "@/services/ai"
 import { buildSystemPrompt } from "@/services/ai/system-prompt"
+import { buildAssistantTools } from "@/services/ai/tools"
 import {
   appendMessage, createConversation, deleteConversation,
   listConversations, loadMessages, setConversationTitle,
@@ -31,6 +32,7 @@ import {
   type Conversation,
 } from "@/services/ai/conversations"
 import { AssistantMarkdown } from "./AssistantMarkdown"
+import { ToolCallBlock, type ToolEvent } from "./ToolCallBlock"
 import { toast } from "sonner"
 
 interface UiMessage {
@@ -38,6 +40,7 @@ interface UiMessage {
   role: "user" | "assistant" | "system"
   content: string
   streaming?: boolean
+  toolEvents?: ToolEvent[]
 }
 
 const STARTERS = [
@@ -62,9 +65,22 @@ export function AiAssistantPanel() {
   const scrollRef = useRef<HTMLDivElement>(null)
 
   const location = useLocation()
+  const navigate = useNavigate()
   const user = useAuthStore((s) => s.user)
   const activeModule = useActiveModule((s) => s.active)
   const branch = useActiveBranch((s) => s.active)
+
+  // Memoise tools — fresh reference per location/navigate change is fine,
+  // as the LLM call rebuilds them per send anyway.
+  const tools = useMemo(() => {
+    return buildAssistantTools({
+      navigate: (route: string) => {
+        navigate(route)
+        // Auto-close so the user sees the page they navigated to
+        setOpen(false)
+      },
+    })
+  }, [navigate])
 
   const refreshHistory = useCallback(() => {
     listConversations(30).then(setConversations).catch(() => {})
@@ -174,8 +190,29 @@ export function AiAssistantPanel() {
       ]
 
       let lastDelta = { provider: undefined as string | undefined, model: undefined as string | undefined, tokensIn: undefined as number | undefined, tokensOut: undefined as number | undefined }
+      const toolEvents: ToolEvent[] = []
       try {
-        for await (const progress of streamInvoke("assistant_chat", history)) {
+        for await (const progress of streamInvoke("assistant_chat", history, { tools, maxSteps: 5 })) {
+          // Track tool call/result events
+          if (progress.toolCall) {
+            toolEvents.push({
+              id: progress.toolCall.id,
+              name: progress.toolCall.name,
+              args: progress.toolCall.args,
+            })
+            setMessages((m) =>
+              m.map((msg) => (msg.id === assistantId ? { ...msg, toolEvents: [...toolEvents] } : msg)),
+            )
+            continue
+          }
+          if (progress.toolResult) {
+            const idx = toolEvents.findIndex((e) => e.id === progress.toolResult!.id)
+            if (idx >= 0) toolEvents[idx] = { ...toolEvents[idx], result: progress.toolResult.result }
+            setMessages((m) =>
+              m.map((msg) => (msg.id === assistantId ? { ...msg, toolEvents: [...toolEvents] } : msg)),
+            )
+            continue
+          }
           lastDelta = {
             provider: progress.provider,
             model: progress.model,
@@ -224,7 +261,7 @@ export function AiAssistantPanel() {
         setTimeout(() => inputRef.current?.focus(), 0)
       }
     },
-    [messages, busy, user, activeModule, location.pathname, branch, conversationId, refreshHistory],
+    [messages, busy, user, activeModule, location.pathname, branch, conversationId, refreshHistory, tools],
   )
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -370,16 +407,52 @@ function WelcomeBlock({ onPick }: { onPick: (text: string) => void }) {
   const greeting =
     h < 5 ? "Habari za usiku" : h < 12 ? "Habari za asubuhi" : h < 16 ? "Habari za mchana" : h < 19 ? "Habari za jioni" : "Habari za usiku"
 
+  const [snapshot, setSnapshot] = useState<{ sales: number; revenue: number; lowStock: number } | null>(null)
+
+  useEffect(() => {
+    Promise.all([
+      import("@/services/pos-helpers").then((m) => m.getTodaySalesSummary()).catch(() => null),
+      import("@/services/pos-helpers").then((m) => m.getLowStockProducts(50)).catch(() => null),
+    ]).then(([sales, low]) => {
+      if (!sales) return
+      setSnapshot({
+        sales: sales.count,
+        revenue: sales.revenue,
+        lowStock: low?.length ?? 0,
+      })
+    })
+  }, [])
+
+  const fmtKES = (n: number) => "KES " + n.toLocaleString("en-KE", { maximumFractionDigits: 0 })
+
   return (
     <div className="space-y-5">
       <div>
         <h2 className="text-base font-semibold tracking-tight">{greeting}, {first} 👋</h2>
         <p className="text-sm text-muted-foreground mt-1.5 leading-relaxed">
           I&apos;m your Omnix concierge. I know every screen, every shortcut, KRA eTIMS,
-          M-Pesa, NHIF/SHA, the licence model and the website inside out.
-          Tap a starter or ask anything.
+          M-Pesa, NHIF/SHA, the licence model and the website inside out — and I can
+          take you straight to the right page or look things up for you.
         </p>
       </div>
+
+      {snapshot && (snapshot.sales > 0 || snapshot.lowStock > 0) && (
+        <div className="rounded-lg glass-thin px-3 py-2.5 text-[12px] space-y-1">
+          <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Today so far</div>
+          <div className="flex flex-wrap gap-x-4 gap-y-0.5">
+            <span><span className="font-medium">{snapshot.sales}</span> sale{snapshot.sales === 1 ? "" : "s"}</span>
+            {snapshot.revenue > 0 && (
+              <span className="font-mono">{fmtKES(snapshot.revenue)}</span>
+            )}
+            {snapshot.lowStock > 0 && (
+              <span className="text-amber-600 dark:text-amber-400">
+                {snapshot.lowStock} item{snapshot.lowStock === 1 ? "" : "s"} below reorder
+              </span>
+            )}
+          </div>
+        </div>
+      )}
+
       <div className="space-y-1.5">
         <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Try one</div>
         {STARTERS.map((q) => (
@@ -406,7 +479,7 @@ function MessageView({ message }: { message: UiMessage }) {
       </div>
       <div
         className={cn(
-          "text-sm leading-relaxed break-words max-w-[92%]",
+          "text-sm leading-relaxed break-words max-w-[92%] flex flex-col gap-2",
           isUser
             ? "rounded-2xl rounded-tr-sm bg-primary/10 px-3.5 py-2.5 whitespace-pre-wrap"
             : "text-foreground",
@@ -414,9 +487,16 @@ function MessageView({ message }: { message: UiMessage }) {
       >
         {isUser ? message.content : (
           <>
-            <AssistantMarkdown source={message.content} />
+            {message.toolEvents && message.toolEvents.length > 0 && (
+              <div className="flex flex-col gap-1">
+                {message.toolEvents.map((ev) => (
+                  <ToolCallBlock key={ev.id} event={ev} busy={ev.result === undefined} />
+                ))}
+              </div>
+            )}
+            {message.content && <AssistantMarkdown source={message.content} />}
             {message.streaming && (
-              <span className="ml-0.5 inline-block w-1.5 h-3.5 align-middle bg-primary animate-pulse rounded-sm" />
+              <span className="inline-block w-1.5 h-3.5 align-middle bg-primary animate-pulse rounded-sm" />
             )}
           </>
         )}

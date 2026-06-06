@@ -1,0 +1,193 @@
+/**
+ * Assistant tools — what the AI can actually DO inside Omnix.
+ *
+ * Each tool has:
+ *   - A zod schema that the LLM uses to know the args
+ *   - A handler that runs in the React app (reads SQLite via @/lib/db,
+ *     navigates via react-router, etc.) and returns a JSON-serialisable
+ *     result the model can summarise back to the user
+ *
+ * Tools are wired into Vercel AI SDK's streamText({tools: ...}). The model
+ * decides when to call them; we run the handler client-side; the result
+ * goes back to the model so it can phrase the answer naturally.
+ *
+ * Safety: every tool is read-only OR navigates the user (no destructive
+ * actions). Mutations (create customer, mark sale paid, etc.) ship in v0.4
+ * once we have a confirmation flow.
+ */
+import { tool } from "ai"
+import { z } from "zod"
+import { query } from "@/lib/db"
+
+export interface ToolContext {
+  /** Navigate to a route. Wrapper around react-router's navigate(string). */
+  navigate: (route: string) => void
+}
+
+/** A single tool definition that's stable across renders (memoise via context). */
+export function buildAssistantTools(ctx: ToolContext) {
+  return {
+    /* ─── Navigate ───────────────────────────────────────────────── */
+    navigate: tool({
+      description:
+        "Navigate the user to a specific page in the Omnix app. Use this when " +
+        "the user asks to 'open' / 'go to' / 'take me to' a page, or when you " +
+        "want to deep-link them to where they should perform a task. " +
+        "Use exact paths like '/pos', '/settings/etims', '/inventory'.",
+      inputSchema: z.object({
+        route: z
+          .string()
+          .startsWith("/")
+          .describe("Absolute route path, e.g. /pos, /settings/etims, /reports."),
+        reason: z.string().optional().describe("Brief reason for navigating, shown in the chat."),
+      }),
+      execute: async ({ route, reason }: { route: string; reason?: string }) => {
+        ctx.navigate(route)
+        return { ok: true, navigatedTo: route, reason: reason ?? "Opened" }
+      },
+    }),
+
+    /* ─── Today's sales summary ──────────────────────────────────── */
+    getTodaySales: tool({
+      description:
+        "Get a quick summary of today's sales: total transactions, revenue, " +
+        "cash vs M-Pesa vs card breakdown, refunds, and average basket. " +
+        "Use this when the user asks 'how are sales today?', 'what's my revenue today?', etc.",
+      inputSchema: z.object({}).describe("No arguments — always summarises today."),
+      execute: async () => {
+        const { getTodaySalesSummary } = await import("@/services/pos-helpers")
+        return await getTodaySalesSummary()
+      },
+    }),
+
+    /* ─── Low-stock alerts ───────────────────────────────────────── */
+    getInventoryAlerts: tool({
+      description:
+        "Get a list of products at or below their reorder level — i.e. items the " +
+        "owner should reorder soon. Returns up to N items sorted by lowest stock first.",
+      inputSchema: z.object({
+        limit: z.number().int().min(1).max(50).default(10).describe("Max items to return (default 10)."),
+      }),
+      execute: async ({ limit }: { limit: number }) => {
+        const { getLowStockProducts } = await import("@/services/pos-helpers")
+        const items = await getLowStockProducts(limit)
+        return { count: items.length, items }
+      },
+    }),
+
+    /* ─── Search products ────────────────────────────────────────── */
+    searchProducts: tool({
+      description:
+        "Search the product catalogue by name, barcode, or SKU. Returns up to 10 matches. " +
+        "Use this when the user asks 'do I have X?', 'how much is panadol?', etc.",
+      inputSchema: z.object({
+        q: z.string().min(1).describe("Search query — name fragment, barcode, or SKU."),
+      }),
+      execute: async ({ q }: { q: string }) => {
+        const rows = await query<{
+          id: string
+          name: string
+          sku: string | null
+          barcode: string | null
+          unit: string | null
+          stock_qty: number
+          selling_price: number
+        }>(
+          `SELECT p.id, p.name, p.sku, p.barcode, p.unit,
+                  COALESCE((SELECT SUM(b.quantity) FROM batches b WHERE b.product_id = p.id), 0) AS stock_qty,
+                  COALESCE(pp.selling_price, 0) AS selling_price
+             FROM products p
+             LEFT JOIN product_prices pp ON pp.product_id = p.id AND pp.price_list_id = 'default'
+            WHERE p.active = 1
+              AND COALESCE(p.kind, 'physical') = 'physical'
+              AND (p.name LIKE ?1 OR p.sku LIKE ?1 OR p.barcode LIKE ?1)
+            ORDER BY p.name ASC
+            LIMIT 10`,
+          [`%${q}%`],
+        )
+        return { count: rows.length, items: rows }
+      },
+    }),
+
+    /* ─── Search customers ───────────────────────────────────────── */
+    searchCustomers: tool({
+      description:
+        "Search customers by name, phone, or email. Returns up to 10 matches.",
+      inputSchema: z.object({
+        q: z.string().min(1).describe("Search query."),
+      }),
+      execute: async ({ q }: { q: string }) => {
+        const rows = await query<{
+          id: string
+          name: string
+          phone: string | null
+          email: string | null
+          credit_balance: number
+        }>(
+          `SELECT id, name, phone, email,
+                  COALESCE(credit_balance, 0) AS credit_balance
+             FROM customers
+            WHERE active = 1
+              AND (name LIKE ?1 OR phone LIKE ?1 OR email LIKE ?1)
+            ORDER BY name ASC
+            LIMIT 10`,
+          [`%${q}%`],
+        )
+        return { count: rows.length, items: rows }
+      },
+    }),
+
+    /* ─── Recent sales ───────────────────────────────────────────── */
+    getRecentSales: tool({
+      description:
+        "List the most recent N sales — invoice number, total, payment status, " +
+        "customer name. Useful for 'show me the last 5 sales' style questions.",
+      inputSchema: z.object({
+        limit: z.number().int().min(1).max(50).default(10),
+      }),
+      execute: async ({ limit }: { limit: number }) => {
+        const rows = await query<{
+          id: string
+          sale_number: string
+          total: number
+          payment_status: string
+          customer_name: string | null
+          created_at: string
+        }>(
+          `SELECT s.id, s.sale_number, s.total, s.payment_status,
+                  c.name AS customer_name,
+                  s.created_at
+             FROM sales s
+             LEFT JOIN customers c ON c.id = s.customer_id
+            ORDER BY datetime(s.created_at) DESC
+            LIMIT ?1`,
+          [limit],
+        )
+        return { count: rows.length, items: rows }
+      },
+    }),
+
+    /* ─── Open a docs topic ──────────────────────────────────────── */
+    openDocs: tool({
+      description:
+        "Open the public docs site at omnix.co.ke/docs (optionally a specific slug). " +
+        "Use when you can't answer authoritatively and want to point them to the docs.",
+      inputSchema: z.object({
+        slug: z.string().optional().describe("Optional docs slug, e.g. 'kra-etims-setup'."),
+      }),
+      execute: async ({ slug }: { slug?: string }) => {
+        const url = slug ? `https://omnix.co.ke/docs/${slug}` : "https://omnix.co.ke/docs"
+        // Open in default browser via tauri-plugin-opener if available; else fall back.
+        try {
+          const { openUrl } = await import("@tauri-apps/plugin-opener")
+          await openUrl(url)
+        } catch {
+          window.open(url, "_blank", "noopener,noreferrer")
+        }
+        return { ok: true, url }
+      },
+    }),
+  }
+}
+
+export type AssistantTools = ReturnType<typeof buildAssistantTools>
