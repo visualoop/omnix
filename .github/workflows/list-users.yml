@@ -1,0 +1,31 @@
+name: List Admin Users (one-shot)
+
+# Diagnostic: dumps every user in the `users` collection with role + id.
+# Read-only — useful when you want to know who exists and what role they
+# have without touching anything.
+
+on:
+  workflow_dispatch: {}
+
+jobs:
+  list-users:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          run_install: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: pnpm
+          cache-dependency-path: website/pnpm-lock.yaml
+      - name: Install
+        working-directory: website
+        run: pnpm install --frozen-lockfile
+      - name: List users
+        working-directory: website
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          PAYLOAD_SECRET: ${{ secrets.PAYLOAD_SECRET }}
+        run: pnpm exec tsx scripts/list-users.mts
