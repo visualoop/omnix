@@ -370,6 +370,12 @@ fn run_inner() {
             sql: include_str!("../migrations/043_ai_assistant.sql"),
             kind: MigrationKind::Up,
         },
+        Migration {
+            version: 44,
+            description: "AI chat history: ai_conversations + ai_messages for resume + scroll-back",
+            sql: include_str!("../migrations/044_ai_chat_history.sql"),
+            kind: MigrationKind::Up,
+        },
     ];
 
     tauri::Builder::default()
