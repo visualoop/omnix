@@ -12,12 +12,15 @@ import {
   Building2,
   Trash2,
   Key,
+  Loader2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
 import {
   getLicenseStatus,
   deactivateLicense,
+  activateLicense,
   type LicenseStatus,
 } from "@/services/license";
 import { APP_NAME } from "@/lib/brand";
@@ -53,20 +56,7 @@ export function LicensePage() {
   }
 
   if (!status.activated || !status.license) {
-    return (
-      <div className="space-y-4 max-w-2xl">
-        <h1 className="text-xl font-semibold tracking-tight">License</h1>
-        <div className="border border-amber-500/50 bg-amber-500/5 rounded-lg p-4 flex items-start gap-3">
-          <AlertTriangle className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
-          <div>
-            <p className="font-medium">No active license</p>
-            <p className="text-sm text-muted-foreground mt-1">
-              The license has been deactivated or invalidated. Restart the app to enter a new license key.
-            </p>
-          </div>
-        </div>
-      </div>
-    );
+    return <NoLicenseOrTrialView status={status} onActivated={load} />;
   }
 
   const license = status.license;
@@ -193,6 +183,127 @@ function DetailRow({
       <Icon className="h-4 w-4 text-muted-foreground shrink-0" />
       <span className="text-muted-foreground w-24 shrink-0">{label}</span>
       <span className={mono ? "font-mono text-xs" : ""}>{value}</span>
+    </div>
+  );
+}
+
+
+/**
+ * Renders the license page when there's no active perpetual license. Three sub-cases:
+ *  - Trial running         → green "trial active" banner + days remaining + activation form
+ *  - Trial expired         → amber banner + activation form
+ *  - Truly no license      → amber banner + activation form
+ *
+ * The activation form lets users upgrade in place without restarting the app —
+ * fixed the old "deactivated, restart to enter a key" deadlock for trial users
+ * who had no UI surface to upgrade.
+ */
+function NoLicenseOrTrialView({
+  status,
+  onActivated,
+}: {
+  status: LicenseStatus;
+  onActivated: () => void;
+}) {
+  const [key, setKey] = useState("");
+  const [activating, setActivating] = useState(false);
+
+  const trial = status.trial;
+  const isTrial = !!trial?.active;
+  const trialExpired = !!trial && !trial.active;
+
+  const handleActivate = async () => {
+    const cleaned = key.trim().replace(/\s+/g, "").toUpperCase();
+    if (!cleaned) return;
+    setActivating(true);
+    try {
+      const result = await activateLicense(cleaned);
+      if (!result.ok) {
+        toast.error(result.error ?? "Activation failed");
+        return;
+      }
+      toast.success("License activated");
+      setKey("");
+      onActivated();
+    } catch (e) {
+      toast.error(String(e));
+    } finally {
+      setActivating(false);
+    }
+  };
+
+  return (
+    <div className="space-y-5 max-w-2xl">
+      <div>
+        <h1 className="text-xl font-semibold tracking-tight">License</h1>
+        <p className="text-sm text-muted-foreground mt-1">Activate {APP_NAME} or manage your trial</p>
+      </div>
+
+      {/* Status banner */}
+      {isTrial ? (
+        <div className="border border-blue-500/50 bg-blue-500/5 rounded-lg p-4 flex items-start gap-3">
+          <CheckCircle2 className="h-5 w-5 text-blue-600 shrink-0 mt-0.5" />
+          <div>
+            <p className="font-medium">Trial active</p>
+            <p className="text-sm text-muted-foreground mt-1">
+              {trial!.days_remaining} day{trial!.days_remaining === 1 ? "" : "s"} remaining.
+              Enter a license key below to activate {APP_NAME} permanently.
+            </p>
+          </div>
+        </div>
+      ) : (
+        <div className="border border-amber-500/50 bg-amber-500/5 rounded-lg p-4 flex items-start gap-3">
+          <AlertTriangle className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
+          <div>
+            <p className="font-medium">{trialExpired ? "Trial expired" : "No active license"}</p>
+            <p className="text-sm text-muted-foreground mt-1">
+              {trialExpired
+                ? `Your trial has ended. Enter a license key to keep using ${APP_NAME}.`
+                : `Enter your license key below or buy one at omnix.co.ke.`}
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* Inline activation form */}
+      <div className="border border-border rounded-lg p-4 space-y-3">
+        <div className="flex items-center gap-2">
+          <Key className="h-4 w-4 text-muted-foreground" />
+          <h2 className="text-sm font-medium">Activate with a license key</h2>
+        </div>
+        <p className="text-xs text-muted-foreground">
+          Paste the license key from your purchase email (looks like{" "}
+          <span className="font-mono text-foreground">OMNIX-XXXX-XXXX-...</span>).
+        </p>
+        <div className="flex gap-2">
+          <Input
+            value={key}
+            onChange={(e) => setKey(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && handleActivate()}
+            placeholder="OMNIX-XXXX-XXXX-XXXX-XXXX"
+            className="font-mono text-xs"
+            disabled={activating}
+            autoFocus
+          />
+          <Button onClick={handleActivate} disabled={activating || !key.trim()} className="cursor-pointer">
+            {activating ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Activate"}
+          </Button>
+        </div>
+      </div>
+
+      {/* Buy link */}
+      <div className="text-xs text-muted-foreground">
+        Don't have a key?{" "}
+        <a
+          href="https://omnix.co.ke/buy"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-primary hover:underline"
+        >
+          Buy a license
+        </a>{" "}
+        — your key is emailed to you immediately after payment.
+      </div>
     </div>
   );
 }

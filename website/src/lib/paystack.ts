@@ -241,27 +241,33 @@ export async function applyPaymentSuccess(
   switch (payment.purpose) {
     case 'license_fee': {
       const now = new Date()
+      const maintenanceUntil = new Date(now.getTime() + ONE_YEAR)
       await payload.update({
         collection: 'licenses',
         id: licenseId,
         data: {
           status: 'active',
           paidAt: now.toISOString(),
-          maintenanceUntil: new Date(now.getTime() + ONE_YEAR).toISOString(),
+          maintenanceUntil: maintenanceUntil.toISOString(),
           priceFeePaid: payment.amount,
         },
         overrideAccess: true,
       })
+      // Email the customer their license key — first time issuance
+      await emailLicenseIssued(payload, licenseId, maintenanceUntil)
       break
     }
     case 'maintenance_renewal': {
       const base = license.maintenanceUntil ? new Date(license.maintenanceUntil) : new Date()
+      const newUntil = new Date(base.getTime() + ONE_YEAR)
       await payload.update({
         collection: 'licenses',
         id: licenseId,
-        data: { maintenanceUntil: new Date(base.getTime() + ONE_YEAR).toISOString() },
+        data: { maintenanceUntil: newUntil.toISOString() },
         overrideAccess: true,
       })
+      // Re-send key email (acts as a renewal receipt; customer often loses the original)
+      await emailLicenseIssued(payload, licenseId, newUntil)
       break
     }
     case 'major_upgrade': {
@@ -285,6 +291,52 @@ export async function applyPaymentSuccess(
       })
       break
     }
+  }
+}
+
+/**
+ * Send the LicenseIssued email — pulls the up-to-date license + customer
+ * data and renders the React Email template. Best-effort: failures are
+ * logged but don't block the payment flow.
+ */
+async function emailLicenseIssued(
+  payload: PayloadRequest['payload'],
+  licenseId: string | number,
+  maintenanceUntil: Date,
+): Promise<void> {
+  try {
+    const fullLicense = (await payload.findByID({
+      collection: 'licenses',
+      id: licenseId,
+      depth: 1,
+      overrideAccess: true,
+    })) as unknown as {
+      licenseKey?: string
+      tier?: string
+      customer?: string | { id: string | number; email?: string; name?: string }
+    }
+    if (!fullLicense.licenseKey) return
+    const customer = typeof fullLicense.customer === 'object' ? fullLicense.customer : null
+    if (!customer?.email) {
+      payload.logger.warn({ licenseId }, '[email] license issued but customer has no email; skipping')
+      return
+    }
+    const { renderEmail, sendEmail } = await import('./emails')
+    const html = await renderEmail('LicenseIssued', {
+      name: customer.name ?? 'there',
+      licenseKey: fullLicense.licenseKey,
+      tier: fullLicense.tier ?? 'standard',
+      maintenanceUntil: maintenanceUntil.toISOString(),
+    })
+    await sendEmail({
+      payload,
+      to: customer.email,
+      subject: `Your Omnix license — ${fullLicense.licenseKey}`,
+      html,
+    })
+    payload.logger.info({ licenseId, to: customer.email }, '[email] LicenseIssued sent')
+  } catch (err) {
+    payload.logger.error({ err, licenseId }, '[email] LicenseIssued failed (non-fatal)')
   }
 }
 
