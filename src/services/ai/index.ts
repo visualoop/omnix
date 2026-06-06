@@ -8,6 +8,7 @@ export * from "./types";
 export { listProviders, getProvider, updateProvider, listFeatures, updateFeature, loadSettings, saveSetting } from "./config";
 export { listCalls, callStats } from "./audit";
 export { invoke, pingProvider } from "./router";
+export { streamInvoke, type StreamProgress } from "./stream";
 export { purgeExpired } from "./cache";
 
 import { enrichProduct, type EnrichProductResult } from "./tasks/enrich-product";

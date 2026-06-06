@@ -364,6 +364,12 @@ fn run_inner() {
             sql: include_str!("../migrations/042_ai.sql"),
             kind: MigrationKind::Up,
         },
+        Migration {
+            version: 43,
+            description: "AI assistant: register assistant_chat feature for streaming concierge",
+            sql: include_str!("../migrations/043_ai_assistant.sql"),
+            kind: MigrationKind::Up,
+        },
     ];
 
     tauri::Builder::default()
