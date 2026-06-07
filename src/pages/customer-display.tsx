@@ -24,6 +24,7 @@ export function CustomerDisplayPage() {
   const items = useCartStore((s) => s.items);
   const subtotal = useCartStore((s) => s.subtotal());
   const discountAmount = useCartStore((s) => s.cartDiscountAmount());
+  const promoLabel = useCartStore((s) => s.promoLabel);
   const taxTotal = useCartStore((s) => s.taxTotal());
   const grandTotal = useCartStore((s) => s.grandTotal());
   const tip = useCartStore((s) => s.tip);
@@ -187,7 +188,7 @@ export function CustomerDisplayPage() {
             </div>
             {discountAmount > 0 && (
               <div className="flex justify-between text-emerald-400">
-                <span>Discount</span>
+                <span>{promoLabel ? `Promo · ${promoLabel}` : "Discount"}</span>
                 <span className="font-mono tabular-nums">-{discountAmount.toFixed(2)}</span>
               </div>
             )}

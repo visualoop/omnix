@@ -14,7 +14,7 @@ import { toast } from "sonner";
 interface Props {
   open: boolean;
   onClose: () => void;
-  onApply: (discount: number, discountType: "percent" | "amount", promoId?: string) => void;
+  onApply: (discount: number, discountType: "percent" | "amount", promo?: { id: string; name: string }) => void;
 }
 
 function typeLabel(t: PromotionType): string {
@@ -36,7 +36,7 @@ export function PromoDialog({ open, onClose, onApply }: Props) {
   }, [open]);
 
   const applyActive = (promo: Promotion) => {
-    onApply(promo.value, promo.type === "percent_off" ? "percent" : "amount", promo.id);
+    onApply(promo.value, promo.type === "percent_off" ? "percent" : "amount", { id: promo.id, name: promo.name });
     toast.success(`Applied: ${promo.name}`);
     onClose();
   };
@@ -51,7 +51,7 @@ export function PromoDialog({ open, onClose, onApply }: Props) {
         toast.error("Invalid or expired promo code");
         return;
       }
-      onApply(promo.value, promo.type === "percent_off" ? "percent" : "amount", promo.id);
+      onApply(promo.value, promo.type === "percent_off" ? "percent" : "amount", { id: promo.id, name: promo.name });
       toast.success(`Code applied: ${promo.name}`);
       onClose();
     } catch (e) {

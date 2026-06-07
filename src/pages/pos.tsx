@@ -345,6 +345,7 @@ export function POSPage() {
           <ActionPill icon={Pause} label="Park" hotkey="F2" badge={heldCount} onClick={() => setHeldOpen(true)} />
           <ActionPill icon={RotateCcw} label="Returns" onClick={() => navigate("/returns")} />
           <ActionPill icon={Percent} label="Discount" hotkey="F3" onClick={() => setDiscountOpen(true)} disabled={items.length === 0} />
+          <ActionPill icon={Tag} label="Promo" onClick={() => setPromoOpen(true)} disabled={items.length === 0} />
           <ActionPill icon={Banknote} label="Petty Cash" onClick={() => setPettyCashDialog(true)} disabled={!shift} />
           <ActionPill icon={Heart} label="Tip" onClick={() => setTipDialog(true)} disabled={items.length === 0} value={tip > 0 ? `KES ${tip.toFixed(0)}` : undefined} />
           <ActionPill icon={Monitor} label="Customer Display" onClick={() => openCustomerDisplay().catch(console.error)} />
@@ -509,8 +510,8 @@ export function POSPage() {
       <PaymentModal open={payOpen} onClose={() => setPayOpen(false)} />
       <HeldSalesDialog open={heldOpen} onClose={() => setHeldOpen(false)} />
       <DiscountDialog open={discountOpen} onClose={() => setDiscountOpen(false)} />
-      <PromoDialog open={promoOpen} onClose={() => setPromoOpen(false)} onApply={(amount, type) => {
-        useCartStore.getState().setDiscount(amount, type);
+      <PromoDialog open={promoOpen} onClose={() => setPromoOpen(false)} onApply={(amount, type, promo) => {
+        useCartStore.getState().setDiscount(amount, type, promo ? { id: promo.id, label: promo.name } : null);
       }} />
       <SubstitutionsDialog open={!!subFor} product={subFor} onClose={() => setSubFor(null)} />
       <OpenShiftDialog

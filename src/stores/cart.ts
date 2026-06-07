@@ -71,6 +71,9 @@ interface CartState {
   customerId: string | null;
   discount: number;
   discountType: "amount" | "percent";
+  /** Optional applied promo metadata — surfaces on customer display + receipt. */
+  promoId: string | null;
+  promoLabel: string | null;
   tip: number;
   tipEmployeeId: string | null;
   serviceChargeAmount: number;
@@ -83,7 +86,7 @@ interface CartState {
   removeItem: (id: string) => void;
   updateQty: (id: string, qty: number) => void;
   setLineDiscount: (id: string, discount: number) => void;
-  setDiscount: (amount: number, type?: "amount" | "percent") => void;
+  setDiscount: (amount: number, type?: "amount" | "percent", promo?: { id: string; label: string } | null) => void;
   setTip: (amount: number, employeeId?: string | null) => void;
   setServiceCharge: (amount: number) => void;
   setCustomer: (id: string | null) => void;
@@ -117,6 +120,8 @@ export const useCartStore = create<CartState>()(
       customerId: null,
       discount: 0,
       discountType: "amount",
+      promoId: null,
+      promoLabel: null,
       tip: 0,
       tipEmployeeId: null,
       serviceChargeAmount: 0,
@@ -177,7 +182,13 @@ export const useCartStore = create<CartState>()(
         revision: nextRevision(state),
       })),
 
-      setDiscount: (amount, type = "amount") => set((state) => ({ discount: amount, discountType: type, revision: nextRevision(state) })),
+      setDiscount: (amount, type = "amount", promo) => set((state) => ({
+        discount: amount,
+        discountType: type,
+        promoId: promo?.id ?? null,
+        promoLabel: promo?.label ?? null,
+        revision: nextRevision(state),
+      })),
       setTip: (amount, employeeId) => set((state) => ({ tip: amount, tipEmployeeId: employeeId ?? null, revision: nextRevision(state) })),
       setServiceCharge: (amount) => set((state) => ({ serviceChargeAmount: Math.max(0, amount), revision: nextRevision(state) })),
       setCustomer: (id) => set((state) => ({ customerId: id, revision: nextRevision(state) })),
@@ -191,6 +202,8 @@ export const useCartStore = create<CartState>()(
         items,
         discount,
         customerId,
+        promoId: null,
+        promoLabel: null,
         tip: options?.tip ?? 0,
         tipEmployeeId: options?.tipEmployeeId ?? null,
         serviceChargeAmount: options?.serviceChargeAmount ?? 0,
@@ -205,6 +218,8 @@ export const useCartStore = create<CartState>()(
           customerId: null,
           discount: 0,
           discountType: "amount",
+          promoId: null,
+          promoLabel: null,
           tip: 0,
           tipEmployeeId: null,
           serviceChargeAmount: 0,

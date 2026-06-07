@@ -73,11 +73,21 @@ export async function getProduct(id: string): Promise<Product | null> {
 
 export async function createProduct(input: CreateProductInput): Promise<string> {
   const id = crypto.randomUUID();
+  // Resolve effective tax rate: explicit on input → use it; else fall back
+  // to the default in settings (`tax.default_rate`); else 16% as last resort.
+  let effectiveTaxRate = input.tax_rate;
+  if (effectiveTaxRate === undefined || effectiveTaxRate === null) {
+    const rows = await query<{ value: string }>(
+      `SELECT value FROM settings WHERE key = 'tax.default_rate' LIMIT 1`,
+    );
+    const fromSettings = rows[0]?.value ? parseFloat(rows[0].value) : NaN;
+    effectiveTaxRate = Number.isFinite(fromSettings) ? fromSettings : 16.0;
+  }
   await execute(
     `INSERT INTO products (id, name, sku, barcode, category_id, unit, description, reorder_level, tax_rate)
      VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)`,
     [id, input.name, input.sku || null, input.barcode || null, input.category_id || null,
-     input.unit || "pcs", input.description || null, input.reorder_level ?? 10, input.tax_rate ?? 16.0]
+     input.unit || "pcs", input.description || null, input.reorder_level ?? 10, effectiveTaxRate]
   );
   await execute(
     `INSERT INTO product_prices (product_id, price_list_id, buying_price, selling_price)
