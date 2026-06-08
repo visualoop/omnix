@@ -10,16 +10,16 @@ import {
   StatusPill,
 } from '@/components/dashboard/status-utils'
 import { DeactivateMachineButton } from '@/components/dashboard/deactivate-machine-button'
-import { safePayloadFind, emptyPage } from '@/lib/dashboard-helpers'
+import { safePayloadFind, emptyPage, getDashboardCustomer } from '@/lib/dashboard-helpers'
 
 export const metadata = { title: 'Machines' }
 
 export default async function MachinesPage() {
   const reqHeaders = await headers()
+  const customer = await getDashboardCustomer(reqHeaders)
+  const user = customer as unknown as { id: string | number; email: string; fullName?: string; businessName?: string; collection?: string }
   const payloadConfig = await config
   const payload = await getPayload({ config: payloadConfig })
-  const { user } = await payload.auth({ headers: reqHeaders })
-  if (!user || user.collection !== 'customers') return null
 
   const licenseRes = await safePayloadFind(
     () =>

@@ -5,7 +5,7 @@ import { getPayload } from 'payload'
 import config from '@/payload.config'
 import { Button } from '@/components/ui/button'
 import { EmptyState, formatDate, PageHeading, StatusPill } from '@/components/dashboard/status-utils'
-import { safePayloadFind, emptyPage } from '@/lib/dashboard-helpers'
+import { safePayloadFind, emptyPage, getDashboardCustomer } from '@/lib/dashboard-helpers'
 
 export const metadata = { title: 'Licences' }
 
@@ -26,10 +26,10 @@ interface License {
 
 export default async function LicensesPage() {
   const reqHeaders = await headers()
+  const customer = await getDashboardCustomer(reqHeaders)
+  const user = customer as unknown as { id: string | number; email: string; fullName?: string; businessName?: string; collection?: string }
   const payloadConfig = await config
   const payload = await getPayload({ config: payloadConfig })
-  const { user } = await payload.auth({ headers: reqHeaders })
-  if (!user || user.collection !== 'customers') return null
 
   const res = await safePayloadFind(
     () =>

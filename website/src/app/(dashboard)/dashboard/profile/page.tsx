@@ -1,4 +1,5 @@
 import { headers } from 'next/headers'
+import { redirect } from 'next/navigation'
 import { getPayload } from 'payload'
 import config from '@/payload.config'
 import { ProfileForm } from '@/components/dashboard/profile-form'
@@ -7,28 +8,42 @@ import { KE_COUNTIES } from '@/lib/ke-counties'
 
 export const metadata = { title: 'Profile' }
 
+interface FullCustomer {
+  id: string | number
+  collection?: string
+  fullName?: string
+  businessName?: string
+  email: string
+  phone?: string
+  whatsapp?: string
+  kraPin?: string
+  county?: string
+  town?: string
+  physicalAddress?: string
+  businessType?: string
+  employeeCount?: string
+  newsletterOptIn?: boolean
+}
+
 export default async function ProfilePage() {
   const reqHeaders = await headers()
   const payloadConfig = await config
   const payload = await getPayload({ config: payloadConfig })
-  const { user } = await payload.auth({ headers: reqHeaders })
-  if (!user || user.collection !== 'customers') return null
 
-  const customer = user as unknown as {
-    id: string
-    fullName?: string
-    businessName?: string
-    email: string
-    phone?: string
-    whatsapp?: string
-    kraPin?: string
-    county?: string
-    town?: string
-    physicalAddress?: string
-    businessType?: string
-    employeeCount?: string
-    newsletterOptIn?: boolean
+  let user: FullCustomer | null = null
+  try {
+    const result = await payload.auth({ headers: reqHeaders })
+    user = result.user as FullCustomer | null
+  } catch (err) {
+    console.error('[profile] auth error:', err)
+    user = null
   }
+
+  if (!user || user.collection !== 'customers' || !user.email) {
+    redirect('/login?next=/dashboard/profile')
+  }
+
+  const customer = user
 
   return (
     <div className="space-y-8">
@@ -56,23 +71,6 @@ export default async function ProfilePage() {
           counties={KE_COUNTIES.map((c) => ({ value: c.value, label: c.label }))}
         />
       </div>
-
-      <section className="max-w-3xl rounded-2xl border border-[var(--color-negative)]/30 bg-[var(--color-surface)] p-6 lg:p-8">
-        <h2 className="font-display text-[18px] font-medium text-[var(--color-negative)]">
-          Danger zone
-        </h2>
-        <p className="mt-2 text-[13px] leading-[1.55] text-[var(--color-fg-muted)]">
-          Deleting your account doesn't revoke paid licences — they belong to you forever — but
-          it removes your access to this dashboard. You'll have to contact support to reactivate
-          access.
-        </p>
-        <button
-          type="button"
-          className="mt-4 rounded-md border border-[var(--color-negative)]/40 px-4 py-2 text-[13px] font-medium text-[var(--color-negative)] hover:bg-[var(--color-negative)]/10"
-        >
-          Delete account
-        </button>
-      </section>
     </div>
   )
 }

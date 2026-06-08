@@ -1,4 +1,57 @@
 import 'server-only'
+import { redirect } from 'next/navigation'
+import { getPayload } from 'payload'
+import config from '@/payload.config'
+
+/**
+ * Defensive customer-auth resolver for dashboard SSR pages.
+ *
+ * payload.auth() throws on stale sessions (cookie JWT for a deleted
+ * customer). This helper wraps that call, returns the customer on
+ * success, and redirects to /login on any failure (throw OR null user
+ * OR wrong collection). Use it as the first line of every dashboard
+ * page so a single auth failure doesn't trip the route-group error
+ * boundary.
+ */
+export async function getDashboardCustomer(reqHeaders: Headers): Promise<{
+  id: string | number
+  email: string
+  fullName?: string
+  businessName?: string
+}> {
+  const payloadConfig = await config
+  const payload = await getPayload({ config: payloadConfig })
+
+  let user: unknown = null
+  try {
+    const result = await payload.auth({ headers: reqHeaders })
+    user = result.user
+  } catch (err) {
+    console.error('[dashboard] payload.auth() threw:', err)
+    user = null
+  }
+
+  const u = user as
+    | null
+    | {
+        id?: string | number
+        email?: string
+        collection?: string
+        fullName?: string
+        businessName?: string
+      }
+
+  if (!u || u.collection !== 'customers' || u.id == null || !u.email) {
+    redirect('/login?next=/dashboard')
+  }
+
+  return {
+    id: u.id,
+    email: u.email,
+    fullName: u.fullName,
+    businessName: u.businessName,
+  }
+}
 
 /**
  * Defensive Payload query wrapper.

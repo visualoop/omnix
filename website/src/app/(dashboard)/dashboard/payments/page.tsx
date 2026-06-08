@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { Download, Receipt } from '@/components/icons'
 import { getPayload } from 'payload'
 import config from '@/payload.config'
+import { getDashboardCustomer } from '@/lib/dashboard-helpers'
 import {
   EmptyState,
   formatDate,
@@ -14,10 +15,10 @@ export const metadata = { title: 'Payments' }
 
 export default async function PaymentsPage() {
   const reqHeaders = await headers()
+  const customer = await getDashboardCustomer(reqHeaders)
+  const user = customer as unknown as { id: string | number; email: string; fullName?: string; businessName?: string; collection?: string }
   const payloadConfig = await config
   const payload = await getPayload({ config: payloadConfig })
-  const { user } = await payload.auth({ headers: reqHeaders })
-  if (!user || user.collection !== 'customers') return null
 
   const res = await payload.find({
     collection: 'payments',
