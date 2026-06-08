@@ -41,43 +41,71 @@ export default async function DashboardOverviewPage({
 
   const customer = user as { id: string; fullName?: string; businessName?: string }
 
+  // Wrap every Payload query so a single failure (missing licence, missing
+  // release, schema drift) doesn't 500 the whole page. Each failure falls
+  // through to a sensible empty-state default.
+  const safeFind = async <T,>(fn: () => Promise<T>, fallback: T): Promise<T> => {
+    try {
+      return await fn()
+    } catch (err) {
+      console.error('[dashboard] payload query failed:', err)
+      return fallback
+    }
+  }
+
   // Fetch this customer's licenses
-  const licensesRes = await payload.find({
-    collection: 'licenses',
-    where: { customer: { equals: customer.id } },
-    limit: 5,
-    sort: '-createdAt',
-  })
+  const licensesRes = await safeFind(
+    () =>
+      payload.find({
+        collection: 'licenses',
+        where: { customer: { equals: customer.id } },
+        limit: 5,
+        sort: '-createdAt',
+      }),
+    { docs: [] as unknown[], totalDocs: 0 } as { docs: unknown[]; totalDocs: number },
+  )
 
-  const machinesRes = await payload.find({
-    collection: 'machines',
-    where: {
-      license: {
-        in: licensesRes.docs.map((l: unknown) => (l as { id: string }).id),
-      },
-    },
-    limit: 50,
-  })
+  const licenseIds = licensesRes.docs.map((l: unknown) => (l as { id: string }).id)
 
-  const paymentsRes = await payload.find({
-    collection: 'payments',
-    where: { customer: { equals: customer.id } },
-    limit: 5,
-    sort: '-createdAt',
-  })
+  const machinesRes = await safeFind(
+    () =>
+      licenseIds.length === 0
+        ? Promise.resolve({ docs: [] as unknown[], totalDocs: 0 })
+        : payload.find({
+            collection: 'machines',
+            where: { license: { in: licenseIds } },
+            limit: 50,
+          }),
+    { docs: [] as unknown[], totalDocs: 0 } as { docs: unknown[]; totalDocs: number },
+  )
 
-  const releasesRes = await payload.find({
-    collection: 'releases',
-    where: {
-      and: [
-        { status: { equals: 'published' } },
-        { channel: { equals: 'stable' } },
-      ],
-    },
-    sort: '-publishedAt',
-    limit: 1,
-    depth: 0,
-  })
+  const paymentsRes = await safeFind(
+    () =>
+      payload.find({
+        collection: 'payments',
+        where: { customer: { equals: customer.id } },
+        limit: 5,
+        sort: '-createdAt',
+      }),
+    { docs: [] as unknown[], totalDocs: 0 } as { docs: unknown[]; totalDocs: number },
+  )
+
+  const releasesRes = await safeFind(
+    () =>
+      payload.find({
+        collection: 'releases',
+        where: {
+          and: [
+            { status: { equals: 'published' } },
+            { channel: { equals: 'stable' } },
+          ],
+        },
+        sort: '-publishedAt',
+        limit: 1,
+        depth: 0,
+      }),
+    { docs: [] as unknown[] } as { docs: unknown[] },
+  )
   const latestRelease = (releasesRes.docs[0] as unknown as
     | { version?: string; publishedAt?: string }
     | undefined) ?? null
@@ -85,15 +113,13 @@ export default async function DashboardOverviewPage({
   const params = await searchParams
   const showWelcome = params.welcome === '1'
 
-  const activeLicense = licensesRes.docs[0] as
-    | undefined
-    | unknown as
-    | undefined
+  const activeLicense = (licensesRes.docs[0] ?? null) as
+    | null
     | {
         id: string
         licenseKey: string
-        tier: string
-        status: string
+        tier?: string
+        status?: string
         modules?: string[]
         trialEndsAt?: string
         maintenanceUntil?: string
@@ -158,7 +184,7 @@ export default async function DashboardOverviewPage({
         <Kpi
           icon={KeyRound}
           label="Active licence"
-          value={activeLicense ? activeLicense.tier.toUpperCase() : 'No licence'}
+          value={activeLicense ? (activeLicense.tier ?? 'TRIAL').toUpperCase() : 'No licence'}
           meta={
             activeLicense
               ? activeLicense.status === 'trial'
