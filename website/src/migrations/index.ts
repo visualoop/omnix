@@ -4,6 +4,7 @@ import * as migration_20260608_080000_license_variant from './20260608_080000_li
 import * as migration_20260608_104500_customer_verified_backfill from './20260608_104500_customer_verified_backfill';
 import * as migration_20260608_111500_clear_customer_lockouts from './20260608_111500_clear_customer_lockouts';
 import * as migration_20260608_112800_cleanup_probe_customers from './20260608_112800_cleanup_probe_customers';
+import * as migration_20260608_152000_fix_variant_enum_naming from './20260608_152000_fix_variant_enum_naming';
 
 export const migrations = [
   {
@@ -35,5 +36,10 @@ export const migrations = [
     up: migration_20260608_112800_cleanup_probe_customers.up,
     down: migration_20260608_112800_cleanup_probe_customers.down,
     name: '20260608_112800_cleanup_probe_customers',
+  },
+  {
+    up: migration_20260608_152000_fix_variant_enum_naming.up,
+    down: migration_20260608_152000_fix_variant_enum_naming.down,
+    name: '20260608_152000_fix_variant_enum_naming',
   },
 ];
