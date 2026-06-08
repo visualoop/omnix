@@ -117,9 +117,17 @@ export default buildConfig({
         (doc?.excerpt as string) || (doc?.summary as string) || 'The operating system for Kenyan SMEs.',
     }),
   ],
-  cors: '*',
+  cors: [
+    ...(process.env.NEXT_PUBLIC_SITE_URL ? [process.env.NEXT_PUBLIC_SITE_URL] : []),
+    'https://omnix.co.ke',
+    'https://www.omnix.co.ke',
+    'http://localhost:3000',
+    'http://127.0.0.1:3000',
+  ],
   csrf: [
     ...(process.env.NEXT_PUBLIC_SITE_URL ? [process.env.NEXT_PUBLIC_SITE_URL] : []),
+    'https://omnix.co.ke',
+    'https://www.omnix.co.ke',
     'http://localhost:3000',
     'http://127.0.0.1:3000',
   ],
