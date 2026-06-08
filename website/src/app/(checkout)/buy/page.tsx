@@ -43,15 +43,17 @@ export default async function BuyEntryPage({
   const payload = await getPayload({ config: await config })
 
   // Resolve auth — failures bubble up as "not signed in" instead of 500.
-  let user: { id?: string | number; collection?: string } | null = null
+  type Authed = { id?: string | number; collection?: string }
+  let user: Authed | null = null
   try {
     const result = await payload.auth({ headers: reqHeaders })
-    user = result.user as typeof user
+    user = (result.user ?? null) as Authed | null
   } catch (err) {
     console.error('[buy] auth error:', err)
     user = null
   }
   const isCustomer = Boolean(user && user.collection === 'customers' && user.id != null)
+  const customerId: string | number | null = isCustomer ? (user!.id as string | number) : null
 
   // Look up an existing licence for a signed-in customer (defensive — if the
   // query fails we treat it as "no licence yet" and fall through to create).
@@ -60,7 +62,7 @@ export default async function BuyEntryPage({
     try {
       const result = await payload.find({
         collection: 'licenses',
-        where: { customer: { equals: user!.id! } },
+        where: { customer: { equals: customerId! } },
         sort: '-createdAt',
         limit: 1,
         depth: 0,
@@ -86,7 +88,7 @@ export default async function BuyEntryPage({
     const created = (await payload.create({
       collection: 'licenses',
       data: {
-        customer: user!.id! as never,
+        customer: customerId! as never,
         tier: 'trial',
         variant: decision.variant as never,
         modules: decision.modules,

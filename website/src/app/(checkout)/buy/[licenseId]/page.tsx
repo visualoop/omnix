@@ -21,10 +21,11 @@ export default async function CheckoutPage({
   const payloadConfig = await config
   const payload = await getPayload({ config: payloadConfig })
 
-  let user: { id?: string | number; collection?: string } | null = null
+  type Authed = { id?: string | number; collection?: string }
+  let user: Authed | null = null
   try {
     const result = await payload.auth({ headers: reqHeaders })
-    user = result.user as typeof user
+    user = (result.user ?? null) as Authed | null
   } catch (err) {
     console.error('[checkout] auth error:', err)
     user = null
@@ -32,6 +33,8 @@ export default async function CheckoutPage({
   if (!user || user.collection !== 'customers' || user.id == null) {
     redirect(`/login?next=/buy/${licenseId}`)
   }
+  // After redirect type-narrows to never; preserve the broader type for downstream usage.
+  const customer = user as { id: string | number; collection: 'customers' }
 
   let license: {
     id: string
@@ -46,7 +49,7 @@ export default async function CheckoutPage({
       id: licenseId,
     })) as unknown as typeof license
     const ownerId = typeof license.customer === 'string' ? license.customer : license.customer?.id
-    if (String(ownerId) !== String(user.id)) notFound()
+    if (String(ownerId) !== String(customer.id)) notFound()
   } catch {
     notFound()
   }
