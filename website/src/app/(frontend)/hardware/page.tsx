@@ -53,6 +53,10 @@ const content: VariantLandingContent = {
       title: 'KRA eTIMS, automatic',
       description: 'CU-invoice for B2B contractor sales, CU-receipt for retail walk-ins. VAT inclusive/exclusive per line. eTIMS-defensible audit trail.',
     },
+    {
+      title: 'AI concierge built in',
+      description: 'Ask "draft a quote for 200 bags of cement at contractor pricing" or "what owes the most?" — assistant answers from live data. Bring your own model.',
+    },
   ],
   compliance: [
     'KRA eTIMS auto-signing',

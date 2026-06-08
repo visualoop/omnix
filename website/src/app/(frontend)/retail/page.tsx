@@ -53,6 +53,10 @@ const content: VariantLandingContent = {
       title: 'M-Pesa, like cash',
       description: 'STK push via Daraja or Paystack. Cashier sees confirmation in 2 seconds. Reconciliation with bank statements at end of day.',
     },
+    {
+      title: 'AI concierge built in',
+      description: 'Ask "what sold today?" or "auto-fill this product" and the assistant answers from your live data. Bring your own model (Groq free tier or OpenAI premium).',
+    },
   ],
   compliance: [
     'KRA eTIMS auto-signing',

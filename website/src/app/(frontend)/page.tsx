@@ -9,6 +9,7 @@ import { ReceiptProofSection } from '@/components/landing/receipt-proof-section'
 import { RecentWorkSection } from '@/components/landing/recent-work-section'
 import { StudiosHandSection } from '@/components/landing/studios-hand-section'
 import { ThreeQuotesSection } from '@/components/landing/three-quotes-section'
+import { AiSection } from '@/components/landing/ai-section'
 
 /**
  * Omnix homepage — long-scroll editorial.
@@ -84,6 +85,7 @@ export default async function HomePage() {
     <>
       <HeroSection content={heroContent} latestRelease={latestRelease} />
       <FounderNoteSection />
+      <AiSection />
       <ModulesRowsSection />
       <ReceiptProofSection />
       <StudiosHandSection />

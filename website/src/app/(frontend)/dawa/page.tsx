@@ -53,6 +53,10 @@ const content: VariantLandingContent = {
       title: 'Multi-branch sync',
       description: 'Run two or more chemists on the same network — stock, prices, customers, debts all sync over LAN. Clinic dispensary on a Surface tablet? Works the same.',
     },
+    {
+      title: 'AI concierge built in',
+      description: 'A chemist-aware AI assistant inside the app. Ask "what\'s expiring next month?" or "explain this eTIMS error" — gets answers from your live data. Bring your own key (Groq free, OpenAI premium).',
+    },
   ],
   compliance: [
     'KRA eTIMS auto-signing on every sale',

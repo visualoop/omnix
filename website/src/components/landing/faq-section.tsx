@@ -51,6 +51,18 @@ const FAQS: { q: string; a: string }[] = [
     q: 'How long does setup take?',
     a: 'A single-shop setup takes about 30 minutes from download to first sale: install, sign in to your trial, import your product list (Excel, CSV, or barcode-scan), and you are ringing up sales. Multi-branch setups take longer because they need master / client networking and per-branch eTIMS verification.',
   },
+  {
+    q: 'Does Omnix have AI built in?',
+    a: 'Yes. Every variant ships with an in-app AI concierge that knows the entire product, KRA rules, M-Pesa flows, SHA claims and your live data. Ask "what sold today?" or "explain this eTIMS error" and it answers from your own SQLite. It can navigate to any screen, search products and customers, list low-stock items, and explain KRA error codes. Visit /ai for the full breakdown.',
+  },
+  {
+    q: 'Do I have to pay for the AI?',
+    a: 'No subscription on our side. You bring your own API key — Groq and OpenRouter offer free tiers that handle a busy till comfortably. If you want premium models, plug in an OpenAI, Anthropic, Google or DeepSeek key. Calls go directly from your machine to the provider; we never see your prompts, your responses, or your keys (encrypted at rest with AES-256).',
+  },
+  {
+    q: 'Can I disable the AI completely?',
+    a: 'Yes. Settings → AI → Disable hides the assistant button and stops every AI call from leaving the app. Core POS, inventory, accounting and KRA submission keep working exactly the same — the AI is purely additive.',
+  },
 ]
 
 export function FaqSection() {

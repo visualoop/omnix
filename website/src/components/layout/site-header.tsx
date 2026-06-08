@@ -29,6 +29,7 @@ const NAV: readonly NavItem[] = [
     ],
   },
   { label: 'Pricing', href: '/pricing' },
+  { label: 'AI', href: '/ai' },
   { label: 'Downloads', href: '/downloads' },
   { label: 'Changelog', href: '/changelog' },
   { label: 'Docs', href: '/docs' },

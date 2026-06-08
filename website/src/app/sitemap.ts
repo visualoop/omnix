@@ -11,6 +11,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
   const staticPaths: MetadataRoute.Sitemap = [
     '',
     '/pricing',
+    '/ai',
     '/modules',
     '/pro',
     '/dawa',

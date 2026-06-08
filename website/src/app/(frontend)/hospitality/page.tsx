@@ -53,6 +53,10 @@ const content: VariantLandingContent = {
       title: 'KRA eTIMS, automatic',
       description: 'Every settled bill signed and submitted. Tip + service charge tracked separately. Daily Z-report ready for the accountant.',
     },
+    {
+      title: 'AI concierge built in',
+      description: 'Ask "what\'s today\'s food cost?" or "which menu items move slowest?" — assistant answers from live data. Karibu vibe baked into the persona.',
+    },
   ],
   compliance: [
     'KRA eTIMS auto-signing',

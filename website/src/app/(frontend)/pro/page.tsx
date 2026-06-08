@@ -53,6 +53,10 @@ const content: VariantLandingContent = {
       title: 'Future-proof',
       description: 'When new modules ship (electronics, salon, agribusiness), Pro picks them up automatically. No re-buy, no re-install.',
     },
+    {
+      title: 'AI concierge — every trade',
+      description: 'The assistant adapts its persona to whichever module you\'re in: chemist vocabulary in Dawa, chef vocabulary in Hospitality, contractor vocabulary in Hardware. Bring your own model.',
+    },
   ],
   compliance: [
     'KRA eTIMS auto-signing across all modules',
