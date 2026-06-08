@@ -11,6 +11,7 @@
     "tauri": "tauri",
     "type-check": "tsc --noEmit",
     "build:installer-images": "node scripts/build-installer-images.mjs",
+    "icons": "node scripts/regen-variant-icons.mjs",
     "test": "vitest run",
     "test:watch": "vitest"
   },

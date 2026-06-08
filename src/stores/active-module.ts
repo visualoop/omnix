@@ -8,9 +8,14 @@
  * - Show the module's logo next to Omnix in the sidebar
  * - Customize copy throughout the app ("Pharmacy" vs "Hardware Store")
  * - Hide module-specific routes for irrelevant verticals
+ *
+ * Variant-aware: trade-specific binaries (Omnix Dawa, Retail, Hospitality,
+ * Hardware) are locked to a single module. The store refuses to switch
+ * outside `MODULES_ALLOWED` and forces `LOCKED_MODULE` on load when set.
  */
 import { create } from "zustand";
 import { query, execute } from "@/lib/db";
+import { IS_PRO, LOCKED_MODULE, MODULES_ALLOWED } from "@/lib/variant";
 
 export type ModuleId = "dawa" | "retail" | "hardware" | "hospitality" | "core";
 
@@ -106,11 +111,27 @@ interface ModuleStore {
 }
 
 export const useActiveModule = create<ModuleStore>((set, get) => ({
-  active: "dawa",
+  active: (LOCKED_MODULE as ModuleId | null) ?? "dawa",
   loaded: false,
 
   load: async () => {
     if (get().loaded) return;
+    // Trade variants: hard-lock active module to the binary's locked module.
+    // Ignore whatever was stored — the binary identity wins.
+    if (!IS_PRO && LOCKED_MODULE) {
+      const locked = LOCKED_MODULE as ModuleId;
+      try {
+        await execute(
+          `INSERT INTO settings (key, value) VALUES (?1, ?2)
+           ON CONFLICT(key) DO UPDATE SET value = excluded.value`,
+          [STORAGE_KEY, locked],
+        );
+      } catch {
+        // Best-effort persist; UI still works without it.
+      }
+      set({ active: locked, loaded: true });
+      return;
+    }
     try {
       const rows = await query<{ value: string }>(
         `SELECT value FROM settings WHERE key = ?1`,
@@ -125,7 +146,11 @@ export const useActiveModule = create<ModuleStore>((set, get) => ({
   },
 
   setActive: async (id) => {
-    // Hard gate: never switch into a module the licence doesn't include
+    // Variant gate: trade binaries refuse to switch outside their module list.
+    if (!MODULES_ALLOWED.includes(id)) {
+      throw new Error(`This Omnix binary doesn't ship the ${id} module. Install Omnix Pro to use multiple modules.`);
+    }
+    // License gate: never switch into a module the licence doesn't include
     // (core is always allowed).
     const { isModuleEntitled } = await import("@/stores/entitlements");
     if (!isModuleEntitled(id)) {

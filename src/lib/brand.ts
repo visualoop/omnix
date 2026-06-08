@@ -1,32 +1,54 @@
 /**
  * Brand Configuration — Single source of truth for product naming.
  *
- * To rebrand the application, edit the values here. All UI, receipts,
- * notifications, etc. import from this file.
+ * The product name is now variant-aware (Pro = "Omnix", trade variants =
+ * "Omnix Dawa" / "Omnix Retail" / "Omnix Hospitality" / "Omnix Hardware").
+ * The variant is fixed at build time via VITE_OMNIX_VARIANT and read from
+ * `@/lib/variant`.
  *
  * Note: To update OS-level metadata (window title, installer text,
  * exe filename, executable identifier), also update:
- *  - src-tauri/tauri.conf.json
+ *  - src-tauri/tauri.conf.json (Pro)
+ *  - src-tauri/tauri.{dawa,retail,hospitality,hardware}.conf.json
  *  - src-tauri/Cargo.toml
  *  - .github/workflows/*.yml
  *  - docs/*.md, README.md
  */
 
-export const BRAND = {
-  // Platform name (the OS-level product)
-  name: "Omnix",
-  shortName: "Omnix",
-  tagline: "ERP for Kenyan SMEs",
+import {
+  VARIANT,
+  VARIANT_NAME,
+  VARIANT_TAGLINE,
+  VARIANT_ACCENT,
+  IS_PRO,
+  LOCKED_MODULE,
+  MODULES_ALLOWED,
+} from "./variant";
 
-  // First module (active vertical). When you add new modules, you may want
-  // to make the active module name dynamic per tenant/setup.
+export const BRAND = {
+  /** Variant-aware product name. Pro = "Omnix"; trade variants = "Omnix Dawa", etc. */
+  name: VARIANT_NAME,
+  shortName: VARIANT_NAME,
+  tagline: VARIANT_TAGLINE,
+
+  /** Build-time variant identifier. */
+  variant: VARIANT,
+  isPro: IS_PRO,
+  accent: VARIANT_ACCENT,
+  lockedModule: LOCKED_MODULE,
+  modulesAllowed: MODULES_ALLOWED,
+
+  /**
+   * First module (active vertical). For trade variants this is the locked
+   * module; for Pro it stays "dawa" as the default until the user picks one.
+   */
   module: {
     name: "Dawa",
     fullName: "Dawa Pharmacy",
     description: "Pharmacy management module for Omnix",
   },
 
-  // Company / publisher information
+  /** Company / publisher information. */
   company: {
     name: "Omnix Ltd.",
     domain: "omnix.co.ke",
@@ -34,14 +56,14 @@ export const BRAND = {
     supportEmail: "support@omnix.co.ke",
   },
 
-  // Receipt header (override per tenant via setup wizard later if desired)
+  /** Receipt header (override per tenant via setup wizard later if desired). */
   receipt: {
-    poweredBy: "Powered by Omnix",
+    poweredBy: `Powered by ${VARIANT_NAME}`,
   },
 
-  // Updater / installer naming
+  /** Updater / installer naming. */
   installer: {
-    appNameInPath: "omnix", // Used in install path: %APPDATA%\omnix
+    appNameInPath: IS_PRO ? "omnix" : `omnix-${VARIANT}`,
   },
 } as const;
 

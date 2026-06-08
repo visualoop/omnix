@@ -1,0 +1,37 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "Omnix Dawa",
+  "identifier": "co.ke.omnix.dawa",
+  "mainBinaryName": "Omnix Dawa",
+  "app": {
+    "windows": [
+      {
+        "title": "Omnix Dawa"
+      }
+    ]
+  },
+  "plugins": {
+    "updater": {
+      "endpoints": [
+        "https://omnix.co.ke/api/releases-latest?variant=dawa&license={{current_version}}",
+        "https://omnix.co.ke/api/releases-latest?variant=dawa"
+      ]
+    }
+  },
+  "bundle": {
+    "icon": [
+      "icons/variants/dawa/32x32.png",
+      "icons/variants/dawa/128x128.png",
+      "icons/variants/dawa/128x128@2x.png",
+      "icons/variants/dawa/icon.icns",
+      "icons/variants/dawa/icon.ico"
+    ],
+    "shortDescription": "Pharmacy management for Kenyan chemists",
+    "longDescription": "Omnix Dawa is the offline-first pharmacy management app for Kenyan chemists. Prescriptions, drug labels, refills, expiry tracking, controlled-substance register, KRA eTIMS, SHA insurance claims, M-Pesa via Daraja and Paystack, multi-branch sync over LAN. Pay once, own it forever.",
+    "windows": {
+      "nsis": {
+        "installerIcon": "icons/variants/dawa/icon.ico"
+      }
+    }
+  }
+}

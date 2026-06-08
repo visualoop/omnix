@@ -29,6 +29,12 @@ jobs:
     permissions:
       contents: write
 
+    # 5 binaries per release: pro = legacy multi-module, plus four trade variants
+    strategy:
+      fail-fast: false
+      matrix:
+        variant: [pro, dawa, retail, hospitality, hardware]
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -73,6 +79,7 @@ jobs:
         uses: swatinem/rust-cache@v2
         with:
           workspaces: src-tauri
+          key: ${{ matrix.variant }}
 
       - name: Install frontend dependencies
         run: pnpm install --frozen-lockfile
@@ -80,47 +87,51 @@ jobs:
       - name: Rebuild installer BMPs from SVG sources
         run: pnpm build:installer-images
 
+      - name: Regenerate variant icon sets
+        run: pnpm icons
+
       - name: Type-check frontend
+        env:
+          VITE_OMNIX_VARIANT: ${{ matrix.variant }}
         run: pnpm exec tsc --noEmit
 
-      - name: Run Rust unit tests
+      - name: Run Rust unit tests (pro only — same Rust code for all variants)
+        if: matrix.variant == 'pro'
         working-directory: src-tauri
         run: cargo test --lib
 
-      - name: Build & sign Tauri app
+      # Resolve the per-variant Tauri config (Pro uses the base config).
+      - name: Resolve Tauri config flag
+        id: cfg
+        shell: bash
+        run: |
+          if [ "${{ matrix.variant }}" = "pro" ]; then
+            echo "flag=" >> $GITHUB_OUTPUT
+          else
+            echo "flag=--config src-tauri/tauri.${{ matrix.variant }}.conf.json" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Build & sign Tauri app (${{ matrix.variant }})
         env:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
-        run: npm exec tauri build -- --bundles msi,nsis
+          VITE_OMNIX_VARIANT: ${{ matrix.variant }}
+        shell: bash
+        run: |
+          npm exec tauri build -- --bundles msi,nsis ${{ steps.cfg.outputs.flag }}
 
       # ─── Branch / PR / non-tag pushes: upload as artifacts only ───
-      - name: Upload MSI installer (artifact)
+      - name: Upload installer (artifact)
         if: steps.ctx.outputs.is_release != 'true'
         uses: actions/upload-artifact@v4
         with:
-          name: Omnix-Windows-MSI
-          path: src-tauri/target/x86_64-pc-windows-msvc/release/bundle/msi/*.msi
-          if-no-files-found: error
-          retention-days: 30
-
-      - name: Upload NSIS installer (artifact)
-        if: steps.ctx.outputs.is_release != 'true'
-        uses: actions/upload-artifact@v4
-        with:
-          name: Omnix-Windows-NSIS
-          path: src-tauri/target/x86_64-pc-windows-msvc/release/bundle/nsis/*.exe
-          if-no-files-found: error
-          retention-days: 30
-
-      - name: Upload updater signatures (artifact)
-        if: steps.ctx.outputs.is_release != 'true'
-        uses: actions/upload-artifact@v4
-        with:
-          name: Omnix-Updater-Signatures
+          name: Omnix-${{ matrix.variant }}-Windows
           path: |
-            src-tauri/target/x86_64-pc-windows-msvc/release/bundle/msi/*.msi.sig
+            src-tauri/target/x86_64-pc-windows-msvc/release/bundle/nsis/*.exe
             src-tauri/target/x86_64-pc-windows-msvc/release/bundle/nsis/*.exe.sig
-          if-no-files-found: warn
+            src-tauri/target/x86_64-pc-windows-msvc/release/bundle/msi/*.msi
+            src-tauri/target/x86_64-pc-windows-msvc/release/bundle/msi/*.msi.sig
+          if-no-files-found: error
           retention-days: 30
 
       # ─── Tag pushes / workflow_dispatch with version: also publish release ───
@@ -142,16 +153,18 @@ jobs:
 
           SIGNATURE=$(cat "$SIG_FILE")
           INSTALLER_NAME=$(basename "$INSTALLER")
+          R2_VARIANT_PREFIX="releases/${{ steps.ctx.outputs.tag }}/${{ matrix.variant }}"
 
           cat > release-assets/latest.json <<EOF
           {
             "version": "${{ steps.ctx.outputs.version }}",
+            "variant": "${{ matrix.variant }}",
             "notes": "See https://github.com/${{ github.repository }}/releases/tag/${{ steps.ctx.outputs.tag }}",
             "pub_date": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
             "platforms": {
               "windows-x86_64": {
                 "signature": "$SIGNATURE",
-                "url": "https://github.com/${{ github.repository }}/releases/download/${{ steps.ctx.outputs.tag }}/$INSTALLER_NAME"
+                "url": "https://media.omnix.co.ke/$R2_VARIANT_PREFIX/$INSTALLER_NAME"
               }
             }
           }
@@ -164,7 +177,7 @@ jobs:
 
           ls -la release-assets/
 
-      - name: Create GitHub Release
+      - name: Upload release assets to the GitHub Release
         if: steps.ctx.outputs.is_release == 'true'
         uses: softprops/action-gh-release@v2
         with:
@@ -178,13 +191,10 @@ jobs:
             release-assets/*.msi.sig
             release-assets/*.exe
             release-assets/*.exe.sig
-            release-assets/latest.json
 
       # ─── Notify Payload (omnix.co.ke) so the in-app updater + downloads page
-      #     pick up the release. Requires PAYLOAD_SYSTEM_TOKEN repo secret.
-      #     Best-effort: a Payload outage shouldn't block the GitHub release,
-      #     so this step continues on error and prints diagnostics.
-      - name: Notify Payload
+      #     pick up the release per variant. R2 mirror is keyed by variant.
+      - name: Notify Payload (variant=${{ matrix.variant }})
         if: steps.ctx.outputs.is_release == 'true'
         continue-on-error: true
         shell: bash
@@ -194,6 +204,7 @@ jobs:
           VERSION: ${{ steps.ctx.outputs.version }}
           TAG: ${{ steps.ctx.outputs.tag }}
           REPO: ${{ github.repository }}
+          VARIANT: ${{ matrix.variant }}
           # R2 mirror (so installers stay public after the repo goes private)
           S3_ACCESS_KEY_ID: ${{ secrets.S3_ACCESS_KEY_ID }}
           S3_SECRET_ACCESS_KEY: ${{ secrets.S3_SECRET_ACCESS_KEY }}
@@ -206,7 +217,6 @@ jobs:
 
           if [ -z "$PAYLOAD_SYSTEM_TOKEN" ]; then
             echo "PAYLOAD_SYSTEM_TOKEN secret is not configured — skipping Payload notify."
-            echo "Set the GitHub Actions repo secret 'PAYLOAD_SYSTEM_TOKEN' to enable in-app updater + CMS-tracked releases."
             exit 0
           fi
 
@@ -223,15 +233,14 @@ jobs:
           NSIS_NAME=$(basename "$NSIS")
           MSI_NAME=$(basename "$MSI" 2>/dev/null || echo "")
 
-          # ── Mirror to R2 (media.omnix.co.ke) so downloads survive
-          #    making the GitHub repo private. R2 creds come from GH secrets.
+          # ── Mirror to R2 (media.omnix.co.ke) under per-variant prefix
           if [ -n "${S3_ACCESS_KEY_ID:-}" ] && [ -n "${S3_SECRET_ACCESS_KEY:-}" ] && [ -n "${S3_ENDPOINT:-}" ] && [ -n "${S3_BUCKET:-}" ]; then
             export AWS_ACCESS_KEY_ID="$S3_ACCESS_KEY_ID"
             export AWS_SECRET_ACCESS_KEY="$S3_SECRET_ACCESS_KEY"
             export AWS_DEFAULT_REGION="${S3_REGION:-auto}"
 
-            R2_PREFIX="releases/$TAG"
-            echo "Mirroring installers → r2://$S3_BUCKET/$R2_PREFIX/"
+            R2_PREFIX="releases/$TAG/$VARIANT"
+            echo "Mirroring $VARIANT installer → r2://$S3_BUCKET/$R2_PREFIX/"
 
             aws s3 cp "$NSIS"          "s3://$S3_BUCKET/$R2_PREFIX/$NSIS_NAME"          --endpoint-url "$S3_ENDPOINT" --content-type application/octet-stream --no-progress
             aws s3 cp "$NSIS_SIG_FILE" "s3://$S3_BUCKET/$R2_PREFIX/${NSIS_NAME}.sig"    --endpoint-url "$S3_ENDPOINT" --content-type text/plain --no-progress
@@ -241,48 +250,37 @@ jobs:
               [ -n "$MSI_SIG_FILE" ] && aws s3 cp "$MSI_SIG_FILE" "s3://$S3_BUCKET/$R2_PREFIX/${MSI_NAME}.sig" --endpoint-url "$S3_ENDPOINT" --content-type text/plain --no-progress
             fi
 
-            # Pretty serving URL (custom domain)
             NSIS_URL="${S3_PUBLIC_URL:-https://media.omnix.co.ke}/$R2_PREFIX/$NSIS_NAME"
-            if [ -n "$MSI_NAME" ]; then
-              MSI_URL="${S3_PUBLIC_URL:-https://media.omnix.co.ke}/$R2_PREFIX/$MSI_NAME"
-            else
-              MSI_URL=""
-            fi
+            MSI_URL=""
+            [ -n "$MSI_NAME" ] && MSI_URL="${S3_PUBLIC_URL:-https://media.omnix.co.ke}/$R2_PREFIX/$MSI_NAME"
             echo "✓ R2 NSIS_URL=$NSIS_URL"
             [ -n "$MSI_URL" ] && echo "✓ R2 MSI_URL=$MSI_URL"
           else
-            echo "⚠ R2 secrets missing — falling back to GitHub release URLs (will 404 once repo is private!)"
+            echo "⚠ R2 secrets missing — falling back to GitHub release URLs"
             NSIS_URL="https://github.com/$REPO/releases/download/$TAG/$NSIS_NAME"
             MSI_URL=""
-            if [ -n "$MSI_NAME" ]; then
-              MSI_URL="https://github.com/$REPO/releases/download/$TAG/$MSI_NAME"
-            fi
+            [ -n "$MSI_NAME" ] && MSI_URL="https://github.com/$REPO/releases/download/$TAG/$MSI_NAME"
           fi
 
           NSIS_SIZE=$(stat -c '%s' "$NSIS" 2>/dev/null || stat -f '%z' "$NSIS")
           MSI_SIZE=0
-          if [ -n "$MSI" ]; then
-            MSI_SIZE=$(stat -c '%s' "$MSI" 2>/dev/null || stat -f '%z' "$MSI")
-          fi
+          [ -n "$MSI" ] && MSI_SIZE=$(stat -c '%s' "$MSI" 2>/dev/null || stat -f '%z' "$MSI")
 
           NSIS_SHA=$(sha256sum "$NSIS" 2>/dev/null | awk '{print $1}' || shasum -a 256 "$NSIS" | awk '{print $1}')
           MSI_SHA=""
-          if [ -n "$MSI" ]; then
-            MSI_SHA=$(sha256sum "$MSI" 2>/dev/null | awk '{print $1}' || shasum -a 256 "$MSI" | awk '{print $1}')
-          fi
+          [ -n "$MSI" ] && MSI_SHA=$(sha256sum "$MSI" 2>/dev/null | awk '{print $1}' || shasum -a 256 "$MSI" | awk '{print $1}')
 
           SIGNATURE=$(cat "$NSIS_SIG_FILE")
           MAJOR="${VERSION%%.*}"
-          # Pre-release marker (e.g. 1.0.0-beta.2) → channel beta
           CHANNEL=stable
           [[ "$TAG" == *-* ]] && CHANNEL=beta
 
-          # Compose JSON body via jq for safe escaping.
           BODY=$(jq -n \
             --arg version "$VERSION" \
             --argjson major "$MAJOR" \
             --arg channel "$CHANNEL" \
             --arg tag "$TAG" \
+            --arg variant "$VARIANT" \
             --arg nsisUrl "$NSIS_URL" \
             --arg msiUrl "$MSI_URL" \
             --argjson nsisSize "$NSIS_SIZE" \
@@ -290,10 +288,11 @@ jobs:
             --arg nsisSha "$NSIS_SHA" \
             --arg msiSha "$MSI_SHA" \
             --arg sig "$SIGNATURE" \
-            --arg title "Omnix v$VERSION" \
-            --arg summary "Omnix $VERSION — bug fixes and improvements. Update from inside the app or download below." \
+            --arg title "Omnix v$VERSION ($VARIANT)" \
+            --arg summary "Omnix $VARIANT $VERSION — bug fixes and improvements." \
             '{
               version: $version,
+              variant: $variant,
               majorVersion: $major,
               channel: $channel,
               gitTag: $tag,
@@ -309,7 +308,7 @@ jobs:
               forcePublish: true
             } | with_entries(select(.value != null))')
 
-          echo "POSTing release $VERSION → $PAYLOAD_BASE/api/releases-sync"
+          echo "POSTing release $VARIANT $VERSION → $PAYLOAD_BASE/api/releases-sync"
           HTTP_CODE=$(curl -s -o /tmp/payload-resp.json -w "%{http_code}" \
             -X POST "$PAYLOAD_BASE/api/releases-sync" \
             -H "x-system-token: $PAYLOAD_SYSTEM_TOKEN" \

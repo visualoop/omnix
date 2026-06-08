@@ -14,6 +14,7 @@ import {
 } from "@/services/license";
 import { OmnixLogo } from "@/components/omnix-logo";
 import { APP_NAME, BRAND } from "@/lib/brand";
+import { IS_PRO, LOCKED_MODULE, VARIANT_NAME } from "@/lib/variant";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
@@ -44,7 +45,10 @@ export function LicenseActivationPage({ onActivated }: Props) {
   const [key, setKey] = useState("");
   const [activating, setActivating] = useState(false);
   const [startingTrial, setStartingTrial] = useState(false);
-  const [trialModule, setTrialModule] = useState<string>("dawa");
+  // Trade variants: lock the trial to the binary's module. Pro picks dawa as default.
+  const [trialModule, setTrialModule] = useState<string>(
+    !IS_PRO && LOCKED_MODULE ? LOCKED_MODULE : "dawa",
+  );
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
 
@@ -219,16 +223,22 @@ export function LicenseActivationPage({ onActivated }: Props) {
                   </div>
                 </div>
                 <label className="block text-[11px] font-medium text-muted-foreground">
-                  Choose a module to trial
-                  <select
-                    value={trialModule}
-                    onChange={(e) => setTrialModule(e.target.value)}
-                    className="mt-1.5 w-full h-10 rounded-xl glass-thin px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 cursor-pointer"
-                  >
-                    {TRIAL_MODULES.map((m) => (
-                      <option key={m.id} value={m.id}>{m.label}</option>
-                    ))}
-                  </select>
+                  {IS_PRO ? "Choose a module to trial" : "Module"}
+                  {IS_PRO ? (
+                    <select
+                      value={trialModule}
+                      onChange={(e) => setTrialModule(e.target.value)}
+                      className="mt-1.5 w-full h-10 rounded-xl glass-thin px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 cursor-pointer"
+                    >
+                      {TRIAL_MODULES.map((m) => (
+                        <option key={m.id} value={m.id}>{m.label}</option>
+                      ))}
+                    </select>
+                  ) : (
+                    <div className="mt-1.5 w-full h-10 rounded-xl glass-thin px-3 text-sm text-foreground flex items-center">
+                      {TRIAL_MODULES.find((m) => m.id === LOCKED_MODULE)?.label ?? VARIANT_NAME}
+                    </div>
+                  )}
                 </label>
                 <Button
                   onClick={handleStartTrial}

@@ -10,6 +10,7 @@ import { ModuleLogo } from "@/components/module-logos";
 import { APP_NAME } from "@/lib/brand";
 import { useActiveModule, MODULE_DEFINITIONS, type ModuleId } from "@/stores/active-module";
 import { isModuleEntitled, entitledModules } from "@/stores/entitlements";
+import { IS_PRO, LOCKED_MODULE, VARIANT_NAME, VARIANT_TAGLINE } from "@/lib/variant";
 
 interface SetupData {
   businessName: string;
@@ -26,7 +27,13 @@ interface SetupData {
 
 export function SetupWizard() {
   const [step, setStep] = useState(0);
-  const defaultModule = (entitledModules()[0] ?? "dawa") as ModuleId;
+  // Trade variants pre-lock the module to whatever the binary ships.
+  // Pro picks the first entitled module as a default (operator can switch on step 1).
+  const defaultModule = (
+    !IS_PRO && LOCKED_MODULE
+      ? LOCKED_MODULE
+      : (entitledModules()[0] ?? "dawa")
+  ) as ModuleId;
   const [data, setData] = useState<SetupData>({
     businessName: "",
     address: "",
@@ -107,9 +114,11 @@ export function SetupWizard() {
         <OmnixLogo size={72} />
       </div>
       <div className="space-y-2">
-        <h2 className="text-2xl font-semibold tracking-tight">Welcome to {APP_NAME}</h2>
+        <h2 className="text-2xl font-semibold tracking-tight">Welcome to {VARIANT_NAME}</h2>
         <p className="text-sm text-muted-foreground max-w-[320px] mx-auto leading-relaxed">
-          The operating system for your business — POS, inventory, accounting and KRA compliance, in one offline-first Windows app.
+          {IS_PRO
+            ? "The operating system for your business — POS, inventory, accounting and KRA compliance, in one offline-first Windows app."
+            : `${VARIANT_TAGLINE}. POS, inventory, accounting and KRA compliance, in one offline-first Windows app.`}
         </p>
       </div>
       <div className="flex flex-wrap items-center justify-center gap-1.5">
@@ -126,7 +135,10 @@ export function SetupWizard() {
         ))}
       </div>
       <p className="text-[11px] text-muted-foreground">Takes about 60 seconds.</p>
-      <Button onClick={() => setStep(1)} className="w-full h-11 rounded-xl shadow-native cursor-pointer">
+      <Button
+        onClick={() => setStep(IS_PRO ? 1 : 2)}
+        className="w-full h-11 rounded-xl shadow-native cursor-pointer"
+      >
         Get Started
       </Button>
     </div>,
@@ -224,7 +236,7 @@ export function SetupWizard() {
         </Field>
       </div>
       <div className="flex gap-2">
-        <Button variant="outline" onClick={() => setStep(1)} className="flex-1 rounded-xl cursor-pointer">Back</Button>
+        <Button variant="outline" onClick={() => setStep(IS_PRO ? 1 : 0)} className="flex-1 rounded-xl cursor-pointer">Back</Button>
         <Button
           onClick={() => setStep(3)}
           className="flex-1 rounded-xl cursor-pointer"

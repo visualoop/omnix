@@ -30,6 +30,8 @@
     "updater": {
       "active": true,
       "endpoints": [
+        "https://omnix.co.ke/api/releases-latest?variant=pro&license={{current_version}}",
+        "https://omnix.co.ke/api/releases-latest?variant=pro",
         "https://omnix.co.ke/api/releases-latest?license={{current_version}}",
         "https://omnix.co.ke/api/releases-latest"
       ],

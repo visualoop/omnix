@@ -1,0 +1,37 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "Omnix Hardware",
+  "identifier": "co.ke.omnix.hardware",
+  "mainBinaryName": "Omnix Hardware",
+  "app": {
+    "windows": [
+      {
+        "title": "Omnix Hardware"
+      }
+    ]
+  },
+  "plugins": {
+    "updater": {
+      "endpoints": [
+        "https://omnix.co.ke/api/releases-latest?variant=hardware&license={{current_version}}",
+        "https://omnix.co.ke/api/releases-latest?variant=hardware"
+      ]
+    }
+  },
+  "bundle": {
+    "icon": [
+      "icons/variants/hardware/32x32.png",
+      "icons/variants/hardware/128x128.png",
+      "icons/variants/hardware/128x128@2x.png",
+      "icons/variants/hardware/icon.icns",
+      "icons/variants/hardware/icon.ico"
+    ],
+    "shortDescription": "Hardware-store POS with quotes & contractors",
+    "longDescription": "Omnix Hardware is the offline-first POS app for Kenyan hardware shops. Bulk pricing tiers, quotations, delivery notes, contractor accounts, parts catalog, KRA eTIMS, M-Pesa via Daraja and Paystack, multi-branch LAN sync. Pay once, own it forever.",
+    "windows": {
+      "nsis": {
+        "installerIcon": "icons/variants/hardware/icon.ico"
+      }
+    }
+  }
+}

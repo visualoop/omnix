@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { APP_NAME, BRAND } from "@/lib/brand";
 import { isModuleEntitled } from "@/stores/entitlements";
+import { IS_PRO, MODULES_ALLOWED, VARIANT_NAME } from "@/lib/variant";
 
 interface Module {
   id: string;
@@ -117,6 +118,10 @@ const MODULES: Module[] = [
 
 export function ModulesPage() {
   const navigate = useNavigate();
+  // Trade variants only ship one module; filter to it + core.
+  const visibleModules = IS_PRO
+    ? MODULES
+    : MODULES.filter((m) => MODULES_ALLOWED.includes(m.id));
 
   return (
     <div className="space-y-5 max-w-5xl">
@@ -127,25 +132,40 @@ export function ModulesPage() {
         <div>
           <h1 className="text-xl font-semibold tracking-tight">Modules</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            {APP_NAME} is a modular platform. Core ships in every install; verticals plug in on top.
+            {IS_PRO
+              ? `${VARIANT_NAME} is a modular platform. Core ships in every install; verticals plug in on top.`
+              : `This is ${VARIANT_NAME} — built specifically for one trade. To run multiple trades from one app, install Omnix Pro.`}
           </p>
         </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-        {MODULES.map((m) => (
+        {visibleModules.map((m) => (
           <ModuleCard key={m.id} module={m} />
         ))}
       </div>
 
-      <div className="border border-border rounded-lg p-4 bg-muted/20">
-        <h3 className="text-sm font-semibold mb-2">Want a different vertical?</h3>
-        <p className="text-xs text-muted-foreground">
-          Modules are added by {APP_NAME} releases — they don't require reinstalling. If you need a
-          vertical that's not yet built, contact us at{" "}
-          <a href={`mailto:hello@${BRAND.company.domain}`} className="text-primary underline">hello@{BRAND.company.domain}</a>.
-        </p>
-      </div>
+      {!IS_PRO && (
+        <div className="border border-border rounded-lg p-4 bg-primary/5">
+          <h3 className="text-sm font-semibold mb-2">Need another trade?</h3>
+          <p className="text-xs text-muted-foreground">
+            Omnix Pro is the multi-trade variant — it bundles Dawa (Pharmacy), Retail, Hospitality and Hardware in
+            one binary. If your business spans more than one of those, switch to Pro from{" "}
+            <a href={`https://${BRAND.company.domain}/pro`} className="text-primary underline">{BRAND.company.domain}/pro</a>.
+          </p>
+        </div>
+      )}
+
+      {IS_PRO && (
+        <div className="border border-border rounded-lg p-4 bg-muted/20">
+          <h3 className="text-sm font-semibold mb-2">Want a different vertical?</h3>
+          <p className="text-xs text-muted-foreground">
+            Modules are added by {APP_NAME} releases — they don't require reinstalling. If you need a
+            vertical that's not yet built, contact us at{" "}
+            <a href={`mailto:hello@${BRAND.company.domain}`} className="text-primary underline">hello@{BRAND.company.domain}</a>.
+          </p>
+        </div>
+      )}
     </div>
   );
 }
