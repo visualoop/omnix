@@ -20,7 +20,12 @@ export const Customers: CollectionConfig = {
       sameSite: 'Lax',
       secure: process.env.NODE_ENV === 'production',
     },
-    verify: true, // email verification required before login
+    // Email verification removed — Kenyan SMTP delivery is unreliable and the
+    // friction blocks legitimate signups. Customers can log in immediately
+    // after signup. We still send a welcome email but it's purely informational
+    // (not a verification gate). If we ever need to re-introduce verification,
+    // do it as a soft prompt on the dashboard, not a hard login block.
+    verify: false,
     maxLoginAttempts: 8,
     lockTime: 10 * 60 * 1000, // 10 min
   },
