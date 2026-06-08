@@ -130,7 +130,7 @@ export default async function DashboardOverviewPage({
                   </Link>
                 </Button>
                 <Button asChild size="default" variant="outline">
-                  <Link href="/docs/first-pos-sale">Read first-sale guide</Link>
+                  <Link href="/docs/getting-started">Read first-sale guide</Link>
                 </Button>
               </div>
             </div>

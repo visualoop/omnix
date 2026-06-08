@@ -198,6 +198,64 @@ A safety snapshot of the current database is taken before any restore, so you ca
 
   // ─── SCAFFOLDS (20) ───────────────────────────────────────────────────
   {
+    slug: 'ai',
+    title: 'AI assistant',
+    excerpt: 'The in-app AI concierge — what it can do, which provider to choose, how to bring your own key, and how to disable it.',
+    category: 'Core',
+    icon: 'Sparkle',
+    body: `Every Omnix variant ships with an in-app AI assistant — a slide-out chat panel that knows the entire product, KRA / NHIF / SHA flows, M-Pesa, and your live data. It can navigate, search, summarise, and explain eTIMS errors in plain English.
+
+## Open the assistant
+
+Press **Ctrl+J** anywhere in the app, or click the sparkle button bottom-right. The panel slides in from the right; press **Esc** or click outside to close.
+
+## What it can do today
+
+The assistant has read-only access to a handful of tools:
+
+- \`navigate(route)\` — opens any screen in Omnix in one tap
+- \`getTodaySales()\` — today's revenue, count, and payment-method breakdown
+- \`getInventoryAlerts()\` — products at or below reorder level
+- \`searchProducts(q)\` — find by name, SKU, or barcode (top 10)
+- \`searchCustomers(q)\` — find by name, phone, or email (top 10)
+- \`getRecentSales(limit)\` — list the last N sales
+- \`openDocs(slug?)\` — opens this docs site to the right page
+
+It cannot yet create / update / delete records. Mutations ship in v0.5 with a confirmation flow.
+
+## Bring your own model
+
+Open **Settings → AI**. Pick a provider, paste an API key, save. The assistant uses your key for every call.
+
+- Groq — free tier, very fast (console.groq.com)
+- OpenRouter — free + premium models (openrouter.ai)
+- Google — free Gemini Flash (aistudio.google.com)
+- OpenAI — pay per token (platform.openai.com)
+- Anthropic — pay per token (console.anthropic.com)
+- DeepSeek — pay per token (platform.deepseek.com)
+- Custom — any OpenAI-compatible URL
+
+Switch providers any time. Keys are encrypted at rest with AES-256.
+
+## Privacy
+
+Calls go directly from your machine to the provider you chose. Omnix never sees your prompts, your responses, your keys, or your live data. Disable the assistant entirely from **Settings → AI → Disable** — the button hides and no AI traffic leaves the app.
+
+## Variant-aware persona
+
+Each Omnix variant biases the assistant toward its trade. Omnix Dawa speaks chemist vocabulary (prescriptions, expiry, controlled register, SHA). Omnix Hospitality speaks chef vocabulary (tables, KOT, recipes, food cost). The Pro variant adapts to whichever module you're currently in.
+
+## Useful starter prompts
+
+- "What did we sell today?"
+- "What's running low?"
+- "Explain this eTIMS error: CU-12345"
+- "Find me Panadol Extra"
+- "Auto-fill this product's description"
+- "How do I file VAT3 with KRA?"
+- "Take me to today's Z-report"`,
+  },
+  {
     slug: 'banking',
     title: 'Banking & reconciliation',
     excerpt: 'Record bank accounts, transfers, and reconcile statements against your books.',

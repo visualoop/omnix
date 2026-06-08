@@ -24,7 +24,16 @@ export function SignupForm() {
     setSubmitting(true)
     setError(null)
     const formData = new FormData(event.currentTarget)
-    const payload = Object.fromEntries(formData.entries())
+    const raw = Object.fromEntries(formData.entries())
+
+    // Checkboxes serialise as 'on' (checked) or are missing (unchecked).
+    // Payload's `checkbox` field type rejects string values, so coerce
+    // every checkbox in the form to a boolean before POSTing.
+    const checkboxNames = ['newsletterOptIn', 'termsAccepted']
+    const payload: Record<string, unknown> = { ...raw }
+    for (const name of checkboxNames) {
+      payload[name] = formData.get(name) !== null
+    }
 
     try {
       const response = await fetch('/api/customers', {

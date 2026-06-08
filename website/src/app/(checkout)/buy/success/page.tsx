@@ -46,7 +46,7 @@ export default async function CheckoutSuccessPage({
             title="Read first-sale guide"
             body="From product import to your first KRA-receipted sale."
             cta="Read guide"
-            href="/docs/first-pos-sale"
+            href="/docs/getting-started"
           />
           <NextStep
             icon={ArrowRight}

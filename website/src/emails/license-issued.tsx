@@ -77,8 +77,8 @@ export function LicenseIssued({ name, licenseKey, tier, maintenanceUntil }: Prop
           <Hr style={hr} />
           <Text style={footer}>
             Read the first-sale guide at{' '}
-            <Link href={`${BRAND.url}/docs/first-pos-sale`} style={accent}>
-              {BRAND.domain}/docs/first-pos-sale
+            <Link href={`${BRAND.url}/docs/getting-started`} style={accent}>
+              {BRAND.domain}/docs/getting-started
             </Link>{' '}
             — five minutes from install to KRA-receipted sale.
           </Text>

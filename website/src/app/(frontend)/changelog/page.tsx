@@ -1,5 +1,4 @@
 import type { Metadata } from 'next'
-import Link from 'next/link'
 import { Icon } from '@/components/icons'
 import { PageHero } from '@/components/marketing/page-hero'
 import { getPayload } from 'payload'
@@ -7,19 +6,19 @@ import config from '@/payload.config'
 
 export const metadata: Metadata = {
   title: 'Changelog — what shipped',
-  description: 'Every Omnix release, newest first. Download links and what changed.',
+  description: 'Every Omnix release, newest first. Variant-specific download links and what changed.',
 }
 
 // Re-fetch every minute so a fresh tag shows up quickly without a redeploy.
-// Render at request time — this page reads from Payload (needs PAYLOAD_SECRET
-// at runtime, which isn't present during build prerender). force-dynamic with
-// a short cache keeps it fresh without a build-time DB dependency.
 export const dynamic = 'force-dynamic'
 export const revalidate = 60
+
+type VariantId = 'pro' | 'dawa' | 'retail' | 'hospitality' | 'hardware'
 
 interface ReleaseRow {
   id: string | number
   version: string
+  variant?: VariantId
   publishedAt?: string
   title?: string
   summary?: string
@@ -29,10 +28,28 @@ interface ReleaseRow {
   channel?: string
 }
 
+interface VersionGroup {
+  version: string
+  publishedAt: string
+  /** Pro row (or earliest backfill row) used for the headline copy. */
+  headline: ReleaseRow
+  /** All variant rows for this version, in display order. */
+  variants: Record<VariantId, ReleaseRow | undefined>
+}
+
+const VARIANT_ORDER: VariantId[] = ['pro', 'dawa', 'retail', 'hospitality', 'hardware']
+
+const VARIANT_LABEL: Record<VariantId, string> = {
+  pro: 'Pro',
+  dawa: 'Dawa',
+  retail: 'Retail',
+  hospitality: 'Hospitality',
+  hardware: 'Hardware',
+}
+
 function formatBytes(n?: number): string {
   if (!n || n <= 0) return ''
-  const mb = n / (1024 * 1024)
-  return `${mb.toFixed(1)} MB`
+  return `${(n / (1024 * 1024)).toFixed(1)} MB`
 }
 
 function formatDate(d?: string): string {
@@ -44,8 +61,7 @@ function formatDate(d?: string): string {
   })
 }
 
-/** Strip any bare URL from legacy summaries (older rows embedded a GitHub link
- *  that overflowed the layout). Repo is private now, so the link is dead anyway. */
+/** Strip bare URLs from legacy summaries that embedded the (now-private) GitHub link. */
 function cleanSummary(s?: string): string {
   if (!s) return ''
   return s
@@ -53,6 +69,44 @@ function cleanSummary(s?: string): string {
     .replace(/https?:\/\/\S+/g, '')
     .replace(/\s{2,}/g, ' ')
     .trim()
+}
+
+/**
+ * Group the flat release list by version. v0.3.x rows have variant=pro
+ * (default backfilled by migration). v0.4.0+ rows have one row per variant
+ * — we collapse those into a single version card with multiple download
+ * buttons.
+ */
+function groupByVersion(rows: ReleaseRow[]): VersionGroup[] {
+  const map = new Map<string, VersionGroup>()
+  for (const r of rows) {
+    const v = (r.variant ?? 'pro') as VariantId
+    const existing = map.get(r.version)
+    if (existing) {
+      existing.variants[v] = r
+      // Prefer the Pro variant row's headline copy when available.
+      if (v === 'pro') {
+        existing.headline = r
+      }
+    } else {
+      map.set(r.version, {
+        version: r.version,
+        publishedAt: r.publishedAt ?? '',
+        headline: r,
+        variants: {
+          pro: undefined,
+          dawa: undefined,
+          retail: undefined,
+          hospitality: undefined,
+          hardware: undefined,
+          [v]: r,
+        } as Record<VariantId, ReleaseRow | undefined>,
+      })
+    }
+  }
+  return [...map.values()].sort((a, b) =>
+    String(b.publishedAt).localeCompare(String(a.publishedAt)),
+  )
 }
 
 export default async function ChangelogPage() {
@@ -67,73 +121,99 @@ export default async function ChangelogPage() {
       ],
     },
     sort: '-publishedAt',
-    limit: 20,
+    limit: 100, // 5 variants per version means we need a wider window than 20
     depth: 0,
   })
-  const releases = result.docs as unknown as ReleaseRow[]
+  const rows = result.docs as unknown as ReleaseRow[]
+  const groups = groupByVersion(rows)
 
   return (
     <>
       <PageHero
         eyebrow="Changelog"
         title={<>What <em>shipped.</em></>}
-        description="Every Omnix release, newest first. Download links and what changed."
+        description="Every Omnix release, newest first. From v0.4.0 onwards each version ships five variants — pick the one you run."
       />
 
       <section className="section">
         <div className="container-default">
-          {releases.length === 0 ? (
+          {groups.length === 0 ? (
             <p className="text-[15px] text-[var(--color-fg-muted)]">No releases published yet.</p>
           ) : (
-            <ol className="space-y-12">
-              {releases.map((r, i) => {
-                const downloadUrl = r.windowsNsisUrl ?? r.windowsMsiUrl
-                return (
-                  <li
-                    key={r.id}
-                    className={i === releases.length - 1 ? '' : 'border-b border-[var(--color-border)] pb-12'}
-                  >
-                    <div className="grid grid-cols-1 gap-6 lg:grid-cols-[auto_minmax(0,1fr)]">
-                      <div className="lg:w-32">
-                        <div className="caption-mono">{formatDate(r.publishedAt)}</div>
-                        <div className="font-[family-name:var(--font-mono)] mt-2 text-[20px] tabular-nums text-[var(--color-accent)]">
-                          v{r.version}
-                        </div>
-                      </div>
-                      <div>
-                        <h3 className="font-[family-name:var(--font-display)] text-[clamp(24px,2.2vw,32px)] font-normal leading-tight text-[var(--color-fg)]">
-                          {r.title ?? `Omnix v${r.version}`}
-                        </h3>
-                        {cleanSummary(r.summary) ? (
-                          <p className="mt-3 text-[15px] leading-[1.65] text-[var(--color-fg-muted)] max-w-[60ch] break-words">
-                            {cleanSummary(r.summary)}
-                          </p>
-                        ) : null}
-                        {downloadUrl ? (
-                          <div className="mt-6 flex flex-wrap items-center gap-4">
-                            <a
-                              href={downloadUrl}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              download
-                              className="font-[family-name:var(--font-ui)] inline-flex items-center gap-2 rounded-md border border-[var(--color-border-strong)] px-4 py-2 text-[13px] font-medium text-[var(--color-fg)] transition-colors hover:border-[var(--color-accent)] hover:text-[var(--color-accent)] cursor-pointer"
-                            >
-                              <Icon.Download className="size-3.5" weight="bold" />
-                              Download
-                              {r.windowsNsisSize ? ` (${formatBytes(r.windowsNsisSize)})` : ''}
-                            </a>
-                            <span className="caption-mono">Tauri-signed</span>
-                          </div>
-                        ) : null}
-                      </div>
-                    </div>
-                  </li>
-                )
-              })}
+            <ol className="space-y-14">
+              {groups.map((g, i) => (
+                <li
+                  key={g.version}
+                  className={i === groups.length - 1 ? '' : 'border-b border-[var(--color-border)] pb-14'}
+                >
+                  <ReleaseCard group={g} />
+                </li>
+              ))}
             </ol>
           )}
         </div>
       </section>
     </>
+  )
+}
+
+function ReleaseCard({ group }: { group: VersionGroup }) {
+  const { headline, variants, version, publishedAt } = group
+  const presentVariants = VARIANT_ORDER.filter((v) => variants[v])
+  const hasMultiVariant = presentVariants.length > 1
+
+  return (
+    <div className="grid grid-cols-1 gap-6 lg:grid-cols-[auto_minmax(0,1fr)]">
+      <div className="lg:w-36">
+        <div className="caption-mono">{formatDate(publishedAt)}</div>
+        <div className="font-[family-name:var(--font-mono)] mt-2 text-[20px] tabular-nums text-[var(--color-accent)]">
+          v{version}
+        </div>
+        {hasMultiVariant ? (
+          <div className="mt-2 inline-flex items-center gap-1 rounded-full border border-[var(--color-border)] px-2 py-0.5 font-[family-name:var(--font-mono)] text-[10px] uppercase tracking-[0.18em] text-[var(--color-fg-subtle)]">
+            {presentVariants.length} variants
+          </div>
+        ) : null}
+      </div>
+
+      <div>
+        <h3 className="font-[family-name:var(--font-display)] text-[clamp(24px,2.2vw,32px)] font-normal leading-tight text-[var(--color-fg)]">
+          {headline.title ?? `Omnix v${version}`}
+        </h3>
+        {cleanSummary(headline.summary) ? (
+          <p className="mt-3 text-[15px] leading-[1.65] text-[var(--color-fg-muted)] max-w-[60ch] break-words">
+            {cleanSummary(headline.summary)}
+          </p>
+        ) : null}
+
+        {/* Download grid — one button per variant that has an installer */}
+        {presentVariants.length > 0 ? (
+          <div className="mt-6 flex flex-wrap gap-2">
+            {presentVariants.map((v) => {
+              const r = variants[v]!
+              const url = r.windowsNsisUrl ?? r.windowsMsiUrl
+              if (!url) return null
+              const isMulti = hasMultiVariant
+              return (
+                <a
+                  key={v}
+                  href={url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  download
+                  className="font-[family-name:var(--font-ui)] inline-flex items-center gap-2 rounded-md border border-[var(--color-border-strong)] px-3.5 py-2 text-[13px] font-medium text-[var(--color-fg)] transition-colors hover:border-[var(--color-accent)] hover:text-[var(--color-accent)] cursor-pointer"
+                  title={`${formatBytes(r.windowsNsisSize) || ''} · Tauri-signed`.trim().replace(/^· /, '')}
+                >
+                  <Icon.Download className="size-3.5" weight="bold" />
+                  {isMulti ? VARIANT_LABEL[v] : 'Download'}
+                  {!isMulti && r.windowsNsisSize ? ` (${formatBytes(r.windowsNsisSize)})` : ''}
+                </a>
+              )
+            })}
+          </div>
+        ) : null}
+        <span className="caption-mono mt-3 inline-block">Tauri-signed</span>
+      </div>
+    </div>
   )
 }
