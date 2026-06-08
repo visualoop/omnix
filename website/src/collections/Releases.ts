@@ -34,9 +34,8 @@ export const Releases: CollectionConfig = {
       name: 'version',
       type: 'text',
       required: true,
-      unique: true,
       admin: {
-        description: 'Semver. Set by CI from the git tag, e.g. "0.2.0", "1.0.0-beta.2".',
+        description: 'Semver. Set by CI from the git tag, e.g. "0.2.0", "1.0.0-beta.2". Unique per (version, variant).',
       },
     },
     {
@@ -56,6 +55,22 @@ export const Releases: CollectionConfig = {
         { label: 'Beta', value: 'beta' },
         { label: 'Alpha', value: 'alpha' },
       ],
+    },
+    {
+      name: 'variant',
+      type: 'select',
+      required: true,
+      defaultValue: 'pro',
+      options: [
+        { label: 'Pro — multi-trade', value: 'pro' },
+        { label: 'Dawa — Pharmacy', value: 'dawa' },
+        { label: 'Retail', value: 'retail' },
+        { label: 'Hospitality', value: 'hospitality' },
+        { label: 'Hardware', value: 'hardware' },
+      ],
+      admin: {
+        description: 'Which Omnix variant this release belongs to. CI publishes one row per (version × variant). Pro covers legacy v0.3.x as well.',
+      },
     },
     {
       name: 'gitTag',

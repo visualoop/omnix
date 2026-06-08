@@ -518,7 +518,7 @@ export interface Activation {
 export interface Release {
   id: number;
   /**
-   * Semver. Set by CI from the git tag, e.g. "0.2.0", "1.0.0-beta.2".
+   * Semver. Set by CI from the git tag, e.g. "0.2.0", "1.0.0-beta.2". Unique per (version, variant).
    */
   version: string;
   /**
@@ -526,6 +526,10 @@ export interface Release {
    */
   majorVersion: number;
   channel?: ('stable' | 'beta' | 'alpha') | null;
+  /**
+   * Which Omnix variant this release belongs to. CI publishes one row per (version × variant). Pro covers legacy v0.3.x as well.
+   */
+  variant: 'pro' | 'dawa' | 'retail' | 'hospitality' | 'hardware';
   /**
    * e.g. "v0.2.0". Diagnostic only.
    */
@@ -1393,6 +1397,7 @@ export interface ReleasesSelect<T extends boolean = true> {
   version?: T;
   majorVersion?: T;
   channel?: T;
+  variant?: T;
   gitTag?: T;
   status?: T;
   windowsMsiUrl?: T;

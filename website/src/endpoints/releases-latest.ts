@@ -2,14 +2,15 @@ import type { Endpoint } from 'payload'
 import { errorResponse, jsonResponse } from './_auth'
 
 /**
- * GET /api/releases/latest — public, license-aware
+ * GET /api/releases/latest — public, license-aware, variant-aware
  *
  * Used by:
  *   1. The Tauri desktop auto-updater. Returns the Tauri-spec JSON shape:
  *      { version, pub_date, notes, platforms: { "windows-x86_64": { signature, url } } }
- *   2. The /downloads page. Just reads the same data.
+ *   2. The /downloads page. Just reads the same data per variant tile.
  *
  * Query params:
+ *   - variant   (optional) — pro|dawa|retail|hospitality|hardware. Defaults to 'pro'.
  *   - license   (optional) — current license key. Filters by majorVersionCap.
  *   - current   (optional) — current version on the machine. For diagnostics.
  *   - channel   (optional) — "stable" (default) | "beta" — for testers.
@@ -21,10 +22,14 @@ export const releasesLatestEndpoint: Endpoint = {
     const url = new URL(req.url ?? '', 'http://localhost')
     const licenseKey = url.searchParams.get('license')
     const channel = url.searchParams.get('channel') ?? 'stable'
+    const variantParam = (url.searchParams.get('variant') ?? 'pro').toLowerCase()
+    const validVariants = ['pro', 'dawa', 'retail', 'hospitality', 'hardware']
+    const variant = validVariants.includes(variantParam) ? variantParam : 'pro'
 
     // Resolve license if provided
     let majorCap = 99
     let licenseStatus: string | null = null
+    let licenseVariant: string = 'pro'
     if (licenseKey) {
       const lic = await req.payload.find({
         collection: 'licenses',
@@ -33,19 +38,22 @@ export const releasesLatestEndpoint: Endpoint = {
         depth: 0,
       })
       if (lic.docs[0]) {
-        const l = lic.docs[0] as unknown as { majorVersionCap?: number; status?: string }
+        const l = lic.docs[0] as unknown as { majorVersionCap?: number; status?: string; variant?: string }
         majorCap = l.majorVersionCap ?? 1
         licenseStatus = l.status ?? null
+        licenseVariant = l.variant ?? 'pro'
       }
     }
 
-    // Find latest published Release in channel that matches the major-version cap
+    // Find latest published Release for this variant in channel that
+    // matches the major-version cap.
     const result = await req.payload.find({
       collection: 'releases',
       where: {
         and: [
           { status: { equals: 'published' } },
           { channel: { equals: channel } },
+          { variant: { equals: variant } },
           { majorVersion: { less_than_equal: majorCap } },
         ],
       },

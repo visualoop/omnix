@@ -41,6 +41,7 @@ export const releasesPostEndpoint: Endpoint = {
       version?: string
       majorVersion?: number
       channel?: 'stable' | 'beta' | 'alpha'
+      variant?: 'pro' | 'dawa' | 'retail' | 'hospitality' | 'hardware'
       gitTag?: string
       windowsMsiUrl?: string
       windowsNsisUrl?: string
@@ -63,16 +64,24 @@ export const releasesPostEndpoint: Endpoint = {
       return errorResponse('Missing required field: version', 400)
     }
 
+    const variant = body.variant ?? 'pro'
+
     // Derive majorVersion from semver if not provided
     const majorVersion =
       typeof body.majorVersion === 'number'
         ? body.majorVersion
         : parseInt(body.version.split('.')[0] ?? '0', 10)
 
-    // Idempotency: if a release with this version already exists, update it
+    // Idempotency: if a release with this (version, variant) already exists, update it.
+    // CI publishes one row per variant per version, so version alone is no longer unique.
     const existing = await req.payload.find({
       collection: 'releases',
-      where: { version: { equals: body.version } },
+      where: {
+        and: [
+          { version: { equals: body.version } },
+          { variant: { equals: variant } },
+        ],
+      },
       limit: 1,
     })
 
@@ -100,6 +109,7 @@ export const releasesPostEndpoint: Endpoint = {
 
     const data = {
       version: body.version,
+      variant,
       majorVersion,
       channel: body.channel ?? 'stable',
       gitTag: body.gitTag,

@@ -29,6 +29,7 @@ interface Release {
   version: string
   majorVersion: number
   channel: string
+  variant?: string
   status: string
   publishedAt?: string
   summary?: string
@@ -42,6 +43,7 @@ interface License {
   id: string | number
   licenseKey: string
   status: string
+  variant?: string
   majorVersionCap?: number
 }
 
@@ -97,28 +99,29 @@ const buildReleasesLatestReq = (qs: string, store: { releases: Release[]; licens
     headers: headers({}),
   } as unknown as Parameters<typeof releasesLatestEndpoint.handler>[0])
 
-// Helper: a stable working set of releases
+// Helper: a stable working set of releases (all default to 'pro' variant
+// — the v0.4.0 default that covers legacy v0.3.x users)
 const seedReleases = (): Release[] => [
   {
-    id: 1, version: '0.2.14', majorVersion: 0, channel: 'stable', status: 'published',
+    id: 1, version: '0.2.14', majorVersion: 0, channel: 'stable', variant: 'pro', status: 'published',
     publishedAt: '2026-06-02T13:00:00Z', summary: 'liquid glass',
     windowsNsisUrl: 'https://media.omnix.co.ke/releases/v0.2.14/Omnix_0.2.14_x64-setup.exe',
     updaterSignature: 'SIG-0214', requiresPaidLicense: false,
   },
   {
-    id: 2, version: '0.2.13', majorVersion: 0, channel: 'stable', status: 'published',
+    id: 2, version: '0.2.13', majorVersion: 0, channel: 'stable', variant: 'pro', status: 'published',
     publishedAt: '2026-06-02T08:00:00Z', summary: 'logo + setup polish',
     windowsNsisUrl: 'https://media.omnix.co.ke/releases/v0.2.13/Omnix_0.2.13_x64-setup.exe',
     updaterSignature: 'SIG-0213',
   },
   {
-    id: 3, version: '1.0.0', majorVersion: 1, channel: 'stable', status: 'published',
+    id: 3, version: '1.0.0', majorVersion: 1, channel: 'stable', variant: 'pro', status: 'published',
     publishedAt: '2026-07-01T00:00:00Z', summary: 'major',
     windowsNsisUrl: 'https://media.omnix.co.ke/releases/v1.0.0/Omnix_1.0.0_x64-setup.exe',
     updaterSignature: 'SIG-100', requiresPaidLicense: true,
   },
   {
-    id: 4, version: '0.3.0-beta', majorVersion: 0, channel: 'beta', status: 'published',
+    id: 4, version: '0.3.0-beta', majorVersion: 0, channel: 'beta', variant: 'pro', status: 'published',
     publishedAt: '2026-06-15T00:00:00Z',
     windowsNsisUrl: 'https://media.omnix.co.ke/releases/v0.3.0-beta/Omnix_0.3.0_x64-setup.exe',
   },
@@ -374,7 +377,7 @@ describe('releases-sync: upsert', () => {
 
   it('updates existing row when version already present (idempotent re-sync)', async () => {
     const store = {
-      releases: [{ id: 1, version: '0.4.0', majorVersion: 0, channel: 'stable', status: 'draft' } as Release],
+      releases: [{ id: 1, version: '0.4.0', majorVersion: 0, channel: 'stable', variant: 'pro', status: 'draft' } as Release],
       licenses: [] as License[],
     }
     const req = {
