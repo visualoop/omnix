@@ -1,4 +1,5 @@
 import { headers } from 'next/headers'
+import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowRight, Download, KeyRound, Monitor, Receipt, Sparkles, TriangleAlert } from '@/components/icons'
 import { getPayload } from 'payload'
@@ -18,13 +19,21 @@ export default async function DashboardOverviewPage({
   const reqHeaders = await headers()
   const payloadConfig = await config
   const payload = await getPayload({ config: payloadConfig })
-  const { user } = await payload.auth({ headers: reqHeaders })
 
-  if (!user || user.collection !== 'customers') {
-    return null
+  // Defensive auth — handle stale sessions (deleted customer rows) without 500.
+  let user: { id?: string | number; collection?: string; fullName?: string; businessName?: string } | null = null
+  try {
+    const result = await payload.auth({ headers: reqHeaders })
+    user = result.user as typeof user
+  } catch {
+    user = null
   }
 
-  const customer = user as unknown as { id: string; fullName?: string; businessName?: string }
+  if (!user || user.collection !== 'customers' || user.id == null) {
+    redirect('/login?next=/dashboard')
+  }
+
+  const customer = user as { id: string; fullName?: string; businessName?: string }
 
   // Fetch this customer's licenses
   const licensesRes = await payload.find({

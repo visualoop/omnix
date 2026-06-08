@@ -6,8 +6,10 @@ import { DashboardShell } from '@/components/dashboard/dashboard-shell'
 
 /**
  * Dashboard route-group layout.
- * Verifies customer auth server-side, redirects to /login if missing,
- * then renders the persistent shell with sidebar + topbar.
+ * Verifies customer auth server-side, redirects to /login if missing or
+ * stale. Stale = JWT references a customer that no longer exists (account
+ * was deleted by support, or by the customer themselves) — payload.auth()
+ * throws in that case, so we catch and redirect to login instead of 500.
  */
 export default async function DashboardLayout({
   children,
@@ -17,21 +19,23 @@ export default async function DashboardLayout({
   const reqHeaders = await headers()
   const payloadConfig = await config
   const payload = await getPayload({ config: payloadConfig })
-  const { user } = await payload.auth({ headers: reqHeaders })
 
-  if (!user || user.collection !== 'customers') {
-    redirect('/login?next=/dashboard')
+  let user: { collection?: string; fullName?: string; email?: string } | null = null
+  try {
+    const result = await payload.auth({ headers: reqHeaders })
+    user = result.user as typeof user
+  } catch {
+    user = null
   }
 
-  const customer = user as unknown as {
-    fullName?: string
-    email: string
+  if (!user || user.collection !== 'customers' || !user.email) {
+    redirect('/login?next=/dashboard')
   }
 
   return (
     <DashboardShell
-      customerName={customer.fullName ?? customer.email.split('@')[0] ?? 'You'}
-      customerEmail={customer.email}
+      customerName={user.fullName ?? user.email.split('@')[0] ?? 'You'}
+      customerEmail={user.email}
     >
       {children}
     </DashboardShell>
