@@ -21,10 +21,16 @@ export default async function DashboardOverviewPage({
   const payload = await getPayload({ config: payloadConfig })
 
   // Defensive auth — handle stale sessions (deleted customer rows) without 500.
-  let user: { id?: string | number; collection?: string; fullName?: string; businessName?: string } | null = null
+  interface AuthedUser {
+    id?: string | number
+    collection?: string
+    fullName?: string
+    businessName?: string
+  }
+  let user: AuthedUser | null = null
   try {
     const result = await payload.auth({ headers: reqHeaders })
-    user = result.user as typeof user
+    user = result.user as AuthedUser | null
   } catch {
     user = null
   }
