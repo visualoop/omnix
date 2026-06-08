@@ -41,20 +41,34 @@ export default async function BuyEntryPage({
   }
 
   const payload = await getPayload({ config: await config })
-  const { user } = await payload.auth({ headers: reqHeaders })
-  const isCustomer = user?.collection === 'customers'
 
-  // Look up an existing licence for a signed-in customer
+  // Resolve auth — failures bubble up as "not signed in" instead of 500.
+  let user: { id?: string | number; collection?: string } | null = null
+  try {
+    const result = await payload.auth({ headers: reqHeaders })
+    user = result.user as typeof user
+  } catch (err) {
+    console.error('[buy] auth error:', err)
+    user = null
+  }
+  const isCustomer = Boolean(user && user.collection === 'customers' && user.id != null)
+
+  // Look up an existing licence for a signed-in customer (defensive — if the
+  // query fails we treat it as "no licence yet" and fall through to create).
   let existingLicenseId: string | number | null = null
   if (isCustomer) {
-    const result = await payload.find({
-      collection: 'licenses',
-      where: { customer: { equals: user!.id } },
-      sort: '-createdAt',
-      limit: 1,
-      depth: 0,
-    })
-    existingLicenseId = (result.docs[0] as { id?: string | number } | undefined)?.id ?? null
+    try {
+      const result = await payload.find({
+        collection: 'licenses',
+        where: { customer: { equals: user!.id! } },
+        sort: '-createdAt',
+        limit: 1,
+        depth: 0,
+      })
+      existingLicenseId = (result.docs[0] as { id?: string | number } | undefined)?.id ?? null
+    } catch (err) {
+      console.error('[buy] license lookup failed:', err)
+    }
   }
 
   const decision = decideBuyDestination({ isCustomer, existingLicenseId, machine, module: mod, variant })
@@ -66,20 +80,27 @@ export default async function BuyEntryPage({
     redirect(`/buy/${decision.licenseId}`)
   }
 
-  // create-then-checkout
-  const created = (await payload.create({
-    collection: 'licenses',
-    data: {
-      customer: user!.id as never,
-      tier: 'trial',
-      variant: decision.variant as never,
-      modules: decision.modules,
-      status: 'trial',
-      maxBranches: 5,
-      maxMachines: 10,
-    },
-    overrideAccess: true,
-  })) as unknown as { id: string | number }
-
-  redirect(`/buy/${created.id}`)
+  // create-then-checkout — also defensive so a transient DB error redirects
+  // to the dashboard instead of 500ing the page.
+  try {
+    const created = (await payload.create({
+      collection: 'licenses',
+      data: {
+        customer: user!.id! as never,
+        tier: 'trial',
+        variant: decision.variant as never,
+        modules: decision.modules,
+        status: 'trial',
+        maxBranches: 5,
+        maxMachines: 10,
+      },
+      overrideAccess: true,
+    })) as { id: string | number }
+    redirect(`/buy/${created.id}`)
+  } catch (err) {
+    // redirect() throws by design — re-throw so Next handles it.
+    if (err && typeof err === 'object' && 'digest' in err) throw err
+    console.error('[buy] license create failed:', err)
+    redirect('/dashboard?welcome=1')
+  }
 }

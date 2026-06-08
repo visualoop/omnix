@@ -20,8 +20,16 @@ export default async function CheckoutPage({
   const reqHeaders = await headers()
   const payloadConfig = await config
   const payload = await getPayload({ config: payloadConfig })
-  const { user } = await payload.auth({ headers: reqHeaders })
-  if (!user || user.collection !== 'customers') {
+
+  let user: { id?: string | number; collection?: string } | null = null
+  try {
+    const result = await payload.auth({ headers: reqHeaders })
+    user = result.user as typeof user
+  } catch (err) {
+    console.error('[checkout] auth error:', err)
+    user = null
+  }
+  if (!user || user.collection !== 'customers' || user.id == null) {
     redirect(`/login?next=/buy/${licenseId}`)
   }
 
