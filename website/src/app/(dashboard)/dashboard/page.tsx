@@ -235,7 +235,7 @@ export default async function DashboardOverviewPage({
                 <code className="font-mono text-[20px] tabular-nums text-[var(--color-fg)]">
                   {activeLicense.licenseKey}
                 </code>
-                <StatusPill status={activeLicense.status} />
+                <StatusPill status={activeLicense.status ?? 'trial'} />
               </div>
               <div className="mt-3 flex flex-wrap gap-2 text-[12px]">
                 {(activeLicense.modules ?? []).map((m) => (
