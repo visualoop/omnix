@@ -4,6 +4,12 @@ import { getPayload } from 'payload'
 import config from '@/payload.config'
 import { DashboardShell } from '@/components/dashboard/dashboard-shell'
 
+interface CustomerUser {
+  collection?: string
+  fullName?: string
+  email?: string
+}
+
 /**
  * Dashboard route-group layout.
  * Verifies customer auth server-side, redirects to /login if missing or
@@ -20,10 +26,10 @@ export default async function DashboardLayout({
   const payloadConfig = await config
   const payload = await getPayload({ config: payloadConfig })
 
-  let user: { collection?: string; fullName?: string; email?: string } | null = null
+  let user: CustomerUser | null = null
   try {
     const result = await payload.auth({ headers: reqHeaders })
-    user = result.user as typeof user
+    user = result.user as CustomerUser | null
   } catch {
     user = null
   }
@@ -32,11 +38,11 @@ export default async function DashboardLayout({
     redirect('/login?next=/dashboard')
   }
 
+  const email = user.email as string
+  const customerName = user.fullName ?? email.split('@')[0] ?? 'You'
+
   return (
-    <DashboardShell
-      customerName={user.fullName ?? user.email.split('@')[0] ?? 'You'}
-      customerEmail={user.email}
-    >
+    <DashboardShell customerName={customerName} customerEmail={email}>
       {children}
     </DashboardShell>
   )
