@@ -24,6 +24,7 @@ import { useActiveModule } from "@/stores/active-module"
 import { useActiveBranch } from "@/stores/active-branch"
 import { streamInvoke, AiError, type ChatMessage } from "@/services/ai"
 import { buildSystemPrompt } from "@/services/ai/system-prompt"
+import { VARIANT } from "@/lib/variant"
 import { buildAssistantTools } from "@/services/ai/tools"
 import {
   appendMessage, createConversation, deleteConversation,
@@ -180,6 +181,7 @@ export function AiAssistantPanel() {
         activeModule,
         currentRoute: location.pathname,
         branchName: branch?.name ?? null,
+        variant: VARIANT,
       })
 
       // Build the conversation history we send to the LLM (system + prior messages + new user)

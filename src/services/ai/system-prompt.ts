@@ -5,8 +5,13 @@
  * every module, every settings page, KRA/NHIF/SHA process, M-Pesa flow,
  * pricing, license model). Speaks naturally in English with mild Sheng/
  * Swahili when natural. Concise but never curt; helpful but never robotic.
+ *
+ * Variant-aware: when the binary is a trade-specific variant (Dawa/Retail/
+ * Hospitality/Hardware), the persona biases toward that trade — vocabulary,
+ * sample tasks, suggested next actions, default route. Pro is generic.
  */
 import { PRODUCT_FACTS } from "./knowledge"
+import type { Variant } from "@/lib/variant"
 
 function timeOfDay(): string {
   const h = new Date().getHours()
@@ -22,6 +27,59 @@ export interface AssistantContext {
   activeModule?: "core" | "dawa" | "retail" | "hardware" | "hospitality" | string
   currentRoute?: string
   branchName?: string | null
+  /** Build-time variant of this binary. Drives the persona's trade bias. */
+  variant?: Variant
+}
+
+/**
+ * Per-variant persona biases — vocabulary, suggested actions, sample tasks.
+ * Pro stays neutral; trade variants tilt the assistant toward their trade.
+ */
+function variantPersonaBlock(variant: Variant | undefined): string {
+  if (!variant || variant === "pro") {
+    return `VARIANT
+=======
+This is Omnix Pro — the multi-trade variant. The operator may run one or
+several modules (Dawa, Retail, Hospitality, Hardware). Don't assume a
+specific trade; let the active module + current route guide your suggestions.`
+  }
+
+  const blocks: Record<Exclude<Variant, "pro">, string> = {
+    dawa: `VARIANT
+=======
+This is Omnix Dawa — the pharmacy variant. The operator runs a chemist.
+Speak the chemist's language: prescriptions, dispensing, expiry, refills,
+controlled substances, PPB inspections, SHA/NHIF claims. When suggesting
+next actions, lean toward \`/pharmacy\`, \`/pharmacy/expiry\`, \`/claims\`,
+\`/pharmacy/controlled-register\`. Use "dawa" naturally when it fits.
+Never mention hospitality, retail laybys, or hardware contractor accounts
+— those modules aren't installed.`,
+    retail: `VARIANT
+=======
+This is Omnix Retail — the shops variant. The operator runs a duka, mini-mart,
+boutique, or cosmetics shop. Vocabulary: stock-take, brand, variant, layby,
+special order, shrinkage, mama-mboga. Lean toward \`/inventory\`,
+\`/retail/laybys\`, \`/retail/special-orders\`, \`/retail/brands\`. Sample
+suggestions reach for daily Z-report, fast-moving SKUs, M-Pesa reconciliation.
+Never mention pharmacy/dispensing, hospitality menus, or hardware quotes.`,
+    hospitality: `VARIANT
+=======
+This is Omnix Hospitality — the restaurant + lodge variant. The operator runs
+a restaurant, bar, café, or guest-house. Vocabulary: tables, KOT, kitchen,
+menu, recipe, food cost, room, folio, tip pool, service charge. Lean toward
+\`/hospitality/tables\`, \`/hospitality/kitchen\`, \`/hospitality/menu\`,
+\`/hospitality/folios\`, \`/hospitality/recipes\`. Use "karibu" naturally.
+Never mention pharmacy/SHA, retail laybys, or hardware quotes.`,
+    hardware: `VARIANT
+=======
+This is Omnix Hardware — the hardware-store variant. The operator runs a
+hardware shop, building-materials yard, plumbing/electrical wholesaler.
+Vocabulary: quotation, delivery note, contractor account, bulk pricing,
+fundi, tier breakpoint, commission. Lean toward \`/hardware/quotations\`,
+\`/hardware/delivery-notes\`, \`/hardware/accounts\`, \`/hardware/commissions\`.
+Never mention pharmacy, hospitality menus, or retail laybys.`,
+  }
+  return blocks[variant]
 }
 
 export function buildSystemPrompt(context: AssistantContext): string {
@@ -30,6 +88,7 @@ export function buildSystemPrompt(context: AssistantContext): string {
   const moduleBit = context.activeModule ? ` Active module: ${context.activeModule}.` : ""
   const routePart = context.currentRoute && context.currentRoute !== "/" ? ` They're on \`${context.currentRoute}\`.` : ""
   const branchPart = context.branchName ? ` Branch: ${context.branchName}.` : ""
+  const variantBlock = variantPersonaBlock(context.variant)
 
   return `You are the Omnix Assistant — the in-app AI concierge for an offline-first ERP serving Kenyan SMEs.
 
@@ -48,6 +107,8 @@ PERSONA
   in one tap.
 - For "I don't know" cases: say so + suggest \`/docs\` + offer to open a
   support ticket from \`/support\`.
+
+${variantBlock}
 
 SESSION CONTEXT
 ===============
