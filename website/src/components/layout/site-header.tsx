@@ -9,8 +9,25 @@ import { BRAND_NAME } from '@/lib/brand'
 import { Button } from '@/components/ui/button'
 import { BrandWordmark } from '@/components/brand-logo'
 
-const NAV = [
-  { label: 'Modules', href: '/modules' },
+interface NavItem {
+  label: string
+  href: string
+  /** When set, this entry expands to a dropdown of children. */
+  children?: Array<{ label: string; href: string; description?: string }>
+}
+
+const NAV: readonly NavItem[] = [
+  {
+    label: 'Trades',
+    href: '/modules',
+    children: [
+      { label: 'Omnix Pro', href: '/pro', description: 'All four trades — multi-trade businesses' },
+      { label: 'Omnix Dawa', href: '/dawa', description: 'Pharmacy management' },
+      { label: 'Omnix Retail', href: '/retail', description: 'Shops, mini-marts, dukas' },
+      { label: 'Omnix Hospitality', href: '/hospitality', description: 'Restaurants, bars, lodges' },
+      { label: 'Omnix Hardware', href: '/hardware', description: 'Hardware stores, contractors' },
+    ],
+  },
   { label: 'Pricing', href: '/pricing' },
   { label: 'Downloads', href: '/downloads' },
   { label: 'Changelog', href: '/changelog' },
@@ -21,15 +38,14 @@ const NAV = [
  * Sticky editorial header. Three columns:
  *   wordmark (left)  ·  nav centred  ·  one CTA hard right
  *
- * Composition rule: the CTA is the SINGLE primary action in the chrome.
- * Sign-in is a quiet text link that doesn't compete.
- *
- * Style: transparent until 60px scroll, then warm-blur with a 1px hairline.
+ * The Trades item is now a dropdown — five variants in one place.
  */
 export function SiteHeader() {
   const pathname = usePathname()
   const [scrolled, setScrolled] = React.useState(false)
   const [open, setOpen] = React.useState(false)
+  const [tradesOpen, setTradesOpen] = React.useState(false)
+  const tradesRef = React.useRef<HTMLDivElement | null>(null)
 
   React.useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 60)
@@ -40,7 +56,20 @@ export function SiteHeader() {
 
   React.useEffect(() => {
     setOpen(false)
+    setTradesOpen(false)
   }, [pathname])
+
+  // Close trades dropdown on outside click.
+  React.useEffect(() => {
+    if (!tradesOpen) return
+    const onClick = (e: MouseEvent) => {
+      if (tradesRef.current && !tradesRef.current.contains(e.target as Node)) {
+        setTradesOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', onClick)
+    return () => document.removeEventListener('mousedown', onClick)
+  }, [tradesOpen])
 
   return (
     <header
@@ -52,7 +81,7 @@ export function SiteHeader() {
       )}
     >
       <div className="container-wide flex h-[72px] items-center justify-between gap-6 lg:grid lg:grid-cols-[1fr_auto_1fr]">
-        {/* Wordmark — single SVG with icon + "Omnix" + amber dot baked in */}
+        {/* Wordmark */}
         <Link
           href="/"
           aria-label={`${BRAND_NAME} home`}
@@ -65,6 +94,70 @@ export function SiteHeader() {
         <nav className="hidden items-center gap-1 lg:flex">
           {NAV.map((item) => {
             const active = pathname === item.href || pathname.startsWith(`${item.href}/`)
+            const childActive = item.children?.some(
+              (c) => pathname === c.href || pathname.startsWith(`${c.href}/`),
+            )
+
+            if (item.children) {
+              return (
+                <div key={item.href} ref={tradesRef} className="relative">
+                  <button
+                    type="button"
+                    onClick={() => setTradesOpen((v) => !v)}
+                    onMouseEnter={() => setTradesOpen(true)}
+                    aria-expanded={tradesOpen}
+                    aria-haspopup="menu"
+                    className={cn(
+                      'font-[family-name:var(--font-ui)] inline-flex items-center gap-1 rounded-md px-3 py-1.5 text-[13px] font-medium transition-colors',
+                      active || childActive
+                        ? 'text-[var(--color-fg)]'
+                        : 'text-[var(--color-fg-muted)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-fg)]',
+                    )}
+                  >
+                    {item.label}
+                    <Icon.ChevronDown
+                      className={cn('size-3 transition-transform', tradesOpen ? 'rotate-180' : '')}
+                      weight="bold"
+                    />
+                  </button>
+                  {tradesOpen ? (
+                    <div
+                      role="menu"
+                      onMouseLeave={() => setTradesOpen(false)}
+                      className="absolute left-1/2 top-full z-50 mt-2 w-[340px] -translate-x-1/2 rounded-lg border border-[var(--color-border)] bg-[var(--color-bg)] p-2 shadow-lg"
+                    >
+                      {item.children.map((c) => (
+                        <Link
+                          key={c.href}
+                          href={c.href}
+                          role="menuitem"
+                          className="block rounded-md px-3 py-2.5 hover:bg-[var(--color-surface-hover)]"
+                        >
+                          <div className="font-[family-name:var(--font-ui)] text-[13px] font-medium text-[var(--color-fg)]">
+                            {c.label}
+                          </div>
+                          {c.description ? (
+                            <div className="text-[12px] text-[var(--color-fg-muted)] mt-0.5">
+                              {c.description}
+                            </div>
+                          ) : null}
+                        </Link>
+                      ))}
+                      <div className="mt-1 border-t border-[var(--color-border)] pt-1">
+                        <Link
+                          href="/modules"
+                          role="menuitem"
+                          className="block rounded-md px-3 py-2 text-[12px] text-[var(--color-fg-subtle)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-fg)]"
+                        >
+                          Compare all modules →
+                        </Link>
+                      </div>
+                    </div>
+                  ) : null}
+                </div>
+              )
+            }
+
             return (
               <Link
                 key={item.href}
@@ -82,7 +175,7 @@ export function SiteHeader() {
           })}
         </nav>
 
-        {/* Right column — sign-in is a quiet text link, CTA is the hard right anchor */}
+        {/* Right column */}
         <div className="flex items-center justify-end gap-5">
           <Link
             href="/login"
@@ -106,17 +199,36 @@ export function SiteHeader() {
         </div>
       </div>
 
+      {/* Mobile nav (flat — children expanded inline) */}
       {open ? (
         <div className="fixed inset-x-0 top-[72px] z-40 border-b border-[var(--color-border)] bg-[var(--color-bg)] lg:hidden">
           <div className="container-wide flex flex-col gap-1 py-6">
             {NAV.map((item) => (
-              <Link
-                key={item.href}
-                href={item.href}
-                className="font-[family-name:var(--font-ui)] rounded-md px-3 py-3 text-[15px] font-medium text-[var(--color-fg)] hover:bg-[var(--color-surface-hover)]"
-              >
-                {item.label}
-              </Link>
+              <React.Fragment key={item.href}>
+                {item.children ? (
+                  <>
+                    <div className="font-[family-name:var(--font-ui)] mt-2 px-3 pb-1 text-[10px] font-semibold uppercase tracking-[0.22em] text-[var(--color-fg-subtle)]">
+                      {item.label}
+                    </div>
+                    {item.children.map((c) => (
+                      <Link
+                        key={c.href}
+                        href={c.href}
+                        className="font-[family-name:var(--font-ui)] rounded-md px-3 py-2.5 text-[15px] font-medium text-[var(--color-fg)] hover:bg-[var(--color-surface-hover)]"
+                      >
+                        {c.label}
+                      </Link>
+                    ))}
+                  </>
+                ) : (
+                  <Link
+                    href={item.href}
+                    className="font-[family-name:var(--font-ui)] rounded-md px-3 py-3 text-[15px] font-medium text-[var(--color-fg)] hover:bg-[var(--color-surface-hover)]"
+                  >
+                    {item.label}
+                  </Link>
+                )}
+              </React.Fragment>
             ))}
             <div className="mt-4 grid grid-cols-2 gap-2">
               <Button asChild variant="outline">

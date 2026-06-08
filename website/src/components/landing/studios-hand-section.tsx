@@ -28,7 +28,7 @@ const STEPS: { n: string; statement: string; meta: string }[] = [
   {
     n: '03',
     statement: 'Pay once. Keep working.',
-    meta: 'KES 100,000 by M-Pesa or card · perpetual licence',
+    meta: 'KES 30,000 by M-Pesa or card · perpetual licence',
   },
 ]
 

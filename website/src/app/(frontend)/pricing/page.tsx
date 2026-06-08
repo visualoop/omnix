@@ -11,15 +11,57 @@ import { cn } from '@/lib/cn'
 export const metadata: Metadata = {
   title: 'Pricing — pay once, use forever',
   description:
-    'One licence. KES 100,000 one-time. All modules included. Free 30-day trial. Custom pricing for chains, NGOs, and on-prem deployments.',
+    'One licence per device. KES 30,000 one-time + 12,000/year for compliance updates. Pick your trade — Pro, Dawa, Retail, Hospitality or Hardware. Free 30-day trial.',
 }
+
+interface VariantTile {
+  id: string
+  name: string
+  tagline: string
+  href: string
+  badge?: string
+}
+
+const VARIANTS: ReadonlyArray<VariantTile> = [
+  {
+    id: 'pro',
+    name: 'Omnix Pro',
+    tagline: 'All four trades — multi-trade businesses',
+    href: '/pro',
+    badge: 'Recommended',
+  },
+  {
+    id: 'dawa',
+    name: 'Omnix Dawa',
+    tagline: 'Pharmacy management',
+    href: '/dawa',
+  },
+  {
+    id: 'retail',
+    name: 'Omnix Retail',
+    tagline: 'Shops, mini-marts, dukas',
+    href: '/retail',
+  },
+  {
+    id: 'hospitality',
+    name: 'Omnix Hospitality',
+    tagline: 'Restaurants, bars, lodges',
+    href: '/hospitality',
+  },
+  {
+    id: 'hardware',
+    name: 'Omnix Hardware',
+    tagline: 'Hardware stores, contractors',
+    href: '/hardware',
+  },
+] as const
 
 const TIERS = [
   {
     name: 'Free trial',
     cadence: '30 days · no card',
     price: 'KES 0',
-    body: 'Every module unlocked. Multi-branch, multi-PC. The trial database becomes your live database the day you pay.',
+    body: 'Pick any variant. Multi-branch, multi-PC. The trial database becomes your live database the day you pay.',
     href: '/signup',
     cta: 'Start free trial',
     primary: false,
@@ -27,8 +69,8 @@ const TIERS = [
   {
     name: 'Omnix licence',
     cadence: 'one-time · perpetual',
-    price: 'KES 100,000',
-    body: 'The whole product. Every live module. Up to 5 branches, 10 PCs. One year of free maintenance. Pay it like rent — except you pay it once.',
+    price: 'KES 30,000',
+    body: 'Per device. Any variant. Up to 5 branches, 10 PCs. One year of free maintenance updates included; KES 12,000/year after.',
     href: '/signup?intent=buy',
     cta: 'Buy a licence',
     primary: true,
@@ -79,6 +121,44 @@ export default function PricingPage() {
       />
 
       <OnePriceSection />
+
+      <section className="section-tight">
+        <div className="container-wide">
+          <div className="mb-12 max-w-[36rem]">
+            <span className="eyebrow">Pick your trade</span>
+            <h2 className="headline-section mt-5 text-balance">Same price. <em>Five variants.</em></h2>
+            <p className="mt-4 text-[15px] leading-[1.65] text-[var(--color-fg-muted)] max-w-[44ch]">
+              The licence price is the same regardless of variant. Pick the binary that's purpose-built for your trade — or pick Pro if you run more than one.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5">
+            {VARIANTS.map((v) => (
+              <Link
+                key={v.id}
+                href={v.href}
+                className="group relative flex flex-col gap-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-5 transition-colors hover:border-[var(--color-accent)]/40"
+              >
+                {v.badge ? (
+                  <span className="absolute right-3 top-3 rounded-full border border-[var(--color-accent)]/40 bg-[var(--color-accent)]/10 px-2 py-0.5 font-[family-name:var(--font-ui)] text-[9px] font-semibold uppercase tracking-[0.18em] text-[var(--color-accent)]">
+                    {v.badge}
+                  </span>
+                ) : null}
+                <div className="font-[family-name:var(--font-display)] text-[20px] font-normal text-[var(--color-fg)] leading-tight">
+                  {v.name}
+                </div>
+                <div className="text-[13px] text-[var(--color-fg-muted)] leading-snug">
+                  {v.tagline}
+                </div>
+                <div className="font-[family-name:var(--font-ui)] mt-auto inline-flex items-center gap-1.5 text-[12px] font-medium text-[var(--color-fg)] transition-colors group-hover:text-[var(--color-accent)]">
+                  Read more
+                  <Icon.ArrowRight className="size-3" weight="bold" />
+                </div>
+              </Link>
+            ))}
+          </div>
+        </div>
+      </section>
 
       <section className="section-tight">
         <div className="container-wide">

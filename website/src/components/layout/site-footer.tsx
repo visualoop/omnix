@@ -16,10 +16,11 @@ const COLUMNS = [
   {
     title: 'Trade',
     links: [
-      { label: 'Pharmacy', href: '/modules/dawa-pharmacy' },
-      { label: 'Retail', href: '/modules/soko-retail' },
-      { label: 'Hardware', href: '/modules/hardware' },
-      { label: 'Hospitality', href: '/modules/hospitality' },
+      { label: 'Omnix Pro', href: '/pro' },
+      { label: 'Omnix Dawa', href: '/dawa' },
+      { label: 'Omnix Retail', href: '/retail' },
+      { label: 'Omnix Hospitality', href: '/hospitality' },
+      { label: 'Omnix Hardware', href: '/hardware' },
     ],
   },
   {

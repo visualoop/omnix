@@ -21,7 +21,7 @@ import { cn } from '@/lib/cn'
 const FAQS: { q: string; a: string }[] = [
   {
     q: 'What does the one-time payment actually cover?',
-    a: 'KES 100,000 buys a perpetual licence for Core ERP plus every trade module you select. You receive every minor and patch release within the same major version for free, and one year of priority support. There is no remote kill switch on a paid licence.',
+    a: 'KES 30,000 buys a perpetual licence for Core ERP plus every trade module you select. You receive every minor and patch release within the same major version for free, and one year of priority support. There is no remote kill switch on a paid licence.',
   },
   {
     q: 'Do I need internet to run Omnix?',

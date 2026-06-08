@@ -146,7 +146,7 @@ function Row({ row, index }: { row: ModuleRow; index: number }) {
 
         {row.status === 'live' ? (
           <Link
-            href={`/modules/${row.slug}`}
+            href={`/${row.slug}`}
             className="font-[family-name:var(--font-ui)] mt-9 inline-flex items-center gap-2 border-b border-[var(--color-border-strong)] pb-1 text-[13px] font-medium text-[var(--color-fg)] transition-colors hover:border-[var(--color-accent)] hover:text-[var(--color-accent)]"
           >
             Read more

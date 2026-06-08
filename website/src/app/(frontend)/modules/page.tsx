@@ -53,7 +53,7 @@ function ModuleRow({ module, reversed }: { module: typeof MODULES_SEED[0]; rever
         <p className="mt-7 text-[16px] leading-[1.65] text-[var(--color-fg-muted)] max-w-[44ch]">{module.shortDescription}</p>
 
         {module.status === 'live' && (
-          <Link href={`/modules/${module.slug}`} className="font-[family-name:var(--font-ui)] mt-9 inline-flex items-center gap-2 border-b border-[var(--color-border-strong)] pb-1 text-[13px] font-medium text-[var(--color-fg)] transition-colors hover:border-[var(--color-accent)] hover:text-[var(--color-accent)]">
+          <Link href={`/${module.slug}`} className="font-[family-name:var(--font-ui)] mt-9 inline-flex items-center gap-2 border-b border-[var(--color-border-strong)] pb-1 text-[13px] font-medium text-[var(--color-fg)] transition-colors hover:border-[var(--color-accent)] hover:text-[var(--color-accent)]">
             Read more <Icon.ArrowRight className="size-3.5" weight="bold" />
           </Link>
         )}

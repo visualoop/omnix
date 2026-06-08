@@ -131,7 +131,7 @@ export function HeroSection({ content, latestRelease }: { content?: HeroContent;
           <span aria-hidden className="mx-2 text-[var(--color-fg-subtle)]">
             ·
           </span>
-          <span className="text-[var(--color-fg-muted)]">KES 100,000 once</span>
+          <span className="text-[var(--color-fg-muted)]">KES 30,000 once</span>
         </motion.p>
 
         {/* Product preview — only renders when a screenshot is uploaded in
