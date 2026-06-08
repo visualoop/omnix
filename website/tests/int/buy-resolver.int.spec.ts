@@ -6,6 +6,7 @@ import {
   isValidMachineId,
   buildSignupNext,
   trialModulesFor,
+  variantFor,
   decideBuyDestination,
 } from '@/lib/buy-resolver'
 
@@ -73,18 +74,58 @@ describe('decideBuyDestination', () => {
     expect(d).toEqual({ kind: 'checkout', licenseId: 'lic_42' })
   })
 
-  it('customer without a licence → create-then-checkout with module bundle', () => {
+  it('customer without a licence → create-then-checkout with module bundle + variant', () => {
     const d = decideBuyDestination({ isCustomer: true, existingLicenseId: null, module: 'hardware' })
-    expect(d).toEqual({ kind: 'create-then-checkout', modules: ['core', 'hardware'] })
+    expect(d).toEqual({ kind: 'create-then-checkout', modules: ['core', 'hardware'], variant: 'hardware' })
   })
 
-  it('customer without a licence + no module → default bundle', () => {
+  it('customer without a licence + no module → default bundle, Pro variant', () => {
     const d = decideBuyDestination({ isCustomer: true, existingLicenseId: null })
-    expect(d).toEqual({ kind: 'create-then-checkout', modules: ['core', 'dawa', 'retail'] })
+    expect(d).toEqual({
+      kind: 'create-then-checkout',
+      modules: ['core', 'dawa', 'retail'],
+      variant: 'pro',
+    })
+  })
+
+  it('explicit ?variant=dawa overrides module mapping', () => {
+    const d = decideBuyDestination({
+      isCustomer: true,
+      existingLicenseId: null,
+      module: 'retail',
+      variant: 'dawa',
+    })
+    expect(d.kind).toBe('create-then-checkout')
+    if (d.kind === 'create-then-checkout') expect(d.variant).toBe('dawa')
   })
 
   it('numeric license id (0) is treated as existing (not null)', () => {
     const d = decideBuyDestination({ isCustomer: true, existingLicenseId: 0 })
     expect(d).toEqual({ kind: 'checkout', licenseId: 0 })
+  })
+})
+
+describe('variantFor', () => {
+  it('returns the explicit variant when valid', () => {
+    expect(variantFor('dawa')).toBe('dawa')
+    expect(variantFor('retail')).toBe('retail')
+    expect(variantFor('hospitality')).toBe('hospitality')
+    expect(variantFor('hardware')).toBe('hardware')
+    expect(variantFor('pro')).toBe('pro')
+  })
+
+  it('falls back to mapping module → trade variant', () => {
+    expect(variantFor(null, 'dawa')).toBe('dawa')
+    expect(variantFor(undefined, 'retail')).toBe('retail')
+    expect(variantFor(undefined, 'hospitality')).toBe('hospitality')
+    expect(variantFor(undefined, 'hardware')).toBe('hardware')
+  })
+
+  it('defaults to pro when nothing valid is supplied', () => {
+    expect(variantFor()).toBe('pro')
+    expect(variantFor(null, null)).toBe('pro')
+    expect(variantFor('not-a-variant')).toBe('pro')
+    expect(variantFor(undefined, 'core')).toBe('pro')
+    expect(variantFor(undefined, 'admin')).toBe('pro')
   })
 })

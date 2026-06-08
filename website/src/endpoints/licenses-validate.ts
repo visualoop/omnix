@@ -8,12 +8,15 @@ import { errorResponse, jsonResponse, readJson } from './_auth'
  * running. Returns the current state of the licence + lockout instructions
  * for the local app.
  *
- * Body: { licenseKey, machineId, currentVersion }
+ * Body: { licenseKey, machineId, currentVersion, variant }
+ *   - `variant` is the binary's variant (pro|dawa|retail|hospitality|hardware).
+ *     Required from v0.4.0+ desktop builds. Older clients omit it; we treat
+ *     a missing variant as 'pro' for backward compat.
  *
  * Response:
  *   { status, lockoutMode, modules, maxBranches, maxMachines,
  *     trialEndsAt, maintenanceUntil, majorVersionCap, latestVersion,
- *     mustUpgrade, requestDiagnostic }
+ *     mustUpgrade, requestDiagnostic, variant, variantMismatch }
  */
 export const licensesValidateEndpoint: Endpoint = {
   path: '/licenses/validate',
@@ -23,6 +26,7 @@ export const licensesValidateEndpoint: Endpoint = {
       licenseKey?: string
       machineId?: string
       currentVersion?: string
+      variant?: 'pro' | 'dawa' | 'retail' | 'hospitality' | 'hardware'
     }>(req)
     if (!body || !body.licenseKey) {
       return errorResponse('Missing licenseKey', 400)
@@ -39,6 +43,7 @@ export const licensesValidateEndpoint: Endpoint = {
       | {
           id: string | number
           status: string
+          variant?: string
           modules?: string[]
           maxBranches?: number
           maxMachines?: number
@@ -52,6 +57,26 @@ export const licensesValidateEndpoint: Endpoint = {
         status: 'invalid',
         lockoutMode: 'hard',
         message: 'Licence key not recognised',
+      })
+    }
+
+    // Variant gate: a Pro licence accepts any binary; a trade licence only
+    // accepts its matching binary. v0.3.x clients omit `variant` — they are
+    // assumed to be Pro (legacy). Reject mismatch with a friendly hint that
+    // tells the operator which binary to download.
+    const binaryVariant = body.variant ?? 'pro'
+    const licenseVariant = license.variant ?? 'pro'
+    if (licenseVariant !== 'pro' && licenseVariant !== binaryVariant) {
+      return jsonResponse({
+        status: 'invalid',
+        lockoutMode: 'hard',
+        variant: licenseVariant,
+        binaryVariant,
+        variantMismatch: true,
+        message:
+          `This is an Omnix ${licenseVariant.charAt(0).toUpperCase() + licenseVariant.slice(1)} ` +
+          `licence — install Omnix ${licenseVariant.charAt(0).toUpperCase() + licenseVariant.slice(1)} ` +
+          `from omnix.co.ke/${licenseVariant}, or upgrade to Omnix Pro to use multiple trades.`,
       })
     }
 
@@ -106,6 +131,7 @@ export const licensesValidateEndpoint: Endpoint = {
     return jsonResponse({
       status: license.status,
       lockoutMode,
+      variant: licenseVariant,
       modules: license.modules ?? [],
       maxBranches: license.maxBranches ?? 1,
       maxMachines: license.maxMachines ?? 3,

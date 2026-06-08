@@ -337,9 +337,13 @@ export interface Customer {
 export interface License {
   id: number;
   /**
-   * Auto-generated on creation. Format: OMNIX-XXXX-XXXX-XXXX. Read-only after create.
+   * Auto-generated on creation. Format: OMNIX-{VARIANT}-XXXX-XXXX-XXXX. Read-only after create.
    */
   licenseKey?: string | null;
+  /**
+   * Which Omnix binary this license activates. Pro accepts any binary; trade variants only accept their matching binary.
+   */
+  variant: 'pro' | 'dawa' | 'retail' | 'hospitality' | 'hardware';
   customer: number | Customer;
   tier: 'trial' | 'starter' | 'business' | 'enterprise';
   modules: ('core' | 'dawa' | 'retail' | 'hardware' | 'hospitality')[];
@@ -611,6 +615,7 @@ export interface Media {
   id: number;
   alt: string;
   caption?: string | null;
+  prefix?: string | null;
   updatedAt: string;
   createdAt: string;
   url?: string | null;
@@ -1289,6 +1294,7 @@ export interface CustomersSelect<T extends boolean = true> {
  */
 export interface LicensesSelect<T extends boolean = true> {
   licenseKey?: T;
+  variant?: T;
   customer?: T;
   tier?: T;
   modules?: T;
@@ -1645,6 +1651,7 @@ export interface ModulesSelect<T extends boolean = true> {
 export interface MediaSelect<T extends boolean = true> {
   alt?: T;
   caption?: T;
+  prefix?: T;
   updatedAt?: T;
   createdAt?: T;
   url?: T;

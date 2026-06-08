@@ -3,26 +3,43 @@ import { ownerOnly, ownerOrSupport, allowSystem } from '../access'
 import { LICENSE_KEY_PREFIX } from '../lib/brand'
 
 /**
- * License key format: PREFIX-XXXX-XXXX-XXXX
+ * Per-variant license key prefix. Variant identifies which Omnix binary
+ * the license is bound to (Pro accepts any; trade variants only accept
+ * their own).
+ */
+const VARIANT_PREFIX: Record<string, string> = {
+  pro: `${LICENSE_KEY_PREFIX}-PRO`,
+  dawa: `${LICENSE_KEY_PREFIX}-DAWA`,
+  retail: `${LICENSE_KEY_PREFIX}-RETAIL`,
+  hospitality: `${LICENSE_KEY_PREFIX}-HOSP`,
+  hardware: `${LICENSE_KEY_PREFIX}-HW`,
+}
+
+/**
+ * License key format: {VARIANT_PREFIX}-XXXX-XXXX-XXXX
+ *   e.g. OMNIX-DAWA-9F3K-7TQX-2B4Z
  * 12 random base32 chars (Crockford alphabet, no I/L/O/U) split into 3 groups.
  */
 const BASE32 = '0123456789ABCDEFGHJKMNPQRSTVWXYZ'
 const groupChars = (s: string, size: number) =>
   s.match(new RegExp(`.{1,${size}}`, 'g'))?.join('-') ?? s
 
-const generateKey = (): string => {
+const generateKey = (variant: string = 'pro'): string => {
   const random = Array.from({ length: 12 }, () =>
     BASE32[Math.floor(Math.random() * BASE32.length)],
   ).join('')
-  return `${LICENSE_KEY_PREFIX}-${groupChars(random, 4)}`
+  const prefix = VARIANT_PREFIX[variant] ?? VARIANT_PREFIX.pro
+  return `${prefix}-${groupChars(random, 4)}`
 }
 
 const generateLicenseKeyHook: CollectionBeforeChangeHook = async ({ data, operation, req }) => {
   if (operation !== 'create') return data
 
+  const variant = (data.variant as string | undefined) ?? 'pro'
+
   // Try a few times in case of unique-collision (extremely rare with 32^12 keys).
   for (let i = 0; i < 5; i += 1) {
-    const candidate = generateKey()
+    const candidate = generateKey(variant)
     const existing = await req.payload.find({
       collection: 'licenses',
       where: { licenseKey: { equals: candidate } },
@@ -75,8 +92,24 @@ export const Licenses: CollectionConfig = {
       type: 'text',
       unique: true,
       admin: {
-        description: 'Auto-generated on creation. Format: OMNIX-XXXX-XXXX-XXXX. Read-only after create.',
+        description: 'Auto-generated on creation. Format: OMNIX-{VARIANT}-XXXX-XXXX-XXXX. Read-only after create.',
         readOnly: true,
+      },
+    },
+    {
+      name: 'variant',
+      type: 'select',
+      required: true,
+      defaultValue: 'pro',
+      options: [
+        { label: 'Pro — multi-trade (Dawa + Retail + Hospitality + Hardware)', value: 'pro' },
+        { label: 'Dawa — Pharmacy', value: 'dawa' },
+        { label: 'Retail — Shops, mini-marts', value: 'retail' },
+        { label: 'Hospitality — Restaurants, bars, lodges', value: 'hospitality' },
+        { label: 'Hardware — Hardware stores', value: 'hardware' },
+      ],
+      admin: {
+        description: 'Which Omnix binary this license activates. Pro accepts any binary; trade variants only accept their matching binary.',
       },
     },
     {

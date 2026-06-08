@@ -2,6 +2,7 @@
  * /buy — entry point from the desktop app's "Buy now" button.
  *
  * Receives ?machine=<fingerprint>&module=<dawa|retail|hardware|hospitality>
+ *          &variant=<pro|dawa|retail|hospitality|hardware>
  * and resolves the customer's license to send them to /buy/[licenseId].
  *
  * Decision logic lives in src/lib/buy-resolver.ts (unit-tested).
@@ -17,6 +18,7 @@ export const metadata = { title: 'Buy Omnix' }
 interface SearchParams {
   machine?: string
   module?: string
+  variant?: string
 }
 
 export default async function BuyEntryPage({
@@ -24,7 +26,7 @@ export default async function BuyEntryPage({
 }: {
   searchParams: Promise<SearchParams>
 }) {
-  const { machine, module: mod } = await searchParams
+  const { machine, module: mod, variant } = await searchParams
   const reqHeaders = await headers()
 
   // Stash the machine fingerprint for /buy/success → licence binding.
@@ -55,7 +57,7 @@ export default async function BuyEntryPage({
     existingLicenseId = (result.docs[0] as { id?: string | number } | undefined)?.id ?? null
   }
 
-  const decision = decideBuyDestination({ isCustomer, existingLicenseId, machine, module: mod })
+  const decision = decideBuyDestination({ isCustomer, existingLicenseId, machine, module: mod, variant })
 
   if (decision.kind === 'signup') {
     redirect(`/signup?next=${encodeURIComponent(decision.next)}`)
@@ -70,6 +72,7 @@ export default async function BuyEntryPage({
     data: {
       customer: user!.id as never,
       tier: 'trial',
+      variant: decision.variant as never,
       modules: decision.modules,
       status: 'trial',
       maxBranches: 5,

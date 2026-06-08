@@ -1,6 +1,7 @@
 import { invoke } from "@tauri-apps/api/core";
 import { fetch } from "@tauri-apps/plugin-http";
 import { query, execute } from "@/lib/db";
+import { VARIANT } from "@/lib/variant";
 
 /**
  * Omnix licensing server base URL. Override with VITE_OMNIX_API at build time
@@ -127,7 +128,7 @@ async function activateOnline(
     const res = await fetch(`${ACTIVATION_API_BASE}/api/licenses/activate`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ licenseKey: key, machineId: fingerprint }),
+      body: JSON.stringify({ licenseKey: key, machineId: fingerprint, variant: VARIANT }),
     });
     if (res.ok) {
       const body = (await res.json()) as ActivateResponse;
@@ -226,7 +227,7 @@ export async function revalidateLicense(): Promise<boolean | null> {
     const res = await fetch(`${ACTIVATION_API_BASE}/api/licenses/validate`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ licenseKey: active.license_key, machineId: machine.fingerprint }),
+      body: JSON.stringify({ licenseKey: active.license_key, machineId: machine.fingerprint, variant: VARIANT }),
     });
     if (!res.ok) return false;
     const body = (await res.json()) as ValidateResponse;

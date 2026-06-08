@@ -5,6 +5,7 @@ import { errorResponse, hashToken, jsonResponse, logActivation, readJson } from 
 type LicenseDoc = {
   id: string | number
   status: string
+  variant?: string
   modules?: string[]
   maxMachines?: number
   maxBranches?: number
@@ -17,6 +18,7 @@ type LicenseDoc = {
 export function entitlementsOf(license: LicenseDoc) {
   return {
     modules: license.modules ?? [],
+    variant: license.variant ?? 'pro',
     maxDevices: license.maxMachines ?? 1,
     maxBranches: license.maxBranches ?? 1,
     maintenanceUntil: license.maintenanceUntil ?? null,
@@ -48,6 +50,7 @@ export const licensesActivateEndpoint: Endpoint = {
       osVersion?: string
       arch?: 'x86_64' | 'aarch64'
       currentVersion?: string
+      variant?: 'pro' | 'dawa' | 'retail' | 'hospitality' | 'hardware'
     }>(req)
 
     if (!body || !body.licenseKey || !body.machineId) {
@@ -69,6 +72,27 @@ export const licensesActivateEndpoint: Endpoint = {
         detail: 'Licence key not recognised',
       })
       return errorResponse('Licence key not recognised', 404)
+    }
+
+    // Variant gate: a Pro licence accepts any binary; a trade licence only
+    // accepts its matching binary. v0.3.x clients omit `variant` — they
+    // become Pro (legacy). Reject mismatch with a friendly message.
+    const binaryVariant = body.variant ?? 'pro'
+    const licenseVariant = license.variant ?? 'pro'
+    if (licenseVariant !== 'pro' && licenseVariant !== binaryVariant) {
+      await logActivation(req, {
+        event: 'activate',
+        outcome: 'rejected_invalid',
+        license: license.id,
+        machineId: body.machineId,
+        detail: `Variant mismatch: licence=${licenseVariant}, binary=${binaryVariant}`,
+      })
+      return errorResponse(
+        `This is an Omnix ${licenseVariant.charAt(0).toUpperCase() + licenseVariant.slice(1)} licence. ` +
+          `You're running Omnix ${binaryVariant.charAt(0).toUpperCase() + binaryVariant.slice(1)}. ` +
+          `Install the matching variant from omnix.co.ke/${licenseVariant}, or upgrade to Pro.`,
+        403,
+      )
     }
 
     if (license.status === 'suspended' || license.status === 'cancelled') {
