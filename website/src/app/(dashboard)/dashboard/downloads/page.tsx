@@ -5,6 +5,7 @@ import { getPayload } from 'payload'
 import config from '@/payload.config'
 import { Button } from '@/components/ui/button'
 import { PageHeading } from '@/components/dashboard/status-utils'
+import { safePayloadFind, emptyPage } from '@/lib/dashboard-helpers'
 
 export const metadata = { title: 'Downloads' }
 export const revalidate = 60
@@ -41,24 +42,34 @@ export default async function DashboardDownloadsPage() {
   if (!user || user.collection !== 'customers') return null
 
   const [licensesRes, releasesRes] = await Promise.all([
-    payload.find({
-      collection: 'licenses',
-      where: { customer: { equals: user.id } },
-      limit: 5,
-      sort: '-createdAt',
-    }),
-    payload.find({
-      collection: 'releases',
-      where: {
-        and: [
-          { status: { equals: 'published' } },
-          { channel: { equals: 'stable' } },
-        ],
-      },
-      sort: '-publishedAt',
-      limit: 1,
-      depth: 0,
-    }),
+    safePayloadFind(
+      () =>
+        payload.find({
+          collection: 'licenses',
+          where: { customer: { equals: user.id } },
+          limit: 5,
+          sort: '-createdAt',
+        }),
+      emptyPage(),
+      'downloads-licenses',
+    ),
+    safePayloadFind(
+      () =>
+        payload.find({
+          collection: 'releases',
+          where: {
+            and: [
+              { status: { equals: 'published' } },
+              { channel: { equals: 'stable' } },
+            ],
+          },
+          sort: '-publishedAt',
+          limit: 1,
+          depth: 0,
+        }),
+      emptyPage(),
+      'downloads-releases',
+    ),
   ])
 
   const licenses = licensesRes.docs as unknown as { id: string; licenseKey: string; status: string }[]

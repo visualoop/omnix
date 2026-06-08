@@ -5,6 +5,7 @@ import { getPayload } from 'payload'
 import config from '@/payload.config'
 import { Button } from '@/components/ui/button'
 import { EmptyState, formatDate, PageHeading, StatusPill } from '@/components/dashboard/status-utils'
+import { safePayloadFind, emptyPage } from '@/lib/dashboard-helpers'
 
 export const metadata = { title: 'Licences' }
 
@@ -30,12 +31,17 @@ export default async function LicensesPage() {
   const { user } = await payload.auth({ headers: reqHeaders })
   if (!user || user.collection !== 'customers') return null
 
-  const res = await payload.find({
-    collection: 'licenses',
-    where: { customer: { equals: user.id } },
-    sort: '-createdAt',
-    limit: 100,
-  })
+  const res = await safePayloadFind(
+    () =>
+      payload.find({
+        collection: 'licenses',
+        where: { customer: { equals: user.id } },
+        sort: '-createdAt',
+        limit: 100,
+      }),
+    emptyPage(),
+    'licenses-list',
+  )
 
   const licenses = res.docs as unknown as License[]
 

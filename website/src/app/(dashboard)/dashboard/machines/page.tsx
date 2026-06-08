@@ -10,6 +10,7 @@ import {
   StatusPill,
 } from '@/components/dashboard/status-utils'
 import { DeactivateMachineButton } from '@/components/dashboard/deactivate-machine-button'
+import { safePayloadFind, emptyPage } from '@/lib/dashboard-helpers'
 
 export const metadata = { title: 'Machines' }
 
@@ -20,11 +21,16 @@ export default async function MachinesPage() {
   const { user } = await payload.auth({ headers: reqHeaders })
   if (!user || user.collection !== 'customers') return null
 
-  const licenseRes = await payload.find({
-    collection: 'licenses',
-    where: { customer: { equals: user.id } },
-    limit: 50,
-  })
+  const licenseRes = await safePayloadFind(
+    () =>
+      payload.find({
+        collection: 'licenses',
+        where: { customer: { equals: user.id } },
+        limit: 50,
+      }),
+    emptyPage(),
+    'machines-licenses',
+  )
   const licenses = licenseRes.docs as unknown as {
     id: string
     maxMachines?: number
@@ -34,12 +40,19 @@ export default async function MachinesPage() {
   }[]
   const licenseIds = licenses.map((l) => l.id)
 
-  const res = await payload.find({
-    collection: 'machines',
-    where: { license: { in: licenseIds } },
-    sort: '-lastSeenAt',
-    limit: 100,
-  })
+  const res = await safePayloadFind(
+    () =>
+      licenseIds.length === 0
+        ? Promise.resolve(emptyPage())
+        : payload.find({
+            collection: 'machines',
+            where: { license: { in: licenseIds } },
+            sort: '-lastSeenAt',
+            limit: 100,
+          }),
+    emptyPage(),
+    'machines-list',
+  )
   const machines = res.docs as unknown as {
     id: string
     machineId?: string
