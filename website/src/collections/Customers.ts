@@ -62,6 +62,20 @@ export const Customers: CollectionConfig = {
         const customer = doc as { id: string | number; email?: string; fullName?: string }
         if (!customer.email) return
 
+        // Force-verify the row at creation time so login works immediately
+        // (defensive — also covers cases where the collection-level verify
+        // flag hasn't propagated to the running deployment yet).
+        try {
+          await req.payload.update({
+            collection: 'customers',
+            id: customer.id,
+            data: { _verified: true } as never,
+            overrideAccess: true,
+          })
+        } catch (err) {
+          req.payload.logger.error({ err }, 'failed to auto-verify customer')
+        }
+
         // Auto-issue a 30-day trial licence
         try {
           await req.payload.create({
