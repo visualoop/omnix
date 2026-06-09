@@ -201,30 +201,43 @@ export async function activateLicense(key: string): Promise<{ ok: boolean; error
     const maxDevices = ent?.maxDevices ?? 1;
     const token = online.body?.authToken ?? null;
 
-    await execute(
-      `INSERT OR REPLACE INTO license
-       (id, license_key, license_kid, customer_name, customer_email, issued_at,
-        maintenance_expires_at, license_type, features_json, modules_json, max_devices,
-        activation_token, server_validated, last_server_check_at,
-        machine_fingerprint, activated_at, last_verified_at)
-       VALUES ('active', ?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, datetime('now'), datetime('now'))`,
-      [
-        cleaned,
-        cleaned, // use the key itself as kid (no signed payload to source one from)
-        null,
-        null,
-        new Date().toISOString(),
-        ent?.maintenanceUntil ?? null,
-        ent?.status === "active" ? "perpetual" : "trial",
-        JSON.stringify([]),
-        JSON.stringify(modules),
-        maxDevices,
-        token,
-        1, // server-validated
-        new Date().toISOString(),
-        machine.fingerprint,
-      ],
-    );
+    // The license table has NOT NULL constraints on customer_name,
+    // customer_email and maintenance_expires_at. Compact keys don't carry
+    // those fields; use safe empty / future defaults so the INSERT succeeds.
+    const customerName = "";
+    const customerEmail = "";
+    const maintenanceExpiresAt =
+      ent?.maintenanceUntil ?? ent?.trialEndsAt ?? new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
+    try {
+      await execute(
+        `INSERT OR REPLACE INTO license
+         (id, license_key, license_kid, customer_name, customer_email, issued_at,
+          maintenance_expires_at, license_type, features_json, modules_json, max_devices,
+          activation_token, server_validated, last_server_check_at,
+          machine_fingerprint, activated_at, last_verified_at)
+         VALUES ('active', ?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, datetime('now'), datetime('now'))`,
+        [
+          cleaned,
+          cleaned, // use the key itself as kid
+          customerName,
+          customerEmail,
+          new Date().toISOString(),
+          maintenanceExpiresAt,
+          ent?.status === "active" ? "perpetual" : "trial",
+          JSON.stringify([]),
+          JSON.stringify(modules),
+          maxDevices,
+          token,
+          1, // server-validated
+          new Date().toISOString(),
+          machine.fingerprint,
+        ],
+      );
+    } catch (e) {
+      const msg = String(e);
+      console.error("[license] local SQLite write failed:", msg);
+      return { ok: false, error: `Server accepted the key but local storage rejected it: ${msg}` };
+    }
 
     await logActivationEvent(cleaned, "activated", null);
     return { ok: true };

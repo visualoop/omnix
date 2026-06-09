@@ -61,17 +61,26 @@ export function LicenseActivationPage({ onActivated }: Props) {
     }
     setActivating(true);
     setError(null);
-    const result = await activateLicense(cleanedKey);
-    setActivating(false);
-    if (result.ok) {
-      if (result.pending) {
-        toast.success("License activated offline. We'll verify with the server when you're back online.");
+    try {
+      const result = await activateLicense(cleanedKey);
+      if (result.ok) {
+        if (result.pending) {
+          toast.success("License activated offline. We'll verify with the server when you're back online.");
+        } else {
+          toast.success("License activated. Welcome aboard!");
+        }
+        onActivated();
       } else {
-        toast.success("License activated. Welcome aboard!");
+        setError(result.error || "Activation failed");
       }
-      onActivated();
-    } else {
-      setError(result.error || "Activation failed");
+    } catch (e) {
+      // Defensive: if activateLicense throws (DB write fails, IPC error, …)
+      // surface a real message instead of leaving the spinner running forever.
+      const msg = e instanceof Error ? e.message : String(e);
+      console.error("[license] activate threw:", msg);
+      setError(`Activation failed: ${msg}`);
+    } finally {
+      setActivating(false);
     }
   };
 
@@ -294,7 +303,7 @@ export function LicenseActivationPage({ onActivated }: Props) {
                 value={key}
                 onChange={(e) => { setKey(e.target.value); setError(null); }}
                 onPaste={handlePaste}
-                placeholder="OMNIX-eyJraWQiOiJPTU5JWC0yMD…XYZ.MEUCIQ…"
+                placeholder="OMNIX-PRO-XXXX-XXXX-XXXX"
                 className="w-full min-h-[110px] rounded-xl glass-thin p-3 text-[11.5px] font-mono leading-relaxed resize-y focus:outline-none focus:ring-2 focus:ring-primary/40 transition"
                 spellCheck={false}
               />

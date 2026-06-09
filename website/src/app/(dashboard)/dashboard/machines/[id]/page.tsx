@@ -48,8 +48,18 @@ export default async function MachineDetailPage({
   const reqHeaders = await headers()
   const payloadConfig = await config
   const payload = await getPayload({ config: payloadConfig })
-  const { user } = await payload.auth({ headers: reqHeaders })
-  if (!user || user.collection !== 'customers') return null
+
+  // Defensive auth — stale-cookie sessions otherwise 500 the page.
+  let user: { id?: string | number; collection?: string } | null = null
+  try {
+    const r = await payload.auth({ headers: reqHeaders })
+    user = r.user as typeof user
+  } catch {
+    user = null
+  }
+  if (!user || user.collection !== 'customers' || user.id == null) {
+    notFound()
+  }
 
   let machine: MachineDoc
   try {
