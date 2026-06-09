@@ -50,16 +50,18 @@ export default async function MachineDetailPage({
   const payload = await getPayload({ config: payloadConfig })
 
   // Defensive auth — stale-cookie sessions otherwise 500 the page.
-  let user: { id?: string | number; collection?: string } | null = null
+  type Authed = { id?: string | number; collection?: string }
+  let raw: Authed | null = null
   try {
     const r = await payload.auth({ headers: reqHeaders })
-    user = r.user as typeof user
+    raw = (r.user ?? null) as Authed | null
   } catch {
-    user = null
+    raw = null
   }
-  if (!user || user.collection !== 'customers' || user.id == null) {
+  if (!raw || raw.collection !== 'customers' || raw.id == null) {
     notFound()
   }
+  const user = raw as { id: string | number; collection: 'customers' }
 
   let machine: MachineDoc
   try {
