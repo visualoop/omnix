@@ -50,6 +50,10 @@ jobs:
     name: cargo test (Rust commands)
     runs-on: ubuntu-latest
     timeout-minutes: 12
+    # Release commits are rebuilt + retested in full by ci.yml on the
+    # matching tag push. Skipping the duplicate run keeps the Actions UI
+    # clean (one CI run per release).
+    if: ${{ !startsWith(github.event.head_commit.message, 'release(') }}
     steps:
       - uses: actions/checkout@v4
       - name: Install Linux deps for tauri build target
