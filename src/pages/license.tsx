@@ -21,6 +21,7 @@ import {
   getLicenseStatus,
   deactivateLicense,
   activateLicense,
+  revalidateLicense,
   type LicenseStatus,
 } from "@/services/license";
 import { APP_NAME } from "@/lib/brand";
@@ -30,8 +31,25 @@ export function LicensePage() {
   const [status, setStatus] = useState<LicenseStatus | null>(null);
   const [copied, setCopied] = useState(false);
 
+  const [refreshing, setRefreshing] = useState(false);
+
   const load = async () => {
     setStatus(await getLicenseStatus());
+  };
+
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    try {
+      const result = await revalidateLicense();
+      if (result === null) {
+        toast.error("Couldn't reach the licensing server — check your internet.");
+      } else {
+        await load();
+        toast.success("Licence refreshed");
+      }
+    } finally {
+      setRefreshing(false);
+    }
   };
 
   useEffect(() => { load(); }, []);
@@ -64,11 +82,16 @@ export function LicensePage() {
 
   return (
     <div className="space-y-5 max-w-3xl">
-      <div>
-        <h1 className="text-xl font-semibold tracking-tight">License</h1>
-        <p className="text-sm text-muted-foreground mt-1">
-          Your {APP_NAME} license details and machine binding
-        </p>
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h1 className="text-xl font-semibold tracking-tight">License</h1>
+          <p className="text-sm text-muted-foreground mt-1">
+            Your {APP_NAME} license details and machine binding
+          </p>
+        </div>
+        <Button variant="outline" size="sm" onClick={handleRefresh} disabled={refreshing} className="cursor-pointer">
+          {refreshing ? "Checking…" : "Check for updates"}
+        </Button>
       </div>
 
       {/* Active status */}

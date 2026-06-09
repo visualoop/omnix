@@ -41,18 +41,41 @@ export function LicenseGuard({ children }: Props) {
     refresh();
   }, [skipLicense]);
 
-  // Silent re-validation during the online window. Runs once after the guard
-  // confirms an activated license; offline failures are a no-op (offline-first).
+  // Silent re-validation during the online window.
+  //
+  // Triggers:
+  //   1. Once after the guard confirms an activated license (covers the
+  //      cold-start case)
+  //   2. Every time the window regains focus (covers "user paid in browser
+  //      then alt-tabbed back" — flips trial → active in ~2 seconds, no
+  //      restart needed)
+  //   3. Every 5 minutes while the window is open (catches background-paid
+  //      cases like webhook delays or staff payments on a different device)
+  //
+  // All three are a no-op when offline (offline-first; never blocks the UI).
   useEffect(() => {
     if (skipLicense || !status?.activated) return;
     let cancelled = false;
-    revalidateLicense().then((result) => {
-      // Server gave a definitive answer (revoked or refreshed entitlements):
-      // re-pull status so the entitlements store + gate reflect it.
-      if (!cancelled && result !== null) refresh();
-    });
+    const tick = () => {
+      revalidateLicense().then((result) => {
+        if (!cancelled && result !== null) refresh();
+      });
+    };
+
+    // (1) immediate
+    tick();
+
+    // (2) window focus — fires when alt-tabbing back from the browser
+    const onFocus = () => tick();
+    window.addEventListener("focus", onFocus);
+
+    // (3) every 5 minutes as a safety net
+    const interval = setInterval(tick, 5 * 60 * 1000);
+
     return () => {
       cancelled = true;
+      window.removeEventListener("focus", onFocus);
+      clearInterval(interval);
     };
   }, [skipLicense, status?.activated]);
 
