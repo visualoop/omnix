@@ -81,10 +81,10 @@ export default async function CheckoutPage({
       <div className="mx-auto max-w-5xl px-6 sm:px-8">
         <Link
           href="/dashboard/licenses"
-          className="inline-flex items-center gap-1.5 text-[12px] text-[var(--color-fg-subtle)] hover:text-[var(--color-fg)]"
+          className="inline-flex items-center gap-2 rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-1.5 text-[13px] font-medium text-[var(--color-fg-muted)] transition-colors hover:border-[var(--color-border-strong)] hover:text-[var(--color-fg)]"
         >
           <ArrowLeft className="size-3.5" />
-          Back to licences
+          Back to dashboard
         </Link>
 
         <h1 className="mt-8 font-display text-[clamp(28px,3vw,40px)] font-medium leading-tight text-[var(--color-fg)]">
@@ -162,7 +162,7 @@ export default async function CheckoutPage({
 
 function purposeLabel(purpose: string): string {
   const map: Record<string, string> = {
-    license_fee: 'Buy your licence',
+    license_fee: 'Upgrade to a paid licence',
     maintenance_renewal: 'Renew maintenance',
     major_upgrade: 'Major version upgrade',
     cloud_backup: 'Enable cloud backup',

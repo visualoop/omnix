@@ -39,7 +39,7 @@ export function VariantLanding({ content }: { content: VariantLandingContent }) 
             <Link href={content.buyHref}>Buy {content.productName}</Link>
           </Button>
           <Button asChild size="lg" variant="outline">
-            <Link href={content.downloadHref}>Download free trial</Link>
+            <Link href={content.downloadHref}>Start 30-day free trial</Link>
           </Button>
         </div>
       </PageHero>

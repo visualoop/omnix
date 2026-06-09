@@ -68,7 +68,7 @@ const content: VariantLandingContent = {
   ],
   pricingNote:
     'One-time licence per device, plus KES 12,000/year for compliance updates. Cement or copper, the price stays the same.',
-  downloadHref: '/buy?variant=hardware',
+  downloadHref: '/signup?variant=hardware',
   buyHref: '/buy?variant=hardware',
 }
 

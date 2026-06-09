@@ -68,7 +68,7 @@ const content: VariantLandingContent = {
   ],
   pricingNote:
     'One-time licence per device. Same KES 30,000 + 12,000/year as the trade variants — Pro just unlocks all four. No per-module charge.',
-  downloadHref: '/buy?variant=pro',
+  downloadHref: '/signup?variant=pro',
   buyHref: '/buy?variant=pro',
 }
 

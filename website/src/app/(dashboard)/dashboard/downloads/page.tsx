@@ -10,14 +10,33 @@ import { safePayloadFind, emptyPage, getDashboardCustomer } from '@/lib/dashboar
 export const metadata = { title: 'Downloads' }
 export const revalidate = 60
 
+type VariantId = 'pro' | 'dawa' | 'retail' | 'hospitality' | 'hardware'
+
 interface ReleaseRow {
   version: string
+  variant?: VariantId
   publishedAt?: string
   summary?: string
   windowsNsisUrl?: string
   windowsMsiUrl?: string
   windowsNsisSize?: number
   windowsMsiSize?: number
+}
+
+const VARIANT_NAME: Record<VariantId, string> = {
+  pro: 'Omnix Pro',
+  dawa: 'Omnix Dawa',
+  retail: 'Omnix Retail',
+  hospitality: 'Omnix Hospitality',
+  hardware: 'Omnix Hardware',
+}
+
+const VARIANT_LANDING: Record<VariantId, string> = {
+  pro: '/pro',
+  dawa: '/dawa',
+  retail: '/retail',
+  hospitality: '/hospitality',
+  hardware: '/hardware',
 }
 
 function formatBytes(n?: number): string {
@@ -37,23 +56,60 @@ function formatDate(d?: string): string {
 export default async function DashboardDownloadsPage() {
   const reqHeaders = await headers()
   const customer = await getDashboardCustomer(reqHeaders)
-  const user = customer as unknown as { id: string | number; email: string; fullName?: string; businessName?: string; collection?: string }
+  const user = customer as unknown as { id: string | number; email: string }
   const payloadConfig = await config
   const payload = await getPayload({ config: payloadConfig })
 
-  const [licensesRes, releasesRes] = await Promise.all([
-    safePayloadFind(
-      () =>
-        payload.find({
-          collection: 'licenses',
-          where: { customer: { equals: user.id } },
-          limit: 5,
-          sort: '-createdAt',
-        }),
-      emptyPage(),
-      'downloads-licenses',
-    ),
-    safePayloadFind(
+  // 1. Fetch the customer's most-recent licence to learn their variant.
+  const licensesRes = await safePayloadFind(
+    () =>
+      payload.find({
+        collection: 'licenses',
+        where: { customer: { equals: user.id } },
+        limit: 5,
+        sort: '-createdAt',
+      }),
+    emptyPage(),
+    'downloads-licenses',
+  )
+
+  const licenses = licensesRes.docs as unknown as {
+    id: string | number
+    licenseKey: string
+    status: string
+    variant?: VariantId
+  }[]
+  const activeLicense = licenses.find(
+    (l) => l.status === 'active' || l.status === 'trial' || l.status === 'maintenance_expired',
+  )
+  const variant: VariantId = (activeLicense?.variant as VariantId) ?? 'pro'
+
+  // 2. Fetch latest release for THIS variant. Fall back to Pro if no
+  //    variant-specific release is published yet (legacy v0.3.x state).
+  const variantReleaseRes = await safePayloadFind(
+    () =>
+      payload.find({
+        collection: 'releases',
+        where: {
+          and: [
+            { status: { equals: 'published' } },
+            { channel: { equals: 'stable' } },
+            { variant: { equals: variant } },
+          ],
+        },
+        sort: '-publishedAt',
+        limit: 1,
+        depth: 0,
+      }),
+    emptyPage(),
+    'downloads-releases-variant',
+  )
+
+  let latest: ReleaseRow | null =
+    (variantReleaseRes.docs[0] as unknown as ReleaseRow | undefined) ?? null
+
+  if (!latest && variant !== 'pro') {
+    const fallback = await safePayloadFind(
       () =>
         payload.find({
           collection: 'releases',
@@ -61,6 +117,7 @@ export default async function DashboardDownloadsPage() {
             and: [
               { status: { equals: 'published' } },
               { channel: { equals: 'stable' } },
+              { variant: { equals: 'pro' } },
             ],
           },
           sort: '-publishedAt',
@@ -68,33 +125,32 @@ export default async function DashboardDownloadsPage() {
           depth: 0,
         }),
       emptyPage(),
-      'downloads-releases',
-    ),
-  ])
+      'downloads-releases-pro-fallback',
+    )
+    latest = (fallback.docs[0] as unknown as ReleaseRow | undefined) ?? null
+  }
 
-  const licenses = licensesRes.docs as unknown as { id: string; licenseKey: string; status: string }[]
-  const activeLicense = licenses.find(
-    (l) => l.status === 'active' || l.status === 'trial' || l.status === 'maintenance_expired',
-  )
-  const latest = (releasesRes.docs[0] as unknown as ReleaseRow | undefined) ?? null
+  const productName = VARIANT_NAME[variant]
+  const productLandingHref = VARIANT_LANDING[variant]
 
   return (
     <div className="space-y-8">
       <PageHeading
-        title="Downloads"
-        subtitle="Get the latest installer. Your licence key is auto-filled when you launch the app."
+        title={`Download ${productName}`}
+        subtitle="Get the latest installer for your variant. Your licence key is auto-filled when you launch the app."
       />
 
       {activeLicense ? (
         <div className="rounded-xl border border-[var(--color-accent)] bg-[var(--color-accent-soft)] p-5">
           <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--color-accent-hover)]">
-            Your licence key
+            Your licence key for {productName}
           </div>
           <code className="mt-2 block font-mono text-[18px] tabular-nums text-[var(--color-fg)]">
             {activeLicense.licenseKey}
           </code>
           <p className="mt-2 text-[12px] text-[var(--color-fg-muted)]">
-            Paste this into Omnix on first launch to activate.
+            Paste this into {productName} on first launch to activate. The licence is bound
+            to {productName} only — installing a different variant won't accept this key.
           </p>
         </div>
       ) : null}
@@ -111,9 +167,14 @@ export default async function DashboardDownloadsPage() {
                   Released {formatDate(latest.publishedAt)}
                 </time>
               ) : null}
+              {variant !== latest.variant && latest.variant === 'pro' ? (
+                <span className="rounded-full border border-[var(--color-accent)]/40 bg-[var(--color-accent)]/10 px-2 py-0.5 font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--color-accent)]">
+                  Pro fallback
+                </span>
+              ) : null}
             </div>
             <h2 className="mt-3 font-display text-[26px] font-medium text-[var(--color-fg)]">
-              Latest stable release
+              {productName} — latest stable release
             </h2>
             {latest.summary ? (
               <p className="mt-2 max-w-xl text-[14px] text-[var(--color-fg-muted)]">
@@ -126,7 +187,7 @@ export default async function DashboardDownloadsPage() {
                 <Button asChild size="lg">
                   <a href={latest.windowsNsisUrl}>
                     <Download className="size-4" />
-                    Download EXE{latest.windowsNsisSize ? ` · ${formatBytes(latest.windowsNsisSize)}` : ''}
+                    Download {productName} (EXE){latest.windowsNsisSize ? ` · ${formatBytes(latest.windowsNsisSize)}` : ''}
                   </a>
                 </Button>
               ) : null}
@@ -134,7 +195,7 @@ export default async function DashboardDownloadsPage() {
                 <Button asChild size="lg" variant="outline">
                   <a href={latest.windowsMsiUrl}>
                     <Download className="size-4" />
-                    Download MSI{latest.windowsMsiSize ? ` · ${formatBytes(latest.windowsMsiSize)}` : ''}
+                    MSI{latest.windowsMsiSize ? ` · ${formatBytes(latest.windowsMsiSize)}` : ''}
                   </a>
                 </Button>
               ) : null}
@@ -152,12 +213,20 @@ export default async function DashboardDownloadsPage() {
         )}
       </section>
 
-      <Link
-        href="/changelog"
-        className="block rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-5 text-[13px] text-[var(--color-fg-muted)] hover:border-[var(--color-border-strong)]"
-      >
-        Looking for an older version? See the full release archive on the public changelog →
-      </Link>
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+        <Link
+          href={productLandingHref}
+          className="block rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-5 text-[13px] text-[var(--color-fg-muted)] hover:border-[var(--color-border-strong)]"
+        >
+          What does {productName} include? See the product page →
+        </Link>
+        <Link
+          href="/changelog"
+          className="block rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-5 text-[13px] text-[var(--color-fg-muted)] hover:border-[var(--color-border-strong)]"
+        >
+          Looking for an older version? See the public changelog →
+        </Link>
+      </div>
     </div>
   )
 }

@@ -131,7 +131,7 @@ export default async function LicenseDetailPage({
               <Button asChild size="sm">
                 <Link href={`/buy/${license.id}`}>
                   <Sparkles className="size-3.5" />
-                  Buy now
+                  Upgrade to paid
                 </Link>
               </Button>
             ) : null}

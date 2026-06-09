@@ -68,7 +68,7 @@ const content: VariantLandingContent = {
   ],
   pricingNote:
     'One-time licence per device, plus KES 12,000/year for compliance updates. No per-transaction cuts, no subscription, no surprises.',
-  downloadHref: '/buy?variant=retail',
+  downloadHref: '/signup?variant=retail',
   buyHref: '/buy?variant=retail',
 }
 
