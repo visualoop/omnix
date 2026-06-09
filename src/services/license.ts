@@ -149,53 +149,123 @@ async function activateOnline(
   }
 }
 
+/**
+ * Recognise the key format. Two formats are supported:
+ *
+ * - "compact": OMNIX-PRO-XXXX-XXXX-XXXX (5 segments, ≤ 30 chars). Issued by
+ *   the website. Server-validated. The desktop trusts what the server returns
+ *   from /api/licenses/activate — there's no offline RSA signature to verify.
+ *
+ * - "rsa": OMNIX-<base64url(payload)>.<base64url(signature)> (one big blob,
+ *   typically > 400 chars). Issued by the legacy licensing tool, RSA-verified
+ *   in Rust by `verify_license_key`. Works offline.
+ */
+function isCompactKey(key: string): boolean {
+  const cleaned = key.replace(/\s+/g, "").toUpperCase();
+  // Compact format: 4–6 segments separated by '-', each segment 2–10 chars,
+  // and no '.' separator (which RSA-signed keys always have).
+  if (cleaned.includes(".")) return false;
+  const parts = cleaned.split("-").filter((p) => p.length > 0);
+  if (parts.length < 4 || parts.length > 6) return false;
+  if (parts[0] !== "OMNIX") return false;
+  return cleaned.length <= 40;
+}
+
 /** Activate a license key on this machine (online-first, offline fallback). */
 export async function activateLicense(key: string): Promise<{ ok: boolean; error?: string; pending?: boolean }> {
-  // 1. Verify signature locally first — never trust the server for authenticity.
-  const result = await verifyKey(key);
+  const cleaned = key.replace(/\s+/g, "");
+  const machine = await getMachineInfo();
+
+  // ── Block obvious local conflict — same on both code paths ──
+  const existing = await query<ActiveLicense>("SELECT * FROM license WHERE id = 'active'");
+  if (existing[0] && existing[0].machine_fingerprint !== machine.fingerprint) {
+    return { ok: false, error: "License already activated on a different machine" };
+  }
+
+  if (isCompactKey(cleaned)) {
+    // ── Server-validated path ─────────────────────────────────
+    // No offline signature on these keys — the website-issued key only
+    // means anything once /api/licenses/activate accepts it.
+    const online = await activateOnline(cleaned, machine.fingerprint);
+    if (!online) {
+      return {
+        ok: false,
+        error: "Couldn't reach the licensing server. Check your internet and try again.",
+      };
+    }
+    if (!online.ok) {
+      return { ok: false, error: online.error || "Activation rejected by server" };
+    }
+    const ent = online.body?.entitlements;
+    const modules = ent?.modules?.length ? ent.modules : ["core"];
+    const maxDevices = ent?.maxDevices ?? 1;
+    const token = online.body?.authToken ?? null;
+
+    await execute(
+      `INSERT OR REPLACE INTO license
+       (id, license_key, license_kid, customer_name, customer_email, issued_at,
+        maintenance_expires_at, license_type, features_json, modules_json, max_devices,
+        activation_token, server_validated, last_server_check_at,
+        machine_fingerprint, activated_at, last_verified_at)
+       VALUES ('active', ?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, datetime('now'), datetime('now'))`,
+      [
+        cleaned,
+        cleaned, // use the key itself as kid (no signed payload to source one from)
+        null,
+        null,
+        new Date().toISOString(),
+        ent?.maintenanceUntil ?? null,
+        ent?.status === "active" ? "perpetual" : "trial",
+        JSON.stringify([]),
+        JSON.stringify(modules),
+        maxDevices,
+        token,
+        1, // server-validated
+        new Date().toISOString(),
+        machine.fingerprint,
+      ],
+    );
+
+    await logActivationEvent(cleaned, "activated", null);
+    return { ok: true };
+  }
+
+  // ── Legacy RSA-signed path (offline-capable) ───────────────
+  const result = await verifyKey(cleaned);
   if (!result.valid || !result.payload) {
     await logActivationEvent("unknown", "failed", result.error);
     return { ok: false, error: result.error || "Invalid license key" };
   }
 
   const payload = result.payload;
-  const machine = await getMachineInfo();
 
-  // 2. Block obvious local conflict (different machine already bound here).
-  const existing = await query<ActiveLicense>("SELECT * FROM license WHERE id = 'active'");
-  if (existing[0] && existing[0].machine_fingerprint !== machine.fingerprint) {
-    return { ok: false, error: "License already activated on a different machine" };
-  }
-
-  // 3. Try online activation for seat enforcement + canonical entitlements.
-  const online = await activateOnline(key, machine.fingerprint);
+  // Try online activation for seat enforcement + canonical entitlements.
+  const online = await activateOnline(cleaned, machine.fingerprint);
   if (online && !online.ok) {
-    // Server explicitly rejected (seat cap / revoked) — do not activate offline.
     return { ok: false, error: online.error || "Activation rejected by server" };
   }
 
-  // Prefer server entitlements when available; otherwise trust the signed key.
   const serverEnt = online?.body?.entitlements;
   const modules = serverEnt?.modules?.length ? serverEnt.modules : licensePayloadModules(payload);
   const maxDevices =
     serverEnt?.maxDevices ?? (payload.max_devices && payload.max_devices > 0 ? payload.max_devices : 1);
   const token = online?.body?.authToken ?? null;
-  const serverValidated = online ? 1 : 0; // 0 = offline signed-key-only (pending re-validation)
+  const serverValidated = online ? 1 : 0;
 
   await execute(
-    `INSERT OR REPLACE INTO license 
-     (id, license_key, license_kid, customer_name, customer_email, issued_at, 
+    `INSERT OR REPLACE INTO license
+     (id, license_key, license_kid, customer_name, customer_email, issued_at,
       maintenance_expires_at, license_type, features_json, modules_json, max_devices,
       activation_token, server_validated, last_server_check_at,
       machine_fingerprint, activated_at, last_verified_at)
      VALUES ('active', ?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, datetime('now'), datetime('now'))`,
     [
-      key, payload.kid, payload.name, payload.email, payload.issued,
+      cleaned, payload.kid, payload.name, payload.email, payload.issued,
       payload.maint_exp, payload.type, JSON.stringify(payload.feat ?? []),
       JSON.stringify(modules), maxDevices,
       token, serverValidated, online ? new Date().toISOString() : null,
       machine.fingerprint,
-    ]
+    ],
   );
 
   await logActivationEvent(payload.kid, "activated", online ? null : "offline-pending");
@@ -384,19 +454,41 @@ export async function isModuleLicensed(moduleId: string): Promise<boolean> {
 export async function assertModuleEntitled(moduleId: string): Promise<void> {
   if (moduleId === "core") return;
   if (import.meta.env.VITE_SKIP_LICENSE === "1") return;
-  const rows = await query<ActiveLicense>("SELECT license_key FROM license WHERE id = 'active'");
-  const key = rows[0]?.license_key;
+  const rows = await query<ActiveLicense>("SELECT license_key, modules_json FROM license WHERE id = 'active'");
+  const row = rows[0];
+  const key = row?.license_key;
   if (!key) {
     // Trial (no key) — fall back to the local entitlement check.
     if (await isModuleLicensed(moduleId)) return;
     throw new Error(`The ${moduleId} module is not included in your licence.`);
   }
+
+  // Compact server-validated keys can't be RSA-verified. Use the locally
+  // cached entitlements that the server sent on activate (refreshed by
+  // revalidateLicense() while online).
+  if (isCompactKey(key)) {
+    const modules: string[] = row?.modules_json ? safeParseModules(row.modules_json) : [];
+    if (!modules.includes(moduleId)) {
+      throw new Error(`The ${moduleId} module is not included in your licence.`);
+    }
+    return;
+  }
+
   const result = await invoke<{ entitled: boolean; error?: string }>("verify_module_entitled", {
     key,
     module: moduleId,
   });
   if (!result.entitled) {
     throw new Error(`The ${moduleId} module is not included in your licence.`);
+  }
+}
+
+function safeParseModules(json: string): string[] {
+  try {
+    const parsed = JSON.parse(json);
+    return Array.isArray(parsed) ? parsed.filter((x): x is string => typeof x === "string") : [];
+  } catch {
+    return [];
   }
 }
 
