@@ -52,7 +52,7 @@ export function LicenseActivationPage({ onActivated }: Props) {
   }, []);
 
   const cleanedKey = key.replace(/\s+/g, "");
-  const canActivate = cleanedKey.length > 50 && !activating;
+  const canActivate = cleanedKey.length >= 20 && !activating;
 
   const handleActivate = async () => {
     if (!cleanedKey) {
@@ -197,11 +197,17 @@ export function LicenseActivationPage({ onActivated }: Props) {
                 </div>
                 <Button
                   variant="outline"
-                  onClick={() => {
+                  onClick={async () => {
                     const url = new URL(`https://${BRAND.company.domain}/signup`);
                     if (machine?.fingerprint) url.searchParams.set("machine", machine.fingerprint);
                     if (!IS_PRO && LOCKED_MODULE) url.searchParams.set("variant", LOCKED_MODULE);
-                    window.open(url.toString(), "_blank", "noopener,noreferrer");
+                    try {
+                      const { openUrl } = await import("@tauri-apps/plugin-opener");
+                      await openUrl(url.toString());
+                    } catch {
+                      // Fallback for non-Tauri contexts (dev / SSR)
+                      window.open(url.toString(), "_blank", "noopener,noreferrer");
+                    }
                   }}
                   className="w-full h-11 rounded-xl cursor-pointer"
                 >
@@ -292,7 +298,7 @@ export function LicenseActivationPage({ onActivated }: Props) {
                 className="w-full min-h-[110px] rounded-xl glass-thin p-3 text-[11.5px] font-mono leading-relaxed resize-y focus:outline-none focus:ring-2 focus:ring-primary/40 transition"
                 spellCheck={false}
               />
-              {key && cleanedKey.length < 50 && (
+              {key && cleanedKey.length < 20 && (
                 <p className="text-[11px] text-muted-foreground">Key looks short — make sure you copied it all.</p>
               )}
               {error && (
