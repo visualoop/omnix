@@ -9,12 +9,12 @@ import {
 } from "@/components/icons/feature-icons";
 import { Button } from "@/components/ui/button";
 import {
-  getMachineInfo, activateLicense, startTrial, getTrialState,
+  getMachineInfo, activateLicense, getTrialState,
   type MachineInfo, type TrialState,
 } from "@/services/license";
 import { OmnixLogo } from "@/components/omnix-logo";
 import { APP_NAME, BRAND } from "@/lib/brand";
-import { IS_PRO, LOCKED_MODULE, VARIANT_NAME } from "@/lib/variant";
+import { IS_PRO, LOCKED_MODULE } from "@/lib/variant";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
@@ -22,13 +22,6 @@ interface Props {
   onActivated: () => void;
 }
 
-/** Modules a customer can trial (Core is always included, never gated). */
-const TRIAL_MODULES = [
-  { id: "dawa", label: "Dawa — Pharmacy" },
-  { id: "retail", label: "Omnix — Retail" },
-  { id: "hardware", label: "Hardware & Building" },
-  { id: "hospitality", label: "Hospitality — Restaurant & Hotel" },
-] as const;
 
 const FEATURES = [
   { icon: POSIcon,       label: "Point of Sale",     text: "Fast checkout with M-Pesa, card, and cash",            tint: "from-emerald-500/30 to-emerald-500/5",  glow: "text-emerald-400" },
@@ -44,9 +37,8 @@ export function LicenseActivationPage({ onActivated }: Props) {
   const [trial, setTrial] = useState<TrialState | null>(null);
   const [key, setKey] = useState("");
   const [activating, setActivating] = useState(false);
-  const [startingTrial, setStartingTrial] = useState(false);
   // Trade variants: lock the trial to the binary's module. Pro picks dawa as default.
-  const [trialModule, setTrialModule] = useState<string>(
+  const [trialModule] = useState<string>(
     !IS_PRO && LOCKED_MODULE ? LOCKED_MODULE : "dawa",
   );
   const [error, setError] = useState<string | null>(null);
@@ -83,25 +75,6 @@ export function LicenseActivationPage({ onActivated }: Props) {
     }
   };
 
-  const handleStartTrial = async () => {
-    setStartingTrial(true);
-    try {
-      const state = await startTrial(trialModule);
-      if (state.active) {
-        const modLabel = TRIAL_MODULES.find((m) => m.id === trialModule)?.label ?? trialModule;
-        toast.success(`30-day ${modLabel} trial started — ${state.days_remaining} days remaining`);
-        onActivated();
-      } else if (state.consumed) {
-        toast.error("Free trial already used on this machine");
-      } else {
-        toast.error("Could not start trial. Please activate a license.");
-      }
-    } catch (e) {
-      toast.error(String(e));
-    } finally {
-      setStartingTrial(false);
-    }
-  };
 
   const handleCopyMachineId = async () => {
     if (!machine) return;
@@ -210,7 +183,7 @@ export function LicenseActivationPage({ onActivated }: Props) {
         {/* ─── RIGHT: Activation panel ─────────────────────────── */}
         <div className="glass-thick rounded-glass-xl p-6 lg:p-7">
           <div className="space-y-5">
-            {/* Trial CTA — primary */}
+            {/* Trial CTA — direct user to website to fetch their trial key */}
             {!trialAlreadyUsed && !trialActive && (
               <div className="space-y-3">
                 <div className="flex items-center gap-3">
@@ -218,41 +191,25 @@ export function LicenseActivationPage({ onActivated }: Props) {
                     <Zap className="h-4 w-4" />
                   </div>
                   <div>
-                    <div className="text-[14px] font-semibold leading-tight">Start free for 30 days</div>
-                    <div className="text-[11.5px] text-muted-foreground leading-tight mt-0.5">No card. One module. Full features.</div>
+                    <div className="text-[14px] font-semibold leading-tight">Get your free 30-day trial key</div>
+                    <div className="text-[11.5px] text-muted-foreground leading-tight mt-0.5">Sign up at {BRAND.company.domain} → your trial key appears on the dashboard.</div>
                   </div>
                 </div>
-                <label className="block text-[11px] font-medium text-muted-foreground">
-                  {IS_PRO ? "Choose a module to trial" : "Module"}
-                  {IS_PRO ? (
-                    <select
-                      value={trialModule}
-                      onChange={(e) => setTrialModule(e.target.value)}
-                      className="mt-1.5 w-full h-10 rounded-xl glass-thin px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 cursor-pointer"
-                    >
-                      {TRIAL_MODULES.map((m) => (
-                        <option key={m.id} value={m.id}>{m.label}</option>
-                      ))}
-                    </select>
-                  ) : (
-                    <div className="mt-1.5 w-full h-10 rounded-xl glass-thin px-3 text-sm text-foreground flex items-center">
-                      {TRIAL_MODULES.find((m) => m.id === LOCKED_MODULE)?.label ?? VARIANT_NAME}
-                    </div>
-                  )}
-                </label>
                 <Button
-                  onClick={handleStartTrial}
-                  disabled={startingTrial}
-                  className="w-full h-11 rounded-xl shadow-native cursor-pointer"
+                  variant="outline"
+                  onClick={() => {
+                    const url = new URL(`https://${BRAND.company.domain}/signup`);
+                    if (machine?.fingerprint) url.searchParams.set("machine", machine.fingerprint);
+                    if (!IS_PRO && LOCKED_MODULE) url.searchParams.set("variant", LOCKED_MODULE);
+                    window.open(url.toString(), "_blank", "noopener,noreferrer");
+                  }}
+                  className="w-full h-11 rounded-xl cursor-pointer"
                 >
-                  {startingTrial ? (
-                    <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Starting trial…</>
-                  ) : (
-                    <>Start free trial <ArrowRight className="h-4 w-4 ml-1.5" /></>
-                  )}
+                  <ExternalLink className="h-4 w-4 mr-2" />
+                  Get your trial key on {BRAND.company.domain}
                 </Button>
                 <div className="text-[11px] text-muted-foreground text-center">
-                  After 30 days, enter a licence to keep using {APP_NAME}.
+                  Already have a key? Paste it below to activate.
                 </div>
               </div>
             )}

@@ -1,3 +1,5 @@
+import { PLACEHOLDERS } from "@/lib/variant-placeholders";
+import { VARIANT } from "@/lib/variant";
 import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { Plus, Search, Package, Upload, Edit3, Zap, PackagePlus, Layers } from "lucide-react";
@@ -89,7 +91,7 @@ export function InventoryPage() {
       <div className="relative max-w-sm">
         <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
         <Input
-          placeholder="Search products..."
+          placeholder={PLACEHOLDERS.inventorySearch}
           className="pl-9"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
@@ -220,8 +222,18 @@ function EmptyState({ onAdd }: { onAdd: () => void }) {
   return (
     <div className="flex flex-col items-center justify-center py-16 text-center">
       <Package className="h-10 w-10 text-muted-foreground/50 mb-3" />
-      <h3 className="text-sm font-medium">No products yet</h3>
-      <p className="text-xs text-muted-foreground mt-1">Add your first product to get started.</p>
+      <h3 className="text-sm font-medium">{
+        VARIANT === "dawa" ? "No drugs yet" :
+        VARIANT === "hospitality" ? "No menu items yet" :
+        VARIANT === "hardware" ? "No parts yet" :
+        "No products yet"
+      }</h3>
+      <p className="text-xs text-muted-foreground mt-1">{
+        VARIANT === "dawa" ? "Add your first drug — name, batch number, expiry — to start dispensing." :
+        VARIANT === "hospitality" ? "Add ingredients, then build menu items in Hospitality → Menu." :
+        VARIANT === "hardware" ? "Add your first part — bag of cement, length of rebar — to ring up at the till." :
+        "Add your first product to get started."
+      }</p>
       <Button size="sm" className="mt-4" onClick={onAdd}>
         <Plus className="h-4 w-4 mr-1" /> Add Product
       </Button>

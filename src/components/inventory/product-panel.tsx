@@ -1,3 +1,4 @@
+import { PLACEHOLDERS } from "@/lib/variant-placeholders";
 import { useState, useEffect } from "react";
 import { Trash2, Plus, Loader2 } from "lucide-react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter } from "@/components/ui/sheet";
@@ -179,7 +180,7 @@ export function ProductPanel({ open, onClose, productId, onSaved }: Props) {
             <TabsPanel value="general" className="mt-3 space-y-3">
               <Field label="Product name *">
                 <div className="flex gap-2">
-                  <Input value={form.name} onChange={(e) => update("name", e.target.value)} placeholder="e.g. Paracetamol 500mg" autoFocus className="flex-1" />
+                  <Input value={form.name} onChange={(e) => update("name", e.target.value)} placeholder={PLACEHOLDERS.productName} autoFocus className="flex-1" />
                   <AiButton
                     label="Enrich"
                     hint="Auto-fill category, unit and tax rate from the product name"
