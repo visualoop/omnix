@@ -5,6 +5,7 @@ import * as migration_20260608_104500_customer_verified_backfill from './2026060
 import * as migration_20260608_111500_clear_customer_lockouts from './20260608_111500_clear_customer_lockouts';
 import * as migration_20260608_112800_cleanup_probe_customers from './20260608_112800_cleanup_probe_customers';
 import * as migration_20260608_152000_fix_variant_enum_naming from './20260608_152000_fix_variant_enum_naming';
+import * as migration_20260609_091500_pricing_30k from './20260609_091500_pricing_30k';
 
 export const migrations = [
   {
@@ -41,5 +42,10 @@ export const migrations = [
     up: migration_20260608_152000_fix_variant_enum_naming.up,
     down: migration_20260608_152000_fix_variant_enum_naming.down,
     name: '20260608_152000_fix_variant_enum_naming',
+  },
+  {
+    up: migration_20260609_091500_pricing_30k.up,
+    down: migration_20260609_091500_pricing_30k.down,
+    name: '20260609_091500_pricing_30k',
   },
 ];

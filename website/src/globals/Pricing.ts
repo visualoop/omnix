@@ -29,7 +29,7 @@ export const Pricing: GlobalConfig = {
       name: 'starter',
       type: 'group',
       fields: [
-        { name: 'oneTimeFee', type: 'number', defaultValue: 100000 },
+        { name: 'oneTimeFee', type: 'number', defaultValue: 30000 },
         { name: 'maintenanceYearly', type: 'number', defaultValue: 12000 },
         { name: 'maxBranches', type: 'number', defaultValue: 1 },
         { name: 'maxMachines', type: 'number', defaultValue: 3 },
@@ -44,7 +44,7 @@ export const Pricing: GlobalConfig = {
       name: 'business',
       type: 'group',
       fields: [
-        { name: 'oneTimeFee', type: 'number', defaultValue: 75000 },
+        { name: 'oneTimeFee', type: 'number', defaultValue: 30000 },
         { name: 'maintenanceYearly', type: 'number', defaultValue: 25000 },
         { name: 'maxBranches', type: 'number', defaultValue: 5 },
         { name: 'maxMachines', type: 'number', defaultValue: 10 },

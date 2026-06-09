@@ -17,7 +17,15 @@
 export const VARIANTS = ["pro", "dawa", "retail", "hospitality", "hardware"] as const;
 export type Variant = (typeof VARIANTS)[number];
 
-const RAW = (import.meta.env.VITE_OMNIX_VARIANT ?? "pro").toLowerCase();
+// Resolved at build time by vite.config.ts via `define`. The redundant
+// fallbacks guarantee the literal string survives any minifier rewrite.
+declare const __OMNIX_VARIANT__: string | undefined;
+const RAW_VARIANT: string =
+  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+  (typeof __OMNIX_VARIANT__ !== "undefined" && __OMNIX_VARIANT__) ||
+  import.meta.env.VITE_OMNIX_VARIANT ||
+  "pro";
+const RAW = RAW_VARIANT.toLowerCase();
 export const VARIANT: Variant = (VARIANTS as readonly string[]).includes(RAW)
   ? (RAW as Variant)
   : "pro";

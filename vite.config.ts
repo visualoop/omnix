@@ -8,13 +8,19 @@ const host = process.env.TAURI_DEV_HOST;
 
 // https://vite.dev/config/
 export default defineConfig(async ({ mode }) => {
-  // Load OMNIX_VARIANT from process.env so CI can drive the variant build
-  // via shell env without forcing every dev to keep a .env file.
+  // Resolve the variant for this build. Priority:
+  //   1. process.env.VITE_OMNIX_VARIANT (CI matrix sets this per build)
+  //   2. .env / .env.production / .env.local (Vite's loadEnv)
+  //   3. fallback to 'pro' so dev mode + legacy v0.3.x reproduce today's behaviour
   const env = loadEnv(mode, process.cwd(), "");
   // @ts-expect-error process is a nodejs global
   const variant = (process.env.VITE_OMNIX_VARIANT ?? env.VITE_OMNIX_VARIANT ?? "pro").toLowerCase();
   const validVariants = ["pro", "dawa", "retail", "hospitality", "hardware"];
   const resolvedVariant = validVariants.includes(variant) ? variant : "pro";
+
+  // Log so CI logs make it obvious which variant is being built.
+  // eslint-disable-next-line no-console
+  console.log(`\n[vite] Building variant: ${resolvedVariant} (mode=${mode})\n`);
 
   return {
     plugins: [react(), tailwindcss()],
@@ -23,17 +29,19 @@ export default defineConfig(async ({ mode }) => {
         "@": path.resolve(__dirname, "./src"),
       },
     },
+    // Hard-bake the variant. Vite's automatic env resolution can drop
+    // the env var if Tauri's child-process spawn doesn't propagate the
+    // parent's env (it usually does on Linux/macOS, sometimes drops on
+    // Windows). Using `define` to literally string-replace the access
+    // path bypasses that entirely — the bundle ends up with the literal
+    // "dawa" / "retail" / etc. burned in at parse time.
     define: {
-      // Inline the variant for non-import.meta consumers (sw, workers, etc.).
+      "import.meta.env.VITE_OMNIX_VARIANT": JSON.stringify(resolvedVariant),
       __OMNIX_VARIANT__: JSON.stringify(resolvedVariant),
     },
     envPrefix: ["VITE_"],
 
-    // Vite options tailored for Tauri development and only applied in `tauri dev` or `tauri build`
-    //
-    // 1. prevent Vite from obscuring rust errors
     clearScreen: false,
-    // 2. tauri expects a fixed port, fail if that port is not available
     server: {
       port: 1420,
       strictPort: true,
@@ -46,7 +54,6 @@ export default defineConfig(async ({ mode }) => {
           }
         : undefined,
       watch: {
-        // 3. tell Vite to ignore watching `src-tauri`
         ignored: ["**/src-tauri/**"],
       },
     },

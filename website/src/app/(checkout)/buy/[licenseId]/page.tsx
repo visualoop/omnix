@@ -191,7 +191,7 @@ function computeLines({
   switch (purpose) {
     case 'license_fee': {
       const fee = tier === 'business' ? pricing.business.oneTimeFee : pricing.starter.oneTimeFee
-      return [{ label: `${tier} licence (one-time)`, amount: fee }]
+      return [{ label: `Omnix licence (one-time)`, amount: fee }]
     }
     case 'maintenance_renewal': {
       const yearly =

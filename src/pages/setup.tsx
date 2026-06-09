@@ -10,7 +10,7 @@ import { ModuleLogo } from "@/components/module-logos";
 import { APP_NAME } from "@/lib/brand";
 import { useActiveModule, MODULE_DEFINITIONS, type ModuleId } from "@/stores/active-module";
 import { isModuleEntitled, entitledModules } from "@/stores/entitlements";
-import { IS_PRO, LOCKED_MODULE, VARIANT_NAME, VARIANT_TAGLINE } from "@/lib/variant";
+import { IS_PRO, LOCKED_MODULE, MODULES_ALLOWED, VARIANT_NAME, VARIANT_TAGLINE } from "@/lib/variant";
 
 interface SetupData {
   businessName: string;
@@ -154,6 +154,7 @@ export function SetupWizard() {
       <div className="space-y-2 max-h-[55vh] overflow-y-auto pr-1 -mr-1">
         {(Object.values(MODULE_DEFINITIONS) as Array<typeof MODULE_DEFINITIONS[ModuleId]>)
           .filter((m) => m.id !== "core")
+          .filter((m) => MODULES_ALLOWED.includes(m.id))
           .filter((m) => isModuleEntitled(m.id))
           .map((m) => {
             const isPlanned = m.status === "planned";

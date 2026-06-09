@@ -265,11 +265,11 @@ export function computeAmount(
   const t = tier === 'business' ? pricing.business : pricing.starter
   switch (purpose) {
     case 'license_fee':
-      return t?.oneTimeFee ?? 100000
+      return t?.oneTimeFee ?? 30000
     case 'maintenance_renewal':
       return t?.maintenanceYearly ?? 12000
     case 'major_upgrade': {
-      const fee = t?.oneTimeFee ?? 100000
+      const fee = t?.oneTimeFee ?? 30000
       const discount = pricing.majorUpgradeDiscount ?? 50
       return Math.round(fee * (1 - discount / 100))
     }

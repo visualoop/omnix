@@ -5,6 +5,7 @@ import { hasPermission, hasAnyPermission, ROLE_INFO, type Permission } from "@/l
 import { useNavigate, useLocation } from "react-router-dom";
 import type { Role } from "@/lib/permissions";
 import { useActiveModule, MODULE_DEFINITIONS } from "@/stores/active-module";
+import { IS_PRO } from "@/lib/variant";
 import { getFeatureModule } from "@/lib/module-features";
 import { isModuleEntitled } from "@/stores/entitlements";
 
@@ -72,7 +73,9 @@ export function RequireRole({ permission, roles, children }: Props) {
         </p>
         <p className="text-sm text-muted-foreground max-w-md mb-4">
           You're currently using the <b>{MODULE_DEFINITIONS[activeModule].name}</b> module.
-          Switch modules from Settings to enable {moduleDef.shortName} features.
+          {IS_PRO
+            ? `Switch modules from Settings to enable ${moduleDef.shortName} features.`
+            : `This Omnix variant doesn't include the ${moduleDef.shortName} module — install Omnix Pro from omnix.co.ke/pro to use multiple trades.`}
         </p>
         <div className="flex gap-2">
           <Button variant="outline" size="sm" onClick={() => navigate(-1)}>
