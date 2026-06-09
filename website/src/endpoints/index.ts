@@ -14,8 +14,7 @@ import type { Endpoint } from 'payload'
 import { releasesPostEndpoint } from './releases-post'
 import { releasesLatestEndpoint } from './releases-latest'
 import { downloadsTrackEndpoint } from './downloads-track'
-import { paystackChargeEndpoint } from './paystack-charge'
-import { paystackSubmitOtpEndpoint } from './paystack-submit-otp'
+import { paystackInitEndpoint } from './paystack-init'
 import { paystackWebhookEndpoint } from './paystack-webhook'
 import { paystackStatusEndpoint } from './paystack-status'
 import { licensesValidateEndpoint } from './licenses-validate'
@@ -38,8 +37,7 @@ export const customEndpoints: Endpoint[] = [
   releasesPostEndpoint,
   releasesLatestEndpoint,
   downloadsTrackEndpoint,
-  paystackChargeEndpoint,
-  paystackSubmitOtpEndpoint,
+  paystackInitEndpoint,
   paystackWebhookEndpoint,
   paystackStatusEndpoint,
   licensesValidateEndpoint,

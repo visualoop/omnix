@@ -3,7 +3,7 @@
  *
  * All Paystack calls go through this module. Routes never call
  * `fetch('https://api.paystack.co/...')` directly — they call
- * paystack.chargeMobileMoney() / chargeCard() / submitOtp() / verify().
+ * paystack.verify() / paystack.applyPaymentSuccess() / paystack.computeAmount(). The browser uses Paystack Inline V2 directly.
  *
  * NO PAYSTACK-HOSTED CHECKOUT. NO REDIRECT-FOR-CARDS. We use the
  * /charge endpoint everywhere; the front-end renders OUR OWN UI for
@@ -31,108 +31,6 @@ function authHeaders(): HeadersInit {
   }
 }
 
-export type ChargeStatus =
-  | 'success'
-  | 'send_otp'
-  | 'send_pin'
-  | 'send_birthday'
-  | 'send_address'
-  | 'send_phone'
-  | 'open_url'
-  | 'pay_offline' // M-Pesa: customer hasn't confirmed yet
-  | 'pending'
-  | 'failed'
-
-export interface ChargeResponse {
-  reference: string
-  status: ChargeStatus
-  /** Customer-facing message (e.g. "Enter the 4-digit OTP sent to ..."). */
-  displayText?: string
-  /** Present when status === 'open_url' — the 3DS challenge URL. */
-  redirectUrl?: string
-}
-
-function parseChargeResponse(json: {
-  data?: Record<string, unknown>
-}): ChargeResponse {
-  const data = json?.data ?? {}
-  const status = (data.status as ChargeStatus) ?? 'pending'
-  return {
-    reference: data.reference as string,
-    status,
-    displayText: (data.display_text as string) ?? (data.message as string),
-    redirectUrl: data.url as string | undefined,
-  }
-}
-
-/* ── M-Pesa STK push ─────────────────────────────────────────────── */
-export async function chargeMobileMoney(input: {
-  email: string
-  amountKobo: number
-  phone: string // any reasonable Kenyan format; we normalise to +254...
-  reference: string
-  metadata?: Record<string, unknown>
-}): Promise<ChargeResponse> {
-  const phone = normaliseKePhone(input.phone)
-  const res = await fetch(`${PAYSTACK_BASE}/charge`, {
-    method: 'POST',
-    headers: authHeaders(),
-    body: JSON.stringify({
-      email: input.email,
-      amount: input.amountKobo,
-      currency: 'KES',
-      reference: input.reference,
-      mobile_money: { phone, provider: 'mpesa' },
-      metadata: { ...input.metadata, channel: 'mobile_money' },
-    }),
-  })
-  const json = (await res.json()) as { status?: boolean; message?: string; data?: Record<string, unknown> }
-  if (!res.ok || !json.status) {
-    throw new Error(`Paystack /charge mpesa rejected: ${json?.message ?? res.status}`)
-  }
-  return parseChargeResponse(json)
-}
-
-/* ── Card charge (with already-encrypted card) ───────────────────── */
-export async function chargeCard(input: {
-  email: string
-  amountKobo: number
-  encryptedCard: string
-  reference: string
-  metadata?: Record<string, unknown>
-}): Promise<ChargeResponse> {
-  const res = await fetch(`${PAYSTACK_BASE}/charge`, {
-    method: 'POST',
-    headers: authHeaders(),
-    body: JSON.stringify({
-      email: input.email,
-      amount: input.amountKobo,
-      currency: 'KES',
-      reference: input.reference,
-      card: input.encryptedCard,
-      metadata: { ...input.metadata, channel: 'card' },
-    }),
-  })
-  const json = (await res.json()) as { status?: boolean; message?: string; data?: Record<string, unknown> }
-  if (!res.ok || !json.status) {
-    throw new Error(`Paystack /charge card rejected: ${json?.message ?? res.status}`)
-  }
-  return parseChargeResponse(json)
-}
-
-/* ── Submit OTP for a charge that returned send_otp ─────────────── */
-export async function submitOtp(input: { reference: string; otp: string }): Promise<ChargeResponse> {
-  const res = await fetch(`${PAYSTACK_BASE}/charge/submit_otp`, {
-    method: 'POST',
-    headers: authHeaders(),
-    body: JSON.stringify({ reference: input.reference, otp: input.otp }),
-  })
-  const json = (await res.json()) as { status?: boolean; message?: string; data?: Record<string, unknown> }
-  if (!res.ok || !json.status) {
-    throw new Error(`Paystack /charge/submit_otp failed: ${json?.message ?? res.status}`)
-  }
-  return parseChargeResponse(json)
-}
 
 /* ── Verify a transaction (defense-in-depth on webhook + status polling) ── */
 export async function verify(reference: string): Promise<{
