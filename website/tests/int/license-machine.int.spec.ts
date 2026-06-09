@@ -1,8 +1,8 @@
 /**
  * License + machine activation tests.
  *
- *   POST /api/licenses/activate    — register a machine to a license
- *   POST /api/licenses/validate    — desktop heartbeat: state + lockout
+ *   POST /api/licensing/activate    — register a machine to a license
+ *   POST /api/licensing/validate    — desktop heartbeat: state + lockout
  *   POST /api/trials/start         — trial fingerprint enforcement
  *   PATCH /api/customers/me        — customer profile update
  */
@@ -107,7 +107,7 @@ const buildReq = (db: Db, body: Record<string, unknown>, opts: { headers?: Recor
 
 afterEach(() => vi.restoreAllMocks())
 
-/* ─── /api/licenses/activate ────────────────────────────────────────── */
+/* ─── /api/licensing/activate ────────────────────────────────────────── */
 describe('licenses/activate', () => {
   it('400 when missing fields', async () => {
     const res = await licensesActivateEndpoint.handler(buildReq(seed(), {}))
@@ -189,7 +189,7 @@ describe('licenses/activate', () => {
   })
 })
 
-/* ─── /api/licenses/validate ────────────────────────────────────────── */
+/* ─── /api/licensing/validate ────────────────────────────────────────── */
 describe('licenses/validate', () => {
   it('400 when missing licenseKey', async () => {
     const res = await licensesValidateEndpoint.handler(buildReq(seed(), {}))

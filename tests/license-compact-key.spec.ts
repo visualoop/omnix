@@ -5,7 +5,7 @@
  * The desktop must:
  *   1. Recognise these as "compact" / server-validated (not RSA-signed)
  *   2. Skip local RSA verification for them
- *   3. Trust the server's /api/licenses/activate response
+ *   3. Trust the server's /api/licensing/activate response
  *   4. Cache the entitlements in SQLite so module gating works offline
  *
  * These tests exercise the format detection + activation branch.

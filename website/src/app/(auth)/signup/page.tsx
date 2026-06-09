@@ -1,5 +1,9 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
+import { headers } from 'next/headers'
+import { redirect } from 'next/navigation'
+import { getPayload } from 'payload'
+import config from '@/payload.config'
 import { Check, Sparkles } from '@/components/icons'
 import { SignupForm } from '@/components/auth/signup-form'
 
@@ -16,7 +20,34 @@ const PROOF_POINTS = [
   'No subscription · no auto-renewal',
 ] as const
 
-export default function SignupPage() {
+export default async function SignupPage({
+  searchParams,
+}: {
+  searchParams?: Promise<Record<string, string | string[] | undefined>>
+}) {
+  // If the visitor is already signed in, send them to the dashboard.
+  // The 'Get your trial key' deeplink from the desktop app lands here
+  // with ?machine=…&variant=… in the URL — those params get carried
+  // through to the dashboard so we can show variant-aware UI there.
+  const reqHeaders = await headers()
+  const payloadConfig = await config
+  const payload = await getPayload({ config: payloadConfig })
+  let isCustomer = false
+  try {
+    const result = await payload.auth({ headers: reqHeaders })
+    isCustomer = result.user?.collection === 'customers'
+  } catch {
+    isCustomer = false
+  }
+  if (isCustomer) {
+    const sp = (await searchParams) ?? {}
+    const params = new URLSearchParams()
+    if (typeof sp.machine === 'string') params.set('machine', sp.machine)
+    if (typeof sp.variant === 'string') params.set('variant', sp.variant)
+    const qs = params.toString()
+    redirect(`/dashboard${qs ? `?${qs}` : ''}`)
+  }
+
   return (
     <div className="grid flex-1 grid-cols-1 lg:grid-cols-[1fr_1fr]">
       {/* Form column */}

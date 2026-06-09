@@ -29,7 +29,7 @@ export function entitlementsOf(license: LicenseDoc) {
 }
 
 /**
- * POST /api/licenses/activate
+ * POST /api/licensing/activate
  *
  * One-time online activation. Validates the licence, enforces the seat cap,
  * registers the machine, and returns a machine-bound token + canonical
@@ -39,7 +39,7 @@ export function entitlementsOf(license: LicenseDoc) {
  * Response: { ok, authToken, action, entitlements }
  */
 export const licensesActivateEndpoint: Endpoint = {
-  path: '/licenses/activate',
+  path: '/licensing/activate',
   method: 'post',
   handler: async (req) => {
     const body = await readJson<{

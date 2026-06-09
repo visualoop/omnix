@@ -41,7 +41,7 @@ const NAV: readonly NavItem[] = [
  *
  * The Trades item is now a dropdown — five variants in one place.
  */
-export function SiteHeader() {
+export function SiteHeader({ isAuthed = false }: { isAuthed?: boolean }) {
   const pathname = usePathname()
   const [scrolled, setScrolled] = React.useState(false)
   const [open, setOpen] = React.useState(false)
@@ -178,15 +178,31 @@ export function SiteHeader() {
 
         {/* Right column */}
         <div className="flex items-center justify-end gap-5">
-          <Link
-            href="/login"
-            className="font-[family-name:var(--font-ui)] hidden text-[13px] font-medium text-[var(--color-fg-muted)] transition-colors hover:text-[var(--color-fg)] sm:inline"
-          >
-            Sign in
-          </Link>
-          <Button asChild size="sm" className="hidden sm:inline-flex">
-            <Link href="/signup">Start free trial</Link>
-          </Button>
+          {isAuthed ? (
+            <>
+              <Link
+                href="/dashboard"
+                className="font-[family-name:var(--font-ui)] hidden text-[13px] font-medium text-[var(--color-fg-muted)] transition-colors hover:text-[var(--color-fg)] sm:inline"
+              >
+                Account
+              </Link>
+              <Button asChild size="sm" className="hidden sm:inline-flex">
+                <Link href="/dashboard">Open dashboard</Link>
+              </Button>
+            </>
+          ) : (
+            <>
+              <Link
+                href="/login"
+                className="font-[family-name:var(--font-ui)] hidden text-[13px] font-medium text-[var(--color-fg-muted)] transition-colors hover:text-[var(--color-fg)] sm:inline"
+              >
+                Sign in
+              </Link>
+              <Button asChild size="sm" className="hidden sm:inline-flex">
+                <Link href="/signup">Start free trial</Link>
+              </Button>
+            </>
+          )}
 
           <button
             type="button"
@@ -232,12 +248,20 @@ export function SiteHeader() {
               </React.Fragment>
             ))}
             <div className="mt-4 grid grid-cols-2 gap-2">
-              <Button asChild variant="outline">
-                <Link href="/login">Sign in</Link>
-              </Button>
-              <Button asChild>
-                <Link href="/signup">Start free trial</Link>
-              </Button>
+              {isAuthed ? (
+                <Button asChild className="col-span-2">
+                  <Link href="/dashboard">Open dashboard</Link>
+                </Button>
+              ) : (
+                <>
+                  <Button asChild variant="outline">
+                    <Link href="/login">Sign in</Link>
+                  </Button>
+                  <Button asChild>
+                    <Link href="/signup">Start free trial</Link>
+                  </Button>
+                </>
+              )}
             </div>
           </div>
         </div>

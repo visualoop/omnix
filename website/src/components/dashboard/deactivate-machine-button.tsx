@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 
 /**
  * Deactivate a machine to free a licence seat (self-service rebind).
- * Calls POST /api/licenses/rebind; the server enforces the cooldown.
+ * Calls POST /api/licensing/rebind; the server enforces the cooldown.
  */
 export function DeactivateMachineButton({ machineId }: { machineId: string }) {
   const router = useRouter()
@@ -19,7 +19,7 @@ export function DeactivateMachineButton({ machineId }: { machineId: string }) {
     setBusy(true)
     setError(null)
     try {
-      const res = await fetch('/api/licenses/rebind', {
+      const res = await fetch('/api/licensing/rebind', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ machineId }),

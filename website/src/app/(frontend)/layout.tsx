@@ -1,5 +1,8 @@
 import type { Metadata } from 'next'
+import { headers } from 'next/headers'
 import { GoogleAnalytics } from '@next/third-parties/google'
+import { getPayload } from 'payload'
+import config from '@/payload.config'
 
 import { BRAND, BRAND_NAME, BRAND_TAGLINE } from '@/lib/brand'
 import { SiteHeader } from '@/components/layout/site-header'
@@ -40,11 +43,26 @@ export const metadata: Metadata = {
   },
 }
 
-export default function FrontendLayout({ children }: { children: React.ReactNode }) {
+export default async function FrontendLayout({ children }: { children: React.ReactNode }) {
   const gaId = process.env.NEXT_PUBLIC_GA_ID
+
+  // Server-side session probe so the header swaps "Sign in / Start trial"
+  // for "Account / Open dashboard" when the visitor is already a signed-in
+  // customer. Errors (stale token, server hiccup) treat the visitor as
+  // signed-out and show the unauth chrome.
+  let isAuthed = false
+  try {
+    const reqHeaders = await headers()
+    const payload = await getPayload({ config: await config })
+    const result = await payload.auth({ headers: reqHeaders })
+    isAuthed = result.user?.collection === 'customers'
+  } catch {
+    isAuthed = false
+  }
+
   return (
     <RootShell>
-      <SiteHeader />
+      <SiteHeader isAuthed={isAuthed} />
       <main>{children}</main>
       <SiteFooter />
       {gaId && <GoogleAnalytics gaId={gaId} />}

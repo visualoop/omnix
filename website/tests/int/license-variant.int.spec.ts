@@ -26,7 +26,7 @@ interface Lic {
 
 const buildReq = (body: Record<string, unknown>, licenses: Lic[], machines: unknown[] = []) =>
   ({
-    url: 'http://localhost/api/licenses/validate',
+    url: 'http://localhost/api/licensing/validate',
     json: async () => body,
     headers: headers({}),
     payload: {
@@ -109,7 +109,7 @@ describe('licenses-validate: variant gate', () => {
 describe('licenses-activate: variant gate', () => {
   const makeActReq = (body: Record<string, unknown>, licenses: Lic[]) =>
     ({
-      url: 'http://localhost/api/licenses/activate',
+      url: 'http://localhost/api/licensing/activate',
       json: async () => body,
       headers: headers({}),
       payload: {

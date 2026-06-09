@@ -1,5 +1,9 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
+import { headers } from 'next/headers'
+import { redirect } from 'next/navigation'
+import { getPayload } from 'payload'
+import config from '@/payload.config'
 import { LoginForm } from '@/components/auth/login-form'
 
 export const metadata: Metadata = {
@@ -7,7 +11,24 @@ export const metadata: Metadata = {
   description: 'Sign in to your Omnix account.',
 }
 
-export default function LoginPage() {
+export default async function LoginPage({
+  searchParams,
+}: {
+  searchParams?: Promise<{ next?: string }>
+}) {
+  const reqHeaders = await headers()
+  const payloadConfig = await config
+  const payload = await getPayload({ config: payloadConfig })
+  try {
+    const result = await payload.auth({ headers: reqHeaders })
+    if (result.user?.collection === 'customers') {
+      const sp = (await searchParams) ?? {}
+      redirect(sp.next || '/dashboard')
+    }
+  } catch {
+    // Stale session — fall through and show the login form.
+  }
+
   return (
     <div className="flex flex-1 items-center justify-center px-6 py-16 sm:py-24">
       <div className="w-full max-w-md">

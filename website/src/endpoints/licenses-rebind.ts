@@ -14,7 +14,7 @@ const customerId = (c: LicenseDoc['customer']): string | number =>
   typeof c === 'object' ? c.id : c
 
 /**
- * POST /api/licenses/rebind
+ * POST /api/licensing/rebind
  *
  * Customer-initiated: deactivate one of their machines to free a seat so a
  * replacement PC can activate. Rate-limited by the license's rolling rebind
@@ -25,7 +25,7 @@ const customerId = (c: LicenseDoc['customer']): string | number =>
  * Response: { ok, rebindsUsed, rebindLimit, windowResetsAt }
  */
 export const licensesRebindEndpoint: Endpoint = {
-  path: '/licenses/rebind',
+  path: '/licensing/rebind',
   method: 'post',
   handler: async (req) => {
     const user = req.user

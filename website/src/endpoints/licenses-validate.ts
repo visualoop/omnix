@@ -2,7 +2,7 @@ import type { Endpoint } from 'payload'
 import { errorResponse, jsonResponse, readJson } from './_auth'
 
 /**
- * POST /api/licenses/validate
+ * POST /api/licensing/validate
  *
  * Called by the Tauri desktop app on every startup AND once per hour while
  * running. Returns the current state of the licence + lockout instructions
@@ -19,7 +19,7 @@ import { errorResponse, jsonResponse, readJson } from './_auth'
  *     mustUpgrade, requestDiagnostic, variant, variantMismatch }
  */
 export const licensesValidateEndpoint: Endpoint = {
-  path: '/licenses/validate',
+  path: '/licensing/validate',
   method: 'post',
   handler: async (req) => {
     const body = await readJson<{

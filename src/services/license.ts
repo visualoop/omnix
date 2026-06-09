@@ -125,7 +125,7 @@ async function activateOnline(
   fingerprint: string,
 ): Promise<{ ok: boolean; body?: ActivateResponse; seatFull?: boolean; error?: string } | null> {
   try {
-    const res = await fetch(`${ACTIVATION_API_BASE}/api/licenses/activate`, {
+    const res = await fetch(`${ACTIVATION_API_BASE}/api/licensing/activate`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ licenseKey: key, machineId: fingerprint, variant: VARIANT }),
@@ -154,7 +154,7 @@ async function activateOnline(
  *
  * - "compact": OMNIX-PRO-XXXX-XXXX-XXXX (5 segments, ≤ 30 chars). Issued by
  *   the website. Server-validated. The desktop trusts what the server returns
- *   from /api/licenses/activate — there's no offline RSA signature to verify.
+ *   from /api/licensing/activate — there's no offline RSA signature to verify.
  *
  * - "rsa": OMNIX-<base64url(payload)>.<base64url(signature)> (one big blob,
  *   typically > 400 chars). Issued by the legacy licensing tool, RSA-verified
@@ -185,7 +185,7 @@ export async function activateLicense(key: string): Promise<{ ok: boolean; error
   if (isCompactKey(cleaned)) {
     // ── Server-validated path ─────────────────────────────────
     // No offline signature on these keys — the website-issued key only
-    // means anything once /api/licenses/activate accepts it.
+    // means anything once /api/licensing/activate accepts it.
     const online = await activateOnline(cleaned, machine.fingerprint);
     if (!online) {
       return {
@@ -294,7 +294,7 @@ export async function revalidateLicense(): Promise<boolean | null> {
 
   const machine = await getMachineInfo();
   try {
-    const res = await fetch(`${ACTIVATION_API_BASE}/api/licenses/validate`, {
+    const res = await fetch(`${ACTIVATION_API_BASE}/api/licensing/validate`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ licenseKey: active.license_key, machineId: machine.fingerprint, variant: VARIANT }),
