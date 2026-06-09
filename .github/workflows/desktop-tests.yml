@@ -27,6 +27,10 @@ jobs:
     name: vitest (frontend hooks + utils)
     runs-on: ubuntu-latest
     timeout-minutes: 8
+    # Release commits are picked up by ci.yml on the matching tag push and
+    # rebuild every variant. Skipping here avoids two parallel runs of the
+    # same vitest suite for the same SHA.
+    if: ${{ !startsWith(github.event.head_commit.message, 'release(') }}
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
