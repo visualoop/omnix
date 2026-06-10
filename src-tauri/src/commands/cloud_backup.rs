@@ -9,12 +9,12 @@
 // Pipeline (upload):
 //   1. Hot-copy SQLite via `VACUUM INTO` to a temp file (consistent snapshot).
 //   2. gzip → AES-256-GCM encrypt with derived key + random 12-byte nonce.
-//   3. POST /api/cloud-backups/presign (machine bearer auth) to get a PUT URL.
+//   3. POST /api/cloud-backup/presign (machine bearer auth) to get a PUT URL.
 //   4. Stream the encrypted blob to the presigned URL.
-//   5. POST /api/cloud-backups/finalize with size + sha256.
+//   5. POST /api/cloud-backup/finalize with size + sha256.
 //
 // Pipeline (restore):
-//   1. POST /api/cloud-backups/:id/download → presigned GET URL.
+//   1. POST /api/cloud-backup/:id/download → presigned GET URL.
 //   2. Stream → AES-256-GCM decrypt → gunzip → write to a temp file.
 //   3. Hand off to backup.rs::restore_backup with the temp file as source.
 
@@ -249,7 +249,7 @@ pub async fn cloud_backup_upload(
 
     // 3. Presign
     let client = reqwest::Client::new();
-    let presign_url = format!("{}/api/cloud-backups/presign", api_base.trim_end_matches('/'));
+    let presign_url = format!("{}/api/cloud-backup/presign", api_base.trim_end_matches('/'));
     let presign_body = serde_json::json!({
         "sourceSizeBytes": source_size,
         "desktopVersion": desktop_version,
@@ -281,7 +281,7 @@ pub async fn cloud_backup_upload(
     }
 
     // 5. Finalize
-    let finalize_url = format!("{}/api/cloud-backups/finalize", api_base.trim_end_matches('/'));
+    let finalize_url = format!("{}/api/cloud-backup/finalize", api_base.trim_end_matches('/'));
     let finalize_body = serde_json::json!({
         "objectKey": presign.object_key,
         "sizeBytes": size_bytes,
@@ -312,7 +312,7 @@ pub async fn cloud_backup_list(
     api_base: String,
     auth_token: String,
 ) -> Result<Vec<CloudBackupRow>, String> {
-    let url = format!("{}/api/cloud-backups", api_base.trim_end_matches('/'));
+    let url = format!("{}/api/cloud-backup/list", api_base.trim_end_matches('/'));
     let client = reqwest::Client::new();
     let resp: CloudBackupListResp = client
         .get(&url)
@@ -343,7 +343,7 @@ pub async fn cloud_backup_restore(
 ) -> Result<String, String> {
     // 1. Get presigned download URL
     let url = format!(
-        "{}/api/cloud-backups/{}/download",
+        "{}/api/cloud-backup/{}/download",
         api_base.trim_end_matches('/'),
         backup_id
     );
@@ -631,7 +631,7 @@ pub async fn cloud_backup_auto_upload(
     let sha256 = sha256_hex(&blob);
 
     let client = reqwest::Client::new();
-    let presign_url = format!("{}/api/cloud-backups/presign", api_base.trim_end_matches('/'));
+    let presign_url = format!("{}/api/cloud-backup/presign", api_base.trim_end_matches('/'));
     let presign: CloudBackupPresignResp = client
         .post(&presign_url)
         .bearer_auth(&auth_token)
@@ -661,7 +661,7 @@ pub async fn cloud_backup_auto_upload(
     }
 
     client
-        .post(&format!("{}/api/cloud-backups/finalize", api_base.trim_end_matches('/')))
+        .post(&format!("{}/api/cloud-backup/finalize", api_base.trim_end_matches('/')))
         .bearer_auth(&auth_token)
         .json(&serde_json::json!({
             "objectKey": presign.object_key,

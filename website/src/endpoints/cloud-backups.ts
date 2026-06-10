@@ -63,7 +63,7 @@ function cloudBackupActive(license: LicenseDoc): boolean {
 
 /* ─── POST /api/cloud-backups/presign ──────────────────────────────── */
 export const cloudBackupPresignEndpoint: Endpoint = {
-  path: '/cloud-backups/presign',
+  path: '/cloud-backup/presign',
   method: 'post',
   handler: async (req) => {
     const ctx = await getMachineContext(req)
@@ -131,7 +131,7 @@ export const cloudBackupPresignEndpoint: Endpoint = {
 
 /* ─── POST /api/cloud-backups/finalize ─────────────────────────────── */
 export const cloudBackupFinalizeEndpoint: Endpoint = {
-  path: '/cloud-backups/finalize',
+  path: '/cloud-backup/finalize',
   method: 'post',
   handler: async (req) => {
     const ctx = await getMachineContext(req)
@@ -167,17 +167,31 @@ export const cloudBackupFinalizeEndpoint: Endpoint = {
 
 /* ─── GET /api/cloud-backups ───────────────────────────────────────── */
 export const cloudBackupListEndpoint: Endpoint = {
-  path: '/cloud-backups',
+  path: '/cloud-backup/list',
   method: 'get',
   handler: async (req) => {
-    if (req.user?.collection !== 'customers') {
-      return errorResponse('Sign in to list backups', 401)
+    // Two auth paths:
+    //   1. Customer cookie session — listing from the dashboard
+    //   2. Machine bearer — listing from inside the desktop app
+    let customerId: string | number | undefined
+    if (req.user?.collection === 'customers') {
+      customerId = req.user.id
+    } else {
+      const ctx = await getMachineContext(req)
+      if (!ctx) {
+        return errorResponse('Sign in or send a machine bearer to list backups', 401)
+      }
+      const cust = ctx.license.customer
+      customerId = typeof cust === 'string' || typeof cust === 'number' ? cust : cust?.id
+    }
+    if (!customerId) {
+      return errorResponse('Could not resolve customer', 401)
     }
     const result = await req.payload.find({
       collection: 'cloud-backups',
       where: {
         and: [
-          { customer: { equals: req.user.id } },
+          { customer: { equals: customerId } },
           { status: { equals: 'uploaded' } },
         ],
       },
@@ -207,7 +221,7 @@ export const cloudBackupListEndpoint: Endpoint = {
 
 /* ─── POST /api/cloud-backups/:id/download ─────────────────────────── */
 export const cloudBackupDownloadEndpoint: Endpoint = {
-  path: '/cloud-backups/:id/download',
+  path: '/cloud-backup/:id/download',
   method: 'post',
   handler: async (req) => {
     const id = req.routeParams?.id as string | undefined

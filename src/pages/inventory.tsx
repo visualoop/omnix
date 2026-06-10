@@ -164,24 +164,26 @@ export function InventoryPage() {
                     ) : (
                       <Badge variant="default" className="text-xs">OK</Badge>
                     )}
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={(e) => { e.stopPropagation(); setVariantsProduct(p); }}
-                      className="ml-1 h-7 w-7 p-0 cursor-pointer"
-                      title="Manage variants (sizes, weights, options)"
-                    >
-                      <Layers className="h-3 w-3" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={(e) => { e.stopPropagation(); openEdit(p.id); }}
-                      className="ml-1 h-7 w-7 p-0 cursor-pointer"
-                      title="Edit product"
-                    >
-                      <Edit3 className="h-3 w-3" />
-                    </Button>
+                    <Can permission="inventory.edit">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={(e) => { e.stopPropagation(); setVariantsProduct(p); }}
+                        className="ml-1 h-7 w-7 p-0 cursor-pointer"
+                        title="Manage variants (sizes, weights, options)"
+                      >
+                        <Layers className="h-3 w-3" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={(e) => { e.stopPropagation(); openEdit(p.id); }}
+                        className="ml-1 h-7 w-7 p-0 cursor-pointer"
+                        title="Edit product"
+                      >
+                        <Edit3 className="h-3 w-3" />
+                      </Button>
+                    </Can>
                   </td>
                 </tr>
               ))}

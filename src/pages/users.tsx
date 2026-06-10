@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { confirm } from "@/components/ui/confirm-dialog";
 import { UserPlus, Users, Edit3, Lock, UserX, AlertCircle, Loader2, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Badge } from "@/components/ui/badge";
@@ -217,17 +218,21 @@ function CreateUserForm({ onCreated }: { onCreated: () => void }) {
         />
       </Field>
       <Field label="Role *">
-        <select
+        <Select
           value={form.role}
-          onChange={(e) => setForm({ ...form, role: e.target.value as User["role"] })}
-          className="w-full h-9 rounded-md border border-input bg-transparent px-3 text-sm"
+          onValueChange={(v) => setForm({ ...form, role: v as User["role"] })}
         >
-          {(Object.entries(ROLE_LABELS) as [User["role"], typeof ROLE_LABELS[User["role"]]][]).map(([role, info]) => (
-            <option key={role} value={role}>
-              {info.label} — {info.description}
-            </option>
-          ))}
-        </select>
+          <SelectTrigger className="w-full">
+            <SelectValue placeholder="Pick a role" />
+          </SelectTrigger>
+          <SelectContent>
+            {(Object.entries(ROLE_LABELS) as [User["role"], typeof ROLE_LABELS[User["role"]]][]).map(([role, info]) => (
+              <SelectItem key={role} value={role}>
+                {info.label} — {info.description}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
         <p className="text-[11px] text-muted-foreground mt-1.5">
           {ROLE_INFO[form.role].tagline}
           {" · "}

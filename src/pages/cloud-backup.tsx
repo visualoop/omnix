@@ -63,6 +63,7 @@ function formatDate(d?: string | null): string {
 export function CloudBackupPage() {
   const [authToken, setAuthToken] = useState<string>("");
   const [backups, setBackups] = useState<CloudBackupRow[]>([]);
+  const [paywall, setPaywall] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
 
@@ -88,7 +89,16 @@ export function CloudBackupPage() {
       });
       setBackups(list);
     } catch (e) {
-      toast.error(`Could not list backups: ${e}`);
+      const msg = String(e);
+      // Surface paywall politely on 402 — server returns Payment Required when
+      // the license has no active cloud-backup window.
+      if (msg.includes("402")) {
+        setPaywall(
+          "Cloud backup needs a paid plan. Visit your dashboard → Billing on omnix.co.ke to activate it.",
+        );
+      } else {
+        toast.error(`Could not list backups: ${e}`);
+      }
     } finally {
       setLoading(false);
     }
@@ -223,7 +233,7 @@ export function CloudBackupPage() {
         </div>
         <Button
           onClick={handleUploadNow}
-          disabled={uploading}
+          disabled={uploading || !!paywall}
           className="rounded-xl shadow-native cursor-pointer"
         >
           {uploading ? (
@@ -233,6 +243,22 @@ export function CloudBackupPage() {
           )}
         </Button>
       </div>
+
+      {paywall ? (
+        <div className="rounded-xl border border-amber-500/40 bg-amber-500/5 p-4">
+          <div className="flex items-start gap-3">
+            <Cloud className="h-4 w-4 mt-0.5 text-amber-600 shrink-0" />
+            <div className="flex-1 text-[13px]">
+              <div className="font-medium text-foreground">
+                Cloud backup is not active on this licence.
+              </div>
+              <p className="text-muted-foreground mt-1 leading-snug">
+                {paywall} Local backups (Settings → Backup) keep working on every plan.
+              </p>
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       <AutoScheduleCard />
 

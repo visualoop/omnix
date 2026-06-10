@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { confirm, prompt } from "@/components/ui/confirm-dialog";
 import { Users, Plus, Edit3, Search, Check, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter } from "@/components/ui/sheet";
 import { Badge } from "@/components/ui/badge";
@@ -598,12 +599,17 @@ function CreateLoginSheet({ open, employeeName, employeeEmail, onClose, onCreate
             <Input value={username} onChange={(e) => setUsername(e.target.value)} className="font-mono" />
           </Field>
           <Field label="Role">
-            <select value={role} onChange={(e) => setRole(e.target.value as User["role"])} className="w-full h-8 rounded-md border border-input bg-background px-2 text-[13px]">
-              <option value="cashier">Cashier</option>
-              <option value="manager">Manager</option>
-              <option value="viewer">Viewer</option>
-              <option value="owner">Owner</option>
-            </select>
+            <Select value={role} onValueChange={(v) => setRole(v as User["role"])}>
+              <SelectTrigger className="w-full h-8 text-[13px]">
+                <SelectValue placeholder="Pick a role" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="cashier">Cashier</SelectItem>
+                <SelectItem value="manager">Manager</SelectItem>
+                <SelectItem value="viewer">Viewer</SelectItem>
+                <SelectItem value="owner">Owner</SelectItem>
+              </SelectContent>
+            </Select>
           </Field>
           <Field label="Temporary Password">
             <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} />
