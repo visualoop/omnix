@@ -1,12 +1,14 @@
 import type { Metadata } from 'next'
 import { LegalLayout } from '@/components/marketing/legal-layout'
+import { getSiteSettings } from '@/lib/site-settings'
 
 export const metadata: Metadata = {
   title: 'Privacy Policy',
   description: 'How Omnix collects, uses, and protects your data.',
 }
 
-export default function PrivacyPage() {
+export default async function PrivacyPage() {
+  const settings = await getSiteSettings()
   return (
     <LegalLayout
       eyebrow="Legal"
@@ -76,7 +78,7 @@ export default function PrivacyPage() {
             <>
               <p>You have the right to:</p>
               <ul>
-                <li>Access your account data (email us at hello@omnix.co.ke)</li>
+                <li>Access your account data (email us at {settings.supportEmail})</li>
                 <li>Delete your account (email us; we delete within 30 days)</li>
                 <li>Opt out of telemetry (Settings → Privacy)</li>
                 <li>Export your business data (File → Export → Full database)</li>
@@ -88,7 +90,7 @@ export default function PrivacyPage() {
         {
           id: 'contact',
           heading: 'Contact',
-          body: <p>Questions about this policy? Email us at hello@omnix.co.ke or WhatsApp +254 700 000 000.</p>,
+          body: <p>Questions about this policy? Email us at {settings.supportEmail} or {settings.whatsappDisplay ? `WhatsApp ${settings.whatsappDisplay}` : `email ${settings.supportEmail}`}.</p>,
         },
       ]}
     />

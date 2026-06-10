@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button'
 import { OnePriceSection } from '@/components/landing/one-price-section'
 import { FaqSection } from '@/components/landing/faq-section'
 import { ClosingCtaSection } from '@/components/landing/closing-cta-section'
+import { getSiteSettings } from '@/lib/site-settings'
 import { PageHero } from '@/components/marketing/page-hero'
 import { cn } from '@/lib/cn'
 
@@ -117,7 +118,8 @@ const COMPARE: ReadonlyArray<readonly [string, string, string, string]> = [
   ['Refund window after payment', 'n/a', '14 days', 'Per contract'],
 ]
 
-export default function PricingPage() {
+export default async function PricingPage() {
+  const settings = await getSiteSettings()
   return (
     <>
       <PageHero
@@ -246,7 +248,7 @@ export default function PricingPage() {
       </section>
 
       <FaqSection />
-      <ClosingCtaSection />
+      <ClosingCtaSection whatsappUrl={settings.whatsappUrl} />
     </>
   )
 }

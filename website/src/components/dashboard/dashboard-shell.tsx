@@ -35,10 +35,14 @@ const NAV_ITEMS = [
 export function DashboardShell({
   customerName,
   customerEmail,
+  whatsappUrl,
+  supportEmail,
   children,
 }: {
   customerName: string
   customerEmail: string
+  whatsappUrl: string | null
+  supportEmail: string
   children: React.ReactNode
 }) {
   const pathname = usePathname()
@@ -137,7 +141,7 @@ export function DashboardShell({
       <div className="flex">
         {/* Sidebar — desktop */}
         <aside className="hidden border-r border-[var(--color-border)] lg:sticky lg:top-16 lg:block lg:h-[calc(100vh-4rem)] lg:w-64 lg:flex-shrink-0">
-          <SidebarNav pathname={pathname} />
+          <SidebarNav pathname={pathname} whatsappUrl={whatsappUrl} supportEmail={supportEmail} />
         </aside>
 
         {/* Sidebar — mobile drawer */}
@@ -149,7 +153,7 @@ export function DashboardShell({
               aria-hidden
             />
             <aside className="absolute inset-y-0 left-0 w-64 border-r border-[var(--color-border)] bg-[var(--color-bg)] pt-16">
-              <SidebarNav pathname={pathname} />
+              <SidebarNav pathname={pathname} whatsappUrl={whatsappUrl} supportEmail={supportEmail} />
             </aside>
           </div>
         ) : null}
@@ -163,7 +167,15 @@ export function DashboardShell({
   )
 }
 
-function SidebarNav({ pathname }: { pathname: string }) {
+function SidebarNav({
+  pathname,
+  whatsappUrl,
+  supportEmail,
+}: {
+  pathname: string
+  whatsappUrl: string | null
+  supportEmail: string
+}) {
   return (
     <nav className="flex h-full flex-col gap-1 p-4">
       <div className="px-3 py-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-[var(--color-fg-subtle)]">
@@ -199,15 +211,31 @@ function SidebarNav({ pathname }: { pathname: string }) {
         <h3 className="text-[12px] font-medium text-[var(--color-fg)]">
           Need help?
         </h3>
-        <p className="mt-1 text-[11px] leading-[1.4] text-[var(--color-fg-muted)]">
-          WhatsApp the owner for fast answers.
-        </p>
-        <a
-          href="https://wa.me/254700000000"
-          className="mt-2 inline-flex text-[11px] font-medium text-[var(--color-accent)] hover:text-[var(--color-accent-hover)]"
-        >
-          Open WhatsApp →
-        </a>
+        {whatsappUrl ? (
+          <>
+            <p className="mt-1 text-[11px] leading-[1.4] text-[var(--color-fg-muted)]">
+              WhatsApp the owner for fast answers.
+            </p>
+            <a
+              href={whatsappUrl}
+              className="mt-2 inline-flex text-[11px] font-medium text-[var(--color-accent)] hover:text-[var(--color-accent-hover)]"
+            >
+              Open WhatsApp →
+            </a>
+          </>
+        ) : (
+          <>
+            <p className="mt-1 text-[11px] leading-[1.4] text-[var(--color-fg-muted)]">
+              Email us — replies within 24h.
+            </p>
+            <a
+              href={`mailto:${supportEmail}`}
+              className="mt-2 inline-flex text-[11px] font-medium text-[var(--color-accent)] hover:text-[var(--color-accent-hover)]"
+            >
+              {supportEmail} →
+            </a>
+          </>
+        )}
       </div>
     </nav>
   )

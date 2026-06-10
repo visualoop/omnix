@@ -3,6 +3,7 @@ import { Icon } from '@/components/icons'
 import { Button } from '@/components/ui/button'
 import { PageHero } from '@/components/marketing/page-hero'
 import { ClosingCtaSection } from '@/components/landing/closing-cta-section'
+import { getSiteSettings } from '@/lib/site-settings'
 
 export type VariantId = 'dawa' | 'retail' | 'hospitality' | 'hardware' | 'pro'
 
@@ -26,7 +27,8 @@ export interface VariantLandingContent {
   buyHref: string
 }
 
-export function VariantLanding({ content }: { content: VariantLandingContent }) {
+export async function VariantLanding({ content }: { content: VariantLandingContent }) {
+  const settings = await getSiteSettings()
   return (
     <>
       <PageHero
@@ -130,7 +132,7 @@ export function VariantLanding({ content }: { content: VariantLandingContent }) 
         </div>
       </section>
 
-      <ClosingCtaSection />
+      <ClosingCtaSection whatsappUrl={settings.whatsappUrl} />
     </>
   )
 }

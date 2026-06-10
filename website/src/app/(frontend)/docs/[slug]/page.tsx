@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { ArrowLeft, ArrowRight } from '@/components/icons'
 import { Container } from '@/components/ui/section'
+import { getSiteSettings } from '@/lib/site-settings'
 import { DOCS_SEED, docBySlug, docSlugs } from '@/lib/docs-seed'
 
 export async function generateStaticParams() {
@@ -28,6 +29,7 @@ export default async function DocPage({
 }: {
   params: Promise<{ slug: string }>
 }) {
+  const settings = await getSiteSettings();
   const { slug } = await params
   const doc = docBySlug(slug)
   if (!doc) notFound()
@@ -108,7 +110,7 @@ export default async function DocPage({
               </p>
               <div className="mt-4 flex flex-wrap gap-2">
                 <a
-                  href="https://wa.me/254700000000"
+                  href={settings.whatsappUrl ?? `mailto:${settings.supportEmail}`}
                   className="rounded-md border border-[var(--color-border-strong)] px-4 py-2 text-[12px] font-medium text-[var(--color-fg)] hover:border-[var(--color-fg-subtle)]"
                 >
                   WhatsApp the owner

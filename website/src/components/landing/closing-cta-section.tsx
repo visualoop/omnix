@@ -17,7 +17,7 @@ import { Button } from '@/components/ui/button'
  * Composition rule: this is the LAST thing the visitor reads. Strip everything
  * else. One sentence, one button, one link. No "Get in touch / Learn more / Book a demo" trio.
  */
-export function ClosingCtaSection() {
+export function ClosingCtaSection({ whatsappUrl, prompt }: { whatsappUrl: string | null; prompt?: string }) {
   return (
     <section className="relative overflow-hidden border-t border-[var(--color-border)] py-32 sm:py-44">
       {/* Background atmosphere */}
@@ -61,15 +61,16 @@ export function ClosingCtaSection() {
               </Link>
             </Button>
 
-            <Link
-              href="https://wa.me/254700000000?text=Hi%20Omnix%2C%20I%27d%20like%20to%20talk%20to%20someone%20before%20I%20install."
-              target="_blank"
-              rel="noopener"
-              className="caption-mono inline-flex items-center gap-2 transition-colors hover:text-[var(--color-fg)]"
-            >
-              or talk to us on WhatsApp
+            {whatsappUrl ? (
+              <Link
+                href={`${whatsappUrl}?text=Hi%20Omnix%2C%20I%27d%20like%20to%20talk%20to%20someone%20before%20I%20install.`}
+                target="_blank"
+                rel="noopener"
+                className="caption-mono inline-flex items-center gap-2 transition-colors hover:text-[var(--color-fg)]"
+              >
+                {prompt ?? "or talk to us on WhatsApp"}
               <Icon.ArrowRight className="size-3" weight="bold" />
-            </Link>
+            </Link>) : null}
           </motion.div>
         </div>
       </div>

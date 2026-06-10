@@ -30,6 +30,9 @@ import { CloudBackups } from './collections/CloudBackups'
 import { Settings } from './globals/Settings'
 import { Pricing } from './globals/Pricing'
 import { LandingPage } from './globals/LandingPage'
+import { HomeContent } from './globals/HomeContent'
+import { ContactContent } from './globals/ContactContent'
+import { FooterContent } from './globals/FooterContent'
 
 import { customEndpoints } from './endpoints'
 import { BRAND_NAME } from './lib/brand'
@@ -66,7 +69,7 @@ export default buildConfig({
     Media,
     CloudBackups,
   ],
-  globals: [Settings, Pricing, LandingPage],
+  globals: [Settings, Pricing, LandingPage, HomeContent, ContactContent, FooterContent],
   editor: lexicalEditor(),
   secret: process.env.PAYLOAD_SECRET || '',
   typescript: {

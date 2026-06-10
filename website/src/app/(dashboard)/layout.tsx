@@ -4,6 +4,7 @@ import { getPayload } from 'payload'
 import config from '@/payload.config'
 import { DashboardShell } from '@/components/dashboard/dashboard-shell'
 import { RootShell } from '@/components/layout/root-shell'
+import { getSiteSettings } from '@/lib/site-settings'
 
 interface CustomerUser {
   collection?: string
@@ -45,9 +46,16 @@ export default async function DashboardLayout({
   const email = user.email as string
   const customerName = user.fullName ?? email.split('@')[0] ?? 'You'
 
+  const settings = await getSiteSettings()
+
   return (
     <RootShell>
-      <DashboardShell customerName={customerName} customerEmail={email}>
+      <DashboardShell
+        customerName={customerName}
+        customerEmail={email}
+        whatsappUrl={settings.whatsappUrl}
+        supportEmail={settings.supportEmail}
+      >
         {children}
       </DashboardShell>
     </RootShell>

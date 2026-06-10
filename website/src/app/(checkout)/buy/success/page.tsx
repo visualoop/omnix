@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { ArrowRight, CheckCircle2, Download, FileText, Sparkles } from '@/components/icons'
 import { Button } from '@/components/ui/button'
+import { getSiteSettings } from '@/lib/site-settings'
 
 export const metadata = { title: 'Payment successful' }
 
@@ -9,6 +10,7 @@ export default async function CheckoutSuccessPage({
 }: {
   searchParams: Promise<{ ref?: string }>
 }) {
+  const settings = await getSiteSettings();
   const { ref } = await searchParams
 
   return (
@@ -61,7 +63,7 @@ export default async function CheckoutSuccessPage({
           <p className="text-[13px] text-[var(--color-fg-subtle)]">
             Stuck or unsure?{' '}
             <a
-              href="https://wa.me/254700000000"
+              href={settings.whatsappUrl ?? `mailto:${settings.supportEmail}`}
               className="text-[var(--color-accent)] underline-offset-4 hover:underline"
             >
               WhatsApp the owner

@@ -4,6 +4,7 @@ import { Icon } from '@/components/icons'
 import { Button } from '@/components/ui/button'
 import { PageHero } from '@/components/marketing/page-hero'
 import { ClosingCtaSection } from '@/components/landing/closing-cta-section'
+import { getSiteSettings } from '@/lib/site-settings'
 
 export const metadata: Metadata = {
   title: 'AI in Omnix — your in-app concierge',
@@ -64,7 +65,8 @@ const TOOLS = [
   { name: 'openDocs', body: 'Opens the public docs to the right page so you can read the full procedure.' },
 ] as const
 
-export default function AiPage() {
+export default async function AiPage() {
+  const settings = await getSiteSettings()
   return (
     <>
       <PageHero
@@ -212,7 +214,7 @@ export default function AiPage() {
         </div>
       </section>
 
-      <ClosingCtaSection />
+      <ClosingCtaSection whatsappUrl={settings.whatsappUrl} />
     </>
   )
 }

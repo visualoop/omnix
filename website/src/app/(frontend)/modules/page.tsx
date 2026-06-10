@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { Icon } from '@/components/icons'
 import { PageHero } from '@/components/marketing/page-hero'
 import { ClosingCtaSection } from '@/components/landing/closing-cta-section'
+import { getSiteSettings } from '@/lib/site-settings'
 import { MODULES_SEED } from '@/lib/modules-seed'
 import { cn } from '@/lib/cn'
 
@@ -11,7 +12,8 @@ export const metadata: Metadata = {
   description: 'Four modules built for Kenyan trades. Pharmacy, retail, hardware, hospitality. One licence unlocks the trades you run.',
 }
 
-export default function ModulesPage() {
+export default async function ModulesPage() {
+  const settings = await getSiteSettings()
   return (
     <>
       <PageHero
@@ -28,7 +30,7 @@ export default function ModulesPage() {
         </div>
       </section>
 
-      <ClosingCtaSection />
+      <ClosingCtaSection whatsappUrl={settings.whatsappUrl} />
     </>
   )
 }

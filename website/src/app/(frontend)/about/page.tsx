@@ -1,13 +1,15 @@
 import type { Metadata } from 'next'
 import { PageHero } from '@/components/marketing/page-hero'
 import { ClosingCtaSection } from '@/components/landing/closing-cta-section'
+import { getSiteSettings } from '@/lib/site-settings'
 
 export const metadata: Metadata = {
   title: 'About — who builds Omnix',
   description: 'A small team in Nairobi building software for Kenyan owner-operators. Every line of code is ours.',
 }
 
-export default function AboutPage() {
+export default async function AboutPage() {
+  const settings = await getSiteSettings()
   return (
     <>
       <PageHero
@@ -55,7 +57,7 @@ export default function AboutPage() {
         </div>
       </section>
 
-      <ClosingCtaSection />
+      <ClosingCtaSection whatsappUrl={settings.whatsappUrl} />
     </>
   )
 }

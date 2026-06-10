@@ -7,6 +7,8 @@ import * as migration_20260608_112800_cleanup_probe_customers from './20260608_1
 import * as migration_20260608_152000_fix_variant_enum_naming from './20260608_152000_fix_variant_enum_naming';
 import * as migration_20260609_091500_pricing_30k from './20260609_091500_pricing_30k';
 import * as migration_20260610_093000_pricing_50_150 from './20260610_093000_pricing_50_150';
+import * as migration_20260610_135417 from './20260610_135417';
+import * as migration_20260610_133000_seed_site_content from './20260610_133000_seed_site_content';
 
 export const migrations = [
   {
@@ -17,7 +19,7 @@ export const migrations = [
   {
     up: migration_20260603_194237_seo_cloudbackups_settings.up,
     down: migration_20260603_194237_seo_cloudbackups_settings.down,
-    name: '20260603_194237_seo_cloudbackups_settings'
+    name: '20260603_194237_seo_cloudbackups_settings',
   },
   {
     up: migration_20260608_080000_license_variant.up,
@@ -53,5 +55,15 @@ export const migrations = [
     up: migration_20260610_093000_pricing_50_150.up,
     down: migration_20260610_093000_pricing_50_150.down,
     name: '20260610_093000_pricing_50_150',
+  },
+  {
+    up: migration_20260610_133000_seed_site_content.up,
+    down: migration_20260610_133000_seed_site_content.down,
+    name: '20260610_133000_seed_site_content',
+  },
+  {
+    up: migration_20260610_135417.up,
+    down: migration_20260610_135417.down,
+    name: '20260610_135417'
   },
 ];

@@ -1,12 +1,14 @@
 import type { Metadata } from 'next'
 import { LegalLayout } from '@/components/marketing/legal-layout'
+import { getSiteSettings } from '@/lib/site-settings'
 
 export const metadata: Metadata = {
   title: 'Terms of Service',
   description: 'The legal agreement between you and Omnix.',
 }
 
-export default function TermsPage() {
+export default async function TermsPage() {
+  const settings = await getSiteSettings()
   return (
     <LegalLayout
       eyebrow="Legal"
@@ -25,7 +27,7 @@ export default function TermsPage() {
         { id: 'termination', heading: 'Termination', body: <p>We may terminate your licence if you violate these terms. You may stop using Omnix at any time. Termination doesn&rsquo;t entitle you to a refund after the 14-day window.</p> },
         { id: 'changes', heading: 'Changes to terms', body: <p>We may update these terms. We&rsquo;ll email you 30 days before major changes. Continued use after changes means you accept them.</p> },
         { id: 'law', heading: 'Governing law', body: <p>These terms are governed by the laws of Kenya. Disputes resolved in Nairobi courts.</p> },
-        { id: 'contact', heading: 'Contact', body: <p>Questions? Email hello@omnix.co.ke or WhatsApp +254 700 000 000.</p> },
+        { id: 'contact', heading: 'Contact', body: <p>Questions? Email {settings.supportEmail} or {settings.whatsappDisplay ? `WhatsApp ${settings.whatsappDisplay}` : `email ${settings.supportEmail}`}.</p> },
       ]}
     />
   )

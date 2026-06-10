@@ -116,11 +116,17 @@ export interface Config {
     settings: Setting;
     pricing: Pricing;
     'landing-page': LandingPage;
+    'home-content': HomeContent;
+    'contact-content': ContactContent;
+    'footer-content': FooterContent;
   };
   globalsSelect: {
     settings: SettingsSelect<false> | SettingsSelect<true>;
     pricing: PricingSelect<false> | PricingSelect<true>;
     'landing-page': LandingPageSelect<false> | LandingPageSelect<true>;
+    'home-content': HomeContentSelect<false> | HomeContentSelect<true>;
+    'contact-content': ContactContentSelect<false> | ContactContentSelect<true>;
+    'footer-content': FooterContentSelect<false> | FooterContentSelect<true>;
   };
   locale: null;
   widgets: {
@@ -1773,7 +1779,7 @@ export interface PayloadMigrationsSelect<T extends boolean = true> {
   createdAt?: T;
 }
 /**
- * Site settings, contact channels, social links, feature flags.
+ * Site-wide settings — contact channels, social handles, SEO defaults, footer, feature flags, integrations.
  *
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "settings".
@@ -1785,10 +1791,14 @@ export interface Setting {
    */
   brandName?: string | null;
   tagline?: string | null;
+  /**
+   * Shown in footer for trust signal.
+   */
+  kraPin?: string | null;
   supportEmail?: string | null;
   salesEmail?: string | null;
   /**
-   * Full international format, e.g. +254712345678. Used in wa.me links.
+   * Full international format, e.g. +254712345678. Used in wa.me links across the site.
    */
   whatsappNumber?: string | null;
   phoneNumber?: string | null;
@@ -1821,10 +1831,6 @@ export interface Setting {
     };
     [k: string]: unknown;
   } | null;
-  /**
-   * Shown in footer for trust signal.
-   */
-  kraPin?: string | null;
   flags?: {
     allowSelfSignup?: boolean | null;
     allowSelfServeCheckout?: boolean | null;
@@ -1837,16 +1843,13 @@ export interface Setting {
     autoPublishReleases?: boolean | null;
   };
   trialLockoutMode?: ('soft' | 'readonly' | 'hard') | null;
-  /**
-   * API keys and integration toggles. Secrets here override env vars at runtime.
-   */
   integrations?: {
     /**
      * pk_live_… or pk_test_… — safe to expose to client.
      */
     paystackPublicKey?: string | null;
     /**
-     * sk_live_… or sk_test_… — server-only. Owner can read, support can't.
+     * sk_live_… or sk_test_… — server-only.
      */
     paystackSecretKey?: string | null;
     /**
@@ -2013,12 +2016,194 @@ export interface LandingPage {
   createdAt?: string | null;
 }
 /**
+ * Homepage copy. Each tab maps to a section on omnix.co.ke.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "home-content".
+ */
+export interface HomeContent {
+  id: number;
+  heroEyebrow?: string | null;
+  heroTitle: string;
+  heroSubtitle?: string | null;
+  heroPrimaryCta?: {
+    label?: string | null;
+    href?: string | null;
+  };
+  heroSecondaryCta?: {
+    label?: string | null;
+    href?: string | null;
+  };
+  founderHeading?: string | null;
+  founderName?: string | null;
+  founderRole?: string | null;
+  founderPhoto?: (number | null) | Media;
+  founderQuote?: string | null;
+  founderBody?: {
+    root: {
+      type: string;
+      children: {
+        type: any;
+        version: number;
+        [k: string]: unknown;
+      }[];
+      direction: ('ltr' | 'rtl') | null;
+      format: 'left' | 'start' | 'center' | 'right' | 'end' | 'justify' | '';
+      indent: number;
+      version: number;
+    };
+    [k: string]: unknown;
+  } | null;
+  aiEyebrow?: string | null;
+  aiHeading?: string | null;
+  aiSubheading?: string | null;
+  /**
+   * Sample prompts shown rotating in the hero card.
+   */
+  aiSamples?:
+    | {
+        prompt?: string | null;
+        id?: string | null;
+      }[]
+    | null;
+  aiCta?: {
+    label?: string | null;
+    href?: string | null;
+  };
+  moduleRows?:
+    | {
+        variant: 'dawa' | 'retail' | 'hospitality' | 'hardware';
+        title?: string | null;
+        body?: string | null;
+        ctaLabel?: string | null;
+        ctaHref?: string | null;
+        id?: string | null;
+      }[]
+    | null;
+  deployHeading?: string | null;
+  deploySubheading?: string | null;
+  deployBullets?:
+    | {
+        title?: string | null;
+        body?: string | null;
+        id?: string | null;
+      }[]
+    | null;
+  closingHeading?: string | null;
+  closingBody?: string | null;
+  closingPrimaryCta?: {
+    label?: string | null;
+    href?: string | null;
+  };
+  /**
+   * Text next to the WhatsApp link. Number itself comes from Settings → Contact.
+   */
+  closingWhatsappPrompt?: string | null;
+  updatedAt?: string | null;
+  createdAt?: string | null;
+}
+/**
+ * Copy for the /contact page. Methods + FAQ + closing CTA each in their own tab.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "contact-content".
+ */
+export interface ContactContent {
+  id: number;
+  pageTitle?: string | null;
+  pageSubtitle?: string | null;
+  methodsHeading?: string | null;
+  methods?:
+    | {
+        /**
+         * Pulls live value from Settings → Contact for the corresponding channel.
+         */
+        channel: 'whatsapp' | 'email-support' | 'email-sales' | 'phone' | 'office';
+        /**
+         * Override label (optional). Defaults to channel name.
+         */
+        label?: string | null;
+        /**
+         * Short note shown under the channel.
+         */
+        description?: string | null;
+        id?: string | null;
+      }[]
+    | null;
+  faqHeading?: string | null;
+  faq?:
+    | {
+        question: string;
+        answer: string;
+        id?: string | null;
+      }[]
+    | null;
+  ctaHeading?: string | null;
+  ctaBody?: string | null;
+  ctaPrimaryLabel?: string | null;
+  ctaPrimaryHref?: string | null;
+  updatedAt?: string | null;
+  createdAt?: string | null;
+}
+/**
+ * Site footer link columns. Each tab is one column on omnix.co.ke/footer.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "footer-content".
+ */
+export interface FooterContent {
+  id: number;
+  /**
+   * Short pitch under the logo.
+   */
+  branding?: string | null;
+  /**
+   * e.g. "© 2026 Omnix Software Ltd."
+   */
+  copyrightLine?: string | null;
+  productHeading?: string | null;
+  productLinks?:
+    | {
+        label: string;
+        href: string;
+        id?: string | null;
+      }[]
+    | null;
+  tradesHeading?: string | null;
+  tradeLinks?:
+    | {
+        label: string;
+        href: string;
+        id?: string | null;
+      }[]
+    | null;
+  companyHeading?: string | null;
+  companyLinks?:
+    | {
+        label: string;
+        href: string;
+        id?: string | null;
+      }[]
+    | null;
+  legalHeading?: string | null;
+  legalLinks?:
+    | {
+        label: string;
+        href: string;
+        id?: string | null;
+      }[]
+    | null;
+  updatedAt?: string | null;
+  createdAt?: string | null;
+}
+/**
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "settings_select".
  */
 export interface SettingsSelect<T extends boolean = true> {
   brandName?: T;
   tagline?: T;
+  kraPin?: T;
   supportEmail?: T;
   salesEmail?: T;
   whatsappNumber?: T;
@@ -2042,7 +2227,6 @@ export interface SettingsSelect<T extends boolean = true> {
   defaultMetaDescription?: T;
   defaultOgImage?: T;
   footerCopy?: T;
-  kraPin?: T;
   flags?:
     | T
     | {
@@ -2190,6 +2374,154 @@ export interface LandingPageSelect<T extends boolean = true> {
     | {
         headline?: T;
         subheadline?: T;
+      };
+  updatedAt?: T;
+  createdAt?: T;
+  globalType?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "home-content_select".
+ */
+export interface HomeContentSelect<T extends boolean = true> {
+  heroEyebrow?: T;
+  heroTitle?: T;
+  heroSubtitle?: T;
+  heroPrimaryCta?:
+    | T
+    | {
+        label?: T;
+        href?: T;
+      };
+  heroSecondaryCta?:
+    | T
+    | {
+        label?: T;
+        href?: T;
+      };
+  founderHeading?: T;
+  founderName?: T;
+  founderRole?: T;
+  founderPhoto?: T;
+  founderQuote?: T;
+  founderBody?: T;
+  aiEyebrow?: T;
+  aiHeading?: T;
+  aiSubheading?: T;
+  aiSamples?:
+    | T
+    | {
+        prompt?: T;
+        id?: T;
+      };
+  aiCta?:
+    | T
+    | {
+        label?: T;
+        href?: T;
+      };
+  moduleRows?:
+    | T
+    | {
+        variant?: T;
+        title?: T;
+        body?: T;
+        ctaLabel?: T;
+        ctaHref?: T;
+        id?: T;
+      };
+  deployHeading?: T;
+  deploySubheading?: T;
+  deployBullets?:
+    | T
+    | {
+        title?: T;
+        body?: T;
+        id?: T;
+      };
+  closingHeading?: T;
+  closingBody?: T;
+  closingPrimaryCta?:
+    | T
+    | {
+        label?: T;
+        href?: T;
+      };
+  closingWhatsappPrompt?: T;
+  updatedAt?: T;
+  createdAt?: T;
+  globalType?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "contact-content_select".
+ */
+export interface ContactContentSelect<T extends boolean = true> {
+  pageTitle?: T;
+  pageSubtitle?: T;
+  methodsHeading?: T;
+  methods?:
+    | T
+    | {
+        channel?: T;
+        label?: T;
+        description?: T;
+        id?: T;
+      };
+  faqHeading?: T;
+  faq?:
+    | T
+    | {
+        question?: T;
+        answer?: T;
+        id?: T;
+      };
+  ctaHeading?: T;
+  ctaBody?: T;
+  ctaPrimaryLabel?: T;
+  ctaPrimaryHref?: T;
+  updatedAt?: T;
+  createdAt?: T;
+  globalType?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "footer-content_select".
+ */
+export interface FooterContentSelect<T extends boolean = true> {
+  branding?: T;
+  copyrightLine?: T;
+  productHeading?: T;
+  productLinks?:
+    | T
+    | {
+        label?: T;
+        href?: T;
+        id?: T;
+      };
+  tradesHeading?: T;
+  tradeLinks?:
+    | T
+    | {
+        label?: T;
+        href?: T;
+        id?: T;
+      };
+  companyHeading?: T;
+  companyLinks?:
+    | T
+    | {
+        label?: T;
+        href?: T;
+        id?: T;
+      };
+  legalHeading?: T;
+  legalLinks?:
+    | T
+    | {
+        label?: T;
+        href?: T;
+        id?: T;
       };
   updatedAt?: T;
   createdAt?: T;

@@ -1,4 +1,5 @@
 import { ClosingCtaSection } from '@/components/landing/closing-cta-section'
+import { getSiteSettings } from '@/lib/site-settings'
 import { ComplianceSection } from '@/components/landing/compliance-section'
 import { FaqSection } from '@/components/landing/faq-section'
 import { FounderNoteSection } from '@/components/landing/founder-note-section'
@@ -37,6 +38,7 @@ export const dynamic = 'force-dynamic'
 export const revalidate = 60
 
 export default async function HomePage() {
+  const settings = await getSiteSettings()
   let heroContent: Parameters<typeof HeroSection>[0]["content"] = undefined
   let latestRelease: Parameters<typeof HeroSection>[0]["latestRelease"] = undefined
   try {
@@ -94,7 +96,7 @@ export default async function HomePage() {
       <ThreeQuotesSection />
       <OnePriceSection />
       <FaqSection />
-      <ClosingCtaSection />
+      <ClosingCtaSection whatsappUrl={settings.whatsappUrl} />
     </>
   )
 }
