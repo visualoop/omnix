@@ -41,11 +41,18 @@ export default async function SignupPage({
   }
   if (isCustomer) {
     const sp = (await searchParams) ?? {}
-    const params = new URLSearchParams()
-    if (typeof sp.machine === 'string') params.set('machine', sp.machine)
-    if (typeof sp.variant === 'string') params.set('variant', sp.variant)
-    const qs = params.toString()
-    redirect(`/dashboard${qs ? `?${qs}` : ''}`)
+    const variantParam = typeof sp.variant === 'string' ? sp.variant : null
+    if (variantParam) {
+      // Signed-in user clicked "Start free trial" on a variant landing.
+      // /buy is variant-aware: if they don't have a licence for this variant
+      // it auto-issues a fresh trial; if they do, it sends them to checkout.
+      const params = new URLSearchParams()
+      params.set('variant', variantParam)
+      if (typeof sp.machine === 'string') params.set('machine', sp.machine)
+      redirect(`/buy?${params.toString()}`)
+    }
+    // No variant — generic signed-in landing, send to dashboard.
+    redirect('/dashboard')
   }
 
   return (

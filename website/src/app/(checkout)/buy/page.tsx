@@ -55,14 +55,26 @@ export default async function BuyEntryPage({
   const isCustomer = Boolean(user && user.collection === 'customers' && user.id != null)
   const customerId: string | number | null = isCustomer ? (user!.id as string | number) : null
 
-  // Look up an existing licence for a signed-in customer (defensive — if the
-  // query fails we treat it as "no licence yet" and fall through to create).
+  // Resolve the variant the customer is asking to buy / trial.
+  const requestedVariant = variant && ['pro','dawa','retail','hospitality','hardware'].includes(variant)
+    ? variant
+    : (mod === 'dawa' || mod === 'retail' || mod === 'hospitality' || mod === 'hardware' ? mod : 'pro')
+
+  // Look up an existing licence FOR THE REQUESTED VARIANT only.
+  // A customer who already has a Dawa licence and clicks Hospitality
+  // should get a fresh Hospitality licence — not be sent back to the
+  // Dawa checkout.
   let existingLicenseId: string | number | null = null
   if (isCustomer) {
     try {
       const result = await payload.find({
         collection: 'licenses',
-        where: { customer: { equals: customerId! } },
+        where: {
+          and: [
+            { customer: { equals: customerId! } },
+            { variant: { equals: requestedVariant } },
+          ],
+        },
         sort: '-createdAt',
         limit: 1,
         depth: 0,
