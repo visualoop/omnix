@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { getStockMovements, getProducts, adjustStock, type Product } from "@/services/inventory";
 import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
@@ -85,10 +86,16 @@ function AdjustPanel({ open, onClose, onSaved }: { open: boolean; onClose: () =>
         <div className="space-y-4 mt-6">
           <div className="space-y-1.5">
             <label className="text-xs font-medium text-muted-foreground">Product</label>
-            <select className="w-full h-9 rounded-md border border-input bg-background px-3 text-sm" value={productId} onChange={(e) => setProductId(e.target.value)}>
-              <option value="">Select product</option>
-              {products.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
-            </select>
+            <Select value={productId} onValueChange={(v) => setProductId(v as string)}>
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Select product" />
+              </SelectTrigger>
+              <SelectContent>
+                {products.map((p) => (
+                  <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
           <div className="space-y-1.5">
             <label className="text-xs font-medium text-muted-foreground">Quantity (+ to add, - to remove)</label>

@@ -6,6 +6,7 @@
 import { useEffect, useState } from "react";
 import { UtensilsCrossed, LayoutGrid, BookOpen, Plus, Loader2, ChefHat, Send, ChevronRight, ArrowLeft, BedDouble, CalendarDays, Sparkles, FileText, ClipboardList, BarChart3 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { toast } from "sonner";
@@ -478,7 +479,15 @@ export function HospitalityOrdersPage() {
         icon={UtensilsCrossed}
         title="Orders"
         subtitle="Active tabs and tickets."
-        action={<div className="flex items-center gap-2"><select value={orderType} onChange={(e) => setOrderType(e.target.value as "dine_in" | "room_service")} className="h-8 rounded border border-input bg-background px-2 text-xs"><option value="dine_in">Dine-in</option><option value="room_service">Room service</option></select><Button size="sm" className={cn("cursor-pointer", BRAND_BTN)} onClick={newOrder}><Plus className="h-3.5 w-3.5 mr-1" /> New order</Button></div>}
+        action={<div className="flex items-center gap-2"><Select value={orderType} onValueChange={(v) => setOrderType(v as "dine_in" | "room_service")}>
+  <SelectTrigger className="h-8 text-xs w-[140px]">
+    <SelectValue />
+  </SelectTrigger>
+  <SelectContent>
+    <SelectItem value="dine_in">Dine-in</SelectItem>
+    <SelectItem value="room_service">Room service</SelectItem>
+  </SelectContent>
+</Select><Button size="sm" className={cn("cursor-pointer", BRAND_BTN)} onClick={newOrder}><Plus className="h-3.5 w-3.5 mr-1" /> New order</Button></div>}
       />
       {orders.length === 0 ? <EmptyHint text="No active orders. Open one to start." /> : (
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2.5">

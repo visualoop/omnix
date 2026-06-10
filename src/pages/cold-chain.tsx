@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Thermometer, Plus, Loader2, AlertTriangle, Check, Snowflake } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Can } from "@/components/require-role";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -109,9 +110,11 @@ export function ColdChainPage() {
                         Target: {u.target_min_c}–{u.target_max_c}°C
                       </p>
                     </div>
-                    <Button variant="ghost" size="icon-xs" onClick={() => setEditingUnit(u)}>
-                      <Plus className="h-3 w-3 rotate-45" />
-                    </Button>
+                    <Can permission="inventory.edit">
+                      <Button variant="ghost" size="icon-xs" onClick={() => setEditingUnit(u)}>
+                        <Plus className="h-3 w-3 rotate-45" />
+                      </Button>
+                    </Can>
                   </div>
 
                   {u.last_temp_c !== null ? (

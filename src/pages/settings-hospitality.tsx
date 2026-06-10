@@ -6,6 +6,7 @@
 import { useEffect, useState } from "react";
 import { Percent } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { query, execute } from "@/lib/db";
 import { toast } from "sonner";
@@ -50,11 +51,16 @@ export function HospitalitySettingsPage() {
         <div className="flex items-center gap-2 mt-3">
           <Input type="number" value={percent} onChange={(e) => setPercent(e.target.value)} className="w-24" step="0.5" />
           <span className="text-sm text-muted-foreground">%</span>
-          <select value={appliesTo} onChange={(e) => setAppliesTo(e.target.value as never)} className="h-9 rounded-md border border-input bg-background px-2 text-sm cursor-pointer">
-            <option value="dine_in">Dine-in only</option>
-            <option value="room_service">Room service only</option>
-            <option value="all">All orders</option>
-          </select>
+          <Select value={appliesTo} onValueChange={(v) => setAppliesTo(v as never)}>
+            <SelectTrigger className="h-9 text-sm w-[180px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="dine_in">Dine-in only</SelectItem>
+              <SelectItem value="room_service">Room service only</SelectItem>
+              <SelectItem value="all">All orders</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
       </div>
       <Button size="sm" onClick={save}>Save service charge</Button>

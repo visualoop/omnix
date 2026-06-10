@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { CalendarClock, Plus, Loader2, X, DollarSign, Trash2, ShoppingCart } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -639,12 +640,17 @@ function RecordPaymentDialog({ layby, userId, onClose, onSaved }: {
           </div>
           <div className="space-y-1">
             <label className="text-[11px] font-medium text-muted-foreground">Method</label>
-            <select value={method} onChange={(e) => setMethod(e.target.value)} className="w-full h-8 rounded-md border border-input bg-background px-2 text-[13px]">
-              <option value="cash">Cash</option>
-              <option value="mpesa">M-Pesa</option>
-              <option value="card">Card</option>
-              <option value="bank">Bank Transfer</option>
-            </select>
+            <Select value={method} onValueChange={(v) => setMethod(v as string)}>
+              <SelectTrigger className="w-full h-8 text-[13px]">
+                <SelectValue placeholder="Pick a method" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="cash">Cash</SelectItem>
+                <SelectItem value="mpesa">M-Pesa</SelectItem>
+                <SelectItem value="card">Card</SelectItem>
+                <SelectItem value="bank">Bank Transfer</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
           <div className="space-y-1">
             <label className="text-[11px] font-medium text-muted-foreground">Reference</label>
