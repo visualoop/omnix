@@ -130,6 +130,7 @@ export async function applyPaymentSuccess(
     majorVersionCap?: number
     maintenanceUntil?: string
     cloudBackupExpiresAt?: string
+    variant?: string
   }
 
   const ONE_YEAR = 365 * 24 * 60 * 60 * 1000
@@ -139,15 +140,22 @@ export async function applyPaymentSuccess(
     case 'license_fee': {
       const now = new Date()
       const maintenanceUntil = new Date(now.getTime() + ONE_YEAR)
+      // Pro variant → business tier (KES 150,000), every other variant
+      // → starter tier (KES 50,000). Matches the pricing table used at
+      // init time.
+      const paidTier: 'starter' | 'business' = license.variant === 'pro' ? 'business' : 'starter'
       await payload.update({
         collection: 'licenses',
         id: licenseId,
         data: {
           status: 'active',
+          tier: paidTier,
+          // Clear the trial countdown — the licence is now perpetual.
+          trialEndsAt: null,
           paidAt: now.toISOString(),
           maintenanceUntil: maintenanceUntil.toISOString(),
           priceFeePaid: payment.amount,
-        },
+        } as never,
         overrideAccess: true,
       })
       // Email the customer their license key — first time issuance

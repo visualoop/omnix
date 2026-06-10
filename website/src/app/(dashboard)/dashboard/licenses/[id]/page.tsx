@@ -152,8 +152,14 @@ export default async function LicenseDetailPage({
           <Stat label="Machines" value={String(license.maxMachines ?? 3)} />
           <Stat label="Major-version cap" value={`v${license.majorVersionCap ?? 1}.x`} />
           <Stat label="Maintenance" value={formatDate(license.maintenanceUntil)} />
-          <Stat label="Trial started" value={formatDate(license.trialStartedAt)} />
-          <Stat label="Trial ends" value={formatDate(license.trialEndsAt)} />
+          {license.status === 'trial' ? (
+            <>
+              <Stat label="Trial started" value={formatDate(license.trialStartedAt)} />
+              <Stat label="Trial ends" value={formatDate(license.trialEndsAt)} />
+            </>
+          ) : (
+            <Stat label="Licence type" value="Perpetual" />
+          )}
           <Stat label="Paid on" value={formatDate(license.paidAt)} />
           <Stat
             label="Cloud backup"
