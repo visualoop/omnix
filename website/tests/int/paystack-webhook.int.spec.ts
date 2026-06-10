@@ -9,15 +9,18 @@
  */
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { createHmac } from 'crypto'
+import { invalidateSettingsCache } from '@/lib/settings'
 
 const TEST_SECRET = 'sk_test_webhook_unit'
 const ORIG_SECRET = process.env.PAYSTACK_SECRET_KEY
 
 beforeEach(() => {
   process.env.PAYSTACK_SECRET_KEY = TEST_SECRET
+  invalidateSettingsCache()
 })
 afterEach(() => {
   process.env.PAYSTACK_SECRET_KEY = ORIG_SECRET
+  invalidateSettingsCache()
   vi.restoreAllMocks()
 })
 
