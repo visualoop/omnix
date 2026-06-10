@@ -13,6 +13,12 @@ interface Props {
  * Shows LicenseActivationPage if no valid license, otherwise renders children.
  *
  * Set VITE_SKIP_LICENSE=1 in .env.development to bypass during development.
+ *
+ * IMPORTANT: only the INITIAL load toggles `loading`. Periodic revalidation
+ * happens silently — it updates the entitlements store + status object
+ * without unmounting children. Otherwise every 5-minute revalidation
+ * (or every window focus) would tear down and remount the setup wizard,
+ * losing form state and triggering visible flicker.
  */
 export function LicenseGuard({ children }: Props) {
   const [status, setStatus] = useState<LicenseStatus | null>(null);
@@ -20,56 +26,53 @@ export function LicenseGuard({ children }: Props) {
 
   const skipLicense = import.meta.env.VITE_SKIP_LICENSE === "1";
 
-  const refresh = async () => {
-    setLoading(true);
+  // Silent fetch — does NOT touch `loading`, so children stay mounted.
+  const fetchStatus = async (): Promise<LicenseStatus | null> => {
     try {
       const s = await getLicenseStatus();
       setStatus(s);
       useEntitlements.getState().setModules(s.activated ? s.modules : []);
+      return s;
     } catch (e) {
       console.error("License check failed:", e);
-      setStatus(null);
+      return null;
     }
-    setLoading(false);
   };
 
+  // Initial load — shows spinner only on cold start, never on revalidation.
   useEffect(() => {
     if (skipLicense) {
       setLoading(false);
       return;
     }
-    refresh();
+    let cancelled = false;
+    (async () => {
+      await fetchStatus();
+      if (!cancelled) setLoading(false);
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, [skipLicense]);
 
-  // Silent re-validation during the online window.
-  //
-  // Triggers:
-  //   1. Once after the guard confirms an activated license (covers the
-  //      cold-start case)
-  //   2. Every time the window regains focus (covers "user paid in browser
-  //      then alt-tabbed back" — flips trial → active in ~2 seconds, no
-  //      restart needed)
-  //   3. Every 5 minutes while the window is open (catches background-paid
-  //      cases like webhook delays or staff payments on a different device)
-  //
-  // All three are a no-op when offline (offline-first; never blocks the UI).
+  // Silent re-validation while the user works. Triggers:
+  //   1. Once when the guard confirms an activated license
+  //   2. Window focus (alt-tab back from the browser after paying)
+  //   3. Every 5 minutes as a safety net
+  // All three update entitlements in place — no spinner flicker, no
+  // unmount of setup wizard / dashboard children.
   useEffect(() => {
     if (skipLicense || !status?.activated) return;
     let cancelled = false;
     const tick = () => {
       revalidateLicense().then((result) => {
-        if (!cancelled && result !== null) refresh();
+        if (!cancelled && result !== null) fetchStatus();
       });
     };
 
-    // (1) immediate
     tick();
-
-    // (2) window focus — fires when alt-tabbing back from the browser
     const onFocus = () => tick();
     window.addEventListener("focus", onFocus);
-
-    // (3) every 5 minutes as a safety net
     const interval = setInterval(tick, 5 * 60 * 1000);
 
     return () => {
@@ -90,7 +93,10 @@ export function LicenseGuard({ children }: Props) {
   }
 
   if (!status?.activated) {
-    return <LicenseActivationPage onActivated={refresh} />;
+    // After the user activates from the activation page, the onActivated
+    // callback below re-runs fetchStatus() — which sets activated=true,
+    // children mount, no spinner.
+    return <LicenseActivationPage onActivated={fetchStatus} />;
   }
 
   return <>{children}</>;

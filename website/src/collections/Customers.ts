@@ -84,7 +84,7 @@ export const Customers: CollectionConfig = {
               customer: customer.id as never,
               tier: 'trial',
               variant: 'pro',
-              modules: ['core', 'dawa', 'retail'],
+              modules: ['core', 'dawa', 'retail', 'hospitality', 'hardware'],
               status: 'trial',
               maxBranches: 5,
               maxMachines: 10,

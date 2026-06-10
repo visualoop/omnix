@@ -26,12 +26,18 @@ export type ValidModule = (typeof VALID_MODULES)[number]
 const VALID_VARIANTS = ['pro', 'dawa', 'retail', 'hospitality', 'hardware'] as const
 export type ValidVariant = (typeof VALID_VARIANTS)[number]
 
-/** Resolve which modules a freshly-issued trial licence should include. */
+/**
+ * Resolve which modules a freshly-issued trial licence should include.
+ *
+ * Rules:
+ *   - explicit single trade module (dawa/retail/hospitality/hardware) → core + that one
+ *   - undefined / 'core' / 'pro' → all four trades unlocked (Pro trial behaviour)
+ */
 export function trialModulesFor(mod?: string | null): ValidModule[] {
-  if (mod && (VALID_MODULES as readonly string[]).includes(mod)) {
+  if (mod && mod !== 'pro' && mod !== 'core' && (VALID_MODULES as readonly string[]).includes(mod)) {
     return ['core', mod as ValidModule]
   }
-  return ['core', 'dawa', 'retail']
+  return ['core', 'dawa', 'retail', 'hardware', 'hospitality']
 }
 
 /**
