@@ -9,8 +9,28 @@
 const PRINT_CSS = `
   @page { size: A4; margin: 12mm 10mm; }
   @media print {
+    /* Defeat the app shell's h-screen + overflow-hidden — those clip
+       printed content to one viewport, producing blank pages 2+. */
+    html, body, #root {
+      height: auto !important;
+      overflow: visible !important;
+      background: white !important;
+    }
+    body * {
+      /* Strip viewport-locked sizing on shell wrappers. Per-element
+         overrides below restore <table>/<pre> behavior where useful. */
+      max-height: none !important;
+    }
+    .h-screen, .w-screen,
+    [class*="h-[calc(100vh"], [class*="h-[100vh"] {
+      height: auto !important;
+      width: auto !important;
+    }
+    .overflow-hidden, .overflow-auto, .overflow-y-auto, .overflow-x-auto {
+      overflow: visible !important;
+    }
     body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-    .no-print { display: none !important; }
+    .no-print, .print-hide { display: none !important; }
     .print-only { display: block !important; }
     aside, header, nav, .topbar { display: none !important; }
     main { padding: 0 !important; overflow: visible !important; }
@@ -19,6 +39,11 @@ const PRINT_CSS = `
     tr { page-break-inside: avoid; page-break-after: auto; }
     thead { display: table-header-group; }
     tfoot { display: table-footer-group; }
+    /* Force readable text on dark themes */
+    body, main, [data-print-area] {
+      color: #111 !important;
+      background: white !important;
+    }
   }
   .print-only { display: none; }
   .print-header {
@@ -60,10 +85,11 @@ export function printPage(title?: string) {
   }
 }
 
-/** Add a print-only header (logo + business + date) to a page. */
+/** Add a print-only header (logo + business + date) to a page.
+ *  Hidden on screen via .print-header CSS, shown on print. */
 export function PrintHeader({ title, subtitle }: { title: string; subtitle?: string }) {
   return (
-    <div className="print-header" style={{ display: "none" }}>
+    <div className="print-header">
       <div>
         <h1>{title}</h1>
         {subtitle && <div className="meta">{subtitle}</div>}

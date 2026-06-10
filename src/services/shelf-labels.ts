@@ -1,4 +1,5 @@
 import QRCode from "qrcode";
+import { printHtml } from "./print-html";
 
 export interface ShelfLabelData {
   product_name: string;
@@ -10,14 +11,7 @@ export interface ShelfLabelData {
 export async function printShelfLabels(labels: ShelfLabelData[]): Promise<void> {
   const html = await renderLabelsHTML(labels);
 
-  // Open in new window for print dialog
-  const w = window.open("", "_blank", "width=400,height=600");
-  if (!w) return;
-  w.document.write(html);
-  w.document.close();
-  w.onload = () => {
-    setTimeout(() => w.print(), 200);
-  };
+  printHtml(html);
 }
 
 async function renderLabelsHTML(labels: ShelfLabelData[]): Promise<string> {

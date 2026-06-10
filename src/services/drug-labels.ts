@@ -7,6 +7,7 @@
  * pharmacy name, dispenser initials, warnings.
  */
 import { query } from "@/lib/db";
+import { printHtml } from "./print-html";
 import { BRAND } from "@/lib/brand";
 
 export interface DrugLabel {
@@ -180,7 +181,7 @@ export function renderDrugLabelHtml(labels: DrugLabel[]): string {
 
   return `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Drug Label</title>${css}</head>
     <body>${labelHtml}
-      <script>window.onload = () => { window.print(); };</script>
+
     </body></html>`;
 }
 
@@ -193,9 +194,5 @@ export async function printDrugLabels(prescriptionId: string): Promise<void> {
   if (labels.length === 0) {
     throw new Error("No dispensed items to print labels for");
   }
-  const html = renderDrugLabelHtml(labels);
-  const w = window.open("", "_blank", "width=480,height=640");
-  if (!w) throw new Error("Pop-up blocked. Allow pop-ups to print labels.");
-  w.document.write(html);
-  w.document.close();
+  printHtml(renderDrugLabelHtml(labels));
 }

@@ -9,6 +9,7 @@
  * the same summary view of what happened in a date window.
  */
 import { query } from "@/lib/db";
+import { printHtml } from "./print-html";
 import { BRAND } from "@/lib/brand";
 
 export interface ZReport {
@@ -310,7 +311,7 @@ export function renderZReportHtml(r: ZReport): string {
   <div class="center muted">Cashier signature: ____________</div>
   <div style="height: 8mm;"></div>
 
-  <script>window.onload = () => { window.print(); };</script>
+
 </body></html>`;
 }
 
@@ -324,9 +325,5 @@ function truncate(s: string, n: number): string {
 
 export async function printZReport(date?: string): Promise<void> {
   const r = await getZReport(date);
-  const html = renderZReportHtml(r);
-  const w = window.open("", "_blank", "width=420,height=720");
-  if (!w) throw new Error("Pop-up blocked. Allow pop-ups to print.");
-  w.document.write(html);
-  w.document.close();
+  printHtml(renderZReportHtml(r));
 }

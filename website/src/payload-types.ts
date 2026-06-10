@@ -119,6 +119,7 @@ export interface Config {
     'home-content': HomeContent;
     'contact-content': ContactContent;
     'footer-content': FooterContent;
+    'trade-landings': TradeLanding;
   };
   globalsSelect: {
     settings: SettingsSelect<false> | SettingsSelect<true>;
@@ -127,6 +128,7 @@ export interface Config {
     'home-content': HomeContentSelect<false> | HomeContentSelect<true>;
     'contact-content': ContactContentSelect<false> | ContactContentSelect<true>;
     'footer-content': FooterContentSelect<false> | FooterContentSelect<true>;
+    'trade-landings': TradeLandingsSelect<false> | TradeLandingsSelect<true>;
   };
   locale: null;
   widgets: {
@@ -2197,6 +2199,332 @@ export interface FooterContent {
   createdAt?: string | null;
 }
 /**
+ * Per-trade landing page copy. One tab per variant.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "trade-landings".
+ */
+export interface TradeLanding {
+  id: number;
+  pro: {
+    /**
+     * e.g. "Omnix Pro"
+     */
+    productName: string;
+    /**
+     * One-liner shown in metadata + hero subtitle.
+     */
+    tagline?: string | null;
+    metaTitle?: string | null;
+    metaDescription?: string | null;
+    hero?: {
+      eyebrow?: string | null;
+      /**
+       * First part of headline. Plain text.
+       */
+      titlePrefix?: string | null;
+      /**
+       * Word(s) to render in italic <em>. Optional.
+       */
+      titleEmphasis?: string | null;
+      /**
+       * Tail of headline after the italic part. Plain text.
+       */
+      titleSuffix?: string | null;
+      description?: string | null;
+    };
+    whoFor?: {
+      eyebrow?: string | null;
+      items?:
+        | {
+            label: string;
+            id?: string | null;
+          }[]
+        | null;
+    };
+    /**
+     * Up to ~7 feature cards. Each is title + description.
+     */
+    signatureFeatures?:
+      | {
+          title: string;
+          description: string;
+          id?: string | null;
+        }[]
+      | null;
+    /**
+     * Compliance + trust-signal bullet list.
+     */
+    compliance?:
+      | {
+          item: string;
+          id?: string | null;
+        }[]
+      | null;
+    pricingNote?: string | null;
+    cta?: {
+      buyHref?: string | null;
+      downloadHref?: string | null;
+      buyLabel?: string | null;
+      trialLabel?: string | null;
+    };
+  };
+  dawa: {
+    /**
+     * e.g. "Omnix Dawa"
+     */
+    productName: string;
+    /**
+     * One-liner shown in metadata + hero subtitle.
+     */
+    tagline?: string | null;
+    metaTitle?: string | null;
+    metaDescription?: string | null;
+    hero?: {
+      eyebrow?: string | null;
+      /**
+       * First part of headline. Plain text.
+       */
+      titlePrefix?: string | null;
+      /**
+       * Word(s) to render in italic <em>. Optional.
+       */
+      titleEmphasis?: string | null;
+      /**
+       * Tail of headline after the italic part. Plain text.
+       */
+      titleSuffix?: string | null;
+      description?: string | null;
+    };
+    whoFor?: {
+      eyebrow?: string | null;
+      items?:
+        | {
+            label: string;
+            id?: string | null;
+          }[]
+        | null;
+    };
+    /**
+     * Up to ~7 feature cards. Each is title + description.
+     */
+    signatureFeatures?:
+      | {
+          title: string;
+          description: string;
+          id?: string | null;
+        }[]
+      | null;
+    /**
+     * Compliance + trust-signal bullet list.
+     */
+    compliance?:
+      | {
+          item: string;
+          id?: string | null;
+        }[]
+      | null;
+    pricingNote?: string | null;
+    cta?: {
+      buyHref?: string | null;
+      downloadHref?: string | null;
+      buyLabel?: string | null;
+      trialLabel?: string | null;
+    };
+  };
+  retail: {
+    /**
+     * e.g. "Omnix Retail"
+     */
+    productName: string;
+    /**
+     * One-liner shown in metadata + hero subtitle.
+     */
+    tagline?: string | null;
+    metaTitle?: string | null;
+    metaDescription?: string | null;
+    hero?: {
+      eyebrow?: string | null;
+      /**
+       * First part of headline. Plain text.
+       */
+      titlePrefix?: string | null;
+      /**
+       * Word(s) to render in italic <em>. Optional.
+       */
+      titleEmphasis?: string | null;
+      /**
+       * Tail of headline after the italic part. Plain text.
+       */
+      titleSuffix?: string | null;
+      description?: string | null;
+    };
+    whoFor?: {
+      eyebrow?: string | null;
+      items?:
+        | {
+            label: string;
+            id?: string | null;
+          }[]
+        | null;
+    };
+    /**
+     * Up to ~7 feature cards. Each is title + description.
+     */
+    signatureFeatures?:
+      | {
+          title: string;
+          description: string;
+          id?: string | null;
+        }[]
+      | null;
+    /**
+     * Compliance + trust-signal bullet list.
+     */
+    compliance?:
+      | {
+          item: string;
+          id?: string | null;
+        }[]
+      | null;
+    pricingNote?: string | null;
+    cta?: {
+      buyHref?: string | null;
+      downloadHref?: string | null;
+      buyLabel?: string | null;
+      trialLabel?: string | null;
+    };
+  };
+  hospitality: {
+    /**
+     * e.g. "Omnix Hospitality"
+     */
+    productName: string;
+    /**
+     * One-liner shown in metadata + hero subtitle.
+     */
+    tagline?: string | null;
+    metaTitle?: string | null;
+    metaDescription?: string | null;
+    hero?: {
+      eyebrow?: string | null;
+      /**
+       * First part of headline. Plain text.
+       */
+      titlePrefix?: string | null;
+      /**
+       * Word(s) to render in italic <em>. Optional.
+       */
+      titleEmphasis?: string | null;
+      /**
+       * Tail of headline after the italic part. Plain text.
+       */
+      titleSuffix?: string | null;
+      description?: string | null;
+    };
+    whoFor?: {
+      eyebrow?: string | null;
+      items?:
+        | {
+            label: string;
+            id?: string | null;
+          }[]
+        | null;
+    };
+    /**
+     * Up to ~7 feature cards. Each is title + description.
+     */
+    signatureFeatures?:
+      | {
+          title: string;
+          description: string;
+          id?: string | null;
+        }[]
+      | null;
+    /**
+     * Compliance + trust-signal bullet list.
+     */
+    compliance?:
+      | {
+          item: string;
+          id?: string | null;
+        }[]
+      | null;
+    pricingNote?: string | null;
+    cta?: {
+      buyHref?: string | null;
+      downloadHref?: string | null;
+      buyLabel?: string | null;
+      trialLabel?: string | null;
+    };
+  };
+  hardware: {
+    /**
+     * e.g. "Omnix Hardware"
+     */
+    productName: string;
+    /**
+     * One-liner shown in metadata + hero subtitle.
+     */
+    tagline?: string | null;
+    metaTitle?: string | null;
+    metaDescription?: string | null;
+    hero?: {
+      eyebrow?: string | null;
+      /**
+       * First part of headline. Plain text.
+       */
+      titlePrefix?: string | null;
+      /**
+       * Word(s) to render in italic <em>. Optional.
+       */
+      titleEmphasis?: string | null;
+      /**
+       * Tail of headline after the italic part. Plain text.
+       */
+      titleSuffix?: string | null;
+      description?: string | null;
+    };
+    whoFor?: {
+      eyebrow?: string | null;
+      items?:
+        | {
+            label: string;
+            id?: string | null;
+          }[]
+        | null;
+    };
+    /**
+     * Up to ~7 feature cards. Each is title + description.
+     */
+    signatureFeatures?:
+      | {
+          title: string;
+          description: string;
+          id?: string | null;
+        }[]
+      | null;
+    /**
+     * Compliance + trust-signal bullet list.
+     */
+    compliance?:
+      | {
+          item: string;
+          id?: string | null;
+        }[]
+      | null;
+    pricingNote?: string | null;
+    cta?: {
+      buyHref?: string | null;
+      downloadHref?: string | null;
+      buyLabel?: string | null;
+      trialLabel?: string | null;
+    };
+  };
+  updatedAt?: string | null;
+  createdAt?: string | null;
+}
+/**
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "settings_select".
  */
@@ -2522,6 +2850,265 @@ export interface FooterContentSelect<T extends boolean = true> {
         label?: T;
         href?: T;
         id?: T;
+      };
+  updatedAt?: T;
+  createdAt?: T;
+  globalType?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "trade-landings_select".
+ */
+export interface TradeLandingsSelect<T extends boolean = true> {
+  pro?:
+    | T
+    | {
+        productName?: T;
+        tagline?: T;
+        metaTitle?: T;
+        metaDescription?: T;
+        hero?:
+          | T
+          | {
+              eyebrow?: T;
+              titlePrefix?: T;
+              titleEmphasis?: T;
+              titleSuffix?: T;
+              description?: T;
+            };
+        whoFor?:
+          | T
+          | {
+              eyebrow?: T;
+              items?:
+                | T
+                | {
+                    label?: T;
+                    id?: T;
+                  };
+            };
+        signatureFeatures?:
+          | T
+          | {
+              title?: T;
+              description?: T;
+              id?: T;
+            };
+        compliance?:
+          | T
+          | {
+              item?: T;
+              id?: T;
+            };
+        pricingNote?: T;
+        cta?:
+          | T
+          | {
+              buyHref?: T;
+              downloadHref?: T;
+              buyLabel?: T;
+              trialLabel?: T;
+            };
+      };
+  dawa?:
+    | T
+    | {
+        productName?: T;
+        tagline?: T;
+        metaTitle?: T;
+        metaDescription?: T;
+        hero?:
+          | T
+          | {
+              eyebrow?: T;
+              titlePrefix?: T;
+              titleEmphasis?: T;
+              titleSuffix?: T;
+              description?: T;
+            };
+        whoFor?:
+          | T
+          | {
+              eyebrow?: T;
+              items?:
+                | T
+                | {
+                    label?: T;
+                    id?: T;
+                  };
+            };
+        signatureFeatures?:
+          | T
+          | {
+              title?: T;
+              description?: T;
+              id?: T;
+            };
+        compliance?:
+          | T
+          | {
+              item?: T;
+              id?: T;
+            };
+        pricingNote?: T;
+        cta?:
+          | T
+          | {
+              buyHref?: T;
+              downloadHref?: T;
+              buyLabel?: T;
+              trialLabel?: T;
+            };
+      };
+  retail?:
+    | T
+    | {
+        productName?: T;
+        tagline?: T;
+        metaTitle?: T;
+        metaDescription?: T;
+        hero?:
+          | T
+          | {
+              eyebrow?: T;
+              titlePrefix?: T;
+              titleEmphasis?: T;
+              titleSuffix?: T;
+              description?: T;
+            };
+        whoFor?:
+          | T
+          | {
+              eyebrow?: T;
+              items?:
+                | T
+                | {
+                    label?: T;
+                    id?: T;
+                  };
+            };
+        signatureFeatures?:
+          | T
+          | {
+              title?: T;
+              description?: T;
+              id?: T;
+            };
+        compliance?:
+          | T
+          | {
+              item?: T;
+              id?: T;
+            };
+        pricingNote?: T;
+        cta?:
+          | T
+          | {
+              buyHref?: T;
+              downloadHref?: T;
+              buyLabel?: T;
+              trialLabel?: T;
+            };
+      };
+  hospitality?:
+    | T
+    | {
+        productName?: T;
+        tagline?: T;
+        metaTitle?: T;
+        metaDescription?: T;
+        hero?:
+          | T
+          | {
+              eyebrow?: T;
+              titlePrefix?: T;
+              titleEmphasis?: T;
+              titleSuffix?: T;
+              description?: T;
+            };
+        whoFor?:
+          | T
+          | {
+              eyebrow?: T;
+              items?:
+                | T
+                | {
+                    label?: T;
+                    id?: T;
+                  };
+            };
+        signatureFeatures?:
+          | T
+          | {
+              title?: T;
+              description?: T;
+              id?: T;
+            };
+        compliance?:
+          | T
+          | {
+              item?: T;
+              id?: T;
+            };
+        pricingNote?: T;
+        cta?:
+          | T
+          | {
+              buyHref?: T;
+              downloadHref?: T;
+              buyLabel?: T;
+              trialLabel?: T;
+            };
+      };
+  hardware?:
+    | T
+    | {
+        productName?: T;
+        tagline?: T;
+        metaTitle?: T;
+        metaDescription?: T;
+        hero?:
+          | T
+          | {
+              eyebrow?: T;
+              titlePrefix?: T;
+              titleEmphasis?: T;
+              titleSuffix?: T;
+              description?: T;
+            };
+        whoFor?:
+          | T
+          | {
+              eyebrow?: T;
+              items?:
+                | T
+                | {
+                    label?: T;
+                    id?: T;
+                  };
+            };
+        signatureFeatures?:
+          | T
+          | {
+              title?: T;
+              description?: T;
+              id?: T;
+            };
+        compliance?:
+          | T
+          | {
+              item?: T;
+              id?: T;
+            };
+        pricingNote?: T;
+        cta?:
+          | T
+          | {
+              buyHref?: T;
+              downloadHref?: T;
+              buyLabel?: T;
+              trialLabel?: T;
+            };
       };
   updatedAt?: T;
   createdAt?: T;

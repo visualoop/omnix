@@ -33,6 +33,7 @@ import { LandingPage } from './globals/LandingPage'
 import { HomeContent } from './globals/HomeContent'
 import { ContactContent } from './globals/ContactContent'
 import { FooterContent } from './globals/FooterContent'
+import { TradeLandings } from './globals/TradeLandings'
 
 import { customEndpoints } from './endpoints'
 import { BRAND_NAME } from './lib/brand'
@@ -69,7 +70,7 @@ export default buildConfig({
     Media,
     CloudBackups,
   ],
-  globals: [Settings, Pricing, LandingPage, HomeContent, ContactContent, FooterContent],
+  globals: [Settings, Pricing, LandingPage, HomeContent, ContactContent, FooterContent, TradeLandings],
   editor: lexicalEditor(),
   secret: process.env.PAYLOAD_SECRET || '',
   typescript: {

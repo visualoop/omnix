@@ -6,6 +6,7 @@
  * This is the audit trail when handing over a till.
  */
 import { query } from "@/lib/db";
+import { printHtml } from "./print-html";
 import { BRAND } from "@/lib/brand";
 
 export interface ShiftHandover {
@@ -182,7 +183,7 @@ export function renderShiftHandoverHtml(h: ShiftHandover): string {
   </div>
 
   <div style="height: 8mm;"></div>
-  <script>window.onload = () => { window.print(); };</script>
+
 </body></html>`;
 }
 
@@ -193,9 +194,5 @@ function escape(s: string): string {
 export async function printShiftHandover(shiftId: string): Promise<void> {
   const handover = await getShiftHandover(shiftId);
   if (!handover) throw new Error("Shift not found");
-  const html = renderShiftHandoverHtml(handover);
-  const w = window.open("", "_blank", "width=420,height=720");
-  if (!w) throw new Error("Pop-up blocked. Allow pop-ups to print.");
-  w.document.write(html);
-  w.document.close();
+  printHtml(renderShiftHandoverHtml(handover));
 }

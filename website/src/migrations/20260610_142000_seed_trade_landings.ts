@@ -1,51 +1,31 @@
-import Link from 'next/link'
-import { getPayload } from 'payload'
-import config from '@/payload.config'
-import { Icon } from '@/components/icons'
-import { Button } from '@/components/ui/button'
-import { PageHero } from '@/components/marketing/page-hero'
-import { ClosingCtaSection } from '@/components/landing/closing-cta-section'
-import { getSiteSettings } from '@/lib/site-settings'
-
-export type VariantId = 'dawa' | 'retail' | 'hospitality' | 'hardware' | 'pro'
-
-interface VariantData {
-  productName?: string
-  tagline?: string
-  metaTitle?: string
-  metaDescription?: string
-  hero?: {
-    eyebrow?: string
-    titlePrefix?: string
-    titleEmphasis?: string
-    titleSuffix?: string
-    description?: string
-  }
-  whoFor?: {
-    eyebrow?: string
-    items?: { label: string }[]
-  }
-  signatureFeatures?: { title: string; description: string }[]
-  compliance?: { item: string }[]
-  pricingNote?: string
-  cta?: {
-    buyHref?: string
-    downloadHref?: string
-    buyLabel?: string
-    trialLabel?: string
-  }
-}
+import type { MigrateUpArgs, MigrateDownArgs } from '@payloadcms/db-vercel-postgres'
 
 /**
- * Default content per variant. Used when the CMS global doesn't yet
- * have a row for this variant (cold-boot, or the seed migration hasn't
- * run). Values match the previously hardcoded copy so behavior stays
- * identical between "before CMS" and "CMS empty".
+ * Seed the trade-landings global with the canonical copy each variant
+ * had hardcoded prior to v0.4.10. Idempotent — only writes a variant tab
+ * if it has no productName yet.
  */
-const FALLBACK: Record<VariantId, VariantData> = {
+
+interface VariantSeed {
+  productName: string
+  tagline: string
+  metaTitle?: string
+  metaDescription?: string
+  hero: { eyebrow: string; titlePrefix: string; titleEmphasis?: string; titleSuffix?: string; description: string }
+  whoFor: { eyebrow: string; items: { label: string }[] }
+  signatureFeatures: { title: string; description: string }[]
+  compliance: { item: string }[]
+  pricingNote: string
+  cta: { buyHref: string; downloadHref: string; buyLabel: string; trialLabel: string }
+}
+
+const SEEDS: Record<string, VariantSeed> = {
   pro: {
     productName: 'Omnix Pro',
     tagline: 'All four trades on one machine',
+    metaTitle: 'Omnix Pro — All four trades on one machine',
+    metaDescription:
+      'Pharmacy, retail, hospitality, hardware — every module unlocked on one Windows install. KRA eTIMS + SHA + M-Pesa included.',
     hero: {
       eyebrow: 'Omnix Pro',
       titlePrefix: 'One install. ',
@@ -88,6 +68,9 @@ const FALLBACK: Record<VariantId, VariantData> = {
   dawa: {
     productName: 'Omnix Dawa',
     tagline: 'Pharmacy management for Kenyan chemists',
+    metaTitle: 'Omnix Dawa — Pharmacy management for Kenyan chemists',
+    metaDescription:
+      'Prescriptions, drug labels, refills, expiry, controlled-substance register, KRA eTIMS, SHA + private insurance claims. Pay once, own it forever.',
     hero: {
       eyebrow: 'Omnix Dawa',
       titlePrefix: 'The till every ',
@@ -130,6 +113,9 @@ const FALLBACK: Record<VariantId, VariantData> = {
   retail: {
     productName: 'Omnix Retail',
     tagline: 'Retail POS for shops, mini-marts, and dukas',
+    metaTitle: 'Omnix Retail — Retail POS for shops, mini-marts, and dukas',
+    metaDescription:
+      'Barcode scanning, layby, M-Pesa, customer credit, supplier reconciliation, KRA eTIMS — built for Kenyan retail.',
     hero: {
       eyebrow: 'Omnix Retail',
       titlePrefix: 'A till that ',
@@ -172,6 +158,9 @@ const FALLBACK: Record<VariantId, VariantData> = {
   hospitality: {
     productName: 'Omnix Hospitality',
     tagline: 'POS for restaurants, bars, lodges',
+    metaTitle: 'Omnix Hospitality — POS for restaurants, bars, lodges',
+    metaDescription:
+      'KOT printing, table-side orders, room folios, recipe costing, F&B levy, M-Pesa, KRA eTIMS — for restaurants, bars and lodges.',
     hero: {
       eyebrow: 'Omnix Hospitality',
       titlePrefix: 'Tickets to ',
@@ -214,6 +203,9 @@ const FALLBACK: Record<VariantId, VariantData> = {
   hardware: {
     productName: 'Omnix Hardware',
     tagline: 'POS for hardware stores and contractors',
+    metaTitle: 'Omnix Hardware — POS for hardware stores and contractors',
+    metaDescription:
+      'Bulk pricing tiers, contractor accounts, parts catalogues, deliveries, GRNs, KRA eTIMS — for hardware stores supplying construction in Kenya.',
     hero: {
       eyebrow: 'Omnix Hardware',
       titlePrefix: 'Built like ',
@@ -255,175 +247,32 @@ const FALLBACK: Record<VariantId, VariantData> = {
   },
 }
 
-/**
- * Read variant-specific copy from the CMS. Falls back to the canonical
- * defaults above if the global isn't seeded yet.
- */
-async function getVariantContent(variant: VariantId): Promise<VariantData> {
+export async function up({ payload, req }: MigrateUpArgs): Promise<void> {
   try {
-    const payloadConfig = await config
-    const payload = await getPayload({ config: payloadConfig })
-    const g = (await payload.findGlobal({
+    const cur = (await payload.findGlobal({
       slug: 'trade-landings',
       overrideAccess: true,
-    })) as unknown as Record<string, VariantData | undefined>
-    const cms = g[variant]
-    if (cms && cms.productName) return cms
-  } catch {
-    // ignore — fall through to fallback
+    })) as unknown as Record<string, { productName?: string } | undefined>
+
+    const update: Record<string, VariantSeed> = {}
+    for (const v of ['pro', 'dawa', 'retail', 'hospitality', 'hardware'] as const) {
+      if (!cur[v]?.productName) {
+        update[v] = SEEDS[v]
+      }
+    }
+    if (Object.keys(update).length > 0) {
+      await payload.updateGlobal({
+        slug: 'trade-landings',
+        data: update as never,
+        overrideAccess: true,
+        req,
+      })
+    }
+  } catch (e) {
+    payload.logger.warn(`trade-landings seed skipped: ${(e as Error).message}`)
   }
-  return FALLBACK[variant]
 }
 
-function HeroTitle({
-  prefix,
-  emphasis,
-  suffix,
-}: {
-  prefix?: string
-  emphasis?: string
-  suffix?: string
-}) {
-  if (!emphasis) return <>{prefix ?? ''}</>
-  return (
-    <>
-      {prefix ?? ''}
-      <em>{emphasis}</em>
-      {suffix ?? ''}
-    </>
-  )
-}
-
-export async function VariantLanding({ variant }: { variant: VariantId }) {
-  const [content, settings] = await Promise.all([
-    getVariantContent(variant),
-    getSiteSettings(),
-  ])
-
-  const productName = content.productName ?? FALLBACK[variant].productName ?? 'Omnix'
-  const hero = content.hero ?? FALLBACK[variant].hero ?? {}
-  const whoFor = content.whoFor ?? FALLBACK[variant].whoFor ?? { items: [] }
-  const features = content.signatureFeatures ?? FALLBACK[variant].signatureFeatures ?? []
-  const compliance = content.compliance ?? FALLBACK[variant].compliance ?? []
-  const pricingNote = content.pricingNote ?? FALLBACK[variant].pricingNote ?? ''
-  const cta = content.cta ?? FALLBACK[variant].cta ?? {}
-  const buyHref = cta.buyHref ?? `/buy?variant=${variant}`
-  const downloadHref = cta.downloadHref ?? `/signup?variant=${variant}`
-  const buyLabel = cta.buyLabel ?? `Buy ${productName}`
-  const trialLabel = cta.trialLabel ?? 'Start 30-day free trial'
-
-  return (
-    <>
-      <PageHero
-        eyebrow={hero.eyebrow ?? productName}
-        title={
-          <HeroTitle
-            prefix={hero.titlePrefix}
-            emphasis={hero.titleEmphasis}
-            suffix={hero.titleSuffix}
-          />
-        }
-        description={hero.description ?? ''}
-      >
-        <div className="mt-6 flex flex-col items-center gap-3 sm:flex-row">
-          <Button asChild size="lg">
-            <Link href={buyHref}>{buyLabel}</Link>
-          </Button>
-          <Button asChild size="lg" variant="outline">
-            <Link href={downloadHref}>{trialLabel}</Link>
-          </Button>
-        </div>
-      </PageHero>
-
-      {/* ── Who it's for ──────────────────────────────────────── */}
-      <section className="border-b border-[var(--color-border)] bg-[var(--color-surface)]/30 py-14">
-        <div className="container-default">
-          <span className="caption-mono">{whoFor.eyebrow ?? 'Built for'}</span>
-          <ul className="mt-5 grid grid-cols-1 gap-2 sm:grid-cols-2 md:grid-cols-3">
-            {(whoFor.items ?? []).map((item, i) => (
-              <li key={`${item.label}-${i}`} className="flex items-start gap-2.5 text-[14px] text-[var(--color-fg)]">
-                <Icon.Check className="mt-0.5 size-4 shrink-0 text-[var(--color-accent)]" weight="bold" />
-                {item.label}
-              </li>
-            ))}
-          </ul>
-        </div>
-      </section>
-
-      {/* ── Signature features ────────────────────────────────── */}
-      <section className="section">
-        <div className="container-wide">
-          <div className="mb-12">
-            <span className="caption-mono">What you get</span>
-            <h2 className="headline-sub mt-3">
-              {productName} — purpose-built for your trade
-            </h2>
-          </div>
-          <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
-            {features.map((f) => (
-              <div key={f.title} className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-6">
-                <h3 className="font-[family-name:var(--font-display)] text-[20px] font-normal leading-tight text-[var(--color-fg)]">
-                  {f.title}
-                </h3>
-                <p className="mt-3 text-[14px] leading-[1.65] text-[var(--color-fg-muted)]">
-                  {f.description}
-                </p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ── Compliance ────────────────────────────────────────── */}
-      {compliance.length > 0 && (
-        <section className="border-t border-[var(--color-border)] bg-[var(--color-surface)]/30 py-14">
-          <div className="container-default">
-            <span className="caption-mono">Compliant with</span>
-            <ul className="mt-5 grid grid-cols-1 gap-2 sm:grid-cols-2 md:grid-cols-3">
-              {compliance.map((c, i) => (
-                <li key={`${c.item}-${i}`} className="flex items-start gap-2.5 text-[14px] text-[var(--color-fg)]">
-                  <Icon.Check className="mt-0.5 size-4 shrink-0 text-[var(--color-accent)]" weight="bold" />
-                  {c.item}
-                </li>
-              ))}
-            </ul>
-          </div>
-        </section>
-      )}
-
-      {/* ── Pricing note ──────────────────────────────────────── */}
-      <section className="section">
-        <div className="container-default text-center">
-          <span className="caption-mono">Pricing</span>
-          <h2 className="font-[family-name:var(--font-display)] mt-3 text-[clamp(40px,5vw,72px)] font-normal leading-[1.05] text-[var(--color-fg)]">
-            KES <em>30,000</em>
-          </h2>
-          <p className="mt-3 text-[15px] text-[var(--color-fg-muted)] max-w-[44ch] mx-auto">
-            {pricingNote}
-          </p>
-          <div className="mt-7 flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
-            <Button asChild size="lg">
-              <Link href={buyHref}>{buyLabel}</Link>
-            </Button>
-            <Button asChild size="lg" variant="outline">
-              <Link href={downloadHref}>{trialLabel}</Link>
-            </Button>
-          </div>
-        </div>
-      </section>
-
-      <ClosingCtaSection whatsappUrl={settings.whatsappUrl} />
-    </>
-  )
-}
-
-/** Read just metadata for generateMetadata() in each trade page. */
-export async function getVariantMetadata(variant: VariantId): Promise<{ title: string; description: string }> {
-  const c = await getVariantContent(variant)
-  const fb = FALLBACK[variant]
-  return {
-    title: c.metaTitle ?? `${c.productName ?? fb.productName} — ${c.tagline ?? fb.tagline}`,
-    description:
-      c.metaDescription ?? c.tagline ?? fb.tagline ?? 'Offline-first ERP platform for Kenyan SMEs.',
-  }
+export async function down(_args: MigrateDownArgs): Promise<void> {
+  // No-op.
 }
