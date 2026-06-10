@@ -113,18 +113,28 @@ export default async function DashboardOverviewPage({
   const params = await searchParams
   const showWelcome = params.welcome === '1'
 
-  const activeLicense = (licensesRes.docs[0] ?? null) as
-    | null
-    | {
-        id: string
-        licenseKey: string
-        tier?: string
-        status?: string
-        modules?: string[]
-        trialEndsAt?: string
-        maintenanceUntil?: string
-        majorVersionCap?: number
-      }
+  type Variant = 'pro' | 'dawa' | 'retail' | 'hospitality' | 'hardware'
+  interface LicenseSummary {
+    id: string | number
+    licenseKey: string
+    tier?: string
+    status?: string
+    variant?: Variant
+    modules?: string[]
+    trialEndsAt?: string
+    maintenanceUntil?: string
+    majorVersionCap?: number
+  }
+  const allLicenses = licensesRes.docs as unknown as LicenseSummary[]
+  const activeLicense = (allLicenses[0] ?? null) as LicenseSummary | null
+
+  const VARIANT_NAME: Record<Variant, string> = {
+    pro: 'Omnix Pro',
+    dawa: 'Omnix Dawa',
+    retail: 'Omnix Retail',
+    hospitality: 'Omnix Hospitality',
+    hardware: 'Omnix Hardware',
+  }
 
   const trialDaysLeft = activeLicense?.trialEndsAt
     ? Math.max(
@@ -223,55 +233,76 @@ export default async function DashboardOverviewPage({
         />
       </div>
 
-      {/* Licence detail */}
-      {activeLicense ? (
+      {/* Your licences (all variants) */}
+      {allLicenses.length > 0 ? (
         <section className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-6 lg:p-8">
-          <div className="flex items-start justify-between gap-6">
+          <header className="flex items-center justify-between gap-6">
             <div>
-              <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--color-fg-subtle)]">
-                Active licence
-              </div>
-              <div className="mt-2 flex flex-wrap items-baseline gap-3">
-                <code className="font-mono text-[20px] tabular-nums text-[var(--color-fg)]">
-                  {activeLicense.licenseKey}
-                </code>
-                <StatusPill status={activeLicense.status ?? 'trial'} />
-              </div>
-              <div className="mt-3 flex flex-wrap gap-2 text-[12px]">
-                {(activeLicense.modules ?? []).map((m) => (
-                  <span
-                    key={m}
-                    className="rounded-full border border-[var(--color-border)] bg-[var(--color-bg)] px-2 py-0.5 text-[11px] font-medium text-[var(--color-fg-muted)]"
-                  >
-                    {m}
-                  </span>
-                ))}
-              </div>
+              <h2 className="font-display text-[18px] font-medium text-[var(--color-fg)]">
+                Your licences
+              </h2>
+              <p className="mt-1 text-[13px] text-[var(--color-fg-muted)]">
+                {allLicenses.length === 1
+                  ? '1 licence on file'
+                  : `${allLicenses.length} licences on file — one per trade variant.`}
+              </p>
             </div>
             <Button asChild size="sm" variant="outline" className="shrink-0">
-              <Link href={`/dashboard/licenses/${activeLicense.id}`}>
-                Manage licence
+              <Link href="/dashboard/licenses">
+                Manage all
                 <ArrowRight className="size-3.5" />
               </Link>
             </Button>
-          </div>
+          </header>
 
-          {trialDaysLeft !== null && trialDaysLeft <= 7 && activeLicense.status === 'trial' ? (
-            <div className="mt-6 flex items-start gap-3 rounded-md border border-[var(--color-caution)] bg-[var(--color-caution)]/10 p-4">
-              <TriangleAlert className="mt-0.5 size-4 shrink-0 text-[var(--color-caution)]" />
-              <div className="flex-1">
-                <div className="text-[14px] font-medium text-[var(--color-fg)]">
-                  Trial ends in {trialDaysLeft} day{trialDaysLeft === 1 ? '' : 's'}.
-                </div>
-                <p className="mt-1 text-[13px] text-[var(--color-fg-muted)]">
-                  Pay now to keep using Omnix without interruption. Your data stays where it is.
-                </p>
-              </div>
-              <Button asChild size="sm">
-                <Link href={`/buy/${activeLicense.id}`}>Buy now</Link>
-              </Button>
-            </div>
-          ) : null}
+          <ul className="mt-6 space-y-3">
+            {allLicenses.map((lic) => {
+              const variant: Variant = (lic.variant as Variant) ?? 'pro'
+              const days = lic.trialEndsAt
+                ? Math.max(0, Math.ceil((new Date(lic.trialEndsAt).getTime() - Date.now()) / (1000 * 60 * 60 * 24)))
+                : null
+              return (
+                <li key={String(lic.id)} className="rounded-xl border border-[var(--color-border)] bg-[var(--color-bg)] p-4">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-baseline gap-2">
+                        <span className="font-display text-[15px] font-medium text-[var(--color-fg)]">
+                          {VARIANT_NAME[variant]}
+                        </span>
+                        <StatusPill status={lic.status ?? 'trial'} />
+                      </div>
+                      <code className="mt-1 block font-mono text-[13px] tabular-nums text-[var(--color-fg-muted)] truncate">
+                        {lic.licenseKey}
+                      </code>
+                    </div>
+                    <div className="flex flex-wrap gap-2 shrink-0">
+                      <Button asChild size="sm" variant="outline">
+                        <Link href={`/dashboard/downloads/${variant}`}>
+                          <Download className="size-3" />
+                          Download
+                        </Link>
+                      </Button>
+                      <Button asChild size="sm" variant="outline">
+                        <Link href={`/dashboard/licenses/${lic.id}`}>
+                          Manage
+                          <ArrowRight className="size-3" />
+                        </Link>
+                      </Button>
+                    </div>
+                  </div>
+
+                  {days !== null && days <= 7 && lic.status === 'trial' ? (
+                    <div className="mt-3 flex items-start gap-2.5 rounded border border-[var(--color-caution)]/40 bg-[var(--color-caution)]/5 px-3 py-2">
+                      <TriangleAlert className="mt-0.5 size-3.5 shrink-0 text-[var(--color-caution)]" />
+                      <div className="flex-1 text-[12px] leading-snug text-[var(--color-fg-muted)]">
+                        Trial ends in {days} day{days === 1 ? '' : 's'}. <Link href={`/buy/${lic.id}`} className="text-[var(--color-accent)] underline-offset-4 hover:underline">Upgrade to paid →</Link>
+                      </div>
+                    </div>
+                  ) : null}
+                </li>
+              )
+            })}
+          </ul>
         </section>
       ) : (
         <section className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-8 text-center">

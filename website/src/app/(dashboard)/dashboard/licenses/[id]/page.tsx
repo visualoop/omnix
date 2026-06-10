@@ -9,11 +9,14 @@ import { formatDate, StatusPill } from '@/components/dashboard/status-utils'
 
 export const metadata = { title: 'Licence detail' }
 
+type Variant = 'pro' | 'dawa' | 'retail' | 'hospitality' | 'hardware'
+
 interface License {
   id: string
   licenseKey: string
   tier: string
   status: string
+  variant?: Variant
   modules?: string[]
   maxBranches?: number
   maxMachines?: number
@@ -136,7 +139,7 @@ export default async function LicenseDetailPage({
               </Button>
             ) : null}
             <Button asChild size="sm" variant="outline">
-              <Link href="/dashboard/downloads">
+              <Link href={`/dashboard/downloads/${license.variant ?? 'pro'}`}>
                 <Download className="size-3.5" />
                 Download installer
               </Link>

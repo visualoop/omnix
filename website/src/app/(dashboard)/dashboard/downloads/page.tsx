@@ -1,9 +1,8 @@
 import { headers } from 'next/headers'
 import Link from 'next/link'
-import { Download, Shield } from '@/components/icons'
+import { ArrowRight, Download } from '@/components/icons'
 import { getPayload } from 'payload'
 import config from '@/payload.config'
-import { Button } from '@/components/ui/button'
 import { PageHeading } from '@/components/dashboard/status-utils'
 import { safePayloadFind, emptyPage, getDashboardCustomer } from '@/lib/dashboard-helpers'
 
@@ -11,17 +10,6 @@ export const metadata = { title: 'Downloads' }
 export const revalidate = 60
 
 type VariantId = 'pro' | 'dawa' | 'retail' | 'hospitality' | 'hardware'
-
-interface ReleaseRow {
-  version: string
-  variant?: VariantId
-  publishedAt?: string
-  summary?: string
-  windowsNsisUrl?: string
-  windowsMsiUrl?: string
-  windowsNsisSize?: number
-  windowsMsiSize?: number
-}
 
 const VARIANT_NAME: Record<VariantId, string> = {
   pro: 'Omnix Pro',
@@ -31,201 +19,114 @@ const VARIANT_NAME: Record<VariantId, string> = {
   hardware: 'Omnix Hardware',
 }
 
-const VARIANT_LANDING: Record<VariantId, string> = {
-  pro: '/pro',
-  dawa: '/dawa',
-  retail: '/retail',
-  hospitality: '/hospitality',
-  hardware: '/hardware',
+const VARIANT_TAGLINE: Record<VariantId, string> = {
+  pro: 'All four trades — multi-trade businesses',
+  dawa: 'Pharmacy management',
+  retail: 'Shops, mini-marts, dukas',
+  hospitality: 'Restaurants, bars, lodges',
+  hardware: 'Hardware stores, contractors',
 }
 
-function formatBytes(n?: number): string {
-  if (!n || n <= 0) return ''
-  return `${(n / (1024 * 1024)).toFixed(1)} MB`
+interface LicenseDoc {
+  id: string | number
+  licenseKey: string
+  status?: string
+  variant?: VariantId
 }
 
-function formatDate(d?: string): string {
-  if (!d) return ''
-  return new Date(d).toLocaleDateString('en-KE', {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-  })
-}
-
-export default async function DashboardDownloadsPage() {
+export default async function DashboardDownloadsIndex() {
   const reqHeaders = await headers()
   const customer = await getDashboardCustomer(reqHeaders)
   const user = customer as unknown as { id: string | number; email: string }
   const payloadConfig = await config
   const payload = await getPayload({ config: payloadConfig })
 
-  // 1. Fetch the customer's most-recent licence to learn their variant.
   const licensesRes = await safePayloadFind(
     () =>
       payload.find({
         collection: 'licenses',
         where: { customer: { equals: user.id } },
-        limit: 5,
+        limit: 20,
         sort: '-createdAt',
       }),
     emptyPage(),
-    'downloads-licenses',
+    'downloads-index-licenses',
   )
+  const licenses = licensesRes.docs as unknown as LicenseDoc[]
 
-  const licenses = licensesRes.docs as unknown as {
-    id: string | number
-    licenseKey: string
-    status: string
-    variant?: VariantId
-  }[]
-  const activeLicense = licenses.find(
-    (l) => l.status === 'active' || l.status === 'trial' || l.status === 'maintenance_expired',
-  )
-  const variant: VariantId = (activeLicense?.variant as VariantId) ?? 'pro'
-
-  // 2. Fetch latest release for THIS variant. Fall back to Pro if no
-  //    variant-specific release is published yet (legacy v0.3.x state).
-  const variantReleaseRes = await safePayloadFind(
-    () =>
-      payload.find({
-        collection: 'releases',
-        where: {
-          and: [
-            { status: { equals: 'published' } },
-            { channel: { equals: 'stable' } },
-            { variant: { equals: variant } },
-          ],
-        },
-        sort: '-publishedAt',
-        limit: 1,
-        depth: 0,
-      }),
-    emptyPage(),
-    'downloads-releases-variant',
-  )
-
-  let latest: ReleaseRow | null =
-    (variantReleaseRes.docs[0] as unknown as ReleaseRow | undefined) ?? null
-
-  if (!latest && variant !== 'pro') {
-    const fallback = await safePayloadFind(
-      () =>
-        payload.find({
-          collection: 'releases',
-          where: {
-            and: [
-              { status: { equals: 'published' } },
-              { channel: { equals: 'stable' } },
-              { variant: { equals: 'pro' } },
-            ],
-          },
-          sort: '-publishedAt',
-          limit: 1,
-          depth: 0,
-        }),
-      emptyPage(),
-      'downloads-releases-pro-fallback',
-    )
-    latest = (fallback.docs[0] as unknown as ReleaseRow | undefined) ?? null
+  // Group licenses by variant — a customer could have multiple Pro licenses
+  // (e.g. for different machines), but we only need ONE installer card per
+  // variant (the same installer works across all licenses of that variant).
+  const seen = new Set<VariantId>()
+  const cards: { variant: VariantId; license: LicenseDoc }[] = []
+  for (const lic of licenses) {
+    const v = (lic.variant as VariantId) ?? 'pro'
+    if (seen.has(v)) continue
+    seen.add(v)
+    cards.push({ variant: v, license: lic })
   }
-
-  const productName = VARIANT_NAME[variant]
-  const productLandingHref = VARIANT_LANDING[variant]
 
   return (
     <div className="space-y-8">
       <PageHeading
-        title={`Download ${productName}`}
-        subtitle="Get the latest installer for your variant. Your licence key is auto-filled when you launch the app."
+        title="Downloads"
+        subtitle="Pick the variant for the device you're installing on. Your licence key is auto-filled inside the installer page."
       />
 
-      {activeLicense ? (
-        <div className="rounded-xl border border-[var(--color-accent)] bg-[var(--color-accent-soft)] p-5">
-          <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--color-accent-hover)]">
-            Your licence key for {productName}
-          </div>
-          <code className="mt-2 block font-mono text-[18px] tabular-nums text-[var(--color-fg)]">
-            {activeLicense.licenseKey}
-          </code>
-          <p className="mt-2 text-[12px] text-[var(--color-fg-muted)]">
-            Paste this into {productName} on first launch to activate. The licence is bound
-            to {productName} only — installing a different variant won't accept this key.
-          </p>
-        </div>
-      ) : null}
-
-      <section className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-7 lg:p-9">
-        {latest ? (
-          <>
-            <div className="flex flex-wrap items-center gap-3">
-              <span className="font-mono text-[12px] font-semibold text-[var(--color-accent)]">
-                v{latest.version}
-              </span>
-              {latest.publishedAt ? (
-                <time className="text-[12px] text-[var(--color-fg-subtle)]">
-                  Released {formatDate(latest.publishedAt)}
-                </time>
-              ) : null}
-              {variant !== latest.variant && latest.variant === 'pro' ? (
-                <span className="rounded-full border border-[var(--color-accent)]/40 bg-[var(--color-accent)]/10 px-2 py-0.5 font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--color-accent)]">
-                  Pro fallback
-                </span>
-              ) : null}
-            </div>
-            <h2 className="mt-3 font-display text-[26px] font-medium text-[var(--color-fg)]">
-              {productName} — latest stable release
-            </h2>
-            {latest.summary ? (
-              <p className="mt-2 max-w-xl text-[14px] text-[var(--color-fg-muted)]">
-                {latest.summary}
-              </p>
-            ) : null}
-
-            <div className="mt-6 flex flex-col gap-3 sm:flex-row">
-              {latest.windowsNsisUrl ? (
-                <Button asChild size="lg">
-                  <a href={latest.windowsNsisUrl}>
-                    <Download className="size-4" />
-                    Download {productName} (EXE){latest.windowsNsisSize ? ` · ${formatBytes(latest.windowsNsisSize)}` : ''}
-                  </a>
-                </Button>
-              ) : null}
-              {latest.windowsMsiUrl ? (
-                <Button asChild size="lg" variant="outline">
-                  <a href={latest.windowsMsiUrl}>
-                    <Download className="size-4" />
-                    MSI{latest.windowsMsiSize ? ` · ${formatBytes(latest.windowsMsiSize)}` : ''}
-                  </a>
-                </Button>
-              ) : null}
-            </div>
-
-            <div className="mt-5 flex items-center gap-2 text-[12px] text-[var(--color-fg-subtle)]">
-              <Shield className="size-3.5 text-[var(--color-accent)]" />
-              Tauri-signed installer · auto-updater handles future versions
-            </div>
-          </>
-        ) : (
+      {cards.length === 0 ? (
+        <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-7 text-center">
           <p className="text-[14px] text-[var(--color-fg-muted)]">
-            A new release is being prepared. Check back shortly.
+            No licences yet. Start a free trial to get a download.
           </p>
-        )}
-      </section>
+          <Link
+            href="/pricing"
+            className="mt-3 inline-flex items-center gap-1.5 text-[13px] font-medium text-[var(--color-accent)] hover:underline"
+          >
+            See pricing
+            <ArrowRight className="size-3.5" />
+          </Link>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          {cards.map(({ variant, license }) => (
+            <Link
+              key={variant}
+              href={`/dashboard/downloads/${variant}`}
+              className="group flex flex-col gap-4 rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-6 transition-colors hover:border-[var(--color-accent)]"
+            >
+              <div className="flex items-start gap-4">
+                <div className="grid size-12 shrink-0 place-items-center rounded-xl bg-[var(--color-accent-soft)] text-[var(--color-accent-hover)]">
+                  <Download className="size-5" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="font-display text-[18px] font-medium text-[var(--color-fg)]">
+                    {VARIANT_NAME[variant]}
+                  </div>
+                  <div className="mt-0.5 text-[13px] text-[var(--color-fg-muted)]">
+                    {VARIANT_TAGLINE[variant]}
+                  </div>
+                </div>
+              </div>
+              <div className="mt-auto flex items-center justify-between gap-3 border-t border-[var(--color-border)] pt-4">
+                <code className="font-mono text-[12px] tabular-nums text-[var(--color-fg-muted)] truncate">
+                  {license.licenseKey}
+                </code>
+                <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--color-fg-subtle)] flex items-center gap-1 shrink-0">
+                  Open
+                  <ArrowRight className="size-3 transition-transform group-hover:translate-x-0.5" />
+                </span>
+              </div>
+            </Link>
+          ))}
+        </div>
+      )}
 
-      <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-        <Link
-          href={productLandingHref}
-          className="block rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-5 text-[13px] text-[var(--color-fg-muted)] hover:border-[var(--color-border-strong)]"
-        >
-          What does {productName} include? See the product page →
-        </Link>
-        <Link
-          href="/changelog"
-          className="block rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-5 text-[13px] text-[var(--color-fg-muted)] hover:border-[var(--color-border-strong)]"
-        >
-          Looking for an older version? See the public changelog →
-        </Link>
+      <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-5 text-[13px] text-[var(--color-fg-muted)]">
+        Need another trade? Visit{' '}
+        <Link href="/pricing" className="text-[var(--color-accent)] underline-offset-4 hover:underline">
+          /pricing
+        </Link>{' '}
+        to start a separate trial for any variant.
       </div>
     </div>
   )

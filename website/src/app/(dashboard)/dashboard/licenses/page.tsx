@@ -9,10 +9,21 @@ import { safePayloadFind, emptyPage, getDashboardCustomer } from '@/lib/dashboar
 
 export const metadata = { title: 'Licences' }
 
+type Variant = 'pro' | 'dawa' | 'retail' | 'hospitality' | 'hardware'
+
+const VARIANT_NAME: Record<Variant, string> = {
+  pro: 'Omnix Pro',
+  dawa: 'Omnix Dawa',
+  retail: 'Omnix Retail',
+  hospitality: 'Omnix Hospitality',
+  hardware: 'Omnix Hardware',
+}
+
 interface License {
   id: string
   licenseKey: string
   tier: string
+  variant?: Variant
   status: string
   modules?: string[]
   maxBranches?: number
@@ -84,6 +95,9 @@ export default async function LicensesPage() {
                       {license.licenseKey}
                     </code>
                     <StatusPill kind="license" status={license.status} />
+                    <span className="rounded-full border border-[var(--color-accent)]/30 bg-[var(--color-accent)]/10 px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-[var(--color-accent-hover)]">
+                      {VARIANT_NAME[(license.variant as Variant) ?? 'pro']}
+                    </span>
                     <span className="rounded-full border border-[var(--color-border)] px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-[var(--color-fg-muted)]">
                       {license.tier}
                     </span>
