@@ -275,6 +275,31 @@ async function getVariantContent(variant: VariantId): Promise<VariantData> {
   return FALLBACK[variant]
 }
 
+/**
+ * Read the headline price for this variant from the Pricing global.
+ *   Pro    → business.oneTimeFee  (default 150,000)
+ *   others → starter.oneTimeFee   (default 50,000)
+ */
+async function getVariantPrice(variant: VariantId): Promise<{ amount: number; currency: string }> {
+  try {
+    const payloadConfig = await config
+    const payload = await getPayload({ config: payloadConfig })
+    const p = (await payload.findGlobal({ slug: 'pricing', overrideAccess: true })) as unknown as {
+      currency?: string
+      starter?: { oneTimeFee?: number }
+      business?: { oneTimeFee?: number }
+    }
+    const tier = variant === 'pro' ? p.business : p.starter
+    const amount = tier?.oneTimeFee
+    if (typeof amount === 'number' && amount > 0) {
+      return { amount, currency: p.currency ?? 'KES' }
+    }
+  } catch {
+    // fall through
+  }
+  return { amount: variant === 'pro' ? 150_000 : 50_000, currency: 'KES' }
+}
+
 function HeroTitle({
   prefix,
   emphasis,
@@ -295,9 +320,10 @@ function HeroTitle({
 }
 
 export async function VariantLanding({ variant }: { variant: VariantId }) {
-  const [content, settings] = await Promise.all([
+  const [content, settings, price] = await Promise.all([
     getVariantContent(variant),
     getSiteSettings(),
+    getVariantPrice(variant),
   ])
 
   const productName = content.productName ?? FALLBACK[variant].productName ?? 'Omnix'
@@ -396,7 +422,7 @@ export async function VariantLanding({ variant }: { variant: VariantId }) {
         <div className="container-default text-center">
           <span className="caption-mono">Pricing</span>
           <h2 className="font-[family-name:var(--font-display)] mt-3 text-[clamp(40px,5vw,72px)] font-normal leading-[1.05] text-[var(--color-fg)]">
-            KES <em>30,000</em>
+            {price.currency} <em>{price.amount.toLocaleString('en-KE')}</em>
           </h2>
           <p className="mt-3 text-[15px] text-[var(--color-fg-muted)] max-w-[44ch] mx-auto">
             {pricingNote}

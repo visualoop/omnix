@@ -18,7 +18,13 @@ import { Icon } from '@/components/icons'
  * commitment line, then the three entry points. Three primary CTAs
  * compete; three text links of equal weight read as a directory.
  */
-export function OnePriceSection() {
+export function OnePriceSection({
+  price = '50,000',
+  currency = 'KES',
+}: {
+  price?: string
+  currency?: string
+}) {
   return (
     <section className="section relative overflow-hidden">
       {/* Subtle accent pool centred behind the number */}
@@ -40,7 +46,7 @@ export function OnePriceSection() {
             className="mt-10"
           >
             <div className="number-display text-balance">
-              <span className="currency">KES</span>50,000
+              <span className="currency">{currency}</span>{price}
             </div>
           </motion.div>
 

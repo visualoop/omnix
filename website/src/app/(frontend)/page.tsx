@@ -39,6 +39,19 @@ export const revalidate = 60
 
 export default async function HomePage() {
   const settings = await getSiteSettings()
+  let onePrice = '50,000'
+  let oneCurrency = 'KES'
+  try {
+    const payloadInst = await getPayload({ config: await config })
+    const pg = (await payloadInst.findGlobal({ slug: 'pricing', overrideAccess: true })) as unknown as {
+      currency?: string
+      starter?: { oneTimeFee?: number }
+    }
+    if (pg.currency) oneCurrency = pg.currency
+    if (typeof pg.starter?.oneTimeFee === 'number') {
+      onePrice = pg.starter.oneTimeFee.toLocaleString('en-KE')
+    }
+  } catch { /* fall through to defaults */ }
   let heroContent: Parameters<typeof HeroSection>[0]["content"] = undefined
   let latestRelease: Parameters<typeof HeroSection>[0]["latestRelease"] = undefined
   try {
@@ -94,7 +107,7 @@ export default async function HomePage() {
       <RecentWorkSection />
       <ComplianceSection />
       <ThreeQuotesSection />
-      <OnePriceSection />
+      <OnePriceSection price={onePrice} currency={oneCurrency} />
       <FaqSection />
       <ClosingCtaSection whatsappUrl={settings.whatsappUrl} />
     </>

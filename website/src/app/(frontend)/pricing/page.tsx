@@ -1,5 +1,7 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
+import { getPayload } from 'payload'
+import config from '@/payload.config'
 import { Icon } from '@/components/icons'
 import { Button } from '@/components/ui/button'
 import { OnePriceSection } from '@/components/landing/one-price-section'
@@ -12,7 +14,7 @@ import { cn } from '@/lib/cn'
 export const metadata: Metadata = {
   title: 'Pricing — pay once, use forever',
   description:
-    'Pay once, perpetual licence. Trade variants KES 50,000 each, Pro KES 150,000. No annual fees, no subscription. Free 30-day trial.',
+    'Pay once, perpetual licence. Pick a trade variant or Pro for all four. No annual fees, no subscription. Free 30-day trial.',
 }
 
 interface VariantTile {
@@ -24,81 +26,92 @@ interface VariantTile {
   badge?: string
 }
 
-const VARIANTS: ReadonlyArray<VariantTile> = [
-  {
-    id: 'pro',
-    name: 'Omnix Pro',
-    tagline: 'All four trades — multi-trade businesses',
-    href: '/pro',
-    price: 'KES 150,000',
-    badge: 'Recommended',
-  },
-  {
-    id: 'dawa',
-    name: 'Omnix Dawa',
-    tagline: 'Pharmacy management',
-    price: 'KES 50,000',
-    href: '/dawa',
-  },
-  {
-    id: 'retail',
-    name: 'Omnix Retail',
-    tagline: 'Shops, mini-marts, dukas',
-    price: 'KES 50,000',
-    href: '/retail',
-  },
-  {
-    id: 'hospitality',
-    name: 'Omnix Hospitality',
-    tagline: 'Restaurants, bars, lodges',
-    price: 'KES 50,000',
-    href: '/hospitality',
-  },
-  {
-    id: 'hardware',
-    name: 'Omnix Hardware',
-    tagline: 'Hardware stores, contractors',
-    price: 'KES 50,000',
-    href: '/hardware',
-  },
-] as const
+interface PricingShape {
+  currency?: string
+  trialDays?: number
+  starter?: { oneTimeFee?: number }
+  business?: { oneTimeFee?: number; maxBranches?: number; maxMachines?: number }
+  enterprise?: { priceLabel?: string }
+  cloudBackupMonthly?: number
+  extraBranchOneTime?: number
+  extraMachineOneTime?: number
+}
 
-const TIERS = [
-  {
-    name: 'Free trial',
-    cadence: '30 days · no card',
-    price: 'KES 0',
-    body: 'Pick any variant. Multi-branch, multi-PC. The trial database becomes your live database the day you pay.',
-    href: '/signup',
-    cta: 'Start free trial',
-    primary: false,
-  },
-  {
-    name: 'Omnix licence',
-    cadence: 'one-time · perpetual',
-    price: 'KES 50,000',
-    body: 'Per device. Trade variants (Dawa / Retail / Hospitality / Hardware) KES 50,000 one-time. Pro (all four) KES 150,000 one-time. Perpetual licence — no annual fees.',
-    href: '/signup?intent=buy',
-    cta: 'Buy a licence',
-    primary: true,
-  },
-  {
-    name: 'Custom',
-    cadence: 'chains · NGOs · on-prem',
-    price: 'Talk to us',
-    body: '5+ branches, custom integrations, dedicated onboarding, signed SLA, on-prem deployment. We meet your CFO, build the install plan, and stand up the system.',
-    href: '/contact?type=enterprise',
-    cta: 'Book a call',
-    primary: false,
-  },
-] as const
+async function getPricing(): Promise<PricingShape> {
+  try {
+    const payloadConfig = await config
+    const payload = await getPayload({ config: payloadConfig })
+    return (await payload.findGlobal({ slug: 'pricing', overrideAccess: true })) as unknown as PricingShape
+  } catch {
+    return {}
+  }
+}
 
-const ADDONS = [
-  { name: 'Cloud backup', price: 'KES 500 · / month / branch', body: 'Encrypted nightly snapshots to Cloudflare R2. Restore in minutes after a stolen or lost machine.' },
-  { name: 'Extra machine seat', price: 'KES 5,000 · one-time', body: 'Raise the number of PCs that can activate against your licence beyond the included 10.' },
-  { name: 'Major upgrade', price: '50% off · list price', body: 'When v2.x ships, current owners pay half. Stay on v1.x as long as you like.' },
-  { name: 'On-site training', price: 'KES 25,000 · per day', body: 'A trainer walks your team through setup, POS, payroll and KRA filings in your office.' },
-] as const
+function fmt(currency: string, amount: number): string {
+  return `${currency} ${amount.toLocaleString('en-KE')}`
+}
+
+function buildVariants(p: PricingShape): ReadonlyArray<VariantTile> {
+  const currency = p.currency ?? 'KES'
+  const proPrice = fmt(currency, p.business?.oneTimeFee ?? 150_000)
+  const tradePrice = fmt(currency, p.starter?.oneTimeFee ?? 50_000)
+  return [
+    { id: 'pro', name: 'Omnix Pro', tagline: 'All four trades — multi-trade businesses', href: '/pro', price: proPrice, badge: 'Recommended' },
+    { id: 'dawa', name: 'Omnix Dawa', tagline: 'Pharmacy management', price: tradePrice, href: '/dawa' },
+    { id: 'retail', name: 'Omnix Retail', tagline: 'Shops, mini-marts, dukas', price: tradePrice, href: '/retail' },
+    { id: 'hospitality', name: 'Omnix Hospitality', tagline: 'Restaurants, bars, lodges', price: tradePrice, href: '/hospitality' },
+    { id: 'hardware', name: 'Omnix Hardware', tagline: 'Hardware stores, contractors', price: tradePrice, href: '/hardware' },
+  ]
+}
+
+function buildTiers(p: PricingShape) {
+  const currency = p.currency ?? 'KES'
+  const trialDays = p.trialDays ?? 30
+  const tradePrice = p.starter?.oneTimeFee ?? 50_000
+  const proPrice = p.business?.oneTimeFee ?? 150_000
+  const enterprisePrice = p.enterprise?.priceLabel ?? 'Talk to us'
+  return [
+    {
+      name: 'Free trial',
+      cadence: `${trialDays} days · no card`,
+      price: `${currency} 0`,
+      body: 'Pick any variant. Multi-branch, multi-PC. The trial database becomes your live database the day you pay.',
+      href: '/signup',
+      cta: 'Start free trial',
+      primary: false,
+    },
+    {
+      name: 'Omnix licence',
+      cadence: 'one-time · perpetual',
+      price: fmt(currency, tradePrice),
+      body: `Per device. Trade variants (Dawa / Retail / Hospitality / Hardware) ${fmt(currency, tradePrice)} one-time. Pro (all four) ${fmt(currency, proPrice)} one-time. Perpetual licence — no annual fees.`,
+      href: '/signup?intent=buy',
+      cta: 'Buy a licence',
+      primary: true,
+    },
+    {
+      name: 'Custom',
+      cadence: 'chains · NGOs · on-prem',
+      price: enterprisePrice,
+      body: '5+ branches, custom integrations, dedicated onboarding, signed SLA, on-prem deployment. We meet your CFO, build the install plan, and stand up the system.',
+      href: '/contact?type=enterprise',
+      cta: 'Book a call',
+      primary: false,
+    },
+  ] as const
+}
+
+function buildAddons(p: PricingShape) {
+  const currency = p.currency ?? 'KES'
+  const cloud = p.cloudBackupMonthly ?? 500
+  const extraMachine = p.extraMachineOneTime ?? 5_000
+  return [
+    { name: 'Cloud backup', price: `${fmt(currency, cloud)} · / month / branch`, body: 'Encrypted nightly snapshots to Cloudflare R2. Restore in minutes after a stolen or lost machine.' },
+    { name: 'Extra machine seat', price: `${fmt(currency, extraMachine)} · one-time`, body: 'Raise the number of PCs that can activate against your licence beyond the included 10.' },
+    { name: 'Major upgrade', price: '50% off · list price', body: 'When v2.x ships, current owners pay half. Stay on v1.x as long as you like.' },
+    { name: 'On-site training', price: `${fmt(currency, 25_000)} · per day`, body: 'A trainer walks your team through setup, POS, payroll and KRA filings in your office.' },
+  ] as const
+}
 
 const COMPARE: ReadonlyArray<readonly [string, string, string, string]> = [
   ['All current modules', 'check', 'check', 'check'],
@@ -119,7 +132,10 @@ const COMPARE: ReadonlyArray<readonly [string, string, string, string]> = [
 ]
 
 export default async function PricingPage() {
-  const settings = await getSiteSettings()
+  const [settings, pricing] = await Promise.all([getSiteSettings(), getPricing()])
+  const VARIANTS = buildVariants(pricing)
+  const TIERS = buildTiers(pricing)
+  const ADDONS = buildAddons(pricing)
   return (
     <>
       <PageHero
@@ -128,7 +144,7 @@ export default async function PricingPage() {
         description="One product, one fee. No subscriptions, no per-user upcharges, no surprise renewal emails. Free 30-day trial first — you only pay if you keep it."
       />
 
-      <OnePriceSection />
+      <OnePriceSection price={(pricing.starter?.oneTimeFee ?? 50000).toLocaleString('en-KE')} currency={pricing.currency ?? 'KES'} />
 
       <section className="section-tight">
         <div className="container-wide">
