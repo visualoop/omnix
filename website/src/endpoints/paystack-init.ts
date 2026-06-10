@@ -1,6 +1,7 @@
 import type { Endpoint } from 'payload'
 import { errorResponse, jsonResponse, readJson } from './_auth'
 import { computeAmount, newReference, type Purpose, type PricingShape } from '../lib/paystack'
+import { resolveSettings } from '../lib/settings'
 
 /**
  * POST /api/paystack/init
@@ -67,7 +68,11 @@ export const paystackInitEndpoint: Endpoint = {
       overrideAccess: true,
     })
 
-    const publicKey = process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY ?? process.env.PAYSTACK_PUBLIC_KEY
+    const settings = await resolveSettings(req.payload)
+    const publicKey =
+      settings.paystackPublicKey ??
+      process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY ??
+      process.env.PAYSTACK_PUBLIC_KEY
     if (!publicKey) return errorResponse('Paystack public key not configured', 500)
 
     return jsonResponse({

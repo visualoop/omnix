@@ -29,7 +29,7 @@ export const paystackStatusEndpoint: Endpoint = {
     // Otherwise verify with Paystack
     let verifyResult: Awaited<ReturnType<typeof paystackVerify>>
     try {
-      verifyResult = await paystackVerify(reference)
+      verifyResult = await paystackVerify(req.payload, reference)
     } catch {
       return jsonResponse({ status: 'pending' })
     }

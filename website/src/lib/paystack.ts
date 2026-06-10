@@ -14,18 +14,14 @@
  * so plaintext card data never touches our server (PCI scope).
  */
 import type { PayloadRequest } from 'payload'
+import { getPaystackSecret } from './settings'
 
 const PAYSTACK_BASE = 'https://api.paystack.co'
 
-function secretKey(): string {
-  const key = process.env.PAYSTACK_SECRET_KEY
-  if (!key) throw new Error('PAYSTACK_SECRET_KEY is not set in environment')
-  return key
-}
-
-function authHeaders(): HeadersInit {
+async function authHeaders(payload: PayloadRequest['payload']): Promise<HeadersInit> {
+  const key = await getPaystackSecret(payload)
   return {
-    Authorization: `Bearer ${secretKey()}`,
+    Authorization: `Bearer ${key}`,
     'Content-Type': 'application/json',
     Accept: 'application/json',
   }
@@ -33,14 +29,17 @@ function authHeaders(): HeadersInit {
 
 
 /* ── Verify a transaction (defense-in-depth on webhook + status polling) ── */
-export async function verify(reference: string): Promise<{
+export async function verify(
+  payload: PayloadRequest['payload'],
+  reference: string,
+): Promise<{
   status: 'success' | 'failed' | 'pending'
   amountKES: number
   raw: Record<string, unknown>
 }> {
   const res = await fetch(
     `${PAYSTACK_BASE}/transaction/verify/${encodeURIComponent(reference)}`,
-    { method: 'GET', headers: authHeaders() },
+    { method: 'GET', headers: await authHeaders(payload) },
   )
   const json = (await res.json()) as { status?: boolean; data?: Record<string, unknown> }
   if (!res.ok || !json.status) {
