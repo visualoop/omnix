@@ -76,10 +76,17 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
 
       - name: Cache Rust build artifacts
+        # Five variants build in parallel and all share the same Cargo.lock,
+        # so without save-if they race to write the same cache key on
+        # GitHub's cache backend → some randomly fail with "Unable to
+        # reserve cache". Restrict saves to the 'pro' job; the others read
+        # the (already-warm) cache. Worst case the matrix takes ~1 extra
+        # minute on a cold cache.
         uses: swatinem/rust-cache@v2
         with:
           workspaces: src-tauri
           key: ${{ matrix.variant }}
+          save-if: ${{ matrix.variant == 'pro' }}
 
       - name: Install frontend dependencies
         run: pnpm install --frozen-lockfile
