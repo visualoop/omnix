@@ -43,8 +43,12 @@ export const paystackInitEndpoint: Endpoint = {
     if (!customer?.email) return errorResponse('Customer has no email on file', 400)
 
     const pricing = (await req.payload.findGlobal({ slug: 'pricing' })) as unknown as PricingShape
-    const tier = license.tier ?? 'starter'
-    const amountKES = computeAmount(pricing, tier, body.purpose)
+    // Pricing tier is determined by VARIANT, not the licence's tier field:
+    //   - pro variant   → business pricing (150,000 KES one-time)
+    //   - all others    → starter pricing (50,000 KES one-time)
+    const variant = (license as { variant?: string }).variant ?? 'pro'
+    const pricingTier = variant === 'pro' ? 'business' : 'starter'
+    const amountKES = computeAmount(pricing, pricingTier, body.purpose)
     if (!Number.isFinite(amountKES) || amountKES <= 0) return errorResponse('Computed amount invalid', 400)
     const amountKobo = amountKES * 100
     const reference = newReference('OMNIX')

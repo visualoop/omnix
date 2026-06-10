@@ -6,6 +6,7 @@ import * as migration_20260608_111500_clear_customer_lockouts from './20260608_1
 import * as migration_20260608_112800_cleanup_probe_customers from './20260608_112800_cleanup_probe_customers';
 import * as migration_20260608_152000_fix_variant_enum_naming from './20260608_152000_fix_variant_enum_naming';
 import * as migration_20260609_091500_pricing_30k from './20260609_091500_pricing_30k';
+import * as migration_20260610_093000_pricing_50_150 from './20260610_093000_pricing_50_150';
 
 export const migrations = [
   {
@@ -47,5 +48,10 @@ export const migrations = [
     up: migration_20260609_091500_pricing_30k.up,
     down: migration_20260609_091500_pricing_30k.down,
     name: '20260609_091500_pricing_30k',
+  },
+  {
+    up: migration_20260610_093000_pricing_50_150.up,
+    down: migration_20260610_093000_pricing_50_150.down,
+    name: '20260610_093000_pricing_50_150',
   },
 ];

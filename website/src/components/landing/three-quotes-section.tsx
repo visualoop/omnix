@@ -40,7 +40,7 @@ const QUOTES: Quote[] = [
   },
   {
     text:
-      'Paid 30,000 once, kept what I built. The next year I added a second branch. Same licence. The number on the wall stayed the same.',
+      'Paid 50,000 once, kept what I built. The next year I added a second branch. Same licence. The number on the wall stayed the same.',
     name: 'Esther Achieng',
     role: 'Director, Eldoret Farmers Mart',
     meta: 'Eldoret · since Jan 2025',

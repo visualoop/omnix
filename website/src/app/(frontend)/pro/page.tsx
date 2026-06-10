@@ -67,7 +67,7 @@ const content: VariantLandingContent = {
     'Per-machine signed licence',
   ],
   pricingNote:
-    'One-time licence per device. Same KES 30,000 + 12,000/year as the trade variants — Pro just unlocks all four. No per-module charge.',
+    'One-time licence per device. Trade variants (Dawa / Retail / Hospitality / Hardware) are KES 50,000 each. Pro is KES 150,000 — same per-device, perpetual licence, no annual fees.',
   downloadHref: '/signup?variant=pro',
   buyHref: '/buy?variant=pro',
 }

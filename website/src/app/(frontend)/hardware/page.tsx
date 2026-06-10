@@ -67,7 +67,7 @@ const content: VariantLandingContent = {
     'Contractor credit aging report',
   ],
   pricingNote:
-    'One-time licence per device, plus KES 12,000/year for compliance updates. Cement or copper, the price stays the same.',
+    'One-time licence per device, — perpetual licence, no annual fees. Cement or copper, the price stays the same.',
   downloadHref: '/signup?variant=hardware',
   buyHref: '/buy?variant=hardware',
 }

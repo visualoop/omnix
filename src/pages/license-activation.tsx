@@ -15,6 +15,9 @@ import {
 import { OmnixLogo } from "@/components/omnix-logo";
 import { APP_NAME, BRAND } from "@/lib/brand";
 import { IS_PRO, LOCKED_MODULE } from "@/lib/variant";
+
+// One-time price for this build's variant. Pro = 150k, trade variants = 50k.
+const VARIANT_PRICE = IS_PRO ? "KES 150,000" : "KES 50,000";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
@@ -24,12 +27,12 @@ interface Props {
 
 
 const FEATURES = [
-  { icon: POSIcon,       label: "Point of Sale",     text: "Fast checkout with M-Pesa, card, and cash",            tint: "from-emerald-500/30 to-emerald-500/5",  glow: "text-emerald-400" },
-  { icon: InventoryIcon, label: "Inventory & stock", text: "Batches, expiry, stock takes, multi-branch transfers", tint: "from-blue-500/30 to-blue-500/5",        glow: "text-blue-400" },
-  { icon: ETIMSIcon,     label: "eTIMS compliant",   text: "KRA invoicing built in. No third-party plugin",        tint: "from-amber-500/30 to-amber-500/5",      glow: "text-amber-400" },
-  { icon: InsuranceIcon, label: "Insurance claims",  text: "NHIF / SHA workflow with payer reconciliation",        tint: "from-rose-500/30 to-rose-500/5",        glow: "text-rose-400" },
-  { icon: LANIcon,       label: "LAN multi-device",  text: "Pair tablets and second tills offline",                tint: "from-violet-500/30 to-violet-500/5",    glow: "text-violet-400" },
-  { icon: ReportsIcon,   label: "Pro reports",       text: "P&L, Z-report, inventory valuation, margins",          tint: "from-cyan-500/30 to-cyan-500/5",        glow: "text-cyan-400" },
+  { icon: POSIcon,       label: "Point of Sale",     text: "Fast checkout with M-Pesa, card, and cash" },
+  { icon: InventoryIcon, label: "Inventory & stock", text: "Batches, expiry, stock takes, multi-branch transfers" },
+  { icon: ETIMSIcon,     label: "eTIMS compliant",   text: "KRA invoicing built in. No third-party plugin" },
+  { icon: InsuranceIcon, label: "Insurance claims",  text: "NHIF / SHA workflow with payer reconciliation" },
+  { icon: LANIcon,       label: "LAN multi-device",  text: "Pair tablets and second tills offline" },
+  { icon: ReportsIcon,   label: "Pro reports",       text: "P&L, Z-report, inventory valuation, margins" },
 ];
 
 export function LicenseActivationPage({ onActivated }: Props) {
@@ -161,8 +164,8 @@ export function LicenseActivationPage({ onActivated }: Props) {
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               {FEATURES.map((f) => (
                 <div key={f.label} className="flex items-start gap-3">
-                  <div className={`relative grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-gradient-to-br ${f.tint} ring-1 ring-inset ring-white/5 shadow-[inset_0_1px_0_rgb(255_255_255_/_0.08)]`}>
-                    <f.icon className={`h-[22px] w-[22px] ${f.glow}`} />
+                  <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-border bg-muted/20">
+                    <f.icon className="h-5 w-5 text-foreground/80" />
                   </div>
                   <div className="min-w-0">
                     <div className="text-[13px] font-medium leading-tight">{f.label}</div>
@@ -250,7 +253,7 @@ export function LicenseActivationPage({ onActivated }: Props) {
                   <div className="flex-1 min-w-0">
                     <div className="text-[13px] font-medium leading-tight">Ready to keep going?</div>
                     <div className="text-[11px] text-muted-foreground leading-snug mt-0.5">
-                      Buy now — KES 100,000 once, no subscription. Your key arrives instantly via email.
+                      Buy now — {VARIANT_PRICE} once, no subscription. Your key arrives instantly via email.
                     </div>
                   </div>
                   <Button
@@ -271,7 +274,7 @@ export function LicenseActivationPage({ onActivated }: Props) {
                   <Clock className="h-4 w-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
                   <div className="flex-1">
                     <div className="text-[13px] font-medium">Trial used on this machine</div>
-                    <div className="text-[11px] text-muted-foreground mt-0.5">Enter a licence below to continue, or buy a new one — KES 100,000 once.</div>
+                    <div className="text-[11px] text-muted-foreground mt-0.5">Enter a licence below to continue, or buy a new one — {VARIANT_PRICE} once.</div>
                   </div>
                 </div>
                 <Button
@@ -365,7 +368,7 @@ export function LicenseActivationPage({ onActivated }: Props) {
                 Buy {APP_NAME} <ExternalLink className="h-2.5 w-2.5" />
               </a>
               <p className="text-[10.5px]">
-                <strong className="font-semibold">KES 100,000</strong> one-time · pay once, use forever · no subscription
+                <strong className="font-semibold">{VARIANT_PRICE}</strong> one-time · pay once, use forever · no subscription
               </p>
             </div>
           </div>

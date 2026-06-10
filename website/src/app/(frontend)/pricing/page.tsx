@@ -11,7 +11,7 @@ import { cn } from '@/lib/cn'
 export const metadata: Metadata = {
   title: 'Pricing — pay once, use forever',
   description:
-    'One licence per device. KES 30,000 one-time + 12,000/year for compliance updates. Pick your trade — Pro, Dawa, Retail, Hospitality or Hardware. Free 30-day trial.',
+    'Pay once, perpetual licence. Trade variants KES 50,000 each, Pro KES 150,000. No annual fees, no subscription. Free 30-day trial.',
 }
 
 interface VariantTile {
@@ -19,6 +19,7 @@ interface VariantTile {
   name: string
   tagline: string
   href: string
+  price: string
   badge?: string
 }
 
@@ -28,30 +29,35 @@ const VARIANTS: ReadonlyArray<VariantTile> = [
     name: 'Omnix Pro',
     tagline: 'All four trades — multi-trade businesses',
     href: '/pro',
+    price: 'KES 150,000',
     badge: 'Recommended',
   },
   {
     id: 'dawa',
     name: 'Omnix Dawa',
     tagline: 'Pharmacy management',
+    price: 'KES 50,000',
     href: '/dawa',
   },
   {
     id: 'retail',
     name: 'Omnix Retail',
     tagline: 'Shops, mini-marts, dukas',
+    price: 'KES 50,000',
     href: '/retail',
   },
   {
     id: 'hospitality',
     name: 'Omnix Hospitality',
     tagline: 'Restaurants, bars, lodges',
+    price: 'KES 50,000',
     href: '/hospitality',
   },
   {
     id: 'hardware',
     name: 'Omnix Hardware',
     tagline: 'Hardware stores, contractors',
+    price: 'KES 50,000',
     href: '/hardware',
   },
 ] as const
@@ -69,8 +75,8 @@ const TIERS = [
   {
     name: 'Omnix licence',
     cadence: 'one-time · perpetual',
-    price: 'KES 30,000',
-    body: 'Per device. Any variant. Up to 5 branches, 10 PCs. One year of free maintenance updates included; KES 12,000/year after.',
+    price: 'KES 50,000',
+    body: 'Per device. Trade variants (Dawa / Retail / Hospitality / Hardware) KES 50,000 one-time. Pro (all four) KES 150,000 one-time. Perpetual licence — no annual fees.',
     href: '/signup?intent=buy',
     cta: 'Buy a licence',
     primary: true,
@@ -149,6 +155,9 @@ export default function PricingPage() {
                 </div>
                 <div className="text-[13px] text-[var(--color-fg-muted)] leading-snug">
                   {v.tagline}
+                </div>
+                <div className="font-[family-name:var(--font-mono)] text-[13px] font-medium tabular-nums text-[var(--color-accent)]">
+                  {v.price}
                 </div>
                 <div className="font-[family-name:var(--font-ui)] mt-auto inline-flex items-center gap-1.5 text-[12px] font-medium text-[var(--color-fg)] transition-colors group-hover:text-[var(--color-accent)]">
                   Read more

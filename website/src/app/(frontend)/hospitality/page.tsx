@@ -67,7 +67,7 @@ const content: VariantLandingContent = {
     'Per-machine signed licence',
   ],
   pricingNote:
-    'One-time licence per device, plus KES 12,000/year for compliance updates. Hot or cold, busy or quiet, the price stays the same.',
+    'One-time licence per device, — perpetual licence, no annual fees. Hot or cold, busy or quiet, the price stays the same.',
   downloadHref: '/signup?variant=hospitality',
   buyHref: '/buy?variant=hospitality',
 }

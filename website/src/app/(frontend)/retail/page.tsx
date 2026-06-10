@@ -67,7 +67,7 @@ const content: VariantLandingContent = {
     'Per-machine signed licence',
   ],
   pricingNote:
-    'One-time licence per device, plus KES 12,000/year for compliance updates. No per-transaction cuts, no subscription, no surprises.',
+    'One-time licence per device, — perpetual licence, no annual fees. No per-transaction cuts, no subscription, no surprises.',
   downloadHref: '/signup?variant=retail',
   buyHref: '/buy?variant=retail',
 }

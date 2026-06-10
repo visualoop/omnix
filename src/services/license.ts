@@ -374,21 +374,26 @@ export async function getLicenseStatus(): Promise<LicenseStatus> {
     };
   }
 
-  // Re-verify signature on every startup
-  const result = await verifyKey(active.license_key);
-  if (!result.valid) {
-    await logActivationEvent(active.license_kid, "failed", result.error);
-    return {
-      activated: false,
-      license: null,
-      features: [],
-      modules: [],
-      max_devices: 0,
-      server_validated: false,
-      maintenance_active: false,
-      maintenance_days_remaining: 0,
-      machine,
-    };
+  // Re-verify signature on every startup. Compact server-validated keys
+  // (OMNIX-DAWA-XXXX-XXXX-XXXX) have no offline RSA signature, so we trust
+  // what the server told us at activate-time (cached in modules_json /
+  // max_devices) and let revalidateLicense() refresh it while online.
+  if (!isCompactKey(active.license_key)) {
+    const result = await verifyKey(active.license_key);
+    if (!result.valid) {
+      await logActivationEvent(active.license_kid, "failed", result.error);
+      return {
+        activated: false,
+        license: null,
+        features: [],
+        modules: [],
+        max_devices: 0,
+        server_validated: false,
+        maintenance_active: false,
+        maintenance_days_remaining: 0,
+        machine,
+      };
+    }
   }
 
   // Check machine binding

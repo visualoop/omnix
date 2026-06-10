@@ -21,7 +21,7 @@ import { cn } from '@/lib/cn'
 const FAQS: { q: string; a: string }[] = [
   {
     q: 'What does the one-time payment actually cover?',
-    a: 'KES 30,000 buys a perpetual licence for Core ERP plus every trade module you select. You receive every minor and patch release within the same major version for free, and one year of priority support. There is no remote kill switch on a paid licence.',
+    a: 'KES 50,000 buys a perpetual licence for any trade variant (Dawa, Retail, Hospitality, Hardware). KES 150,000 unlocks Pro (all four trades in one binary). Both are one-time, no annual fees, no subscription. Every minor + patch release within the same major version is free.',
   },
   {
     q: 'Do I need internet to run Omnix?',
