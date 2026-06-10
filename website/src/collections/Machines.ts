@@ -18,8 +18,15 @@ export const Machines: CollectionConfig = {
   access: {
     read: ({ req }) => {
       if (req.user?.collection === 'users') return true
-      // Customers see machines only via a hand-rolled where-clause on dashboard fetch
-      // (we don't expose this collection directly to customer auth at the API level).
+      // Customer dashboard pages (overview, /machines list, /machines/[id])
+      // need to read their own machines via Payload local-API. Scope strictly
+      // by license.customer = req.user.id so customers can never read another
+      // customer's machines.
+      if (req.user?.collection === 'customers') {
+        return {
+          'license.customer': { equals: req.user.id },
+        }
+      }
       return false
     },
     create: ({ req }) => allowSystem(req) || ownerOnly({ req } as never) === true,

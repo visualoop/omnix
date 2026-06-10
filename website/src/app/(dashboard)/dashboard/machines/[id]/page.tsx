@@ -36,7 +36,17 @@ interface MachineDoc {
     paystackConfigured?: boolean
     shaConfigured?: boolean
   }
-  license: string | { id: string; customer: string | { id: string } }
+  license: string | number | { id: string | number; customer: string | number | { id: string | number } }
+}
+
+function relId(v: unknown): string | null {
+  if (v == null) return null
+  if (typeof v === 'string' || typeof v === 'number') return String(v)
+  if (typeof v === 'object' && 'id' in (v as object)) {
+    const id = (v as { id: unknown }).id
+    return id == null ? null : String(id)
+  }
+  return null
 }
 
 export default async function MachineDetailPage({
@@ -70,14 +80,14 @@ export default async function MachineDetailPage({
       id,
       depth: 1,
     })) as unknown as MachineDoc
-    const license = typeof machine.license === 'string' ? null : machine.license
-    const ownerId =
-      license == null
-        ? null
-        : typeof license.customer === 'string'
-          ? license.customer
-          : license.customer?.id
-    if (String(ownerId) !== String(user.id)) notFound()
+    // Defensive owner check on top of the access-control filter.
+    // Handles Postgres numeric IDs and depth=1-only expansion.
+    const license =
+      typeof machine.license === 'object' && machine.license !== null
+        ? machine.license
+        : null
+    const ownerId = license ? relId(license.customer) : null
+    if (!ownerId || ownerId !== String(user.id)) notFound()
   } catch {
     notFound()
   }
