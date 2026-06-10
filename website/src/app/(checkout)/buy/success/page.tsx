@@ -8,10 +8,13 @@ export const metadata = { title: 'Payment successful' }
 export default async function CheckoutSuccessPage({
   searchParams,
 }: {
-  searchParams: Promise<{ ref?: string }>
+  searchParams: Promise<{ ref?: string; reference?: string; trxref?: string }>
 }) {
   const settings = await getSiteSettings();
-  const { ref } = await searchParams
+  const params = await searchParams
+  // Paystack's hosted-checkout redirect uses ?reference= and ?trxref=.
+  // Our in-app popup uses ?ref=. Accept either.
+  const ref = params.ref ?? params.reference ?? params.trxref ?? null
 
   return (
     <div className="min-h-screen bg-[var(--color-bg)] pt-12 pb-20">
