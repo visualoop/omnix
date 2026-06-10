@@ -2,17 +2,23 @@ import type { Endpoint } from 'payload'
 import { createHmac, timingSafeEqual } from 'crypto'
 import { errorResponse, jsonResponse } from './_auth'
 import { applyPaymentSuccess } from '../lib/paystack'
+import { getPaystackWebhookSecret } from '../lib/settings'
 
 /**
  * POST /api/paystack/webhook
  * Receives Paystack webhook events. Verifies HMAC signature, then applies
  * the payment success / failure to the local Payment + License records.
+ *
+ * HMAC secret resolution order:
+ *   1. Settings global → integrations.paystackWebhookSecret (if set)
+ *   2. Settings global → integrations.paystackSecretKey (Paystack default)
+ *   3. env PAYSTACK_SECRET_KEY
  */
 export const paystackWebhookEndpoint: Endpoint = {
   path: '/paystack/webhook',
   method: 'post',
   handler: async (req) => {
-    const secret = process.env.PAYSTACK_SECRET_KEY
+    const secret = await getPaystackWebhookSecret(req.payload)
     if (!secret) {
       return errorResponse('Webhook handler not configured', 500)
     }
