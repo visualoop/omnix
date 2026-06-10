@@ -3284,7 +3284,7 @@ dependencies = [
 
 [[package]]
 name = "omnix"
-version = "0.4.6"
+version = "0.4.7"
 dependencies = [
  "aes-gcm",
  "anyhow",
