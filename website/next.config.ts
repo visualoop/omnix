@@ -77,7 +77,7 @@ const nextConfig: NextConfig = {
       "object-src 'none'",
       "base-uri 'self'",
       "form-action 'self'",
-      "frame-ancestors 'none'", // we never embed in others' iframes
+      "frame-ancestors 'self' https://studio.blyss.co.ke https://*.vercel.app", // allow embed in studio + Vercel previews
       "upgrade-insecure-requests",
     ].join('; ')
     return [
@@ -88,7 +88,9 @@ const nextConfig: NextConfig = {
           { key: 'Strict-Transport-Security', value: 'max-age=63072000; includeSubDomains; preload' },
           { key: 'X-Content-Type-Options', value: 'nosniff' },
           { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
-          { key: 'X-Frame-Options', value: 'DENY' },
+          // No X-Frame-Options — it's legacy, only allows DENY/SAMEORIGIN
+          // (no allow-list). frame-ancestors in the CSP above is the
+          // modern equivalent and supports per-origin allow-lists.
           { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=(), payment=(self "https://api.paystack.co")' },
           { key: 'X-DNS-Prefetch-Control', value: 'on' },
         ],
