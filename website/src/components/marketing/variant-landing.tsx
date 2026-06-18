@@ -1,8 +1,10 @@
 import Link from 'next/link'
+import { cookies } from 'next/headers'
 import { getPayload } from 'payload'
 import config from '@/payload.config'
 import { Icon } from '@/components/icons'
 import { Button } from '@/components/ui/button'
+import { CURRENCIES, formatPrice, tierPrice, type PricingTierShape, type SupportedCurrency } from '@/lib/currency'
 import { PageHero } from '@/components/marketing/page-hero'
 import { ClosingCtaSection } from '@/components/landing/closing-cta-section'
 import { getSiteSettings } from '@/lib/site-settings'
@@ -280,24 +282,29 @@ async function getVariantContent(variant: VariantId): Promise<VariantData> {
  *   Pro    → business.oneTimeFee  (default 150,000)
  *   others → starter.oneTimeFee   (default 50,000)
  */
-async function getVariantPrice(variant: VariantId): Promise<{ amount: number; currency: string }> {
+async function getVariantPrice(variant: VariantId): Promise<{ amount: number; currency: SupportedCurrency; display: string }> {
+  // Active currency comes from the omnix_currency cookie set by middleware.
+  const cookieStore = await cookies()
+  const cookieValue = cookieStore.get('omnix_currency')?.value as SupportedCurrency | undefined
+  const currency: SupportedCurrency = cookieValue && cookieValue in CURRENCIES ? cookieValue : 'KES'
+
   try {
     const payloadConfig = await config
     const payload = await getPayload({ config: payloadConfig })
     const p = (await payload.findGlobal({ slug: 'pricing', overrideAccess: true })) as unknown as {
-      currency?: string
-      starter?: { oneTimeFee?: number }
-      business?: { oneTimeFee?: number }
+      starter?: PricingTierShape
+      business?: PricingTierShape
     }
     const tier = variant === 'pro' ? p.business : p.starter
-    const amount = tier?.oneTimeFee
-    if (typeof amount === 'number' && amount > 0) {
-      return { amount, currency: p.currency ?? 'KES' }
+    const amount = tierPrice(tier, currency)
+    if (amount > 0) {
+      return { amount, currency, display: formatPrice(amount, currency) }
     }
   } catch {
     // fall through
   }
-  return { amount: variant === 'pro' ? 150_000 : 50_000, currency: 'KES' }
+  const fallbackAmount = variant === 'pro' ? 150_000 : 50_000
+  return { amount: fallbackAmount, currency: 'KES', display: formatPrice(fallbackAmount, 'KES') }
 }
 
 function HeroTitle({
@@ -422,7 +429,7 @@ export async function VariantLanding({ variant }: { variant: VariantId }) {
         <div className="container-default text-center">
           <span className="caption-mono">Pricing</span>
           <h2 className="font-[family-name:var(--font-display)] mt-3 text-[clamp(40px,5vw,72px)] font-normal leading-[1.05] text-[var(--color-fg)]">
-            {price.currency} <em>{price.amount.toLocaleString('en-KE')}</em>
+            {CURRENCIES[price.currency].symbol} <em>{price.amount.toLocaleString('en-US')}</em>
           </h2>
           <p className="mt-3 text-[15px] text-[var(--color-fg-muted)] max-w-[44ch] mx-auto">
             {pricingNote}

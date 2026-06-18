@@ -8,9 +8,10 @@ import * as migration_20260608_152000_fix_variant_enum_naming from './20260608_1
 import * as migration_20260609_091500_pricing_30k from './20260609_091500_pricing_30k';
 import * as migration_20260610_093000_pricing_50_150 from './20260610_093000_pricing_50_150';
 import * as migration_20260610_133000_seed_site_content from './20260610_133000_seed_site_content';
+import * as migration_20260610_135417 from './20260610_135417';
 import * as migration_20260610_141915 from './20260610_141915';
 import * as migration_20260610_142000_seed_trade_landings from './20260610_142000_seed_trade_landings';
-import * as migration_20260610_135417 from './20260610_135417';
+import * as migration_20260618_105308 from './20260618_105308';
 
 export const migrations = [
   {
@@ -59,14 +60,14 @@ export const migrations = [
     name: '20260610_093000_pricing_50_150',
   },
   {
-    up: migration_20260610_135417.up,
-    down: migration_20260610_135417.down,
-    name: '20260610_135417',
-  },
-  {
     up: migration_20260610_133000_seed_site_content.up,
     down: migration_20260610_133000_seed_site_content.down,
     name: '20260610_133000_seed_site_content',
+  },
+  {
+    up: migration_20260610_135417.up,
+    down: migration_20260610_135417.down,
+    name: '20260610_135417',
   },
   {
     up: migration_20260610_141915.up,
@@ -77,5 +78,10 @@ export const migrations = [
     up: migration_20260610_142000_seed_trade_landings.up,
     down: migration_20260610_142000_seed_trade_landings.down,
     name: '20260610_142000_seed_trade_landings',
+  },
+  {
+    up: migration_20260618_105308.up,
+    down: migration_20260618_105308.down,
+    name: '20260618_105308'
   },
 ];

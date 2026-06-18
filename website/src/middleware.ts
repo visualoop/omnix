@@ -1,20 +1,21 @@
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
+import { currencyForCountry, type SupportedCurrency } from '@/lib/currency'
 
 /**
- * Same-origin request normaliser for Payload cookie auth.
+ * Two roles in one middleware pass:
  *
- * Payload v3's auth() requires an Origin header to trust the auth-cookie,
- * but browsers DON'T send Origin on top-level GET navigations (URL bar,
- * link clicks, page reloads). Without Origin, payload.auth() returns null
- * even when the cookie is valid → server-rendered pages think the user
- * is logged out and redirect to /login.
+ *   1. Same-origin request normaliser for Payload cookie auth.
+ *      Payload v3's auth() requires an Origin header to trust the
+ *      auth-cookie. Browsers don't send Origin on top-level GETs, so
+ *      we synthesize it for trusted hosts.
  *
- * The fix is well-bounded: when a request comes in with NO Origin header
- * and a Host that matches a trusted domain (the deployment URL or its
- * www counterpart), we inject Origin = `https://<host>` so Payload sees
- * a same-origin request. Cross-origin requests (with their own Origin
- * header) are left untouched and continue to be CSRF-checked.
+ *   2. Geo + currency cookie persistence.
+ *      Vercel exposes the visitor's country in `req.geo`. We map it to
+ *      a Paystack-supported currency (KES / USD / NGN / GHS / ZAR) and
+ *      stash it in the `omnix_currency` cookie so server components
+ *      can render localized prices without re-doing the lookup on
+ *      every request.
  */
 
 const TRUSTED_HOSTS = new Set([
@@ -24,30 +25,52 @@ const TRUSTED_HOSTS = new Set([
   '127.0.0.1:3000',
 ])
 
+const CURRENCY_COOKIE = 'omnix_currency'
+const COUNTRY_COOKIE = 'omnix_country'
+const COOKIE_MAX_AGE = 60 * 60 * 24 * 30 // 30 days
+
 export function middleware(request: NextRequest) {
+  // ── (1) Origin synthesis for Payload cookie auth ───────────────
   const originHeader = request.headers.get('origin')
-  if (originHeader) {
-    // Browser already sent Origin — respect it (CSRF check applies as normal).
-    return NextResponse.next()
-  }
-
   const host = request.headers.get('host')
-  if (!host || !TRUSTED_HOSTS.has(host)) {
-    // Unknown host — don't synthesize an origin (fail closed for safety).
-    return NextResponse.next()
+
+  let response: NextResponse
+  if (originHeader || !host || !TRUSTED_HOSTS.has(host)) {
+    response = NextResponse.next()
+  } else {
+    const protocol = host.startsWith('localhost') || host.startsWith('127.') ? 'http' : 'https'
+    const synthesizedOrigin = `${protocol}://${host}`
+    const requestHeaders = new Headers(request.headers)
+    requestHeaders.set('origin', synthesizedOrigin)
+    response = NextResponse.next({ request: { headers: requestHeaders } })
   }
 
-  // Same-origin GET / page navigation. Synthesize the Origin so Payload's
-  // auth-cookie strategy will accept the cookie.
-  const protocol = host.startsWith('localhost') || host.startsWith('127.') ? 'http' : 'https'
-  const synthesizedOrigin = `${protocol}://${host}`
+  // ── (2) Country + currency persistence ─────────────────────────
+  // Skip on API + static. Only set cookies on full-page navigations.
+  const path = request.nextUrl.pathname
+  const isPageNav = !path.startsWith('/api/') && !path.startsWith('/_next/')
 
-  const requestHeaders = new Headers(request.headers)
-  requestHeaders.set('origin', synthesizedOrigin)
+  if (isPageNav && !request.cookies.get(CURRENCY_COOKIE)) {
+    // Vercel's geo header (typed as an extension on NextRequest)
+    const geo = (request as unknown as { geo?: { country?: string } }).geo
+    const country = geo?.country ?? request.headers.get('x-vercel-ip-country') ?? ''
+    const currency: SupportedCurrency = currencyForCountry(country)
 
-  return NextResponse.next({
-    request: { headers: requestHeaders },
-  })
+    response.cookies.set(CURRENCY_COOKIE, currency, {
+      maxAge: COOKIE_MAX_AGE,
+      sameSite: 'lax',
+      path: '/',
+    })
+    if (country) {
+      response.cookies.set(COUNTRY_COOKIE, country, {
+        maxAge: COOKIE_MAX_AGE,
+        sameSite: 'lax',
+        path: '/',
+      })
+    }
+  }
+
+  return response
 }
 
 export const config = {

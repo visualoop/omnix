@@ -91,7 +91,6 @@ interface ModuleNavGroup {
  * inside the collapsible group for the active module.
  */
 const CORE_NAV: NavItem[] = [
-  { to: "/", icon: LayoutDashboard, label: "Dashboard", permissions: [] },
   { to: "/pos", icon: ShoppingCart, label: "POS", permissions: ["pos.use"] },
   { to: "/sales", icon: Receipt, label: "Sales", permissions: ["sales.view"] },
   { to: "/returns", icon: RotateCcw, label: "Returns", permissions: ["sales.refund"] },
@@ -104,7 +103,6 @@ const CORE_NAV: NavItem[] = [
   { to: "/invoicing", icon: FileText, label: "Invoicing", permissions: ["invoicing.view"] },
   { to: "/banking", icon: Landmark, label: "Banking", permissions: ["banking.view"] },
   { to: "/expenses", icon: Wallet, label: "Expenses", permissions: ["expenses.view"] },
-  { to: "/pnl", icon: Scale, label: "P&L", permissions: ["reports.pnl"] },
   { to: "/hr/employees", icon: UserCog, label: "Employees", permissions: ["hr.employees.view"] },
   { to: "/hr/attendance", icon: Clock, label: "Attendance", permissions: ["hr.attendance.view","hr.attendance.record"] },
   { to: "/hr/leave", icon: Plane, label: "Leave", permissions: ["hr.leave.request","hr.leave.approve"] },
@@ -112,7 +110,12 @@ const CORE_NAV: NavItem[] = [
   { to: "/petty-cash", icon: Coins, label: "Petty Cash", permissions: ["petty_cash.use"] },
   { to: "/cash-register", icon: Banknote, label: "Cash Register", permissions: ["cash_register.use"] },
   { to: "/promotions", icon: BadgePercent, label: "Promotions", permissions: ["promotions.manage"] },
+  // ── Analytics group ────────────────────────────────────────
+  // Dashboard sits next to Reports, P&L, Daily Ops as part of the
+  // analytics pack rather than competing with POS for first-position.
+  { to: "/", icon: LayoutDashboard, label: "Dashboard", permissions: [] },
   { to: "/reports", icon: BarChart3, label: "Reports", permissions: ["reports.view", "reports.zreport"] },
+  { to: "/pnl", icon: Scale, label: "P&L", permissions: ["reports.pnl"] },
   { to: "/reports/daily-operations", icon: ClipboardList, label: "Daily Ops", permissions: ["reports.view"] },
   { to: "/vat-report", icon: FileCheck, label: "VAT Report", permissions: ["reports.view"] },
   { to: "/etims", icon: Send, label: "eTIMS", permissions: ["etims.view"] },

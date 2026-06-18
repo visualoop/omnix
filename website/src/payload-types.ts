@@ -1887,20 +1887,37 @@ export interface Setting {
   createdAt?: string | null;
 }
 /**
- * Tier prices, add-ons, trial length, and the comparison table.
+ * Tier prices per currency (KES / USD / NGN / GHS / ZAR), add-ons, trial length, comparison table. Tabs separate the tiers.
  *
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "pricing".
  */
 export interface Pricing {
   id: number;
+  /**
+   * Default currency code when geo is unknown.
+   */
   currency?: string | null;
   trialDays?: number | null;
   starter?: {
+    /**
+     * Legacy single-price field. Use Prices tab for new multi-currency setup.
+     */
     oneTimeFee?: number | null;
     maintenanceYearly?: number | null;
     maxBranches?: number | null;
     maxMachines?: number | null;
+    /**
+     * Default Kenyan price.
+     */
+    priceKES?: number | null;
+    /**
+     * Used for visitors outside Paystack-native countries.
+     */
+    priceUSD?: number | null;
+    priceNGN?: number | null;
+    priceGHS?: number | null;
+    priceZAR?: number | null;
     features?:
       | {
           item?: string | null;
@@ -1909,10 +1926,24 @@ export interface Pricing {
       | null;
   };
   business?: {
+    /**
+     * Legacy single-price field. Use Prices tab for new multi-currency setup.
+     */
     oneTimeFee?: number | null;
     maintenanceYearly?: number | null;
     maxBranches?: number | null;
     maxMachines?: number | null;
+    /**
+     * Default Kenyan price.
+     */
+    priceKES?: number | null;
+    /**
+     * Used for visitors outside Paystack-native countries.
+     */
+    priceUSD?: number | null;
+    priceNGN?: number | null;
+    priceGHS?: number | null;
+    priceZAR?: number | null;
     features?:
       | {
           item?: string | null;
@@ -1922,7 +1953,7 @@ export interface Pricing {
   };
   enterprise?: {
     /**
-     * String shown instead of a number ("Contact us", "Custom", etc.).
+     * Text shown in place of a price ("Contact us", "Custom", etc.).
      */
     priceLabel?: string | null;
     features?:
@@ -1932,6 +1963,9 @@ export interface Pricing {
         }[]
       | null;
   };
+  /**
+   * KES per branch per month.
+   */
   cloudBackupMonthly?: number | null;
   extraBranchOneTime?: number | null;
   extraMachineOneTime?: number | null;
@@ -2597,6 +2631,11 @@ export interface PricingSelect<T extends boolean = true> {
         maintenanceYearly?: T;
         maxBranches?: T;
         maxMachines?: T;
+        priceKES?: T;
+        priceUSD?: T;
+        priceNGN?: T;
+        priceGHS?: T;
+        priceZAR?: T;
         features?:
           | T
           | {
@@ -2611,6 +2650,11 @@ export interface PricingSelect<T extends boolean = true> {
         maintenanceYearly?: T;
         maxBranches?: T;
         maxMachines?: T;
+        priceKES?: T;
+        priceUSD?: T;
+        priceNGN?: T;
+        priceGHS?: T;
+        priceZAR?: T;
         features?:
           | T
           | {

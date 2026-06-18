@@ -32,6 +32,8 @@ import { AiSection } from '@/components/landing/ai-section'
  * 11. Closing CTA         — full-bleed dark band, italic 64px, one CTA + WhatsApp
  */
 import { getPayload } from 'payload'
+import { cookies } from 'next/headers'
+import { CURRENCIES, tierPrice, type PricingTierShape, type SupportedCurrency } from '@/lib/currency'
 import config from '@/payload.config'
 
 export const dynamic = 'force-dynamic'
@@ -39,19 +41,22 @@ export const revalidate = 60
 
 export default async function HomePage() {
   const settings = await getSiteSettings()
-  let onePrice = '50,000'
-  let oneCurrency = 'KES'
+  // Currency from middleware-set cookie (geo-detected on first visit).
+  const cookieStore = await cookies()
+  const cookieCurrency = cookieStore.get('omnix_currency')?.value as SupportedCurrency | undefined
+  const currency: SupportedCurrency = cookieCurrency && cookieCurrency in CURRENCIES ? cookieCurrency : 'KES'
+
+  let onePriceAmount = currency === 'KES' ? 50_000 : currency === 'USD' ? 350 : 50_000
   try {
     const payloadInst = await getPayload({ config: await config })
     const pg = (await payloadInst.findGlobal({ slug: 'pricing', overrideAccess: true })) as unknown as {
-      currency?: string
-      starter?: { oneTimeFee?: number }
+      starter?: PricingTierShape
     }
-    if (pg.currency) oneCurrency = pg.currency
-    if (typeof pg.starter?.oneTimeFee === 'number') {
-      onePrice = pg.starter.oneTimeFee.toLocaleString('en-KE')
-    }
+    const amt = tierPrice(pg.starter, currency)
+    if (amt > 0) onePriceAmount = amt
   } catch { /* fall through to defaults */ }
+  const onePrice = onePriceAmount.toLocaleString('en-US')
+  const oneCurrency = CURRENCIES[currency].symbol
   let heroContent: Parameters<typeof HeroSection>[0]["content"] = undefined
   let latestRelease: Parameters<typeof HeroSection>[0]["latestRelease"] = undefined
   try {

@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
+import { cookies } from 'next/headers'
 import { getPayload } from 'payload'
 import config from '@/payload.config'
 import { Icon } from '@/components/icons'
@@ -10,6 +11,7 @@ import { ClosingCtaSection } from '@/components/landing/closing-cta-section'
 import { getSiteSettings } from '@/lib/site-settings'
 import { PageHero } from '@/components/marketing/page-hero'
 import { cn } from '@/lib/cn'
+import { CURRENCIES, formatPrice, tierPrice, type SupportedCurrency, type PricingTierShape } from '@/lib/currency'
 
 export const metadata: Metadata = {
   title: 'Pricing — pay once, use forever',
@@ -29,8 +31,8 @@ interface VariantTile {
 interface PricingShape {
   currency?: string
   trialDays?: number
-  starter?: { oneTimeFee?: number }
-  business?: { oneTimeFee?: number; maxBranches?: number; maxMachines?: number }
+  starter?: PricingTierShape & { maxBranches?: number; maxMachines?: number }
+  business?: PricingTierShape & { maxBranches?: number; maxMachines?: number }
   enterprise?: { priceLabel?: string }
   cloudBackupMonthly?: number
   extraBranchOneTime?: number
@@ -47,14 +49,16 @@ async function getPricing(): Promise<PricingShape> {
   }
 }
 
-function fmt(currency: string, amount: number): string {
-  return `${currency} ${amount.toLocaleString('en-KE')}`
+async function getActiveCurrency(): Promise<SupportedCurrency> {
+  const cookieStore = await cookies()
+  const c = cookieStore.get('omnix_currency')?.value as SupportedCurrency | undefined
+  if (c && c in CURRENCIES) return c
+  return 'KES'
 }
 
-function buildVariants(p: PricingShape): ReadonlyArray<VariantTile> {
-  const currency = p.currency ?? 'KES'
-  const proPrice = fmt(currency, p.business?.oneTimeFee ?? 150_000)
-  const tradePrice = fmt(currency, p.starter?.oneTimeFee ?? 50_000)
+function buildVariants(p: PricingShape, currency: SupportedCurrency): ReadonlyArray<VariantTile> {
+  const proPrice = formatPrice(tierPrice(p.business, currency), currency)
+  const tradePrice = formatPrice(tierPrice(p.starter, currency), currency)
   return [
     { id: 'pro', name: 'Omnix Pro', tagline: 'All four trades — multi-trade businesses', href: '/pro', price: proPrice, badge: 'Recommended' },
     { id: 'dawa', name: 'Omnix Dawa', tagline: 'Pharmacy management', price: tradePrice, href: '/dawa' },
@@ -64,17 +68,18 @@ function buildVariants(p: PricingShape): ReadonlyArray<VariantTile> {
   ]
 }
 
-function buildTiers(p: PricingShape) {
-  const currency = p.currency ?? 'KES'
+function buildTiers(p: PricingShape, currency: SupportedCurrency) {
   const trialDays = p.trialDays ?? 30
-  const tradePrice = p.starter?.oneTimeFee ?? 50_000
-  const proPrice = p.business?.oneTimeFee ?? 150_000
+  const tradePriceNum = tierPrice(p.starter, currency)
+  const proPriceNum = tierPrice(p.business, currency)
   const enterprisePrice = p.enterprise?.priceLabel ?? 'Talk to us'
+  const tradePrice = formatPrice(tradePriceNum, currency)
+  const proPrice = formatPrice(proPriceNum, currency)
   return [
     {
       name: 'Free trial',
       cadence: `${trialDays} days · no card`,
-      price: `${currency} 0`,
+      price: formatPrice(0, currency),
       body: 'Pick any variant. Multi-branch, multi-PC. The trial database becomes your live database the day you pay.',
       href: '/signup',
       cta: 'Start free trial',
@@ -83,8 +88,8 @@ function buildTiers(p: PricingShape) {
     {
       name: 'Omnix licence',
       cadence: 'one-time · perpetual',
-      price: fmt(currency, tradePrice),
-      body: `Per device. Trade variants (Dawa / Retail / Hospitality / Hardware) ${fmt(currency, tradePrice)} one-time. Pro (all four) ${fmt(currency, proPrice)} one-time. Perpetual licence — no annual fees.`,
+      price: tradePrice,
+      body: `Per device. Trade variants (Dawa / Retail / Hospitality / Hardware) ${tradePrice} one-time. Pro (all four) ${proPrice} one-time. Perpetual licence — no annual fees.`,
       href: '/signup?intent=buy',
       cta: 'Buy a licence',
       primary: true,
@@ -101,15 +106,14 @@ function buildTiers(p: PricingShape) {
   ] as const
 }
 
-function buildAddons(p: PricingShape) {
-  const currency = p.currency ?? 'KES'
+function buildAddons(p: PricingShape, currency: SupportedCurrency) {
   const cloud = p.cloudBackupMonthly ?? 500
   const extraMachine = p.extraMachineOneTime ?? 5_000
   return [
-    { name: 'Cloud backup', price: `${fmt(currency, cloud)} · / month / branch`, body: 'Encrypted nightly snapshots to Cloudflare R2. Restore in minutes after a stolen or lost machine.' },
-    { name: 'Extra machine seat', price: `${fmt(currency, extraMachine)} · one-time`, body: 'Raise the number of PCs that can activate against your licence beyond the included 10.' },
+    { name: 'Cloud backup', price: `${formatPrice(cloud, currency)} · / month / branch`, body: 'Encrypted nightly snapshots to Cloudflare R2. Restore in minutes after a stolen or lost machine.' },
+    { name: 'Extra machine seat', price: `${formatPrice(extraMachine, currency)} · one-time`, body: 'Raise the number of PCs that can activate against your licence beyond the included 10.' },
     { name: 'Major upgrade', price: '50% off · list price', body: 'When v2.x ships, current owners pay half. Stay on v1.x as long as you like.' },
-    { name: 'On-site training', price: `${fmt(currency, 25_000)} · per day`, body: 'A trainer walks your team through setup, POS, payroll and KRA filings in your office.' },
+    { name: 'On-site training', price: `${formatPrice(25_000, currency)} · per day`, body: 'A trainer walks your team through setup, POS, payroll and KRA filings in your office.' },
   ] as const
 }
 
@@ -132,10 +136,10 @@ const COMPARE: ReadonlyArray<readonly [string, string, string, string]> = [
 ]
 
 export default async function PricingPage() {
-  const [settings, pricing] = await Promise.all([getSiteSettings(), getPricing()])
-  const VARIANTS = buildVariants(pricing)
-  const TIERS = buildTiers(pricing)
-  const ADDONS = buildAddons(pricing)
+  const [settings, pricing, currency] = await Promise.all([getSiteSettings(), getPricing(), getActiveCurrency()])
+  const VARIANTS = buildVariants(pricing, currency)
+  const TIERS = buildTiers(pricing, currency)
+  const ADDONS = buildAddons(pricing, currency)
   return (
     <>
       <PageHero
@@ -144,7 +148,10 @@ export default async function PricingPage() {
         description="One product, one fee. No subscriptions, no per-user upcharges, no surprise renewal emails. Free 30-day trial first — you only pay if you keep it."
       />
 
-      <OnePriceSection price={(pricing.starter?.oneTimeFee ?? 50000).toLocaleString('en-KE')} currency={pricing.currency ?? 'KES'} />
+      <OnePriceSection
+        price={tierPrice(pricing.starter, currency).toLocaleString('en-US')}
+        currency={CURRENCIES[currency].symbol}
+      />
 
       <section className="section-tight">
         <div className="container-wide">
