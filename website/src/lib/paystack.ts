@@ -297,16 +297,31 @@ function priceForCurrency(tier: PricingTierMultiCurrency | undefined, currency: 
   // Last resort — rough conversion from oneTimeFee. Owner sees a banner
   // in /admin → Pricing → tab to fill in actual values.
   if (typeof tier.oneTimeFee === 'number') {
-    const RATES: Record<CheckoutCurrency, number> = {
-      KES: 1,
-      USD: 1 / 130,
-      NGN: 12,
-      GHS: 0.13,
-      ZAR: 0.13,
-    }
-    return Math.round(tier.oneTimeFee * RATES[currency])
+    return convertKES(tier.oneTimeFee, currency)
   }
   return defaultKES
+}
+
+/**
+ * Convert a KES-denominated amount to another Paystack-supported
+ * currency using static fallback rates. Used as a last-resort when
+ * the owner hasn't configured an explicit per-currency price.
+ *
+ * Rates intentionally rough — better than charging KES on a USD
+ * checkout. Owner can override per-tier (license_fee) by setting
+ * priceUSD/NGN/GHS/ZAR explicitly. Add-ons will always go through
+ * here unless we add per-currency fields to them too (v0.7.x).
+ */
+function convertKES(amountKES: number, currency: CheckoutCurrency): number {
+  if (currency === 'KES') return amountKES
+  const RATES: Record<CheckoutCurrency, number> = {
+    KES: 1,
+    USD: 1 / 130,
+    NGN: 12,
+    GHS: 0.13,
+    ZAR: 0.13,
+  }
+  return Math.round(amountKES * RATES[currency])
 }
 
 export function computeAmount(
@@ -321,19 +336,20 @@ export function computeAmount(
     case 'license_fee':
       return priceForCurrency(t, currency, defaultKES)
     case 'maintenance_renewal':
-      // Maintenance renewal is KES-priced for now; multi-currency
-      // recurring billing comes when annual subscriptions land.
-      return t?.maintenanceYearly ?? 12000
+      // Maintenance renewal is KES-priced source-of-truth; convert
+      // for the visitor's currency. When annual recurring billing
+      // lands as a first-class flow we'll add per-currency fields.
+      return convertKES(t?.maintenanceYearly ?? 12000, currency)
     case 'major_upgrade': {
       const fee = priceForCurrency(t, currency, defaultKES)
       const discount = pricing.majorUpgradeDiscount ?? 50
       return Math.round(fee * (1 - discount / 100))
     }
     case 'cloud_backup':
-      return pricing.cloudBackupMonthly ?? 500
+      return convertKES(pricing.cloudBackupMonthly ?? 500, currency)
     case 'extra_branch':
-      return pricing.extraBranchOneTime ?? 15000
+      return convertKES(pricing.extraBranchOneTime ?? 15000, currency)
     case 'extra_machine':
-      return pricing.extraMachineOneTime ?? 5000
+      return convertKES(pricing.extraMachineOneTime ?? 5000, currency)
   }
 }

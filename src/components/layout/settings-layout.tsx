@@ -6,6 +6,8 @@ import { useActiveModule } from "@/stores/active-module";
 import { hasPermission } from "@/lib/permissions";
 import { settingsRegistry, SETTINGS_GROUPS } from "@/lib/settings-registry";
 import { useIsKenya } from "@/lib/features";
+import { useCountry } from "@/stores/country";
+import { pharmacyTerm } from "@/lib/locale";
 
 export function SettingsLayout() {
   const navigate = useNavigate();
@@ -48,7 +50,9 @@ export function SettingsLayout() {
             if (items.length === 0) return null;
             return (
               <div key={group} className="space-y-1">
-                <div className="px-2 text-[10px] uppercase tracking-wider font-semibold text-muted-foreground">{group}</div>
+                <div className="px-2 text-[10px] uppercase tracking-wider font-semibold text-muted-foreground">
+                  {group === "Dawa" ? pharmacyTerm(useCountry.getState().code) : group}
+                </div>
                 {items.map((item) => (
                   <NavLink
                     key={item.to}

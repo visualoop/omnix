@@ -5,6 +5,8 @@
  * All logos: 512×512 viewBox, rounded square (rx=112) like the Omnix
  * mark, but with module-specific gradients + glyphs.
  */
+import { useCountry } from "@/stores/country";
+import { pharmacyTerm } from "@/lib/locale";
 
 interface LogoProps {
   size?: number;
@@ -17,8 +19,12 @@ const ROUNDED_RX = 112;
 // ─── Dawa (Pharmacy) — Mortar & Pestle ──────────────────────────────
 export function DawaLogo({ size = 32, className = "", rounded = true }: LogoProps) {
   const id = `dawa-${size}`;
+  // Read country pharmacy term so aria-label flips per country
+  // (Dawa in Kenya, Pharmacy elsewhere, Pharmacie in Rwanda, etc.).
+  const code = useCountry((s) => s.code);
+  const term = pharmacyTerm(code);
   return (
-    <svg width={size} height={size} viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg" className={className} aria-label="Dawa Pharmacy">
+    <svg width={size} height={size} viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg" className={className} aria-label={`${term} module logo`}>
       <defs>
         <linearGradient id={`${id}-bg`} x1="0" y1="0" x2="1" y2="1">
           <stop offset="0%" stopColor="#0D9488" />
