@@ -25,19 +25,19 @@ export const FooterContent: GlobalConfig = {
           label: 'Branding',
           description: 'Tagline + closing line under the brand name.',
           fields: [
-            { name: 'branding', type: 'textarea', admin: { description: 'Short pitch under the logo.' } },
-            { name: 'copyrightLine', type: 'text', admin: { description: 'e.g. "© 2026 Omnix Software Ltd."' } },
+            { name: 'branding', type: 'textarea', localized: true, admin: { description: 'Short pitch under the logo.' } },
+            { name: 'copyrightLine', type: 'text', localized: true, admin: { description: 'e.g. "© 2026 Omnix Software Ltd."' } },
           ],
         },
         {
           label: 'Product links',
           fields: [
-            { name: 'productHeading', type: 'text', defaultValue: 'Product' },
+            { name: 'productHeading', type: 'text', localized: true, defaultValue: 'Product' },
             {
               name: 'productLinks',
               type: 'array',
               fields: [
-                { name: 'label', type: 'text', required: true },
+                { name: 'label', type: 'text', localized: true, required: true },
                 { name: 'href', type: 'text', required: true },
               ],
             },
@@ -46,12 +46,12 @@ export const FooterContent: GlobalConfig = {
         {
           label: 'Trades',
           fields: [
-            { name: 'tradesHeading', type: 'text', defaultValue: 'Trades' },
+            { name: 'tradesHeading', type: 'text', localized: true, defaultValue: 'Trades' },
             {
               name: 'tradeLinks',
               type: 'array',
               fields: [
-                { name: 'label', type: 'text', required: true },
+                { name: 'label', type: 'text', localized: true, required: true },
                 { name: 'href', type: 'text', required: true },
               ],
             },
@@ -60,12 +60,12 @@ export const FooterContent: GlobalConfig = {
         {
           label: 'Company links',
           fields: [
-            { name: 'companyHeading', type: 'text', defaultValue: 'Company' },
+            { name: 'companyHeading', type: 'text', localized: true, defaultValue: 'Company' },
             {
               name: 'companyLinks',
               type: 'array',
               fields: [
-                { name: 'label', type: 'text', required: true },
+                { name: 'label', type: 'text', localized: true, required: true },
                 { name: 'href', type: 'text', required: true },
               ],
             },
@@ -74,12 +74,12 @@ export const FooterContent: GlobalConfig = {
         {
           label: 'Legal links',
           fields: [
-            { name: 'legalHeading', type: 'text', defaultValue: 'Legal' },
+            { name: 'legalHeading', type: 'text', localized: true, defaultValue: 'Legal' },
             {
               name: 'legalLinks',
               type: 'array',
               fields: [
-                { name: 'label', type: 'text', required: true },
+                { name: 'label', type: 'text', localized: true, required: true },
                 { name: 'href', type: 'text', required: true },
               ],
             },

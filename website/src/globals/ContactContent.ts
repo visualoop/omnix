@@ -17,15 +17,15 @@ export const ContactContent: GlobalConfig = {
         {
           label: 'Header',
           fields: [
-            { name: 'pageTitle', type: 'text', defaultValue: 'Talk to a human.' },
-            { name: 'pageSubtitle', type: 'textarea' },
+            { name: 'pageTitle', type: 'text', localized: true, defaultValue: 'Talk to a human.' },
+            { name: 'pageSubtitle', type: 'textarea', localized: true },
           ],
         },
         {
           label: 'Methods',
           description: 'Channels rendered as cards. Phone numbers + emails come from Settings → Contact (single source of truth).',
           fields: [
-            { name: 'methodsHeading', type: 'text', defaultValue: 'Pick the fastest channel' },
+            { name: 'methodsHeading', type: 'text', localized: true, defaultValue: 'Pick the fastest channel' },
             {
               name: 'methods',
               type: 'array',
@@ -39,8 +39,8 @@ export const ContactContent: GlobalConfig = {
                     description: 'Pulls live value from Settings → Contact for the corresponding channel.',
                   },
                 },
-                { name: 'label', type: 'text', admin: { description: 'Override label (optional). Defaults to channel name.' } },
-                { name: 'description', type: 'textarea', admin: { description: 'Short note shown under the channel.' } },
+                { name: 'label', type: 'text', localized: true, admin: { description: 'Override label (optional). Defaults to channel name.' } },
+                { name: 'description', type: 'textarea', localized: true, admin: { description: 'Short note shown under the channel.' } },
               ],
             },
           ],
@@ -49,13 +49,13 @@ export const ContactContent: GlobalConfig = {
           label: 'FAQ',
           description: 'Up to ~6 frequently-asked questions shown below the methods grid.',
           fields: [
-            { name: 'faqHeading', type: 'text', defaultValue: 'Frequently asked' },
+            { name: 'faqHeading', type: 'text', localized: true, defaultValue: 'Frequently asked' },
             {
               name: 'faq',
               type: 'array',
               fields: [
-                { name: 'question', type: 'text', required: true },
-                { name: 'answer', type: 'textarea', required: true },
+                { name: 'question', type: 'text', localized: true, required: true },
+                { name: 'answer', type: 'textarea', localized: true, required: true },
               ],
             },
           ],
@@ -63,9 +63,9 @@ export const ContactContent: GlobalConfig = {
         {
           label: 'Closing CTA',
           fields: [
-            { name: 'ctaHeading', type: 'text' },
-            { name: 'ctaBody', type: 'textarea' },
-            { name: 'ctaPrimaryLabel', type: 'text', defaultValue: 'Start free trial' },
+            { name: 'ctaHeading', type: 'text', localized: true },
+            { name: 'ctaBody', type: 'textarea', localized: true },
+            { name: 'ctaPrimaryLabel', type: 'text', localized: true, defaultValue: 'Start free trial' },
             { name: 'ctaPrimaryHref', type: 'text', defaultValue: '/signup' },
           ],
         },

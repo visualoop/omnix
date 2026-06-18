@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { cookies } from 'next/headers'
 import { getPayload } from 'payload'
+import { getLocale } from 'next-intl/server'
 import config from '@/payload.config'
 import { Icon } from '@/components/icons'
 import { Button } from '@/components/ui/button'
@@ -261,12 +262,13 @@ const FALLBACK: Record<VariantId, VariantData> = {
  * Read variant-specific copy from the CMS. Falls back to the canonical
  * defaults above if the global isn't seeded yet.
  */
-async function getVariantContent(variant: VariantId): Promise<VariantData> {
+async function getVariantContent(variant: VariantId, locale: string): Promise<VariantData> {
   try {
     const payloadConfig = await config
     const payload = await getPayload({ config: payloadConfig })
     const g = (await payload.findGlobal({
       slug: 'trade-landings',
+      locale: locale as never,
       overrideAccess: true,
     })) as unknown as Record<string, VariantData | undefined>
     const cms = g[variant]
@@ -327,8 +329,9 @@ function HeroTitle({
 }
 
 export async function VariantLanding({ variant }: { variant: VariantId }) {
+  const locale = await getLocale()
   const [content, settings, price] = await Promise.all([
-    getVariantContent(variant),
+    getVariantContent(variant, locale),
     getSiteSettings(),
     getVariantPrice(variant),
   ])
@@ -452,7 +455,8 @@ export async function VariantLanding({ variant }: { variant: VariantId }) {
 
 /** Read just metadata for generateMetadata() in each trade page. */
 export async function getVariantMetadata(variant: VariantId): Promise<{ title: string; description: string }> {
-  const c = await getVariantContent(variant)
+  const locale = await getLocale()
+  const c = await getVariantContent(variant, locale)
   const fb = FALLBACK[variant]
   return {
     title: c.metaTitle ?? `${c.productName ?? fb.productName} — ${c.tagline ?? fb.tagline}`,

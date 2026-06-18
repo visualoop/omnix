@@ -3,6 +3,7 @@ import { Icon } from '@/components/icons'
 import { PageHero } from '@/components/marketing/page-hero'
 import { ContactForm } from '@/components/marketing/contact-form'
 import { getPayload } from 'payload'
+import { getLocale } from 'next-intl/server'
 import config from '@/payload.config'
 import { getSiteSettings } from '@/lib/site-settings'
 
@@ -24,12 +25,13 @@ interface ContactGlobal {
   ctaPrimaryHref?: string | null
 }
 
-async function getContactContent(): Promise<ContactGlobal> {
+async function getContactContent(locale: string): Promise<ContactGlobal> {
   try {
     const payloadConfig = await config
     const payload = await getPayload({ config: payloadConfig })
     const g = (await payload.findGlobal({
       slug: 'contact-content',
+      locale: locale as never,
       overrideAccess: true,
     })) as unknown as ContactGlobal
     return g
@@ -39,7 +41,8 @@ async function getContactContent(): Promise<ContactGlobal> {
 }
 
 export default async function ContactPage() {
-  const [settings, content] = await Promise.all([getSiteSettings(), getContactContent()])
+  const locale = await getLocale()
+  const [settings, content] = await Promise.all([getSiteSettings(), getContactContent(locale)])
 
   const title = content.pageTitle ?? 'Talk to us.'
   const subtitle =

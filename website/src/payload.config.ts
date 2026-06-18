@@ -71,6 +71,19 @@ export default buildConfig({
     CloudBackups,
   ],
   globals: [Settings, Pricing, LandingPage, HomeContent, ContactContent, FooterContent, TradeLandings],
+  localization: {
+    // Same locale codes as next-intl's routing config — keep in sync.
+    locales: [
+      { label: 'English', code: 'en' },
+      { label: 'Kiswahili', code: 'sw' },
+      { label: 'Français', code: 'fr' },
+      { label: 'Português', code: 'pt' },
+      { label: 'Español', code: 'es' },
+      { label: 'العربية', code: 'ar', rtl: true },
+    ],
+    defaultLocale: 'en',
+    fallback: true, // empty translations fall back to default locale
+  },
   editor: lexicalEditor(),
   secret: process.env.PAYLOAD_SECRET || '',
   typescript: {

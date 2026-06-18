@@ -19,7 +19,7 @@ const variantFields = (variant: string): Field[] => [
     required: true,
     admin: { description: `e.g. "Omnix ${variant.charAt(0).toUpperCase() + variant.slice(1)}"` },
   },
-  { name: 'tagline', type: 'text', admin: { description: 'One-liner shown in metadata + hero subtitle.' } },
+  { name: 'tagline', type: 'text', localized: true, admin: { description: 'One-liner shown in metadata + hero subtitle.' } },
   { name: 'metaTitle', type: 'text' },
   { name: 'metaDescription', type: 'textarea' },
 
@@ -27,7 +27,7 @@ const variantFields = (variant: string): Field[] => [
     name: 'hero',
     type: 'group',
     fields: [
-      { name: 'eyebrow', type: 'text' },
+      { name: 'eyebrow', type: 'text', localized: true },
       {
         name: 'titlePrefix',
         type: 'text',
@@ -45,7 +45,7 @@ const variantFields = (variant: string): Field[] => [
         type: 'text',
         admin: { description: 'Tail of headline after the italic part. Plain text.' },
       },
-      { name: 'description', type: 'textarea' },
+      { name: 'description', type: 'textarea', localized: true },
     ],
   },
 
@@ -53,11 +53,11 @@ const variantFields = (variant: string): Field[] => [
     name: 'whoFor',
     type: 'group',
     fields: [
-      { name: 'eyebrow', type: 'text', defaultValue: 'Built for' },
+      { name: 'eyebrow', type: 'text', localized: true, defaultValue: 'Built for' },
       {
         name: 'items',
         type: 'array',
-        fields: [{ name: 'label', type: 'text', required: true }],
+        fields: [{ name: 'label', type: 'text', localized: true, required: true }],
       },
     ],
   },
@@ -67,8 +67,8 @@ const variantFields = (variant: string): Field[] => [
     type: 'array',
     admin: { description: 'Up to ~7 feature cards. Each is title + description.' },
     fields: [
-      { name: 'title', type: 'text', required: true },
-      { name: 'description', type: 'textarea', required: true },
+      { name: 'title', type: 'text', localized: true, required: true },
+      { name: 'description', type: 'textarea', localized: true, required: true },
     ],
   },
 
@@ -76,10 +76,10 @@ const variantFields = (variant: string): Field[] => [
     name: 'compliance',
     type: 'array',
     admin: { description: 'Compliance + trust-signal bullet list.' },
-    fields: [{ name: 'item', type: 'text', required: true }],
+    fields: [{ name: 'item', type: 'text', localized: true, required: true }],
   },
 
-  { name: 'pricingNote', type: 'textarea' },
+  { name: 'pricingNote', type: 'textarea', localized: true },
 
   {
     name: 'cta',
@@ -87,8 +87,8 @@ const variantFields = (variant: string): Field[] => [
     fields: [
       { name: 'buyHref', type: 'text', defaultValue: `/buy?variant=${variant}` },
       { name: 'downloadHref', type: 'text', defaultValue: `/signup?variant=${variant}` },
-      { name: 'buyLabel', type: 'text', defaultValue: 'Buy now' },
-      { name: 'trialLabel', type: 'text', defaultValue: 'Start 30-day free trial' },
+      { name: 'buyLabel', type: 'text', localized: true, defaultValue: 'Buy now' },
+      { name: 'trialLabel', type: 'text', localized: true, defaultValue: 'Start 30-day free trial' },
     ],
   },
 ]

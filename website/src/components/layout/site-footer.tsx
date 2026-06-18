@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { getPayload } from 'payload'
-import { getTranslations } from 'next-intl/server'
+import { getTranslations, getLocale } from 'next-intl/server'
 import config from '@/payload.config'
 import { Icon } from '@/components/icons'
 import { BRAND_NAME } from '@/lib/brand'
@@ -70,7 +70,7 @@ async function getFooterContent(headings: {
   trades: string
   company: string
   legal: string
-}): Promise<{
+}, locale: string): Promise<{
   columns: FooterColumn[]
   branding: string | null
   copyrightLine: string | null
@@ -80,6 +80,7 @@ async function getFooterContent(headings: {
     const payload = await getPayload({ config: payloadConfig })
     const g = (await payload.findGlobal({
       slug: 'footer-content',
+      locale: locale as never,
       overrideAccess: true,
     })) as unknown as Record<string, unknown>
 
@@ -126,17 +127,18 @@ async function getFooterContent(headings: {
 }
 
 export async function SiteFooter() {
-  const [settings, t, tFoot] = await Promise.all([
+  const [settings, t, tFoot, locale] = await Promise.all([
     getSiteSettings(),
     getTranslations('footer'),
     getTranslations('footer.headings'),
+    getLocale(),
   ])
   const footer = await getFooterContent({
     product: tFoot('product'),
     trades: tFoot('trades'),
     company: tFoot('company'),
     legal: tFoot('legal'),
-  })
+  }, locale)
 
   const year = new Date().getFullYear()
   const copyright = footer.copyrightLine ?? `© ${year} Omnix Software Ltd.`
