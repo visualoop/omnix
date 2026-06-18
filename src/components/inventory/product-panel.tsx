@@ -19,7 +19,8 @@ import { getPharmacyProduct, upsertPharmacyProduct } from "@/services/pharmacy";
 import {
   listBrands, listVariants, upsertVariant, deleteVariant,
   listProductUoms, upsertProductUom, deleteProductUom,
-  type BrandWithStats, type ProductVariant, type ProductUom,
+  listPriceLists, setPriceListItem,
+  type BrandWithStats, type ProductVariant, type ProductUom, type PriceList,
 } from "@/services/retail";
 import { useActiveModule } from "@/stores/active-module";
 import { execute } from "@/lib/db";
@@ -281,6 +282,21 @@ export function ProductPanel({ open, onClose, productId, onSaved }: Props) {
                 <Field label="Initial stock">
                   <Input type="number" value={form.initial_stock} onChange={(e) => update("initial_stock", e.target.value)} placeholder="0" />
                 </Field>
+              )}
+
+              {/* Tier prices — Default / Wholesale / VIP / etc. */}
+              {activeModule === "retail" && (
+                <div className="space-y-2 pt-2 border-t border-border/50">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Tier prices</span>
+                    {!isEdit && (
+                      <span className="text-[10px] text-muted-foreground italic">Save product first to add tiers</span>
+                    )}
+                  </div>
+                  {isEdit && effectiveProductId && (
+                    <TierPricesEditor productId={effectiveProductId} />
+                  )}
+                </div>
               )}
             </TabsPanel>
 
@@ -839,6 +855,109 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
     <div className="space-y-1">
       <label className="text-[11px] font-medium text-muted-foreground">{label}</label>
       {children}
+    </div>
+  );
+}
+
+
+/**
+ * TierPricesEditor — inline grid showing each price list × selling price
+ * for the current product. Owner edits inline + saves on blur. New
+ * tier rows pre-populate the product's default selling price for fast
+ * fill-in.
+ */
+function TierPricesEditor({ productId }: { productId: string }) {
+  const [lists, setLists] = useState<PriceList[]>([]);
+  const [prices, setPrices] = useState<Map<string, number>>(new Map());
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState<string | null>(null);
+
+  const reload = async () => {
+    setLoading(true);
+    try {
+      const [pls, prods] = await Promise.all([
+        listPriceLists(false),
+        import("@/services/retail").then((m) => m.listPricesForProduct(productId)),
+      ]);
+      setLists(pls);
+      const map = new Map<string, number>();
+      for (const p of prods) map.set(p.price_list_id, p.price);
+      setPrices(map);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => { void reload(); }, [productId]);
+
+  const handleBlur = async (priceListId: string, value: string) => {
+    const num = parseFloat(value);
+    if (!Number.isFinite(num) || num < 0) return;
+    setSaving(priceListId);
+    try {
+      if (num === 0) {
+        const m = await import("@/services/retail");
+        await m.removeProductPriceTier(priceListId, productId);
+      } else {
+        await setPriceListItem({ price_list_id: priceListId, product_id: productId, price: num });
+      }
+      await reload();
+      toast.success("Tier price saved");
+    } catch (e) {
+      toast.error(String(e));
+    } finally {
+      setSaving(null);
+    }
+  };
+
+  if (loading) {
+    return <div className="text-[11px] text-muted-foreground italic">Loading tier prices…</div>;
+  }
+  if (lists.length === 0) {
+    return (
+      <div className="rounded-md border border-dashed border-border bg-muted/20 p-3 text-[11px] text-muted-foreground">
+        No price lists yet. Create one in <strong>Settings → Price Lists</strong>, then assign tier prices here.
+      </div>
+    );
+  }
+
+  return (
+    <div className="rounded-md border border-border overflow-hidden">
+      <table className="w-full text-[12px]">
+        <thead className="bg-muted/30 border-b border-border">
+          <tr>
+            <th className="text-left px-2.5 py-1.5 text-[10px] uppercase tracking-wider font-semibold text-muted-foreground">Price list</th>
+            <th className="text-right px-2.5 py-1.5 text-[10px] uppercase tracking-wider font-semibold text-muted-foreground">Selling price</th>
+          </tr>
+        </thead>
+        <tbody>
+          {lists.map((pl) => {
+            const current = prices.get(pl.id);
+            return (
+              <tr key={pl.id} className="border-b border-border/60 last:border-0">
+                <td className="px-2.5 py-1.5">
+                  <span className="font-medium">{pl.name}</span>
+                  {pl.is_default ? (
+                    <span className="ml-1.5 inline-flex items-center rounded-full bg-emerald-500/10 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-emerald-700 dark:text-emerald-400">
+                      Default
+                    </span>
+                  ) : null}
+                </td>
+                <td className="px-2.5 py-1 text-right">
+                  <Input
+                    type="number"
+                    defaultValue={current ?? ""}
+                    placeholder="—"
+                    className="h-7 w-24 text-right text-[12px] tabular-nums ml-auto"
+                    onBlur={(e) => handleBlur(pl.id, e.target.value)}
+                    disabled={saving === pl.id}
+                  />
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
     </div>
   );
 }

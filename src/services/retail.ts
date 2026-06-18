@@ -202,6 +202,36 @@ export async function removePriceListItem(id: string): Promise<void> {
   await execute(`DELETE FROM retail_price_list_items WHERE id = ?1`, [id]);
 }
 
+/**
+ * Per-product tier prices across all price lists.
+ * One row per (price_list, product) — variant-level prices excluded
+ * since the inline editor in product-panel works at product level.
+ */
+export async function listPricesForProduct(productId: string): Promise<Array<{
+  id: string;
+  price_list_id: string;
+  price_list_name: string;
+  is_default: number;
+  price: number;
+}>> {
+  return query(
+    `SELECT pli.id, pli.price_list_id, pl.name AS price_list_name, pl.is_default, pli.price
+     FROM retail_price_list_items pli
+     JOIN retail_price_lists pl ON pl.id = pli.price_list_id
+     WHERE pli.product_id = ?1 AND pli.variant_id IS NULL AND (pli.min_quantity IS NULL OR pli.min_quantity <= 1)
+     ORDER BY pl.is_default DESC, pl.name`,
+    [productId],
+  );
+}
+
+/** Delete a tier price row by price_list + product (variant-level NULL). */
+export async function removeProductPriceTier(priceListId: string, productId: string): Promise<void> {
+  await execute(
+    `DELETE FROM retail_price_list_items WHERE price_list_id = ?1 AND product_id = ?2 AND variant_id IS NULL`,
+    [priceListId, productId],
+  );
+}
+
 /** Resolve the best price for a customer + product + quantity using their assigned price list. */
 export async function resolvePrice(input: {
   product_id: string;

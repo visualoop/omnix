@@ -120,6 +120,10 @@ function AppContent() {
   const { user, isSetupComplete, setupChecked, refreshSetupState } = useAuthStore();
 
   useEffect(() => {
+    // Bust the WebView2 cache after every auto-update so customers
+    // immediately see the new UI, not the stale one held in memory.
+    import("@/lib/version-bust").then(({ bustOnVersionChange }) => bustOnVersionChange());
+
     // Initialize DB mode (detects standalone/client) before checking setup
     import("@/lib/db").then(({ initDb }) => {
       initDb().then(() => {
