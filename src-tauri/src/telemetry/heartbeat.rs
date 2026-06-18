@@ -18,6 +18,10 @@ pub struct Heartbeat {
     pub products_count: u32,
     pub sales_count_24h: u32,
     pub lan_peer_count: u32,
+    /// ISO 4217 currency code the desktop app reports sales in.
+    /// Comes from settings.country_code → countries registry.
+    /// Defaults to "KES" until country picker has run.
+    pub currency: String,
     pub integration_status: IntegrationStatus,
     pub last_sync_at: Option<String>,
 }
@@ -48,7 +52,9 @@ pub fn start_heartbeat_loop<T: Telemetry + 'static>(
 /// Collect heartbeat data from the app's SQLite database.
 /// TODO: Wire to actual database queries.
 async fn collect_heartbeat(session_id: &str) -> Heartbeat {
-    // Placeholder implementation — replace with actual DB queries
+    // Placeholder implementation — replace with actual DB queries.
+    // Currency comes from settings.country_code via the country
+    // registry. Default 'KES' until the country picker has run.
     Heartbeat {
         session_id: session_id.to_string(),
         interval_minutes: 30,
@@ -58,6 +64,7 @@ async fn collect_heartbeat(session_id: &str) -> Heartbeat {
         products_count: 0,
         sales_count_24h: 0,
         lan_peer_count: 0,
+        currency: "KES".to_string(),
         integration_status: IntegrationStatus {
             etims_configured: false,
             mpesa_configured: false,

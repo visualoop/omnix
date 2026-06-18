@@ -23,6 +23,7 @@ interface MachineDoc {
   employeeCount?: number
   salesCountLast30d?: number
   salesValueLast30d?: number
+  currency?: string
   lastSyncAt?: string
   firstSeenAt?: string
   lastSeenAt?: string
@@ -168,7 +169,7 @@ export default async function MachineDetailPage({
           <Stat label="Sales count" value={String(machine.salesCountLast30d ?? 0)} />
           <Stat
             label="Sales value"
-            value={`KES ${(machine.salesValueLast30d ?? 0).toLocaleString()}`}
+            value={`${machine.currency ?? 'KES'} ${(machine.salesValueLast30d ?? 0).toLocaleString()}`}
           />
         </dl>
       </section>

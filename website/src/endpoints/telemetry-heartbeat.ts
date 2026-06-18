@@ -27,6 +27,7 @@ export const telemetryHeartbeatEndpoint: Endpoint = {
       productCount?: number
       salesCount24h?: number
       salesValue30d?: number
+      currency?: string
       networkMode?: string
       integrations?: {
         etimsConfigured?: boolean
@@ -51,6 +52,7 @@ export const telemetryHeartbeatEndpoint: Endpoint = {
         employeeCount: body.userCount,
         salesCountLast30d: body.salesCount24h,
         salesValueLast30d: body.salesValue30d,
+        currency: (body.currency ?? undefined) as never,
         networkMode: body.networkMode as never,
         integrations: body.integrations,
         lastSyncAt: new Date().toISOString(),

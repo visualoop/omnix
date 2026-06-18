@@ -94,6 +94,15 @@ export const Machines: CollectionConfig = {
     { name: 'employeeCount', type: 'number' },
     { name: 'salesCountLast30d', type: 'number' },
     { name: 'salesValueLast30d', type: 'number' },
+    {
+      name: 'currency',
+      type: 'select',
+      defaultValue: 'KES',
+      options: ['KES', 'USD', 'NGN', 'GHS', 'ZAR', 'TZS', 'UGX', 'RWF', 'EGP', 'INR', 'GBP', 'EUR', 'AED', 'ZMW', 'XAF', 'XOF'],
+      admin: {
+        description: 'Currency the desktop app reports sales in — sent on every telemetry heartbeat. Drives the currency prefix on machine detail pages.',
+      },
+    },
     { name: 'lastSyncAt', type: 'date' },
     { name: 'firstSeenAt', type: 'date' },
     { name: 'lastSeenAt', type: 'date' },

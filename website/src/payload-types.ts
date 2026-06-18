@@ -458,6 +458,29 @@ export interface Machine {
   employeeCount?: number | null;
   salesCountLast30d?: number | null;
   salesValueLast30d?: number | null;
+  /**
+   * Currency the desktop app reports sales in — sent on every telemetry heartbeat. Drives the currency prefix on machine detail pages.
+   */
+  currency?:
+    | (
+        | 'KES'
+        | 'USD'
+        | 'NGN'
+        | 'GHS'
+        | 'ZAR'
+        | 'TZS'
+        | 'UGX'
+        | 'RWF'
+        | 'EGP'
+        | 'INR'
+        | 'GBP'
+        | 'EUR'
+        | 'AED'
+        | 'ZMW'
+        | 'XAF'
+        | 'XOF'
+      )
+    | null;
   lastSyncAt?: string | null;
   firstSeenAt?: string | null;
   lastSeenAt?: string | null;
@@ -1352,6 +1375,7 @@ export interface MachinesSelect<T extends boolean = true> {
   employeeCount?: T;
   salesCountLast30d?: T;
   salesValueLast30d?: T;
+  currency?: T;
   lastSyncAt?: T;
   firstSeenAt?: T;
   lastSeenAt?: T;
