@@ -303,22 +303,27 @@ export function POSPage() {
   return (
     <div className="flex flex-col h-[calc(100vh-48px)] -m-6 bg-muted/30">
       {/* ─── TOP STATUS BAR ─────────────────────────────────────────── */}
-      <div className={`${accent.headerBg} text-white flex-shrink-0`}>
-        <div className="px-4 py-2 flex items-center gap-4 text-xs">
+      <div className={`${accent.headerBg} text-white flex-shrink-0 shadow-md shadow-black/10`}>
+        <div className="px-5 py-2.5 flex items-center gap-5 text-xs">
           {/* Brand */}
-          <div className="flex items-center gap-2 font-semibold">
+          <div className="flex items-center gap-2 font-semibold pr-1 border-r border-white/15">
             <ShoppingCart className="h-4 w-4" />
-            <span>POS</span>
-            <span className="text-white/60">·</span>
-            <span className="text-white/90 font-normal">
+            <span className="text-[13px]">POS</span>
+            <span className="text-white/40">·</span>
+            <span className="text-white/85 font-normal">
               {activeModule === "dawa" ? pharmacyTerm(countryCode) : activeModule === "retail" ? "Retail" : "Standard"}
             </span>
           </div>
 
-          {/* Today's stats */}
-          <div className="flex items-center gap-4 text-white/95 ml-2">
+          {/* Today's stats — bigger, spaced, with live-pulse on revenue */}
+          <div className="flex items-stretch gap-5 text-white/95 pr-2">
             <Stat icon={Receipt} label="Today" value={todayStats ? `${todayStats.count} sales` : "—"} />
-            <Stat icon={TrendingUp} label="Revenue" value={todayStats ? KES(todayStats.revenue) : "—"} />
+            <div className="relative">
+              <Stat icon={TrendingUp} label="Revenue" value={todayStats ? KES(todayStats.revenue) : "—"} />
+              {todayStats && todayStats.count > 0 ? (
+                <span className="absolute -top-0.5 -right-1.5 h-1.5 w-1.5 rounded-full bg-emerald-300 animate-pulse" />
+              ) : null}
+            </div>
             <Stat icon={Banknote} label="Cash" value={todayStats ? KES(todayStats.cash) : "—"} />
             <Stat icon={Smartphone} label="M-Pesa" value={todayStats ? KES(todayStats.mpesa) : "—"} />
           </div>
@@ -394,29 +399,36 @@ export function POSPage() {
 
         {/* Center: Search + product grid */}
         <div className="flex-1 flex flex-col min-w-0 bg-background">
-          {/* Search bar */}
-          <div className="p-3 border-b border-border bg-background flex items-center gap-2">
+          {/* Search bar — primary input, generous size, scanner-friendly */}
+          <div className="px-4 py-3 border-b border-border bg-background flex items-center gap-3">
             <div className="relative flex-1">
-              <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Search className="absolute left-3.5 top-3 h-4 w-4 text-muted-foreground" />
               <Input
                 ref={searchRef}
-                placeholder="Search name, SKU, or scan barcode..."
-                className="pl-9 h-9"
+                placeholder="Search name, SKU, or scan barcode…"
+                className="pl-10 pr-10 h-10 text-[14px] font-medium"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 autoFocus
               />
-              {search && (
+              {search ? (
                 <button
                   onClick={() => { setSearch(""); searchRef.current?.focus(); }}
-                  className="absolute right-2 top-2 text-muted-foreground hover:text-foreground"
+                  className="absolute right-2.5 top-2.5 size-5 grid place-items-center rounded text-muted-foreground hover:bg-muted hover:text-foreground transition"
+                  title="Clear search (Esc)"
                 >
-                  <X className="h-4 w-4" />
+                  <X className="h-3.5 w-3.5" />
                 </button>
+              ) : (
+                <span className="absolute right-3 top-3 inline-flex items-center gap-1 text-[10px] text-muted-foreground select-none">
+                  <span className="size-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                  Scanner ready
+                </span>
               )}
             </div>
-            <span className="text-[10px] text-muted-foreground">
-              <kbd className="bg-muted px-1.5 py-0.5 rounded">Esc</kbd> clear
+            <span className="text-[11px] text-muted-foreground select-none">
+              <kbd className="bg-muted border border-border/60 px-1.5 py-0.5 rounded font-mono text-[10px]">Esc</kbd>
+              <span className="ml-1">clear</span>
             </span>
           </div>
 
@@ -597,10 +609,14 @@ export function POSPage() {
 
 function Stat({ icon: Icon, label, value }: { icon: typeof Receipt; label: string; value: string }) {
   return (
-    <div className="flex items-center gap-1.5">
-      <Icon className="h-3 w-3 text-white/70" />
-      <span className="text-white/70">{label}:</span>
-      <span className="font-mono font-semibold">{value}</span>
+    <div className="flex flex-col gap-0">
+      <span className="flex items-center gap-1 text-[9px] uppercase tracking-wider text-white/55 font-medium">
+        <Icon className="h-2.5 w-2.5" />
+        {label}
+      </span>
+      <span className="font-mono text-[12.5px] font-semibold tabular-nums leading-tight">
+        {value}
+      </span>
     </div>
   );
 }
