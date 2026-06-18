@@ -222,13 +222,16 @@ export default async function DashboardOverviewPage({
         <Kpi
           icon={Receipt}
           label="Payments to date"
-          value={`KES ${paymentsRes.docs
-            .filter(
-              (p: unknown) =>
-                (p as { status: string }).status === 'success',
-            )
-            .reduce((sum: number, p: unknown) => sum + (p as { amount: number }).amount, 0)
-            .toLocaleString()}`}
+          value={(() => {
+            const successful = paymentsRes.docs.filter(
+              (p: unknown) => (p as { status: string }).status === 'success',
+            ) as Array<{ amount: number; currency?: string }>
+            const total = successful.reduce((sum, p) => sum + p.amount, 0)
+            const histogram: Record<string, number> = {}
+            for (const p of successful) histogram[p.currency || 'KES'] = (histogram[p.currency || 'KES'] ?? 0) + 1
+            const dominant = Object.entries(histogram).sort((a, b) => b[1] - a[1])[0]?.[0] ?? 'KES'
+            return `${dominant} ${total.toLocaleString()}`
+          })()}
           meta={`${paymentsRes.totalDocs} payment${paymentsRes.totalDocs === 1 ? '' : 's'}`}
         />
       </div>

@@ -14,6 +14,7 @@ import { useAuthStore } from "@/stores/auth";
 import { PaymentRecordDialog } from "@/components/payment-record-dialog";
 import { toast } from "sonner";
 import { intlLocale } from "@/lib/intl";
+import { money } from "@/lib/money";
 
 export function CustomersPage() {
   const [customers, setCustomers] = useState<Customer[]>([]);
@@ -46,7 +47,7 @@ export function CustomersPage() {
 
       <div className="grid grid-cols-3 gap-3">
         <StatCard label="Total Customers" value={String(customers.length)} icon={Users} />
-        <StatCard label="Total Receivable" value={`KES ${totalOwed.toFixed(0)}`} icon={CreditCard} highlight={totalOwed > 0} />
+        <StatCard label="Total Receivable" value={money(totalOwed)} icon={CreditCard} highlight={totalOwed > 0} />
         <StatCard label="Over Credit Limit" value={String(overLimit)} icon={CreditCard} highlight={overLimit > 0} danger />
       </div>
 

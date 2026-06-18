@@ -12,6 +12,7 @@ import { query } from "@/lib/db";
 import { useActiveModule } from "@/stores/active-module";
 import { filterByActiveModule, getFeatureModule } from "@/lib/module-features";
 import { isModuleEntitled } from "@/stores/entitlements";
+import { money } from "@/lib/money";
 
 interface Props {
   open: boolean;
@@ -184,7 +185,7 @@ export function CommandPalette({ open, onOpenChange }: Props) {
             type: "result" as const,
             group: "Sales",
             name: `Sale #${s.sale_number}`,
-            subtitle: `KES ${s.total.toFixed(0)} · ${new Date(s.created_at).toLocaleDateString()}`,
+            subtitle: `${money(s.total)} · ${new Date(s.created_at).toLocaleDateString()}`,
             to: `/sales?id=${s.id}`,
             icon: Receipt,
           })),

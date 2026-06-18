@@ -11,6 +11,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { TableRowSkeleton } from "@/components/ui/skeletons";
 import { toast } from "sonner";
 import { intlLocale } from "@/lib/intl";
+import { money } from "@/lib/money";
 
 export function PettyCashPage() {
   const [entries, setEntries] = useState<PettyCashEntry[]>([]);
@@ -55,19 +56,19 @@ export function PettyCashPage() {
       <div className="grid grid-cols-3 gap-3">
         <StatCard
           label="Current Balance"
-          value={`KES ${(summary?.current_balance || 0).toFixed(0)}`}
+          value={money((summary?.current_balance || 0))}
           highlight={(summary?.current_balance || 0) < 0}
           icon={Wallet}
         />
         <StatCard
           label="Total Top-ups"
-          value={`KES ${(summary?.topup_total || 0).toFixed(0)}`}
+          value={money((summary?.topup_total || 0))}
           icon={ArrowUpCircle}
           tone="success"
         />
         <StatCard
           label="Total Expenses"
-          value={`KES ${(summary?.expense_total || 0).toFixed(0)}`}
+          value={money((summary?.expense_total || 0))}
           icon={ArrowDownCircle}
           tone="warning"
         />

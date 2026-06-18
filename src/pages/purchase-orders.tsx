@@ -15,6 +15,7 @@ import {
 import { getProducts, type Product } from "@/services/inventory";
 import { useAuthStore } from "@/stores/auth";
 import { toast } from "sonner";
+import { money } from "@/lib/money";
 
 export function PurchaseOrdersPage() {
   const [pos, setPos] = useState<PurchaseOrder[]>([]);
@@ -358,7 +359,7 @@ export function PurchaseOrderDetailPage() {
       <div className="grid grid-cols-3 gap-3">
         <InfoCard label="Order Date" value={po.order_date} />
         <InfoCard label="Expected" value={po.expected_date || "—"} />
-        <InfoCard label="Total" value={`KES ${po.total.toFixed(2)}`} />
+        <InfoCard label="Total" value={money(po.total)} />
       </div>
 
       <div className="border border-border rounded-lg overflow-hidden">

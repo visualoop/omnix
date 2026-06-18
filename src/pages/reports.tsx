@@ -5,6 +5,7 @@ import { getSalesByDay, getTopProducts, getSalesByPaymentMethod, type SalesByDay
 import { exportToCSV } from "@/lib/export";
 import { AreaChart, PieChart, BarChart } from "@/components/charts";
 import { ComparisonPanel } from "@/components/shared/comparison-panel";
+import { money } from "@/lib/money";
 
 export function ReportsPage() {
   const [period, setPeriod] = useState(30);
@@ -52,9 +53,9 @@ export function ReportsPage() {
 
       {/* Summary stats */}
       <div className="grid grid-cols-3 gap-3">
-        <SummaryCard label="Total Revenue" value={`KES ${totalRevenue.toFixed(0)}`} />
+        <SummaryCard label="Total Revenue" value={money(totalRevenue)} />
         <SummaryCard label="Transactions" value={String(totalSales)} />
-        <SummaryCard label="Average Sale" value={`KES ${avgSale.toFixed(0)}`} />
+        <SummaryCard label="Average Sale" value={money(avgSale)} />
       </div>
 
       {/* Period comparison */}

@@ -13,6 +13,7 @@ import {
 } from "@/services/branches";
 import { Can } from "@/components/require-role";
 import { toast } from "sonner";
+import { money } from "@/lib/money";
 
 export function BranchesPage() {
   const [branches, setBranches] = useState<BranchWithStats[]>([]);
@@ -52,7 +53,7 @@ export function BranchesPage() {
       {/* Today's stats */}
       <div className="grid grid-cols-3 gap-3">
         <Stat label="Active branches" value={String(branches.filter((b) => b.active === 1).length)} />
-        <Stat label="Sales today" value={`KES ${totalToday.toFixed(0)}`} />
+        <Stat label="Sales today" value={money(totalToday)} />
         <Stat label="Transactions today" value={String(totalCount)} />
       </div>
 

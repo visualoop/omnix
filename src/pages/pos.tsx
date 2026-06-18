@@ -366,7 +366,7 @@ export function POSPage() {
           <ActionPill icon={Percent} label="Discount" hotkey="F3" onClick={() => setDiscountOpen(true)} disabled={items.length === 0} />
           <ActionPill icon={Tag} label="Promo" onClick={() => setPromoOpen(true)} disabled={items.length === 0} />
           <ActionPill icon={Banknote} label="Petty Cash" onClick={() => setPettyCashDialog(true)} disabled={!shift} />
-          <ActionPill icon={Heart} label="Tip" onClick={() => setTipDialog(true)} disabled={items.length === 0} value={tip > 0 ? `KES ${tip.toFixed(0)}` : undefined} />
+          <ActionPill icon={Heart} label="Tip" onClick={() => setTipDialog(true)} disabled={items.length === 0} value={tip > 0 ? KES(tip) : undefined} />
           <ActionPill icon={Monitor} label="Customer Display" onClick={() => openCustomerDisplay().catch(console.error)} />
           <ActionPill icon={FileText} label="Z-Report" onClick={() => navigate("/reports/zreport")} />
           <ActionPill icon={Calculator} label="Qty ×N"

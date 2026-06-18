@@ -33,6 +33,7 @@ import { exportToCSV } from "@/lib/export";
 import { toast } from "sonner";
 import { prompt } from "@/components/ui/confirm-dialog";
 import { intlLocale } from "@/lib/intl";
+import { money } from "@/lib/money";
 
 export function ClaimsPage() {
   const [tab, setTab] = useState<"claims" | "batches">("claims");
@@ -87,7 +88,7 @@ export function ClaimsPage() {
         <div className="grid grid-cols-5 gap-3">
           <StatCard
             label="Outstanding"
-            value={`KES ${stats.total_outstanding.toFixed(0)}`}
+            value={money(stats.total_outstanding)}
             icon={Banknote}
             color="amber"
           />
@@ -95,7 +96,7 @@ export function ClaimsPage() {
           <StatCard label="Submitted" value={String(stats.submitted_count)} icon={Send} color="blue" />
           <StatCard
             label="Paid This Month"
-            value={`KES ${stats.paid_this_month.toFixed(0)}`}
+            value={money(stats.paid_this_month)}
             icon={CheckCircle2}
             color="green"
           />

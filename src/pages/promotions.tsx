@@ -12,6 +12,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { TableRowSkeleton } from "@/components/ui/skeletons";
 import { toast } from "sonner";
 import { intlLocale } from "@/lib/intl";
+import { money } from "@/lib/money";
 
 export function PromotionsPage() {
   const [items, setItems] = useState<Promotion[]>([]);
@@ -105,7 +106,7 @@ export function PromotionsPage() {
                     <td className="px-3 py-2.5">
                       <Badge variant="secondary" className="text-xs">
                         {p.type === "percent_off" ? `${p.value}% off` :
-                         p.type === "amount_off" ? `KES ${p.value} off` :
+                         p.type === "amount_off" ? `${money(p.value)} off` :
                          `Buy X Get Y`}
                       </Badge>
                     </td>

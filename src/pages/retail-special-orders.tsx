@@ -17,6 +17,7 @@ import { useAuthStore } from "@/stores/auth";
 import { useCartStore } from "@/stores/cart";
 import { toast } from "sonner";
 import { intlLocale } from "@/lib/intl";
+import { money } from "@/lib/money";
 
 const STATUS_LABELS: Record<SpecialOrder["status"], string> = {
   pending: "Pending",
@@ -123,7 +124,7 @@ export function SpecialOrdersPage() {
                           {o.needed_by ? new Date(o.needed_by).toLocaleDateString(intlLocale(), { day: "2-digit", month: "short" }) : <span className="text-muted-foreground">—</span>}
                         </td>
                         <td className="px-3 py-2 text-right text-xs font-mono tabular-nums">
-                          {o.estimated_value ? `KES ${o.estimated_value.toFixed(0)}` : "—"}
+                          {o.estimated_value ? money(o.estimated_value) : "—"}
                         </td>
                         <td className="px-3 py-2 text-xs text-muted-foreground max-w-xs truncate">{o.notes || "—"}</td>
                         <td className="px-3 py-2 text-right">

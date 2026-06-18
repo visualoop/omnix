@@ -11,6 +11,7 @@ import { listReturns, createSaleReturn, type SaleReturn } from "@/services/erp";
 import { useAuthStore } from "@/stores/auth";
 import { toast } from "sonner";
 import { intlLocale } from "@/lib/intl";
+import { money } from "@/lib/money";
 
 interface SaleSummary {
   id: string;
@@ -56,7 +57,7 @@ export function ReturnsPage() {
 
       <div className="grid grid-cols-3 gap-3">
         <StatCard label="Total Returns" value={String(returns.length)} icon={RotateCcw} />
-        <StatCard label="Refunded This Period" value={`KES ${totalRefunded.toFixed(0)}`} icon={RotateCcw} />
+        <StatCard label="Refunded This Period" value={money(totalRefunded)} icon={RotateCcw} />
         <StatCard label="Recent Returns" value={String(returns.filter((r) => {
           const d = new Date(r.return_date);
           const days = (Date.now() - d.getTime()) / 86400000;

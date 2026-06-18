@@ -111,7 +111,7 @@ export function SalesHistoryPage() {
 
       {/* Stats */}
       <div className="grid grid-cols-3 gap-3">
-        <StatCard label={`${period === "today" ? "Today" : period === "week" ? "This Week" : period === "month" ? "This Month" : "All Time"} Sales`} value={`KES ${totalSales.toFixed(0)}`} icon={Banknote} />
+        <StatCard label={`${period === "today" ? "Today" : period === "week" ? "This Week" : period === "month" ? "This Month" : "All Time"} Sales`} value={money(totalSales)} icon={Banknote} />
         <StatCard label="Transactions" value={String(sales.length)} icon={Receipt} />
         <StatCard label="Avg Sale" value={sales.length > 0 ? money(totalSales / sales.length) : money(0)} icon={Calendar} />
       </div>

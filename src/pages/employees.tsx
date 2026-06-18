@@ -18,6 +18,7 @@ import { listBranches, type BranchWithStats } from "@/services/branches";
 import { createUser, type User } from "@/services/auth";
 import { calculatePayroll } from "@/services/payroll";
 import { toast } from "sonner";
+import { money } from "@/lib/money";
 
 export function EmployeesPage() {
   const [employees, setEmployees] = useState<EmployeeWithDetails[]>([]);
@@ -72,8 +73,8 @@ export function EmployeesPage() {
 
       <div className="grid grid-cols-3 gap-3">
         <Stat label="Active employees" value={String(employees.filter((e) => e.active === 1).length)} />
-        <Stat label="Monthly salary cost" value={`KES ${totalSalaryCost.toFixed(0)}`} />
-        <Stat label="Total employer cost" value={`KES ${totalEmployerCost.toFixed(0)}`} hint="Incl. NSSF, Housing, NITA" />
+        <Stat label="Monthly salary cost" value={money(totalSalaryCost)} />
+        <Stat label="Total employer cost" value={money(totalEmployerCost)} hint="Incl. NSSF, Housing, NITA" />
       </div>
 
       <div className="flex gap-2 items-center">
@@ -136,7 +137,7 @@ export function EmployeesPage() {
                   </td>
                   <td className="px-3 py-2 text-xs text-muted-foreground">{e.branch_name || "—"}</td>
                   <td className="px-3 py-2 text-right tabular-nums text-xs">
-                    {e.base_salary > 0 ? `KES ${e.base_salary.toFixed(0)}` : "—"}
+                    {e.base_salary > 0 ? money(e.base_salary) : "—"}
                   </td>
                   <td className="px-3 py-2 text-center">
                     {e.active === 1 ? (

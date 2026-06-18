@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { getVatReport } from "@/services/etims";
 import { exportToCSV } from "@/lib/export";
+import { money } from "@/lib/money";
 
 export function VatReportPage() {
   // Default to current month
@@ -154,7 +155,7 @@ function Row({
     <div className={`flex justify-between items-center ${indent ? "pl-4" : ""}`}>
       <span className={`text-sm ${bold ? "font-medium" : ""} ${danger ? "text-amber-700" : ""}`}>{label}</span>
       <span className={`font-mono ${bold ? "text-base font-semibold" : "text-sm"} ${highlight ? "text-primary" : ""} ${danger ? "text-amber-700" : ""}`}>
-        {count ? value.toLocaleString() : `KES ${value.toFixed(2)}`}
+        {count ? value.toLocaleString() : money(value)}
       </span>
     </div>
   );

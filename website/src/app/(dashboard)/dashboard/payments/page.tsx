@@ -48,6 +48,19 @@ export default async function PaymentsPage() {
     .filter((p) => p.status === 'success')
     .reduce((sum, p) => sum + p.amount, 0)
 
+  // Display total in the most-common currency on this customer's
+  // successful payments. Mixed-currency totals would be misleading;
+  // we pick the dominant one and show it as a prefix.
+  const currencyHistogram = payments
+    .filter((p) => p.status === 'success')
+    .reduce<Record<string, number>>((acc, p) => {
+      const c = p.currency || 'KES'
+      acc[c] = (acc[c] ?? 0) + 1
+      return acc
+    }, {})
+  const dominantCurrency = Object.entries(currencyHistogram)
+    .sort((a, b) => b[1] - a[1])[0]?.[0] ?? 'KES'
+
   return (
     <div className="space-y-8">
       <PageHeading
@@ -56,7 +69,7 @@ export default async function PaymentsPage() {
       />
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-        <Stat label="Total paid" value={`KES ${totalPaid.toLocaleString()}`} />
+        <Stat label="Total paid" value={`${dominantCurrency} ${totalPaid.toLocaleString()}`} />
         <Stat label="Successful" value={String(payments.filter((p) => p.status === 'success').length)} />
         <Stat label="Latest" value={formatDate(payments[0]?.paidAt ?? payments[0]?.createdAt)} />
       </div>

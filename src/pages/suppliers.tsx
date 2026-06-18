@@ -10,6 +10,7 @@ import { recordSupplierPayment } from "@/services/settlement";
 import { useAuthStore } from "@/stores/auth";
 import { PaymentRecordDialog } from "@/components/payment-record-dialog";
 import { toast } from "sonner";
+import { money } from "@/lib/money";
 
 export function SuppliersPage() {
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
@@ -51,7 +52,7 @@ export function SuppliersPage() {
       <div className="grid grid-cols-3 gap-3">
         <StatCard label="Active Suppliers" value={String(suppliers.filter((s) => s.active === 1).length)} icon={Truck} />
         <StatCard label="Total Suppliers" value={String(suppliers.length)} icon={Truck} />
-        <StatCard label="Outstanding Balance" value={`KES ${totalOwed.toFixed(0)}`} icon={Truck} highlight={totalOwed > 0} />
+        <StatCard label="Outstanding Balance" value={money(totalOwed)} icon={Truck} highlight={totalOwed > 0} />
       </div>
 
       <div className="flex gap-2 items-center">
