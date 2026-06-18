@@ -1,5 +1,6 @@
 import { query, execute } from "@/lib/db";
 import { getActiveBranchId } from "@/stores/active-branch";
+import { getTaxSettings, computeTax } from "./tax";
 
 export interface CartItem {
   id: string;
@@ -65,11 +66,53 @@ export async function completeSale(
   sourceId: string | null = null,
 ): Promise<{ saleId: string; saleItemIds: string[] }> {
   const saleId = crypto.randomUUID();
+
+  // ── Pre-flight stock check ───────────────────────────────────────
+  // Reject the whole sale BEFORE any inserts if any physical line
+  // would exceed available stock. Hospitality menu lines (menu_item_id
+  // set) consume recipe ingredients via a different path and skip this
+  // gate. Concurrent tills can still race, but a final FIFO loop below
+  // catches that and rolls back.
+  const physicalLines = items.filter((i) => !i.menu_item_id);
+  if (physicalLines.length > 0) {
+    const placeholders = physicalLines.map((_, i) => `?${i + 1}`).join(",");
+    const stockRows = await query<{ product_id: string; available: number }>(
+      `SELECT product_id, COALESCE(SUM(quantity), 0) AS available
+       FROM batches
+       WHERE product_id IN (${placeholders}) AND quantity > 0
+       GROUP BY product_id`,
+      physicalLines.map((i) => i.product_id),
+    );
+    const stockMap = new Map(stockRows.map((r) => [r.product_id, r.available]));
+    const shortages: Array<{ product_id: string; name: string; requested: number; available: number }> = [];
+    for (const line of physicalLines) {
+      const avail = stockMap.get(line.product_id) ?? 0;
+      if (line.quantity > avail) {
+        shortages.push({ product_id: line.product_id, name: line.name, requested: line.quantity, available: avail });
+      }
+    }
+    if (shortages.length > 0) {
+      const err = new Error(
+        `OUT_OF_STOCK: ${shortages.map((s) => `${s.name} (need ${s.requested}, have ${s.available})`).join("; ")}`,
+      ) as Error & { code: "OUT_OF_STOCK"; shortages: typeof shortages };
+      err.code = "OUT_OF_STOCK";
+      err.shortages = shortages;
+      throw err;
+    }
+  }
+
   const saleNumber = await getNextSaleNumber();
 
-  const subtotal = items.reduce((s, i) => s + i.unit_price * i.quantity, 0);
-  const taxAmount = items.reduce((s, i) => s + (i.unit_price * i.quantity * i.tax_rate / 100), 0);
-  const total = subtotal - discountAmount + taxAmount + tipAmount + serviceChargeAmount;
+  // Tax respects the global tax mode (off / inclusive / exclusive).
+  const taxSettings = await getTaxSettings();
+  const tx = computeTax(items, taxSettings, {
+    tip: tipAmount,
+    serviceCharge: serviceChargeAmount,
+    cartDiscount: discountAmount,
+  });
+  const subtotal = tx.subtotal;
+  const taxAmount = tx.taxAmount;
+  const total = tx.total;
   const paidAmount = payments.reduce((s, p) => s + p.amount, 0);
   const paymentStatus = paidAmount >= total ? "paid" : paidAmount > 0 ? "partial" : "unpaid";
   const saleItemIds: string[] = [];

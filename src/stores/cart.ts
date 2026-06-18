@@ -7,6 +7,13 @@ interface CartProduct {
   name: string;
   selling_price: number;
   tax_rate: number;
+  /**
+   * Live stock count. Used by addItemWithQuantity to refuse over-stock
+   * additions, and by the POS UI to show "Only N in stock" inline.
+   * Pass `Infinity` (or undefined) for non-physical items (services,
+   * hospitality menu items consumed via recipe).
+   */
+  stock_qty?: number;
 }
 
 interface CartPayload {
@@ -91,6 +98,9 @@ interface CartState {
   setServiceCharge: (amount: number) => void;
   setCustomer: (id: string | null) => void;
   setSource: (source: { type: "hospitality_order" | "prescription" | "layby" | "special_order" | "folio" | "hardware_quote"; id: string; label: string } | null) => void;
+  /** Tax mode for live cart math. POS pushes from settings on mount. */
+  taxMode: "off" | "inclusive" | "exclusive";
+  setTaxMode: (mode: "off" | "inclusive" | "exclusive") => void;
   loadSnapshot: (
     items: CartItem[],
     discount: number,
@@ -129,6 +139,8 @@ export const useCartStore = create<CartState>()(
       sourceId: null,
       sourceLabel: null,
       revision: 0,
+      taxMode: "exclusive",
+      setTaxMode: (mode) => set({ taxMode: mode }),
 
       addItem: (product) => get().addItemWithQuantity(product, 1),
 
@@ -136,22 +148,51 @@ export const useCartStore = create<CartState>()(
         const qty = Math.max(1, quantity || 1);
         set((state) => {
           const existing = state.items.find((i) => i.product_id === product.id && i.unit_price === product.selling_price);
+          // Stock cap: a finite stock_qty caps the total cart line.
+          // Hospitality menu items / services have no stock — pass undefined.
+          const stockCap = Number.isFinite(product.stock_qty) ? (product.stock_qty as number) : Infinity;
+
           if (existing) {
+            const requested = existing.quantity + qty;
+            const capped = Math.min(requested, stockCap);
+            if (capped <= existing.quantity) {
+              // Already at limit — emit a "blocked" event so UI can toast
+              if (typeof window !== "undefined") {
+                window.dispatchEvent(
+                  new CustomEvent("omnix:cart-stock-blocked", {
+                    detail: { productId: product.id, name: product.name, stockQty: stockCap, currentQty: existing.quantity },
+                  }),
+                );
+              }
+              return state;
+            }
             return {
-              items: state.items.map((i) => (i.id === existing.id ? withQuantity(i, i.quantity + qty) : i)),
+              items: state.items.map((i) => (i.id === existing.id ? withQuantity(i, capped) : i)),
               revision: nextRevision(state),
             };
           }
 
+          const initialQty = Math.min(qty, stockCap);
+          if (initialQty <= 0) {
+            // Out of stock — emit blocked event, don't add
+            if (typeof window !== "undefined") {
+              window.dispatchEvent(
+                new CustomEvent("omnix:cart-stock-blocked", {
+                  detail: { productId: product.id, name: product.name, stockQty: 0, currentQty: 0 },
+                }),
+              );
+            }
+            return state;
+          }
           const item: CartItem = {
             id: crypto.randomUUID(),
             product_id: product.id,
             name: product.name,
-            quantity: qty,
+            quantity: initialQty,
             unit_price: product.selling_price,
             discount: 0,
             tax_rate: product.tax_rate,
-            total: product.selling_price * qty,
+            total: product.selling_price * initialQty,
           };
           return { items: [...state.items, item], revision: nextRevision(state) };
         });
@@ -231,11 +272,32 @@ export const useCartStore = create<CartState>()(
         broadcastNow();
       },
 
-      subtotal: () => get().items.reduce((s, i) => s + i.unit_price * i.quantity, 0),
-      taxTotal: () => get().items.reduce((s, i) => {
-        const lineNet = i.unit_price * i.quantity - i.discount;
-        return s + (lineNet * i.tax_rate / 100);
-      }, 0),
+      subtotal: () => {
+        const items = get().items;
+        const mode = get().taxMode;
+        if (mode === "inclusive") {
+          // Subtotal in inclusive mode = pre-tax base (line gross minus extracted tax)
+          return items.reduce((s, i) => {
+            const lineNet = Math.max(0, i.unit_price * i.quantity - i.discount);
+            const r = i.tax_rate;
+            const tax = r > 0 ? lineNet * (r / (100 + r)) : 0;
+            return s + (lineNet - tax);
+          }, 0);
+        }
+        return items.reduce((s, i) => s + i.unit_price * i.quantity, 0);
+      },
+      taxTotal: () => {
+        const mode = get().taxMode;
+        if (mode === "off") return 0;
+        return get().items.reduce((s, i) => {
+          const lineNet = Math.max(0, i.unit_price * i.quantity - i.discount);
+          const r = i.tax_rate;
+          if (r <= 0) return s;
+          if (mode === "inclusive") return s + lineNet * (r / (100 + r));
+          // exclusive
+          return s + lineNet * (r / 100);
+        }, 0);
+      },
       cartDiscountAmount: () => {
         const lineSubtotal = get().items.reduce((s, i) => s + (i.unit_price * i.quantity - i.discount), 0);
         if (get().discountType === "percent") return Math.min(lineSubtotal, lineSubtotal * (get().discount / 100));
@@ -243,16 +305,27 @@ export const useCartStore = create<CartState>()(
       },
       grandTotal: () => {
         const items = get().items;
+        const mode = get().taxMode;
         const lineSub = items.reduce((s, i) => s + (i.unit_price * i.quantity - i.discount), 0);
         const cartDisc = get().cartDiscountAmount();
-        const taxableBase = lineSub - cartDisc;
+        const tip = get().tip || 0;
+        const serviceCharge = get().serviceChargeAmount || 0;
+
+        if (mode === "off") {
+          return Math.max(0, lineSub - cartDisc + tip + serviceCharge);
+        }
+        if (mode === "inclusive") {
+          // Tax already inside lineSub. Cart-level discount + tip + service charge are tax-free additions.
+          return Math.max(0, lineSub - cartDisc + tip + serviceCharge);
+        }
+        // exclusive — add tax on top
         const tax = items.reduce((s, i) => {
-          const lineNet = i.unit_price * i.quantity - i.discount;
+          const lineNet = Math.max(0, i.unit_price * i.quantity - i.discount);
           const lineShare = lineSub > 0 ? lineNet / lineSub : 0;
-          const lineAfterCartDisc = lineNet - cartDisc * lineShare;
+          const lineAfterCartDisc = Math.max(0, lineNet - cartDisc * lineShare);
           return s + (lineAfterCartDisc * i.tax_rate / 100);
         }, 0);
-        return taxableBase + tax + (get().tip || 0) + (get().serviceChargeAmount || 0);
+        return Math.max(0, lineSub - cartDisc + tax + tip + serviceCharge);
       },
     }),
     {

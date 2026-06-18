@@ -255,7 +255,14 @@ export function PaymentModal({ open, onClose }: Props) {
       setSnapshot(null);
       onClose();
     } catch (e) {
-      toast.error(String(e));
+      const err = e as { code?: string; shortages?: Array<{ name: string; requested: number; available: number }>; message?: string };
+      if (err?.code === "OUT_OF_STOCK" && Array.isArray(err.shortages)) {
+        toast.error(
+          `Cart exceeds stock: ${err.shortages.map((s) => `${s.name} (need ${s.requested}, have ${s.available})`).join("; ")}`,
+        );
+      } else {
+        toast.error(String(e));
+      }
     } finally {
       setProcessing(false);
     }

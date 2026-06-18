@@ -745,10 +745,12 @@ export async function getUomByBarcode(barcode: string): Promise<{
   product_id: string;
   product_name: string;
   base_selling_price: number;
+  product_stock_qty: number;
 } | null> {
-  const rows = await query<ProductUom & { product_name: string; base_selling_price: number }>(
+  const rows = await query<ProductUom & { product_name: string; base_selling_price: number; product_stock_qty: number }>(
     `SELECT u.*, p.name AS product_name,
-       COALESCE(pp.selling_price, 0) AS base_selling_price
+       COALESCE(pp.selling_price, 0) AS base_selling_price,
+       COALESCE((SELECT SUM(b.quantity) FROM batches b WHERE b.product_id = p.id), 0) AS product_stock_qty
      FROM product_uoms u
      JOIN products p ON p.id = u.product_id
      LEFT JOIN product_prices pp ON pp.product_id = p.id AND pp.price_list_id = 'default'
@@ -763,5 +765,6 @@ export async function getUomByBarcode(barcode: string): Promise<{
     product_id: r.product_id,
     product_name: r.product_name,
     base_selling_price: r.base_selling_price,
+    product_stock_qty: r.product_stock_qty,
   };
 }

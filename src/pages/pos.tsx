@@ -173,12 +173,14 @@ export function POSPage() {
       getLowStockProducts(8),
       user?.id ? getOpenShift(user.id) : Promise.resolve(null),
       getTodaySalesSummary(),
-    ]).then(([cats, pop, low, sh, today]) => {
+      import("@/services/tax").then((m) => m.getTaxSettings()),
+    ]).then(([cats, pop, low, sh, today, taxSettings]) => {
       setCategories(cats);
       setPopular(pop);
       setLowStock(low);
       setShift(sh);
       setTodayStats(today);
+      useCartStore.getState().setTaxMode(taxSettings.mode);
     });
   }, [user?.id]);
 
@@ -191,6 +193,21 @@ export function POSPage() {
   }, [payOpen]);
 
   useEffect(() => { countHeldSales().then(setHeldCount); }, [heldOpen, payOpen]);
+
+  // Stock-cap toast — fires when cart.addItem refused to add past stock.
+  useEffect(() => {
+    function onBlocked(e: Event) {
+      const detail = (e as CustomEvent<{ name: string; stockQty: number; currentQty: number }>).detail;
+      if (!detail) return;
+      if (detail.stockQty <= 0) {
+        toast.error(`${detail.name} is out of stock.`);
+      } else {
+        toast.error(`${detail.name} — only ${detail.stockQty} in stock. Cart already has ${detail.currentQty}.`);
+      }
+    }
+    window.addEventListener("omnix:cart-stock-blocked", onBlocked);
+    return () => window.removeEventListener("omnix:cart-stock-blocked", onBlocked);
+  }, []);
 
   // Global barcode scanner — works even when the search input isn't focused.
   // The hook ignores keystrokes typed into INPUT/TEXTAREA, so normal typing
@@ -221,6 +238,7 @@ export function POSPage() {
           name: `${uomMatch.product_name} - ${uomMatch.uom.name}`,
           selling_price: packPrice / packQty,
           tax_rate: 0,
+          stock_qty: uomMatch.product_stock_qty,
         }, packQty);
         toast.success(`Added: ${uomMatch.uom.name} (${packQty} units)`);
         setSearch("");
@@ -549,9 +567,10 @@ export function POSPage() {
               name: `${p.name} - ${variant.variant_name}`,
               selling_price: variant.selling_price ?? p.selling_price,
               tax_rate: p.tax_rate,
+              stock_qty: variant.stock_qty,
             }, qtyMultiplier);
           } else {
-            addItemWithQuantity({ id: p.id, name: p.name, selling_price: p.selling_price, tax_rate: p.tax_rate }, qtyMultiplier);
+            addItemWithQuantity({ id: p.id, name: p.name, selling_price: p.selling_price, tax_rate: p.tax_rate, stock_qty: p.stock_qty }, qtyMultiplier);
           }
           setQtyMultiplier(1);
           setPendingVariantPick(null);
