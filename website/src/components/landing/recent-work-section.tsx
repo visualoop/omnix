@@ -149,7 +149,7 @@ function CustomerTile({
             {customer.module}
           </div>
         </div>
-        <div className="caption-mono whitespace-nowrap text-right text-[var(--color-fg-subtle)] hidden sm:block">
+        <div className="caption-mono whitespace-nowrap text-end text-[var(--color-fg-subtle)] hidden sm:block">
           shop photo
           <br />
           {customer.size}

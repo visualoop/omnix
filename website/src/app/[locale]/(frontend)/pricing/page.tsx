@@ -246,7 +246,7 @@ export default async function PricingPage() {
             <h2 className="headline-section mt-5 text-balance">Honest <em>by line.</em></h2>
           </div>
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[720px] border-collapse text-left font-[family-name:var(--font-ui)] text-[13px]">
+            <table className="w-full min-w-[720px] border-collapse text-start font-[family-name:var(--font-ui)] text-[13px]">
               <thead>
                 <tr className="border-b border-[var(--color-border-strong)]">
                   <th className="py-5 pr-6 font-[family-name:var(--font-display)] text-[16px] font-normal text-[var(--color-fg)]">Capability</th>

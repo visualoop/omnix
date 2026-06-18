@@ -184,7 +184,7 @@ function ReceiptRow({
     <li className="flex justify-between gap-4">
       <span className="flex-1 truncate">{name}</span>
       <span className="opacity-60">×{qty}</span>
-      <span className="w-20 text-right tabular-nums">{total}</span>
+      <span className="w-20 text-end tabular-nums">{total}</span>
     </li>
   )
 }
@@ -228,15 +228,15 @@ function KraFilingPanel() {
 
             <dl className="mt-4 grid grid-cols-2 gap-y-2 text-[12px] font-[family-name:var(--font-mono)]">
               <dt className="text-[var(--color-fg-subtle)]">CU number</dt>
-              <dd className="text-right text-[var(--color-fg)]">KRACU0100009873</dd>
+              <dd className="text-end text-[var(--color-fg)]">KRACU0100009873</dd>
               <dt className="text-[var(--color-fg-subtle)]">CU invoice</dt>
-              <dd className="text-right text-[var(--color-fg)]">0100009873000248</dd>
+              <dd className="text-end text-[var(--color-fg)]">0100009873000248</dd>
               <dt className="text-[var(--color-fg-subtle)]">Total VAT</dt>
-              <dd className="text-right text-[var(--color-fg)]">KES 190.40</dd>
+              <dd className="text-end text-[var(--color-fg)]">KES 190.40</dd>
               <dt className="text-[var(--color-fg-subtle)]">Total invoice</dt>
-              <dd className="text-right text-[var(--color-fg)]">KES 1,380.40</dd>
+              <dd className="text-end text-[var(--color-fg)]">KES 1,380.40</dd>
               <dt className="text-[var(--color-fg-subtle)]">Signature</dt>
-              <dd className="text-right text-[var(--color-fg)] truncate">
+              <dd className="text-end text-[var(--color-fg)] truncate">
                 8K3-FN2-9HD-PQ4
               </dd>
             </dl>

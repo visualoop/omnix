@@ -101,7 +101,7 @@ export function FaqSection() {
                     aria-expanded={open}
                     aria-controls={`faq-panel-${i}`}
                     onClick={() => setOpenIdx(open ? null : i)}
-                    className="group grid w-full grid-cols-[1fr_auto] items-baseline gap-6 py-7 text-left transition-colors hover:bg-[var(--color-surface)]/40"
+                    className="group grid w-full grid-cols-[1fr_auto] items-baseline gap-6 py-7 text-start transition-colors hover:bg-[var(--color-surface)]/40"
                   >
                     <span
                       className={cn(
