@@ -69,6 +69,7 @@ import { hasAnyPermission, type Permission } from "@/lib/permissions";
 import { isFeatureAvailable, getFeatureModule } from "@/lib/module-features";
 import { isModuleEntitled } from "@/stores/entitlements";
 import { useEntitlements } from "@/stores/entitlements";
+import { useIsKenya } from "@/lib/features";
 
 interface NavItem {
   to: string;
@@ -194,6 +195,8 @@ export function Sidebar({ onCommandOpen }: { onCommandOpen: () => void }) {
   const activeModule = MODULE_DEFINITIONS[activeModuleId];
   // Subscribe so the nav recomputes once entitlements hydrate from the license.
   useEntitlements((s) => s.modules);
+  // Country-specific feature gates (eTIMS, VAT3 = KE only).
+  const isKenya = useIsKenya();
 
   // Lazy-load active module from DB on first mount
   if (!useActiveModule.getState().loaded) {
@@ -216,6 +219,8 @@ export function Sidebar({ onCommandOpen }: { onCommandOpen: () => void }) {
   const itemVisible = (item: NavItem) => {
     const owner = getFeatureModule(item.to);
     if (owner && !isModuleEntitled(owner)) return false;
+    // Country-specific routes — hide eTIMS / VAT-3 / SHA-claims for non-KE.
+    if ((item.to === "/etims" || item.to === "/vat-report") && !isKenya) return false;
     return (
       (item.permissions.length === 0 || hasAnyPermission(user, item.permissions)) &&
       isFeatureAvailable(item.to, activeModuleId)

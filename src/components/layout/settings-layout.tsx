@@ -5,6 +5,7 @@ import { useAuthStore } from "@/stores/auth";
 import { useActiveModule } from "@/stores/active-module";
 import { hasPermission } from "@/lib/permissions";
 import { settingsRegistry, SETTINGS_GROUPS } from "@/lib/settings-registry";
+import { useIsKenya } from "@/lib/features";
 
 export function SettingsLayout() {
   const navigate = useNavigate();
@@ -13,8 +14,12 @@ export function SettingsLayout() {
   const user = useAuthStore((s) => s.user);
   const activeModule = useActiveModule((s) => s.active);
 
+  const isKenya = useIsKenya();
+  const KENYA_ONLY_PATHS = new Set(["/settings/etims", "/settings/insurance"]);
+
   const visible = settingsRegistry().filter((item) => {
     if (item.module && item.module !== activeModule) return false;
+    if (KENYA_ONLY_PATHS.has(item.to) && !isKenya) return false;
     return hasPermission(user, item.permission);
   });
   const current = visible.find((item) => item.to === location.pathname) ?? visible.find((item) => location.pathname.startsWith(item.to + "/"));
