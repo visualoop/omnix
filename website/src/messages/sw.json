@@ -1,37 +1,37 @@
 {
   "nav": {
-    "pricing": "Pricing",
+    "pricing": "Bei",
     "ai": "AI",
-    "downloads": "Downloads",
-    "changelog": "Changelog",
-    "modules": "Modules",
-    "trades": "Trades",
-    "about": "About",
-    "contact": "Contact",
-    "blog": "Blog",
-    "docs": "Documentation",
-    "support": "Support",
-    "signIn": "Sign in",
-    "startTrial": "Start free trial"
+    "downloads": "Pakua",
+    "changelog": "Mabadiliko",
+    "modules": "Moduli",
+    "trades": "Biashara",
+    "about": "Kuhusu",
+    "contact": "Wasiliana",
+    "blog": "Blogu",
+    "docs": "Maelekezo",
+    "support": "Msaada",
+    "signIn": "Ingia",
+    "startTrial": "Anza bure"
   },
   "footer": {
     "headings": {
-      "product": "Product",
-      "trades": "Trades",
-      "company": "Company",
-      "legal": "Legal"
+      "product": "Bidhaa",
+      "trades": "Biashara",
+      "company": "Kampuni",
+      "legal": "Sheria"
     },
-    "tagline": "Built in Nairobi for businesses everywhere. Works offline. Pay once, use forever.",
-    "rights": "All rights reserved.",
-    "systemsOperational": "All systems operational"
+    "tagline": "Imejengwa Nairobi kwa biashara kila mahali. Inafanya kazi bila intaneti. Lipia mara moja, tumia milele.",
+    "rights": "Haki zote zimehifadhiwa.",
+    "systemsOperational": "Mifumo yote inafanya kazi"
   },
   "common": {
-    "buyNow": "Buy now",
-    "learnMore": "Learn more",
-    "tryFree": "Try free",
-    "loading": "Loading…",
-    "error": "Something went wrong.",
-    "retry": "Retry"
+    "buyNow": "Nunua sasa",
+    "learnMore": "Jifunze zaidi",
+    "tryFree": "Jaribu bure",
+    "loading": "Inapakia…",
+    "error": "Kuna tatizo.",
+    "retry": "Jaribu tena"
   },
   "trades": {
     "pro": "Omnix Pro",
@@ -41,8 +41,8 @@
     "hardware": "Omnix Hardware"
   },
   "regionUnavailable": {
-    "title": "We don't currently serve your region.",
-    "body": "Omnix is unavailable in your country due to international trade restrictions. If you believe this is an error, please contact us.",
-    "contactCta": "Contact us"
+    "title": "Hatutoi huduma katika eneo lako kwa sasa.",
+    "body": "Omnix haipatikani katika nchi yako kutokana na vikwazo vya biashara. Tafadhali wasiliana nasi ikiwa unaona ni kosa.",
+    "contactCta": "Wasiliana nasi"
   }
 }

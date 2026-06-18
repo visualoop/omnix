@@ -1,37 +1,37 @@
 {
   "nav": {
-    "pricing": "Pricing",
-    "ai": "AI",
-    "downloads": "Downloads",
-    "changelog": "Changelog",
+    "pricing": "Tarifs",
+    "ai": "IA",
+    "downloads": "Téléchargements",
+    "changelog": "Journal des modifications",
     "modules": "Modules",
-    "trades": "Trades",
-    "about": "About",
+    "trades": "Métiers",
+    "about": "À propos",
     "contact": "Contact",
     "blog": "Blog",
     "docs": "Documentation",
-    "support": "Support",
-    "signIn": "Sign in",
-    "startTrial": "Start free trial"
+    "support": "Assistance",
+    "signIn": "Connexion",
+    "startTrial": "Essai gratuit"
   },
   "footer": {
     "headings": {
-      "product": "Product",
-      "trades": "Trades",
-      "company": "Company",
-      "legal": "Legal"
+      "product": "Produit",
+      "trades": "Métiers",
+      "company": "Société",
+      "legal": "Mentions légales"
     },
-    "tagline": "Built in Nairobi for businesses everywhere. Works offline. Pay once, use forever.",
-    "rights": "All rights reserved.",
-    "systemsOperational": "All systems operational"
+    "tagline": "Conçu à Nairobi pour les entreprises du monde entier. Fonctionne hors ligne. Payez une fois, utilisez à vie.",
+    "rights": "Tous droits réservés.",
+    "systemsOperational": "Tous les systèmes opérationnels"
   },
   "common": {
-    "buyNow": "Buy now",
-    "learnMore": "Learn more",
-    "tryFree": "Try free",
-    "loading": "Loading…",
-    "error": "Something went wrong.",
-    "retry": "Retry"
+    "buyNow": "Acheter",
+    "learnMore": "En savoir plus",
+    "tryFree": "Essayer gratuitement",
+    "loading": "Chargement…",
+    "error": "Une erreur s'est produite.",
+    "retry": "Réessayer"
   },
   "trades": {
     "pro": "Omnix Pro",
@@ -41,8 +41,8 @@
     "hardware": "Omnix Hardware"
   },
   "regionUnavailable": {
-    "title": "We don't currently serve your region.",
-    "body": "Omnix is unavailable in your country due to international trade restrictions. If you believe this is an error, please contact us.",
-    "contactCta": "Contact us"
+    "title": "Nous ne servons pas votre région pour le moment.",
+    "body": "Omnix n'est pas disponible dans votre pays en raison de restrictions commerciales internationales. Si vous pensez qu'il s'agit d'une erreur, contactez-nous.",
+    "contactCta": "Nous contacter"
   }
 }

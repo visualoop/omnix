@@ -1,13 +1,17 @@
 import type { Metadata } from 'next'
 import { headers } from 'next/headers'
+import { notFound } from 'next/navigation'
 import { GoogleAnalytics } from '@next/third-parties/google'
 import { getPayload } from 'payload'
+import { NextIntlClientProvider, hasLocale } from 'next-intl'
+import { getMessages, setRequestLocale } from 'next-intl/server'
 import config from '@/payload.config'
 
 import { BRAND, BRAND_NAME, BRAND_TAGLINE } from '@/lib/brand'
 import { SiteHeader } from '@/components/layout/site-header'
 import { SiteFooter } from '@/components/layout/site-footer'
 import { RootShell } from '@/components/layout/root-shell'
+import { routing } from '@/i18n/routing'
 
 export const metadata: Metadata = {
   metadataBase: new URL(BRAND.url),
@@ -43,7 +47,20 @@ export const metadata: Metadata = {
   },
 }
 
-export default async function FrontendLayout({ children }: { children: React.ReactNode }) {
+export default async function FrontendLayout({
+  children,
+  params,
+}: {
+  children: React.ReactNode
+  params: Promise<{ locale: string }>
+}) {
+  const { locale } = await params
+  if (!hasLocale(routing.locales, locale)) {
+    notFound()
+  }
+  setRequestLocale(locale)
+  const messages = await getMessages()
+
   const gaId = process.env.NEXT_PUBLIC_GA_ID
 
   // Server-side session probe so the header swaps "Sign in / Start trial"
@@ -61,11 +78,17 @@ export default async function FrontendLayout({ children }: { children: React.Rea
   }
 
   return (
-    <RootShell>
-      <SiteHeader isAuthed={isAuthed} />
-      <main>{children}</main>
-      <SiteFooter />
-      {gaId && <GoogleAnalytics gaId={gaId} />}
-    </RootShell>
+    <NextIntlClientProvider locale={locale} messages={messages}>
+      <RootShell>
+        <SiteHeader isAuthed={isAuthed} />
+        <main>{children}</main>
+        <SiteFooter />
+        {gaId && <GoogleAnalytics gaId={gaId} />}
+      </RootShell>
+    </NextIntlClientProvider>
   )
+}
+
+export function generateStaticParams() {
+  return routing.locales.map((locale) => ({ locale }))
 }

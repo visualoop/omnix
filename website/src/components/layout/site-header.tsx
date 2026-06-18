@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { Icon } from '@/components/icons'
 import { cn } from '@/lib/cn'
+import { LanguageSwitcher } from '@/components/layout/language-switcher'
 import { BRAND_NAME } from '@/lib/brand'
 import { Button } from '@/components/ui/button'
 import { BrandWordmark } from '@/components/brand-logo'
@@ -178,6 +179,7 @@ export function SiteHeader({ isAuthed = false }: { isAuthed?: boolean }) {
 
         {/* Right column */}
         <div className="flex items-center justify-end gap-5">
+          <LanguageSwitcher className="hidden lg:inline-flex rounded-md border border-[var(--color-border)] bg-transparent py-1 pl-2 pr-7 font-[family-name:var(--font-ui)] text-[12px] text-[var(--color-fg-muted)] hover:border-[var(--color-fg-subtle)] hover:text-[var(--color-fg)] focus:outline-none focus:border-[var(--color-accent)] cursor-pointer" />
           {isAuthed ? (
             <>
               <Link
