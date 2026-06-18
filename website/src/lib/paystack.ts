@@ -246,9 +246,19 @@ async function emailLicenseIssued(
 }
 
 /* ── Pricing helper (re-used by charge endpoint) ─────────────────── */
+export interface PricingTierMultiCurrency {
+  oneTimeFee?: number
+  maintenanceYearly?: number
+  priceKES?: number | null
+  priceUSD?: number | null
+  priceNGN?: number | null
+  priceGHS?: number | null
+  priceZAR?: number | null
+}
+
 export interface PricingShape {
-  starter?: { oneTimeFee?: number; maintenanceYearly?: number }
-  business?: { oneTimeFee?: number; maintenanceYearly?: number }
+  starter?: PricingTierMultiCurrency
+  business?: PricingTierMultiCurrency
   cloudBackupMonthly?: number
   extraBranchOneTime?: number
   extraMachineOneTime?: number
@@ -264,19 +274,58 @@ export type Purpose =
   | 'extra_branch'
   | 'extra_machine'
 
+export type CheckoutCurrency = 'KES' | 'USD' | 'NGN' | 'GHS' | 'ZAR'
+
+/**
+ * Pull the per-currency price off a tier with fallback to oneTimeFee
+ * (legacy KES-only) and a hardcoded conversion rate as last resort.
+ */
+function priceForCurrency(tier: PricingTierMultiCurrency | undefined, currency: CheckoutCurrency, defaultKES: number): number {
+  if (!tier) return defaultKES
+  const direct = ({
+    KES: tier.priceKES,
+    USD: tier.priceUSD,
+    NGN: tier.priceNGN,
+    GHS: tier.priceGHS,
+    ZAR: tier.priceZAR,
+  } as Record<CheckoutCurrency, number | null | undefined>)[currency]
+  if (typeof direct === 'number' && direct > 0) return direct
+
+  // Fall back to oneTimeFee (assumed KES) when querying KES.
+  if (currency === 'KES' && typeof tier.oneTimeFee === 'number') return tier.oneTimeFee
+
+  // Last resort — rough conversion from oneTimeFee. Owner sees a banner
+  // in /admin → Pricing → tab to fill in actual values.
+  if (typeof tier.oneTimeFee === 'number') {
+    const RATES: Record<CheckoutCurrency, number> = {
+      KES: 1,
+      USD: 1 / 130,
+      NGN: 12,
+      GHS: 0.13,
+      ZAR: 0.13,
+    }
+    return Math.round(tier.oneTimeFee * RATES[currency])
+  }
+  return defaultKES
+}
+
 export function computeAmount(
   pricing: PricingShape,
   tier: string,
   purpose: Purpose,
+  currency: CheckoutCurrency = 'KES',
 ): number {
   const t = tier === 'business' ? pricing.business : pricing.starter
+  const defaultKES = tier === 'business' ? 150_000 : 50_000
   switch (purpose) {
     case 'license_fee':
-      return t?.oneTimeFee ?? 50000
+      return priceForCurrency(t, currency, defaultKES)
     case 'maintenance_renewal':
+      // Maintenance renewal is KES-priced for now; multi-currency
+      // recurring billing comes when annual subscriptions land.
       return t?.maintenanceYearly ?? 12000
     case 'major_upgrade': {
-      const fee = t?.oneTimeFee ?? 50000
+      const fee = priceForCurrency(t, currency, defaultKES)
       const discount = pricing.majorUpgradeDiscount ?? 50
       return Math.round(fee * (1 - discount / 100))
     }

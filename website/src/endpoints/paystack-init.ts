@@ -1,7 +1,24 @@
 import type { Endpoint } from 'payload'
 import { errorResponse, jsonResponse, readJson } from './_auth'
-import { computeAmount, newReference, type Purpose, type PricingShape } from '../lib/paystack'
+import { computeAmount, newReference, type Purpose, type PricingShape, type CheckoutCurrency } from '../lib/paystack'
 import { resolveSettings } from '../lib/settings'
+
+const PAYSTACK_CURRENCIES: CheckoutCurrency[] = ['KES', 'USD', 'NGN', 'GHS', 'ZAR']
+
+function pickCurrency(req: { headers: Headers }): CheckoutCurrency {
+  // 1) Explicit ?currency= query param (testing / manual override)
+  // 2) omnix_currency cookie set by middleware on first visit
+  // 3) Default KES
+  const url = new URL((req as unknown as { url?: string }).url ?? 'http://localhost', 'http://localhost')
+  const q = (url.searchParams.get('currency') ?? '').toUpperCase()
+  if (PAYSTACK_CURRENCIES.includes(q as CheckoutCurrency)) return q as CheckoutCurrency
+
+  const cookieHeader = req.headers.get('cookie') ?? ''
+  const m = cookieHeader.match(/(?:^|;\s*)omnix_currency=([^;]+)/)
+  const cookie = m?.[1]?.toUpperCase() as CheckoutCurrency | undefined
+  if (cookie && PAYSTACK_CURRENCIES.includes(cookie)) return cookie
+  return 'KES'
+}
 
 /**
  * POST /api/paystack/init
@@ -49,9 +66,12 @@ export const paystackInitEndpoint: Endpoint = {
     //   - all others    → starter pricing (50,000 KES one-time)
     const variant = (license as { variant?: string }).variant ?? 'pro'
     const pricingTier = variant === 'pro' ? 'business' : 'starter'
-    const amountKES = computeAmount(pricing, pricingTier, body.purpose)
-    if (!Number.isFinite(amountKES) || amountKES <= 0) return errorResponse('Computed amount invalid', 400)
-    const amountKobo = amountKES * 100
+    const currency = pickCurrency(req as unknown as { headers: Headers })
+    const amount = computeAmount(pricing, pricingTier, body.purpose, currency)
+    if (!Number.isFinite(amount) || amount <= 0) return errorResponse('Computed amount invalid', 400)
+    // Paystack expects amount in the smallest currency unit (kobo/cents/pesewa).
+    // KES, NGN, GHS, ZAR all use 100 subunits. USD also uses cents (100).
+    const amountSubunits = Math.round(amount * 100)
     const reference = newReference('OMNIX')
 
     await req.payload.create({
@@ -60,8 +80,8 @@ export const paystackInitEndpoint: Endpoint = {
         customer: req.user.id as never,
         license: license.id as never,
         purpose: body.purpose,
-        amount: amountKES,
-        currency: 'KES',
+        amount,
+        currency,
         status: 'pending',
         paystackReference: reference,
       } as never,
@@ -76,8 +96,13 @@ export const paystackInitEndpoint: Endpoint = {
     if (!publicKey) return errorResponse('Paystack public key not configured', 500)
 
     return jsonResponse({
-      reference, amount: amountKobo, currency: 'KES',
-      email: customer.email, publicKey, purpose: body.purpose, licenseId: license.id,
+      reference,
+      amount: amountSubunits,
+      currency,
+      email: customer.email,
+      publicKey,
+      purpose: body.purpose,
+      licenseId: license.id,
     })
   },
 }
