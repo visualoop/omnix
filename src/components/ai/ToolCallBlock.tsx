@@ -1,3 +1,4 @@
+import { money } from "@/lib/money";
 /**
  * Inline render of a tool call + its result inside the chat thread.
  * Compact, expandable, shows the tool name + a brief result preview.
@@ -39,7 +40,7 @@ export function ToolCallBlock({ event, busy }: Props) {
     const r = event.result as { count?: number; navigatedTo?: string; revenue?: number; ok?: boolean; url?: string }
     if (r?.navigatedTo) preview = `Opened ${r.navigatedTo}`
     else if (typeof r?.count === "number") preview = `${r.count} result${r.count === 1 ? "" : "s"}`
-    else if (typeof r?.revenue === "number") preview = `KES ${r.revenue.toLocaleString("en-KE")}`
+    else if (typeof r?.revenue === "number") preview = money(r.revenue)
     else if (r?.url) preview = r.url
     else if (r?.ok) preview = "Done"
     else preview = "Done"

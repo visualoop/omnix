@@ -23,6 +23,7 @@ import {
 import { useAuthStore } from "@/stores/auth";
 import { toast } from "sonner";
 import { money as KES } from "@/lib/money";
+import { intlLocale } from "@/lib/intl";
 
 const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 
@@ -91,7 +92,7 @@ export function PayrollPage() {
                   <td className="px-3 py-2">
                     <div className="text-sm font-medium">{MONTHS[r.period_month - 1]} {r.period_year}</div>
                     <div className="text-[10px] text-muted-foreground">
-                      Run {new Date(r.created_at).toLocaleDateString("en-KE", { day: "2-digit", month: "short" })}
+                      Run {new Date(r.created_at).toLocaleDateString(intlLocale(), { day: "2-digit", month: "short" })}
                     </div>
                   </td>
                   <td className="px-3 py-2 text-right tabular-nums text-xs">{r.employee_count}</td>

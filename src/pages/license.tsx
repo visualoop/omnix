@@ -26,6 +26,7 @@ import {
 } from "@/services/license";
 import { APP_NAME } from "@/lib/brand";
 import { toast } from "sonner";
+import { intlLocale } from "@/lib/intl";
 
 export function LicensePage() {
   const [status, setStatus] = useState<LicenseStatus | null>(null);
@@ -100,7 +101,7 @@ export function LicensePage() {
         <div className="flex-1">
           <p className="font-medium">License Active</p>
           <p className="text-sm text-muted-foreground mt-1">
-            Activated on {new Date(license.activated_at).toLocaleDateString("en-KE", { day: "numeric", month: "long", year: "numeric" })}
+            Activated on {new Date(license.activated_at).toLocaleDateString(intlLocale(), { day: "numeric", month: "long", year: "numeric" })}
           </p>
         </div>
         <Badge variant="default" className="bg-green-600 hover:bg-green-600">
@@ -123,7 +124,7 @@ export function LicensePage() {
             {status.maintenance_active ? (
               <>
                 <p className="text-sm mt-1">
-                  Active until <span className="font-medium">{new Date(license.maintenance_expires_at).toLocaleDateString("en-KE", { day: "numeric", month: "long", year: "numeric" })}</span>
+                  Active until <span className="font-medium">{new Date(license.maintenance_expires_at).toLocaleDateString(intlLocale(), { day: "numeric", month: "long", year: "numeric" })}</span>
                 </p>
                 <p className="text-xs text-muted-foreground mt-0.5">
                   {status.maintenance_days_remaining} days remaining — receive eTIMS, SHA, and other compliance updates
@@ -148,7 +149,7 @@ export function LicensePage() {
         <DetailRow icon={Building2} label="Customer" value={license.customer_name} />
         <DetailRow icon={Mail} label="Email" value={license.customer_email} />
         <DetailRow icon={Key} label="License ID" value={license.license_kid} mono />
-        <DetailRow icon={Calendar} label="Issued" value={new Date(license.issued_at).toLocaleDateString("en-KE", { day: "numeric", month: "long", year: "numeric" })} />
+        <DetailRow icon={Calendar} label="Issued" value={new Date(license.issued_at).toLocaleDateString(intlLocale(), { day: "numeric", month: "long", year: "numeric" })} />
       </div>
 
       {/* Machine binding */}

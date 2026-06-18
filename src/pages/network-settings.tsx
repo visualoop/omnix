@@ -46,6 +46,7 @@ import { getMachineInfo } from "@/services/license";
 import { refreshDbMode } from "@/lib/db";
 import { toast } from "sonner";
 import { APP_NAME } from "@/lib/brand";
+import { intlLocale } from "@/lib/intl";
 
 export function NetworkSettingsPage() {
   const [mode, setModeState] = useState<NetworkMode>("standalone");
@@ -323,7 +324,7 @@ function MasterPanel({ businessName }: { businessName: string }) {
                   <p className="text-sm font-medium">{d.device_name}</p>
                   <p className="text-xs text-muted-foreground mt-0.5 font-mono">
                     {d.token}
-                    {d.last_seen_at && ` · last seen ${new Date(d.last_seen_at).toLocaleString("en-KE", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}`}
+                    {d.last_seen_at && ` · last seen ${new Date(d.last_seen_at).toLocaleString(intlLocale(), { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}`}
                   </p>
                 </div>
                 <div className="flex items-center gap-2">

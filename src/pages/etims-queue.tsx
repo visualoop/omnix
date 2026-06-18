@@ -7,6 +7,7 @@ import { AiButton } from "@/components/ai/AiButton";
 import { AiSuggestionDialog } from "@/components/ai/AiSuggestionDialog";
 import { ai, type EtimsExplanation } from "@/services/ai";
 import { toast } from "sonner";
+import { intlLocale } from "@/lib/intl";
 
 export function EtimsQueuePage() {
   const [invoices, setInvoices] = useState<EtimsInvoice[]>([]);
@@ -134,7 +135,7 @@ export function EtimsQueuePage() {
                     <StatusBadge status={inv.status} retryCount={inv.retry_count} />
                   </td>
                   <td className="px-3 py-2.5 text-xs text-muted-foreground whitespace-nowrap">
-                    {new Date(inv.created_at).toLocaleString("en-KE", {
+                    {new Date(inv.created_at).toLocaleString(intlLocale(), {
                       day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit",
                     })}
                   </td>

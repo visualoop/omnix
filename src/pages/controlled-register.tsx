@@ -9,6 +9,7 @@ import { query } from "@/lib/db";
 import { printPage } from "@/lib/print";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
+import { intlLocale } from "@/lib/intl";
 
 interface ControlledEntry {
   id: string;
@@ -74,7 +75,7 @@ export function ControlledRegisterPage() {
       startY: 23,
       head: [["Time", "Drug", "Action", "Qty", "Patient", "ID #", "Prescriber", "Pharmacist", "License", "Balance", "Cashier"]],
       body: entries.map((e) => [
-        new Date(e.created_at).toLocaleTimeString("en-KE", { hour: "2-digit", minute: "2-digit" }),
+        new Date(e.created_at).toLocaleTimeString(intlLocale(), { hour: "2-digit", minute: "2-digit" }),
         e.product_name,
         e.action,
         e.quantity.toString(),
@@ -170,7 +171,7 @@ export function ControlledRegisterPage() {
               entries.map((e) => (
                 <tr key={e.id} className="border-b border-border/60">
                   <td className="px-2 py-1.5 text-xs font-mono">
-                    {new Date(e.created_at).toLocaleTimeString("en-KE", { hour: "2-digit", minute: "2-digit" })}
+                    {new Date(e.created_at).toLocaleTimeString(intlLocale(), { hour: "2-digit", minute: "2-digit" })}
                   </td>
                   <td className="px-2 py-1.5 text-xs font-medium">{e.product_name}</td>
                   <td className="px-2 py-1.5">

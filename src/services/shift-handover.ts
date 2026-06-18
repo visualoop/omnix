@@ -8,6 +8,7 @@
 import { query } from "@/lib/db";
 import { printHtml } from "./print-html";
 import { BRAND } from "@/lib/brand";
+import { intlLocale } from "@/lib/intl";
 
 export interface ShiftHandover {
   shift_id: string;
@@ -117,8 +118,8 @@ export async function getShiftHandover(shiftId: string): Promise<ShiftHandover |
 }
 
 export function renderShiftHandoverHtml(h: ShiftHandover): string {
-  const fmt = (n: number) => n.toLocaleString("en-KE", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-  const fmtTime = (s: string | null) => s ? new Date(s).toLocaleString("en-KE", { dateStyle: "medium", timeStyle: "short" }) : "—";
+  const fmt = (n: number) => n.toLocaleString(intlLocale(), { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const fmtTime = (s: string | null) => s ? new Date(s).toLocaleString(intlLocale(), { dateStyle: "medium", timeStyle: "short" }) : "—";
 
   const totalSales = h.cash_sales + h.mpesa_sales + h.card_sales + h.other_sales;
   const expected = h.opening_balance + h.cash_sales + h.customer_collections - h.refunds - h.expenses;

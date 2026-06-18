@@ -11,6 +11,7 @@ import {
 import { EmptyState } from "@/components/ui/empty-state";
 import { TableRowSkeleton } from "@/components/ui/skeletons";
 import { toast } from "sonner";
+import { intlLocale } from "@/lib/intl";
 
 export function PromotionsPage() {
   const [items, setItems] = useState<Promotion[]>([]);
@@ -114,8 +115,8 @@ export function PromotionsPage() {
                     <td className="px-3 py-2.5 text-xs text-muted-foreground">
                       <div className="flex items-center gap-1">
                         <Calendar className="h-3 w-3" />
-                        {new Date(p.starts_at).toLocaleDateString("en-KE", { day: "2-digit", month: "short" })} →
-                        {" "}{new Date(p.ends_at).toLocaleDateString("en-KE", { day: "2-digit", month: "short" })}
+                        {new Date(p.starts_at).toLocaleDateString(intlLocale(), { day: "2-digit", month: "short" })} →
+                        {" "}{new Date(p.ends_at).toLocaleDateString(intlLocale(), { day: "2-digit", month: "short" })}
                       </div>
                     </td>
                     <td className="px-3 py-2.5 text-right font-mono text-xs">

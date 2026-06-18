@@ -16,6 +16,7 @@ import {
   Send,
   BookOpen,
 } from "lucide-react";
+import { intlLocale } from "@/lib/intl";
 
 interface ReportLink {
   to: string;
@@ -127,7 +128,7 @@ const categories = [
 ] as const;
 
 export function ReportsIndexPage() {
-  const today = new Date().toLocaleDateString("en-KE", {
+  const today = new Date().toLocaleDateString(intlLocale(), {
     weekday: "long",
     day: "numeric",
     month: "long",

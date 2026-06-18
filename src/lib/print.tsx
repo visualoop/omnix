@@ -1,3 +1,4 @@
+import { intlLocale } from "@/lib/intl";
 /**
  * Print/Export utilities for reports.
  *
@@ -95,7 +96,7 @@ export function PrintHeader({ title, subtitle }: { title: string; subtitle?: str
         {subtitle && <div className="meta">{subtitle}</div>}
       </div>
       <div className="meta">
-        Generated {new Date().toLocaleString("en-KE", { dateStyle: "medium", timeStyle: "short" })}
+        Generated {new Date().toLocaleString(intlLocale(), { dateStyle: "medium", timeStyle: "short" })}
       </div>
     </div>
   );

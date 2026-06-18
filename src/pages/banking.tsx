@@ -15,6 +15,7 @@ import {
 } from "@/services/banking";
 import { toast } from "sonner";
 import { money as KES } from "@/lib/money";
+import { intlLocale } from "@/lib/intl";
 
 
 const ACCOUNT_TYPE_LABELS: Record<BankAccountType, string> = {
@@ -225,7 +226,7 @@ function TransactionsTable({ transactions, loading }: {
               return (
                 <tr key={t.id} className="border-b border-border/60 hover:bg-accent/30">
                   <td className="px-3 py-2 text-xs text-muted-foreground">
-                    {new Date(t.transaction_date).toLocaleDateString("en-KE", { day: "2-digit", month: "short" })}
+                    {new Date(t.transaction_date).toLocaleDateString(intlLocale(), { day: "2-digit", month: "short" })}
                   </td>
                   <td className="px-3 py-2 text-xs">{t.account_name}</td>
                   <td className="px-3 py-2 text-xs">
@@ -483,7 +484,7 @@ function CashflowView() {
                 {daily.slice(-15).map((d) => (
                   <div key={d.day} className="flex items-center gap-2 text-xs">
                     <div className="w-16 text-[10px] text-muted-foreground tabular-nums">
-                      {new Date(d.day).toLocaleDateString("en-KE", { day: "2-digit", month: "short" })}
+                      {new Date(d.day).toLocaleDateString(intlLocale(), { day: "2-digit", month: "short" })}
                     </div>
                     <div className="flex-1 flex gap-px h-3.5">
                       <div className="bg-emerald-500/70 rounded-l" style={{ width: `${(d.cash_in / maxBar) * 50}%` }} title={`In: ${KES(d.cash_in)}`} />

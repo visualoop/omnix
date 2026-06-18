@@ -8,6 +8,7 @@ import { useActiveModule } from "@/stores/active-module";
 import { isFeatureAvailable } from "@/lib/module-features";
 import { useAuthStore } from "@/stores/auth";
 import { Link } from "react-router-dom";
+import { intlLocale } from "@/lib/intl";
 
 function useModuleAccent() {
   const m = useActiveModule((s) => s.active);
@@ -91,7 +92,7 @@ export function DashboardPage() {
               {greeting}, {user?.full_name?.split(" ")[0] || "there"}.
             </h1>
             <p className="text-sm text-white/80 mt-1">
-              {new Date().toLocaleDateString("en-KE", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
+              {new Date().toLocaleDateString(intlLocale(), { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
             </p>
           </div>
           {kpis && (

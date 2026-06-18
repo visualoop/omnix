@@ -6,13 +6,15 @@ import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { query } from "@/lib/db";
 import type { PayrollRun, Payslip } from "@/services/payroll";
+import { intlLocale } from "@/lib/intl";
+import { money } from "@/lib/money";
 
 const MARGIN = 15;
 const PAGE_WIDTH = 210;
 const MONTHS = ["January", "February", "March", "April", "May", "June",
   "July", "August", "September", "October", "November", "December"];
 
-const fmtKES = (n: number) => "KES " + n.toLocaleString("en-KE", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const fmtKES = (n: number) => money(n);
 
 interface BusinessInfo { name: string; address: string | null; phone: string | null; kra_pin: string | null; }
 
@@ -82,7 +84,7 @@ function renderPayslip(pdf: jsPDF, payslip: PayslipForPdf, run: PayrollRun, busi
 
   pdf.setFontSize(9);
   pdf.text(`Employee #: ${payslip.employee_number}`, MARGIN, y);
-  if (run.paid_at) pdf.text(`Paid: ${new Date(run.paid_at).toLocaleDateString("en-KE")}`, MARGIN + 90, y);
+  if (run.paid_at) pdf.text(`Paid: ${new Date(run.paid_at).toLocaleDateString(intlLocale())}`, MARGIN + 90, y);
   y += 8;
 
   // Earnings table
@@ -187,7 +189,7 @@ function renderPayslip(pdf: jsPDF, payslip: PayslipForPdf, run: PayrollRun, busi
     PAGE_WIDTH / 2, y, { align: "center" },
   );
   pdf.text(
-    `Generated ${new Date().toLocaleString("en-KE")}`,
+    `Generated ${new Date().toLocaleString(intlLocale())}`,
     PAGE_WIDTH / 2, y + 4, { align: "center" },
   );
 

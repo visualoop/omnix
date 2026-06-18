@@ -19,6 +19,7 @@ import { getProducts, type Product } from "@/services/inventory";
 import { useAuthStore } from "@/stores/auth";
 import { toast } from "sonner";
 import { money as KES } from "@/lib/money";
+import { intlLocale } from "@/lib/intl";
 
 
 const FREQ_LABELS: Record<RecurringFrequency, string> = {
@@ -159,7 +160,7 @@ export function RecurringInvoicesPage() {
                       {FREQ_LABELS[t.frequency].toLowerCase().replace(/ly$/, "")}
                     </td>
                     <td className="px-3 py-2 text-xs">
-                      {new Date(t.next_run_on).toLocaleDateString("en-KE", { day: "2-digit", month: "short", year: "numeric" })}
+                      {new Date(t.next_run_on).toLocaleDateString(intlLocale(), { day: "2-digit", month: "short", year: "numeric" })}
                       {isDue && <Badge className="ml-2 bg-amber-600 hover:bg-amber-600 text-[9px]">DUE</Badge>}
                     </td>
                     <td className="px-3 py-2 text-right text-xs tabular-nums">{t.invoices_generated}</td>

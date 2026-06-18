@@ -15,6 +15,7 @@ import {
 } from "@/services/cold-chain";
 import { useAuthStore } from "@/stores/auth";
 import { toast } from "sonner";
+import { intlLocale } from "@/lib/intl";
 
 export function ColdChainPage() {
   const userId = useAuthStore((s) => s.user?.id);
@@ -130,7 +131,7 @@ export function ColdChainPage() {
                   <div className="flex items-center justify-between">
                     {u.last_recorded_at && (
                       <span className="text-[10px] text-muted-foreground">
-                        Last: {new Date(u.last_recorded_at).toLocaleString("en-KE", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}
+                        Last: {new Date(u.last_recorded_at).toLocaleString(intlLocale(), { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}
                       </span>
                     )}
                     {isToday ? (
@@ -177,7 +178,7 @@ export function ColdChainPage() {
                   logs.map((l) => (
                     <tr key={l.id} className={`border-b border-border/60 ${l.in_range === 0 ? "bg-rose-50" : ""}`}>
                       <td className="px-3 py-1.5 text-xs text-muted-foreground">
-                        {new Date(l.reading_at).toLocaleString("en-KE", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}
+                        {new Date(l.reading_at).toLocaleString(intlLocale(), { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}
                       </td>
                       <td className="px-3 py-1.5 text-xs">{l.unit_name}</td>
                       <td className={`px-3 py-1.5 text-right text-xs font-mono font-semibold ${l.in_range === 0 ? "text-rose-700" : ""}`}>

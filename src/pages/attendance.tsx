@@ -11,6 +11,7 @@ import {
 import { listEmployees, type EmployeeWithDetails } from "@/services/employees";
 import { useActiveBranch } from "@/stores/active-branch";
 import { toast } from "sonner";
+import { intlLocale } from "@/lib/intl";
 
 const STATUS_OPTIONS: { value: AttendanceStatus; label: string; color: string }[] = [
   { value: "present", label: "P", color: "bg-emerald-500 text-white" },
@@ -198,5 +199,5 @@ function addDays(dateStr: string, n: number): string {
 }
 
 function formatTime(iso: string): string {
-  return new Date(iso).toLocaleTimeString("en-KE", { hour: "2-digit", minute: "2-digit", hour12: false });
+  return new Date(iso).toLocaleTimeString(intlLocale(), { hour: "2-digit", minute: "2-digit", hour12: false });
 }

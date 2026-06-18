@@ -1,3 +1,4 @@
+import { money } from "@/lib/money";
 /**
  * Omnix AI Assistant — slide-out chat panel with persistence + history.
  *
@@ -425,7 +426,7 @@ function WelcomeBlock({ onPick }: { onPick: (text: string) => void }) {
     })
   }, [])
 
-  const fmtKES = (n: number) => "KES " + n.toLocaleString("en-KE", { maximumFractionDigits: 0 })
+  const fmtKES = (n: number) => money(n)
 
   return (
     <div className="space-y-5">

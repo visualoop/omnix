@@ -9,6 +9,8 @@ import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { query } from "@/lib/db";
 import type { Invoice, Quotation, DocumentItem } from "@/services/invoicing";
+import { intlLocale } from "@/lib/intl";
+import { money } from "@/lib/money";
 
 const PAGE_WIDTH = 210;  // A4 mm
 const MARGIN = 15;
@@ -39,10 +41,10 @@ async function getBusinessInfo(): Promise<BusinessInfo> {
 }
 
 const fmtCurrency = (n: number) =>
-  "KES " + n.toLocaleString("en-KE", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  money(n);
 
 const fmtDate = (s: string) =>
-  new Date(s).toLocaleDateString("en-KE", { day: "2-digit", month: "short", year: "numeric" });
+  new Date(s).toLocaleDateString(intlLocale(), { day: "2-digit", month: "short", year: "numeric" });
 
 interface DocumentForPdf {
   type: "invoice" | "quotation";
@@ -395,7 +397,7 @@ async function buildDocumentPdf(
     pdf.setFontSize(7);
     pdf.setTextColor(150);
     pdf.text(
-      `Generated ${new Date().toLocaleString("en-KE")}  ·  Page ${i} of ${pageCount}`,
+      `Generated ${new Date().toLocaleString(intlLocale())}  ·  Page ${i} of ${pageCount}`,
       PAGE_WIDTH / 2,
       290,
       { align: "center" },

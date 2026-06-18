@@ -19,6 +19,7 @@ import { Badge } from "@/components/ui/badge";
 import { query, execute } from "@/lib/db";
 import { toast } from "sonner";
 import { APP_NAME } from "@/lib/brand";
+import { intlLocale } from "@/lib/intl";
 
 interface BackupInfo {
   filename: string;
@@ -162,7 +163,7 @@ export function BackupPage() {
     // ts format: 2026-05-25T16-08-23
     const parts = ts.match(/^(\d{4}-\d{2}-\d{2})T(\d{2})-(\d{2})-(\d{2})$/);
     if (!parts) return ts;
-    return new Date(`${parts[1]}T${parts[2]}:${parts[3]}:${parts[4]}Z`).toLocaleString("en-KE", {
+    return new Date(`${parts[1]}T${parts[2]}:${parts[3]}:${parts[4]}Z`).toLocaleString(intlLocale(), {
       day: "2-digit", month: "short", year: "numeric",
       hour: "2-digit", minute: "2-digit",
     });
@@ -213,7 +214,7 @@ export function BackupPage() {
         {lastAutoBackup && (
           <p className="text-xs text-muted-foreground flex items-center gap-1.5">
             <CheckCircle2 className="h-3 w-3 text-green-600" />
-            Last auto-backup: {new Date(lastAutoBackup).toLocaleString("en-KE")}
+            Last auto-backup: {new Date(lastAutoBackup).toLocaleString(intlLocale())}
           </p>
         )}
       </div>

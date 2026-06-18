@@ -18,6 +18,7 @@ import {
 import { listEmployees, type EmployeeWithDetails } from "@/services/employees";
 import { useAuthStore } from "@/stores/auth";
 import { toast } from "sonner";
+import { intlLocale } from "@/lib/intl";
 
 export function LeavePage() {
   const [tab, setTab] = useState<LeaveStatus>("pending");
@@ -327,5 +328,5 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 }
 
 function formatDate(s: string): string {
-  return new Date(s).toLocaleDateString("en-KE", { day: "2-digit", month: "short", year: "numeric" });
+  return new Date(s).toLocaleDateString(intlLocale(), { day: "2-digit", month: "short", year: "numeric" });
 }

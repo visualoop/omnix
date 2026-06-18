@@ -23,6 +23,7 @@ import {
 import { useAuthStore } from "@/stores/auth";
 import { toast } from "sonner";
 import { money as KES } from "@/lib/money";
+import { intlLocale } from "@/lib/intl";
 
 
 export function BankAccountDetailPage() {
@@ -148,7 +149,7 @@ export function BankAccountDetailPage() {
                     return (
                       <tr key={t.id} className="border-b border-border/60 hover:bg-accent/30">
                         <td className="px-3 py-2 text-xs text-muted-foreground">
-                          {new Date(t.transaction_date).toLocaleDateString("en-KE", { day: "2-digit", month: "short" })}
+                          {new Date(t.transaction_date).toLocaleDateString(intlLocale(), { day: "2-digit", month: "short" })}
                         </td>
                         <td className="px-3 py-2 text-xs">
                           <div className="flex items-center gap-1.5">
@@ -227,12 +228,12 @@ export function BankAccountDetailPage() {
                       onClick={() => setViewingImport(imp.id)}
                     >
                       <td className="px-3 py-2 text-xs">
-                        {new Date(imp.period_start).toLocaleDateString("en-KE", { day: "2-digit", month: "short" })}
+                        {new Date(imp.period_start).toLocaleDateString(intlLocale(), { day: "2-digit", month: "short" })}
                         {" → "}
-                        {new Date(imp.period_end).toLocaleDateString("en-KE", { day: "2-digit", month: "short" })}
+                        {new Date(imp.period_end).toLocaleDateString(intlLocale(), { day: "2-digit", month: "short" })}
                       </td>
                       <td className="px-3 py-2 text-xs text-muted-foreground">
-                        {new Date(imp.created_at).toLocaleDateString("en-KE")}
+                        {new Date(imp.created_at).toLocaleDateString(intlLocale())}
                       </td>
                       <td className="px-3 py-2 text-right text-xs tabular-nums">{imp.line_count}</td>
                       <td className="px-3 py-2 text-right text-xs tabular-nums text-emerald-600">{imp.matched_count}</td>

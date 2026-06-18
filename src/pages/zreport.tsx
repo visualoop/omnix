@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { getZReport, printZReport, type ZReport } from "@/services/z-report";
 import { toast } from "sonner";
+import { intlLocale } from "@/lib/intl";
 
 export function ZReportPage() {
   const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
@@ -30,7 +31,7 @@ export function ZReportPage() {
     }
   };
 
-  const fmt = (n: number) => n.toLocaleString("en-KE", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const fmt = (n: number) => n.toLocaleString(intlLocale(), { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
   return (
     <div className="space-y-5">

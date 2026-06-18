@@ -39,6 +39,7 @@ import { countHeldSales } from "@/services/held-sales";
 import { categoryColor, stockColor } from "@/lib/category-colors";
 import { useNavigate } from "react-router-dom";
 import { money as KES } from "@/lib/money";
+import { intlLocale } from "@/lib/intl";
 
 
 /** Module-aware accent palette so Dawa feels different from Retail. */
@@ -348,7 +349,7 @@ export function POSPage() {
             <span className="text-white/80">{user?.full_name}</span>
             <span className="font-mono">
               <Clock className="inline h-3 w-3 mr-1" />
-              {now.toLocaleTimeString("en-KE", { hour: "2-digit", minute: "2-digit", hour12: false })}
+              {now.toLocaleTimeString(intlLocale(), { hour: "2-digit", minute: "2-digit", hour12: false })}
             </span>
           </div>
         </div>
@@ -877,7 +878,7 @@ function CartPanel({
         >
           <Tag className="h-3.5 w-3.5 mr-2" />
           {discount > 0
-            ? `Discount: ${discountType === "percent" ? discount + "%" : "KES " + discount}`
+            ? `Discount: ${discountType === "percent" ? discount + "%" : KES(discount)}`
             : "Add discount"}
           <kbd className="text-[10px] opacity-60 ml-auto font-mono">F3</kbd>
         </Button>

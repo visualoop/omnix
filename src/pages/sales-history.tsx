@@ -8,6 +8,8 @@ import { query } from "@/lib/db";
 import { buildReceiptData, printReceipt } from "@/services/receipt";
 import { useActiveBranch } from "@/stores/active-branch";
 import { toast } from "sonner";
+import { intlLocale } from "@/lib/intl";
+import { money } from "@/lib/money";
 
 interface SaleRow {
   id: string;
@@ -111,7 +113,7 @@ export function SalesHistoryPage() {
       <div className="grid grid-cols-3 gap-3">
         <StatCard label={`${period === "today" ? "Today" : period === "week" ? "This Week" : period === "month" ? "This Month" : "All Time"} Sales`} value={`KES ${totalSales.toFixed(0)}`} icon={Banknote} />
         <StatCard label="Transactions" value={String(sales.length)} icon={Receipt} />
-        <StatCard label="Avg Sale" value={sales.length > 0 ? `KES ${(totalSales / sales.length).toFixed(0)}` : "KES 0"} icon={Calendar} />
+        <StatCard label="Avg Sale" value={sales.length > 0 ? money(totalSales / sales.length) : money(0)} icon={Calendar} />
       </div>
 
       {/* Filters */}
@@ -168,7 +170,7 @@ export function SalesHistoryPage() {
                 <tr key={sale.id} className="border-b border-border last:border-0 hover:bg-muted/30">
                   <td className="px-3 py-2 font-mono text-xs">#{sale.sale_number}</td>
                   <td className="px-3 py-2 text-xs whitespace-nowrap">
-                    {new Date(sale.created_at).toLocaleString("en-KE", {
+                    {new Date(sale.created_at).toLocaleString(intlLocale(), {
                       day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit",
                     })}
                   </td>
@@ -231,7 +233,7 @@ function PaymentBadge({ status, saleStatus }: { status: string; saleStatus: stri
 }
 
 function SaleDetailView({ sale, onReprint }: { sale: SaleDetail; onReprint: () => void }) {
-  const date = new Date(sale.created_at).toLocaleString("en-KE", {
+  const date = new Date(sale.created_at).toLocaleString(intlLocale(), {
     day: "numeric", month: "long", year: "numeric",
     hour: "2-digit", minute: "2-digit",
   });

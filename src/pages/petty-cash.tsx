@@ -10,6 +10,7 @@ import { useAuthStore } from "@/stores/auth";
 import { EmptyState } from "@/components/ui/empty-state";
 import { TableRowSkeleton } from "@/components/ui/skeletons";
 import { toast } from "sonner";
+import { intlLocale } from "@/lib/intl";
 
 export function PettyCashPage() {
   const [entries, setEntries] = useState<PettyCashEntry[]>([]);
@@ -100,7 +101,7 @@ export function PettyCashPage() {
               entries.map((e) => (
                 <tr key={e.id} className="border-b border-border last:border-0 hover:bg-muted/30">
                   <td className="px-3 py-2.5 text-xs text-muted-foreground">
-                    {new Date(e.created_at).toLocaleString("en-KE", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}
+                    {new Date(e.created_at).toLocaleString(intlLocale(), { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}
                   </td>
                   <td className="px-3 py-2.5">
                     <span className={`text-xs px-1.5 py-0.5 rounded font-medium ${

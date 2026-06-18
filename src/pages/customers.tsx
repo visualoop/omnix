@@ -13,6 +13,7 @@ import { recordCustomerPayment } from "@/services/settlement";
 import { useAuthStore } from "@/stores/auth";
 import { PaymentRecordDialog } from "@/components/payment-record-dialog";
 import { toast } from "sonner";
+import { intlLocale } from "@/lib/intl";
 
 export function CustomersPage() {
   const [customers, setCustomers] = useState<Customer[]>([]);
@@ -239,7 +240,7 @@ function CustomerForm({ open, customer, onClose, onSaved }: {
               <div className="text-xs text-muted-foreground mb-1">Last Visit</div>
               <div className="text-xs">
                 {stats.last_purchase
-                  ? new Date(stats.last_purchase).toLocaleDateString("en-KE", { day: "2-digit", month: "short" })
+                  ? new Date(stats.last_purchase).toLocaleDateString(intlLocale(), { day: "2-digit", month: "short" })
                   : "—"}
               </div>
             </div>

@@ -5,6 +5,7 @@ import { getPnL, type PnLData } from "@/services/accounting";
 import { printPage } from "@/lib/print";
 import { exportToCSV } from "@/lib/export";
 import { money as KES } from "@/lib/money";
+import { intlLocale } from "@/lib/intl";
 
 
 export function PnLPage() {
@@ -218,7 +219,7 @@ export function PnLPage() {
           {/* Print-only footer */}
           <div className="hidden print:block mt-10 pt-4 border-t border-border text-[10px] text-muted-foreground space-y-1">
             <p>Profit &amp; Loss Statement &bull; {startDate} to {endDate}</p>
-            <p>Generated {new Date().toLocaleString("en-KE")}</p>
+            <p>Generated {new Date().toLocaleString(intlLocale())}</p>
           </div>
         </div>
       )}

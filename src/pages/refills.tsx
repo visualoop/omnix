@@ -10,6 +10,7 @@ import { useAuthStore } from "@/stores/auth";
 import { EmptyState } from "@/components/ui/empty-state";
 import { TableRowSkeleton } from "@/components/ui/skeletons";
 import { toast } from "sonner";
+import { intlLocale } from "@/lib/intl";
 
 export function RefillsPage() {
   const [items, setItems] = useState<RefillablePrescription[]>([]);
@@ -103,7 +104,7 @@ export function RefillsPage() {
                     </Badge>
                   </td>
                   <td className="px-3 py-2.5 text-xs text-muted-foreground">
-                    {new Date(rx.last_dispensed).toLocaleDateString("en-KE", { day: "2-digit", month: "short", year: "numeric" })}
+                    {new Date(rx.last_dispensed).toLocaleDateString(intlLocale(), { day: "2-digit", month: "short", year: "numeric" })}
                   </td>
                   <td className="px-3 py-2.5 text-right">
                     <Button

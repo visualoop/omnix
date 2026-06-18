@@ -13,6 +13,7 @@ import {
 } from "@/services/erp";
 import { useAuthStore } from "@/stores/auth";
 import { toast } from "sonner";
+import { intlLocale } from "@/lib/intl";
 
 export function StockTakesPage() {
   const [takes, setTakes] = useState<StockTake[]>([]);
@@ -90,7 +91,7 @@ export function StockTakesPage() {
                     onClick={() => navigate(`/stock-take/${t.id}`)}>
                   <td className="px-3 py-2.5 font-mono text-xs">{t.reference}</td>
                   <td className="px-3 py-2.5 text-xs whitespace-nowrap">
-                    {new Date(t.started_at).toLocaleString("en-KE", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}
+                    {new Date(t.started_at).toLocaleString(intlLocale(), { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}
                   </td>
                   <td className="px-3 py-2.5">{t.user_name || "—"}</td>
                   <td className="px-3 py-2.5 text-right font-mono">{t.item_count}</td>
@@ -185,7 +186,7 @@ export function StockTakeDetailPage() {
           <div>
             <h1 className="text-xl font-semibold tracking-tight font-mono">{take.reference}</h1>
             <p className="text-sm text-muted-foreground">
-              Started {new Date(take.started_at).toLocaleString("en-KE")} · {take.user_name}
+              Started {new Date(take.started_at).toLocaleString(intlLocale())} · {take.user_name}
             </p>
           </div>
         </div>
@@ -205,7 +206,7 @@ export function StockTakeDetailPage() {
         <div className="border border-green-500/50 bg-green-500/5 rounded-lg p-3 flex items-start gap-3">
           <CheckCircle2 className="h-5 w-5 text-green-600 shrink-0 mt-0.5" />
           <div>
-            <p className="text-sm font-medium">Completed {take.completed_at && new Date(take.completed_at).toLocaleString("en-KE")}</p>
+            <p className="text-sm font-medium">Completed {take.completed_at && new Date(take.completed_at).toLocaleString(intlLocale())}</p>
             <p className="text-xs text-muted-foreground mt-0.5">
               Total variance: {take.total_variance > 0 ? "+" : ""}{take.total_variance.toFixed(0)} units · Value: KES {take.total_value_variance.toFixed(2)}
             </p>

@@ -1,8 +1,10 @@
 import { headers } from 'next/headers'
+import { cookies } from 'next/headers'
 import Link from 'next/link'
 import { ArrowRight, CloudUpload, MapPin, Plus } from '@/components/icons'
 import { getPayload } from 'payload'
 import config from '@/payload.config'
+import { CURRENCIES, formatPrice, type SupportedCurrency } from '@/lib/currency'
 import { Button } from '@/components/ui/button'
 import { formatDate, PageHeading } from '@/components/dashboard/status-utils'
 import { safePayloadFind, emptyPage, getDashboardCustomer } from '@/lib/dashboard-helpers'
@@ -27,6 +29,29 @@ export default async function BillingPage() {
     emptyPage(),
     'billing-licenses',
   )
+
+  // Pricing for the add-ons — read from CMS, format per visitor currency.
+  const cookieStore = await cookies()
+  const cookieCurrency = cookieStore.get('omnix_currency')?.value as SupportedCurrency | undefined
+  const currency: SupportedCurrency = cookieCurrency && cookieCurrency in CURRENCIES ? cookieCurrency : 'KES'
+  let cloudBackupMonthly = 500
+  let extraBranchOneTime = 15_000
+  let extraMachineOneTime = 5_000
+  try {
+    const pricing = (await payload.findGlobal({ slug: 'pricing', overrideAccess: true })) as unknown as {
+      cloudBackupMonthly?: number
+      extraBranchOneTime?: number
+      extraMachineOneTime?: number
+    }
+    if (typeof pricing.cloudBackupMonthly === 'number') cloudBackupMonthly = pricing.cloudBackupMonthly
+    if (typeof pricing.extraBranchOneTime === 'number') extraBranchOneTime = pricing.extraBranchOneTime
+    if (typeof pricing.extraMachineOneTime === 'number') extraMachineOneTime = pricing.extraMachineOneTime
+  } catch {
+    /* fall through to defaults */
+  }
+  const cloudBackupPrice = `${formatPrice(cloudBackupMonthly, currency)} / month / branch`
+  const extraBranchPrice = `${formatPrice(extraBranchOneTime, currency)} one-time`
+  const extraMachinePrice = `${formatPrice(extraMachineOneTime, currency)} one-time`
   const licenses = res.docs as unknown as {
     id: string
     licenseKey: string
@@ -94,7 +119,7 @@ export default async function BillingPage() {
         <AddOnCard
           icon={CloudUpload}
           title="Cloud backup"
-          price="KES 500 / month / branch"
+          price={cloudBackupPrice}
           body="Encrypted nightly snapshots to Cloudflare R2. Restore in minutes after a stolen or lost machine."
           cta="Enable for a licence"
           href="/buy?type=cloud_backup"
@@ -102,7 +127,7 @@ export default async function BillingPage() {
         <AddOnCard
           icon={MapPin}
           title="Extra branch"
-          price="KES 15,000 one-time"
+          price={extraBranchPrice}
           body="Add a branch to an existing licence. No new key to manage."
           cta="Add a branch"
           href="/buy?type=extra_branch"
@@ -110,7 +135,7 @@ export default async function BillingPage() {
         <AddOnCard
           icon={Plus}
           title="Extra machine seat"
-          price="KES 5,000 one-time"
+          price={extraMachinePrice}
           body="Raise the number of PCs that can activate with your licence key."
           cta="Add a seat"
           href="/buy?type=extra_machine"

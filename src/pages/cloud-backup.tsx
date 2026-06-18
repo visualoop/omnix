@@ -23,6 +23,7 @@ import { confirm, prompt } from "@/components/ui/confirm-dialog";
 import { toast } from "sonner";
 import { getScheduleConfig, setScheduleConfig, nextRunAt } from "@/hooks/use-auto-cloud-backup";
 import { getMachineAuthToken } from "@/services/license";
+import { intlLocale } from "@/lib/intl";
 
 interface CloudBackupRow {
   id: string;
@@ -54,7 +55,7 @@ function formatBytes(n?: number | null): string {
 
 function formatDate(d?: string | null): string {
   if (!d) return "—";
-  return new Date(d).toLocaleString("en-KE", {
+  return new Date(d).toLocaleString(intlLocale(), {
     year: "numeric", month: "short", day: "numeric",
     hour: "2-digit", minute: "2-digit", hour12: false,
   });
@@ -450,7 +451,7 @@ function AutoScheduleCard() {
         <div className="rounded-xl border border-border/40 bg-foreground/[0.02] px-3 py-2.5">
           <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">Last run</div>
           <div className="text-[13px] font-medium">
-            {lastRun ? new Date(lastRun).toLocaleString("en-KE", { hour: "2-digit", minute: "2-digit", day: "numeric", month: "short" }) : "Never"}
+            {lastRun ? new Date(lastRun).toLocaleString(intlLocale(), { hour: "2-digit", minute: "2-digit", day: "numeric", month: "short" }) : "Never"}
           </div>
         </div>
         <div className="rounded-xl border border-border/40 bg-foreground/[0.02] px-3 py-2.5">

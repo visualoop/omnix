@@ -16,6 +16,7 @@ import { getProducts, type Product } from "@/services/inventory";
 import { useAuthStore } from "@/stores/auth";
 import { toast } from "sonner";
 import { money as KES } from "@/lib/money";
+import { intlLocale } from "@/lib/intl";
 
 
 const REASON_LABELS: Record<ShrinkageReason, string> = {
@@ -144,7 +145,7 @@ export function ShrinkagePage() {
                   records.map((r) => (
                     <tr key={r.id} className="border-b border-border/60">
                       <td className="px-3 py-2 text-xs text-muted-foreground">
-                        {new Date(r.incident_date).toLocaleDateString("en-KE", { day: "2-digit", month: "short" })}
+                        {new Date(r.incident_date).toLocaleDateString(intlLocale(), { day: "2-digit", month: "short" })}
                       </td>
                       <td className="px-3 py-2 text-xs">
                         <div className="font-medium">{r.product_name}</div>

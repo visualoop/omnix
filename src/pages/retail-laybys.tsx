@@ -23,6 +23,7 @@ import { useAuthStore } from "@/stores/auth";
 import { useCartStore } from "@/stores/cart";
 import { toast } from "sonner";
 import { money as KES } from "@/lib/money";
+import { intlLocale } from "@/lib/intl";
 
 
 export function LaybysPage() {
@@ -115,10 +116,10 @@ export function LaybysPage() {
                           {l.customer_phone && <div className="text-[10px] text-muted-foreground">{l.customer_phone}</div>}
                         </td>
                         <td className="px-3 py-2 text-xs text-muted-foreground">
-                          {new Date(l.created_at).toLocaleDateString("en-KE", { day: "2-digit", month: "short" })}
+                          {new Date(l.created_at).toLocaleDateString(intlLocale(), { day: "2-digit", month: "short" })}
                         </td>
                         <td className="px-3 py-2 text-xs">
-                          {new Date(l.expires_at).toLocaleDateString("en-KE", { day: "2-digit", month: "short" })}
+                          {new Date(l.expires_at).toLocaleDateString(intlLocale(), { day: "2-digit", month: "short" })}
                           {l.status === "active" && (
                             <div className={`text-[10px] ${daysLeft < 7 ? "text-red-600" : "text-muted-foreground"}`}>
                               {daysLeft > 0 ? `${daysLeft} days left` : "Expired"}
@@ -478,8 +479,8 @@ function LaybyDetailSheet({ laybyId, onClose, onChange }: {
           </div>
 
           <div className="text-xs text-muted-foreground border-t border-b border-border py-2">
-            Created {new Date(layby.created_at).toLocaleDateString("en-KE")} · Expires {new Date(layby.expires_at).toLocaleDateString("en-KE")}
-            {layby.completed_at && <> · Completed {new Date(layby.completed_at).toLocaleDateString("en-KE")}</>}
+            Created {new Date(layby.created_at).toLocaleDateString(intlLocale())} · Expires {new Date(layby.expires_at).toLocaleDateString(intlLocale())}
+            {layby.completed_at && <> · Completed {new Date(layby.completed_at).toLocaleDateString(intlLocale())}</>}
           </div>
 
           {/* Items */}
@@ -532,7 +533,7 @@ function LaybyDetailSheet({ laybyId, onClose, onChange }: {
                 <tbody>
                   {payments.map((p) => (
                     <tr key={p.id} className="border-b border-border/60">
-                      <td className="px-2 py-1.5">{new Date(p.paid_at).toLocaleDateString("en-KE")}</td>
+                      <td className="px-2 py-1.5">{new Date(p.paid_at).toLocaleDateString(intlLocale())}</td>
                       <td className="px-2 py-1.5 capitalize">{p.method}</td>
                       <td className="px-2 py-1.5 font-mono text-muted-foreground">{p.reference || "—"}</td>
                       <td className={`px-2 py-1.5 text-right font-mono tabular-nums ${p.amount < 0 ? "text-red-600" : "text-emerald-600"}`}>

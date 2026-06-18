@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { query } from "@/lib/db";
+import { intlLocale } from "@/lib/intl";
 
 interface AuditEntry {
   id: string;
@@ -170,7 +171,7 @@ export function AuditLogPage() {
 }
 
 function AuditRow({ entry }: { entry: AuditEntry }) {
-  const time = new Date(entry.created_at).toLocaleString("en-KE", {
+  const time = new Date(entry.created_at).toLocaleString(intlLocale(), {
     day: "2-digit", month: "short", year: "numeric",
     hour: "2-digit", minute: "2-digit", second: "2-digit",
   });

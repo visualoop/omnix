@@ -12,6 +12,7 @@ import {
 } from "@/services/stock-transfers";
 import { useAuthStore } from "@/stores/auth";
 import { toast } from "sonner";
+import { intlLocale } from "@/lib/intl";
 
 interface TransferData {
   transfer: StockTransferWithDetails;
@@ -92,7 +93,7 @@ export function StockTransferDetailPage() {
               <ArrowRightLeft className="h-5 w-5 text-primary" /> {transfer.transfer_number}
             </h1>
             <p className="text-xs text-muted-foreground mt-1">
-              Created {new Date(transfer.created_at).toLocaleString("en-KE")} by {transfer.user_name}
+              Created {new Date(transfer.created_at).toLocaleString(intlLocale())} by {transfer.user_name}
             </p>
           </div>
           <StatusBadge status={transfer.status} />
@@ -211,7 +212,7 @@ export function StockTransferDetailPage() {
 
       {transfer.status === "received" && transfer.received_by_name && (
         <div className="text-xs text-muted-foreground text-center">
-          Received {transfer.received_date ? new Date(transfer.received_date).toLocaleString("en-KE") : ""} by {transfer.received_by_name}
+          Received {transfer.received_date ? new Date(transfer.received_date).toLocaleString(intlLocale()) : ""} by {transfer.received_by_name}
         </div>
       )}
     </div>

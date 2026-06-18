@@ -13,6 +13,7 @@ import {
   type HeldSale,
 } from "@/services/held-sales";
 import { toast } from "sonner";
+import { intlLocale } from "@/lib/intl";
 
 export function HeldSalesDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
   const [held, setHeld] = useState<HeldSale[]>([]);
@@ -117,7 +118,7 @@ export function HeldSalesDialog({ open, onClose }: { open: boolean; onClose: () 
                         </div>
                         {h.note && <p className="text-xs text-muted-foreground mt-1 italic">"{h.note}"</p>}
                         <p className="text-xs text-muted-foreground mt-1">
-                          {new Date(h.created_at).toLocaleString("en-KE", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}
+                          {new Date(h.created_at).toLocaleString(intlLocale(), { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}
                         </p>
                       </div>
                       <div className="flex gap-1 shrink-0">

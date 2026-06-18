@@ -11,6 +11,7 @@
 import { query } from "@/lib/db";
 import { printHtml } from "./print-html";
 import { BRAND } from "@/lib/brand";
+import { intlLocale } from "@/lib/intl";
 
 export interface ZReport {
   date_from: string;
@@ -227,9 +228,9 @@ export async function getZReport(date?: string): Promise<ZReport> {
 }
 
 export function renderZReportHtml(r: ZReport): string {
-  const fmt = (n: number) => n.toLocaleString("en-KE", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-  const fmtDate = (s: string) => new Date(s).toLocaleString("en-KE", { dateStyle: "medium", timeStyle: "short" });
-  const dateOnly = (s: string) => new Date(s).toLocaleDateString("en-KE", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+  const fmt = (n: number) => n.toLocaleString(intlLocale(), { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const fmtDate = (s: string) => new Date(s).toLocaleString(intlLocale(), { dateStyle: "medium", timeStyle: "short" });
+  const dateOnly = (s: string) => new Date(s).toLocaleDateString(intlLocale(), { weekday: "long", day: "numeric", month: "long", year: "numeric" });
 
   return `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Z-Report</title>
 <style>

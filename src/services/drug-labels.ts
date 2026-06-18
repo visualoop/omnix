@@ -9,6 +9,7 @@
 import { query } from "@/lib/db";
 import { printHtml } from "./print-html";
 import { BRAND } from "@/lib/brand";
+import { intlLocale } from "@/lib/intl";
 
 export interface DrugLabel {
   prescription_id: string;
@@ -151,7 +152,7 @@ export function renderDrugLabelHtml(labels: DrugLabel[]): string {
   `;
   const fmtDate = (s: string) => {
     const d = new Date(s);
-    return d.toLocaleDateString("en-KE", { day: "2-digit", month: "short", year: "numeric" });
+    return d.toLocaleDateString(intlLocale(), { day: "2-digit", month: "short", year: "numeric" });
   };
   const labelHtml = labels.map((l) => `
     <div class="label">

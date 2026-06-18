@@ -1,6 +1,7 @@
 import { query } from "@/lib/db";
 import { BRAND } from "@/lib/brand";
 import QRCode from "qrcode";
+import { intlLocale } from "@/lib/intl";
 
 export interface ReceiptData {
   business: {
@@ -172,10 +173,16 @@ async function generateQrDataUrl(text: string): Promise<string> {
 }
 
 async function renderReceiptHTML(d: ReceiptData): Promise<string> {
-  const date = new Date(d.sale.created_at).toLocaleString("en-KE", {
+  const date = new Date(d.sale.created_at).toLocaleString(intlLocale(), {
     day: "2-digit", month: "short", year: "numeric",
     hour: "2-digit", minute: "2-digit",
   });
+
+  // Country-aware money formatter + tax label.
+  const { money } = await import("@/lib/money");
+  const { taxLabel } = await import("@/lib/locale");
+  const { useCountry } = await import("@/stores/country");
+  const taxLabelStr = taxLabel(useCountry.getState().code);
 
   let kraSection = "";
   if (d.kra) {
@@ -291,8 +298,8 @@ async function renderReceiptHTML(d: ReceiptData): Promise<string> {
     <tbody>
       <tr><td class="label">Subtotal:</td><td class="value">${d.subtotal.toFixed(2)}</td></tr>
       ${d.discount > 0 ? `<tr><td class="label">Discount:</td><td class="value">-${d.discount.toFixed(2)}</td></tr>` : ""}
-      ${d.tax > 0 ? `<tr><td class="label">VAT (16%):</td><td class="value">${d.tax.toFixed(2)}</td></tr>` : ""}
-      <tr class="bold lg"><td class="label">TOTAL:</td><td class="value">KES ${d.total.toFixed(2)}</td></tr>
+      ${d.tax > 0 ? `<tr><td class="label">${taxLabelStr}:</td><td class="value">${d.tax.toFixed(2)}</td></tr>` : ""}
+      <tr class="bold lg"><td class="label">TOTAL:</td><td class="value">${money(d.total)}</td></tr>
     </tbody>
   </table>
 

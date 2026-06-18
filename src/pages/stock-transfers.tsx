@@ -7,6 +7,7 @@ import { TableRowSkeleton } from "@/components/ui/skeletons";
 import { listTransfers, type StockTransferWithDetails } from "@/services/stock-transfers";
 import { useActiveBranch } from "@/stores/active-branch";
 import { useNavigate } from "react-router-dom";
+import { intlLocale } from "@/lib/intl";
 
 export function StockTransfersPage() {
   const [transfers, setTransfers] = useState<StockTransferWithDetails[]>([]);
@@ -73,7 +74,7 @@ export function StockTransfersPage() {
                   >
                     <td className="px-3 py-2 font-mono text-xs">{t.transfer_number}</td>
                     <td className="px-3 py-2 text-xs text-muted-foreground">
-                      {new Date(t.transfer_date).toLocaleDateString("en-KE", { day: "2-digit", month: "short" })}
+                      {new Date(t.transfer_date).toLocaleDateString(intlLocale(), { day: "2-digit", month: "short" })}
                     </td>
                     <td className="px-3 py-2">
                       <div className="flex items-center gap-1.5 text-xs">

@@ -20,8 +20,9 @@ import {
 import { useAuthStore } from "@/stores/auth";
 import { toast } from "sonner";
 import { money as KES } from "@/lib/money";
+import { intlLocale } from "@/lib/intl";
 
-const formatDate = (s: string) => new Date(s).toLocaleDateString("en-KE", { day: "2-digit", month: "long", year: "numeric" });
+const formatDate = (s: string) => new Date(s).toLocaleDateString(intlLocale(), { day: "2-digit", month: "long", year: "numeric" });
 
 interface Props { type: "invoice" | "quotation" }
 

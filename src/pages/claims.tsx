@@ -32,6 +32,7 @@ import {
 import { exportToCSV } from "@/lib/export";
 import { toast } from "sonner";
 import { prompt } from "@/components/ui/confirm-dialog";
+import { intlLocale } from "@/lib/intl";
 
 export function ClaimsPage() {
   const [tab, setTab] = useState<"claims" | "batches">("claims");
@@ -192,7 +193,7 @@ export function ClaimsPage() {
                         <ClaimStatusBadge status={c.status} />
                       </td>
                       <td className="px-3 py-2.5 text-xs text-muted-foreground whitespace-nowrap">
-                        {new Date(c.created_at).toLocaleDateString("en-KE", { day: "2-digit", month: "short" })}
+                        {new Date(c.created_at).toLocaleDateString(intlLocale(), { day: "2-digit", month: "short" })}
                       </td>
                     </tr>
                   ))}
@@ -315,7 +316,7 @@ function ClaimDetail({ claim, onUpdated }: { claim: InsuranceClaim; onUpdated: (
         <div className="flex items-center gap-2 mt-2">
           <Badge variant="outline">{claim.provider_code}</Badge>
           <span className="text-xs text-muted-foreground">
-            {new Date(claim.created_at).toLocaleString("en-KE")}
+            {new Date(claim.created_at).toLocaleString(intlLocale())}
           </span>
         </div>
         {claim.claim_number && (

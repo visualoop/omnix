@@ -10,6 +10,7 @@ import { query } from "@/lib/db";
 import { listReturns, createSaleReturn, type SaleReturn } from "@/services/erp";
 import { useAuthStore } from "@/stores/auth";
 import { toast } from "sonner";
+import { intlLocale } from "@/lib/intl";
 
 interface SaleSummary {
   id: string;
@@ -255,7 +256,7 @@ export function NewReturnPage() {
                   <div>
                     <div className="font-mono text-sm">#{s.sale_number}</div>
                     <div className="text-xs text-muted-foreground">
-                      {new Date(s.created_at).toLocaleString("en-KE", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}
+                      {new Date(s.created_at).toLocaleString(intlLocale(), { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}
                       {s.customer_name && ` · ${s.customer_name}`}
                     </div>
                   </div>
@@ -271,7 +272,7 @@ export function NewReturnPage() {
             <div>
               <p className="text-sm font-medium">Sale #{selectedSale.sale_number}</p>
               <p className="text-xs text-muted-foreground">
-                {new Date(selectedSale.created_at).toLocaleString("en-KE")}
+                {new Date(selectedSale.created_at).toLocaleString(intlLocale())}
                 {selectedSale.customer_name && ` · ${selectedSale.customer_name}`}
               </p>
             </div>

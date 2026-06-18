@@ -15,6 +15,7 @@ import {
 } from "@/services/invoicing";
 import { useActiveBranch } from "@/stores/active-branch";
 import { money as KES } from "@/lib/money";
+import { intlLocale } from "@/lib/intl";
 
 
 export function InvoicingPage() {
@@ -345,5 +346,5 @@ function QuotationStatusBadge({ status }: { status: QuotationStatus }) {
 }
 
 function formatDate(s: string): string {
-  return new Date(s).toLocaleDateString("en-KE", { day: "2-digit", month: "short", year: "numeric" });
+  return new Date(s).toLocaleDateString(intlLocale(), { day: "2-digit", month: "short", year: "numeric" });
 }

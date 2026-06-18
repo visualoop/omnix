@@ -17,6 +17,7 @@ import { ModuleLogo } from "@/components/module-logos";
 import { getDisplayConfig } from "@/lib/display-registry";
 import { query } from "@/lib/db";
 import { money as KES } from "@/lib/money";
+import { intlLocale } from "@/lib/intl";
 
 
 export function CustomerDisplayPage() {
@@ -75,7 +76,7 @@ export function CustomerDisplayPage() {
     if (grandTotal > 0) prevTotal.current = grandTotal;
   }, [items.length, grandTotal]);
 
-  const clock = now.toLocaleTimeString("en-KE", { hour: "2-digit", minute: "2-digit", hour12: false });
+  const clock = now.toLocaleTimeString(intlLocale(), { hour: "2-digit", minute: "2-digit", hour12: false });
   const itemName = (name: string) => (privacyMode ? cfg.privacyLabel : name);
 
   // ── Payment success ──────────────────────────────────────────────
@@ -114,7 +115,7 @@ export function CustomerDisplayPage() {
           <p className="text-xl text-stone-400 mt-3">{cfg.idleSubtitle}</p>
           <div className={`mt-12 h-1 w-24 ${cfg.accentLine} rounded-full`} />
           <div className="mt-8 text-base text-stone-500">
-            {now.toLocaleDateString("en-KE", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
+            {now.toLocaleDateString(intlLocale(), { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
           </div>
           <div className="mt-1 text-3xl font-mono tabular-nums text-stone-300">{clock}</div>
           {privacyMode && (
