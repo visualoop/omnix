@@ -704,6 +704,7 @@ function ProductCard({ product, onClick }: {
   const reorder = (product as any).reorder_level || 0;
   const categoryId = (product as any).category_id || null;
   const oos = stock <= 0;
+  const lowStock = !oos && stock <= reorder;
   const sc = stockColor(stock, reorder);
   const cc = categoryColor(categoryId);
 
@@ -711,30 +712,34 @@ function ProductCard({ product, onClick }: {
     <button
       onClick={onClick}
       disabled={oos}
-      className={`text-left p-2 rounded-md border bg-card transition group relative ${
+      className={`group relative flex flex-col text-left rounded-lg border-2 bg-card p-2.5 transition-all ${
         oos
-          ? "opacity-50 cursor-not-allowed border-rose-500/30"
-          : `${cc.border} hover:bg-accent hover:border-current ${cc.fg} hover:shadow-sm active:scale-[0.98]`
+          ? "opacity-40 cursor-not-allowed border-dashed border-rose-500/40"
+          : `${cc.border} hover:border-current ${cc.fg} hover:shadow-md hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.97]`
       }`}
     >
       {/* Category dot top-left */}
-      <span className={`absolute top-1.5 left-1.5 h-1.5 w-1.5 rounded-full ${cc.dot}`} />
+      <span className={`absolute top-2 left-2 size-1.5 rounded-full ${cc.dot}`} />
 
-      {/* Stock badge top-right */}
-      <span className={`absolute top-1 right-1 text-[9px] px-1 py-0.5 rounded ${sc.bg} ${sc.text} font-mono font-semibold uppercase tracking-wider`}>
-        {stock}
+      {/* Stock pill top-right — louder for low-stock + out-of-stock */}
+      <span
+        className={`absolute top-1.5 right-1.5 px-1.5 py-0.5 rounded-md text-[10px] font-mono font-bold tabular-nums uppercase tracking-wider ${sc.bg} ${sc.text} ${
+          lowStock ? "ring-1 ring-amber-500/30" : ""
+        } ${oos ? "ring-1 ring-rose-500/40" : ""}`}
+      >
+        {oos ? "OUT" : stock}
       </span>
 
-      <div className="mt-3 mb-1.5">
-        <div className="text-[12px] font-medium text-foreground line-clamp-2 leading-tight">
+      <div className="mt-4 mb-2">
+        <div className="text-[12.5px] font-medium text-foreground line-clamp-2 leading-snug">
           {product.name}
         </div>
       </div>
-      <div className="flex justify-between items-end">
-        <span className={`text-[9px] uppercase tracking-wider ${cc.fg}`}>
+      <div className="mt-auto flex items-end justify-between gap-1">
+        <span className={`text-[9px] uppercase tracking-wider truncate ${cc.fg} opacity-80`}>
           {(product as any).category_name || "—"}
         </span>
-        <span className="font-mono font-bold text-sm">
+        <span className="font-mono font-semibold text-[15px] tabular-nums leading-none text-foreground">
           {product.selling_price.toFixed(0)}
         </span>
       </div>
