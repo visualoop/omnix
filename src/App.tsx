@@ -123,6 +123,8 @@ function AppContent() {
     import("@/lib/db").then(({ initDb }) => {
       initDb().then(() => {
         refreshSetupState();
+        // Load active country (defaults to 'KE' for unconfigured installs)
+        import("@/stores/country").then(({ useCountry }) => useCountry.getState().load().catch(() => {}));
         // Seed the RBAC permission catalog + system-role grants (idempotent).
         import("@/services/rbac").then(({ seedRbac }) => seedRbac().catch(() => {}));
         // Restore effective-permission cache for a persisted session.

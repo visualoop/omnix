@@ -10,7 +10,9 @@ import { ModuleLogo } from "@/components/module-logos";
 import { APP_NAME } from "@/lib/brand";
 import { useActiveModule, MODULE_DEFINITIONS, type ModuleId } from "@/stores/active-module";
 import { isModuleEntitled, entitledModules } from "@/stores/entitlements";
-import { IS_PRO, LOCKED_MODULE, MODULES_ALLOWED, VARIANT_NAME, VARIANT_TAGLINE } from "@/lib/variant";
+import { IS_PRO, LOCKED_MODULE, MODULES_ALLOWED, VARIANT_NAME } from "@/lib/variant";
+import { useCountry } from "@/stores/country";
+import { listCountries, TOP_MARKETS, getCountry, type CountryCode } from "@/lib/countries";
 
 interface SetupData {
   businessName: string;
@@ -27,6 +29,7 @@ interface SetupData {
 
 export function SetupWizard() {
   const [step, setStep] = useState(0);
+  const [pickedCountry, setPickedCountry] = useState<CountryCode | null>(null);
   // Trade variants pre-lock the module to whatever the binary ships.
   // Pro picks the first entitled module as a default (operator can switch on step 1).
   const defaultModule = (
@@ -108,38 +111,100 @@ export function SetupWizard() {
   };
 
   const steps = [
-    // Step 0: Welcome
-    <div key="welcome" className="space-y-6 text-center">
+    // Step 0: Welcome + country picker
+    <div key="welcome" className="space-y-5 text-center">
       <div className="inline-flex items-center justify-center">
         <OmnixLogo size={72} />
       </div>
       <div className="space-y-2">
         <h2 className="text-2xl font-semibold tracking-tight">Welcome to {VARIANT_NAME}</h2>
-        <p className="text-sm text-muted-foreground max-w-[320px] mx-auto leading-relaxed">
-          {IS_PRO
-            ? "The operating system for your business — POS, inventory, accounting and KRA compliance, in one offline-first Windows app."
-            : `${VARIANT_TAGLINE}. POS, inventory, accounting and KRA compliance, in one offline-first Windows app.`}
+        <p className="text-sm text-muted-foreground max-w-[340px] mx-auto leading-relaxed">
+          First — pick the country you operate in. This sets your currency, tax label, and the
+          local payment methods we wire up by default.
         </p>
       </div>
-      <div className="flex flex-wrap items-center justify-center gap-1.5">
-        {[
-          { dot: "bg-emerald-500", label: "Works offline" },
-          { dot: "bg-blue-500", label: "M-Pesa + card" },
-          { dot: "bg-amber-500", label: "eTIMS built-in" },
-          { dot: "bg-violet-500", label: "Pay once" },
-        ].map((p) => (
-          <span key={p.label} className="inline-flex items-center gap-1.5 rounded-full glass-thin px-2.5 py-1 text-[11px] text-muted-foreground">
-            <span className={`h-1.5 w-1.5 rounded-full ${p.dot}`} />
-            {p.label}
-          </span>
-        ))}
+
+      {/* Country quick-pick — top markets first, then "All countries" picker */}
+      <div className="space-y-3">
+        <div className="grid grid-cols-3 gap-1.5 sm:grid-cols-4">
+          {TOP_MARKETS.map((cc) => {
+            const c = getCountry(cc);
+            if (!c) return null;
+            const selected = pickedCountry === cc;
+            return (
+              <button
+                key={cc}
+                type="button"
+                onClick={() => setPickedCountry(cc)}
+                className={`flex items-center gap-1.5 rounded-lg border px-2.5 py-2 text-[12px] transition-all ${
+                  selected
+                    ? "border-primary bg-primary/8 ring-2 ring-primary/15"
+                    : "border-border/60 hover:border-primary/40 hover:bg-foreground/[0.03]"
+                }`}
+              >
+                <span className="text-base leading-none">{c.flag}</span>
+                <span className="truncate font-medium">{c.name}</span>
+              </button>
+            );
+          })}
+        </div>
+
+        {/* All-countries dropdown for everywhere else */}
+        <details className="text-left">
+          <summary className="cursor-pointer text-[11px] text-muted-foreground hover:text-foreground select-none">
+            Other country (search 180+ countries)
+          </summary>
+          <div className="mt-2 max-h-44 overflow-y-auto rounded-lg border border-border/60 p-1">
+            {listCountries()
+              .filter((c) => !TOP_MARKETS.includes(c.code))
+              .map((c) => {
+                const selected = pickedCountry === c.code;
+                return (
+                  <button
+                    key={c.code}
+                    type="button"
+                    onClick={() => setPickedCountry(c.code)}
+                    className={`flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[12px] transition ${
+                      selected ? "bg-primary/10 text-primary" : "hover:bg-foreground/[0.04]"
+                    }`}
+                  >
+                    <span className="text-sm">{c.flag}</span>
+                    <span className="flex-1 truncate">{c.name}</span>
+                    <span className="font-mono text-[10px] text-muted-foreground">{c.currencyCode}</span>
+                  </button>
+                );
+              })}
+          </div>
+        </details>
+
+        {pickedCountry && (() => {
+          const c = getCountry(pickedCountry);
+          if (!c) return null;
+          return (
+            <div className="rounded-lg border border-border/60 bg-foreground/[0.02] p-3 text-left text-[11.5px] leading-relaxed">
+              <div className="flex items-center gap-1.5 font-medium">
+                <span>{c.flag}</span>
+                <span>{c.name}</span>
+                <span className="ml-auto font-mono text-muted-foreground">
+                  {c.currencyCode} · {c.taxLabel} {c.defaultTaxRate}%
+                </span>
+              </div>
+            </div>
+          );
+        })()}
       </div>
+
       <p className="text-[11px] text-muted-foreground">Takes about 60 seconds.</p>
       <Button
-        onClick={() => setStep(IS_PRO ? 1 : 2)}
+        onClick={async () => {
+          if (!pickedCountry) return;
+          await useCountry.getState().set(pickedCountry);
+          setStep(IS_PRO ? 1 : 2);
+        }}
+        disabled={!pickedCountry}
         className="w-full h-11 rounded-xl shadow-native cursor-pointer"
       >
-        Get Started
+        {pickedCountry ? "Continue" : "Pick a country"}
       </Button>
     </div>,
 
