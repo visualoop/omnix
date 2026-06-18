@@ -1,6 +1,6 @@
 import { PLACEHOLDERS } from "@/lib/variant-placeholders";
 import { useState, useEffect } from "react";
-import { Trash2, Plus, Loader2 } from "lucide-react";
+import { Trash2, Plus, Loader2, Layers, Package } from "lucide-react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -37,6 +37,10 @@ export function ProductPanel({ open, onClose, productId, onSaved }: Props) {
   const [brands, setBrands] = useState<BrandWithStats[]>([]);
   const [variants, setVariants] = useState<ProductVariant[]>([]);
   const [tab, setTab] = useState("general");
+  // effectiveProductId tracks the panel's true mode: prop on initial mount,
+  // then bumped to the new id after Create so the panel switches into edit
+  // mode in-place without forcing the user to reopen.
+  const [effectiveProductId, setEffectiveProductId] = useState<string | null>(productId);
   const [form, setForm] = useState({
     name: "", sku: "", barcode: "", category_id: "",
     unit: "pcs", buying_price: "", selling_price: "",
@@ -50,7 +54,21 @@ export function ProductPanel({ open, onClose, productId, onSaved }: Props) {
     manufacturer: "", requires_prescription: false, is_controlled: false,
   });
   const [saving, setSaving] = useState(false);
-  const isEdit = !!productId;
+  const isEdit = !!effectiveProductId;
+
+  // Sync prop → state when the panel is opened with a different product
+  // (or as null for a fresh "create").
+  useEffect(() => { setEffectiveProductId(productId); }, [productId]);
+
+  // Whenever the effective product changes (initial open, post-create
+  // bump, prop-change), reload its retail variants list.
+  useEffect(() => {
+    if (effectiveProductId && activeModule === "retail") {
+      listVariants(effectiveProductId, true).then(setVariants);
+    } else {
+      setVariants([]);
+    }
+  }, [effectiveProductId, activeModule]);
 
   useEffect(() => {
     if (open) {
@@ -81,7 +99,6 @@ export function ProductPanel({ open, onClose, productId, onSaved }: Props) {
             is_controlled: pp.is_controlled === 1,
           });
         });
-        if (activeModule === "retail") listVariants(productId, true).then(setVariants);
       } else {
         setForm({
           name: "", sku: "", barcode: "", category_id: "", unit: "pcs",
@@ -147,9 +164,20 @@ export function ProductPanel({ open, onClose, productId, onSaved }: Props) {
           cold_chain: 0,
         });
       }
-      toast.success(isEdit ? "Product updated" : "Product created");
+      const wasCreate = !isEdit;
       onSaved();
-      onClose();
+      if (wasCreate && activeModule === "retail" && savedId) {
+        // Switch into edit mode in-place so the user can immediately add
+        // variants / packs without reopening the panel.
+        setEffectiveProductId(savedId);
+        setTab("variants");
+        toast.success("Product created — add sizes, shades, or pack barcodes now.", {
+          action: { label: "Done", onClick: onClose },
+        });
+      } else {
+        toast.success(isEdit ? "Product updated" : "Product created");
+        onClose();
+      }
     } catch (e) {
       toast.error(String(e));
     } finally {
@@ -170,10 +198,10 @@ export function ProductPanel({ open, onClose, productId, onSaved }: Props) {
               <TabsTrigger value="general">General</TabsTrigger>
               {activeModule === "dawa" && <TabsTrigger value="pharmacy">Pharmacy</TabsTrigger>}
               {activeModule === "retail" && <TabsTrigger value="retail">Retail</TabsTrigger>}
-              {activeModule === "retail" && isEdit && (
-                <TabsTrigger value="variants">Variants {variants.length > 0 && `(${variants.length})`}</TabsTrigger>
+              {activeModule === "retail" && (
+                <TabsTrigger value="variants">Variants {isEdit && variants.length > 0 ? `(${variants.length})` : ""}</TabsTrigger>
               )}
-              {activeModule === "retail" && isEdit && (
+              {activeModule === "retail" && (
                 <TabsTrigger value="uoms">Cartons / Packs</TabsTrigger>
               )}
             </TabsList>
@@ -330,19 +358,39 @@ export function ProductPanel({ open, onClose, productId, onSaved }: Props) {
               </TabsPanel>
             )}
 
-            {activeModule === "retail" && isEdit && (
+            {activeModule === "retail" && (
               <TabsPanel value="variants" className="mt-3">
-                <VariantsManager
-                  productId={productId!}
-                  variants={variants}
-                  onChange={() => listVariants(productId!, true).then(setVariants)}
-                />
+                {isEdit && effectiveProductId ? (
+                  <VariantsManager
+                    productId={effectiveProductId}
+                    variants={variants}
+                    onChange={() => listVariants(effectiveProductId, true).then(setVariants)}
+                  />
+                ) : (
+                  <div className="rounded-lg border border-dashed border-border bg-muted/20 p-6 text-center">
+                    <Layers className="h-6 w-6 mx-auto text-muted-foreground" />
+                    <h4 className="mt-3 text-sm font-medium">Save the product first</h4>
+                    <p className="mt-1.5 text-[12px] text-muted-foreground max-w-xs mx-auto leading-relaxed">
+                      Variants (sizes, shades, colours) are stored per product. Fill in the Basics tab and click <strong>Create</strong> — the variants editor opens automatically.
+                    </p>
+                  </div>
+                )}
               </TabsPanel>
             )}
 
-            {activeModule === "retail" && isEdit && (
+            {activeModule === "retail" && (
               <TabsPanel value="uoms" className="mt-3">
-                <UomsManager productId={productId!} />
+                {isEdit && effectiveProductId ? (
+                  <UomsManager productId={effectiveProductId} />
+                ) : (
+                  <div className="rounded-lg border border-dashed border-border bg-muted/20 p-6 text-center">
+                    <Package className="h-6 w-6 mx-auto text-muted-foreground" />
+                    <h4 className="mt-3 text-sm font-medium">Save the product first</h4>
+                    <p className="mt-1.5 text-[12px] text-muted-foreground max-w-xs mx-auto leading-relaxed">
+                      Pack / carton barcodes, weights, and per-pack pricing are stored per product. Click <strong>Create</strong> first — then come back to add packs.
+                    </p>
+                  </div>
+                )}
               </TabsPanel>
             )}
           </Tabs>
