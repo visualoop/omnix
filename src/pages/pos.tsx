@@ -829,60 +829,66 @@ function CartPanel({
       </div>
 
       {/* Totals */}
-      <div className="border-t border-border px-3 py-2 space-y-1 bg-muted/50">
+      <div className="border-t border-border px-4 py-3 space-y-1.5 bg-muted/30">
         <Row label="Subtotal" value={subtotal.toFixed(2)} />
         {discount > 0 && (
           <Row
             label={`Discount${discountType === "percent" ? ` (${discount}%)` : ""}`}
             value={`-${cartDiscountAmount.toFixed(2)}`}
-            color="text-emerald-700"
+            color="text-emerald-700 dark:text-emerald-400"
           />
         )}
         {taxTotal > 0 && <Row label="Tax" value={taxTotal.toFixed(2)} />}
-        {serviceChargeAmount > 0 && <Row label="Service charge" value={`+${serviceChargeAmount.toFixed(2)}`} color="text-rose-700" />}
+        {serviceChargeAmount > 0 && (
+          <Row label="Service charge" value={`+${serviceChargeAmount.toFixed(2)}`} color="text-rose-700 dark:text-rose-400" />
+        )}
         {tip > 0 && (
           <button
             onClick={onTip}
-            className="flex justify-between text-xs text-rose-700 w-full hover:bg-rose-50 rounded px-1 -mx-1"
+            className="flex justify-between text-xs text-rose-700 dark:text-rose-400 w-full hover:bg-rose-500/10 rounded px-1.5 -mx-1.5 py-0.5 transition"
           >
-            <span className="flex items-center gap-1">
+            <span className="flex items-center gap-1.5">
               <Heart className="h-3 w-3 fill-rose-500 text-rose-500" />
               Tip
             </span>
             <span className="font-mono tabular-nums">+{tip.toFixed(2)}</span>
           </button>
         )}
-        <div className={`flex justify-between text-base font-bold pt-1.5 border-t border-border ${accent.accentText}`}>
-          <span>Total</span>
-          <span className="font-mono tabular-nums">{KES(grandTotal)}</span>
+        <div className={`flex justify-between items-baseline pt-2 border-t border-border/60`}>
+          <span className="text-[12px] font-medium uppercase tracking-wider text-muted-foreground">Total</span>
+          <span className={`font-mono tabular-nums text-[22px] font-semibold leading-none ${accent.accentText}`}>
+            {KES(grandTotal)}
+          </span>
         </div>
       </div>
 
       {/* Actions */}
-      <div className="px-3 py-2 border-t border-border space-y-1.5 bg-card">
+      <div className="px-4 py-3 border-t border-border space-y-2 bg-background">
         <Button
           variant="outline"
-          className="w-full h-8 text-xs"
+          className="w-full h-9 text-xs justify-start"
           onClick={onDiscount}
           disabled={items.length === 0}
         >
-          <Tag className="h-3 w-3 mr-1.5" />
+          <Tag className="h-3.5 w-3.5 mr-2" />
           {discount > 0
             ? `Discount: ${discountType === "percent" ? discount + "%" : "KES " + discount}`
-            : "Add Discount"}
-          <kbd className="text-[9px] opacity-60 ml-auto">F3</kbd>
+            : "Add discount"}
+          <kbd className="text-[10px] opacity-60 ml-auto font-mono">F3</kbd>
         </Button>
         <Button
-          className={`w-full h-12 text-base font-bold text-white ${accent.pay} shadow-md`}
+          className={`w-full h-14 text-[16px] font-semibold text-white ${accent.pay} shadow-lg shadow-${accent.shadow}/20 transition-all hover:scale-[1.01] active:scale-[0.99]`}
           disabled={items.length === 0 || !shift}
           onClick={onPay}
         >
-          <Zap className="h-4 w-4 mr-1.5" />
+          <Zap className="h-5 w-5 mr-2" />
           Pay {grandTotal > 0 && KES(grandTotal)}
-          <kbd className="text-[10px] opacity-80 ml-auto">F4</kbd>
+          <kbd className="text-[11px] opacity-80 ml-auto font-mono">F4</kbd>
         </Button>
         {!shift && items.length > 0 && (
-          <p className="text-[10px] text-rose-600 text-center">Open a cash shift before completing sales</p>
+          <p className="text-[11px] text-rose-600 dark:text-rose-400 text-center font-medium">
+            Open a cash shift before completing sales
+          </p>
         )}
       </div>
     </>
@@ -897,56 +903,89 @@ function CartLine({ idx, item, onRemove, onQty, onSub, showSubstitute }: {
   onSub: () => void;
   showSubstitute?: boolean;
 }) {
+  // Live stock_qty isn't on the item yet — that's wired in v0.5.x's
+  // realtime poll. For now display the quantity progress.
+  const lineTotal = Math.max(0, item.unit_price * item.quantity - (item.discount ?? 0));
   return (
-    <div className="px-3 py-1.5 border-b border-border/50 hover:bg-muted/50 transition group">
-      <div className="flex items-start gap-1.5">
-        <span className="text-[10px] text-stone-400 font-mono pt-0.5 select-none">{idx}</span>
-        <div className="flex-1 min-w-0">
-          <div className="flex items-start justify-between">
-            <div className="text-[12px] font-medium leading-tight pr-2 line-clamp-2">{item.name}</div>
-            <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition">
-              {showSubstitute && (
-                <button
-                  onClick={onSub}
-                  className="text-muted-foreground hover:text-violet-600 p-0.5"
-                  title="Find substitute"
-                >
-                  <Pill className="h-3 w-3" />
-                </button>
-              )}
-              <button
-                onClick={onRemove}
-                className="text-muted-foreground hover:text-rose-600 p-0.5"
-                title="Remove"
-              >
-                <Trash2 className="h-3 w-3" />
-              </button>
-            </div>
+    <div
+      className="group relative flex items-stretch gap-3 px-4 py-3 border-b border-border/40 transition-colors hover:bg-muted/30 animate-in fade-in slide-in-from-right-1 duration-150"
+    >
+      {/* Index badge */}
+      <span className="font-mono text-[10px] tabular-nums text-muted-foreground/50 select-none pt-0.5">
+        {String(idx).padStart(2, "0")}
+      </span>
+
+      {/* Name + meta */}
+      <div className="flex-1 min-w-0">
+        <div className="flex items-start justify-between gap-2">
+          <div className="text-[13.5px] font-medium leading-snug text-foreground line-clamp-2">
+            {item.name}
           </div>
-          <div className="flex items-center justify-between mt-1">
-            <div className="flex items-center gap-0.5">
+          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition shrink-0">
+            {showSubstitute && (
               <button
-                onClick={() => onQty(item.quantity - 1)}
-                className="h-5 w-5 rounded bg-muted hover:bg-muted/80 flex items-center justify-center transition"
+                onClick={onSub}
+                className="size-6 grid place-items-center rounded text-muted-foreground hover:bg-violet-500/10 hover:text-violet-600 transition"
+                title="Find substitute"
               >
-                <Minus className="h-2.5 w-2.5" />
+                <Pill className="h-3 w-3" />
               </button>
-              <span className="text-[12px] font-mono font-semibold w-8 text-center tabular-nums">
-                {item.quantity}
+            )}
+            <button
+              onClick={onRemove}
+              className="size-6 grid place-items-center rounded text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition"
+              title="Remove from cart"
+            >
+              <Trash2 className="h-3 w-3" />
+            </button>
+          </div>
+        </div>
+
+        {/* Tag row — discount + tax */}
+        {(item.discount > 0 || item.tax_rate > 0) && (
+          <div className="flex items-center gap-1 mt-1">
+            {item.discount > 0 && (
+              <span className="inline-flex items-center gap-0.5 rounded-sm bg-emerald-500/10 px-1.5 py-px text-[10px] font-medium text-emerald-700 dark:text-emerald-400">
+                −{item.discount.toFixed(0)}
               </span>
-              <button
-                onClick={() => onQty(item.quantity + 1)}
-                className="h-5 w-5 rounded bg-muted hover:bg-muted/80 flex items-center justify-center transition"
-              >
-                <Plus className="h-2.5 w-2.5" />
-              </button>
-              <span className="text-[10px] text-muted-foreground ml-1.5 font-mono">
-                @ {item.unit_price.toFixed(0)}
+            )}
+            {item.tax_rate > 0 && (
+              <span className="text-[10px] text-muted-foreground font-mono">
+                {item.tax_rate}%
               </span>
-            </div>
-            <span className="text-[12px] font-mono font-bold tabular-nums">
-              {(item.unit_price * item.quantity).toFixed(0)}
+            )}
+          </div>
+        )}
+
+        {/* Qty stepper + per-unit + line total */}
+        <div className="flex items-center justify-between mt-2">
+          <div className="inline-flex items-center rounded-md border border-border bg-background overflow-hidden">
+            <button
+              onClick={() => onQty(item.quantity - 1)}
+              className="size-7 grid place-items-center text-muted-foreground hover:bg-muted hover:text-foreground transition active:scale-95"
+              aria-label="Decrease quantity"
+            >
+              <Minus className="h-3 w-3" />
+            </button>
+            <span className="px-2 min-w-[2.5rem] text-center font-mono text-[13px] font-semibold tabular-nums">
+              {item.quantity}
             </span>
+            <button
+              onClick={() => onQty(item.quantity + 1)}
+              className="size-7 grid place-items-center text-muted-foreground hover:bg-muted hover:text-foreground transition active:scale-95"
+              aria-label="Increase quantity"
+            >
+              <Plus className="h-3 w-3" />
+            </button>
+          </div>
+
+          <div className="text-right">
+            <div className="font-mono text-[14px] font-semibold tabular-nums leading-none text-foreground">
+              {lineTotal.toFixed(0)}
+            </div>
+            <div className="font-mono text-[10px] tabular-nums text-muted-foreground mt-0.5">
+              {item.quantity} × {item.unit_price.toFixed(0)}
+            </div>
           </div>
         </div>
       </div>

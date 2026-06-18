@@ -2,7 +2,8 @@ import { PLACEHOLDERS } from "@/lib/variant-placeholders";
 import { VARIANT } from "@/lib/variant";
 import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { Plus, Search, Package, Upload, Edit3, Zap, PackagePlus, Layers } from "lucide-react";
+import { Plus, Search, Package, Upload, Edit3, Zap, PackagePlus, Layers, Download } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -76,6 +77,17 @@ export function InventoryPage() {
             </Button>
             <Button size="sm" variant="outline" onClick={() => navigate("/inventory/quick-add")}>
               <Zap className="h-4 w-4 mr-1" /> Quick Add
+            </Button>
+            <Button size="sm" variant="outline" onClick={async () => {
+              try {
+                const m = await import("@/services/products-export");
+                const { rowCount } = await m.exportProductsCsv();
+                toast.success(`Exported ${rowCount} product${rowCount === 1 ? "" : "s"}`);
+              } catch (e) {
+                toast.error(`Export failed: ${e}`);
+              }
+            }}>
+              <Download className="h-4 w-4 mr-1" /> Export CSV
             </Button>
             <Button size="sm" variant="outline" onClick={() => navigate("/inventory/import")}>
               <Upload className="h-4 w-4 mr-1" /> Import CSV
