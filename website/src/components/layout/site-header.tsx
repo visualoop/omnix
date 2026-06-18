@@ -14,7 +14,8 @@ import { Button } from '@/components/ui/button'
 import { BrandWordmark } from '@/components/brand-logo'
 
 interface NavItem {
-  label: string
+  /** Translation key under the 'nav' namespace, e.g. 'pricing' → t('pricing') */
+  labelKey: string
   href: string
   /** When set, this entry expands to a dropdown of children. */
   children?: Array<{ label: string; href: string; description?: string }>
@@ -22,7 +23,7 @@ interface NavItem {
 
 const NAV: readonly NavItem[] = [
   {
-    label: 'Trades',
+    labelKey: 'trades',
     href: '/modules',
     children: [
       { label: 'Omnix Pro', href: '/pro', description: 'All four trades — multi-trade businesses' },
@@ -32,11 +33,11 @@ const NAV: readonly NavItem[] = [
       { label: 'Omnix Hardware', href: '/hardware', description: 'Hardware stores, contractors' },
     ],
   },
-  { label: 'Pricing', href: '/pricing' },
-  { label: 'AI', href: '/ai' },
-  { label: 'Downloads', href: '/downloads' },
-  { label: 'Changelog', href: '/changelog' },
-  { label: 'Docs', href: '/docs' },
+  { labelKey: 'pricing', href: '/pricing' },
+  { labelKey: 'ai', href: '/ai' },
+  { labelKey: 'downloads', href: '/downloads' },
+  { labelKey: 'changelog', href: '/changelog' },
+  { labelKey: 'docs', href: '/docs' },
 ] as const
 
 /**
@@ -47,6 +48,7 @@ const NAV: readonly NavItem[] = [
  */
 export function SiteHeader({ isAuthed = false }: { isAuthed?: boolean }) {
   const pathname = usePathname()
+  const t = useTranslations('nav')
   const [scrolled, setScrolled] = React.useState(false)
   const [open, setOpen] = React.useState(false)
   const [tradesOpen, setTradesOpen] = React.useState(false)
@@ -119,7 +121,7 @@ export function SiteHeader({ isAuthed = false }: { isAuthed?: boolean }) {
                         : 'text-[var(--color-fg-muted)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-fg)]',
                     )}
                   >
-                    {item.label}
+                    {t(item.labelKey)}
                     <Icon.ChevronDown
                       className={cn('size-3 transition-transform', tradesOpen ? 'rotate-180' : '')}
                       weight="bold"
@@ -174,7 +176,7 @@ export function SiteHeader({ isAuthed = false }: { isAuthed?: boolean }) {
                     : 'text-[var(--color-fg-muted)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-fg)]',
                 )}
               >
-                {item.label}
+                {t(item.labelKey)}
               </Link>
             )
           })}
@@ -201,10 +203,10 @@ export function SiteHeader({ isAuthed = false }: { isAuthed?: boolean }) {
                 href="/login"
                 className="font-[family-name:var(--font-ui)] hidden text-[13px] font-medium text-[var(--color-fg-muted)] transition-colors hover:text-[var(--color-fg)] sm:inline"
               >
-                Sign in
+                {t('signIn')}
               </Link>
               <Button asChild size="sm" className="hidden sm:inline-flex">
-                <Link href="/signup">Start free trial</Link>
+                <Link href="/signup">{t('startTrial')}</Link>
               </Button>
             </>
           )}
@@ -230,7 +232,7 @@ export function SiteHeader({ isAuthed = false }: { isAuthed?: boolean }) {
                 {item.children ? (
                   <>
                     <div className="font-[family-name:var(--font-ui)] mt-2 px-3 pb-1 text-[10px] font-semibold uppercase tracking-[0.22em] text-[var(--color-fg-subtle)]">
-                      {item.label}
+                      {t(item.labelKey)}
                     </div>
                     {item.children.map((c) => (
                       <Link
@@ -247,7 +249,7 @@ export function SiteHeader({ isAuthed = false }: { isAuthed?: boolean }) {
                     href={item.href}
                     className="font-[family-name:var(--font-ui)] rounded-md px-3 py-3 text-[15px] font-medium text-[var(--color-fg)] hover:bg-[var(--color-surface-hover)]"
                   >
-                    {item.label}
+                    {t(item.labelKey)}
                   </Link>
                 )}
               </React.Fragment>
@@ -260,10 +262,10 @@ export function SiteHeader({ isAuthed = false }: { isAuthed?: boolean }) {
               ) : (
                 <>
                   <Button asChild variant="outline">
-                    <Link href="/login">Sign in</Link>
+                    <Link href="/login">{t('signIn')}</Link>
                   </Button>
                   <Button asChild>
-                    <Link href="/signup">Start free trial</Link>
+                    <Link href="/signup">{t('startTrial')}</Link>
                   </Button>
                 </>
               )}

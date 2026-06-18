@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { getPayload } from 'payload'
+import { getTranslations } from 'next-intl/server'
 import config from '@/payload.config'
 import { Icon } from '@/components/icons'
 import { BRAND_NAME } from '@/lib/brand'
@@ -64,7 +65,12 @@ function pickLinks(arr: unknown, fallback: { label: string; href: string }[]): {
     .filter((l) => l.label && l.href)
 }
 
-async function getFooterContent(): Promise<{
+async function getFooterContent(headings: {
+  product: string
+  trades: string
+  company: string
+  legal: string
+}): Promise<{
   columns: FooterColumn[]
   branding: string | null
   copyrightLine: string | null
@@ -79,19 +85,19 @@ async function getFooterContent(): Promise<{
 
     const columns: FooterColumn[] = [
       {
-        title: (g.productHeading as string | undefined) ?? 'Product',
+        title: (g.productHeading as string | undefined) || headings.product,
         links: pickLinks(g.productLinks, FALLBACK_COLUMNS[0].links),
       },
       {
-        title: (g.tradesHeading as string | undefined) ?? 'Trades',
+        title: (g.tradesHeading as string | undefined) || headings.trades,
         links: pickLinks(g.tradeLinks, FALLBACK_COLUMNS[1].links),
       },
       {
-        title: (g.companyHeading as string | undefined) ?? 'Company',
+        title: (g.companyHeading as string | undefined) || headings.company,
         links: pickLinks(g.companyLinks, FALLBACK_COLUMNS[3].links),
       },
       {
-        title: (g.legalHeading as string | undefined) ?? 'Legal',
+        title: (g.legalHeading as string | undefined) || headings.legal,
         links: pickLinks(g.legalLinks, [
           { label: 'Privacy', href: '/privacy' },
           { label: 'Terms', href: '/terms' },
@@ -107,7 +113,12 @@ async function getFooterContent(): Promise<{
     }
   } catch {
     return {
-      columns: FALLBACK_COLUMNS,
+      columns: [
+        { ...FALLBACK_COLUMNS[0], title: headings.product },
+        { ...FALLBACK_COLUMNS[1], title: headings.trades },
+        { ...FALLBACK_COLUMNS[2], title: headings.company },
+        { ...FALLBACK_COLUMNS[3], title: headings.legal },
+      ],
       branding: null,
       copyrightLine: null,
     }
@@ -115,13 +126,21 @@ async function getFooterContent(): Promise<{
 }
 
 export async function SiteFooter() {
-  const [settings, footer] = await Promise.all([getSiteSettings(), getFooterContent()])
+  const [settings, t, tFoot] = await Promise.all([
+    getSiteSettings(),
+    getTranslations('footer'),
+    getTranslations('footer.headings'),
+  ])
+  const footer = await getFooterContent({
+    product: tFoot('product'),
+    trades: tFoot('trades'),
+    company: tFoot('company'),
+    legal: tFoot('legal'),
+  })
 
   const year = new Date().getFullYear()
   const copyright = footer.copyrightLine ?? `© ${year} Omnix Software Ltd.`
-  const branding =
-    footer.branding ??
-    'Built in Nairobi for Kenyan businesses. Works offline. Pay once, use forever.'
+  const branding = footer.branding ?? t('tagline')
 
   return (
     <footer className="border-t border-[var(--color-border)] bg-[var(--color-bg)]">
@@ -202,7 +221,7 @@ export async function SiteFooter() {
             <span className="hidden sm:inline">·</span>
             <span className="inline-flex items-center gap-1.5">
               <span className="size-1.5 rounded-full bg-[var(--color-positive)]" />
-              All systems operational
+              {t('systemsOperational')}
             </span>
           </div>
           <div className="flex items-center gap-1">
