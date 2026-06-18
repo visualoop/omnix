@@ -94,7 +94,7 @@ function useModuleAccent() {
   };
 }
 
-export function POSPage() {
+export function POSSalePage() {
   const navigate = useNavigate();
   const accent = useModuleAccent();
   const countryCode = useCountry((s) => s.code);
@@ -770,34 +770,38 @@ function ProductCard({ product, onClick }: {
     <button
       onClick={onClick}
       disabled={oos}
-      className={`group relative flex flex-col text-left rounded-lg border-2 bg-card p-2.5 transition-all ${
+      className={`group relative flex flex-col text-left rounded-xl border-2 bg-card p-3 transition-all antialiased ${
         oos
           ? "opacity-40 cursor-not-allowed border-dashed border-rose-500/40"
-          : `${cc.border} hover:border-current ${cc.fg} hover:shadow-md hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.97]`
+          : `${cc.border} hover:border-current ${cc.fg} hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.97]`
       }`}
+      style={{ minHeight: 96 }}
     >
       {/* Category dot top-left */}
-      <span className={`absolute top-2 left-2 size-1.5 rounded-full ${cc.dot}`} />
+      <span className={`absolute top-2.5 left-2.5 size-2 rounded-full ${cc.dot}`} />
 
       {/* Stock pill top-right — louder for low-stock + out-of-stock */}
       <span
-        className={`absolute top-1.5 right-1.5 px-1.5 py-0.5 rounded-md text-[10px] font-mono font-bold tabular-nums uppercase tracking-wider ${sc.bg} ${sc.text} ${
+        className={`absolute top-2 right-2 px-1.5 py-0.5 rounded-md text-[10px] font-mono font-bold tabular-nums tracking-wider ${sc.bg} ${sc.text} ${
           lowStock ? "ring-1 ring-amber-500/30" : ""
         } ${oos ? "ring-1 ring-rose-500/40" : ""}`}
       >
         {oos ? "OUT" : stock}
       </span>
 
-      <div className="mt-4 mb-2">
-        <div className="text-[12.5px] font-medium text-foreground line-clamp-2 leading-snug">
+      {/* Product name — primary readable surface */}
+      <div className="mt-5 mb-2.5">
+        <div className="text-[13.5px] font-semibold text-foreground line-clamp-2 leading-[1.25] tracking-[-0.005em]">
           {product.name}
         </div>
       </div>
-      <div className="mt-auto flex items-end justify-between gap-1">
-        <span className={`text-[9px] uppercase tracking-wider truncate ${cc.fg} opacity-80`}>
-          {(product as any).category_name || "—"}
+
+      {/* Footer: category caption + price */}
+      <div className="mt-auto flex items-end justify-between gap-2">
+        <span className={`text-[10px] uppercase tracking-[0.06em] truncate ${cc.fg} opacity-70`}>
+          {(product as any).category_name || ""}
         </span>
-        <span className="font-mono font-semibold text-[15px] tabular-nums leading-none text-foreground">
+        <span className="font-mono font-bold text-[16px] tabular-nums leading-none text-foreground">
           {product.selling_price.toFixed(0)}
         </span>
       </div>

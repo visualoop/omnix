@@ -187,7 +187,7 @@ export function ProductPanel({ open, onClose, productId, onSaved }: Props) {
 
   return (
     <Sheet open={open} onOpenChange={(v) => !v && onClose()}>
-      <SheetContent className="w-[480px] sm:w-[520px]">
+      <SheetContent className="w-full sm:w-[640px] md:w-[720px] lg:w-[800px] sm:max-w-[800px]">
         <SheetHeader>
           <SheetTitle>{isEdit ? "Edit Product" : "New Product"}</SheetTitle>
         </SheetHeader>
@@ -426,6 +426,20 @@ function VariantsManager({ productId, variants, onChange }: {
   const [adding, setAdding] = useState(false);
   const [editForm, setEditForm] = useState<Partial<ProductVariant>>({});
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [variantSearch, setVariantSearch] = useState("");
+
+  const filteredVariants = variantSearch.trim()
+    ? variants.filter((v) => {
+        const q = variantSearch.toLowerCase();
+        return (
+          v.variant_sku?.toLowerCase().includes(q) ||
+          v.variant_name?.toLowerCase().includes(q) ||
+          v.color?.toLowerCase().includes(q) ||
+          v.size?.toLowerCase().includes(q) ||
+          v.shade?.toLowerCase().includes(q)
+        );
+      })
+    : variants;
 
   const startAdd = () => {
     setEditingId(null);
@@ -562,7 +576,7 @@ function VariantsManager({ productId, variants, onChange }: {
 
   return (
     <div className="space-y-3">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="text-xs text-muted-foreground">
           {variants.length === 0
             ? "No variants. Add color, size, shade combinations to track stock per option."
@@ -573,7 +587,21 @@ function VariantsManager({ productId, variants, onChange }: {
         </Button>
       </div>
 
-      {variants.length > 0 && (
+      {variants.length > 5 && (
+        <div className="relative">
+          <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.35-4.35"/></svg>
+          </span>
+          <Input
+            value={variantSearch}
+            onChange={(e) => setVariantSearch(e.target.value)}
+            placeholder="Search variants by SKU, name, color, size, shade…"
+            className="pl-9 h-8 text-[12px]"
+          />
+        </div>
+      )}
+
+      {filteredVariants.length > 0 && (
         <div className="border border-border rounded-md overflow-hidden">
           <table className="w-full text-xs">
             <thead className="bg-muted/30 border-b border-border">
@@ -587,7 +615,7 @@ function VariantsManager({ productId, variants, onChange }: {
               </tr>
             </thead>
             <tbody>
-              {variants.map((v) => (
+              {filteredVariants.map((v) => (
                 <tr key={v.id} className={`border-b border-border/60 ${v.active === 0 ? "opacity-50" : ""}`}>
                   <td className="px-2 py-1.5 font-mono">{v.variant_sku}</td>
                   <td className="px-2 py-1.5">{v.variant_name}</td>

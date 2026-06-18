@@ -564,7 +564,7 @@ function LaybyDetailSheet({ laybyId, onClose, onChange }: {
                       source: { type: "layby", id: layby.id, label: `LB ${checkout.laybyNumber} — ${checkout.customerName}` },
                     });
                     toast.success("Layby loaded into POS cart");
-                    navigate("/pos");
+                    navigate("/pos/sale");
                   } catch (e) { toast.error(String(e)); }
                 }}>
                   <ShoppingCart className="h-3.5 w-3.5 mr-1.5" /> Checkout via POS

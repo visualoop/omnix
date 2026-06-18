@@ -137,7 +137,7 @@ export function HardwareQuotationsPage() {
         source: { type: "hardware_quote", id: payload.quote.id, label },
       });
       toast.success(`Quote ${payload.quote.quote_number} loaded in POS`);
-      navigate("/pos");
+      navigate("/pos/sale");
     } catch (e) {
       toast.error(String(e));
     } finally {

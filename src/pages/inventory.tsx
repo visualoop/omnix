@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Combobox } from "@/components/ui/combobox";
 import { getProducts, getCategories, type Product, type Category } from "@/services/inventory";
 import { ProductPanel } from "@/components/inventory/product-panel";
 import { BulkEditDialog } from "@/components/inventory/bulk-edit-dialog";
@@ -18,6 +19,7 @@ export function InventoryPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [search, setSearch] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState<string>("");
   const [panelOpen, setPanelOpen] = useState(false);
   const [bulkOpen, setBulkOpen] = useState(false);
   const [receiveOpen, setReceiveOpen] = useState(false);
@@ -99,15 +101,41 @@ export function InventoryPage() {
         </div>
       </div>
 
-      {/* Search */}
-      <div className="relative max-w-sm">
-        <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-        <Input
-          placeholder={PLACEHOLDERS.inventorySearch}
-          className="pl-9"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-        />
+      {/* Search + filter */}
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="relative max-w-sm flex-1 min-w-[240px]">
+          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder={PLACEHOLDERS.inventorySearch}
+            className="pl-9"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+        </div>
+        <div className="w-56">
+          <Combobox
+            value={categoryFilter}
+            onChange={setCategoryFilter}
+            options={[
+              { value: "", label: "All categories", hint: String(products.length) },
+              ...categories.map((c) => ({
+                value: c.id,
+                label: c.name,
+                hint: String(products.filter((p) => p.category_id === c.id).length),
+              })),
+            ]}
+            placeholder="Filter by category"
+            searchPlaceholder="Search categories…"
+          />
+        </div>
+        {categoryFilter && (
+          <button
+            onClick={() => setCategoryFilter("")}
+            className="text-[12px] font-medium text-muted-foreground hover:text-foreground"
+          >
+            Clear filter
+          </button>
+        )}
       </div>
 
       {/* Table */}
@@ -135,7 +163,9 @@ export function InventoryPage() {
               </tr>
             </thead>
             <tbody>
-              {products.map((p) => (
+              {products
+                .filter((p) => !categoryFilter || p.category_id === categoryFilter)
+                .map((p) => (
                 <tr
                   key={p.id}
                   className="border-b border-border last:border-0 hover:bg-muted/30 transition-colors"
@@ -156,8 +186,15 @@ export function InventoryPage() {
                       )}
                     </div>
                   </td>
-                  <td className="px-4 py-2.5 text-muted-foreground">
-                    {p.category_name || "—"}
+                  <td className="px-4 py-2.5">
+                    {p.category_name ? (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-foreground/[0.05] px-2 py-0.5 text-[11px] font-medium text-foreground/80">
+                        <span className="size-1.5 rounded-full bg-emerald-500" />
+                        {p.category_name}
+                      </span>
+                    ) : (
+                      <span className="text-[11px] text-muted-foreground italic">No category</span>
+                    )}
                   </td>
                   <td className="px-4 py-2.5 text-right font-mono">
                     {p.stock_qty}

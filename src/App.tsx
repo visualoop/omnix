@@ -13,7 +13,8 @@ import { DashboardPage } from "@/pages/dashboard";
 import { InventoryPage } from "@/pages/inventory";
 import { CategoriesPage } from "@/pages/categories";
 import { StockPage } from "@/pages/stock";
-import { POSPage } from "@/pages/pos";
+import { POSSalePage } from "@/pages/pos-sale";
+import { POSOverviewPage } from "@/pages/pos-overview";
 import { PharmacyPage } from "@/pages/pharmacy";
 import { ControlledRegisterPage } from "@/pages/controlled-register";
 import { ColdChainPage } from "@/pages/cold-chain";
@@ -171,7 +172,8 @@ function AppContent() {
       <Routes>
         <Route element={<AppShell />}>
           <Route index element={<DashboardPage />} />
-          <Route path="/pos" element={<RequireRole permission="pos.use"><POSPage /></RequireRole>} />
+          <Route path="/pos" element={<RequireRole permission="pos.use"><POSOverviewPage /></RequireRole>} />
+          <Route path="/pos/sale" element={<RequireRole permission="pos.use"><POSSalePage /></RequireRole>} />
           <Route path="/inventory" element={<RequireRole permission="inventory.view"><InventoryPage /></RequireRole>} />
           <Route path="/inventory/categories" element={<RequireRole permission="inventory.edit"><CategoriesPage /></RequireRole>} />
           <Route path="/inventory/stock" element={<RequireRole permission="inventory.view"><StockPage /></RequireRole>} />

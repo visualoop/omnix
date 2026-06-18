@@ -347,7 +347,7 @@ export function HospitalityOrdersPage() {
         source: { type: "hospitality_order", id: selected, label },
       });
       toast.success("Order loaded in POS checkout");
-      navigate("/pos");
+      navigate("/pos/sale");
     } catch (e) { toast.error(String(e)); } finally { setCheckingOut(false); }
   };
 

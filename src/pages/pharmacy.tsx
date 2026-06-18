@@ -45,7 +45,7 @@ export function PharmacyPage() {
         source: { type: "prescription", id: rx.id, label: `Rx #${rx.rx_number} — ${rx.patient_name}` },
       });
       toast.success(`Prescription #${rx.rx_number} loaded into POS cart`);
-      navigate("/pos");
+      navigate("/pos/sale");
     } catch (e) {
       toast.error(String(e));
     } finally {

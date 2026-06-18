@@ -27,6 +27,12 @@ export function AppShell() {
   const [routeKey, setRouteKey] = useState(location.pathname);
   const [transitionClass, setTransitionClass] = useState("animate-in fade-in-0 duration-150");
   const isSettingsRoute = location.pathname.startsWith("/settings");
+  // Fullscreen-canvas routes — POS sale interface, customer display.
+  // Sidebar + topbar hide so cashier has the entire screen for selling.
+  const isFullscreen =
+    location.pathname === "/pos/sale" ||
+    location.pathname.startsWith("/pos/sale/") ||
+    location.pathname.startsWith("/customer-display");
 
   useAutoCloudBackup();
 
@@ -50,10 +56,10 @@ export function AppShell() {
 
   return (
     <div className="flex h-screen w-screen overflow-hidden bg-background text-foreground">
-      {!isSettingsRoute && <Sidebar onCommandOpen={openCmd} />}
+      {!isSettingsRoute && !isFullscreen && <Sidebar onCommandOpen={openCmd} />}
       <div className="flex flex-col flex-1 overflow-hidden">
-        <Topbar />
-        <main className="flex-1 overflow-auto p-6">
+        {!isFullscreen && <Topbar />}
+        <main className={isFullscreen ? "flex-1 overflow-auto" : "flex-1 overflow-auto p-6"}>
           <div key={routeKey} className={transitionClass}>
             <Outlet />
           </div>

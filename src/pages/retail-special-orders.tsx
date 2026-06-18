@@ -150,7 +150,7 @@ export function SpecialOrdersPage() {
                                       source: { type: "special_order", id: o.id, label: `SO — ${checkout.customerName || "Special Order"}` },
                                     });
                                     toast.success("Special order loaded into POS cart");
-                                    navigate("/pos");
+                                    navigate("/pos/sale");
                                   } catch (e) { toast.error(String(e)); }
                                 }}>
                                   <ShoppingCart className="h-3 w-3 mr-1" /> Fulfill via POS
