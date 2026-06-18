@@ -58,9 +58,16 @@ export const FONT_VARIABLES = `${fraunces.variable} ${geist.variable} ${jakarta.
  *     </RootShell>
  *   )
  */
-export function RootShell({ children }: { children: React.ReactNode }) {
+export function RootShell({
+  children,
+  locale = 'en',
+}: {
+  children: React.ReactNode
+  locale?: string
+}) {
+  const dir = locale === 'ar' ? 'rtl' : 'ltr'
   return (
-    <html lang="en" suppressHydrationWarning className={FONT_VARIABLES}>
+    <html lang={locale} dir={dir} suppressHydrationWarning className={FONT_VARIABLES}>
       <body className="bg-[var(--color-bg)] font-sans text-[var(--color-fg)] antialiased">
         {children}
       </body>

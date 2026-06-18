@@ -79,7 +79,7 @@ export default async function FrontendLayout({
 
   return (
     <NextIntlClientProvider locale={locale} messages={messages}>
-      <RootShell>
+      <RootShell locale={locale}>
         <SiteHeader isAuthed={isAuthed} />
         <main>{children}</main>
         <SiteFooter />
