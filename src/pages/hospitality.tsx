@@ -32,8 +32,8 @@ import { confirm } from "@/components/ui/confirm-dialog";
 import { MenuItemDialog, type MenuItemFormValues } from "@/components/hospitality/menu-item-dialog";
 import { CompactFormDialog } from "@/components/hospitality/compact-form-dialog";
 import { useNavigate } from "react-router-dom";
+import { money as KES } from "@/lib/money";
 
-const KES = (n: number) => "KES " + n.toLocaleString("en-KE", { minimumFractionDigits: 0, maximumFractionDigits: 0 });
 
 /** Hospitality primary-action button colour (matches the rose dashboard/POS accent). */
 const BRAND_BTN = "bg-rose-700 hover:bg-rose-800 text-white";

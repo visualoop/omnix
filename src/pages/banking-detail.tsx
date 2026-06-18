@@ -22,8 +22,8 @@ import {
 } from "@/services/banking";
 import { useAuthStore } from "@/stores/auth";
 import { toast } from "sonner";
+import { money as KES } from "@/lib/money";
 
-const KES = (n: number) => "KES " + n.toLocaleString("en-KE", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 export function BankAccountDetailPage() {
   const { id } = useParams<{ id: string }>();

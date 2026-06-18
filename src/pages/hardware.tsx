@@ -19,8 +19,8 @@ import {
 import { query } from "@/lib/db";
 import { useNavigate } from "react-router-dom";
 import { useCartStore } from "@/stores/cart";
+import { money as KES } from "@/lib/money";
 
-const KES = (n: number) => "KES " + n.toLocaleString("en-KE", { minimumFractionDigits: 0, maximumFractionDigits: 0 });
 
 /** Hardware primary-action button colour (matches the orange dashboard/POS accent). */
 const BRAND_BTN = "bg-orange-700 hover:bg-orange-800 text-white";

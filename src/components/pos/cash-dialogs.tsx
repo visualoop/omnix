@@ -11,8 +11,8 @@ import { recordPettyCash, getPettyCashSummary } from "@/services/petty-cash";
 import { useAuthStore } from "@/stores/auth";
 import { query } from "@/lib/db";
 import { toast } from "sonner";
+import { money as KES } from "@/lib/money";
 
-const KES = (n: number) => "KES " + n.toLocaleString("en-KE", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 // ─── Open Shift Dialog ─────────────────────────────────────────────────
 export function OpenShiftDialog({ open, onClose, onOpened }: {

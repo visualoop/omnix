@@ -13,8 +13,8 @@ import {
   type BrandPerformance, type CategoryMix, type RetailKpis,
 } from "@/services/retail-reports";
 import { useActiveBranch } from "@/stores/active-branch";
+import { money as KES } from "@/lib/money";
 
-const KES = (n: number) => "KES " + n.toLocaleString("en-KE", { minimumFractionDigits: 0, maximumFractionDigits: 0 });
 
 export function RetailDashboardPage() {
   const navigate = useNavigate();

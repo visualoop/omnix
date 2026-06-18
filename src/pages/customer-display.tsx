@@ -16,9 +16,8 @@ import { useActiveModule } from "@/stores/active-module";
 import { ModuleLogo } from "@/components/module-logos";
 import { getDisplayConfig } from "@/lib/display-registry";
 import { query } from "@/lib/db";
+import { money as KES } from "@/lib/money";
 
-const KES = (n: number) =>
-  "KES " + n.toLocaleString("en-KE", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 export function CustomerDisplayPage() {
   const items = useCartStore((s) => s.items);

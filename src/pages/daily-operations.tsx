@@ -13,8 +13,8 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { TableRowSkeleton } from "@/components/ui/skeletons";
 import { printPage, PrintHeader } from "@/lib/print";
 import { exportToCSV } from "@/lib/export";
+import { money as KES } from "@/lib/money";
 
-const KES = (n: number) => "KES " + (n || 0).toLocaleString("en-KE", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 interface ProductItem {
   product_name: string;

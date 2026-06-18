@@ -22,8 +22,8 @@ import { getProducts, type Product } from "@/services/inventory";
 import { useAuthStore } from "@/stores/auth";
 import { useCartStore } from "@/stores/cart";
 import { toast } from "sonner";
+import { money as KES } from "@/lib/money";
 
-const KES = (n: number) => "KES " + n.toLocaleString("en-KE", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 export function LaybysPage() {
   const [tab, setTab] = useState<"active" | "completed" | "cancelled" | "expired">("active");

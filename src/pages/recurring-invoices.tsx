@@ -18,8 +18,8 @@ import { listCustomers } from "@/services/erp";
 import { getProducts, type Product } from "@/services/inventory";
 import { useAuthStore } from "@/stores/auth";
 import { toast } from "sonner";
+import { money as KES } from "@/lib/money";
 
-const KES = (n: number) => "KES " + n.toLocaleString("en-KE", { minimumFractionDigits: 0, maximumFractionDigits: 0 });
 
 const FREQ_LABELS: Record<RecurringFrequency, string> = {
   weekly: "Weekly",

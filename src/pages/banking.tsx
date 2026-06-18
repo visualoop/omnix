@@ -14,8 +14,8 @@ import {
   type ReconciliationSummary,
 } from "@/services/banking";
 import { toast } from "sonner";
+import { money as KES } from "@/lib/money";
 
-const KES = (n: number) => "KES " + n.toLocaleString("en-KE", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 const ACCOUNT_TYPE_LABELS: Record<BankAccountType, string> = {
   bank: "Bank",

@@ -14,8 +14,8 @@ import {
   type AgedReceivable,
 } from "@/services/invoicing";
 import { useActiveBranch } from "@/stores/active-branch";
+import { money as KES } from "@/lib/money";
 
-const KES = (n: number) => "KES " + n.toLocaleString("en-KE", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 export function InvoicingPage() {
   const navigate = useNavigate();

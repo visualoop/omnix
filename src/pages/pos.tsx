@@ -38,8 +38,8 @@ import { openCustomerDisplay } from "@/lib/customer-display";
 import { countHeldSales } from "@/services/held-sales";
 import { categoryColor, stockColor } from "@/lib/category-colors";
 import { useNavigate } from "react-router-dom";
+import { money as KES } from "@/lib/money";
 
-const KES = (n: number) => "KES " + n.toLocaleString("en-KE", { minimumFractionDigits: 0, maximumFractionDigits: 0 });
 
 /** Module-aware accent palette so Dawa feels different from Retail. */
 function useModuleAccent() {

@@ -19,8 +19,8 @@ import {
 } from "@/services/invoice-pdf";
 import { useAuthStore } from "@/stores/auth";
 import { toast } from "sonner";
+import { money as KES } from "@/lib/money";
 
-const KES = (n: number) => "KES " + n.toLocaleString("en-KE", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const formatDate = (s: string) => new Date(s).toLocaleDateString("en-KE", { day: "2-digit", month: "long", year: "numeric" });
 
 interface Props { type: "invoice" | "quotation" }

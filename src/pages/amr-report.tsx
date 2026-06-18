@@ -8,8 +8,8 @@ import {
   type AntibioticClassReport, type AntibioticTopProduct, type AmrSummary,
 } from "@/services/amr-report";
 import { useActiveBranch } from "@/stores/active-branch";
+import { money as KES } from "@/lib/money";
 
-const KES = (n: number) => "KES " + n.toLocaleString("en-KE", { minimumFractionDigits: 0, maximumFractionDigits: 0 });
 
 const CLASS_COLORS: Record<string, string> = {
   "Penicillins": "bg-blue-500",

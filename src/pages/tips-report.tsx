@@ -12,8 +12,8 @@ import {
 import { useActiveBranch } from "@/stores/active-branch";
 import { query, execute } from "@/lib/db";
 import { toast } from "sonner";
+import { money as KES } from "@/lib/money";
 
-const KES = (n: number) => "KES " + n.toLocaleString("en-KE", { minimumFractionDigits: 0, maximumFractionDigits: 0 });
 
 export function TipsReportPage() {
   const branchId = useActiveBranch((s) => s.active?.id);

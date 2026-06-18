@@ -22,8 +22,8 @@ import {
 } from "@/services/payroll-exports";
 import { useAuthStore } from "@/stores/auth";
 import { toast } from "sonner";
+import { money as KES } from "@/lib/money";
 
-const KES = (n: number) => "KES " + n.toLocaleString("en-KE", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 
 export function PayrollPage() {

@@ -7,8 +7,8 @@ import { useCartStore } from "@/stores/cart";
 import { useActiveBranch } from "@/stores/active-branch";
 import { listEmployees, type EmployeeWithDetails } from "@/services/employees";
 import { query } from "@/lib/db";
+import { money as KES } from "@/lib/money";
 
-const KES = (n: number) => "KES " + n.toLocaleString("en-KE", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 export function TipDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
   const cartTip = useCartStore((s) => s.tip);

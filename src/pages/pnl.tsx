@@ -4,8 +4,8 @@ import { Button } from "@/components/ui/button";
 import { getPnL, type PnLData } from "@/services/accounting";
 import { printPage } from "@/lib/print";
 import { exportToCSV } from "@/lib/export";
+import { money as KES } from "@/lib/money";
 
-const KES = (n: number) => "KES " + n.toLocaleString("en-KE", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 export function PnLPage() {
   const today = new Date().toISOString().slice(0, 10);
