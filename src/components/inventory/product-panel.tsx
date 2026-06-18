@@ -4,7 +4,7 @@ import { Trash2, Plus, Loader2, Layers, Package } from "lucide-react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Combobox } from "@/components/ui/combobox";
 import { AiButton } from "@/components/ai/AiButton";
 import { ai } from "@/services/ai";
 import { toast } from "sonner";
@@ -242,13 +242,22 @@ export function ProductPanel({ open, onClose, productId, onSaved }: Props) {
                 </Field>
               </div>
               <Field label="Category">
-                <CategorySelect
+                <Combobox
                   value={form.category_id}
-                  categories={categories}
                   onChange={(id) => update("category_id", id)}
-                  onNewCategoryCreated={(c) => {
-                    setCategories([...categories, c]);
-                    update("category_id", c.id);
+                  options={[
+                    { value: "", label: "No category" },
+                    ...categories.map((c) => ({ value: c.id, label: c.name })),
+                  ]}
+                  placeholder="Pick a category"
+                  searchPlaceholder="Search categories…"
+                  emptyText="No categories match. Type a name + Enter to create."
+                  onCreate={async (label) => {
+                    const { createCategory } = await import("@/services/inventory");
+                    const id = await createCategory(label);
+                    const newCat: Category = { id, name: label, parent_id: null } as Category;
+                    setCategories([...categories, newCat]);
+                    return { value: id, label };
                   }}
                 />
               </Field>
@@ -803,81 +812,5 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
       <label className="text-[11px] font-medium text-muted-foreground">{label}</label>
       {children}
     </div>
-  );
-}
-
-
-function CategorySelect({
-  value,
-  categories,
-  onChange,
-  onNewCategoryCreated,
-}: {
-  value: string;
-  categories: Category[];
-  onChange: (id: string) => void;
-  onNewCategoryCreated: (c: Category) => void;
-}) {
-  const [creating, setCreating] = useState(false);
-  const [newName, setNewName] = useState("");
-  const [busy, setBusy] = useState(false);
-
-  if (creating) {
-    const submit = async () => {
-      const name = newName.trim();
-      if (!name) return;
-      setBusy(true);
-      try {
-        const { createCategory } = await import("@/services/inventory");
-        const id = await createCategory(name);
-        onNewCategoryCreated({ id, name, parent_id: null } as Category);
-        setNewName("");
-        setCreating(false);
-      } finally {
-        setBusy(false);
-      }
-    };
-    return (
-      <div className="flex items-center gap-2">
-        <Input
-          autoFocus
-          value={newName}
-          onChange={(e) => setNewName(e.target.value)}
-          placeholder="New category name"
-          onKeyDown={(e) => {
-            if (e.key === "Enter") { e.preventDefault(); submit(); }
-            if (e.key === "Escape") { setNewName(""); setCreating(false); }
-          }}
-          className="h-8"
-        />
-        <Button size="sm" onClick={submit} disabled={busy || !newName.trim()}>
-          {busy ? <Loader2 className="h-3 w-3 animate-spin" /> : "Add"}
-        </Button>
-        <Button size="sm" variant="ghost" onClick={() => { setNewName(""); setCreating(false); }}>
-          Cancel
-        </Button>
-      </div>
-    );
-  }
-
-  return (
-    <Select value={value || "__none__"} onValueChange={(v) => {
-      const s = v as string;
-      if (s === "__new__") { setCreating(true); return; }
-      onChange(s === "__none__" ? "" : s);
-    }}>
-      <SelectTrigger className="w-full h-8 text-[13px]">
-        <SelectValue placeholder="No category" />
-      </SelectTrigger>
-      <SelectContent>
-        <SelectItem value="__none__">No category</SelectItem>
-        {categories.map((c) => (
-          <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-        ))}
-        <SelectItem value="__new__">
-          <span className="text-[var(--color-accent)] font-medium">+ New category</span>
-        </SelectItem>
-      </SelectContent>
-    </Select>
   );
 }

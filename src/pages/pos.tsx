@@ -294,11 +294,45 @@ export function POSPage() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [handleKeyDown]);
 
-  const displayed: Array<Product | PopularProduct> = search
+  const displayedRaw: Array<Product | PopularProduct> = search
     ? results
     : activeCategoryId !== null && activeCategoryId !== "popular"
       ? byCategory
       : popular;
+
+  // Live stock — refreshed every 2s for products on screen + cart items.
+  // Replaces the stale stock_qty captured at fetch time so concurrent
+  // tills (LAN sync) and the operator's own edits both reflect quickly.
+  const [stockMap, setStockMap] = useState<Map<string, number>>(new Map());
+  useEffect(() => {
+    let cancelled = false;
+    const productIds = Array.from(new Set([
+      ...displayedRaw.map((p) => p.id),
+      ...items.map((i) => i.product_id),
+    ]));
+    if (productIds.length === 0) return;
+    const refresh = async () => {
+      try {
+        const m = await import("@/services/stock-refresh");
+        const fresh = await m.getStockMap(productIds);
+        if (!cancelled) setStockMap(fresh);
+      } catch {
+        // ignore — UI keeps the last-known stock until next tick
+      }
+    };
+    refresh();
+    const tick = setInterval(refresh, 2000);
+    return () => { cancelled = true; clearInterval(tick); };
+    // displayedRaw + items react to length changes; deeper diffs would
+    // refetch too aggressively. The 2s tick covers the rest.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [displayedRaw.length, items.length, search, activeCategoryId]);
+
+  // Overlay the live stock map onto the displayed cards.
+  const displayed = displayedRaw.map((p) => ({
+    ...p,
+    stock_qty: stockMap.get(p.id) ?? (p as { stock_qty?: number }).stock_qty ?? 0,
+  })) as Array<Product | PopularProduct>;
 
   return (
     <div className="flex flex-col h-[calc(100vh-48px)] -m-6 bg-muted/30">
@@ -577,6 +611,10 @@ export function POSPage() {
         product={pendingVariantPick}
         onClose={() => setPendingVariantPick(null)}
         onPick={(p, variant) => {
+          // Read freshest stock from live polling map; fall back to
+          // whatever came in at click-time. Concurrent tills can no
+          // longer oversell — Layer 2 (UI cap with live data).
+          const liveProductStock = stockMap.get(p.id) ?? p.stock_qty;
           if (variant) {
             addItemWithQuantity({
               id: variant.id,
@@ -586,7 +624,7 @@ export function POSPage() {
               stock_qty: variant.stock_qty,
             }, qtyMultiplier);
           } else {
-            addItemWithQuantity({ id: p.id, name: p.name, selling_price: p.selling_price, tax_rate: p.tax_rate, stock_qty: p.stock_qty }, qtyMultiplier);
+            addItemWithQuantity({ id: p.id, name: p.name, selling_price: p.selling_price, tax_rate: p.tax_rate, stock_qty: liveProductStock }, qtyMultiplier);
           }
           setQtyMultiplier(1);
           setPendingVariantPick(null);
