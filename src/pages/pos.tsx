@@ -39,6 +39,8 @@ import { countHeldSales } from "@/services/held-sales";
 import { categoryColor, stockColor } from "@/lib/category-colors";
 import { useNavigate } from "react-router-dom";
 import { money as KES } from "@/lib/money";
+import { useCountry } from "@/stores/country";
+import { pharmacyTerm } from "@/lib/locale";
 import { intlLocale } from "@/lib/intl";
 
 
@@ -95,6 +97,7 @@ function useModuleAccent() {
 export function POSPage() {
   const navigate = useNavigate();
   const accent = useModuleAccent();
+  const countryCode = useCountry((s) => s.code);
   const [search, setSearch] = useState("");
   const [results, setResults] = useState<Product[]>([]);
   const [popular, setPopular] = useState<PopularProduct[]>([]);
@@ -308,7 +311,7 @@ export function POSPage() {
             <span>POS</span>
             <span className="text-white/60">·</span>
             <span className="text-white/90 font-normal">
-              {activeModule === "dawa" ? "Pharmacy" : activeModule === "retail" ? "Retail" : "Standard"}
+              {activeModule === "dawa" ? pharmacyTerm(countryCode) : activeModule === "retail" ? "Retail" : "Standard"}
             </span>
           </div>
 

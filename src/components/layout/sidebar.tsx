@@ -70,6 +70,8 @@ import { isFeatureAvailable, getFeatureModule } from "@/lib/module-features";
 import { isModuleEntitled } from "@/stores/entitlements";
 import { useEntitlements } from "@/stores/entitlements";
 import { useIsKenya } from "@/lib/features";
+import { useCountry } from "@/stores/country";
+import { pharmacyTerm } from "@/lib/locale";
 
 interface NavItem {
   to: string;
@@ -204,8 +206,17 @@ export function Sidebar({ onCommandOpen }: { onCommandOpen: () => void }) {
   }
 
   // Module group for the active vertical (none for core).
-  const activeGroup =
+  // For Dawa, swap the generic 'Pharmacy' label for the country's
+  // pharmacy term — 'Dawa' in Kenya, 'Pharmacie' in Rwanda, 'صيدلية'
+  // in UAE/Egypt, etc. Kept stable in the registry as 'Pharmacy'
+  // for the fallback path.
+  const countryCode = useCountry((s) => s.code);
+  const rawGroup =
     activeModuleId !== "core" ? MODULE_GROUPS[activeModuleId] : undefined;
+  const activeGroup =
+    rawGroup && activeModuleId === "dawa"
+      ? { ...rawGroup, label: pharmacyTerm(countryCode) }
+      : rawGroup;
 
   // Auto-expand the group when the user is on one of its sub-routes.
   const onModuleSubRoute =
