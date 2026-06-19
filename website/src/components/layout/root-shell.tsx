@@ -8,7 +8,7 @@ import { Fraunces, Geist, JetBrains_Mono, Plus_Jakarta_Sans } from 'next/font/go
 //
 // The (payload) admin group is the only exception: it uses Payload's own
 // RootLayout (which provides its own html/body), so it must NOT use this.
-import '../../app/(frontend)/globals.css'
+import '../../app/[locale]/(frontend)/globals.css'
 
 const fraunces = Fraunces({
   subsets: ['latin'],
