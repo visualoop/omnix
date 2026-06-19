@@ -1,7 +1,7 @@
 {
   "name": "omnix",
   "private": true,
-  "version": "0.7.7",
+  "version": "0.7.8",
   "type": "module",
   "packageManager": "pnpm@9.15.4",
   "scripts": {
@@ -19,6 +19,7 @@
     "@ai-sdk/openai-compatible": "^2.0.48",
     "@base-ui/react": "^1.5.0",
     "@fontsource-variable/geist": "^5.2.9",
+    "@phosphor-icons/react": "^2.1.10",
     "@tailwindcss/vite": "^4.3.0",
     "@tanstack/react-query": "^5.100.14",
     "@tanstack/react-table": "^8.21.3",
@@ -33,6 +34,7 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cmdk": "^1.1.1",
+    "country-flag-icons": "^1.6.17",
     "date-fns": "^4.3.0",
     "jspdf": "^4.2.1",
     "jspdf-autotable": "^5.0.8",

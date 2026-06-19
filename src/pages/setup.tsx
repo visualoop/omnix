@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { Loader2, AlertCircle, Check } from "lucide-react";
+import { CircleNotch, WarningCircle, CheckCircle } from "@phosphor-icons/react";
+import { Flag } from "@/components/ui/flag";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useAuthStore } from "@/stores/auth";
@@ -142,7 +143,7 @@ export function SetupWizard() {
                     : "border-border/60 hover:border-primary/40 hover:bg-foreground/[0.03]"
                 }`}
               >
-                <span className="text-base leading-none">{c.flag}</span>
+                <Flag code={c.code} className="w-6" title={c.name} />
                 <span className="truncate font-medium">{c.name}</span>
               </button>
             );
@@ -168,7 +169,7 @@ export function SetupWizard() {
                       selected ? "bg-primary/10 text-primary" : "hover:bg-foreground/[0.04]"
                     }`}
                   >
-                    <span className="text-sm">{c.flag}</span>
+                    <Flag code={c.code} className="w-5" title={c.name} />
                     <span className="flex-1 truncate">{c.name}</span>
                     <span className="font-mono text-[10px] text-muted-foreground">{c.currencyCode}</span>
                   </button>
@@ -183,7 +184,7 @@ export function SetupWizard() {
           return (
             <div className="rounded-lg border border-border/60 bg-foreground/[0.02] p-3 text-left text-[11.5px] leading-relaxed">
               <div className="flex items-center gap-1.5 font-medium">
-                <span>{c.flag}</span>
+                <Flag code={c.code} className="w-5" title={c.name} />
                 <span>{c.name}</span>
                 <span className="ml-auto font-mono text-muted-foreground">
                   {c.currencyCode} · {c.taxLabel} {c.defaultTaxRate}%
@@ -250,7 +251,7 @@ export function SetupWizard() {
                   </div>
                   <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{m.tagline}</p>
                 </div>
-                {isSelected && <Check className="h-4 w-4 text-primary shrink-0" />}
+                {isSelected && <CheckCircle className="h-4 w-4 text-primary shrink-0" />}
               </button>
             );
           })}
@@ -358,7 +359,7 @@ export function SetupWizard() {
 
       {error && (
         <div className="border border-red-500/50 bg-red-500/5 rounded-md p-2.5 flex items-start gap-2">
-          <AlertCircle className="h-4 w-4 text-red-600 shrink-0 mt-0.5" />
+          <WarningCircle className="h-4 w-4 text-red-600 shrink-0 mt-0.5" />
           <p className="text-xs text-red-700">{error}</p>
         </div>
       )}
@@ -428,7 +429,7 @@ export function SetupWizard() {
 
       {error && (
         <div className="border border-red-500/50 bg-red-500/5 rounded-md p-2.5 flex items-start gap-2">
-          <AlertCircle className="h-4 w-4 text-red-600 shrink-0 mt-0.5" />
+          <WarningCircle className="h-4 w-4 text-red-600 shrink-0 mt-0.5" />
           <p className="text-xs text-red-700">{error}</p>
         </div>
       )}
@@ -439,7 +440,7 @@ export function SetupWizard() {
         </Button>
         <Button onClick={finish} className="flex-1" disabled={submitting}>
           {submitting ? (
-            <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Setting up...</>
+            <><CircleNotch className="h-4 w-4 mr-2 animate-spin" /> Setting up...</>
           ) : (
             "Complete Setup"
           )}
