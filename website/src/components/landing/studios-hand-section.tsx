@@ -1,6 +1,6 @@
 'use client'
 
-import { motion } from 'framer-motion'
+import { motion } from 'motion/react'
 
 /**
  * "The studio's hand" — 3 numbered steps in Fraunces 96px accent numerals.

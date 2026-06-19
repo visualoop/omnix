@@ -1,6 +1,6 @@
 'use client'
 
-import { motion } from 'framer-motion'
+import { motion } from 'motion/react'
 
 /**
  * "Built into the systems that run Kenya" — quiet integration grid.

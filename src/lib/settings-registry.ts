@@ -9,6 +9,7 @@
 import {
   Building2, CreditCard, FileCheck, Shield, Users, Key, Database, Cloud, Activity,
   Network, Boxes, ShieldCheck, Monitor, Ruler, Percent,
+  Tag,           // Categories
   // Distinct icons for settings duplicate-fix:
   MapPin,        // Locations & Branches
   UsersRound,    // Groups
@@ -51,6 +52,7 @@ const CORE_SETTINGS: SettingsNavItem[] = [
   { to: "/settings/access-audit", label: "Access Explorer", description: "Why a user can or can't", icon: KeyRound, permission: "users.manage", group: "Access" },
   { to: "/settings/payments", label: "Payment Methods", description: "Cash, M-Pesa, cards, bank", icon: CreditCard, permission: "settings.business", group: "Finance" },
   { to: "/settings/taxes", label: "Tax & VAT", description: "Default rates, tax classes", icon: Calculator, permission: "settings.business", group: "Finance" },
+  { to: "/settings/categories", label: "Categories", description: "Group products by type", icon: Tag, permission: "inventory.edit", group: "Operations" },
   { to: "/settings/price-lists", label: "Price Lists", description: "Customer pricing tiers", icon: ListChecks, permission: "retail.price_lists.manage", group: "Finance" },
   { to: "/settings/etims", label: "KRA eTIMS", description: "Tax invoice signing", icon: FileCheck, permission: "etims.view", group: "Finance" },
   { to: "/settings/network", label: "LAN Multi-device", description: "Master/client mode", icon: Network, permission: "settings.network", group: "Operations" },

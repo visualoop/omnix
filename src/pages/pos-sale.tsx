@@ -335,7 +335,7 @@ export function POSSalePage() {
   })) as Array<Product | PopularProduct>;
 
   return (
-    <div className="flex flex-col h-[calc(100vh-48px)] -m-6 bg-muted/30">
+    <div className="flex flex-col h-screen w-full overflow-hidden bg-muted/30">
       {/* ─── TOP STATUS BAR ─────────────────────────────────────────── */}
       <div className={`${accent.headerBg} text-white flex-shrink-0 shadow-md shadow-black/10`}>
         <div className="px-5 py-2.5 flex items-center gap-5 text-xs">
@@ -421,7 +421,7 @@ export function POSSalePage() {
       </div>
 
       {/* ─── MAIN GRID ──────────────────────────────────────────────── */}
-      <div className="flex flex-1 min-h-0">
+      <div className="flex flex-1 min-h-0 w-full overflow-hidden">
         {/* Left rail: Categories */}
         <div className="w-[140px] border-r border-border bg-background flex flex-col flex-shrink-0">
           <CategoryRail

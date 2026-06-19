@@ -1,6 +1,6 @@
 'use client'
 
-import { motion } from 'framer-motion'
+import { motion } from 'motion/react'
 
 /**
  * Founder note — replaces the conventional "4 hard stats" strip.

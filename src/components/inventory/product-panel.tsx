@@ -188,7 +188,14 @@ export function ProductPanel({ open, onClose, productId, onSaved }: Props) {
 
   return (
     <Sheet open={open} onOpenChange={(v) => !v && onClose()}>
-      <SheetContent className="w-full sm:w-[640px] md:w-[720px] lg:w-[800px] sm:max-w-[800px]">
+      <SheetContent
+        className={
+          tab === "variants" || tab === "uoms"
+            ? "w-full sm:max-w-none lg:max-w-none p-0"
+            : "w-full sm:w-[640px] md:w-[720px] lg:w-[800px] sm:max-w-[800px]"
+        }
+        style={tab === "variants" || tab === "uoms" ? { width: "100vw", maxWidth: "100vw" } : undefined}
+      >
         <SheetHeader>
           <SheetTitle>{isEdit ? "Edit Product" : "New Product"}</SheetTitle>
         </SheetHeader>

@@ -156,6 +156,21 @@ export async function createCategory(name: string, parentId?: string): Promise<s
   return id;
 }
 
+export async function updateCategory(id: string, name: string, parentId?: string | null, sortOrder?: number): Promise<void> {
+  await execute(
+    `UPDATE categories SET name = ?2, parent_id = ?3, sort_order = COALESCE(?4, sort_order) WHERE id = ?1`,
+    [id, name, parentId ?? null, sortOrder ?? null]
+  );
+}
+
+export async function deleteCategory(id: string): Promise<void> {
+  // Soft delete approach — null out parent_id pointers + null products' category.
+  // Hard delete is fine here since categories are shallow.
+  await execute(`UPDATE products SET category_id = NULL WHERE category_id = ?1`, [id]);
+  await execute(`UPDATE categories SET parent_id = NULL WHERE parent_id = ?1`, [id]);
+  await execute(`DELETE FROM categories WHERE id = ?1`, [id]);
+}
+
 export async function adjustStock(productId: string, quantity: number, reason: string): Promise<void> {
   const batchId = crypto.randomUUID();
   await execute(

@@ -47,6 +47,7 @@ import { CustomerDisplaySettingsPage } from "@/pages/settings-customer-display";
 import { AiSettingsPage } from "@/pages/settings-ai";
 import { ReceiptSettingsPage } from "@/pages/settings-receipt";
 import { TaxSettingsPage } from "@/pages/settings-taxes";
+import { CategoriesSettingsPage } from "@/pages/settings-categories";
 import { PriceListSettingsPage } from "@/pages/settings-price-lists";
 import { BankingPage } from "@/pages/banking";
 import { BankAccountDetailPage } from "@/pages/banking-detail";
@@ -238,6 +239,7 @@ function AppContent() {
             <Route path="backup" element={<RequireRole permission="settings.backup"><BackupPage /></RequireRole>} />
             <Route path="cloud-backup" element={<RequireRole permission="settings.backup"><CloudBackupPage /></RequireRole>} />
             <Route path="taxes" element={<RequireRole permission="settings.business"><TaxSettingsPage /></RequireRole>} />
+            <Route path="categories" element={<RequireRole permission="inventory.edit"><CategoriesSettingsPage /></RequireRole>} />
             <Route path="price-lists" element={<RequireRole permission="retail.price_lists.manage"><PriceListSettingsPage /></RequireRole>} />
             <Route path="customer-display" element={<RequireRole permission="settings.business"><CustomerDisplaySettingsPage /></RequireRole>} />
             <Route path="ai" element={<RequireRole permission="settings.business"><AiSettingsPage /></RequireRole>} />
