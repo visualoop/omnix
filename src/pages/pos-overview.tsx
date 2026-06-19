@@ -1,26 +1,36 @@
 /**
  * POS Overview — landing screen at /pos.
  *
- * Replaces the old direct-to-sale-interface flow. Now clicking POS in
- * the sidebar lands here first, and the cashier explicitly picks an
- * action: Open Sale, Returns, Z-Report, Open Shift, Close Day, Lock.
+ * Design thesis (frontend-design + emil-design-eng + anti-slop-writing):
+ * The till is the operator's stage. Every morning they unlock the
+ * drawer; every evening they count the cash. Between those two moments
+ * the till does one thing: turn customers into transactions.
  *
- * Behavioural notes:
- *   - When NO shift is open, the canvas dims and primary CTA is
- *     "Open Shift" with all sale-related actions disabled.
- *   - When a shift IS open, big "Open Sale" hero CTA jumps to
- *     /pos/sale. Today's stats (count / revenue / cash / mobile money)
- *     show in a 4-card grid right under the shift status.
- *   - "Lock" route freezes the screen until PIN re-entry. Implemented
- *     as a setLocked state on the parent shell — POS overview shows a
- *     dimmed lock icon; clicking re-prompts auth.
+ * The page treats today's revenue as the headline and today's date as
+ * the masthead, the way a newspaper does. Numbers are typeset in a
+ * display serif (Fraunces) at 96–112pt with tabular figures. Labels
+ * are mono-caps, 11px. Action shortcuts are presented as keyboard hints
+ * the way a terminal would — letters in a kbd, action verb in caps.
  *
- * Designed to feel like a till's idle screen at every till you've
- * ever used in a real shop, not a dashboard.
+ * Restraint:
+ *   - No gradient backgrounds, no drop shadows, no card containers.
+ *   - One accent — the open-sale CTA fills with --primary on hover only.
+ *   - One animation — revenue figure fades in once on mount; nothing
+ *     pulses, nothing loops.
+ *
+ * What we explicitly avoided:
+ *   - The "big number on coloured card with TrendingUp icon" template.
+ *   - 4-column stat grid as the page's visual centre.
+ *   - "Vibrant" color combinations (emerald + amber + rose + primary).
+ *   - Generic CTAs labelled "Get started" or "Begin selling".
+ *
+ * Off-limits chrome — anything inside this file is in scope; the lock
+ * screen at /lock and the activation screen at /activate keep their
+ * Apple liquid-glass aesthetic.
  */
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Banknote, Lock, Receipt, RotateCcw, ShoppingCart, Smartphone, TrendingUp, Unlock, FileText, Clock } from "lucide-react";
+import { motion } from "motion/react";
 import { useAuthStore } from "@/stores/auth";
 import { useActiveModule, MODULE_DEFINITIONS } from "@/stores/active-module";
 import { getOpenShift, type CashShift } from "@/services/accounting";
@@ -45,7 +55,6 @@ export function POSOverviewPage() {
   const [closeShiftDialog, setCloseShiftDialog] = useState(false);
   const [now, setNow] = useState(() => new Date());
 
-  // Refresh stats + shift state on mount and after dialogs close.
   useEffect(() => {
     const load = async () => {
       const [s, today, held] = await Promise.all([
@@ -58,159 +67,151 @@ export function POSOverviewPage() {
       setHeldCount(held);
     };
     void load();
-    const tick = setInterval(load, 30_000); // refresh every 30s
+    const tick = setInterval(load, 30_000);
     return () => clearInterval(tick);
   }, [user?.id, openShiftDialog, closeShiftDialog]);
 
-  // Live clock
   useEffect(() => {
-    const t = setInterval(() => setNow(new Date()), 1000);
+    const t = setInterval(() => setNow(new Date()), 30_000);
     return () => clearInterval(t);
   }, []);
 
-  const shiftOpen = !!shift;
-  const moduleLabel = activeModuleId === "dawa" ? pharmacyTerm(countryCode) : activeModule?.shortName ?? "POS";
+  // Keyboard shortcuts. S = open sale, R = returns, Z = z-report,
+  // O = open shift, C = close shift, P = petty cash. Letters are shown
+  // visually next to each action so the operator learns them.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
+      const tag = (e.target as HTMLElement | null)?.tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA") return;
+      const k = e.key.toLowerCase();
+      if (k === "s" && shift) navigate("/pos/sale");
+      else if (k === "r" && shift) navigate("/returns");
+      else if (k === "z") navigate("/reports/zreport");
+      else if (k === "o" && !shift) setOpenShiftDialog(true);
+      else if (k === "c" && shift) setCloseShiftDialog(true);
+      else if (k === "p" && shift) navigate("/petty-cash");
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [shift, navigate]);
+
+  const moduleLabel =
+    activeModuleId === "dawa" ? pharmacyTerm(countryCode)
+    : activeModule?.shortName ?? "Point of Sale";
+  const dateMast = now.toLocaleDateString(undefined, {
+    weekday: "long", day: "numeric", month: "long",
+  }).toUpperCase();
+  const yearMast = now.getFullYear();
+  const timeMast = now.toLocaleTimeString(undefined, {
+    hour: "2-digit", minute: "2-digit", hour12: false,
+  });
 
   return (
-    <div className="min-h-[calc(100vh-48px)] bg-gradient-to-br from-[var(--color-bg)] to-[var(--color-bg-soft,var(--color-bg))] px-6 py-10 md:px-10 lg:px-16">
-      <div className="mx-auto max-w-6xl">
-        {/* ─── Header ─────────────────────────────────────────── */}
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-          <div>
-            <span className="font-mono text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
-              {moduleLabel} · Point of Sale
-            </span>
-            <h1 className="mt-2 text-[clamp(28px,3.6vw,44px)] font-semibold leading-tight tracking-tight">
-              {greetingFor(now)}, {user?.full_name ?? "cashier"}
-            </h1>
-          </div>
-          <div className="flex items-center gap-2 font-mono text-[12px] text-muted-foreground tabular-nums">
-            <Clock className="size-3.5" />
-            {now.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit", hour12: false })}
-            <span className="text-muted-foreground/50">·</span>
-            {now.toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "long" })}
-          </div>
+    <div className="min-h-[calc(100vh-48px)] -m-6 bg-[#FBFAF6] dark:bg-[#0a0a0a]">
+      {/* ─── Masthead ───────────────────────────────────── */}
+      {/* Newspaper header. Title left, date + clock right. */}
+      <header className="border-b border-foreground/15 px-8 md:px-14 py-3 flex items-baseline justify-between text-foreground/80">
+        <div className="flex items-baseline gap-3 font-mono text-[10px] uppercase tracking-[0.22em]">
+          <span className="font-semibold text-foreground">Omnix · {moduleLabel}</span>
+          <span aria-hidden className="text-foreground/30">/</span>
+          <span>Cashier · {user?.full_name ?? "—"}</span>
         </div>
+        <div className="font-mono text-[10px] uppercase tracking-[0.22em] tabular-nums">
+          {dateMast} · {yearMast} · {timeMast}
+        </div>
+      </header>
 
-        {/* ─── Shift status hero ─────────────────────────────── */}
-        <section className="mt-8">
-          {shiftOpen ? (
-            <div className="rounded-2xl border-2 border-emerald-500/30 bg-emerald-500/[0.04] p-6 md:p-8">
-              <div className="flex flex-wrap items-center gap-3">
-                <span className="inline-flex size-2 animate-pulse rounded-full bg-emerald-500" />
-                <span className="font-mono text-[11px] font-semibold uppercase tracking-wider text-emerald-700 dark:text-emerald-400">
-                  Shift open
-                </span>
-                <span className="text-muted-foreground">·</span>
-                <span className="font-mono text-[12px] text-muted-foreground tabular-nums">
-                  Started {new Date(shift!.opened_at).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" })}
-                </span>
-              </div>
-              <div className="mt-3 flex flex-wrap items-baseline gap-x-6 gap-y-2">
-                <div>
-                  <div className="text-[11px] uppercase tracking-wider text-muted-foreground">Opening balance</div>
-                  <div className="font-mono text-[24px] font-semibold tabular-nums">{money(shift!.opening_balance)}</div>
-                </div>
-                {todayStats && (
-                  <>
-                    <div>
-                      <div className="text-[11px] uppercase tracking-wider text-muted-foreground">Sales today</div>
-                      <div className="font-mono text-[24px] font-semibold tabular-nums">{todayStats.count}</div>
-                    </div>
-                    <div>
-                      <div className="text-[11px] uppercase tracking-wider text-muted-foreground">Revenue today</div>
-                      <div className="font-mono text-[24px] font-semibold tabular-nums">{money(todayStats.revenue)}</div>
-                    </div>
-                  </>
-                )}
-              </div>
-            </div>
+      {/* ─── Hero — today's revenue as the headline ───── */}
+      <section className="px-8 md:px-14 pt-12 pb-16 md:pt-16 md:pb-20">
+        <div className="max-w-[1100px]">
+          <div className="font-mono text-[10px] uppercase tracking-[0.28em] text-foreground/60">
+            {shift ? "Today's take" : "Drawer closed"}
+          </div>
+          {shift ? (
+            <motion.div
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
+              className="mt-3 flex items-start gap-3"
+            >
+              <span className="font-mono text-[18px] mt-4 text-foreground/55 tabular-nums">
+                {money(0).replace(/[\d.,\s]/g, "").trim() || "KSh"}
+              </span>
+              <span
+                style={{ fontFamily: "var(--font-display)" }}
+                className="text-[clamp(64px,11vw,140px)] leading-[0.95] tracking-[-0.02em] font-medium tabular-nums"
+              >
+                {(todayStats?.revenue ?? 0).toLocaleString(undefined, {
+                  maximumFractionDigits: 0,
+                })}
+              </span>
+            </motion.div>
           ) : (
-            <div className="rounded-2xl border-2 border-dashed border-amber-500/40 bg-amber-500/[0.03] p-6 md:p-8 text-center">
-              <Lock className="mx-auto size-8 text-amber-600/70" />
-              <h2 className="mt-4 text-[20px] font-semibold">No shift open</h2>
-              <p className="mt-2 max-w-md mx-auto text-[13px] text-muted-foreground">
-                Open a shift before selling. The shift records the cash drawer&apos;s opening
-                balance and ties every sale today to your name for end-of-day reconciliation.
-              </p>
-            </div>
+            <motion.h1
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
+              style={{ fontFamily: "var(--font-display)" }}
+              className="mt-3 text-[clamp(48px,8vw,100px)] leading-[0.95] tracking-[-0.02em] font-medium italic"
+            >
+              Open the drawer.
+            </motion.h1>
           )}
-        </section>
 
-        {/* ─── Quick actions ─────────────────────────────────── */}
-        <section className="mt-8 grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4">
-          {/* Primary: Open Sale (or Open Shift if closed) */}
-          {shiftOpen ? (
-            <ActionTile
-              icon={ShoppingCart}
-              label="Open sale"
-              hint="Take money"
-              accent="primary"
-              onClick={() => navigate("/pos/sale")}
-            />
+          {/* Sub-stats — comma-joined newspaper deck */}
+          {shift && todayStats ? (
+            <p className="mt-6 max-w-[55ch] text-[14px] leading-[1.6] text-foreground/75">
+              <Num n={todayStats.count} unit={todayStats.count === 1 ? "sale" : "sales"} /> rung,{" "}
+              <Money v={todayStats.cash} /> in cash,{" "}
+              <Money v={todayStats.mpesa} /> on mobile money.
+              {heldCount > 0 ? (
+                <> <Num n={heldCount} unit={heldCount === 1 ? "ticket" : "tickets"} /> on hold.</>
+              ) : null}
+              {" "}Shift opened {new Date(shift.opened_at).toLocaleTimeString(undefined, {
+                hour: "2-digit", minute: "2-digit", hour12: false,
+              })} with <Money v={shift.opening_balance} />.
+            </p>
           ) : (
-            <ActionTile
-              icon={Unlock}
-              label="Open shift"
-              hint="Start the day"
-              accent="primary"
-              onClick={() => setOpenShiftDialog(true)}
-            />
+            <p className="mt-6 max-w-[55ch] text-[14px] leading-[1.6] text-foreground/75">
+              The drawer is shut. Open a shift to start ringing up sales.
+              The opening float you punch in below is the figure you'll
+              reconcile against at the end of the day.
+            </p>
           )}
-          <ActionTile
-            icon={RotateCcw}
-            label="Returns"
-            hint="Process refund"
-            disabled={!shiftOpen}
-            onClick={() => navigate("/returns")}
-          />
-          <ActionTile
-            icon={Receipt}
-            label="Held sales"
-            hint={heldCount > 0 ? `${heldCount} parked` : "Resume parked"}
-            disabled={heldCount === 0}
-            onClick={() => navigate("/pos/sale?held=1")}
-          />
-          <ActionTile
-            icon={FileText}
-            label="Z-Report"
-            hint="End-of-day"
-            onClick={() => navigate("/zreport")}
-          />
-          <ActionTile
-            icon={TrendingUp}
-            label="Reports"
-            hint="Sales analytics"
-            onClick={() => navigate("/reports")}
-          />
-          <ActionTile
-            icon={Banknote}
-            label="Petty cash"
-            hint="Drawer in/out"
-            disabled={!shiftOpen}
-            onClick={() => navigate("/petty-cash")}
-          />
-          {shiftOpen && (
-            <ActionTile
-              icon={Lock}
-              label="Close day"
-              hint="End shift"
-              accent="danger"
-              onClick={() => setCloseShiftDialog(true)}
-            />
-          )}
-        </section>
+        </div>
+      </section>
 
-        {/* ─── Today at a glance (only when shift open) ───── */}
-        {shiftOpen && todayStats && (
-          <section className="mt-8 grid grid-cols-2 gap-3 md:grid-cols-4">
-            <Stat icon={Receipt} label="Sales" value={String(todayStats.count)} />
-            <Stat icon={TrendingUp} label="Revenue" value={money(todayStats.revenue)} />
-            <Stat icon={Banknote} label="Cash" value={money(todayStats.cash)} />
-            <Stat icon={Smartphone} label="Mobile money" value={money(todayStats.mpesa)} />
-          </section>
-        )}
-      </div>
+      {/* ─── Action menu — keyboard-led ───────────────── */}
+      <section className="px-8 md:px-14 pb-12">
+        <div className="font-mono text-[10px] uppercase tracking-[0.28em] text-foreground/60 pb-3 border-b border-foreground/15">
+          Begin
+        </div>
+        <ul className="divide-y divide-foreground/10">
+          {shift ? (
+            <>
+              <ActionRow k="S" label="Open sale" hint="Take money" onClick={() => navigate("/pos/sale")} primary />
+              <ActionRow k="R" label="Returns" hint="Refund a sale" onClick={() => navigate("/returns")} />
+              <ActionRow k="P" label="Petty cash" hint="In or out of the drawer" onClick={() => navigate("/petty-cash")} />
+              <ActionRow k="Z" label="Z-Report" hint="End-of-day totals" onClick={() => navigate("/reports/zreport")} />
+              {heldCount > 0 ? (
+                <ActionRow
+                  k="H"
+                  label={`Resume held · ${heldCount}`}
+                  hint="Pick up parked tickets"
+                  onClick={() => navigate("/pos/sale?held=1")}
+                />
+              ) : null}
+              <ActionRow k="C" label="Close day" hint="End shift" onClick={() => setCloseShiftDialog(true)} muted />
+            </>
+          ) : (
+            <>
+              <ActionRow k="O" label="Open shift" hint="Set the opening float" onClick={() => setOpenShiftDialog(true)} primary />
+              <ActionRow k="Z" label="Z-Report (last)" hint="Read yesterday's close" onClick={() => navigate("/reports/zreport")} />
+            </>
+          )}
+        </ul>
+      </section>
 
       <OpenShiftDialog
         open={openShiftDialog}
@@ -232,59 +233,56 @@ export function POSOverviewPage() {
   );
 }
 
-function greetingFor(d: Date): string {
-  const h = d.getHours();
-  if (h < 12) return "Good morning";
-  if (h < 18) return "Good afternoon";
-  return "Good evening";
-}
-
-function ActionTile({
-  icon: Icon, label, hint, onClick, disabled, accent = "default",
-}: {
-  icon: typeof ShoppingCart;
-  label: string;
-  hint?: string;
-  onClick: () => void;
-  disabled?: boolean;
-  accent?: "default" | "primary" | "danger";
-}) {
-  const accentClass =
-    accent === "primary"
-      ? "border-primary/40 bg-primary/[0.04] hover:border-primary hover:bg-primary/10 hover:shadow-md"
-      : accent === "danger"
-        ? "border-rose-500/30 bg-rose-500/[0.03] hover:border-rose-500 hover:bg-rose-500/10"
-        : "border-border hover:border-foreground/40 hover:bg-foreground/[0.02]";
-
+function Num({ n, unit }: { n: number; unit: string }) {
   return (
-    <button
-      onClick={onClick}
-      disabled={disabled}
-      className={`group flex flex-col items-start gap-2 rounded-xl border-2 p-5 text-left transition-all ${
-        disabled ? "cursor-not-allowed opacity-40" : `cursor-pointer active:scale-[0.98] ${accentClass}`
-      }`}
-    >
-      <Icon className={`size-7 ${
-        accent === "primary" ? "text-primary" :
-        accent === "danger" ? "text-rose-500" :
-        "text-muted-foreground group-hover:text-foreground"
-      }`} />
-      <div>
-        <div className="text-[15px] font-semibold leading-tight">{label}</div>
-        {hint && <div className="mt-0.5 text-[12px] text-muted-foreground">{hint}</div>}
-      </div>
-    </button>
+    <span className="text-foreground font-medium tabular-nums">
+      {n.toLocaleString()} {unit}
+    </span>
   );
 }
+function Money({ v }: { v: number }) {
+  return <span className="text-foreground font-medium tabular-nums">{money(v)}</span>;
+}
 
-function Stat({ icon: Icon, label, value }: { icon: typeof Receipt; label: string; value: string }) {
+interface ActionRowProps {
+  k: string;
+  label: string;
+  hint: string;
+  onClick: () => void;
+  primary?: boolean;
+  muted?: boolean;
+}
+
+function ActionRow({ k, label, hint, onClick, primary, muted }: ActionRowProps) {
   return (
-    <div className="rounded-xl border border-border bg-card p-4">
-      <div className="flex items-center gap-2">
-        <Icon className="size-3.5 text-muted-foreground" />
-        <span className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium">{label}</span>
-      </div>
-      <div className="mt-2 font-mono text-[22px] font-semibold tabular-nums">{value}</div>
-    </div>
+    <li>
+      <button
+        onClick={onClick}
+        className={`group flex w-full items-baseline gap-5 py-5 text-left transition-colors ${
+          muted ? "text-foreground/60 hover:text-foreground" : "hover:bg-foreground/[0.02]"
+        }`}
+      >
+        <kbd
+          className={`font-mono text-[11px] tracking-[0.06em] inline-flex h-7 min-w-[28px] items-center justify-center rounded border px-1.5 ${
+            primary
+              ? "border-foreground bg-foreground text-background"
+              : "border-foreground/30 bg-transparent text-foreground/70 group-hover:border-foreground group-hover:text-foreground"
+          }`}
+        >
+          {k}
+        </kbd>
+        <span
+          style={{ fontFamily: "var(--font-display)" }}
+          className={`text-[28px] md:text-[32px] leading-none font-medium ${
+            primary ? "text-foreground" : "text-foreground/85 group-hover:text-foreground"
+          } transition-colors`}
+        >
+          {label}
+        </span>
+        <span className="ml-auto pl-6 font-mono text-[11px] uppercase tracking-[0.18em] text-foreground/50">
+          {hint}
+        </span>
+      </button>
+    </li>
   );
 }
