@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 import createMiddleware from 'next-intl/middleware'
-import { routing } from './i18n/routing'
+import { routing, localeForGeoCountry, COUNTRY_LOCALES, LANGUAGE_LOCALES } from './i18n/routing'
 import { currencyForCountry, type SupportedCurrency } from '@/lib/currency'
 
 /**
@@ -65,6 +65,36 @@ export function middleware(request: NextRequest) {
     if (!request.nextUrl.pathname.startsWith('/region-unavailable')) {
       return NextResponse.rewrite(new URL('/region-unavailable', request.url))
     }
+  }
+
+  // ── (1b) Geo-prefix redirect ─────────────────────────────────
+  // First-visit users to a localised path that has NO locale prefix
+  // get redirected to the geo-best country code:
+  //   visitor in Kenya hitting /pricing  →  /ke/pricing
+  //   visitor in USA hitting /        →  /us
+  // We only redirect when the request is a top-level GET document with
+  // no existing locale segment in the path. Subsequent visits stay on
+  // the prefix the user picked (or that we routed them to once).
+  const pathname = request.nextUrl.pathname
+  const firstSeg = pathname.split('/')[1] ?? ''
+  const knownLocale = ([...COUNTRY_LOCALES, ...LANGUAGE_LOCALES] as readonly string[]).includes(firstSeg)
+  if (
+    !isNonLocalizedPath(pathname) &&
+    !knownLocale &&
+    request.method === 'GET' &&
+    !request.headers.get('next-action') &&
+    !request.cookies.get('omnix_routed_locale')
+  ) {
+    const target = localeForGeoCountry(country)
+    const url = request.nextUrl.clone()
+    url.pathname = `/${target}${pathname === '/' ? '' : pathname}`
+    const redirect = NextResponse.redirect(url, 308)
+    redirect.cookies.set('omnix_routed_locale', target, {
+      maxAge: COOKIE_MAX_AGE,
+      sameSite: 'lax',
+      path: '/',
+    })
+    return redirect
   }
 
   // ── (2) Origin synthesis for Payload cookie auth ──────────────
