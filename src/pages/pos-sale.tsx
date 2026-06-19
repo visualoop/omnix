@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
+import { motion, AnimatePresence } from "motion/react";
 import {
   Search, Minus, Plus, Trash2, Pause, Tag, Pill, ShoppingCart, Sparkles,
   RotateCcw, Banknote, Smartphone, Receipt, Percent,
@@ -880,17 +881,19 @@ function CartPanel({
           </div>
         ) : (
           <div>
-            {items.map((item: any, idx: number) => (
-              <CartLine
-                key={item.id}
-                idx={idx + 1}
-                item={item}
-                showSubstitute={accent.isPharmacy}
-                onRemove={() => onRemoveItem(item.id)}
-                onQty={(q: number) => onUpdateQty(item.id, q)}
-                onSub={() => onSubFor({ id: item.id, name: item.name, selling_price: item.unit_price, tax_rate: item.tax_rate })}
-              />
-            ))}
+            <AnimatePresence initial={false}>
+              {items.map((item: any, idx: number) => (
+                <CartLine
+                  key={item.id}
+                  idx={idx + 1}
+                  item={item}
+                  showSubstitute={accent.isPharmacy}
+                  onRemove={() => onRemoveItem(item.id)}
+                  onQty={(q: number) => onUpdateQty(item.id, q)}
+                  onSub={() => onSubFor({ id: item.id, name: item.name, selling_price: item.unit_price, tax_rate: item.tax_rate })}
+                />
+              ))}
+            </AnimatePresence>
           </div>
         )}
       </div>
@@ -962,7 +965,26 @@ function CartPanel({
   );
 }
 
-function CartLine({ idx, item, onRemove, onQty, onSub, showSubstitute }: {
+/**
+ * Cart line — emil-design-eng + frontend-design redesign.
+ *
+ * What changed from the v0.5.2 polish:
+ *   - Index badge dropped. Each line gets a 3px coloured accent strip
+ *     on the left edge, hue-stable per category. Visual rhythm comes
+ *     from those stripes, not from numbering.
+ *   - Product avatar: a 36px rounded square, category-tinted, with the
+ *     first letter of the name in display serif. Real product
+ *     photography would be better but most Kenyan SMEs don't have it;
+ *     a lettermark is a graceful fallback that still feels intentional.
+ *   - Qty stepper: 36×36 buttons (was 28). Big enough for a fingertip
+ *     on touchscreens; not so big it dominates the row visually.
+ *   - Line total: 17px, monospaced, semibold. Per-unit is 11px under it.
+ *   - Remove button: visible at 35% opacity by default → 100% on hover.
+ *     Always discoverable, never noisy.
+ *   - Entrance: motion/react slide-in 6px from right + fade in 220ms.
+ *     Exit: fade-out 160ms via AnimatePresence in the parent list.
+ */
+function CartLine({ idx: _idx, item, onRemove, onQty, onSub, showSubstitute }: {
   idx: number;
   item: any;
   onRemove: () => void;
@@ -970,47 +992,70 @@ function CartLine({ idx, item, onRemove, onQty, onSub, showSubstitute }: {
   onSub: () => void;
   showSubstitute?: boolean;
 }) {
-  // Live stock_qty isn't on the item yet — that's wired in v0.5.x's
-  // realtime poll. For now display the quantity progress.
   const lineTotal = Math.max(0, item.unit_price * item.quantity - (item.discount ?? 0));
-  return (
-    <div
-      className="group relative flex items-stretch gap-3 px-4 py-3 border-b border-border/40 transition-colors hover:bg-muted/30 animate-in fade-in slide-in-from-right-1 duration-150"
-    >
-      {/* Index badge */}
-      <span className="font-mono text-[10px] tabular-nums text-muted-foreground/50 select-none pt-0.5">
-        {String(idx).padStart(2, "0")}
-      </span>
+  const cc = categoryColor(item.category_id);
+  const initial = (item.name || "?").trim().charAt(0).toUpperCase();
 
-      {/* Name + meta */}
+  return (
+    <motion.div
+      layout
+      initial={{ opacity: 0, x: 6 }}
+      animate={{ opacity: 1, x: 0 }}
+      exit={{ opacity: 0, height: 0, marginTop: 0, marginBottom: 0 }}
+      transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
+      className="group relative flex items-start gap-3 px-3 py-3.5 border-b border-border/40 transition-colors hover:bg-muted/30"
+    >
+      {/* Category accent strip — 3px left edge */}
+      <span
+        aria-hidden
+        className={`absolute left-0 top-2 bottom-2 w-[3px] rounded-r-full ${cc.dot}`}
+      />
+
+      {/* Product avatar */}
+      <div
+        className={`size-9 shrink-0 rounded-md ${cc.bg} ${cc.fg} grid place-items-center select-none`}
+        aria-hidden
+      >
+        <span style={{ fontFamily: "var(--font-display)" }} className="text-[16px] font-medium leading-none">
+          {initial}
+        </span>
+      </div>
+
+      {/* Body */}
       <div className="flex-1 min-w-0">
+        {/* Name + remove */}
         <div className="flex items-start justify-between gap-2">
-          <div className="text-[13.5px] font-medium leading-snug text-foreground line-clamp-2">
+          <div className="text-[14px] font-medium leading-[1.3] text-foreground line-clamp-2">
             {item.name}
           </div>
-          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition shrink-0">
+          <div className="flex items-center gap-0.5 shrink-0 -mr-1 -mt-0.5 opacity-40 group-hover:opacity-100 transition-opacity">
             {showSubstitute && (
               <button
                 onClick={onSub}
-                className="size-6 grid place-items-center rounded text-muted-foreground hover:bg-violet-500/10 hover:text-violet-600 transition"
+                className="size-7 grid place-items-center rounded-md text-muted-foreground hover:bg-violet-500/10 hover:text-violet-600 transition active:scale-95"
                 title="Find substitute"
               >
-                <Pill className="h-3 w-3" />
+                <Pill className="h-3.5 w-3.5" />
               </button>
             )}
             <button
               onClick={onRemove}
-              className="size-6 grid place-items-center rounded text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition"
+              className="size-7 grid place-items-center rounded-md text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition active:scale-95"
               title="Remove from cart"
             >
-              <Trash2 className="h-3 w-3" />
+              <Trash2 className="h-3.5 w-3.5" />
             </button>
           </div>
         </div>
 
-        {/* Tag row — discount + tax */}
-        {(item.discount > 0 || item.tax_rate > 0) && (
-          <div className="flex items-center gap-1 mt-1">
+        {/* Tag row — discount + tax + variant */}
+        {(item.discount > 0 || item.tax_rate > 0 || item.variant_label) && (
+          <div className="flex items-center gap-1.5 mt-1">
+            {item.variant_label && (
+              <span className="inline-flex items-center rounded-sm bg-foreground/[0.04] px-1.5 py-px text-[10px] font-medium text-foreground/70">
+                {item.variant_label}
+              </span>
+            )}
             {item.discount > 0 && (
               <span className="inline-flex items-center gap-0.5 rounded-sm bg-emerald-500/10 px-1.5 py-px text-[10px] font-medium text-emerald-700 dark:text-emerald-400">
                 −{item.discount.toFixed(0)}
@@ -1024,39 +1069,39 @@ function CartLine({ idx, item, onRemove, onQty, onSub, showSubstitute }: {
           </div>
         )}
 
-        {/* Qty stepper + per-unit + line total */}
-        <div className="flex items-center justify-between mt-2">
+        {/* Qty stepper + line total */}
+        <div className="flex items-center justify-between mt-2.5">
           <div className="inline-flex items-center rounded-md border border-border bg-background overflow-hidden">
             <button
               onClick={() => onQty(item.quantity - 1)}
-              className="size-7 grid place-items-center text-muted-foreground hover:bg-muted hover:text-foreground transition active:scale-95"
+              className="size-9 grid place-items-center text-muted-foreground hover:bg-muted hover:text-foreground transition active:scale-95"
               aria-label="Decrease quantity"
             >
-              <Minus className="h-3 w-3" />
+              <Minus className="h-3.5 w-3.5" />
             </button>
-            <span className="px-2 min-w-[2.5rem] text-center font-mono text-[13px] font-semibold tabular-nums">
+            <span className="px-2 min-w-[2.75rem] text-center font-mono text-[14px] font-semibold tabular-nums">
               {item.quantity}
             </span>
             <button
               onClick={() => onQty(item.quantity + 1)}
-              className="size-7 grid place-items-center text-muted-foreground hover:bg-muted hover:text-foreground transition active:scale-95"
+              className="size-9 grid place-items-center text-muted-foreground hover:bg-muted hover:text-foreground transition active:scale-95"
               aria-label="Increase quantity"
             >
-              <Plus className="h-3 w-3" />
+              <Plus className="h-3.5 w-3.5" />
             </button>
           </div>
 
           <div className="text-right">
-            <div className="font-mono text-[14px] font-semibold tabular-nums leading-none text-foreground">
+            <div className="font-mono text-[17px] font-semibold tabular-nums leading-none text-foreground">
               {lineTotal.toFixed(0)}
             </div>
-            <div className="font-mono text-[10px] tabular-nums text-muted-foreground mt-0.5">
+            <div className="font-mono text-[11px] tabular-nums text-muted-foreground mt-1">
               {item.quantity} × {item.unit_price.toFixed(0)}
             </div>
           </div>
         </div>
       </div>
-    </div>
+    </motion.div>
   );
 }
 
