@@ -214,16 +214,29 @@ function NavRow({ item, collapsed }: { item: NavItem; collapsed: boolean }) {
       title={collapsed ? item.label : undefined}
       className={({ isActive }) =>
         cn(
-          "flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm transition-all duration-150 cursor-pointer",
+          "group relative flex items-center gap-2 rounded-md px-2 py-1.5 text-[13px] transition-colors duration-150 cursor-pointer",
           isActive
-            ? "bg-primary/10 text-foreground font-medium shadow-[inset_0_1px_0_rgb(255_255_255_/_0.06)]"
-            : "text-muted-foreground hover:bg-foreground/[0.04] hover:text-foreground",
+            ? "bg-foreground/[0.06] text-foreground font-medium"
+            : "text-muted-foreground hover:bg-foreground/[0.03] hover:text-foreground",
           collapsed && "justify-center",
         )
       }
     >
-      <item.icon className="h-4 w-4 shrink-0" />
-      {!collapsed && <span>{item.label}</span>}
+      {({ isActive }) => (
+        <>
+          {/* 2px accent strip on the active row — a single dose of color
+              against the otherwise monochrome rail. Uses --primary which
+              the active module rebinds via useModuleAccent. */}
+          {isActive && !collapsed ? (
+            <span
+              aria-hidden
+              className="absolute left-0 top-1.5 bottom-1.5 w-[2px] rounded-r-full bg-primary"
+            />
+          ) : null}
+          <item.icon className="h-4 w-4 shrink-0" />
+          {!collapsed && <span>{item.label}</span>}
+        </>
+      )}
     </NavLink>
   );
 }
