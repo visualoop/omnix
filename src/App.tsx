@@ -48,6 +48,13 @@ import { AiSettingsPage } from "@/pages/settings-ai";
 import { ReceiptSettingsPage } from "@/pages/settings-receipt";
 import { TaxSettingsPage } from "@/pages/settings-taxes";
 import { CategoriesSettingsPage } from "@/pages/settings-categories";
+// Hub pages — flat sidebar with tabs inside each domain
+import { PeopleHubPage } from "@/pages/hub-people";
+import { SalesHubPage } from "@/pages/hub-sales";
+import { InventoryHubPage } from "@/pages/hub-inventory";
+import { BankingHubPage } from "@/pages/hub-banking";
+import { AnalyticsHubPage } from "@/pages/hub-analytics";
+import { PharmacyHubPage, RetailHubPage, HardwareHubPage, HospitalityHubPage } from "@/pages/hub-modules";
 import { PriceListSettingsPage } from "@/pages/settings-price-lists";
 import { BankingPage } from "@/pages/banking";
 import { BankAccountDetailPage } from "@/pages/banking-detail";
@@ -179,13 +186,16 @@ function AppContent() {
           <Route index element={<DashboardPage />} />
           <Route path="/pos" element={<RequireRole permission="pos.use"><POSOverviewPage /></RequireRole>} />
           <Route path="/pos/sale" element={<RequireRole permission="pos.use"><POSSalePage /></RequireRole>} />
-          <Route path="/inventory" element={<RequireRole permission="inventory.view"><InventoryPage /></RequireRole>} />
+          <Route path="/inventory" element={<RequireRole permission="inventory.view"><InventoryHubPage /></RequireRole>} />
+          <Route path="/inventory/products" element={<RequireRole permission="inventory.view"><InventoryPage /></RequireRole>} />
           <Route path="/inventory/categories" element={<RequireRole permission="inventory.edit"><CategoriesPage /></RequireRole>} />
           <Route path="/inventory/stock" element={<RequireRole permission="inventory.view"><StockPage /></RequireRole>} />
           <Route path="/inventory/import" element={<RequireRole permission="inventory.edit"><ImportProductsPage /></RequireRole>} />
-          <Route path="/sales" element={<RequireRole permission="sales.view"><SalesHistoryPage /></RequireRole>} />
+          <Route path="/sales" element={<RequireRole permission="sales.view"><SalesHubPage /></RequireRole>} />
+          <Route path="/sales/history" element={<RequireRole permission="sales.view"><SalesHistoryPage /></RequireRole>} />
           <Route path="/users" element={<RequireRole permission="users.view"><UsersPage /></RequireRole>} />
-          <Route path="/pharmacy" element={<RequireRole permission="pharmacy.dispense"><PharmacyPage /></RequireRole>} />
+          <Route path="/pharmacy" element={<RequireRole permission="pharmacy.dispense"><PharmacyHubPage /></RequireRole>} />
+          <Route path="/pharmacy/dispense" element={<RequireRole permission="pharmacy.dispense"><PharmacyPage /></RequireRole>} />
           <Route path="/pharmacy/expiry" element={<RequireRole permission="inventory.view"><ExpiryPage /></RequireRole>} />
           <Route path="/reports" element={<RequireRole permission={["reports.view", "reports.zreport"]}><ReportsIndexPage /></RequireRole>} />
           <Route path="/reports/sales" element={<RequireRole permission="reports.view"><ReportsPage /></RequireRole>} />
@@ -203,6 +213,7 @@ function AppContent() {
           <Route path="/stock-transfers" element={<RequireRole permission="inventory.view"><StockTransfersPage /></RequireRole>} />
           <Route path="/stock-transfers/new" element={<RequireRole permission="inventory.view"><NewStockTransferPage /></RequireRole>} />
           <Route path="/stock-transfers/:id" element={<RequireRole permission="inventory.view"><StockTransferDetailPage /></RequireRole>} />
+          <Route path="/people" element={<RequireRole permission={["hr.employees.view","hr.attendance.view","hr.leave.request","hr.payroll.view"]}><PeopleHubPage /></RequireRole>} />
           <Route path="/hr/employees" element={<RequireRole permission="hr.employees.view"><EmployeesPage /></RequireRole>} />
           <Route path="/hr/attendance" element={<RequireRole permission="hr.attendance.view"><AttendancePage /></RequireRole>} />
           <Route path="/hr/leave" element={<RequireRole permission="hr.leave.request"><LeavePage /></RequireRole>} />
@@ -213,8 +224,13 @@ function AppContent() {
           <Route path="/invoicing/invoice/:id" element={<RequireRole permission="invoicing.view"><DocumentDetailPage type="invoice" /></RequireRole>} />
           <Route path="/invoicing/quotation/:id" element={<RequireRole permission="invoicing.view"><DocumentDetailPage type="quotation" /></RequireRole>} />
           <Route path="/invoicing/recurring" element={<RequireRole permission="invoicing.create"><RecurringInvoicesPage /></RequireRole>} />
-          <Route path="/banking" element={<RequireRole permission="banking.view"><BankingPage /></RequireRole>} />
+          <Route path="/banking" element={<RequireRole permission={["banking.view","petty_cash.use","expenses.view"]}><BankingHubPage /></RequireRole>} />
+          <Route path="/banking/accounts" element={<RequireRole permission="banking.view"><BankingPage /></RequireRole>} />
           <Route path="/banking/:id" element={<RequireRole permission="banking.view"><BankAccountDetailPage /></RequireRole>} />
+          <Route path="/analytics" element={<RequireRole permission={["reports.view","reports.pnl","etims.view"]}><AnalyticsHubPage /></RequireRole>} />
+          <Route path="/retail" element={<RequireRole permission="reports.view"><RetailHubPage /></RequireRole>} />
+          <Route path="/hardware" element={<RequireRole permission="hardware.reports.view"><HardwareHubPage /></RequireRole>} />
+          <Route path="/hospitality" element={<RequireRole permission="hospitality.tables.manage"><HospitalityHubPage /></RequireRole>} />
           <Route path="/retail/brands" element={<RequireRole permission="retail.brands.manage"><BrandsPage /></RequireRole>} />
           <Route path="/retail/dashboard" element={<RequireRole permission="reports.view"><RetailDashboardPage /></RequireRole>} />
           <Route path="/inventory/quick-add" element={<RequireRole permission="inventory.edit"><QuickAddProductsPage /></RequireRole>} />

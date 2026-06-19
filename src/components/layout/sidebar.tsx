@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { cn } from "@/lib/utils";
 import {
   LayoutDashboard,
@@ -9,57 +9,19 @@ import {
   Settings,
   ChevronsLeft,
   ChevronsRight,
-  ChevronDown,
-  ChevronRight,
   Search,
-  FileCheck,
-  Shield,
   Receipt,
-  FileText,
-  Truck,
   Users,
-  ClipboardCheck,
-  RotateCcw,
-  ArrowRightLeft,
-  Clock,
-  Plane,
-  Wallet,
-  Tag,
-  CalendarClock,
-  CalendarPlus,
-  AlertTriangle,
-  TrendingUp,
   Wrench,
   UtensilsCrossed,
-  LayoutGrid,
-  BookOpen,
-  ChefHat,
-  BedDouble,
-  Sparkles,
   ShoppingBag,
-  // Newly distinct icons (duplicate-fix sweep):
-  Landmark,         // Banking
-  Coins,            // Petty Cash
-  Banknote,         // Cash Register
-  CircleDollarSign, // Payroll
-  BadgePercent,     // Promotions
-  Scale,            // P&L
-  UserCog,          // Employees
-  Building2,        // Suppliers
-  Handshake,        // Hardware Accounts
-  Percent,          // Hardware Commissions
-  ShoppingBasket,   // Purchases
-  ClipboardList,    // Daily Ops
-  Send,             // eTIMS
-  Gauge,            // Module Overview (hardware/hospitality)
-  FileSignature,    // Quotations
-  LineChart,        // Hardware Reports
-  PieChart,         // Hospitality Reports
-  Soup,             // Hospitality Orders
-  FolderOpen,       // Folios
-  ScrollText,       // Recipes
+  Landmark,
+  Banknote,
+  UserCog,
+  // ModuleGroup component (no longer used) was the only consumer of
+  // the rest. Keeping a lean barrel since most icons came from there.
 } from "lucide-react";
-import { NavLink, useLocation } from "react-router-dom";
+import { NavLink } from "react-router-dom";
 import { OmnixLogo } from "@/components/omnix-logo";
 import { ModuleLogo } from "@/components/module-logos";
 import { APP_NAME } from "@/lib/brand";
@@ -69,7 +31,6 @@ import { hasAnyPermission, type Permission } from "@/lib/permissions";
 import { isFeatureAvailable, getFeatureModule } from "@/lib/module-features";
 import { isModuleEntitled } from "@/stores/entitlements";
 import { useEntitlements } from "@/stores/entitlements";
-import { useIsKenya } from "@/lib/features";
 import { useCountry } from "@/stores/country";
 import { pharmacyTerm } from "@/lib/locale";
 
@@ -81,157 +42,68 @@ interface NavItem {
   permissions: Permission[];
 }
 
-interface ModuleNavGroup {
-  id: ModuleId;
-  icon: typeof LayoutDashboard;
-  label: string;
-  items: NavItem[];
-}
-
 /**
- * Core nav — every install sees these (gated only by permissions).
- * Module-specific items live in MODULE_GROUPS below and only appear
- * inside the collapsible group for the active module.
+ * Flat hub-page sidebar — every entry is a top-level destination,
+ * never a submenu. Functional domains (Sales, Inventory, People,
+ * Banking, Analytics) become hub pages that arrange their child
+ * routes as horizontal tabs. Module verticals (Pharmacy, Retail,
+ * Hardware, Hospitality) follow the same pattern.
+ *
+ * The old MODULE_GROUPS expand/collapse pattern is gone — clicking
+ * a module now lands on the module hub page and the child screens
+ * appear as tabs there. The sidebar stays at ~10 entries no matter
+ * how many features ship.
  */
 const CORE_NAV: NavItem[] = [
+  { to: "/", icon: LayoutDashboard, label: "Dashboard", permissions: [] },
   { to: "/pos", icon: ShoppingCart, label: "POS", permissions: ["pos.use"] },
   { to: "/sales", icon: Receipt, label: "Sales", permissions: ["sales.view"] },
-  { to: "/returns", icon: RotateCcw, label: "Returns", permissions: ["sales.refund"] },
   { to: "/inventory", icon: Package, label: "Inventory", permissions: ["inventory.view"] },
-  { to: "/stock-transfers", icon: ArrowRightLeft, label: "Transfers", permissions: ["inventory.view"] },
-  { to: "/purchase-orders", icon: ShoppingBasket, label: "Purchases", permissions: ["purchase_orders.view"] },
-  { to: "/stock-take", icon: ClipboardCheck, label: "Stock Take", permissions: ["stock_take.use"] },
-  { to: "/suppliers", icon: Building2, label: "Suppliers", permissions: ["suppliers.view"] },
   { to: "/customers", icon: Users, label: "Customers", permissions: ["customers.view"] },
-  { to: "/invoicing", icon: FileText, label: "Invoicing", permissions: ["invoicing.view"] },
-  { to: "/banking", icon: Landmark, label: "Banking", permissions: ["banking.view"] },
-  { to: "/expenses", icon: Wallet, label: "Expenses", permissions: ["expenses.view"] },
-  { to: "/hr/employees", icon: UserCog, label: "Employees", permissions: ["hr.employees.view"] },
-  { to: "/hr/attendance", icon: Clock, label: "Attendance", permissions: ["hr.attendance.view","hr.attendance.record"] },
-  { to: "/hr/leave", icon: Plane, label: "Leave", permissions: ["hr.leave.request","hr.leave.approve"] },
-  { to: "/hr/payroll", icon: CircleDollarSign, label: "Payroll", permissions: ["hr.payroll.view"] },
-  { to: "/petty-cash", icon: Coins, label: "Petty Cash", permissions: ["petty_cash.use"] },
+  { to: "/people", icon: UserCog, label: "People", permissions: ["hr.employees.view","hr.attendance.view","hr.leave.request","hr.payroll.view"] },
+  { to: "/banking", icon: Landmark, label: "Banking", permissions: ["banking.view","petty_cash.use","expenses.view"] },
   { to: "/cash-register", icon: Banknote, label: "Cash Register", permissions: ["cash_register.use"] },
-  { to: "/promotions", icon: BadgePercent, label: "Promotions", permissions: ["promotions.manage"] },
-  // ── Analytics group ────────────────────────────────────────
-  // Dashboard sits next to Reports, P&L, Daily Ops as part of the
-  // analytics pack rather than competing with POS for first-position.
-  { to: "/", icon: LayoutDashboard, label: "Dashboard", permissions: [] },
-  { to: "/reports", icon: BarChart3, label: "Reports", permissions: ["reports.view", "reports.zreport"] },
-  { to: "/pnl", icon: Scale, label: "P&L", permissions: ["reports.pnl"] },
-  { to: "/reports/daily-operations", icon: ClipboardList, label: "Daily Ops", permissions: ["reports.view"] },
-  { to: "/vat-report", icon: FileCheck, label: "VAT Report", permissions: ["reports.view"] },
-  { to: "/etims", icon: Send, label: "eTIMS", permissions: ["etims.view"] },
+  { to: "/analytics", icon: BarChart3, label: "Analytics", permissions: ["reports.view","reports.pnl","etims.view"] },
 ];
 
 /**
- * Module-specific groups. The sidebar shows ONLY the active module's group
- * (collapsed by default; auto-expands when on one of its sub-routes).
- * Pharmacy/Retail/Hardware/Hospitality each become a single line that opens
- * to reveal the module's screens — same pattern as Settings.
+ * Module verticals — each lands on its hub page directly.
+ * The hub page shows all child screens as tabs.
  */
-const MODULE_GROUPS: Partial<Record<ModuleId, ModuleNavGroup>> = {
-  dawa: {
-    id: "dawa",
-    icon: Pill,
-    label: "Pharmacy",
-    items: [
-      { to: "/pharmacy", icon: Pill, label: "Dispensing", permissions: ["pharmacy.dispense"] },
-      { to: "/claims", icon: Shield, label: "Insurance Claims", permissions: ["claims.view"] },
-    ],
-  },
-  retail: {
-    id: "retail",
-    icon: ShoppingBag,
-    label: "Retail",
-    items: [
-      { to: "/retail/dashboard", icon: TrendingUp, label: "Insights", permissions: ["reports.view"] },
-      { to: "/retail/brands", icon: Tag, label: "Brands", permissions: ["retail.brands.manage"] },
-      { to: "/retail/laybys", icon: CalendarClock, label: "Laybys", permissions: ["retail.laybys.use"] },
-      { to: "/retail/special-orders", icon: CalendarPlus, label: "Special Orders", permissions: ["retail.special_orders.use"] },
-      { to: "/retail/shrinkage", icon: AlertTriangle, label: "Shrinkage", permissions: ["retail.shrinkage.record"] },
-    ],
-  },
-  hardware: {
-    id: "hardware",
-    icon: Wrench,
-    label: "Hardware",
-    items: [
-      { to: "/hardware/dashboard", icon: Gauge, label: "Overview", permissions: ["hardware.reports.view"] },
-      { to: "/hardware/quotations", icon: FileSignature, label: "Quotations", permissions: ["hardware.quotations.manage"] },
-      { to: "/hardware/delivery-notes", icon: Truck, label: "Delivery Notes", permissions: ["hardware.delivery_notes.manage"] },
-      { to: "/hardware/accounts", icon: Handshake, label: "Accounts", permissions: ["hardware.accounts.manage"] },
-      { to: "/hardware/commissions", icon: Percent, label: "Commissions", permissions: ["hardware.commissions.view"] },
-      { to: "/hardware/reports", icon: LineChart, label: "Reports", permissions: ["hardware.reports.view"] },
-    ],
-  },
-  hospitality: {
-    id: "hospitality",
-    icon: UtensilsCrossed,
-    label: "Hospitality",
-    items: [
-      { to: "/hospitality/dashboard", icon: Gauge, label: "Overview", permissions: ["hospitality.reports.view"] },
-      { to: "/hospitality/tables", icon: LayoutGrid, label: "Tables", permissions: ["hospitality.tables.manage"] },
-      { to: "/hospitality/orders", icon: Soup, label: "Orders", permissions: ["hospitality.orders.take"] },
-      { to: "/hospitality/kitchen", icon: ChefHat, label: "Kitchen", permissions: ["hospitality.kitchen.bump"] },
-      { to: "/hospitality/menu", icon: BookOpen, label: "Menu", permissions: ["hospitality.menu.manage"] },
-      { to: "/hospitality/rooms", icon: BedDouble, label: "Rooms", permissions: ["hospitality.bookings.manage"] },
-      { to: "/hospitality/bookings", icon: CalendarClock, label: "Bookings", permissions: ["hospitality.bookings.manage"] },
-      { to: "/hospitality/housekeeping", icon: Sparkles, label: "Housekeeping", permissions: ["hospitality.housekeeping.manage"] },
-      { to: "/hospitality/folios", icon: FolderOpen, label: "Folios", permissions: ["hospitality.folios.manage"] },
-      { to: "/hospitality/recipes", icon: ScrollText, label: "Recipes", permissions: ["hospitality.recipes.manage"] },
-      { to: "/hospitality/reports", icon: PieChart, label: "Reports", permissions: ["hospitality.reports.view"] },
-    ],
-  },
+const MODULE_NAV_ENTRIES: Partial<Record<ModuleId, NavItem>> = {
+  dawa: { to: "/pharmacy", icon: Pill, label: "Pharmacy", permissions: ["pharmacy.dispense"] },
+  retail: { to: "/retail", icon: ShoppingBag, label: "Retail", permissions: ["reports.view"] },
+  hardware: { to: "/hardware", icon: Wrench, label: "Hardware", permissions: ["hardware.reports.view"] },
+  hospitality: { to: "/hospitality", icon: UtensilsCrossed, label: "Hospitality", permissions: ["hospitality.tables.manage"] },
 };
-
-/** Where the active-module group renders within CORE_NAV (after this index). */
-const MODULE_GROUP_INSERT_AFTER = "/pos";
 
 export function Sidebar({ onCommandOpen }: { onCommandOpen: () => void }) {
   const [collapsed, setCollapsed] = useState(false);
-  const location = useLocation();
   const user = useAuthStore((s) => s.user);
   const activeModuleId = useActiveModule((s) => s.active);
   const loadModule = useActiveModule((s) => s.load);
   const activeModule = MODULE_DEFINITIONS[activeModuleId];
   // Subscribe so the nav recomputes once entitlements hydrate from the license.
   useEntitlements((s) => s.modules);
-  // Country-specific feature gates (eTIMS, VAT3 = KE only).
-  const isKenya = useIsKenya();
 
   // Lazy-load active module from DB on first mount
   if (!useActiveModule.getState().loaded) {
     loadModule().catch(() => {});
   }
 
-  // Module group for the active vertical (none for core).
-  // For Dawa, swap the generic 'Pharmacy' label for the country's
-  // pharmacy term — 'Dawa' in Kenya, 'Pharmacie' in Rwanda, 'صيدلية'
-  // in UAE/Egypt, etc. Kept stable in the registry as 'Pharmacy'
-  // for the fallback path.
+  // The active module gets a single flat entry that links to its hub page.
+  // No more expand/collapse submenus; child screens live as tabs on the hub.
+  const moduleEntry =
+    activeModuleId !== "core" ? MODULE_NAV_ENTRIES[activeModuleId] : undefined;
   const countryCode = useCountry((s) => s.code);
-  const rawGroup =
-    activeModuleId !== "core" ? MODULE_GROUPS[activeModuleId] : undefined;
-  const activeGroup =
-    rawGroup && activeModuleId === "dawa"
-      ? { ...rawGroup, label: pharmacyTerm(countryCode) }
-      : rawGroup;
-
-  // Auto-expand the group when the user is on one of its sub-routes.
-  const onModuleSubRoute =
-    activeGroup?.items.some((i) => location.pathname.startsWith(i.to)) ?? false;
-  const [groupOpen, setGroupOpen] = useState<boolean>(onModuleSubRoute);
-  // Re-expand whenever the user navigates into a module sub-route.
-  useEffect(() => {
-    if (onModuleSubRoute) setGroupOpen(true);
-  }, [onModuleSubRoute]);
+  const activeModuleEntry =
+    moduleEntry && activeModuleId === "dawa"
+      ? { ...moduleEntry, label: pharmacyTerm(countryCode) }
+      : moduleEntry;
 
   const itemVisible = (item: NavItem) => {
     const owner = getFeatureModule(item.to);
     if (owner && !isModuleEntitled(owner)) return false;
-    // Country-specific routes — hide eTIMS / VAT-3 / SHA-claims for non-KE.
-    if ((item.to === "/etims" || item.to === "/vat-report") && !isKenya) return false;
     return (
       (item.permissions.length === 0 || hasAnyPermission(user, item.permissions)) &&
       isFeatureAvailable(item.to, activeModuleId)
@@ -239,15 +111,10 @@ export function Sidebar({ onCommandOpen }: { onCommandOpen: () => void }) {
   };
 
   const visibleCore = CORE_NAV.filter(itemVisible);
-  const visibleGroupItems = activeGroup
-    ? activeGroup.items.filter(
-        (i) =>
-          i.permissions.length === 0 || hasAnyPermission(user, i.permissions),
-      )
-    : [];
+  const showModuleEntry = activeModuleEntry ? itemVisible(activeModuleEntry) : false;
 
-  const insertIdx =
-    visibleCore.findIndex((i) => i.to === MODULE_GROUP_INSERT_AFTER) + 1;
+  // The module entry sits right under POS for muscle memory.
+  const insertIdx = visibleCore.findIndex((i) => i.to === "/pos") + 1;
   const before = visibleCore.slice(0, insertIdx || visibleCore.length);
   const after = visibleCore.slice(insertIdx || visibleCore.length);
 
@@ -303,15 +170,9 @@ export function Sidebar({ onCommandOpen }: { onCommandOpen: () => void }) {
           <NavRow key={item.to} item={item} collapsed={collapsed} />
         ))}
 
-        {/* Active-module group (single expandable entry) */}
-        {activeGroup && visibleGroupItems.length > 0 && (
-          <ModuleGroup
-            group={{ ...activeGroup, items: visibleGroupItems }}
-            collapsed={collapsed}
-            open={groupOpen}
-            onToggle={() => setGroupOpen((v) => !v)}
-            currentPath={location.pathname}
-          />
+        {/* Active-module hub entry (flat — child screens are tabs on the hub) */}
+        {activeModuleEntry && showModuleEntry && (
+          <NavRow item={activeModuleEntry} collapsed={collapsed} />
         )}
 
         {after.map((item) => (
@@ -367,83 +228,3 @@ function NavRow({ item, collapsed }: { item: NavItem; collapsed: boolean }) {
   );
 }
 
-function ModuleGroup({
-  group,
-  collapsed,
-  open,
-  onToggle,
-  currentPath,
-}: {
-  group: ModuleNavGroup;
-  collapsed: boolean;
-  open: boolean;
-  onToggle: () => void;
-  currentPath: string;
-}) {
-  const Icon = group.icon;
-  const onSubRoute = group.items.some((i) => currentPath.startsWith(i.to));
-
-  // Collapsed sidebar: show ONE icon row that links to the module's first item.
-  // Expanding the sub-list when the whole sidebar is collapsed would look broken.
-  if (collapsed) {
-    return (
-      <NavLink
-        to={group.items[0].to}
-        title={group.label}
-        className={({ isActive }) =>
-          cn(
-            "flex items-center justify-center rounded-lg px-2 py-1.5 text-sm transition-all duration-150 cursor-pointer",
-            isActive || onSubRoute
-              ? "bg-primary/10 text-foreground font-medium shadow-[inset_0_1px_0_rgb(255_255_255_/_0.06)]"
-              : "text-muted-foreground hover:bg-foreground/[0.04] hover:text-foreground",
-          )
-        }
-      >
-        <Icon className="h-4 w-4 shrink-0" />
-      </NavLink>
-    );
-  }
-
-  return (
-    <div>
-      <button
-        onClick={onToggle}
-        className={cn(
-          "w-full flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm transition-all duration-150 cursor-pointer",
-          onSubRoute
-            ? "text-foreground font-medium"
-            : "text-muted-foreground hover:bg-foreground/[0.04] hover:text-foreground",
-        )}
-      >
-        <Icon className="h-4 w-4 shrink-0" />
-        <span className="flex-1 text-left">{group.label}</span>
-        {open ? (
-          <ChevronDown className="h-3.5 w-3.5 shrink-0" />
-        ) : (
-          <ChevronRight className="h-3.5 w-3.5 shrink-0" />
-        )}
-      </button>
-      {open && (
-        <div className="mt-0.5 ml-2 pl-2 border-l border-border/40 space-y-0.5">
-          {group.items.map((item) => (
-            <NavLink
-              key={item.to}
-              to={item.to}
-              className={({ isActive }) =>
-                cn(
-                  "flex items-center gap-2 rounded-lg px-2 py-1.5 text-[13px] transition-all duration-150 cursor-pointer",
-                  isActive
-                    ? "bg-primary/10 text-foreground font-medium"
-                    : "text-muted-foreground hover:bg-foreground/[0.04] hover:text-foreground",
-                )
-              }
-            >
-              <item.icon className="h-3.5 w-3.5 shrink-0" />
-              <span>{item.label}</span>
-            </NavLink>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
