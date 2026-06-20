@@ -34,20 +34,19 @@ export const COUNTRY_LOCALES = [
 
 export const LANGUAGE_LOCALES = ['en', 'sw', 'fr', 'pt', 'es', 'ar'] as const
 
-/** Country code → language code for message loading. */
+/** Country code → language code for message loading.
+ *
+ * Country codes are CURRENCY ROUTES, not language routes. Every country
+ * loads English copy; the only thing that changes per country prefix is
+ * the currency on the price components (KES vs USD vs NGN vs ...).
+ *
+ * Users who want a translated experience pick a LANGUAGE locale
+ * (/sw/pricing, /fr/pricing, /ar/pricing). They can pick currency
+ * separately via cookie / settings.
+ */
 export const COUNTRY_TO_LANG: Record<string, string> = {
-  ke: 'en',  // Kenya — English (Swahili optional via /sw)
-  us: 'en',
-  gb: 'en',
-  ng: 'en',
-  gh: 'en',
-  za: 'en',
-  in: 'en',
-  rw: 'en',  // Rwanda — official is Kinyarwanda + English + French; default English
-  tz: 'sw',  // Tanzania — Swahili-default
-  ug: 'en',
-  eg: 'ar',  // Egypt — Arabic
-  ae: 'ar',  // UAE — Arabic
+  ke: 'en', us: 'en', gb: 'en', ng: 'en', gh: 'en', za: 'en',
+  in: 'en', rw: 'en', tz: 'en', ug: 'en', eg: 'en', ae: 'en',
 }
 
 /** Country code → ISO 4217 currency for price components. */
@@ -67,5 +66,9 @@ export function localeForGeoCountry(country: string | null | undefined): string 
 export const routing = defineRouting({
   locales: [...COUNTRY_LOCALES, ...LANGUAGE_LOCALES],
   defaultLocale: 'ke',
-  localePrefix: 'as-needed',
+  // 'always' — bare /pricing without a country prefix is invalid; the
+  // middleware redirects it to /{geo-detected}/pricing on first hit.
+  // 'as-needed' would clash with the redirect by stripping the default
+  // locale prefix, causing a redirect loop.
+  localePrefix: 'always',
 })

@@ -52,6 +52,13 @@ function isNonLocalizedPath(pathname: string): boolean {
     pathname.startsWith('/dashboard') ||
     pathname.startsWith('/buy') ||
     pathname.startsWith('/_next') ||
+    // Auth pages — live under app/(auth) outside [locale]. Without
+    // this exclusion the geo-redirect rewrites /login → /ke/login,
+    // which doesn't exist and 404s.
+    pathname === '/login' ||
+    pathname === '/signup' ||
+    pathname === '/forgot-password' ||
+    pathname.startsWith('/verify-email') ||
     pathname === '/region-unavailable' ||
     pathname.startsWith('/region-unavailable')
   )
@@ -68,13 +75,18 @@ export function middleware(request: NextRequest) {
   }
 
   // ── (1b) Geo-prefix redirect ─────────────────────────────────
-  // First-visit users to a localised path that has NO locale prefix
-  // get redirected to the geo-best country code:
-  //   visitor in Kenya hitting /pricing  →  /ke/pricing
-  //   visitor in USA hitting /        →  /us
-  // We only redirect when the request is a top-level GET document with
-  // no existing locale segment in the path. Subsequent visits stay on
-  // the prefix the user picked (or that we routed them to once).
+  // Bare URLs (no /xx prefix) get redirected to the user's locale.
+  // Order of preference:
+  //   1. omnix_routed_locale cookie  — sticks user's last choice
+  //   2. x-vercel-ip-country header  — geo
+  //   3. defaultLocale ('ke')        — home market
+  //
+  // /pricing in Kenya  → /ke/pricing
+  // /pricing in USA    → /us/pricing
+  // /pricing for a returning Nigerian visitor (cookie=ng) → /ng/pricing
+  //
+  // Auth pages, /api, /admin, /dashboard, /buy, /_next, etc. are in
+  // isNonLocalizedPath() and stay bare.
   const pathname = request.nextUrl.pathname
   const firstSeg = pathname.split('/')[1] ?? ''
   const knownLocale = ([...COUNTRY_LOCALES, ...LANGUAGE_LOCALES] as readonly string[]).includes(firstSeg)
@@ -82,10 +94,13 @@ export function middleware(request: NextRequest) {
     !isNonLocalizedPath(pathname) &&
     !knownLocale &&
     request.method === 'GET' &&
-    !request.headers.get('next-action') &&
-    !request.cookies.get('omnix_routed_locale')
+    !request.headers.get('next-action')
   ) {
-    const target = localeForGeoCountry(country)
+    const stickyCookie = request.cookies.get('omnix_routed_locale')?.value
+    const target =
+      stickyCookie && ([...COUNTRY_LOCALES, ...LANGUAGE_LOCALES] as readonly string[]).includes(stickyCookie)
+        ? stickyCookie
+        : localeForGeoCountry(country)
     const url = request.nextUrl.clone()
     url.pathname = `/${target}${pathname === '/' ? '' : pathname}`
     const redirect = NextResponse.redirect(url, 308)

@@ -38,9 +38,8 @@ export function LanguageSwitcher({ className }: { className?: string }) {
         break
       }
     }
-    const newPath = next === routing.defaultLocale && routing.localePrefix === 'as-needed'
-      ? stripped
-      : `/${next}${stripped === '/' ? '' : stripped}`
+    // localePrefix is 'always' — every locale gets a prefix in the URL.
+    const newPath = `/${next}${stripped === '/' ? '' : stripped}`
     startTransition(() => {
       router.replace(newPath)
     })
