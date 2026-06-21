@@ -1492,3 +1492,164 @@ These need a decision before the v0.8.6/.7/.8 patches start:
 4. **Major-upgrade discount duration** — 50 % for the FIRST 12 months after v2 ships, or 50 % forever for v1-grandfathered customers? **Recommendation: 12 months from ship; afterwards 25 %; afterwards full price.** Creates an urgency curve that drives the upgrade cohort.
 5. **omnix:// deeplink fallback** — if Tauri isn't installed when the user clicks "Open Omnix" on the receipt, what should happen? **Recommendation: if no app handler, redirect to /downloads page with the licence pre-filled in a copy-to-clipboard widget.**
 6. **Trial extension** — give customers ONE 7-day trial extension if they ask (via support), or hard 14-day cap? **Recommendation: one extension via support; tracked on the licence row to prevent abuse.**
+
+
+---
+
+## 15 · Desktop site-wide design language rollout (Lucide → Phosphor, Fraunces, cream paper)
+
+User directive: *"the way u designed the pos page before opening pos where it says open the drawer the cursive fonts u used etc makes the erp look so good… plan how the sidebar and all other pages will use such a design and Phosphor Icons… redesign every other section including the dashboard etc… use Material icons too when setting up the system… in short remove lucide icons from everywhere completely swap with Phosphor Icons the font u used before opening pos use it everywhere and that design implement it everywhere also."*
+
+The POS overview / P&L design language (cream paper #FBFAF6, Fraunces serif masthead, mono uppercase eyebrows, hairline rules instead of card containers, motion/react count-ups) becomes the **system language** for the entire desktop app. Lucide icons leave the building. Phosphor takes over for the app surface; Material icons handle the setup wizard specifically.
+
+### 15.1 The three icon planes
+
+| Plane | Library | Where |
+| --- | --- | --- |
+| **App surface** (every screen except setup) | `@phosphor-icons/react` | sidebar, topbar, hub pages, P&L, POS, settings, hospitality, hardware, dawa, retail, every modal, every form |
+| **Setup wizard** | `@mui/icons-material` | only `src/pages/setup.tsx` and its sub-steps. Material icons feel "first-run / installer" — distinct visual language signals "you're configuring", not "you're operating". |
+| **External user content** (eg. category icons) | n/a — first-letter lettermark + colour | already in v0.7.6 cart card pattern; keep as-is |
+
+Lucide is removed entirely from `src/`. The website (`/website`) is unchanged — it has its own icon set already.
+
+### 15.2 Migration order — five patches
+
+Each patch is a self-contained release with verifiable scope. After all five, Lucide is uninstalled.
+
+**v0.7.14 — Sidebar**
+- Swap every Lucide icon imported in `src/components/layout/sidebar.tsx` for the Phosphor equivalent (table below).
+- Swap the brand wordmark in the collapsed-rail header to set with `font-family: var(--font-display)` (Fraunces).
+- Active nav row: 2 px module-accent strip on the left edge + bg-foreground/[0.06] (already in v0.7.10).
+- Hover: motion/react `whileHover={{ x: 2 }}` for a 100 ms tactile feel.
+
+**v0.7.15 — Topbar + Cmd+K palette**
+- Topbar (`src/components/layout/topbar.tsx`): Phosphor icons, Fraunces for the active-module name on the left, hairline border-b instead of card-style chrome.
+- Cmd+K palette (`src/components/cmd-palette.tsx` if it exists, else cmdk inline): Phosphor icons in result rows, mono-uppercase section labels.
+
+**v0.7.16 — Dashboard page redesign**
+- Apply the POS-overview newspaper masthead pattern.
+- Hero figure: today's revenue at clamp(64 px, 11 vw, 140 px) Fraunces + tabular-nums.
+- 5-bento grid replaced with a single editorial paragraph deck under the headline.
+- Quick actions become a keyboard-row list ([S] open sale, [C] customers, [R] reports, [I] inventory).
+- Cream paper #FBFAF6 background. Hairline rules. No card containers.
+- motion/react useMotionValue count-up on revenue + transactions count.
+
+**v0.7.17 — Setup wizard with Material icons**
+- Replace every Lucide icon in `src/pages/setup.tsx` with `@mui/icons-material` equivalents.
+- Material icons are system-mono in feel — distinct from the Phosphor app-surface, signalling "this is one-time configuration".
+- Cream paper background per step. Fraunces serif on step titles.
+- motion/react step entrance: `initial={{ opacity: 0, y: 12 }}` for each step body.
+
+**v0.7.18 — Bulk Lucide → Phosphor sweep**
+- Mechanical replacement across every remaining `src/**/*.tsx` and `src/**/*.ts` file.
+- Mapping table at `docs/icon-mapping.md` (see §15.3 below).
+- Keep one parity helper at `src/components/icons/index.ts` if a Lucide icon has no Phosphor equivalent (rare — Phosphor is comprehensive).
+- Uninstall `lucide-react` from `package.json`. tsc verifies no stragglers.
+
+**v0.7.19 — Cream-paper aesthetic on the long tail**
+- Apply `#FBFAF6` background + Fraunces masthead pattern to: customers, suppliers, employees, attendance, leave, payroll, expenses, banking, all hospitality pages, all hardware pages, all dawa pages, all retail pages.
+- Each page gets:
+  - Masthead: mono caption + Fraunces title + 14 px description
+  - Hairline rules between sections
+  - No card containers — content flows in a single column with hairline separators
+- Tables stay tabular but lose their thick borders; use 1 px foreground/10 hairlines.
+
+**v0.7.20** — Stabilisation + cycle bump to v0.8.0.
+
+### 15.3 Icon mapping table — Lucide → Phosphor
+
+Documented in `docs/icon-mapping.md` for the bulk sweep. Excerpt of the most-used:
+
+| Lucide | Phosphor |
+| --- | --- |
+| `Search` | `MagnifyingGlass` |
+| `Settings` | `GearSix` |
+| `User` / `Users` | `User` / `Users` |
+| `ShoppingCart` | `ShoppingCart` |
+| `Package` | `Package` |
+| `Pill` | `Pill` |
+| `Plus` | `Plus` |
+| `Trash2` | `Trash` |
+| `Edit3` / `Pencil` | `Pencil` |
+| `Check` | `Check` |
+| `X` | `X` |
+| `ChevronDown` / `Up` / `Left` / `Right` | `CaretDown` / etc. |
+| `ChevronsLeft` / `Right` | `CaretDoubleLeft` / `Right` |
+| `ArrowLeft` / `Right` | `ArrowLeft` / `Right` |
+| `MoreHorizontal` | `DotsThree` |
+| `MoreVertical` | `DotsThreeVertical` |
+| `Loader2` | `CircleNotch` (spin via `className="animate-spin"`) |
+| `Info` | `Info` |
+| `AlertCircle` | `WarningCircle` |
+| `AlertTriangle` | `Warning` |
+| `CheckCircle2` | `CheckCircle` |
+| `Lock` / `Unlock` | `Lock` / `LockOpen` |
+| `Eye` / `EyeOff` | `Eye` / `EyeSlash` |
+| `Download` / `Upload` | `Download` / `Upload` / `UploadSimple` |
+| `Receipt` | `Receipt` |
+| `Banknote` | `Money` |
+| `Wallet` | `Wallet` |
+| `Smartphone` | `DeviceMobile` |
+| `Monitor` | `Monitor` |
+| `Calendar` / `CalendarClock` | `Calendar` / `CalendarDots` |
+| `Clock` | `Clock` |
+| `Tag` | `Tag` |
+| `Layers` | `Stack` |
+| `BarChart3` | `ChartBar` |
+| `LineChart` | `ChartLine` |
+| `PieChart` | `ChartPie` |
+| `TrendingUp` | `TrendUp` |
+| `TrendingDown` | `TrendDown` |
+| `FileText` | `FileText` |
+| `FileCheck` | `FileText` (with `CheckCircle` overlay if needed) |
+| `FileSignature` | `Signature` |
+| `Send` | `PaperPlaneTilt` |
+| `Building2` | `Building` |
+| `Truck` | `Truck` |
+| `Coins` | `Coins` |
+| `RotateCcw` | `ArrowCounterClockwise` |
+| `Pause` | `Pause` |
+| `Heart` | `Heart` |
+| `Sparkles` | `Sparkle` |
+| `Zap` | `Lightning` |
+| `Calculator` | `Calculator` |
+| `Bed` / `BedDouble` | `Bed` |
+| `ChefHat` | `ChefHat` |
+| `UtensilsCrossed` | `ForkKnife` |
+| `Wrench` | `Wrench` |
+| `Pill` | `Pill` |
+| `Stethoscope` | `Stethoscope` |
+| `Snowflake` | `Snowflake` |
+| `RefreshCw` | `ArrowsClockwise` |
+
+Special cases:
+- Phosphor icons are bundled per-icon (no tree-shake issue), but the ESM package is large. We import only what we use, no barrel.
+- For icons used once or twice, we accept the slight bundle hit. For the sweep, we'll spot-check `pnpm run build` post-merge.
+
+### 15.4 Typography contract
+
+Two CSS variables on `:root`:
+
+```css
+:root {
+  --font-display: "Fraunces", "Iowan Old Style", "Cambria", "Georgia", serif;
+  --font-mono: "Geist Mono", "Berkeley Mono", "JetBrains Mono", ui-monospace, monospace;
+}
+```
+
+Already declared in `src/index.css`. Page mastheads use `style={{ fontFamily: "var(--font-display)" }}` inline; Tailwind's `font-mono` picks up the mono stack via the existing config.
+
+Rules of thumb:
+- Page titles: Fraunces, weight 500, clamp(24 px, 3 vw, 38 px), leading-[1.05], tracking-[-0.01em]
+- Eyebrows above the title: mono, 10 px, uppercase, tracking-[0.22em], muted-foreground
+- Body: Geist sans (default), 13 px / 1.45
+- Numbers: mono with `tabular-nums`, never sans
+- Hero figures (revenue, expiry date, count): Fraunces at clamp(48 px, 8 vw, 100 px+) with `tabular-nums`
+
+### 15.5 Out of scope for this rollout
+
+- Charts library (recharts) — leave as-is; matches the editorial language fine
+- Toaster + dialog + sheet primitives — already redesigned
+- Modal dialogs — already glass-thin or hairline-bordered, no further work needed
+- Apple liquid-glass screens (login, lock, license-activation, idle-auto-lock) — explicitly preserved as designed in v0.7.x
+

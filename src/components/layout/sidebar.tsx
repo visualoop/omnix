@@ -1,26 +1,27 @@
 import { useState } from "react";
 import { cn } from "@/lib/utils";
+// Phosphor icons — duotone-friendly and consistent with the editorial
+// design language we're rolling out across the desktop app. The
+// LayoutDashboard alias keeps existing icon-typed props happy.
 import {
-  LayoutDashboard,
+  House as LayoutDashboard,
   ShoppingCart,
   Package,
   Pill,
-  BarChart3,
-  Settings,
-  ChevronsLeft,
-  ChevronsRight,
-  Search,
+  ChartBar as BarChart3,
+  GearSix as Settings,
+  CaretDoubleLeft as ChevronsLeft,
+  CaretDoubleRight as ChevronsRight,
+  MagnifyingGlass as Search,
   Receipt,
   Users,
   Wrench,
-  UtensilsCrossed,
+  ForkKnife as UtensilsCrossed,
   ShoppingBag,
-  Landmark,
-  Banknote,
-  UserCog,
-  // ModuleGroup component (no longer used) was the only consumer of
-  // the rest. Keeping a lean barrel since most icons came from there.
-} from "lucide-react";
+  Bank as Landmark,
+  Money as Banknote,
+  UserGear as UserCog,
+} from "@phosphor-icons/react";
 import { NavLink } from "react-router-dom";
 import { OmnixLogo } from "@/components/omnix-logo";
 import { ModuleLogo } from "@/components/module-logos";
@@ -134,11 +135,14 @@ export function Sidebar({ onCommandOpen }: { onCommandOpen: () => void }) {
         )}
         {!collapsed && (
           <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-1 text-sm font-semibold tracking-tight leading-tight">
+            <div
+              style={{ fontFamily: "var(--font-display, serif)" }}
+              className="flex items-center gap-1 text-[16px] font-medium tracking-[-0.01em] leading-tight"
+            >
               {activeModule && activeModule.id !== "core" ? activeModule.shortName : APP_NAME}
             </div>
             {activeModule && activeModule.id !== "core" && (
-              <div className="text-[10px] text-muted-foreground font-medium leading-tight mt-0.5">
+              <div className="font-mono text-[9px] uppercase tracking-[0.18em] text-muted-foreground leading-tight mt-1">
                 Powered by {APP_NAME}
               </div>
             )}
