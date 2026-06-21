@@ -259,8 +259,19 @@ export function POSSalePage() {
 
     let cancelled = false;
     (async () => {
-      // 1) Try carton/pack barcode first (auto-adds with correct qty)
-      const uomMatch = await getUomByBarcode(search);
+      // 1) Try carton/pack barcode first (auto-adds with correct qty).
+      //    If the retail migration hasn't run on this install, product_uoms
+      //    won't exist and this query throws — we swallow it and fall
+      //    through to regular product search instead of leaving the user
+      //    with a permanently-empty results list.
+      let uomMatch: Awaited<ReturnType<typeof getUomByBarcode>> = null;
+      try {
+        uomMatch = await getUomByBarcode(search);
+      } catch (e) {
+        // product_uoms table missing on this install (non-retail) — silently
+        // skip pack-barcode probing, search by name/sku/barcode below.
+        console.debug("[search] uom probe skipped:", e);
+      }
       if (cancelled) return;
       if (uomMatch) {
         const packQty = Math.max(1, uomMatch.uom.quantity_per || 1);
@@ -278,10 +289,20 @@ export function POSSalePage() {
         return;
       }
 
-      // 2) Fall back to regular product search
-      const products = await getProducts(search);
-      if (!cancelled) setResults(products);
-    })().catch(console.error);
+      // 2) Regular product search by name / SKU / barcode.
+      try {
+        const products = await getProducts(search);
+        if (!cancelled) setResults(products);
+      } catch (e) {
+        // Surface the failure so the cashier sees something instead of an
+        // empty grid that looks like 'no products match'.
+        console.error("[search] getProducts failed:", e);
+        if (!cancelled) {
+          setResults([]);
+          toast.error("Search failed — try again", { id: "search-failed" });
+        }
+      }
+    })();
 
     return () => { cancelled = true; };
   }, [search, addItemWithQuantity]);
@@ -659,14 +680,17 @@ export function POSSalePage() {
           const liveProductStock = stockMap.get(p.id) ?? p.stock_qty;
           if (variant) {
             addItemWithQuantity({
-              id: variant.id,
+              id: p.id,                                      // PARENT product id (so completeSale can deduct variant stock by joining via the line.variant_id below)
+              variant_id: variant.id,                        // discriminator — picks up the right product_variants row at sale time
               name: `${p.name} - ${variant.variant_name}`,
               selling_price: variant.selling_price ?? p.selling_price,
               tax_rate: p.tax_rate,
               stock_qty: variant.stock_qty,
+              variant_label: variant.variant_name,
+              category_id: (p as any).category_id ?? null,
             }, qtyMultiplier);
           } else {
-            addItemWithQuantity({ id: p.id, name: p.name, selling_price: p.selling_price, tax_rate: p.tax_rate, stock_qty: liveProductStock }, qtyMultiplier);
+            addItemWithQuantity({ id: p.id, name: p.name, selling_price: p.selling_price, tax_rate: p.tax_rate, stock_qty: liveProductStock, category_id: (p as any).category_id ?? null }, qtyMultiplier);
           }
           setQtyMultiplier(1);
           setPendingVariantPick(null);

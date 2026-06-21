@@ -9,9 +9,9 @@
  *     plus a 2 px module-accent strip on the left edge of the active row
  *   - No drop shadows. No card containers. Hairline rules between sections.
  *
- * Icons remain Lucide for now (settings registry still imports from
- * lucide-react). The site-wide Phosphor sweep is a separate cycle —
- * doing both at once would balloon scope.
+ * Icons in the registry are now Phosphor (the site-wide sweep landed in
+ * v0.7.15). The active-row treatment matches the rest of the redesigned
+ * surfaces: 2 px module-accent strip + bg-foreground/[0.06] tint.
  */
 import {
   ArrowLeft,

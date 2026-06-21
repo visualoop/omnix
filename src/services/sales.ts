@@ -5,6 +5,10 @@ import { getTaxSettings, computeTax } from "./tax";
 export interface CartItem {
   id: string;
   product_id: string;
+  /** When this line came from a product_variants row, the variant's id.
+   *  product_id stays as the PARENT product. completeSale deducts variant
+   *  stock from product_variants instead of batches when this is set. */
+  variant_id?: string | null;
   /** When this line came from a hospitality menu item, the menu_items.id —
    *  used to consume recipe ingredients on sale completion (kind=menu_item). */
   menu_item_id?: string | null;
@@ -80,24 +84,49 @@ export async function completeSale(
   // set) consume recipe ingredients via a different path and skip this
   // gate. Concurrent tills can still race, but a final FIFO loop below
   // catches that and rolls back.
+  //
+  // VARIANT LINES live on product_variants.stock_qty, not batches —
+  // the cart sets `variant_id` when a variant was picked. Two queries
+  // run independently; both must pass.
   const physicalLines = items.filter((i) => !i.menu_item_id);
   if (physicalLines.length > 0) {
-    const placeholders = physicalLines.map((_, i) => `?${i + 1}`).join(",");
-    const stockRows = await query<{ product_id: string; available: number }>(
-      `SELECT product_id, COALESCE(SUM(quantity), 0) AS available
-       FROM batches
-       WHERE product_id IN (${placeholders}) AND quantity > 0
-       GROUP BY product_id`,
-      physicalLines.map((i) => i.product_id),
-    );
-    const stockMap = new Map(stockRows.map((r) => [r.product_id, r.available]));
+    const variantLines = physicalLines.filter((i) => i.variant_id);
+    const productLines = physicalLines.filter((i) => !i.variant_id);
     const shortages: Array<{ product_id: string; name: string; requested: number; available: number }> = [];
-    for (const line of physicalLines) {
-      const avail = stockMap.get(line.product_id) ?? 0;
-      if (line.quantity > avail) {
-        shortages.push({ product_id: line.product_id, name: line.name, requested: line.quantity, available: avail });
+
+    if (productLines.length > 0) {
+      const placeholders = productLines.map((_, i) => `?${i + 1}`).join(",");
+      const stockRows = await query<{ product_id: string; available: number }>(
+        `SELECT product_id, COALESCE(SUM(quantity), 0) AS available
+         FROM batches
+         WHERE product_id IN (${placeholders}) AND quantity > 0
+         GROUP BY product_id`,
+        productLines.map((i) => i.product_id),
+      );
+      const stockMap = new Map(stockRows.map((r) => [r.product_id, r.available]));
+      for (const line of productLines) {
+        const avail = stockMap.get(line.product_id) ?? 0;
+        if (line.quantity > avail) {
+          shortages.push({ product_id: line.product_id, name: line.name, requested: line.quantity, available: avail });
+        }
       }
     }
+
+    if (variantLines.length > 0) {
+      const placeholders = variantLines.map((_, i) => `?${i + 1}`).join(",");
+      const variantRows = await query<{ id: string; stock_qty: number }>(
+        `SELECT id, stock_qty FROM product_variants WHERE id IN (${placeholders})`,
+        variantLines.map((i) => i.variant_id as string),
+      );
+      const stockMap = new Map(variantRows.map((r) => [r.id, r.stock_qty]));
+      for (const line of variantLines) {
+        const avail = stockMap.get(line.variant_id as string) ?? 0;
+        if (line.quantity > avail) {
+          shortages.push({ product_id: line.product_id, name: line.name, requested: line.quantity, available: avail });
+        }
+      }
+    }
+
     if (shortages.length > 0) {
       const err = new Error(
         `OUT_OF_STOCK: ${shortages.map((s) => `${s.name} (need ${s.requested}, have ${s.available})`).join("; ")}`,
@@ -156,6 +185,23 @@ export async function completeSale(
       } catch (e) {
         console.error("Recipe consumption failed for menu item:", e);
       }
+      continue;
+    }
+
+    // Variant line — deduct from product_variants.stock_qty atomically.
+    // The parent product_id is what we record on sale_items so reports
+    // attribute the sale to the parent. The line.name already includes
+    // the variant label (e.g. 'Ugali - Ndogo').
+    if (item.variant_id) {
+      await execute(
+        `UPDATE product_variants SET stock_qty = MAX(0, stock_qty - ?2) WHERE id = ?1`,
+        [item.variant_id, item.quantity],
+      );
+      await execute(
+        `INSERT INTO stock_movements (id, product_id, type, quantity, reference_type, reference_id)
+         VALUES (?1, ?2, 'sale', ?3, 'sale', ?4)`,
+        [crypto.randomUUID(), item.product_id, -item.quantity, saleId],
+      );
       continue;
     }
 

@@ -20,10 +20,12 @@ import {
   House as LayoutDashboard,
   Package as Boxes,
   PaperPlaneTilt as Send,
+  ListChecks,
 } from "@phosphor-icons/react";
 import { HubLayout } from "@/components/layout/hub-layout";
 import { DashboardPage } from "@/pages/dashboard";
 import { ReportsPage } from "@/pages/reports";
+import { ReportsIndexPage } from "@/pages/reports-index";
 import { InventoryReportsPage } from "@/pages/inventory-reports";
 import { ZReportPage } from "@/pages/zreport";
 import { PnLPage } from "@/pages/pnl";
@@ -42,6 +44,7 @@ export function AnalyticsHubPage() {
       description="What's happening, what happened, what it means."
       tabs={[
         { id: "dashboard", label: "Dashboard", icon: LayoutDashboard, component: DashboardPage, permission: "reports.view" },
+        { id: "all", label: "All reports", icon: ListChecks, component: ReportsIndexPage, permission: "reports.view" },
         { id: "sales", label: "Sales reports", icon: BarChart3, component: ReportsPage, permission: "reports.view" },
         { id: "inventory", label: "Inventory reports", icon: Boxes, component: InventoryReportsPage, permission: "reports.view" },
         { id: "zreport", label: "Z-Report", icon: FileText, component: ZReportPage, permission: "reports.zreport" },

@@ -7,6 +7,11 @@ interface CartProduct {
   name: string;
   selling_price: number;
   tax_rate: number;
+  /** Variant id when this product line came from a product_variants row.
+   *  When set, the cart treats `id` as the parent product id and `variant_id`
+   *  as the discriminator. Stock check and deduction route through
+   *  product_variants instead of batches in completeSale. */
+  variant_id?: string;
   /**
    * Live stock count. Used by addItemWithQuantity to refuse over-stock
    * additions, and by the POS UI to show "Only N in stock" inline.
@@ -197,6 +202,7 @@ export const useCartStore = create<CartState>()(
           const item: CartItem = {
             id: crypto.randomUUID(),
             product_id: product.id,
+            variant_id: product.variant_id ?? null,
             name: product.name,
             quantity: qty,
             unit_price: product.selling_price,
