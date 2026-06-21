@@ -1,6 +1,11 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Wifi, WifiOff, Server, Users } from "lucide-react";
+import {
+  Cpu as Server,
+  Users,
+  WifiHigh as Wifi,
+  WifiSlash as WifiOff,
+} from "@phosphor-icons/react";
 import { getConnectionStatus, type ConnectionStatus } from "@/services/network";
 
 /**

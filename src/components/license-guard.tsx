@@ -1,5 +1,7 @@
 import { useEffect, useState, type ReactNode } from "react";
-import { Loader2 } from "lucide-react";
+import {
+  CircleNotch as Loader2,
+} from "@phosphor-icons/react";
 import { getLicenseStatus, revalidateLicense, type LicenseStatus } from "@/services/license";
 import { useEntitlements } from "@/stores/entitlements";
 import { LicenseActivationPage } from "@/pages/license-activation";

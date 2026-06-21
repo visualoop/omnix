@@ -1,5 +1,9 @@
 import { useState } from "react";
-import { UserPlus, X, Loader2 } from "lucide-react";
+import {
+  CircleNotch as Loader2,
+  UserPlus,
+  X,
+} from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { upsertCustomer, type Customer } from "@/services/erp";

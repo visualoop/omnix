@@ -7,7 +7,12 @@
  */
 import { useState, useEffect, useRef } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { HelpCircle, Sparkles, Loader2, X } from "lucide-react";
+import {
+  CircleNotch as Loader2,
+  Question as HelpCircle,
+  Sparkle as Sparkles,
+  X,
+} from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ai, AiError } from "@/services/ai";

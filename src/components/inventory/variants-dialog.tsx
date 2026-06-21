@@ -1,5 +1,11 @@
 import { useEffect, useState, useCallback } from "react";
-import { Plus, Trash2, Loader2, Layers, GripVertical } from "lucide-react";
+import {
+  CircleNotch as Loader2,
+  DotsSixVertical as GripVertical,
+  Plus,
+  Stack as Layers,
+  Trash as Trash2,
+} from "@phosphor-icons/react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";

@@ -1,5 +1,5 @@
 import { useAuthStore } from "@/stores/auth";
-import { Moon, Sun, LogOut } from "lucide-react";
+import { Moon, Sun, SignOut } from "@phosphor-icons/react";
 import { useThemeStore } from "@/stores/theme";
 import { Button } from "@/components/ui/button";
 import { NetworkIndicator } from "@/components/layout/network-indicator";
@@ -55,7 +55,7 @@ export function Topbar() {
               onClick={() => useAuthStore.getState().signOut()}
               title="Sign out"
             >
-              <LogOut className="h-4 w-4" />
+              <SignOut className="h-4 w-4" />
             </Button>
           </div>
         )}

@@ -4,9 +4,17 @@
  */
 import { useEffect, useState } from "react";
 import {
-  Wrench, FileText, Truck, Users, Percent, BarChart3, Plus, Loader2,
-  CheckCircle2, Clock,
-} from "lucide-react";
+  ChartBar as BarChart3,
+  CheckCircle as CheckCircle2,
+  CircleNotch as Loader2,
+  Clock,
+  FileText,
+  Percent,
+  Plus,
+  Truck,
+  Users,
+  Wrench,
+} from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";

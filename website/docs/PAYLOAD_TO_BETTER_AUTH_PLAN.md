@@ -1502,15 +1502,14 @@ User directive: *"the way u designed the pos page before opening pos where it sa
 
 The POS overview / P&L design language (cream paper #FBFAF6, Fraunces serif masthead, mono uppercase eyebrows, hairline rules instead of card containers, motion/react count-ups) becomes the **system language** for the entire desktop app. Lucide icons leave the building. Phosphor takes over for the app surface; Material icons handle the setup wizard specifically.
 
-### 15.1 The three icon planes
+### 15.1 The two icon planes
 
 | Plane | Library | Where |
 | --- | --- | --- |
-| **App surface** (every screen except setup) | `@phosphor-icons/react` | sidebar, topbar, hub pages, P&L, POS, settings, hospitality, hardware, dawa, retail, every modal, every form |
-| **Setup wizard** | `@mui/icons-material` | only `src/pages/setup.tsx` and its sub-steps. Material icons feel "first-run / installer" — distinct visual language signals "you're configuring", not "you're operating". |
+| **App surface** (every screen, including setup) | `@phosphor-icons/react` | sidebar, topbar, hub pages, P&L, POS, settings, hospitality, hardware, dawa, retail, every modal, every form, the setup wizard |
 | **External user content** (eg. category icons) | n/a — first-letter lettermark + colour | already in v0.7.6 cart card pattern; keep as-is |
 
-Lucide is removed entirely from `src/`. The website (`/website`) is unchanged — it has its own icon set already.
+Lucide is removed entirely from `src/`. Material icons are NOT used anywhere — Phosphor is the single icon language for the whole app. The website (`/website`) is unchanged — it has its own icon set already.
 
 ### 15.2 Migration order — five patches
 
@@ -1534,9 +1533,9 @@ Each patch is a self-contained release with verifiable scope. After all five, Lu
 - Cream paper #FBFAF6 background. Hairline rules. No card containers.
 - motion/react useMotionValue count-up on revenue + transactions count.
 
-**v0.7.17 — Setup wizard with Material icons**
-- Replace every Lucide icon in `src/pages/setup.tsx` with `@mui/icons-material` equivalents.
-- Material icons are system-mono in feel — distinct from the Phosphor app-surface, signalling "this is one-time configuration".
+**v0.7.17 — Setup wizard with Phosphor**
+- Replace every Lucide icon in `src/pages/setup.tsx` (plus its sub-steps) with the Phosphor equivalent.
+- Setup wizard uses the SAME icon language as the rest of the app — Phosphor everywhere keeps the visual contract simple.
 - Cream paper background per step. Fraunces serif on step titles.
 - motion/react step entrance: `initial={{ opacity: 0, y: 12 }}` for each step body.
 

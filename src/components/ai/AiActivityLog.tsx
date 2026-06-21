@@ -6,7 +6,13 @@
 import { useEffect, useState } from "react";
 import { listCalls, callStats, type AiCallRow, type CallStats } from "@/services/ai/audit";
 import { Badge } from "@/components/ui/badge";
-import { Sparkles, AlertCircle, CheckCircle2, Lock, Clock } from "lucide-react";
+import {
+  CheckCircle as CheckCircle2,
+  Clock,
+  Lock,
+  Sparkle as Sparkles,
+  WarningCircle as AlertCircle,
+} from "@phosphor-icons/react";
 import { cn } from "@/lib/utils";
 
 const STATUS_STYLE: Record<string, { className: string; icon: typeof CheckCircle2 }> = {

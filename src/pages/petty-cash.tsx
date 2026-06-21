@@ -1,5 +1,12 @@
 import { useEffect, useState } from "react";
-import { Wallet, Plus, ArrowDownCircle, ArrowUpCircle, X, Loader2 } from "lucide-react";
+import {
+  ArrowCircleDown as ArrowDownCircle,
+  ArrowCircleUp as ArrowUpCircle,
+  CircleNotch as Loader2,
+  Plus,
+  Wallet,
+  X,
+} from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {

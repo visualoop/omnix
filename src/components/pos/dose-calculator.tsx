@@ -5,7 +5,11 @@
  * computes both: maintenance dose by weight and total daily dose with split.
  */
 import { useState } from "react";
-import { Calculator, AlertTriangle, Info } from "lucide-react";
+import {
+  Calculator as Calculator,
+  Info,
+  Warning as AlertTriangle,
+} from "@phosphor-icons/react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";

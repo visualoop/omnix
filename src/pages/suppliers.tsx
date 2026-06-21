@@ -1,6 +1,14 @@
 import { useState, useEffect } from "react";
 import { confirm } from "@/components/ui/confirm-dialog";
-import { Plus, Search, Truck, Edit3, Phone, Mail, Wallet } from "lucide-react";
+import {
+  Envelope as Mail,
+  MagnifyingGlass as Search,
+  Pencil as Edit3,
+  Phone,
+  Plus,
+  Truck,
+  Wallet,
+} from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";

@@ -1,9 +1,20 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import {
-  ArrowLeft, Pill, AlertTriangle, Heart, User, Phone, Plus, Trash2, Save, Loader2,
-  Activity, Calendar, Weight,
-} from "lucide-react";
+  Pulse as Activity,
+  ArrowLeft,
+  Calendar,
+  CircleNotch as Loader2,
+  FloppyDisk as Save,
+  Heart,
+  Phone,
+  Pill,
+  Plus,
+  Trash as Trash2,
+  User,
+  Warning as AlertTriangle,
+  Scales as Weight,
+} from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";

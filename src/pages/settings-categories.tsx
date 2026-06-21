@@ -24,9 +24,15 @@
  */
 import { useEffect, useMemo, useState } from "react";
 import {
-  Plus, Pencil, Trash2, Check, X, ChevronRight, ChevronDown,
-  CornerDownRight,
-} from "lucide-react";
+  CaretDown as ChevronDown,
+  CaretRight as ChevronRight,
+  Check,
+  ArrowBendDownRight as CornerDownRight,
+  Pencil,
+  Plus,
+  Trash as Trash2,
+  X,
+} from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Combobox } from "@/components/ui/combobox";

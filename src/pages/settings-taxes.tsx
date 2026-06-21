@@ -13,7 +13,12 @@
  *   exclusive  — tax added on top at checkout. Default for KE / classic VAT.
  */
 import { useEffect, useState } from "react";
-import { Percent, Package, Loader2, Wand2 } from "lucide-react";
+import {
+  CircleNotch as Loader2,
+  MagicWand as Wand2,
+  Package,
+  Percent,
+} from "@phosphor-icons/react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";

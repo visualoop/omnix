@@ -1,5 +1,12 @@
 import { useState, useEffect } from "react";
-import { CreditCard, CheckCircle2, AlertCircle, Eye, EyeOff, Smartphone } from "lucide-react";
+import {
+  CheckCircle as CheckCircle2,
+  CreditCard as CreditCard,
+  DeviceMobile as Smartphone,
+  Eye,
+  EyeSlash as EyeOff,
+  WarningCircle as AlertCircle,
+} from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { getPaystackConfig, savePaystackConfig, verifyPaystackKey, disablePaystack } from "@/services/paystack";

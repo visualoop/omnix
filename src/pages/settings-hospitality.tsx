@@ -4,7 +4,9 @@
  * charge percent applied at the order-pay step.
  */
 import { useEffect, useState } from "react";
-import { Percent } from "lucide-react";
+import {
+  Percent,
+} from "@phosphor-icons/react";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";

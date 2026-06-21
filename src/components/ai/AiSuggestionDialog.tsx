@@ -8,7 +8,14 @@
  * the user clicks Apply.
  */
 import { useState } from "react";
-import { Sparkles, Check, X, Pencil, ChevronDown, ChevronUp } from "lucide-react";
+import {
+  CaretDown as ChevronDown,
+  CaretUp as ChevronUp,
+  Check,
+  Pencil,
+  Sparkle as Sparkles,
+  X,
+} from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";

@@ -1,5 +1,10 @@
 import { useEffect, useState } from "react";
-import { ShieldCheck, ShieldX, Search, Loader2 } from "lucide-react";
+import {
+  CircleNotch as Loader2,
+  MagnifyingGlass as Search,
+  ShieldCheck,
+  ShieldChevron as ShieldX,
+} from "@phosphor-icons/react";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { PERMISSION_CATALOG } from "@/lib/permissions";

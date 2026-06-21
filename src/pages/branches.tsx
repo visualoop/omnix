@@ -1,6 +1,16 @@
 import { useState, useEffect } from "react";
 import { confirm } from "@/components/ui/confirm-dialog";
-import { Building2, Plus, Edit3, Star, MapPin, Phone, X, Loader2, Check } from "lucide-react";
+import {
+  Building as Building2,
+  Check,
+  CircleNotch as Loader2,
+  MapPin as MapPin,
+  Pencil as Edit3,
+  Phone,
+  Plus,
+  Star,
+  X,
+} from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter } from "@/components/ui/sheet";

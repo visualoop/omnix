@@ -1,5 +1,9 @@
 import { useEffect, useState } from "react";
-import { Clock, ChevronLeft, ChevronRight } from "lucide-react";
+import {
+  CaretLeft as ChevronLeft,
+  CaretRight as ChevronRight,
+  Clock,
+} from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { TableRowSkeleton } from "@/components/ui/skeletons";

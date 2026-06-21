@@ -4,7 +4,23 @@
  * Flat, theme-token UI per the Omnix design system.
  */
 import { useEffect, useState } from "react";
-import { UtensilsCrossed, LayoutGrid, BookOpen, Plus, Loader2, ChefHat, Send, ChevronRight, ArrowLeft, BedDouble, CalendarDays, Sparkles, FileText, ClipboardList, BarChart3 } from "lucide-react";
+import {
+  ArrowLeft,
+  Bed as BedDouble,
+  BookOpen,
+  CalendarDots as CalendarDays,
+  CaretRight as ChevronRight,
+  ChartBar as BarChart3,
+  ChefHat,
+  CircleNotch as Loader2,
+  ClipboardText as ClipboardList,
+  FileText,
+  ForkKnife as UtensilsCrossed,
+  GridFour as LayoutGrid,
+  PaperPlaneTilt as Send,
+  Plus,
+  Sparkle as Sparkles,
+} from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";

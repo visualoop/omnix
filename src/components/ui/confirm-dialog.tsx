@@ -17,7 +17,11 @@
  */
 import { useEffect, useState } from "react";
 import { create } from "zustand";
-import { Loader2, AlertTriangle, HelpCircle } from "lucide-react";
+import {
+  CircleNotch as Loader2,
+  Question as HelpCircle,
+  Warning as AlertTriangle,
+} from "@phosphor-icons/react";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
 } from "@/components/ui/dialog";

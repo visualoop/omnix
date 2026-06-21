@@ -5,7 +5,11 @@
  */
 import { useAuthStore } from "@/stores/auth";
 import { hasPermission, type Permission } from "@/lib/permissions";
-import { Wallet, Coins, Receipt } from "lucide-react";
+import {
+  Coins,
+  Receipt,
+  Wallet,
+} from "@phosphor-icons/react";
 import { HubLayout } from "@/components/layout/hub-layout";
 import { BankingPage } from "@/pages/banking";
 import { PettyCashPage } from "@/pages/petty-cash";

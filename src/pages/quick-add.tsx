@@ -1,8 +1,15 @@
 import { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import {
-  Zap, Plus, Trash2, Loader2, ArrowLeft, Check, AlertCircle, Tag,
-} from "lucide-react";
+  ArrowLeft,
+  Check,
+  CircleNotch as Loader2,
+  Lightning as Zap,
+  Plus,
+  Tag,
+  Trash as Trash2,
+  WarningCircle as AlertCircle,
+} from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";

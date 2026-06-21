@@ -1,9 +1,17 @@
 import { useState, useEffect } from "react";
 import {
-  Key, Cpu, AlertCircle, Copy, Check, ExternalLink, Loader2,
-  Sparkles,
-  Zap, Clock, ArrowRight,
-} from "lucide-react";
+  ArrowRight,
+  Check,
+  CircleNotch as Loader2,
+  Clock,
+  Copy,
+  Cpu,
+  ArrowSquareOut as ExternalLink,
+  Key as Key,
+  Lightning as Zap,
+  Sparkle as Sparkles,
+  WarningCircle as AlertCircle,
+} from "@phosphor-icons/react";
 import {
   POSIcon, InventoryIcon, ETIMSIcon, InsuranceIcon, LANIcon, ReportsIcon,
 } from "@/components/icons/feature-icons";

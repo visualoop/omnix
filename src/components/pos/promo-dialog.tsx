@@ -3,7 +3,10 @@
  * Lets cashier enter a promo code or picks from active promotions.
  */
 import { useState, useEffect } from "react";
-import { Tag, Search } from "lucide-react";
+import {
+  MagnifyingGlass as Search,
+  Tag,
+} from "@phosphor-icons/react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";

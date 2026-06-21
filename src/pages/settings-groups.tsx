@@ -1,5 +1,11 @@
 import { useEffect, useState } from "react";
-import { Users, Plus, Loader2, UserPlus, X } from "lucide-react";
+import {
+  CircleNotch as Loader2,
+  Plus,
+  UserPlus,
+  Users,
+  X,
+} from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";

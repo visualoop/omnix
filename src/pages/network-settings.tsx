@@ -1,20 +1,20 @@
 import { useEffect, useState } from "react";
 import { confirm } from "@/components/ui/confirm-dialog";
 import {
-  Network,
-  Wifi,
-  Server,
-  Smartphone,
-  Power,
-  PowerOff,
-  Copy,
   Check,
-  Loader2,
-  AlertCircle,
-  Search,
-  Trash2,
+  CircleNotch as Loader2,
+  Copy,
+  Cpu as Server,
+  DeviceMobile as Smartphone,
+  MagnifyingGlass as Search,
+  Network,
+  Power,
+  Power as PowerOff,
   Radio,
-} from "lucide-react";
+  Trash as Trash2,
+  WarningCircle as AlertCircle,
+  WifiHigh as Wifi,
+} from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";

@@ -7,19 +7,40 @@
  * registries (Hardware, Hospitality) contribute via `registerSettings()`.
  */
 import {
-  Building2, CreditCard, FileCheck, Shield, Users, Key, Database, Cloud, Activity,
-  Network, Boxes, ShieldCheck, Monitor, Ruler, Percent,
-  Tag,           // Categories
+  // AI integration,
+  // Access Explorer
+  Calculator,
+  // Categories
   // Distinct icons for settings duplicate-fix:
-  MapPin,        // Locations & Branches
-  UsersRound,    // Groups
-  KeyRound,      // Access Explorer
-  Calculator,    // Tax & VAT
-  ListChecks,    // Price Lists
-  Printer,       // Receipt Template
-  Sparkles,      // AI integration
-} from "lucide-react";
-import type { LucideIcon } from "lucide-react";
+  MapPin,
+  // Groups
+  Key as KeyRound,
+  // Locations & Branches
+  Users as UsersRound,
+  // Price Lists
+  Printer,
+  // Receipt Template
+  Sparkle as Sparkles,
+  // Tax & VAT
+  ListChecks,
+  Pulse as Activity,
+  Building as Building2,
+  Cloud,
+  CreditCard,
+  Database,
+  FileText as FileCheck,
+  Key,
+  Monitor,
+  Network,
+  Package as Boxes,
+  Percent,
+  Ruler,
+  Shield,
+  ShieldCheck,
+  Tag,
+  Users,
+} from "@phosphor-icons/react";
+import type { Icon as LucideIcon } from "@phosphor-icons/react";
 import type { ModuleId } from "@/stores/active-module";
 import type { Permission } from "@/lib/permissions";
 

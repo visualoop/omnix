@@ -7,7 +7,11 @@
  * runs once per user.
  */
 import { useEffect, useState } from "react";
-import { X, ArrowRight, Check } from "lucide-react";
+import {
+  ArrowRight,
+  Check,
+  X,
+} from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 
 const TOUR_KEY = "omnix-onboarding-completed-v1";

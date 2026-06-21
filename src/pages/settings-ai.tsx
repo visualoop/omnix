@@ -5,7 +5,9 @@
  *   - Activity:  audit log of every AI call
  */
 import { useEffect, useState } from "react";
-import { Sparkles } from "lucide-react";
+import {
+  Sparkle as Sparkles,
+} from "@phosphor-icons/react";
 import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
 import { listProviders, listFeatures, loadSettings, saveSetting, updateFeature } from "@/services/ai";

@@ -1,5 +1,13 @@
 import { useEffect, useState } from "react";
-import { CalendarPlus, Plus, Loader2, Phone, Check, X, ShoppingCart } from "lucide-react";
+import {
+  CalendarPlus,
+  Check,
+  CircleNotch as Loader2,
+  Phone,
+  Plus,
+  ShoppingCart,
+  X,
+} from "@phosphor-icons/react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";

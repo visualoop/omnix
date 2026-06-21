@@ -2,7 +2,17 @@ import { PLACEHOLDERS } from "@/lib/variant-placeholders";
 import { VARIANT } from "@/lib/variant";
 import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { Plus, Search, Package, Upload, Edit3, Zap, PackagePlus, Layers, Download } from "lucide-react";
+import {
+  Download,
+  Lightning as Zap,
+  MagnifyingGlass as Search,
+  Package,
+  Package as PackagePlus,
+  Pencil as Edit3,
+  Plus,
+  Stack as Layers,
+  UploadSimple as Upload,
+} from "@phosphor-icons/react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";

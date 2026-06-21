@@ -3,7 +3,15 @@
  * Shows ALL products sold, payments, returns, petty cash, shift status, expenses.
  */
 import { useEffect, useState } from "react";
-import { Calendar, Package, RotateCcw, Banknote, FileText, Printer, Download } from "lucide-react";
+import {
+  ArrowCounterClockwise as RotateCcw,
+  Calendar,
+  Download,
+  FileText,
+  Money as Banknote,
+  Package,
+  Printer as Printer,
+} from "@phosphor-icons/react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";

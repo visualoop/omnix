@@ -1,5 +1,9 @@
 import { useEffect } from "react";
-import { Building2, Check, ChevronsUpDown } from "lucide-react";
+import {
+  Building as Building2,
+  CaretUpDown as ChevronsUpDown,
+  Check,
+} from "@phosphor-icons/react";
 import {
   DropdownMenu, DropdownMenuTrigger, DropdownMenuContent,
   DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator,

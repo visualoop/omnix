@@ -1,6 +1,12 @@
 import { PLACEHOLDERS } from "@/lib/variant-placeholders";
 import { useState, useEffect } from "react";
-import { Trash2, Plus, Loader2, Layers, Package } from "lucide-react";
+import {
+  CircleNotch as Loader2,
+  Package,
+  Plus,
+  Stack as Layers,
+  Trash as Trash2,
+} from "@phosphor-icons/react";
 import { VariantsDrawer } from "@/components/inventory/variants-drawer";
 import { useScanner } from "@/hooks/use-scanner";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter } from "@/components/ui/sheet";

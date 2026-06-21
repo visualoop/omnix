@@ -1,5 +1,11 @@
 import { useState, useEffect } from "react";
-import { Loader2, AlertCircle, LogIn, KeyRound, ArrowLeft } from "lucide-react";
+import {
+  ArrowLeft,
+  CircleNotch as Loader2,
+  Key as KeyRound,
+  SignIn as LogIn,
+  WarningCircle as AlertCircle,
+} from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useAuthStore } from "@/stores/auth";

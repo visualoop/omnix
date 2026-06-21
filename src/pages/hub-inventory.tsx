@@ -6,7 +6,14 @@
  */
 import { useAuthStore } from "@/stores/auth";
 import { hasPermission, type Permission } from "@/lib/permissions";
-import { Package, Tag, ArrowLeftRight, Truck, ClipboardCheck, Building2 } from "lucide-react";
+import {
+  ArrowsLeftRight as ArrowLeftRight,
+  Building as Building2,
+  ClipboardText as ClipboardCheck,
+  Package,
+  Tag,
+  Truck,
+} from "@phosphor-icons/react";
 import { HubLayout } from "@/components/layout/hub-layout";
 import { InventoryPage } from "@/pages/inventory";
 import { CategoriesSettingsPage } from "@/pages/settings-categories";

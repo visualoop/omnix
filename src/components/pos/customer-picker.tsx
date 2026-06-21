@@ -1,5 +1,10 @@
 import { useEffect, useState } from "react";
-import { User, UserPlus, X, Search } from "lucide-react";
+import {
+  MagnifyingGlass as Search,
+  User,
+  UserPlus,
+  X,
+} from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useCartStore } from "@/stores/cart";

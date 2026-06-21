@@ -10,12 +10,30 @@
 import { useAuthStore } from "@/stores/auth";
 import { hasPermission, type Permission } from "@/lib/permissions";
 import {
-  Pill, Snowflake, FileWarning, Stethoscope, RefreshCw,
-  TrendingUp, Tag as TagIcon, Wallet as WalletIcon, ShoppingBag, Boxes,
-  FileText, FileSignature, Users as UsersIcon, BarChart3,
-  LayoutDashboard, UtensilsCrossed, ClipboardList, Flame,
-  Bed, CalendarRange, Sparkles, FolderOpen, ChefHat,
-} from "lucide-react";
+  ArrowsClockwise as RefreshCw,
+  Bed,
+  CalendarBlank as CalendarRange,
+  ChartBar as BarChart3,
+  ChefHat,
+  ClipboardText as ClipboardList,
+  FileText,
+  FileText as FileWarning,
+  Flame as Flame,
+  Folder as FolderOpen,
+  ForkKnife as UtensilsCrossed,
+  House as LayoutDashboard,
+  Package as Boxes,
+  Pill,
+  ShoppingBag,
+  Signature as FileSignature,
+  Snowflake,
+  Sparkle as Sparkles,
+  Stethoscope,
+  Tag as TagIcon,
+  TrendUp as TrendingUp,
+  Users as UsersIcon,
+  Wallet as WalletIcon,
+} from "@phosphor-icons/react";
 import { HubLayout } from "@/components/layout/hub-layout";
 import { useCountry } from "@/stores/country";
 import { pharmacyTerm } from "@/lib/locale";

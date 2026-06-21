@@ -14,7 +14,9 @@
  */
 import { useEffect, useState } from "react";
 import { Dialog as DialogPrimitive } from "@base-ui/react/dialog";
-import { Lock } from "lucide-react";
+import {
+  Lock,
+} from "@phosphor-icons/react";
 import { useAuthStore } from "@/stores/auth";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";

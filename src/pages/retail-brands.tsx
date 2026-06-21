@@ -1,7 +1,12 @@
 import { useEffect, useState } from "react";
 import {
-  Tag, Plus, Loader2, Edit3, Trash2, Search,
-} from "lucide-react";
+  CircleNotch as Loader2,
+  MagnifyingGlass as Search,
+  Pencil as Edit3,
+  Plus,
+  Tag,
+  Trash as Trash2,
+} from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";

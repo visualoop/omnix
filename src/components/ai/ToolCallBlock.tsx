@@ -4,7 +4,7 @@ import { money } from "@/lib/money";
  * Compact, expandable, shows the tool name + a brief result preview.
  */
 import { useState } from "react"
-import { Wrench, ChevronDown, ChevronUp, CheckCircle2, Loader2 } from "lucide-react"
+import { Wrench, CaretDown as ChevronDown, CaretUp as ChevronUp, CheckCircle as CheckCircle2, CircleNotch as Loader2 } from "@phosphor-icons/react"
 import { cn } from "@/lib/utils"
 
 export interface ToolEvent {

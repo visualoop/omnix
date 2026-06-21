@@ -1,5 +1,12 @@
 import { useState, useEffect } from "react";
-import { Search, CheckCircle2, XCircle, Loader2, UserPlus, Shield } from "lucide-react";
+import {
+  CheckCircle as CheckCircle2,
+  CircleNotch as Loader2,
+  MagnifyingGlass as Search,
+  Shield,
+  UserPlus,
+  XCircle,
+} from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {

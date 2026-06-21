@@ -2,17 +2,17 @@ import { useState, useEffect } from "react";
 import { confirm } from "@/components/ui/confirm-dialog";
 import { invoke } from "@tauri-apps/api/core";
 import {
+  Calendar,
+  CheckCircle as CheckCircle2,
+  CircleNotch as Loader2,
   Database,
   Download,
-  Upload,
-  Trash2,
-  Plus,
-  AlertTriangle,
-  Loader2,
-  Calendar,
   HardDrive,
-  CheckCircle2,
-} from "lucide-react";
+  Plus,
+  Trash as Trash2,
+  UploadSimple as Upload,
+  Warning as AlertTriangle,
+} from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";

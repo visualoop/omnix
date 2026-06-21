@@ -1,7 +1,19 @@
 import { useEffect, useState } from "react";
 import { confirm } from "@/components/ui/confirm-dialog";
 import { useNavigate, useParams } from "react-router-dom";
-import { FileText, ArrowLeft, Send, Printer, Loader2, DollarSign, X, RefreshCw, Check, Download, Eye } from "lucide-react";
+import {
+  ArrowLeft,
+  ArrowsClockwise as RefreshCw,
+  Check,
+  CircleNotch as Loader2,
+  CurrencyDollar as DollarSign,
+  Download,
+  Eye,
+  FileText,
+  PaperPlaneTilt as Send,
+  Printer as Printer,
+  X,
+} from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";

@@ -6,7 +6,13 @@
  */
 import { useAuthStore } from "@/stores/auth";
 import { hasPermission, type Permission } from "@/lib/permissions";
-import { Receipt, RotateCcw, FileText, RefreshCw, Tag } from "lucide-react";
+import {
+  ArrowCounterClockwise as RotateCcw,
+  ArrowsClockwise as RefreshCw,
+  FileText,
+  Receipt,
+  Tag,
+} from "@phosphor-icons/react";
 import { HubLayout } from "@/components/layout/hub-layout";
 import { SalesHistoryPage } from "@/pages/sales-history";
 import { ReturnsPage } from "@/pages/returns";

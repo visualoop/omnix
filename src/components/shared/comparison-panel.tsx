@@ -1,5 +1,9 @@
 import { useState, useEffect } from "react";
-import { TrendingUp, TrendingDown, Minus } from "lucide-react";
+import {
+  Minus as Minus,
+  TrendDown as TrendingDown,
+  TrendUp as TrendingUp,
+} from "@phosphor-icons/react";
 import { getSalesComparison } from "@/services/reports";
 
 interface Props {

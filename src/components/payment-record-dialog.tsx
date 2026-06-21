@@ -1,5 +1,12 @@
 import { useState } from "react";
-import { X, CreditCard, Smartphone, Banknote, Building2, Loader2 } from "lucide-react";
+import {
+  Building as Building2,
+  CircleNotch as Loader2,
+  CreditCard as CreditCard,
+  DeviceMobile as Smartphone,
+  Money as Banknote,
+  X,
+} from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import type { PaymentMethod } from "@/services/settlement";

@@ -1,15 +1,15 @@
 import { useState, useEffect } from "react";
 import {
-  Shield,
-  Send,
-  CheckCircle2,
+  CheckCircle as CheckCircle2,
   Clock,
-  XCircle,
-  AlertCircle,
   Download,
-  Banknote,
   FileText,
-} from "lucide-react";
+  Money as Banknote,
+  PaperPlaneTilt as Send,
+  Shield,
+  WarningCircle as AlertCircle,
+  XCircle,
+} from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";

@@ -1,5 +1,10 @@
 import { useEffect, useState } from "react";
-import { AlertTriangle, AlertOctagon, Info, X } from "lucide-react";
+import {
+  WarningOctagon as AlertOctagon,
+  Info,
+  Warning as AlertTriangle,
+  X,
+} from "@phosphor-icons/react";
 import { useCartStore } from "@/stores/cart";
 import {
   checkInteractions,

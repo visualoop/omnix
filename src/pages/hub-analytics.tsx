@@ -11,9 +11,16 @@
 import { useAuthStore } from "@/stores/auth";
 import { hasPermission, type Permission } from "@/lib/permissions";
 import {
-  LayoutDashboard, BarChart3, LineChart, ClipboardList, FileSpreadsheet,
-  Send, Coins, Boxes, FileText,
-} from "lucide-react";
+  ChartBar as BarChart3,
+  ChartLine as LineChart,
+  ClipboardText as ClipboardList,
+  Coins,
+  FileText,
+  FileXls as FileSpreadsheet,
+  House as LayoutDashboard,
+  Package as Boxes,
+  PaperPlaneTilt as Send,
+} from "@phosphor-icons/react";
 import { HubLayout } from "@/components/layout/hub-layout";
 import { DashboardPage } from "@/pages/dashboard";
 import { ReportsPage } from "@/pages/reports";

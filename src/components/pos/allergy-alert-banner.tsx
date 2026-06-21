@@ -1,5 +1,8 @@
 import { useEffect, useState } from "react";
-import { AlertTriangle, X } from "lucide-react";
+import {
+  Warning as AlertTriangle,
+  X,
+} from "@phosphor-icons/react";
 import { checkDrugAllergies, type AllergyAlert } from "@/services/clinical";
 import { Button } from "@/components/ui/button";
 

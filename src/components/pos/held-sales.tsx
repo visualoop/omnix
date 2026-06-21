@@ -1,6 +1,11 @@
 import { useEffect, useState } from "react";
 import { confirm } from "@/components/ui/confirm-dialog";
-import { Pause, RotateCcw, Trash2, X } from "lucide-react";
+import {
+  ArrowCounterClockwise as RotateCcw,
+  Pause,
+  Trash as Trash2,
+  X,
+} from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useCartStore } from "@/stores/cart";

@@ -13,9 +13,19 @@
 import { useEffect, useState, useCallback } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import {
-  Cloud, CloudUpload, CloudDownload, Loader2, Lock, AlertTriangle,
-  Calendar, HardDrive, CheckCircle2, RefreshCw, Clock, Power,
-} from "lucide-react";
+  ArrowsClockwise as RefreshCw,
+  Calendar,
+  CheckCircle as CheckCircle2,
+  CircleNotch as Loader2,
+  Clock,
+  Cloud,
+  CloudArrowDown as CloudDownload,
+  CloudArrowUp as CloudUpload,
+  HardDrive,
+  Lock,
+  Power,
+  Warning as AlertTriangle,
+} from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";

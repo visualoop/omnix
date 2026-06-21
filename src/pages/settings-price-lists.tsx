@@ -3,7 +3,10 @@
  * Manage retail price tiers and assign products.
  */
 import { useEffect, useState } from "react";
-import { Tag, Plus } from "lucide-react";
+import {
+  Plus,
+  Tag,
+} from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { listPriceLists, upsertPriceList, type PriceList } from "@/services/retail";

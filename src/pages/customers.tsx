@@ -1,6 +1,17 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Plus, Search, Users, Edit3, Phone, Mail, CreditCard, ShoppingBag, Pill, Wallet } from "lucide-react";
+import {
+  CreditCard as CreditCard,
+  Envelope as Mail,
+  MagnifyingGlass as Search,
+  Pencil as Edit3,
+  Phone,
+  Pill,
+  Plus,
+  ShoppingBag,
+  Users,
+  Wallet,
+} from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";

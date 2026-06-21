@@ -1,5 +1,10 @@
 import { useState, useEffect } from "react";
-import { FileCheck, CheckCircle2, AlertCircle, ExternalLink } from "lucide-react";
+import {
+  CheckCircle as CheckCircle2,
+  ArrowSquareOut as ExternalLink,
+  FileText as FileCheck,
+  WarningCircle as AlertCircle,
+} from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { getEtimsConfig, saveEtimsConfig, verifyEtimsConnection, disableEtims } from "@/services/etims";

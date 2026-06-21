@@ -1,6 +1,13 @@
 import { useEffect, useState } from "react";
 import { confirm } from "@/components/ui/confirm-dialog";
-import { Plus, Search, Tag, X, Loader2, Calendar } from "lucide-react";
+import {
+  Calendar,
+  CircleNotch as Loader2,
+  MagnifyingGlass as Search,
+  Plus,
+  Tag,
+  X,
+} from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";

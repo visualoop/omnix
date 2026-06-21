@@ -1,12 +1,34 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import {
-  Search, Minus, Plus, Trash2, Pause, Tag, Pill, ShoppingCart, Sparkles,
-  RotateCcw, Banknote, Smartphone, Receipt, Percent,
-  X, AlertCircle, TrendingUp, Clock, Package, Zap,
-  Calculator, Lock, Unlock, FileText, Heart, Monitor,
-  ChevronsLeft,
-} from "lucide-react";
+  ArrowCounterClockwise as RotateCcw,
+  Calculator as Calculator,
+  CaretDoubleLeft as ChevronsLeft,
+  Clock,
+  DeviceMobile as Smartphone,
+  FileText,
+  Heart,
+  Lightning as Zap,
+  Lock,
+  LockOpen as Unlock,
+  MagnifyingGlass as Search,
+  Minus as Minus,
+  Money as Banknote,
+  Monitor,
+  Package,
+  Pause,
+  Percent,
+  Pill,
+  Plus,
+  Receipt,
+  ShoppingCart,
+  Sparkle as Sparkles,
+  Tag,
+  Trash as Trash2,
+  TrendUp as TrendingUp,
+  WarningCircle as AlertCircle,
+  X,
+} from "@phosphor-icons/react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";

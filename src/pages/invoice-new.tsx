@@ -1,6 +1,13 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { FileText, Trash2, Search, Loader2, Plus, ArrowLeft } from "lucide-react";
+import {
+  ArrowLeft,
+  CircleNotch as Loader2,
+  FileText,
+  MagnifyingGlass as Search,
+  Plus,
+  Trash as Trash2,
+} from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";

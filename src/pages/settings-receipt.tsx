@@ -3,7 +3,9 @@
  * Stored in the settings KV table; read by services/receipt.ts at print time.
  */
 import { useEffect, useState } from "react";
-import { Receipt } from "lucide-react";
+import {
+  Receipt,
+} from "@phosphor-icons/react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";

@@ -1,5 +1,8 @@
 import { useEffect, useState } from "react";
-import { Keyboard, X } from "lucide-react";
+import {
+  Keyboard as Keyboard,
+  X,
+} from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 
 interface Shortcut {

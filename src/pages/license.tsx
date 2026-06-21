@@ -1,19 +1,19 @@
 import { useState, useEffect } from "react";
 import { confirm } from "@/components/ui/confirm-dialog";
 import {
-  ShieldCheck,
-  Cpu,
-  CheckCircle2,
-  AlertTriangle,
-  Copy,
-  Check,
+  Building as Building2,
   Calendar,
-  Mail,
-  Building2,
-  Trash2,
-  Key,
-  Loader2,
-} from "lucide-react";
+  Check,
+  CheckCircle as CheckCircle2,
+  CircleNotch as Loader2,
+  Copy,
+  Cpu,
+  Envelope as Mail,
+  Key as Key,
+  ShieldCheck,
+  Trash as Trash2,
+  Warning as AlertTriangle,
+} from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";

@@ -1,7 +1,11 @@
 import { useState } from "react";
 import { check } from "@tauri-apps/plugin-updater";
 import { relaunch } from "@tauri-apps/plugin-process";
-import { Download, RefreshCw, CheckCircle2 } from "lucide-react";
+import {
+  ArrowsClockwise as RefreshCw,
+  CheckCircle as CheckCircle2,
+  Download,
+} from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { APP_NAME } from "@/lib/brand";

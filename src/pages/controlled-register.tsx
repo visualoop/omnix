@@ -1,5 +1,11 @@
 import { useEffect, useState, useRef } from "react";
-import { ShieldAlert, ChevronLeft, ChevronRight, Printer, Download } from "lucide-react";
+import {
+  CaretLeft as ChevronLeft,
+  CaretRight as ChevronRight,
+  Download,
+  Printer as Printer,
+  ShieldWarning as ShieldAlert,
+} from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";

@@ -4,7 +4,10 @@
  * on the commissions report. Stored in the settings KV table.
  */
 import { useEffect, useState } from "react";
-import { Ruler, CreditCard } from "lucide-react";
+import {
+  CreditCard as CreditCard,
+  Ruler,
+} from "@phosphor-icons/react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { query, execute } from "@/lib/db";

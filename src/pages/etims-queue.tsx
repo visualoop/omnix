@@ -1,5 +1,12 @@
 import { useState, useEffect } from "react";
-import { RefreshCw, CheckCircle2, XCircle, Clock, AlertTriangle, FileCheck } from "lucide-react";
+import {
+  ArrowsClockwise as RefreshCw,
+  CheckCircle as CheckCircle2,
+  Clock,
+  FileText as FileCheck,
+  Warning as AlertTriangle,
+  XCircle,
+} from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { getRecentInvoices, retryQueuedInvoices, type EtimsInvoice } from "@/services/etims";
 import { Badge } from "@/components/ui/badge";

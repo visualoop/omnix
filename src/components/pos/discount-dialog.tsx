@@ -1,5 +1,9 @@
 import { useState } from "react";
-import { Percent, DollarSign, X } from "lucide-react";
+import {
+  CurrencyDollar as DollarSign,
+  Percent,
+  X,
+} from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useCartStore } from "@/stores/cart";

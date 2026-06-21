@@ -1,5 +1,13 @@
 import { useState } from "react";
-import { Upload, Download, AlertCircle, CheckCircle2, FileSpreadsheet, X, Loader2 } from "lucide-react";
+import {
+  CheckCircle as CheckCircle2,
+  CircleNotch as Loader2,
+  Download,
+  FileXls as FileSpreadsheet,
+  UploadSimple as Upload,
+  WarningCircle as AlertCircle,
+  X,
+} from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { createProduct, type CreateProductInput } from "@/services/inventory";

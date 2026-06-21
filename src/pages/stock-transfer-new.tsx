@@ -1,6 +1,12 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowRightLeft, Trash2, Search, Loader2, Check } from "lucide-react";
+import {
+  ArrowsLeftRight as ArrowRightLeft,
+  Check,
+  CircleNotch as Loader2,
+  MagnifyingGlass as Search,
+  Trash as Trash2,
+} from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";

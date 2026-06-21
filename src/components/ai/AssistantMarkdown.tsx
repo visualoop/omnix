@@ -12,7 +12,7 @@
 import { memo } from "react"
 import ReactMarkdown from "react-markdown"
 import { useNavigate } from "react-router-dom"
-import { ArrowUpRight } from "lucide-react"
+import { ArrowUpRight } from "@phosphor-icons/react"
 import { cn } from "@/lib/utils"
 
 const KNOWN_ROUTE_PREFIXES = [

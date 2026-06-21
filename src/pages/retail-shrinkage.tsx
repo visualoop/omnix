@@ -1,5 +1,9 @@
 import { useEffect, useState } from "react";
-import { Plus, AlertTriangle, FileBarChart } from "lucide-react";
+import {
+  FileText as FileBarChart,
+  Plus,
+  Warning as AlertTriangle,
+} from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";

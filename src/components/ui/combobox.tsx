@@ -23,7 +23,13 @@
  *   />
  */
 import { useEffect, useRef, useState } from "react";
-import { Check, ChevronDown, Plus, Search, X } from "lucide-react";
+import {
+  CaretDown as ChevronDown,
+  Check,
+  MagnifyingGlass as Search,
+  Plus,
+  X,
+} from "@phosphor-icons/react";
 import { cn } from "@/lib/utils";
 
 export interface ComboboxOption {

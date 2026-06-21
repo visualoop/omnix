@@ -1,5 +1,10 @@
 import { useState, useEffect } from "react";
-import { Banknote, LockOpen, Lock, FileText } from "lucide-react";
+import {
+  FileText,
+  Lock,
+  LockOpen as LockOpen,
+  Money as Banknote,
+} from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";

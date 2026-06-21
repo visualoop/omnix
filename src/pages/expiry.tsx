@@ -1,5 +1,8 @@
 import { useState, useEffect } from "react";
-import { AlertTriangle, Calendar } from "lucide-react";
+import {
+  Calendar,
+  Warning as AlertTriangle,
+} from "@phosphor-icons/react";
 import { getExpiringItems, type ExpiryItem } from "@/services/pharmacy";
 import { Badge } from "@/components/ui/badge";
 

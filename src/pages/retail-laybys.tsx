@@ -1,5 +1,13 @@
 import { useEffect, useState } from "react";
-import { CalendarClock, Plus, Loader2, X, DollarSign, Trash2, ShoppingCart } from "lucide-react";
+import {
+  CalendarDots as CalendarClock,
+  CircleNotch as Loader2,
+  CurrencyDollar as DollarSign,
+  Plus,
+  ShoppingCart,
+  Trash as Trash2,
+  X,
+} from "@phosphor-icons/react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";

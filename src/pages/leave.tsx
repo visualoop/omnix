@@ -1,6 +1,12 @@
 import { useEffect, useState } from "react";
 import { confirm, prompt } from "@/components/ui/confirm-dialog";
-import { Plane, Plus, Check, X, Loader2 } from "lucide-react";
+import {
+  Airplane as Plane,
+  Check,
+  CircleNotch as Loader2,
+  Plus,
+  X,
+} from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";

@@ -2,12 +2,34 @@ import { useEffect, useState, useMemo } from "react";
 import { Command } from "cmdk";
 import { useNavigate } from "react-router-dom";
 import {
-  LayoutDashboard, ShoppingCart, Package, Pill, BarChart3, Settings,
-  Search as SearchIcon, Receipt, Truck, Users, FileCheck, Shield,
-  RotateCcw, ClipboardCheck, Banknote, FileSpreadsheet, Plus,
-  ArrowRight, Loader2, User, Box, FileText,
-  Tag, CalendarClock, CalendarPlus, AlertTriangle, TrendingUp,
-} from "lucide-react";
+  House as LayoutDashboard,
+  ShoppingCart,
+  Package,
+  Pill,
+  ChartBar as BarChart3,
+  GearSix as Settings,
+  MagnifyingGlass as SearchIcon,
+  Receipt,
+  Truck,
+  Users,
+  FileText as FileCheck,
+  Shield,
+  ArrowCounterClockwise as RotateCcw,
+  ClipboardText as ClipboardCheck,
+  Money as Banknote,
+  FileXls as FileSpreadsheet,
+  Plus,
+  ArrowRight,
+  CircleNotch as Loader2,
+  User,
+  Cube as Box,
+  FileText,
+  Tag,
+  Calendar as CalendarClock,
+  CalendarPlus,
+  Warning as AlertTriangle,
+  TrendUp as TrendingUp,
+} from "@phosphor-icons/react";
 import { query } from "@/lib/db";
 import { useActiveModule } from "@/stores/active-module";
 import { filterByActiveModule, getFeatureModule } from "@/lib/module-features";

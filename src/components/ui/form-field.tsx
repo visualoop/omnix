@@ -6,7 +6,9 @@
  * - useFormErrors() returns an errors map + setError/clearError
  */
 import { useState, useCallback } from "react";
-import { AlertCircle } from "lucide-react";
+import {
+  WarningCircle as AlertCircle,
+} from "@phosphor-icons/react";
 import { cn } from "@/lib/utils";
 
 interface FormFieldProps {

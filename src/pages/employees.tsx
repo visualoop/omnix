@@ -1,6 +1,13 @@
 import { useEffect, useState } from "react";
 import { confirm, prompt } from "@/components/ui/confirm-dialog";
-import { Users, Plus, Edit3, Search, Check, Loader2 } from "lucide-react";
+import {
+  Check,
+  CircleNotch as Loader2,
+  MagnifyingGlass as Search,
+  Pencil as Edit3,
+  Plus,
+  Users,
+} from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";

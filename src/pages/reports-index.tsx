@@ -1,21 +1,21 @@
 import { Link } from "react-router-dom";
 import {
-  TrendingUp,
+  ArrowsLeftRight as ArrowLeftRight,
+  BookOpen,
+  Calendar,
+  FileText as FileCheck,
+  FileXls as FileSpreadsheet,
+  Heart,
+  Money as Banknote,
   Package,
+  PaperPlaneTilt as Send,
   Pill,
   Receipt,
-  FileSpreadsheet,
-  Banknote,
-  AlertTriangle,
-  Heart,
-  Calendar,
-  FileCheck,
-  Scale,
+  Scales as Scale,
+  TrendUp as TrendingUp,
   Wallet,
-  ArrowLeftRight,
-  Send,
-  BookOpen,
-} from "lucide-react";
+  Warning as AlertTriangle,
+} from "@phosphor-icons/react";
 import { intlLocale } from "@/lib/intl";
 
 interface ReportLink {

@@ -7,7 +7,12 @@
  */
 import { useAuthStore } from "@/stores/auth";
 import { hasPermission, type Permission } from "@/lib/permissions";
-import { Users, Clock, CalendarOff, Banknote } from "lucide-react";
+import {
+  CalendarX as CalendarOff,
+  Clock,
+  Money as Banknote,
+  Users,
+} from "@phosphor-icons/react";
 import { HubLayout } from "@/components/layout/hub-layout";
 import { EmployeesPage } from "@/pages/employees";
 import { AttendancePage } from "@/pages/attendance";

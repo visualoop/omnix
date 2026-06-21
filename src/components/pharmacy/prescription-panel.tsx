@@ -2,7 +2,10 @@ import { useState, useEffect } from "react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Trash2, Search } from "lucide-react";
+import {
+  MagnifyingGlass as Search,
+  Trash as Trash2,
+} from "@phosphor-icons/react";
 import { getProducts, type Product } from "@/services/inventory";
 import { createPrescription } from "@/services/pharmacy";
 import { useAuthStore } from "@/stores/auth";

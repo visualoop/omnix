@@ -2,8 +2,15 @@ import { useState, useEffect } from "react";
 import { confirm } from "@/components/ui/confirm-dialog";
 import { useNavigate, useParams } from "react-router-dom";
 import {
-  ClipboardCheck, Plus, Search, ArrowLeft, CheckCircle2, AlertTriangle, Loader2, Save,
-} from "lucide-react";
+  ArrowLeft,
+  CheckCircle as CheckCircle2,
+  CircleNotch as Loader2,
+  ClipboardText as ClipboardCheck,
+  FloppyDisk as Save,
+  MagnifyingGlass as Search,
+  Plus,
+  Warning as AlertTriangle,
+} from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";

@@ -1,14 +1,14 @@
 import { useState, useEffect } from "react";
 import {
-  Activity,
-  Key,
-  ShieldCheck,
-  ShieldAlert,
+  Pulse as Activity,
   Cpu,
+  Funnel as Filter,
+  Key as Key,
   Receipt,
-  AlertTriangle,
-  Filter,
-} from "lucide-react";
+  ShieldWarning as ShieldAlert,
+  ShieldCheck,
+  Warning as AlertTriangle,
+} from "@phosphor-icons/react";
 import { Badge } from "@/components/ui/badge";
 import { query } from "@/lib/db";
 import { intlLocale } from "@/lib/intl";

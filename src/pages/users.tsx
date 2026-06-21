@@ -1,6 +1,15 @@
 import { useState, useEffect } from "react";
 import { confirm } from "@/components/ui/confirm-dialog";
-import { UserPlus, Users, Edit3, Lock, UserX, AlertCircle, Loader2, ShieldCheck } from "lucide-react";
+import {
+  CircleNotch as Loader2,
+  Lock,
+  Pencil as Edit3,
+  ShieldCheck,
+  UserPlus,
+  UserMinus as UserX,
+  Users,
+  WarningCircle as AlertCircle,
+} from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";

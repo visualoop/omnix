@@ -1,69 +1,57 @@
-import { useState, useEffect } from "react";
-import { TrendingUp, ShoppingCart, AlertTriangle, Package, Users, Banknote, FileText } from "lucide-react";
-import { getDashboardKPIs, getSalesByDay, getTopProducts, getSalesByPaymentMethod, type DashboardKPIs, type SalesByDay, type TopProduct, type SalesByPaymentMethod } from "@/services/reports";
+/**
+ * Dashboard — newspaper-masthead editorial redesign.
+ *
+ * Design language (frontend-design + emil-design-eng + anti-slop-writing):
+ *   - Cream paper background (#FBFAF6) — same as POS overview, P&L
+ *   - Top strip: 'OMNIX · {MODULE} · {USER}' left, 'DATE · YEAR · TIME'
+ *     right. Mono uppercase, tracking-[0.22em].
+ *   - Hero: today's revenue in Fraunces serif at clamp(64 px, 11 vw, 140 px).
+ *     Currency symbol set 18 px to its left, baseline-aligned. Italic
+ *     'Open the day.' headline when revenue is zero.
+ *   - Sub-deck: single editorial paragraph reading like a newspaper deck
+ *     ('23 transactions, KSh 5 200 in mobile money, 3 low-stock items')
+ *     instead of a 4-column KPI grid.
+ *   - Action menu: keyboard rows ([S] new sale, [I] inventory, [C] customers,
+ *     [R] reports, [Z] z-report). Each row has the kbd badge + Fraunces verb
+ *     at 28 px + mono hint right-aligned.
+ *   - Charts at the bottom — simpler treatment, hairline rules instead of
+ *     card containers.
+ *   - Phosphor icons throughout (Lucide gone).
+ *   - motion/react: revenue figure fades in + slides up 8 px once on mount.
+ *     useMotionValue count-up over 600 ms.
+ */
+import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { motion, useMotionValue, useTransform, animate } from "motion/react";
+import {
+  ShoppingCart, Package, Users, ChartBar, Receipt,
+} from "@phosphor-icons/react";
+import {
+  getDashboardKPIs, getSalesByDay, getTopProducts, getSalesByPaymentMethod,
+  type DashboardKPIs, type SalesByDay, type TopProduct, type SalesByPaymentMethod,
+} from "@/services/reports";
 import { AreaChart, PieChart } from "@/components/charts";
-import { Skeleton } from "@/components/ui/skeleton";
 import { useActiveBranch } from "@/stores/active-branch";
-import { useActiveModule } from "@/stores/active-module";
-import { isFeatureAvailable } from "@/lib/module-features";
+import { useActiveModule, MODULE_DEFINITIONS } from "@/stores/active-module";
 import { useAuthStore } from "@/stores/auth";
-import { Link } from "react-router-dom";
-import { intlLocale } from "@/lib/intl";
-
-function useModuleAccent() {
-  const m = useActiveModule((s) => s.active);
-  if (m === "dawa") return {
-    headerBg: "bg-teal-700",
-    primary: "text-teal-700 dark:text-teal-400",
-    primaryBg: "bg-teal-500/10",
-    label: "Dawa Pharmacy",
-  };
-  if (m === "retail") return {
-    headerBg: "bg-amber-700",
-    primary: "text-amber-700 dark:text-amber-400",
-    primaryBg: "bg-amber-500/10",
-    label: "Omnix Retail",
-  };
-  if (m === "hardware") return {
-    headerBg: "bg-orange-700",
-    primary: "text-orange-700 dark:text-orange-400",
-    primaryBg: "bg-orange-500/10",
-    label: "Hardware",
-  };
-  if (m === "hospitality") return {
-    headerBg: "bg-rose-700",
-    primary: "text-rose-700 dark:text-rose-400",
-    primaryBg: "bg-rose-500/10",
-    label: "Hospitality",
-  };
-  return {
-    headerBg: "bg-primary",
-    primary: "text-primary",
-    primaryBg: "bg-accent/10",
-    label: "Core ERP",
-  };
-}
+import { useCountry } from "@/stores/country";
+import { pharmacyTerm } from "@/lib/locale";
+import { money } from "@/lib/money";
 
 export function DashboardPage() {
-  const accent = useModuleAccent();
+  const navigate = useNavigate();
   const moduleId = useActiveModule((s) => s.active);
+  const activeModule = MODULE_DEFINITIONS[moduleId];
   const user = useAuthStore((s) => s.user);
+  const countryCode = useCountry((s) => s.code);
   const [kpis, setKpis] = useState<DashboardKPIs | null>(null);
   const [salesByDay, setSalesByDay] = useState<SalesByDay[]>([]);
   const [topProducts, setTopProducts] = useState<TopProduct[]>([]);
   const [paymentMix, setPaymentMix] = useState<SalesByPaymentMethod[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [now, setNow] = useState(() => new Date());
   const activeBranchId = useActiveBranch((s) => s.active?.id);
 
-  const greeting = (() => {
-    const h = new Date().getHours();
-    if (h < 12) return "Good morning";
-    if (h < 17) return "Good afternoon";
-    return "Good evening";
-  })();
-
   useEffect(() => {
-    setLoading(true);
     Promise.all([
       getDashboardKPIs(),
       getSalesByDay(7),
@@ -74,197 +62,255 @@ export function DashboardPage() {
       setSalesByDay(s);
       setTopProducts(t);
       setPaymentMix(p);
-    }).catch(() => {
-      // DB not initialized yet — silent
-    }).finally(() => {
-      setLoading(false);
-    });
+    }).catch(() => { /* DB not ready — silent */ });
   }, [activeBranchId]);
 
+  useEffect(() => {
+    const t = setInterval(() => setNow(new Date()), 30_000);
+    return () => clearInterval(t);
+  }, []);
+
+  // Animated count-up for the hero figure.
+  const mv = useMotionValue(0);
+  const display = useTransform(mv, (n) => Math.round(n).toLocaleString());
+  const target = kpis?.today_sales_total ?? 0;
+  useEffect(() => {
+    const c = animate(mv, target, { duration: 0.6, ease: [0.22, 1, 0.36, 1] });
+    return () => c.stop();
+  }, [target, mv]);
+
+  // Keyboard shortcuts. S = new sale, I = inventory, C = customers, R = reports, Z = z-report.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
+      const tag = (e.target as HTMLElement | null)?.tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA") return;
+      const k = e.key.toLowerCase();
+      if (k === "s") navigate("/pos/sale");
+      else if (k === "i") navigate("/inventory");
+      else if (k === "c") navigate("/customers");
+      else if (k === "r") navigate("/analytics?tab=sales");
+      else if (k === "z") navigate("/reports/zreport");
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [navigate]);
+
+  const moduleLabel =
+    moduleId === "dawa" ? pharmacyTerm(countryCode)
+    : activeModule?.shortName ?? "Omnix";
+  const dateMast = now.toLocaleDateString(undefined, {
+    weekday: "long", day: "numeric", month: "long",
+  }).toUpperCase();
+  const yearMast = now.getFullYear();
+  const timeMast = now.toLocaleTimeString(undefined, {
+    hour: "2-digit", minute: "2-digit", hour12: false,
+  });
+
+  const todayCount = kpis?.today_sales_count ?? 0;
+  const lowStock = kpis?.low_stock_count ?? 0;
+  const expiringSoon = kpis?.expiring_count ?? 0;
+  const cashOnHand = kpis?.cash_position ?? 0;
+
   return (
-    <div className="space-y-5">
-      {/* Hero greeting card with module-aware gradient */}
-      <div className={`rounded-lg ${accent.headerBg} p-5 text-white`}>
-        <div className="flex items-start justify-between">
-          <div>
-            <p className="text-xs uppercase tracking-wider text-white/70 font-medium">{accent.label}</p>
-            <h1 className="text-2xl font-semibold tracking-tight mt-1">
-              {greeting}, {user?.full_name?.split(" ")[0] || "there"}.
-            </h1>
-            <p className="text-sm text-white/80 mt-1">
-              {new Date().toLocaleDateString(intlLocale(), { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
+    <div className="min-h-[calc(100vh-48px)] -m-6 bg-[#FBFAF6] dark:bg-[#0a0a0a]">
+      {/* ─── Masthead ────────────────────────────────── */}
+      <header className="border-b border-foreground/15 px-8 md:px-14 py-3 flex items-baseline justify-between text-foreground/80">
+        <div className="flex items-baseline gap-3 font-mono text-[10px] uppercase tracking-[0.22em]">
+          <span className="font-semibold text-foreground">Omnix · {moduleLabel}</span>
+          <span aria-hidden className="text-foreground/30">/</span>
+          <span>{user?.full_name ?? "—"}</span>
+        </div>
+        <div className="font-mono text-[10px] uppercase tracking-[0.22em] tabular-nums">
+          {dateMast} · {yearMast} · {timeMast}
+        </div>
+      </header>
+
+      {/* ─── Hero — today's revenue ───────────────── */}
+      <section className="px-8 md:px-14 pt-10 pb-12 md:pt-14 md:pb-16">
+        <div className="max-w-[1100px]">
+          <div className="font-mono text-[10px] uppercase tracking-[0.28em] text-foreground/60">
+            {todayCount > 0 ? "Today's take" : "Open the day"}
+          </div>
+          {todayCount > 0 ? (
+            <motion.div
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
+              className="mt-3 flex items-start gap-3"
+            >
+              <span className="font-mono text-[18px] mt-4 text-foreground/55 tabular-nums">
+                {money(0).replace(/[\d.,\s]/g, "").trim() || "KSh"}
+              </span>
+              <span
+                style={{ fontFamily: "var(--font-display, serif)" }}
+                className="text-[clamp(64px,11vw,140px)] leading-[0.95] tracking-[-0.02em] font-medium tabular-nums"
+              >
+                <motion.span>{display}</motion.span>
+              </span>
+            </motion.div>
+          ) : (
+            <motion.h1
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
+              style={{ fontFamily: "var(--font-display, serif)" }}
+              className="mt-3 text-[clamp(48px,8vw,100px)] leading-[0.95] tracking-[-0.02em] font-medium italic"
+            >
+              No sales yet today.
+            </motion.h1>
+          )}
+
+          {/* Sub-deck — newspaper paragraph */}
+          {kpis ? (
+            <p className="mt-6 max-w-[60ch] text-[14px] leading-[1.6] text-foreground/75">
+              {todayCount > 0 ? (
+                <>
+                  <Num n={todayCount} unit={todayCount === 1 ? "sale" : "sales"} /> rung,{" "}
+                  <Money v={kpis.today_profit} /> in profit.{" "}
+                  <Money v={cashOnHand} /> cash in the drawer.
+                  {lowStock > 0 ? (
+                    <> <Num n={lowStock} unit="items" /> low on stock.</>
+                  ) : null}
+                  {expiringSoon > 0 ? (
+                    <> <Num n={expiringSoon} unit="lots" /> expiring soon.</>
+                  ) : null}
+                </>
+              ) : (
+                <>
+                  Drawer holds <Money v={cashOnHand} />.{" "}
+                  <Num n={kpis.total_products ?? 0} unit="products" /> on shelf,{" "}
+                  <Num n={kpis.total_customers ?? 0} unit="customers" /> on file.
+                  {lowStock > 0 ? <> <Num n={lowStock} unit="low" /> on stock.</> : null}
+                </>
+              )}
             </p>
-          </div>
-          {kpis && (
-            <div className="text-right">
-              <p className="text-xs uppercase tracking-wider text-white/70">Today's Revenue</p>
-              <p className="text-3xl font-bold font-mono mt-0.5">KES {kpis.today_sales_total.toFixed(0)}</p>
-              <p className="text-xs text-white/80 mt-0.5">
-                {kpis.today_sales_count} transaction{kpis.today_sales_count !== 1 ? "s" : ""}
-              </p>
-            </div>
-          )}
+          ) : null}
         </div>
-      </div>
+      </section>
 
-      {/* KPI cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <KpiCard
-          icon={ShoppingCart}
-          label="Today's Sales"
-          value={kpis ? kpis.today_sales_total.toFixed(0) : "—"}
-          sub={`${kpis?.today_sales_count || 0} transactions`}
-          prefix="KES"
-          loading={loading}
-          accent={accent}
-        />
-        <KpiCard
-          icon={TrendingUp}
-          label="Today's Profit"
-          value={kpis ? kpis.today_profit.toFixed(0) : "—"}
-          prefix="KES"
-          tone="success"
-          loading={loading}
-        />
-        <KpiCard
-          icon={Banknote}
-          label="Cash on Hand"
-          value={kpis ? kpis.cash_position.toFixed(0) : "—"}
-          prefix="KES"
-          loading={loading}
-        />
-        <Link to="/inventory">
-          <KpiCard
-            icon={AlertTriangle}
-            label="Low Stock"
-            value={kpis?.low_stock_count ?? "—"}
-            sub="items need reorder"
-            tone={kpis && kpis.low_stock_count > 0 ? "warning" : "default"}
-            loading={loading}
-          />
-        </Link>
-      </div>
+      {/* ─── Action menu — keyboard-led ────────────── */}
+      <section className="px-8 md:px-14 pb-12">
+        <div className="font-mono text-[10px] uppercase tracking-[0.28em] text-foreground/60 pb-3 border-b border-foreground/15">
+          Begin
+        </div>
+        <ul className="divide-y divide-foreground/10">
+          <ActionRow k="S" label="New sale" hint="Open POS" icon={ShoppingCart} onClick={() => navigate("/pos/sale")} primary />
+          <ActionRow k="I" label="Inventory" hint="Stock + categories" icon={Package} onClick={() => navigate("/inventory")} />
+          <ActionRow k="C" label="Customers" hint="Member directory" icon={Users} onClick={() => navigate("/customers")} />
+          <ActionRow k="R" label="Sales reports" hint="Last 30 days" icon={ChartBar} onClick={() => navigate("/analytics?tab=sales")} />
+          <ActionRow k="Z" label="Z-Report" hint="End of day totals" icon={Receipt} onClick={() => navigate("/reports/zreport")} muted />
+        </ul>
+      </section>
 
-      {/* Secondary stats */}
-      <div className="grid grid-cols-3 gap-3">
-        <Link to="/inventory">
-          <MiniCard icon={Package} label="Products" value={kpis?.total_products ?? "—"} />
-        </Link>
-        <MiniCard icon={Users} label="Customers" value={kpis?.total_customers ?? "—"} />
-        {isFeatureAvailable("/pharmacy/expiry", moduleId) && (
-          <Link to="/pharmacy/expiry">
-            <MiniCard
-              icon={FileText}
-              label="Expiring Soon"
-              value={kpis?.expiring_count ?? "—"}
-              tone={kpis && kpis.expiring_count > 0 ? "warning" : "default"}
-            />
-          </Link>
-        )}
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {/* Sales chart */}
-        <Card title="Sales — Last 7 Days">
-          {salesByDay.length === 0 ? (
-            <EmptyMini text="No sales yet" />
-          ) : (
-            <AreaChart data={salesByDay} xKey="date" yKey="total" height={220} />
-          )}
-        </Card>
-
-        {/* Payment method mix (pie chart) */}
-        <Card title="Payment Methods (30d)">
-          {paymentMix.length === 0 ? (
-            <EmptyMini text="No sales yet" />
-          ) : (
-            <PieChart
-              data={paymentMix.map((p) => ({ name: p.method_name, value: p.total }))}
-              height={220}
-            />
-          )}
-        </Card>
-      </div>
-
-      {/* Top products */}
-      <Card title="Top Products — Last 30 Days">
-        {topProducts.length === 0 ? (
-          <EmptyMini text="No sales yet" />
-        ) : (
-          <div className="space-y-2">
-            {topProducts.map((p, i) => (
-              <div key={p.product_id} className="flex items-center gap-3">
-                <span className="text-xs font-mono text-muted-foreground w-5">#{i + 1}</span>
-                <span className="text-sm flex-1 truncate">{p.product_name}</span>
-                <span className="text-xs text-muted-foreground">{p.qty_sold}x</span>
-                <span className="text-sm font-mono w-20 text-right">{p.total_revenue.toFixed(0)}</span>
+      {/* ─── Charts — hairline rules, no cards ─────── */}
+      {salesByDay.length > 0 || paymentMix.length > 0 || topProducts.length > 0 ? (
+        <section className="px-8 md:px-14 pb-16 grid grid-cols-1 lg:grid-cols-2 gap-x-12 gap-y-10">
+          {salesByDay.length > 0 ? (
+            <div>
+              <div className="font-mono text-[10px] uppercase tracking-[0.28em] text-foreground/60 pb-3 border-b border-foreground/15">
+                Last 7 days
               </div>
-            ))}
-          </div>
-        )}
-      </Card>
+              <div className="pt-4">
+                <AreaChart data={salesByDay} xKey="date" yKey="total" height={200} />
+              </div>
+            </div>
+          ) : null}
+
+          {paymentMix.length > 0 ? (
+            <div>
+              <div className="font-mono text-[10px] uppercase tracking-[0.28em] text-foreground/60 pb-3 border-b border-foreground/15">
+                Payment methods · 30 days
+              </div>
+              <div className="pt-4">
+                <PieChart
+                  data={paymentMix.map((p) => ({ name: p.method_name, value: p.total }))}
+                  height={200}
+                />
+              </div>
+            </div>
+          ) : null}
+
+          {topProducts.length > 0 ? (
+            <div className="lg:col-span-2">
+              <div className="font-mono text-[10px] uppercase tracking-[0.28em] text-foreground/60 pb-3 border-b border-foreground/15">
+                Top products · 30 days
+              </div>
+              <ul className="pt-2 divide-y divide-foreground/[0.06]">
+                {topProducts.map((p, i) => (
+                  <li key={p.product_id} className="flex items-baseline gap-3 py-2.5 text-[13px]">
+                    <span className="font-mono text-[10px] tabular-nums text-foreground/40 w-6">
+                      {String(i + 1).padStart(2, "0")}
+                    </span>
+                    <span className="flex-1 truncate text-foreground/85">{p.product_name}</span>
+                    <span className="font-mono text-[11px] tabular-nums text-foreground/55">
+                      ×{p.qty_sold}
+                    </span>
+                    <span className="font-mono tabular-nums w-24 text-right text-foreground">
+                      {money(p.total_revenue)}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
+        </section>
+      ) : null}
     </div>
   );
 }
 
-function KpiCard({ icon: Icon, label, value, sub, prefix, tone = "default", loading = false }: any) {
-  const tones = {
-    default: "border-border",
-    warning: "border-amber-500/50 bg-amber-500/5",
-    success: "border-green-500/50 bg-green-500/5",
-  };
+function Num({ n, unit }: { n: number; unit: string }) {
   return (
-    <div className={`border rounded-lg p-4 ${tones[tone as keyof typeof tones]}`}>
-      <div className="flex items-center justify-between">
-        <span className="text-xs text-muted-foreground">{label}</span>
-        <Icon className="h-4 w-4 text-muted-foreground" />
-      </div>
-      <div className="mt-2">
-        {loading ? (
-          <Skeleton className="h-7 w-24" />
-        ) : (
-          <>
-            {prefix && <span className="text-xs text-muted-foreground mr-1">{prefix}</span>}
-            <span className="text-2xl font-semibold font-mono">{value}</span>
-          </>
-        )}
-      </div>
-      {loading ? (
-        <Skeleton className="h-3 w-20 mt-2" />
-      ) : (
-        sub && <p className="text-xs text-muted-foreground mt-1">{sub}</p>
-      )}
-    </div>
+    <span className="text-foreground font-medium tabular-nums">
+      {n.toLocaleString()} {unit}
+    </span>
   );
 }
+function Money({ v }: { v: number }) {
+  return <span className="text-foreground font-medium tabular-nums">{money(v)}</span>;
+}
 
-function MiniCard({ icon: Icon, label, value, tone = "default" }: any) {
-  const tones = {
-    default: "border-border hover:bg-accent/30",
-    warning: "border-amber-500/50 bg-amber-500/5 hover:bg-amber-500/10",
-  };
+interface ActionRowProps {
+  k: string;
+  label: string;
+  hint: string;
+  icon: React.ComponentType<{ className?: string }>;
+  onClick: () => void;
+  primary?: boolean;
+  muted?: boolean;
+}
+function ActionRow({ k, label, hint, icon: Icon, onClick, primary, muted }: ActionRowProps) {
   return (
-    <div className={`border rounded-lg p-3 transition-colors cursor-pointer ${tones[tone as keyof typeof tones]}`}>
-      <div className="flex items-center gap-3">
-        <Icon className="h-4 w-4 text-muted-foreground shrink-0" />
-        <div className="flex-1">
-          <span className="text-xs text-muted-foreground">{label}</span>
-          <p className="text-base font-semibold font-mono">{value}</p>
-        </div>
-      </div>
-    </div>
+    <li>
+      <button
+        onClick={onClick}
+        className={`group flex w-full items-baseline gap-5 py-5 text-left transition-colors ${
+          muted ? "text-foreground/60 hover:text-foreground" : "hover:bg-foreground/[0.02]"
+        }`}
+      >
+        <kbd
+          className={`font-mono text-[11px] tracking-[0.06em] inline-flex h-7 min-w-[28px] items-center justify-center rounded border px-1.5 ${
+            primary
+              ? "border-foreground bg-foreground text-background"
+              : "border-foreground/30 bg-transparent text-foreground/70 group-hover:border-foreground group-hover:text-foreground"
+          }`}
+        >
+          {k}
+        </kbd>
+        <Icon className={`size-5 ${primary ? "text-foreground" : "text-foreground/55"}`} />
+        <span
+          style={{ fontFamily: "var(--font-display, serif)" }}
+          className={`text-[24px] md:text-[28px] leading-none font-medium ${
+            primary ? "text-foreground" : "text-foreground/85 group-hover:text-foreground"
+          } transition-colors`}
+        >
+          {label}
+        </span>
+        <span className="ml-auto pl-6 font-mono text-[11px] uppercase tracking-[0.18em] text-foreground/50">
+          {hint}
+        </span>
+      </button>
+    </li>
   );
-}
-
-function Card({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <div className="border border-border rounded-lg p-4">
-      <h3 className="text-sm font-semibold mb-3">{title}</h3>
-      {children}
-    </div>
-  );
-}
-
-function EmptyMini({ text }: { text: string }) {
-  return <p className="text-xs text-muted-foreground text-center py-6">{text}</p>;
 }

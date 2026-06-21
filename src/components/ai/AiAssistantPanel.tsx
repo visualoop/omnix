@@ -17,7 +17,7 @@ import { money } from "@/lib/money";
  */
 import { useEffect, useRef, useState, useCallback, useMemo } from "react"
 import { useLocation, useNavigate } from "react-router-dom"
-import { Sparkles, X, ArrowUp, Loader2, Plus, History, Trash2, Pin } from "lucide-react"
+import { Sparkle as Sparkles, X, ArrowUp, CircleNotch as Loader2, Plus, ClockCounterClockwise as History, Trash as Trash2, PushPin as Pin } from "@phosphor-icons/react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { useAuthStore } from "@/stores/auth"

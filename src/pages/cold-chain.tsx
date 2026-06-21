@@ -1,5 +1,12 @@
 import { useEffect, useState } from "react";
-import { Thermometer, Plus, Loader2, AlertTriangle, Check, Snowflake } from "lucide-react";
+import {
+  Check,
+  CircleNotch as Loader2,
+  Plus,
+  Snowflake,
+  Thermometer,
+  Warning as AlertTriangle,
+} from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { Can } from "@/components/require-role";
 import { Input } from "@/components/ui/input";

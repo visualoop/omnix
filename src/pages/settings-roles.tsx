@@ -1,5 +1,15 @@
 import { useEffect, useMemo, useState } from "react";
-import { Search, Shield, Plus, Copy, Trash2, Lock, Check, Minus, Loader2 } from "lucide-react";
+import {
+  Check,
+  CircleNotch as Loader2,
+  Copy,
+  Lock,
+  MagnifyingGlass as Search,
+  Minus as Minus,
+  Plus,
+  Shield,
+  Trash as Trash2,
+} from "@phosphor-icons/react";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";

@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
-import { type LucideIcon } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import type { Icon as LucideIcon } from "@phosphor-icons/react";
 
 interface EmptyStateProps {
   icon: LucideIcon;

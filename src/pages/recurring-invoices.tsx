@@ -1,7 +1,13 @@
 import { useEffect, useState } from "react";
 import {
-  Repeat, Plus, Loader2, Power, Trash2, Calendar, Search,
-} from "lucide-react";
+  Calendar,
+  CircleNotch as Loader2,
+  MagnifyingGlass as Search,
+  Plus,
+  Power,
+  Repeat,
+  Trash as Trash2,
+} from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";

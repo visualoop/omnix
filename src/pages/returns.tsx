@@ -1,8 +1,15 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import {
-  RotateCcw, Search, ArrowLeft, Plus, Minus, AlertCircle, CheckCircle2, Loader2,
-} from "lucide-react";
+  ArrowCounterClockwise as RotateCcw,
+  ArrowLeft,
+  CheckCircle as CheckCircle2,
+  CircleNotch as Loader2,
+  MagnifyingGlass as Search,
+  Minus as Minus,
+  Plus,
+  WarningCircle as AlertCircle,
+} from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";

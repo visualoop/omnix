@@ -1,7 +1,14 @@
 import { useEffect, useState } from "react";
 import { confirm } from "@/components/ui/confirm-dialog";
 import { useParams, useNavigate } from "react-router-dom";
-import { ArrowRightLeft, Truck, Check, X, Loader2, ArrowLeft } from "lucide-react";
+import {
+  ArrowLeft,
+  ArrowsLeftRight as ArrowRightLeft,
+  Check,
+  CircleNotch as Loader2,
+  Truck,
+  X,
+} from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";

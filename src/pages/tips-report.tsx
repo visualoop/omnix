@@ -1,5 +1,12 @@
 import { useEffect, useState } from "react";
-import { Heart, Banknote, Smartphone, CreditCard, Users, Calendar } from "lucide-react";
+import {
+  Calendar,
+  CreditCard as CreditCard,
+  DeviceMobile as Smartphone,
+  Heart,
+  Money as Banknote,
+  Users,
+} from "@phosphor-icons/react";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";

@@ -1,6 +1,16 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Banknote, Plus, Smartphone, Wallet, CreditCard, Edit3, Star, Loader2, Check } from "lucide-react";
+import {
+  Check,
+  CircleNotch as Loader2,
+  CreditCard as CreditCard,
+  DeviceMobile as Smartphone,
+  Money as Banknote,
+  Pencil as Edit3,
+  Plus,
+  Star,
+  Wallet,
+} from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";

@@ -1,5 +1,13 @@
 import { useState, useEffect } from "react";
-import { Banknote, Loader2, ArrowDownToLine, ArrowUpFromLine, Receipt, Lock, Unlock } from "lucide-react";
+import {
+  ArrowLineDown as ArrowDownToLine,
+  ArrowLineUp as ArrowUpFromLine,
+  CircleNotch as Loader2,
+  Lock,
+  LockOpen as Unlock,
+  Money as Banknote,
+  Receipt,
+} from "@phosphor-icons/react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";

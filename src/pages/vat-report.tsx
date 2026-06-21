@@ -1,5 +1,9 @@
 import { useState, useEffect } from "react";
-import { Download, FileSpreadsheet, AlertTriangle } from "lucide-react";
+import {
+  Download,
+  FileXls as FileSpreadsheet,
+  Warning as AlertTriangle,
+} from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { getVatReport } from "@/services/etims";

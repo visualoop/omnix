@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
-import { Package } from "lucide-react";
+import {
+  Package,
+} from "@phosphor-icons/react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { listVariants, type ProductVariant } from "@/services/retail";
 import type { Product } from "@/services/inventory";

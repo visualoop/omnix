@@ -1,5 +1,9 @@
 import { useEffect, useState } from "react";
-import { Microscope, AlertTriangle, Info } from "lucide-react";
+import {
+  Info,
+  Microscope,
+  Warning as AlertTriangle,
+} from "@phosphor-icons/react";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { TableRowSkeleton } from "@/components/ui/skeletons";

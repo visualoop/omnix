@@ -1,5 +1,8 @@
 import { useState, useEffect } from "react";
-import { Download, Package } from "lucide-react";
+import {
+  Download,
+  Package,
+} from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { getStockValuation, getReorderList, getDeadStock, getStockMovementsByDay, type StockMovementByDay } from "@/services/reports";
 import { exportToCSV } from "@/lib/export";

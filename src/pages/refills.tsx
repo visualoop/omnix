@@ -1,7 +1,11 @@
 import { useEffect, useState } from "react";
 import { confirm } from "@/components/ui/confirm-dialog";
 import { useNavigate } from "react-router-dom";
-import { Search, RotateCcw, Loader2 } from "lucide-react";
+import {
+  ArrowCounterClockwise as RotateCcw,
+  CircleNotch as Loader2,
+  MagnifyingGlass as Search,
+} from "@phosphor-icons/react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";

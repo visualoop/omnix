@@ -1,5 +1,13 @@
 import { useState, useEffect, useCallback } from "react";
-import { Plus, Search, FileText, AlertTriangle, Tag, Calculator, ShoppingCart } from "lucide-react";
+import {
+  Calculator as Calculator,
+  FileText,
+  MagnifyingGlass as Search,
+  Plus,
+  ShoppingCart,
+  Tag,
+  Warning as AlertTriangle,
+} from "@phosphor-icons/react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";

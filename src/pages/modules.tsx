@@ -1,15 +1,15 @@
 import { useNavigate } from "react-router-dom";
 import {
-  Package,
-  Pill,
-  CheckCircle2,
+  ArrowLeft,
+  CheckCircle as CheckCircle2,
   Clock,
   Cpu,
-  Wrench,
-  UtensilsCrossed,
+  ForkKnife as UtensilsCrossed,
+  Package,
+  Pill,
   ShoppingBag,
-  ArrowLeft,
-} from "lucide-react";
+  Wrench,
+} from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { APP_NAME, BRAND } from "@/lib/brand";

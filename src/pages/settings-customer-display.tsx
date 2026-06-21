@@ -7,7 +7,12 @@
  * to see what they're paying for and what's coming from the kitchen).
  */
 import { useEffect, useState } from "react";
-import { Monitor, Eye, Receipt, User } from "lucide-react";
+import {
+  Eye,
+  Monitor,
+  Receipt,
+  User,
+} from "@phosphor-icons/react";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import { query, execute } from "@/lib/db";

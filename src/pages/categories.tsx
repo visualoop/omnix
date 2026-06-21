@@ -1,5 +1,8 @@
 import { useState, useEffect } from "react";
-import { Plus, FolderOpen } from "lucide-react";
+import {
+  Folder as FolderOpen,
+  Plus,
+} from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { getCategories, createCategory, type Category } from "@/services/inventory";

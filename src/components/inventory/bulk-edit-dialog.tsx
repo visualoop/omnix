@@ -1,6 +1,13 @@
 import { useState } from "react";
 import { confirm } from "@/components/ui/confirm-dialog";
-import { X, Loader2, Tag, Percent, FolderInput, Power } from "lucide-react";
+import {
+  CircleNotch as Loader2,
+  FolderOpen as FolderInput,
+  Percent,
+  Power,
+  Tag,
+  X,
+} from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { execute } from "@/lib/db";

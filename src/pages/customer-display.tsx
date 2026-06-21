@@ -10,7 +10,10 @@
  * zustand-persist cart store (shared localStorage + storage events).
  */
 import { useEffect, useRef, useState } from "react";
-import { CheckCircle2, Heart } from "lucide-react";
+import {
+  CheckCircle as CheckCircle2,
+  Heart,
+} from "@phosphor-icons/react";
 import { useCartStore } from "@/stores/cart";
 import { useActiveModule } from "@/stores/active-module";
 import { ModuleLogo } from "@/components/module-logos";

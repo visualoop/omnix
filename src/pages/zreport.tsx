@@ -1,5 +1,10 @@
 import { useState, useEffect } from "react";
-import { Printer, Calendar, FileText, Loader2 } from "lucide-react";
+import {
+  Calendar,
+  CircleNotch as Loader2,
+  FileText,
+  Printer as Printer,
+} from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { getZReport, printZReport, type ZReport } from "@/services/z-report";

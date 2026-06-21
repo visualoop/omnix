@@ -10,7 +10,10 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
-import { Loader2, UtensilsCrossed } from "lucide-react";
+import {
+  CircleNotch as Loader2,
+  ForkKnife as UtensilsCrossed,
+} from "@phosphor-icons/react";
 import { toast } from "sonner";
 
 export interface MenuItemFormValues {

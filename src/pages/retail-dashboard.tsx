@@ -1,9 +1,15 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
-  TrendingUp, ShoppingBag, AlertTriangle, CalendarClock, CalendarPlus,
-  Package, Tag, ChevronRight,
-} from "lucide-react";
+  CalendarDots as CalendarClock,
+  CalendarPlus,
+  CaretRight as ChevronRight,
+  Package,
+  ShoppingBag,
+  Tag,
+  TrendUp as TrendingUp,
+  Warning as AlertTriangle,
+} from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";

@@ -1,6 +1,16 @@
 import { useEffect, useState } from "react";
 import { confirm } from "@/components/ui/confirm-dialog";
-import { Wallet, Plus, Loader2, Check, FileText, Trash2, Printer, Download, ChevronDown } from "lucide-react";
+import {
+  CaretDown as ChevronDown,
+  Check,
+  CircleNotch as Loader2,
+  Download,
+  FileText,
+  Plus,
+  Printer as Printer,
+  Trash as Trash2,
+  Wallet,
+} from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";

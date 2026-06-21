@@ -1,5 +1,12 @@
 import { useState, useEffect } from "react";
-import { Receipt, Printer, Eye, Search, Calendar, Banknote } from "lucide-react";
+import {
+  Calendar,
+  Eye,
+  MagnifyingGlass as Search,
+  Money as Banknote,
+  Printer as Printer,
+  Receipt,
+} from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";

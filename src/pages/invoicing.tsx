@@ -1,6 +1,13 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { FileText, Plus, Search, AlertCircle, DollarSign, Repeat } from "lucide-react";
+import {
+  CurrencyDollar as DollarSign,
+  FileText,
+  MagnifyingGlass as Search,
+  Plus,
+  Repeat,
+  WarningCircle as AlertCircle,
+} from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";

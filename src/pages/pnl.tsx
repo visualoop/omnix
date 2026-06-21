@@ -36,7 +36,10 @@
  */
 import { useState, useEffect, useMemo } from "react";
 import { motion, useMotionValue, useTransform, animate } from "motion/react";
-import { Download, Printer } from "lucide-react";
+import {
+  Download,
+  Printer as Printer,
+} from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { getPnL, type PnLData } from "@/services/accounting";
 import { printPage } from "@/lib/print";

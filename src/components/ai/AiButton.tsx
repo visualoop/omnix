@@ -4,7 +4,10 @@
  * the caller's onClick handler stays focused on the AI invocation itself.
  */
 import { useState } from "react";
-import { Sparkles, Loader2 } from "lucide-react";
+import {
+  CircleNotch as Loader2,
+  Sparkle as Sparkles,
+} from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";

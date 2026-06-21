@@ -1,5 +1,10 @@
 import { useState, useEffect, useRef } from "react";
-import { Smartphone, CheckCircle2, XCircle, Loader2 } from "lucide-react";
+import {
+  CheckCircle as CheckCircle2,
+  CircleNotch as Loader2,
+  DeviceMobile as Smartphone,
+  XCircle,
+} from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { initiateMpesaCharge, verifyTransaction, submitChargeOtp, getPaystackConfig } from "@/services/paystack";

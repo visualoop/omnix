@@ -10,7 +10,9 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Loader2 } from "lucide-react";
+import {
+  CircleNotch as Loader2,
+} from "@phosphor-icons/react";
 import { toast } from "sonner";
 
 export interface FormFieldDef {

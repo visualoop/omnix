@@ -3,7 +3,14 @@
  * user paste/edit an API key, and ping-tests the connection.
  */
 import { useState } from "react";
-import { CheckCircle2, AlertCircle, Loader2, ExternalLink, Eye, EyeOff } from "lucide-react";
+import {
+  CheckCircle as CheckCircle2,
+  CircleNotch as Loader2,
+  ArrowSquareOut as ExternalLink,
+  Eye,
+  EyeSlash as EyeOff,
+  WarningCircle as AlertCircle,
+} from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";

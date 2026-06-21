@@ -1,5 +1,12 @@
 import { useState, useEffect } from "react";
-import { Package, Plus, Loader2, Trash2, Calendar, Search } from "lucide-react";
+import {
+  Calendar,
+  CircleNotch as Loader2,
+  MagnifyingGlass as Search,
+  Package,
+  Plus,
+  Trash as Trash2,
+} from "@phosphor-icons/react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";

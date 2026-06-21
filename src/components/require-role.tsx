@@ -1,4 +1,9 @@
-import { Lock, Shield, ArrowLeft, Box } from "lucide-react";
+import {
+  ArrowLeft,
+  Cube as Box,
+  Lock,
+  Shield,
+} from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { useAuthStore } from "@/stores/auth";
 import { hasPermission, hasAnyPermission, ROLE_INFO, type Permission } from "@/lib/permissions";

@@ -1,5 +1,8 @@
 import { useState, useEffect } from "react";
-import { Heart, X } from "lucide-react";
+import {
+  Heart,
+  X,
+} from "@phosphor-icons/react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";

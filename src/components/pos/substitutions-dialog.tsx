@@ -1,6 +1,12 @@
 import { useEffect, useState } from "react";
 import { confirm } from "@/components/ui/confirm-dialog";
-import { Pill, X, ArrowDownRight, Check, Loader2 } from "lucide-react";
+import {
+  ArrowDownRight as ArrowDownRight,
+  Check,
+  CircleNotch as Loader2,
+  Pill,
+  X,
+} from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { suggestSubstitutionsFromGeneric, getSubstitutions } from "@/services/pharmacy-extras";
 import { useCartStore } from "@/stores/cart";

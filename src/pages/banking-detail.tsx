@@ -1,9 +1,19 @@
 import { useEffect, useRef, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import {
-  Banknote, ArrowLeft, Plus, Upload, Loader2, ArrowUpRight, ArrowDownLeft,
-  RefreshCw, Trash2, Check, AlertCircle, Link as LinkIcon,
-} from "lucide-react";
+  ArrowDownLeft,
+  ArrowLeft,
+  ArrowUpRight,
+  ArrowsClockwise as RefreshCw,
+  Check,
+  CircleNotch as Loader2,
+  Link as LinkIcon,
+  Money as Banknote,
+  Plus,
+  Trash as Trash2,
+  UploadSimple as Upload,
+  WarningCircle as AlertCircle,
+} from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";

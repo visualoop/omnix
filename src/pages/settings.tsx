@@ -1,5 +1,10 @@
 import { useState, useEffect } from "react";
-import { Building2, Save, Loader2, Power } from "lucide-react";
+import {
+  Building as Building2,
+  CircleNotch as Loader2,
+  FloppyDisk as Save,
+  Power,
+} from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { UpdateChecker } from "@/components/update-checker";

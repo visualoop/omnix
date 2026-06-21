@@ -1,5 +1,10 @@
 import { useEffect, useState } from "react";
-import { ArrowRightLeft, Plus, Truck, Check } from "lucide-react";
+import {
+  ArrowsLeftRight as ArrowRightLeft,
+  Check,
+  Plus,
+  Truck,
+} from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";

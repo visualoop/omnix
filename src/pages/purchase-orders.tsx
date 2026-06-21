@@ -1,9 +1,18 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import {
-  Plus, FileText, Package, ChevronRight, ArrowLeft, Trash2, Save, Send, CheckCircle2,
-  PackageCheck, Search,
-} from "lucide-react";
+  ArrowLeft,
+  CaretRight as ChevronRight,
+  CheckCircle as CheckCircle2,
+  FileText,
+  FloppyDisk as Save,
+  MagnifyingGlass as Search,
+  Package,
+  Package as PackageCheck,
+  PaperPlaneTilt as Send,
+  Plus,
+  Trash as Trash2,
+} from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";

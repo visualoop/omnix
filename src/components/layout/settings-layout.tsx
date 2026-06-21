@@ -13,7 +13,9 @@
  * lucide-react). The site-wide Phosphor sweep is a separate cycle —
  * doing both at once would balloon scope.
  */
-import { ArrowLeft } from "lucide-react";
+import {
+  ArrowLeft,
+} from "@phosphor-icons/react";
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { useAuthStore } from "@/stores/auth";
