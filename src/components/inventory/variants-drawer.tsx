@@ -37,8 +37,9 @@ import { useEffect } from "react";
 interface VariantsDrawerProps {
   productId: string;
   productName: string;
-  /** The element that opens the drawer (button, icon, etc.). */
-  trigger: React.ReactNode;
+  /** Optional trigger element. If omitted, parent controls open state via the
+   *  `open` + `onOpenChange` props. */
+  trigger?: React.ReactNode;
   /** Optional controlled open state (for cases where parent controls it). */
   open?: boolean;
   onOpenChange?: (next: boolean) => void;
@@ -96,7 +97,7 @@ export function VariantsDrawer({
 }: VariantsDrawerProps) {
   return (
     <Drawer open={open} onOpenChange={onOpenChange}>
-      <DrawerTrigger asChild>{trigger}</DrawerTrigger>
+      {trigger ? <DrawerTrigger asChild>{trigger}</DrawerTrigger> : null}
       <DrawerContent>
         <DrawerHeader className="px-8">
           <div className="flex flex-col gap-1">

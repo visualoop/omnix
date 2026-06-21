@@ -3,6 +3,10 @@ import { Search, CheckCircle2, XCircle, Loader2, UserPlus, Shield } from "lucide
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+  SelectGroup, SelectLabel,
+} from "@/components/ui/select";
+import {
   getProviders,
   verifyMember,
   registerMemberManually,
@@ -151,22 +155,25 @@ export function InsuranceVerifyPanel({ grossAmount, onMemberSelected, onCancel }
       <div className="space-y-3">
         <div>
           <label className="text-xs font-medium text-muted-foreground block mb-1.5">Provider</label>
-          <select
-            value={providerId}
-            onChange={(e) => setProviderId(e.target.value)}
-            className="w-full h-9 rounded-md border border-input bg-transparent px-3 text-sm"
-          >
-            <optgroup label="National">
-              {providers.filter((p) => p.type === "sha").map((p) => (
-                <option key={p.id} value={p.id}>{p.name}</option>
-              ))}
-            </optgroup>
-            <optgroup label="Private">
-              {providers.filter((p) => p.type === "private").map((p) => (
-                <option key={p.id} value={p.id}>{p.name}</option>
-              ))}
-            </optgroup>
-          </select>
+          <Select value={providerId} onValueChange={(v) => setProviderId(String(v))}>
+            <SelectTrigger className="h-9 text-[13px]">
+              <SelectValue placeholder="Choose insurer…" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectGroup>
+                <SelectLabel>National</SelectLabel>
+                {providers.filter((p) => p.type === "sha").map((p) => (
+                  <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+                ))}
+              </SelectGroup>
+              <SelectGroup>
+                <SelectLabel>Private</SelectLabel>
+                {providers.filter((p) => p.type === "private").map((p) => (
+                  <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+                ))}
+              </SelectGroup>
+            </SelectContent>
+          </Select>
         </div>
 
         <div>

@@ -12,7 +12,7 @@ import { getProducts, getCategories, type Product, type Category } from "@/servi
 import { ProductPanel } from "@/components/inventory/product-panel";
 import { BulkEditDialog } from "@/components/inventory/bulk-edit-dialog";
 import { ReceiveStockDialog } from "@/components/inventory/receive-stock-dialog";
-import { VariantsDialog } from "@/components/inventory/variants-dialog";
+import { VariantsDrawer } from "@/components/inventory/variants-drawer";
 import { Can } from "@/components/require-role";
 
 export function InventoryPage() {
@@ -260,10 +260,17 @@ export function InventoryPage() {
         onClose={() => setReceiveOpen(false)}
         onSaved={() => { setReceiveOpen(false); load(); }}
       />
-      <VariantsDialog
-        product={variantsProduct}
-        onClose={() => setVariantsProduct(null)}
-        onSaved={load}
+      <VariantsDrawer
+        productId={variantsProduct?.id ?? ""}
+        productName={variantsProduct?.name ?? ""}
+        open={!!variantsProduct}
+        onOpenChange={(next) => {
+          if (!next) {
+            setVariantsProduct(null);
+            // VariantsManager autosaves; reload to reflect any changes.
+            void load();
+          }
+        }}
       />
     </div>
   );
