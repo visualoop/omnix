@@ -688,36 +688,39 @@ export function VariantsManager({ productId, variants, onChange }: {
       )}
 
       {filteredVariants.length > 0 && (
-        <div className="border border-border rounded-md overflow-hidden">
-          <table className="w-full text-xs">
-            <thead className="bg-muted/30 border-b border-border">
+        <div className="rounded-lg border border-foreground/10 overflow-hidden">
+          <table className="w-full text-[13px]">
+            <thead className="border-b border-foreground/10">
               <tr>
-                <th className="text-left px-2 py-1.5 text-[10px] uppercase tracking-wider text-muted-foreground">SKU</th>
-                <th className="text-left px-2 py-1.5 text-[10px] uppercase tracking-wider text-muted-foreground">Name</th>
-                <th className="text-left px-2 py-1.5 text-[10px] uppercase tracking-wider text-muted-foreground">Attrs</th>
-                <th className="text-right px-2 py-1.5 text-[10px] uppercase tracking-wider text-muted-foreground">Stock</th>
-                <th className="text-right px-2 py-1.5 text-[10px] uppercase tracking-wider text-muted-foreground">Price</th>
-                <th className="w-12"></th>
+                <th className="text-left px-3 py-2 font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">SKU</th>
+                <th className="text-left px-3 py-2 font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">Name</th>
+                <th className="text-left px-3 py-2 font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">Attrs</th>
+                <th className="text-right px-3 py-2 font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">Stock</th>
+                <th className="text-right px-3 py-2 font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">Price</th>
+                <th className="w-16"></th>
               </tr>
             </thead>
             <tbody>
               {filteredVariants.map((v) => (
-                <tr key={v.id} className={`border-b border-border/60 ${v.active === 0 ? "opacity-50" : ""}`}>
-                  <td className="px-2 py-1.5 font-mono">{v.variant_sku}</td>
-                  <td className="px-2 py-1.5">{v.variant_name}</td>
-                  <td className="px-2 py-1.5 text-[10px] text-muted-foreground">
-                    {[v.color, v.size, v.shade].filter(Boolean).join(" / ") || "—"}
+                <tr
+                  key={v.id}
+                  className={`border-b border-foreground/[0.06] last:border-0 hover:bg-foreground/[0.02] transition-colors ${v.active === 0 ? "opacity-50" : ""}`}
+                >
+                  <td className="px-3 py-2.5 font-mono text-muted-foreground">{v.variant_sku}</td>
+                  <td className="px-3 py-2.5 font-medium">{v.variant_name}</td>
+                  <td className="px-3 py-2.5 text-[11px] text-muted-foreground">
+                    {[v.color, v.size, v.shade].filter(Boolean).join(" · ") || "—"}
                   </td>
-                  <td className="px-2 py-1.5 text-right tabular-nums">{v.stock_qty}</td>
-                  <td className="px-2 py-1.5 text-right tabular-nums">
+                  <td className="px-3 py-2.5 text-right font-mono tabular-nums">{v.stock_qty}</td>
+                  <td className="px-3 py-2.5 text-right font-mono tabular-nums">
                     {v.selling_price !== null ? v.selling_price.toFixed(2) : <span className="text-muted-foreground">—</span>}
                   </td>
-                  <td className="px-2 py-1.5">
-                    <div className="flex gap-0.5 justify-end">
+                  <td className="px-3 py-2.5">
+                    <div className="flex gap-0.5 justify-end opacity-50 group-hover:opacity-100 transition-opacity">
                       <Button variant="ghost" size="icon-xs" onClick={() => startEdit(v)} title="Edit">
-                        <span className="text-[10px]">✎</span>
+                        <span className="text-[11px]">✎</span>
                       </Button>
-                      <Button variant="ghost" size="icon-xs" onClick={() => remove(v.id, v.variant_name)} title="Delete">
+                      <Button variant="ghost" size="icon-xs" onClick={() => remove(v.id, v.variant_name)} title="Delete" className="hover:text-destructive">
                         <Trash2 className="h-3 w-3" />
                       </Button>
                     </div>

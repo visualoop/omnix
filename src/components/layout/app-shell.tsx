@@ -59,7 +59,7 @@ export function AppShell() {
       {!isSettingsRoute && !isFullscreen && <Sidebar onCommandOpen={openCmd} />}
       <div className="flex flex-col flex-1 overflow-hidden">
         {!isFullscreen && <Topbar />}
-        <main className={isFullscreen ? "flex-1 overflow-auto" : "flex-1 overflow-auto p-6"}>
+        <main className={isFullscreen ? "flex-1 overflow-auto" : "flex-1 overflow-auto p-6 bg-[#FBFAF6] dark:bg-background"}>
           <div key={routeKey} className={transitionClass}>
             <Outlet />
           </div>
