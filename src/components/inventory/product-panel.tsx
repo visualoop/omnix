@@ -1,6 +1,7 @@
 import { PLACEHOLDERS } from "@/lib/variant-placeholders";
 import { useState, useEffect } from "react";
 import { Trash2, Plus, Loader2, Layers, Package } from "lucide-react";
+import { VariantsDrawer } from "@/components/inventory/variants-drawer";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -188,14 +189,7 @@ export function ProductPanel({ open, onClose, productId, onSaved }: Props) {
 
   return (
     <Sheet open={open} onOpenChange={(v) => !v && onClose()}>
-      <SheetContent
-        className={
-          tab === "variants" || tab === "uoms"
-            ? "w-full sm:max-w-none lg:max-w-none p-0"
-            : "w-full sm:w-[640px] md:w-[720px] lg:w-[800px] sm:max-w-[800px]"
-        }
-        style={tab === "variants" || tab === "uoms" ? { width: "100vw", maxWidth: "100vw" } : undefined}
-      >
+      <SheetContent className="w-full sm:w-[640px] md:w-[720px] lg:w-[800px] sm:max-w-[800px]">
         <SheetHeader>
           <SheetTitle>{isEdit ? "Edit Product" : "New Product"}</SheetTitle>
         </SheetHeader>
@@ -393,11 +387,44 @@ export function ProductPanel({ open, onClose, productId, onSaved }: Props) {
             {activeModule === "retail" && (
               <TabsPanel value="variants" className="mt-3">
                 {isEdit && effectiveProductId ? (
-                  <VariantsManager
-                    productId={effectiveProductId}
-                    variants={variants}
-                    onChange={() => listVariants(effectiveProductId, true).then(setVariants)}
-                  />
+                  <div className="space-y-3">
+                    <p className="text-[12px] text-muted-foreground leading-relaxed">
+                      {variants.length === 0
+                        ? "No variants yet. Add colours, sizes, shades — anything a customer would ask for by name."
+                        : `${variants.length} variant${variants.length === 1 ? "" : "s"} on this product. Click below to manage them.`}
+                    </p>
+                    <VariantsDrawer
+                      productId={effectiveProductId}
+                      productName={form.name || "Product"}
+                      trigger={
+                        <Button size="sm" variant="outline">
+                          <Layers className="h-3.5 w-3.5 mr-1.5" />
+                          Open variants editor
+                        </Button>
+                      }
+                    />
+                    {variants.length > 0 && (
+                      <ul className="rounded-md border border-border divide-y divide-border/60">
+                        {variants.slice(0, 6).map((v) => (
+                          <li
+                            key={v.id}
+                            className="flex items-baseline justify-between gap-3 px-3 py-2 text-[12px]"
+                          >
+                            <span className="font-mono text-muted-foreground">{v.variant_sku}</span>
+                            <span className="flex-1 truncate">{v.variant_name}</span>
+                            <span className="font-mono tabular-nums text-muted-foreground">
+                              {v.stock_qty}
+                            </span>
+                          </li>
+                        ))}
+                        {variants.length > 6 ? (
+                          <li className="px-3 py-2 text-[11px] text-center text-muted-foreground">
+                            … and {variants.length - 6} more
+                          </li>
+                        ) : null}
+                      </ul>
+                    )}
+                  </div>
                 ) : (
                   <div className="rounded-lg border border-dashed border-border bg-muted/20 p-6 text-center">
                     <Layers className="h-6 w-6 mx-auto text-muted-foreground" />
@@ -441,7 +468,7 @@ export function ProductPanel({ open, onClose, productId, onSaved }: Props) {
 }
 
 // ─── Variants Manager ────────────────────────────────────────────────
-function VariantsManager({ productId, variants, onChange }: {
+export function VariantsManager({ productId, variants, onChange }: {
   productId: string;
   variants: ProductVariant[];
   onChange: () => void;

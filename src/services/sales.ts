@@ -14,6 +14,13 @@ export interface CartItem {
   discount: number;
   tax_rate: number;
   total: number;
+  /** Live stock cap inherited from the product at add-time. updateQty
+   *  refuses to push the line past this. Hospitality / service items pass
+   *  undefined → no cap. */
+  stock_qty?: number;
+  /** Optional — variant + category aliases used for the cart card UI. */
+  variant_label?: string;
+  category_id?: string | null;
 }
 
 export interface PaymentEntry {

@@ -5,6 +5,7 @@ import {
   RotateCcw, Banknote, Smartphone, Receipt, Percent,
   X, AlertCircle, TrendingUp, Clock, Package, Zap,
   Calculator, Lock, Unlock, FileText, Heart, Monitor,
+  ChevronsLeft,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -142,6 +143,8 @@ export function POSSalePage() {
     serviceChargeAmount,
     sourceType,
     sourceLabel,
+    taxMode,
+    setTaxMode,
   } = useCartStore(useShallow((s) => ({
     items: s.items,
     addItemWithQuantity: s.addItemWithQuantity,
@@ -159,6 +162,8 @@ export function POSSalePage() {
     serviceChargeAmount: s.serviceChargeAmount,
     sourceType: s.sourceType,
     sourceLabel: s.sourceLabel,
+    taxMode: s.taxMode,
+    setTaxMode: s.setTaxMode,
   })));
   const user = useAuthStore((s) => s.user);
   const branch = useActiveBranch((s) => s.active);
@@ -340,6 +345,18 @@ export function POSSalePage() {
       {/* ─── TOP STATUS BAR ─────────────────────────────────────────── */}
       <div className={`${accent.headerBg} text-white flex-shrink-0 shadow-md shadow-black/10`}>
         <div className="px-5 py-2.5 flex items-center gap-5 text-xs">
+          {/* Exit POS — back to dashboard. The fullscreen mode hides the
+              sidebar; without this affordance the cashier has no obvious
+              way out except keyboard shortcuts. */}
+          <button
+            onClick={() => navigate("/")}
+            title="Exit POS · back to dashboard"
+            className="flex items-center gap-1.5 -ml-2 px-2 py-1 rounded-md text-white/80 hover:bg-white/10 hover:text-white transition-colors"
+          >
+            <ChevronsLeft className="h-3.5 w-3.5" />
+            <span className="text-[11px] font-medium">Exit</span>
+          </button>
+
           {/* Brand */}
           <div className="flex items-center gap-2 font-semibold pr-1 border-r border-white/15">
             <ShoppingCart className="h-4 w-4" />
@@ -563,6 +580,8 @@ export function POSSalePage() {
             discount={discount}
             discountType={discountType}
             cartDiscountAmount={cartDiscountAmount()}
+            taxMode={taxMode}
+            setTaxMode={setTaxMode}
             onRemoveItem={removeItem}
             onUpdateQty={updateQty}
             onSubFor={setSubFor}
@@ -813,6 +832,7 @@ function ProductCard({ product, onClick }: {
 function CartPanel({
   accent, items, customerId, heldCount, shift, qtyMultiplier, tip, serviceChargeAmount, sourceType, sourceLabel,
   subtotal, taxTotal, grandTotal, discount, discountType, cartDiscountAmount,
+  taxMode, setTaxMode,
   onRemoveItem, onUpdateQty, onSubFor,
   onPark, onDiscount, onTip, onPay,
 }: any) {
@@ -900,6 +920,32 @@ function CartPanel({
 
       {/* Totals */}
       <div className="border-t border-border px-4 py-3 space-y-1.5 bg-muted/30">
+        {/* Tax-mode segmented control. Cashier flips between
+            inclusive (price already has tax) / exclusive (tax added on top)
+            / off (no tax) per sale. The store action recomputes taxTotal +
+            grandTotal immediately. */}
+        <div className="flex items-center justify-between gap-2 -mt-0.5 mb-2">
+          <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Tax</span>
+          <div className="inline-flex rounded-md border border-border/60 p-0.5 bg-background">
+            {(["off", "inclusive", "exclusive"] as const).map((mode) => {
+              const active = taxMode === mode;
+              const label = mode === "off" ? "Off" : mode === "inclusive" ? "Incl" : "Excl";
+              return (
+                <button
+                  key={mode}
+                  onClick={() => setTaxMode(mode)}
+                  className={`px-2 py-0.5 text-[10px] font-medium rounded-[5px] transition-colors ${
+                    active
+                      ? "bg-foreground text-background"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  {label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
         <Row label="Subtotal" value={subtotal.toFixed(2)} />
         {discount > 0 && (
           <Row

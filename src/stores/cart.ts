@@ -14,6 +14,10 @@ interface CartProduct {
    * hospitality menu items consumed via recipe).
    */
   stock_qty?: number;
+  /** Variant label (e.g., "Red / Large") — surfaced as a chip on the cart card. */
+  variant_label?: string;
+  /** Category id — drives the per-line accent strip + lettermark colour. */
+  category_id?: string | null;
 }
 
 interface CartPayload {
@@ -152,33 +156,39 @@ export const useCartStore = create<CartState>()(
           // Hospitality menu items / services have no stock — pass undefined.
           const stockCap = Number.isFinite(product.stock_qty) ? (product.stock_qty as number) : Infinity;
 
+          // Stock-correctness rule:
+          //   if the add would push the line past stockCap, REFUSE the add
+          //   in full and emit the blocked event. NO silent partial-add.
+          //   Prior behaviour (Math.min) added what it could and ALSO
+          //   toasted "out of stock" — confusing. Either we add what the
+          //   user asked for or we don't add at all.
           if (existing) {
             const requested = existing.quantity + qty;
-            const capped = Math.min(requested, stockCap);
-            if (capped <= existing.quantity) {
-              // Already at limit — emit a "blocked" event so UI can toast
+            if (requested > stockCap) {
               if (typeof window !== "undefined") {
                 window.dispatchEvent(
                   new CustomEvent("omnix:cart-stock-blocked", {
-                    detail: { productId: product.id, name: product.name, stockQty: stockCap, currentQty: existing.quantity },
+                    detail: { productId: product.id, name: product.name, stockQty: stockCap, currentQty: existing.quantity, requested: qty },
                   }),
                 );
               }
               return state;
             }
             return {
-              items: state.items.map((i) => (i.id === existing.id ? withQuantity(i, capped) : i)),
+              items: state.items.map((i) =>
+                i.id === existing.id
+                  ? { ...withQuantity(i, requested), stock_qty: stockCap === Infinity ? undefined : stockCap }
+                  : i,
+              ),
               revision: nextRevision(state),
             };
           }
 
-          const initialQty = Math.min(qty, stockCap);
-          if (initialQty <= 0) {
-            // Out of stock — emit blocked event, don't add
+          if (qty > stockCap) {
             if (typeof window !== "undefined") {
               window.dispatchEvent(
                 new CustomEvent("omnix:cart-stock-blocked", {
-                  detail: { productId: product.id, name: product.name, stockQty: 0, currentQty: 0 },
+                  detail: { productId: product.id, name: product.name, stockQty: stockCap, currentQty: 0, requested: qty },
                 }),
               );
             }
@@ -188,11 +198,14 @@ export const useCartStore = create<CartState>()(
             id: crypto.randomUUID(),
             product_id: product.id,
             name: product.name,
-            quantity: initialQty,
+            quantity: qty,
             unit_price: product.selling_price,
             discount: 0,
             tax_rate: product.tax_rate,
-            total: product.selling_price * initialQty,
+            total: product.selling_price * qty,
+            stock_qty: stockCap === Infinity ? undefined : stockCap,
+            variant_label: product.variant_label,
+            category_id: product.category_id ?? null,
           };
           return { items: [...state.items, item], revision: nextRevision(state) };
         });
@@ -208,10 +221,33 @@ export const useCartStore = create<CartState>()(
           get().removeItem(id);
           return;
         }
-        set((state) => ({
-          items: state.items.map((i) => (i.id === id ? withQuantity(i, qty) : i)),
-          revision: nextRevision(state),
-        }));
+        set((state) => {
+          const line = state.items.find((i) => i.id === id);
+          if (!line) return state;
+          const stockCap = Number.isFinite(line.stock_qty) ? (line.stock_qty as number) : Infinity;
+          if (qty > stockCap) {
+            // Refuse to push the line past available stock. Surface a
+            // blocked event so the UI can toast / shake the row.
+            if (typeof window !== "undefined") {
+              window.dispatchEvent(
+                new CustomEvent("omnix:cart-stock-blocked", {
+                  detail: {
+                    productId: line.product_id,
+                    name: line.name,
+                    stockQty: stockCap,
+                    currentQty: line.quantity,
+                    requested: qty,
+                  },
+                }),
+              );
+            }
+            return state;
+          }
+          return {
+            items: state.items.map((i) => (i.id === id ? withQuantity(i, qty) : i)),
+            revision: nextRevision(state),
+          };
+        });
       },
 
       setLineDiscount: (id, discount) => set((state) => ({

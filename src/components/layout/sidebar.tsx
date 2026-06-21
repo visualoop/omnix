@@ -146,49 +146,63 @@ export function Sidebar({ onCommandOpen }: { onCommandOpen: () => void }) {
         )}
       </div>
 
-      {/* Search trigger */}
+      {/* Search trigger — looks like a real input, not a nav row.
+          Hairline border, subtle inner shadow, key-cap kbd badge with the
+          system-mono. The visual rhythm: kbd badge baseline-aligned with
+          the placeholder text via leading-none on both. */}
       <button
         onClick={onCommandOpen}
         data-tour="cmd-k"
+        aria-label="Search (⌘K)"
         className={cn(
-          "mx-2 mt-2 flex items-center gap-2 rounded-lg px-2 py-1.5 text-xs text-muted-foreground hover:bg-foreground/[0.04] hover:text-foreground transition-all duration-150 cursor-pointer",
-          collapsed && "justify-center",
+          "group mx-2 mt-2 flex h-8 items-center gap-2 rounded-md border border-border/60 bg-foreground/[0.02] text-[12px] text-muted-foreground transition-colors hover:border-border hover:bg-foreground/[0.04] hover:text-foreground cursor-pointer",
+          collapsed ? "justify-center px-0" : "px-2",
         )}
       >
         <Search className="h-3.5 w-3.5 shrink-0" />
         {!collapsed && (
           <>
-            <span className="flex-1 text-left">Search...</span>
-            <kbd className="text-[10px] bg-muted px-1 rounded">⌘K</kbd>
+            <span className="flex-1 text-left leading-none">Search</span>
+            <kbd
+              className="inline-flex h-5 items-center rounded-[5px] border border-border/60 bg-background px-1.5 font-mono text-[10px] font-medium leading-none text-muted-foreground group-hover:text-foreground"
+            >
+              ⌘K
+            </kbd>
           </>
         )}
       </button>
 
       {/* Nav */}
-      <nav className="flex-1 mt-2 px-2 space-y-0.5 overflow-auto min-h-0 pb-2">
-        {before.map((item) => (
-          <NavRow key={item.to} item={item} collapsed={collapsed} />
-        ))}
+      <nav className="flex-1 mt-2 px-2 flex flex-col min-h-0">
+        <div className="space-y-0.5 overflow-auto pb-2 -mx-1 px-1">
+          {before.map((item) => (
+            <NavRow key={item.to} item={item} collapsed={collapsed} />
+          ))}
 
-        {/* Active-module hub entry (flat — child screens are tabs on the hub) */}
-        {activeModuleEntry && showModuleEntry && (
-          <NavRow item={activeModuleEntry} collapsed={collapsed} />
-        )}
+          {/* Active-module hub entry (flat — child screens are tabs on the hub) */}
+          {activeModuleEntry && showModuleEntry && (
+            <NavRow item={activeModuleEntry} collapsed={collapsed} />
+          )}
 
-        {after.map((item) => (
-          <NavRow key={item.to} item={item} collapsed={collapsed} />
-        ))}
+          {after.map((item) => (
+            <NavRow key={item.to} item={item} collapsed={collapsed} />
+          ))}
+        </div>
 
-        {/* Settings (always last, always single row — its own shell) */}
-        <NavRow
-          item={{
-            to: "/settings",
-            icon: Settings,
-            label: "Settings",
-            permissions: ["settings.business"],
-          }}
-          collapsed={collapsed}
-        />
+        {/* Settings — pinned to the bottom of the rail, separated by a
+            hairline rule. Settings is the boundary between every-day work
+            (above) and configuration (below). */}
+        <div className="mt-auto pt-2 border-t border-border/40">
+          <NavRow
+            item={{
+              to: "/settings",
+              icon: Settings,
+              label: "Settings",
+              permissions: ["settings.business"],
+            }}
+            collapsed={collapsed}
+          />
+        </div>
       </nav>
 
       {/* Collapse toggle */}
