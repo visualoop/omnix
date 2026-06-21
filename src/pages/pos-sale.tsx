@@ -781,43 +781,71 @@ function ProductCard({ product, onClick }: {
   const stock = (product as any).stock_qty || 0;
   const reorder = (product as any).reorder_level || 0;
   const categoryId = (product as any).category_id || null;
+  const buyingPrice = (product as any).buying_price as number | undefined;
+  const sellingPrice = product.selling_price;
   const oos = stock <= 0;
   const lowStock = !oos && stock <= reorder;
   const sc = stockColor(stock, reorder);
   const cc = categoryColor(categoryId);
 
+  // Margin — only computable if we have a positive buying price.
+  const hasMargin =
+    typeof buyingPrice === "number" && buyingPrice > 0 && sellingPrice > buyingPrice;
+  const marginAbs = hasMargin ? sellingPrice - (buyingPrice as number) : 0;
+  const marginPct = hasMargin ? (marginAbs / sellingPrice) * 100 : 0;
+
   return (
     <button
       onClick={onClick}
       disabled={oos}
-      className={`group relative flex flex-col text-left rounded-xl border-2 bg-card p-3 transition-all antialiased ${
+      className={`group relative flex flex-col text-left overflow-hidden rounded-xl border-2 bg-card p-3 transition-all antialiased ${
         oos
           ? "opacity-40 cursor-not-allowed border-dashed border-rose-500/40"
           : `${cc.border} hover:border-current ${cc.fg} hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.97]`
       }`}
       style={{ minHeight: 96 }}
     >
-      {/* Category dot top-left */}
-      <span className={`absolute top-2.5 left-2.5 size-2 rounded-full ${cc.dot}`} />
+      {/* Category-tinted wash — subtle, lives behind the name. Adds life
+          without overpowering the typographic hierarchy. */}
+      <span aria-hidden className={`absolute inset-0 ${cc.bg} opacity-[0.35] pointer-events-none`} />
 
-      {/* Stock pill top-right — louder for low-stock + out-of-stock */}
+      {/* Watermark icon — Package glyph behind the name, low opacity. The
+          glyph is large (60% of card height) so it reads as a background
+          texture, not as content. */}
+      <span aria-hidden className="absolute right-1 bottom-1 pointer-events-none">
+        <Package className={`h-14 w-14 ${cc.fg} opacity-[0.06]`} strokeWidth={1.5} />
+      </span>
+
+      {/* Category dot top-left */}
+      <span className={`relative z-[1] absolute top-2.5 left-2.5 size-2 rounded-full ${cc.dot}`} />
+
+      {/* Stock / margin chip — top-right. Stock by default; margin on hover
+          (when a buying price is recorded). Swap is via group-hover. */}
       <span
-        className={`absolute top-2 right-2 px-1.5 py-0.5 rounded-md text-[10px] font-mono font-bold tabular-nums tracking-wider ${sc.bg} ${sc.text} ${
+        className={`absolute top-2 right-2 px-1.5 py-0.5 rounded-md text-[10px] font-mono font-bold tabular-nums tracking-wider transition-opacity ${sc.bg} ${sc.text} ${
           lowStock ? "ring-1 ring-amber-500/30" : ""
-        } ${oos ? "ring-1 ring-rose-500/40" : ""}`}
+        } ${oos ? "ring-1 ring-rose-500/40" : ""} ${hasMargin ? "group-hover:opacity-0" : ""}`}
       >
         {oos ? "OUT" : stock}
       </span>
+      {hasMargin && !oos ? (
+        <span
+          className="absolute top-2 right-2 px-1.5 py-0.5 rounded-md text-[10px] font-mono font-bold tabular-nums tracking-wider bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 opacity-0 group-hover:opacity-100 transition-opacity"
+          title={`Margin: ${marginAbs.toFixed(0)} (cost ${(buyingPrice ?? 0).toFixed(0)})`}
+        >
+          +{marginPct.toFixed(0)}%
+        </span>
+      ) : null}
 
       {/* Product name — primary readable surface */}
-      <div className="mt-5 mb-2.5">
+      <div className="relative z-[1] mt-5 mb-2.5">
         <div className="text-[13.5px] font-semibold text-foreground line-clamp-2 leading-[1.25] tracking-[-0.005em]">
           {product.name}
         </div>
       </div>
 
       {/* Footer: category caption + price */}
-      <div className="mt-auto flex items-end justify-between gap-2">
+      <div className="relative z-[1] mt-auto flex items-end justify-between gap-2">
         <span className={`text-[10px] uppercase tracking-[0.06em] truncate ${cc.fg} opacity-70`}>
           {(product as any).category_name || ""}
         </span>

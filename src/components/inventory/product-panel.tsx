@@ -2,6 +2,7 @@ import { PLACEHOLDERS } from "@/lib/variant-placeholders";
 import { useState, useEffect } from "react";
 import { Trash2, Plus, Loader2, Layers, Package } from "lucide-react";
 import { VariantsDrawer } from "@/components/inventory/variants-drawer";
+import { useScanner } from "@/hooks/use-scanner";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -116,6 +117,23 @@ export function ProductPanel({ open, onClose, productId, onSaved }: Props) {
   }, [open, productId, activeModule]);
 
   const update = (key: string, value: any) => setForm((f) => ({ ...f, [key]: value }));
+
+  // While the product panel is open, route hardware scanner bursts straight
+  // into the barcode field. The cashier doesn't need to focus a particular
+  // input first — they just point and shoot. The hook's burst-detection
+  // (sub-50 ms keystrokes ending in Enter) means human typing never triggers
+  // this — so we override skipWhen to never skip, capturing scans even when
+  // another field is focused.
+  useScanner(
+    (payload) => {
+      update("barcode", payload);
+      toast.success(`Barcode attached: ${payload}`, { duration: 1500 });
+    },
+    {
+      enabled: open,
+      skipWhen: () => false,
+    },
+  );
 
   const handleSave = async () => {
     if (!form.name || !form.selling_price) {
@@ -235,12 +253,24 @@ export function ProductPanel({ open, onClose, productId, onSaved }: Props) {
                   <Input value={form.sku} onChange={(e) => update("sku", e.target.value)} placeholder="Optional" />
                 </Field>
                 <Field label="Barcode">
-                  <Input
-                    value={form.barcode}
-                    onChange={(e) => update("barcode", e.target.value)}
-                    placeholder="Scan or type"
-                    autoFocus={!isEdit}
-                  />
+                  <div className="relative">
+                    <Input
+                      value={form.barcode}
+                      onChange={(e) => update("barcode", e.target.value)}
+                      placeholder="Scan or type"
+                      autoFocus={!isEdit}
+                      className="pr-20"
+                    />
+                    {/* Persistent affordance: tells the cashier scan-to-attach
+                        is live. The hook fires regardless of focus. */}
+                    <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 inline-flex items-center gap-1 text-[10px] font-mono uppercase tracking-[0.18em] text-muted-foreground">
+                      <span className="relative flex size-1.5">
+                        <span className="absolute inline-flex size-full animate-ping rounded-full bg-emerald-500/60" />
+                        <span className="relative inline-flex size-1.5 rounded-full bg-emerald-500" />
+                      </span>
+                      Scan
+                    </span>
+                  </div>
                 </Field>
               </div>
               <Field label="Category">
