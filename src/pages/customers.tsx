@@ -13,6 +13,7 @@ import {
   Wallet,
 } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
+import { PageHeader } from "@/components/layout/page-header";
 import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Badge } from "@/components/ui/badge";
@@ -44,17 +45,16 @@ export function CustomersPage() {
 
   return (
     <div className="space-y-5">
-      <div className="flex items-start justify-between">
-        <div>
-          <h1 className="text-xl font-semibold tracking-tight">Customers</h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Manage customers, credit accounts, and patient profiles
-          </p>
-        </div>
-        <Button onClick={() => setCreating(true)}>
-          <Plus className="h-4 w-4 mr-2" /> Add Customer
-        </Button>
-      </div>
+      <PageHeader
+        eyebrow="Directory"
+        title="Customers"
+        description="Manage customer accounts, credit, and patient profiles."
+        actions={
+          <Button onClick={() => setCreating(true)}>
+            <Plus className="h-4 w-4 mr-2" /> Add customer
+          </Button>
+        }
+      />
 
       <div className="grid grid-cols-3 gap-3">
         <StatCard label="Total Customers" value={String(customers.length)} icon={Users} />

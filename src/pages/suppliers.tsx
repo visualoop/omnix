@@ -10,6 +10,7 @@ import {
   Wallet,
 } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
+import { PageHeader } from "@/components/layout/page-header";
 import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Badge } from "@/components/ui/badge";
@@ -45,17 +46,16 @@ export function SuppliersPage() {
 
   return (
     <div className="space-y-5">
-      <div className="flex items-start justify-between">
-        <div>
-          <h1 className="text-xl font-semibold tracking-tight">Suppliers</h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Manage vendors and track outstanding balances
-          </p>
-        </div>
-        <Button onClick={() => setCreating(true)}>
-          <Plus className="h-4 w-4 mr-2" /> Add Supplier
-        </Button>
-      </div>
+      <PageHeader
+        eyebrow="Operations"
+        title="Suppliers"
+        description="Vendors and the money you owe them."
+        actions={
+          <Button onClick={() => setCreating(true)}>
+            <Plus className="h-4 w-4 mr-2" /> Add supplier
+          </Button>
+        }
+      />
 
       <div className="grid grid-cols-3 gap-3">
         <StatCard label="Active Suppliers" value={String(suppliers.filter((s) => s.active === 1).length)} icon={Truck} />

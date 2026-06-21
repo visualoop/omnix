@@ -12,6 +12,7 @@ import {
   Wallet,
 } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
+import { PageHeader } from "@/components/layout/page-header";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter } from "@/components/ui/sheet";
@@ -79,19 +80,16 @@ export function BankingPage() {
 
   return (
     <div className="space-y-5">
-      <div className="flex items-start justify-between">
-        <div>
-          <h1 className="text-xl font-semibold tracking-tight flex items-center gap-2">
-            <Banknote className="h-5 w-5 text-primary" /> Banking
-          </h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Bank accounts, M-Pesa tills, cash. Track every cash movement and reconcile against bank statements.
-          </p>
-        </div>
-        <Button onClick={() => setCreating(true)}>
-          <Plus className="h-4 w-4 mr-1.5" /> New Account
-        </Button>
-      </div>
+      <PageHeader
+        eyebrow="Finance"
+        title="Banking"
+        description="Bank accounts, M-Pesa tills, cash. Track movements and reconcile against statements."
+        actions={
+          <Button onClick={() => setCreating(true)}>
+            <Plus className="h-4 w-4 mr-1.5" /> New account
+          </Button>
+        }
+      />
 
       <Card className="bg-gradient-to-br from-primary/5 to-primary/0">
         <CardContent className="p-4">

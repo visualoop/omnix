@@ -5,6 +5,7 @@ import {
   Trash as Trash2,
 } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
+import { PageHeader } from "@/components/layout/page-header";
 import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { getExpenses, getExpenseCategories, createExpense, deleteExpense, type Expense, type ExpenseCategory } from "@/services/accounting";
@@ -40,30 +41,31 @@ export function ExpensesPage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-xl font-semibold tracking-tight">Expenses</h1>
-          <p className="text-sm text-muted-foreground mt-1">Last {period} days</p>
-        </div>
-        <div className="flex items-center gap-2">
-          <div className="flex gap-1 border border-border rounded-md p-0.5">
-            {[7, 30, 90].map((d) => (
-              <button
-                key={d}
-                onClick={() => setPeriod(d)}
-                className={`px-3 py-1 text-xs rounded transition-colors ${
-                  period === d ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                {d}d
-              </button>
-            ))}
+      <PageHeader
+        eyebrow="Finance"
+        title="Expenses"
+        description={`Last ${period} days.`}
+        actions={
+          <div className="flex items-center gap-2">
+            <div className="flex gap-1 border border-foreground/15 rounded-md p-0.5">
+              {[7, 30, 90].map((d) => (
+                <button
+                  key={d}
+                  onClick={() => setPeriod(d)}
+                  className={`px-2.5 py-1 font-mono text-[11px] uppercase tracking-wider rounded transition-colors ${
+                    period === d ? "bg-foreground text-background" : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  {d}d
+                </button>
+              ))}
+            </div>
+            <Button size="sm" onClick={() => setPanelOpen(true)}>
+              <Plus className="h-4 w-4 mr-1" /> Add expense
+            </Button>
           </div>
-          <Button size="sm" onClick={() => setPanelOpen(true)}>
-            <Plus className="h-4 w-4 mr-1" /> Add Expense
-          </Button>
-        </div>
-      </div>
+        }
+      />
 
       <div className="border border-border rounded-lg p-4">
         <span className="text-xs text-muted-foreground">Total Expenses</span>

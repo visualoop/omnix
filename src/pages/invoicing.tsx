@@ -9,6 +9,7 @@ import {
   WarningCircle as AlertCircle,
 } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
+import { PageHeader } from "@/components/layout/page-header";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -32,27 +33,24 @@ export function InvoicingPage() {
 
   return (
     <div className="space-y-5">
-      <div className="flex items-start justify-between">
-        <div>
-          <h1 className="text-xl font-semibold tracking-tight flex items-center gap-2">
-            <FileText className="h-5 w-5 text-primary" /> Invoicing
-          </h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Quotations, B2B invoices, and aged receivables.
-          </p>
-        </div>
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={() => navigate("/invoicing/recurring")}>
-            <Repeat className="h-4 w-4 mr-1.5" /> Recurring
-          </Button>
-          <Button variant="outline" onClick={() => navigate("/invoicing/quotation/new")}>
-            <Plus className="h-4 w-4 mr-1.5" /> New Quotation
-          </Button>
-          <Button onClick={() => navigate("/invoicing/invoice/new")}>
-            <Plus className="h-4 w-4 mr-1.5" /> New Invoice
-          </Button>
-        </div>
-      </div>
+      <PageHeader
+        eyebrow="Commerce"
+        title="Invoicing"
+        description="Quotations, B2B invoices, and aged receivables."
+        actions={
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={() => navigate("/invoicing/recurring")}>
+              <Repeat className="h-4 w-4 mr-1.5" /> Recurring
+            </Button>
+            <Button variant="outline" onClick={() => navigate("/invoicing/quotation/new")}>
+              <Plus className="h-4 w-4 mr-1.5" /> New quotation
+            </Button>
+            <Button onClick={() => navigate("/invoicing/invoice/new")}>
+              <Plus className="h-4 w-4 mr-1.5" /> New invoice
+            </Button>
+          </div>
+        }
+      />
 
       <Tabs value={tab} onValueChange={(v) => setTab(v as any)}>
         <TabsList>

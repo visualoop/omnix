@@ -9,6 +9,7 @@ import {
   Users,
 } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
+import { PageHeader } from "@/components/layout/page-header";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter } from "@/components/ui/sheet";
@@ -64,19 +65,16 @@ export function EmployeesPage() {
 
   return (
     <div className="space-y-5">
-      <div className="flex items-start justify-between">
-        <div>
-          <h1 className="text-xl font-semibold tracking-tight flex items-center gap-2">
-            <Users className="h-5 w-5 text-primary" /> Employees
-          </h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Staff records, payroll, attendance, leave. Separate from system user accounts (you can have an employee who doesn't log in).
-          </p>
-        </div>
-        <Button onClick={() => setCreating(true)}>
-          <Plus className="h-4 w-4 mr-1.5" /> New Employee
-        </Button>
-      </div>
+      <PageHeader
+        eyebrow="HR"
+        title="Employees"
+        description="Staff records, payroll, attendance, leave. Separate from system user accounts — an employee can exist without a login."
+        actions={
+          <Button onClick={() => setCreating(true)}>
+            <Plus className="h-4 w-4 mr-1.5" /> New employee
+          </Button>
+        }
+      />
 
       <div className="grid grid-cols-3 gap-3">
         <Stat label="Active employees" value={String(employees.filter((e) => e.active === 1).length)} />
