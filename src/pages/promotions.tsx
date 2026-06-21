@@ -9,6 +9,7 @@ import {
   X,
 } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
+import { PageHeader } from "@/components/layout/page-header";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -45,19 +46,16 @@ export function PromotionsPage() {
 
   return (
     <div className="space-y-5">
-      <div className="flex items-start justify-between">
-        <div>
-          <h1 className="text-xl font-semibold tracking-tight flex items-center gap-2">
-            <Tag className="h-5 w-5 text-primary" /> Promotions
-          </h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Time-limited discounts and offers — automatic or with promo codes
-          </p>
-        </div>
-        <Button onClick={() => setCreating(true)}>
-          <Plus className="h-4 w-4 mr-2" /> New Promotion
-        </Button>
-      </div>
+      <PageHeader
+        eyebrow="Commerce"
+        title="Promotions"
+        description="Time-limited discounts and offers — automatic or with promo codes."
+        actions={
+          <Button onClick={() => setCreating(true)}>
+            <Plus className="h-4 w-4 mr-2" /> New promotion
+          </Button>
+        }
+      />
 
       <div className="flex gap-2 items-center">
         <div className="relative flex-1 max-w-sm">

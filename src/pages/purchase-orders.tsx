@@ -14,6 +14,7 @@ import {
   Trash as Trash2,
 } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
+import { PageHeader } from "@/components/layout/page-header";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -42,17 +43,16 @@ export function PurchaseOrdersPage() {
 
   return (
     <div className="space-y-5">
-      <div className="flex items-start justify-between">
-        <div>
-          <h1 className="text-xl font-semibold tracking-tight">Purchase Orders</h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Order stock from suppliers, receive goods
-          </p>
-        </div>
-        <Button onClick={() => navigate("/purchase-orders/new")}>
-          <Plus className="h-4 w-4 mr-2" /> New PO
-        </Button>
-      </div>
+      <PageHeader
+        eyebrow="Operations"
+        title="Purchase orders"
+        description="Order stock from suppliers and receive goods."
+        actions={
+          <Button onClick={() => navigate("/purchase-orders/new")}>
+            <Plus className="h-4 w-4 mr-2" /> New PO
+          </Button>
+        }
+      />
 
       <div className="flex gap-1 border-b border-border">
         {(["all", "draft", "sent", "partial", "received"] as const).map((s) => (

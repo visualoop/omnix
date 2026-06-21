@@ -5,6 +5,7 @@ import {
   Clock,
 } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
+import { PageHeader } from "@/components/layout/page-header";
 import { Card, CardContent } from "@/components/ui/card";
 import { TableRowSkeleton } from "@/components/ui/skeletons";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -68,30 +69,27 @@ export function AttendancePage() {
 
   return (
     <div className="space-y-5">
-      <div className="flex items-start justify-between">
-        <div>
-          <h1 className="text-xl font-semibold tracking-tight flex items-center gap-2">
-            <Clock className="h-5 w-5 text-primary" /> Attendance
-          </h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Daily attendance tracking. Click a status badge to mark each employee.
-          </p>
-        </div>
-        <div className="flex items-center gap-1 border border-border rounded-md">
-          <Button variant="ghost" size="icon-xs" onClick={() => setDate(addDays(date, -1))}>
-            <ChevronLeft className="h-3.5 w-3.5" />
-          </Button>
-          <input
-            type="date"
-            value={date}
-            onChange={(e) => setDate(e.target.value)}
-            className="h-7 px-2 text-xs bg-transparent outline-none"
-          />
-          <Button variant="ghost" size="icon-xs" onClick={() => setDate(addDays(date, 1))}>
-            <ChevronRight className="h-3.5 w-3.5" />
-          </Button>
-        </div>
-      </div>
+      <PageHeader
+        eyebrow="HR"
+        title="Attendance"
+        description="Daily attendance tracking. Click a status badge to mark each employee."
+        actions={
+          <div className="flex items-center gap-1 border border-foreground/15 rounded-md">
+            <Button variant="ghost" size="icon-xs" onClick={() => setDate(addDays(date, -1))}>
+              <ChevronLeft className="h-3.5 w-3.5" />
+            </Button>
+            <input
+              type="date"
+              value={date}
+              onChange={(e) => setDate(e.target.value)}
+              className="h-7 px-2 text-xs bg-transparent outline-none"
+            />
+            <Button variant="ghost" size="icon-xs" onClick={() => setDate(addDays(date, 1))}>
+              <ChevronRight className="h-3.5 w-3.5" />
+            </Button>
+          </div>
+        }
+      />
 
       <div className="grid grid-cols-5 gap-3">
         <Stat label="Present" value={counts.present} color="text-emerald-600" />

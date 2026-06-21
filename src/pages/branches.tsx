@@ -12,6 +12,7 @@ import {
   X,
 } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
+import { PageHeader } from "@/components/layout/page-header";
 import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter } from "@/components/ui/sheet";
 import { Badge } from "@/components/ui/badge";
@@ -44,21 +45,18 @@ export function BranchesPage() {
 
   return (
     <div className="space-y-5">
-      <div className="flex items-start justify-between">
-        <div>
-          <h1 className="text-xl font-semibold tracking-tight flex items-center gap-2">
-            <Building2 className="h-5 w-5 text-primary" /> Branches
-          </h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Manage your shop locations. Each sale, expense and stock entry is tagged with the branch where it happened.
-          </p>
-        </div>
-        <Can permission="settings.business">
-          <Button onClick={() => setCreating(true)}>
-            <Plus className="h-4 w-4 mr-1.5" /> New Branch
-          </Button>
-        </Can>
-      </div>
+      <PageHeader
+        eyebrow="Configuration"
+        title="Branches"
+        description="Your shop locations. Every sale, expense, and stock entry is tagged with the branch where it happened."
+        actions={
+          <Can permission="settings.business">
+            <Button onClick={() => setCreating(true)}>
+              <Plus className="h-4 w-4 mr-1.5" /> New branch
+            </Button>
+          </Can>
+        }
+      />
 
       {/* Today's stats */}
       <div className="grid grid-cols-3 gap-3">

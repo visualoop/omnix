@@ -12,6 +12,7 @@ import {
   Wallet,
 } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
+import { PageHeader } from "@/components/layout/page-header";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
@@ -52,21 +53,18 @@ export function PayrollPage() {
 
   return (
     <div className="space-y-5">
-      <div className="flex items-start justify-between">
-        <div>
-          <h1 className="text-xl font-semibold tracking-tight flex items-center gap-2">
-            <Wallet className="h-5 w-5 text-primary" /> Payroll
-          </h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Generate monthly payroll. Computes PAYE, NSSF (Year 4), SHIF, Housing Levy per Kenya 2026 rates.
-          </p>
-        </div>
-        <Can permission="hr.payroll.run">
-          <Button onClick={() => setCreating(true)}>
-            <Plus className="h-4 w-4 mr-1.5" /> New Payroll Run
-          </Button>
-        </Can>
-      </div>
+      <PageHeader
+        eyebrow="HR"
+        title="Payroll"
+        description="Monthly payroll with PAYE, NSSF (Year 4), SHIF, and Housing Levy per Kenya 2026 rates."
+        actions={
+          <Can permission="hr.payroll.run">
+            <Button onClick={() => setCreating(true)}>
+              <Plus className="h-4 w-4 mr-1.5" /> New payroll run
+            </Button>
+          </Can>
+        }
+      />
 
       <div className="border border-border rounded-md overflow-hidden">
         <table className="w-full text-sm">

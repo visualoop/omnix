@@ -6,6 +6,7 @@ import {
   Money as Banknote,
 } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
+import { PageHeader } from "@/components/layout/page-header";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
@@ -60,7 +61,11 @@ export function CashRegisterPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-xl font-semibold tracking-tight">Cash Register</h1>
+      <PageHeader
+        eyebrow="Finance"
+        title="Cash register"
+        description="Open and close shifts. Reconcile drawer cash at end of day."
+      />
 
       {/* Current shift status */}
       {openShiftData ? (

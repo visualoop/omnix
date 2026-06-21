@@ -6,6 +6,7 @@ import {
   Truck,
 } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
+import { PageHeader } from "@/components/layout/page-header";
 import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
 import { TableRowSkeleton } from "@/components/ui/skeletons";
@@ -30,19 +31,16 @@ export function StockTransfersPage() {
 
   return (
     <div className="space-y-5">
-      <div className="flex items-start justify-between">
-        <div>
-          <h1 className="text-xl font-semibold tracking-tight flex items-center gap-2">
-            <ArrowRightLeft className="h-5 w-5 text-primary" /> Stock Transfers
-          </h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Move stock between branches. Source decrements when dispatched, destination increments when received.
-          </p>
-        </div>
-        <Button onClick={() => navigate("/stock-transfers/new")}>
-          <Plus className="h-4 w-4 mr-1.5" /> New Transfer
-        </Button>
-      </div>
+      <PageHeader
+        eyebrow="Operations"
+        title="Stock transfers"
+        description="Move stock between branches. Source decrements when dispatched; destination increments when received."
+        actions={
+          <Button onClick={() => navigate("/stock-transfers/new")}>
+            <Plus className="h-4 w-4 mr-1.5" /> New transfer
+          </Button>
+        }
+      />
 
       <div className="border border-border rounded-md overflow-hidden">
         <table className="w-full text-sm">

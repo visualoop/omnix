@@ -11,6 +11,7 @@ import {
   WarningCircle as AlertCircle,
 } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
+import { PageHeader } from "@/components/layout/page-header";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { query } from "@/lib/db";
@@ -50,17 +51,16 @@ export function ReturnsPage() {
 
   return (
     <div className="space-y-5">
-      <div className="flex items-start justify-between">
-        <div>
-          <h1 className="text-xl font-semibold tracking-tight">Returns & Refunds</h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Process customer returns and issue refunds
-          </p>
-        </div>
-        <Button onClick={() => navigate("/returns/new")}>
-          <Plus className="h-4 w-4 mr-2" /> New Return
-        </Button>
-      </div>
+      <PageHeader
+        eyebrow="Commerce"
+        title="Returns"
+        description="Process customer returns and issue refunds."
+        actions={
+          <Button onClick={() => navigate("/returns/new")}>
+            <Plus className="h-4 w-4 mr-2" /> New return
+          </Button>
+        }
+      />
 
       <div className="grid grid-cols-3 gap-3">
         <StatCard label="Total Returns" value={String(returns.length)} icon={RotateCcw} />

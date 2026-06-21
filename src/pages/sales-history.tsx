@@ -8,6 +8,7 @@ import {
   Receipt,
 } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
+import { PageHeader } from "@/components/layout/page-header";
 import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Badge } from "@/components/ui/badge";
@@ -107,14 +108,11 @@ export function SalesHistoryPage() {
 
   return (
     <div className="space-y-5">
-      <div className="flex items-start justify-between">
-        <div>
-          <h1 className="text-xl font-semibold tracking-tight">Sales History</h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Browse, view detail, and reprint past receipts
-          </p>
-        </div>
-      </div>
+      <PageHeader
+        eyebrow="Commerce"
+        title="Sales"
+        description="Browse, view detail, and reprint past receipts."
+      />
 
       {/* Stats */}
       <div className="grid grid-cols-3 gap-3">

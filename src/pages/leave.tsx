@@ -8,6 +8,7 @@ import {
   X,
 } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
+import { PageHeader } from "@/components/layout/page-header";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
@@ -73,21 +74,18 @@ export function LeavePage() {
 
   return (
     <div className="space-y-5">
-      <div className="flex items-start justify-between">
-        <div>
-          <h1 className="text-xl font-semibold tracking-tight flex items-center gap-2">
-            <Plane className="h-5 w-5 text-primary" /> Leave
-          </h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Track leave requests, approve/reject, see annual balances per employee.
-          </p>
-        </div>
-        <Can permission="hr.leave.request">
-          <Button onClick={() => setCreating(true)}>
-            <Plus className="h-4 w-4 mr-1.5" /> New Request
-          </Button>
-        </Can>
-      </div>
+      <PageHeader
+        eyebrow="HR"
+        title="Leave"
+        description="Leave requests, approvals, annual balances per employee."
+        actions={
+          <Can permission="hr.leave.request">
+            <Button onClick={() => setCreating(true)}>
+              <Plus className="h-4 w-4 mr-1.5" /> New request
+            </Button>
+          </Can>
+        }
+      />
 
       <Tabs value={tab} onValueChange={(v) => setTab(v as LeaveStatus)}>
         <TabsList>

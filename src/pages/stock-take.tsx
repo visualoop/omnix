@@ -12,6 +12,7 @@ import {
   Warning as AlertTriangle,
 } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
+import { PageHeader } from "@/components/layout/page-header";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -47,18 +48,17 @@ export function StockTakesPage() {
 
   return (
     <div className="space-y-5">
-      <div className="flex items-start justify-between">
-        <div>
-          <h1 className="text-xl font-semibold tracking-tight">Stock Take</h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Physical inventory count and reconciliation
-          </p>
-        </div>
-        <Button onClick={handleCreate} disabled={creating}>
-          {creating ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Plus className="h-4 w-4 mr-2" />}
-          New Stock Take
-        </Button>
-      </div>
+      <PageHeader
+        eyebrow="Operations"
+        title="Stock take"
+        description="Physical inventory count and reconciliation."
+        actions={
+          <Button onClick={handleCreate} disabled={creating}>
+            {creating ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Plus className="h-4 w-4 mr-2" />}
+            New stock take
+          </Button>
+        }
+      />
 
       <div className="border border-blue-500/30 bg-blue-500/5 rounded-lg p-3 flex items-start gap-3">
         <ClipboardCheck className="h-4 w-4 text-blue-600 shrink-0 mt-0.5" />

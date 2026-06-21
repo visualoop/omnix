@@ -8,6 +8,7 @@ import {
   X,
 } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
+import { PageHeader } from "@/components/layout/page-header";
 import { Input } from "@/components/ui/input";
 import {
   recordPettyCash, listPettyCash, getPettyCashSummary,
@@ -41,24 +42,21 @@ export function PettyCashPage() {
 
   return (
     <div className="space-y-5">
-      <div className="flex items-start justify-between">
-        <div>
-          <h1 className="text-xl font-semibold tracking-tight flex items-center gap-2">
-            <Wallet className="h-5 w-5 text-primary" /> Petty Cash
-          </h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Small float separate from main till — for tea, fuel, paper, etc.
-          </p>
-        </div>
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={() => setDialogType("expense")}>
-            <ArrowDownCircle className="h-4 w-4 mr-2" /> Record Expense
-          </Button>
-          <Button onClick={() => setDialogType("topup")}>
-            <Plus className="h-4 w-4 mr-2" /> Top Up Float
-          </Button>
-        </div>
-      </div>
+      <PageHeader
+        eyebrow="Finance"
+        title="Petty cash"
+        description="Small float separate from the main till — tea, fuel, paper, etc."
+        actions={
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={() => setDialogType("expense")}>
+              <ArrowDownCircle className="h-4 w-4 mr-2" /> Record expense
+            </Button>
+            <Button onClick={() => setDialogType("topup")}>
+              <Plus className="h-4 w-4 mr-2" /> Top up float
+            </Button>
+          </div>
+        }
+      />
 
       <div className="grid grid-cols-3 gap-3">
         <StatCard
