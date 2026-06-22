@@ -3,8 +3,6 @@ import Link from 'next/link'
 import { Icon } from '@/components/icons'
 import { Button } from '@/components/ui/button'
 import { PageHero } from '@/components/marketing/page-hero'
-import { getPayload } from 'payload'
-import config from '@/payload.config'
 
 export const metadata: Metadata = {
   title: 'Downloads — pick your trade',
@@ -98,35 +96,41 @@ function formatDate(d?: string): string {
 }
 
 export default async function DownloadsPage() {
-  const payloadConfig = await config
-  const payload = await getPayload({ config: payloadConfig })
+  // The new schema doesn't split releases by variant — there's one
+  // installer per version + channel. Every variant gets the same
+  // download link until per-variant builds come back.
+  const { db, releases } = await import('@/db')
+  const { eq, desc } = await import('drizzle-orm')
+  const rows = await db
+    .select()
+    .from(releases)
+    .where(eq(releases.channel, 'stable'))
+    .orderBy(desc(releases.publishedAt))
+    .limit(1)
+  const r = rows[0]
+  const baseRow: ReleaseRow | null = r
+    ? ({
+        version: r.version,
+        title: r.notes?.split('\n')[0] ?? `Omnix ${r.version}`,
+        summary: r.notes ?? '',
+        publishedAt: r.publishedAt.toISOString(),
+        variant: 'pro',
+        status: 'published',
+        channel: r.channel,
+        msiUrl: r.msiUrl ?? undefined,
+        exeUrl: r.exeUrl ?? undefined,
+        dmgUrl: r.dmgUrl ?? undefined,
+        appImageUrl: r.appImageUrl ?? undefined,
+      } as unknown as ReleaseRow)
+    : null
 
-  // Latest release per variant. Fan out 5 queries in parallel.
   const latestByVariant: Record<VariantId, ReleaseRow | null> = {
-    pro: null,
-    dawa: null,
-    retail: null,
-    hospitality: null,
-    hardware: null,
+    pro: baseRow,
+    dawa: baseRow,
+    retail: baseRow,
+    hospitality: baseRow,
+    hardware: baseRow,
   }
-  await Promise.all(
-    (Object.keys(latestByVariant) as VariantId[]).map(async (v) => {
-      const result = await payload.find({
-        collection: 'releases',
-        where: {
-          and: [
-            { status: { equals: 'published' } },
-            { channel: { equals: 'stable' } },
-            { variant: { equals: v } },
-          ],
-        },
-        sort: '-publishedAt',
-        limit: 1,
-        depth: 0,
-      })
-      latestByVariant[v] = (result.docs[0] as unknown as ReleaseRow) ?? null
-    }),
-  )
 
   // For pre-v0.4.0 backfill: if a variant has no row yet, fall back to the
   // latest "pro" row so the legacy installer still appears for visitors.

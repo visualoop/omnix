@@ -2,10 +2,8 @@ import type { Metadata } from 'next'
 import { headers } from 'next/headers'
 import { notFound } from 'next/navigation'
 import { GoogleAnalytics } from '@next/third-parties/google'
-import { getPayload } from 'payload'
 import { NextIntlClientProvider, hasLocale } from 'next-intl'
 import { getMessages, setRequestLocale } from 'next-intl/server'
-import config from '@/payload.config'
 
 import { BRAND, BRAND_NAME, BRAND_TAGLINE } from '@/lib/brand'
 import { SiteHeader } from '@/components/layout/site-header'
@@ -70,9 +68,9 @@ export default async function FrontendLayout({
   let isAuthed = false
   try {
     const reqHeaders = await headers()
-    const payload = await getPayload({ config: await config })
-    const result = await payload.auth({ headers: reqHeaders })
-    isAuthed = result.user?.collection === 'customers'
+    const { auth } = await import('@/lib/auth')
+    const session = await auth.api.getSession({ headers: reqHeaders })
+    isAuthed = !!session
   } catch {
     isAuthed = false
   }

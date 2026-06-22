@@ -1,8 +1,6 @@
 import Link from 'next/link'
 import { cookies } from 'next/headers'
-import { getPayload } from 'payload'
 import { getLocale } from 'next-intl/server'
-import config from '@/payload.config'
 import { Icon } from '@/components/icons'
 import { Button } from '@/components/ui/button'
 import { CURRENCIES, formatPrice, tierPrice, type PricingTierShape, type SupportedCurrency } from '@/lib/currency'
@@ -262,51 +260,27 @@ const FALLBACK: Record<VariantId, VariantData> = {
  * Read variant-specific copy from the CMS. Falls back to the canonical
  * defaults above if the global isn't seeded yet.
  */
-async function getVariantContent(variant: VariantId, locale: string): Promise<VariantData> {
-  try {
-    const payloadConfig = await config
-    const payload = await getPayload({ config: payloadConfig })
-    const g = (await payload.findGlobal({
-      slug: 'trade-landings',
-      locale: locale as never,
-      overrideAccess: true,
-    })) as unknown as Record<string, VariantData | undefined>
-    const cms = g[variant]
-    if (cms && cms.productName) return cms
-  } catch {
-    // ignore — fall through to fallback
-  }
+async function getVariantContent(variant: VariantId, _locale: string): Promise<VariantData> {
+  // Trade landings are static config now (was a Payload global).
+  // Always returns the FALLBACK shape — locale-specific overrides can
+  // be added later via i18n message files.
   return FALLBACK[variant]
 }
 
 /**
- * Read the headline price for this variant from the Pricing global.
- *   Pro    → business.oneTimeFee  (default 150,000)
- *   others → starter.oneTimeFee   (default 50,000)
+ * Read the headline price for this variant from the static pricing config.
+ *   Pro    → business.oneTimeFee
+ *   others → starter.oneTimeFee
  */
 async function getVariantPrice(variant: VariantId): Promise<{ amount: number; currency: SupportedCurrency; display: string }> {
-  // Active currency comes from the omnix_currency cookie set by middleware.
+  const { pricing } = await import('@/config/pricing')
   const cookieStore = await cookies()
   const cookieValue = cookieStore.get('omnix_currency')?.value as SupportedCurrency | undefined
   const currency: SupportedCurrency = cookieValue && cookieValue in CURRENCIES ? cookieValue : 'KES'
 
-  try {
-    const payloadConfig = await config
-    const payload = await getPayload({ config: payloadConfig })
-    const p = (await payload.findGlobal({ slug: 'pricing', overrideAccess: true })) as unknown as {
-      starter?: PricingTierShape
-      business?: PricingTierShape
-    }
-    const tier = variant === 'pro' ? p.business : p.starter
-    const amount = tierPrice(tier, currency)
-    if (amount > 0) {
-      return { amount, currency, display: formatPrice(amount, currency) }
-    }
-  } catch {
-    // fall through
-  }
-  const fallbackAmount = variant === 'pro' ? 150_000 : 50_000
-  return { amount: fallbackAmount, currency: 'KES', display: formatPrice(fallbackAmount, 'KES') }
+  const tier = variant === 'pro' ? pricing.business : pricing.starter
+  const amount = tier.oneTimeFee[currency] ?? tier.oneTimeFee.KES
+  return { amount, currency, display: formatPrice(amount, currency) }
 }
 
 function HeroTitle({

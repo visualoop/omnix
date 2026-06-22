@@ -1,45 +1,39 @@
 /**
  * Paystack API client wrapper — single source of truth.
  *
- * All Paystack calls go through this module. Routes never call
- * `fetch('https://api.paystack.co/...')` directly — they call
- * paystack.verify() / paystack.applyPaymentSuccess() / paystack.computeAmount(). The browser uses Paystack Inline V2 directly.
- *
- * NO PAYSTACK-HOSTED CHECKOUT. NO REDIRECT-FOR-CARDS. We use the
- * /charge endpoint everywhere; the front-end renders OUR OWN UI for
- * the customer journey (custom card form, OTP entry, 3DS iframe).
- *
- * Card encryption: cards are encrypted client-side using
- * @paystack/inline-js's encrypt() helper with PAYSTACK_PUBLIC_KEY,
- * so plaintext card data never touches our server (PCI scope).
+ * Reads PAYSTACK_SECRET_KEY from env directly (was Payload-CMS-resolved
+ * pre-v0.8.x). Provides verify() + newReference() helpers consumed by
+ * the /api/paystack/* route handlers.
  */
-import type { PayloadRequest } from 'payload'
-import { getPaystackSecret } from './settings'
 
 const PAYSTACK_BASE = 'https://api.paystack.co'
 
-async function authHeaders(payload: PayloadRequest['payload']): Promise<HeadersInit> {
-  const key = await getPaystackSecret(payload)
+function getSecretKey(): string {
+  const key = process.env.PAYSTACK_SECRET_KEY
+  if (!key) {
+    throw new Error('PAYSTACK_SECRET_KEY is not set')
+  }
+  return key
+}
+
+function authHeaders(): HeadersInit {
   return {
-    Authorization: `Bearer ${key}`,
+    Authorization: `Bearer ${getSecretKey()}`,
     'Content-Type': 'application/json',
     Accept: 'application/json',
   }
 }
 
-
-/* ── Verify a transaction (defense-in-depth on webhook + status polling) ── */
-export async function verify(
-  payload: PayloadRequest['payload'],
-  reference: string,
-): Promise<{
+/** Verify a transaction by reference. Defense-in-depth on webhook + polling. */
+export async function verify(reference: string): Promise<{
   status: 'success' | 'failed' | 'pending'
-  amountKES: number
+  amountSmallestUnit: number
+  currency: string
   raw: Record<string, unknown>
 }> {
   const res = await fetch(
     `${PAYSTACK_BASE}/transaction/verify/${encodeURIComponent(reference)}`,
-    { method: 'GET', headers: await authHeaders(payload) },
+    { method: 'GET', headers: authHeaders() },
   )
   const json = (await res.json()) as { status?: boolean; data?: Record<string, unknown> }
   if (!res.ok || !json.status) {
@@ -54,302 +48,46 @@ export async function verify(
         : pStatus === 'failed' || pStatus === 'abandoned' || pStatus === 'reversed'
           ? 'failed'
           : 'pending',
-    amountKES: Math.round(((data.amount as number) ?? 0) / 100),
+    amountSmallestUnit: (data.amount as number) ?? 0,
+    currency: (data.currency as string) ?? 'KES',
     raw: data,
   }
 }
 
-/* ── Phone normalisation (Kenya) ─────────────────────────────────── */
-function normaliseKePhone(input: string): string {
-  const digits = input.replace(/\D/g, '')
-  if (digits.startsWith('254')) return `+${digits}`
-  if (digits.startsWith('0') && digits.length === 10) return `+254${digits.slice(1)}`
-  if (digits.length === 9) return `+254${digits}`
-  return digits.startsWith('+') ? input.trim() : `+${digits}`
-}
-
-/* ── Reference generation ───────────────────────────────────────── */
+/** Generate an opaque reference for a new init call. */
 export function newReference(prefix = 'OMNIX'): string {
   return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8).toUpperCase()}`
 }
 
-/* ── Apply payment success to the License (idempotent) ──────────── */
-export async function applyPaymentSuccess(
-  payload: PayloadRequest['payload'],
-  reference: string,
-  paystackData: Record<string, unknown>,
-): Promise<void> {
-  const payRes = await payload.find({
-    collection: 'payments',
-    where: { paystackReference: { equals: reference } },
-    limit: 1,
-    depth: 1,
+/** Initialise a transaction (Paystack Inline opens the popup with this). */
+export async function initTransaction(input: {
+  email: string
+  amountSmallestUnit: number
+  currency: string
+  reference: string
+  metadata?: Record<string, unknown>
+}): Promise<{ authorizationUrl: string; accessCode: string; reference: string }> {
+  const res = await fetch(`${PAYSTACK_BASE}/transaction/initialize`, {
+    method: 'POST',
+    headers: authHeaders(),
+    body: JSON.stringify({
+      email: input.email,
+      amount: input.amountSmallestUnit,
+      currency: input.currency,
+      reference: input.reference,
+      metadata: input.metadata,
+    }),
   })
-  const payment = payRes.docs[0] as unknown as
-    | undefined
-    | {
-        id: string | number
-        status: string
-        purpose: string
-        amount: number
-        license?: string | { id: string | number; tier: string; majorVersionCap?: number }
-      }
-  if (!payment) return
-  if (payment.status === 'success') return // idempotent
-
-  const channel = (paystackData.channel as string) ?? 'card'
-  const fees = ((paystackData.fees as number) ?? 0) / 100
-  const auth = (paystackData.authorization as { last4?: string; brand?: string; authorization_code?: string } | undefined) ?? {}
-
-  await payload.update({
-    collection: 'payments',
-    id: payment.id,
-    data: {
-      status: 'success',
-      paidAt: new Date().toISOString(),
-      paystackTransactionId: (paystackData.id as number)?.toString?.(),
-      channel: channel === 'mobile_money' ? 'mpesa' : (channel as never),
-      paystackFees: fees,
-      netAmount: payment.amount - fees,
-      cardLast4: auth.last4,
-      cardBrand: auth.brand,
-      mpesaReceiptNumber: auth.authorization_code,
-      rawWebhookPayload: paystackData as never,
-    },
-    overrideAccess: true,
-  })
-
-  const licenseId =
-    typeof payment.license === 'string' ? payment.license : payment.license?.id
-  if (!licenseId) return
-
-  const license = (await payload.findByID({
-    collection: 'licenses',
-    id: licenseId,
-  })) as unknown as {
-    majorVersionCap?: number
-    maintenanceUntil?: string
-    cloudBackupExpiresAt?: string
-    variant?: string
+  const json = (await res.json()) as {
+    status?: boolean
+    data?: { authorization_url: string; access_code: string; reference: string }
   }
-
-  const ONE_YEAR = 365 * 24 * 60 * 60 * 1000
-  const ONE_MONTH = 30 * 24 * 60 * 60 * 1000
-
-  switch (payment.purpose) {
-    case 'license_fee': {
-      const now = new Date()
-      const maintenanceUntil = new Date(now.getTime() + ONE_YEAR)
-      // Pro variant → business tier (KES 150,000), every other variant
-      // → starter tier (KES 50,000). Matches the pricing table used at
-      // init time.
-      const paidTier: 'starter' | 'business' = license.variant === 'pro' ? 'business' : 'starter'
-      await payload.update({
-        collection: 'licenses',
-        id: licenseId,
-        data: {
-          status: 'active',
-          tier: paidTier,
-          // Clear the trial countdown — the licence is now perpetual.
-          trialEndsAt: null,
-          paidAt: now.toISOString(),
-          maintenanceUntil: maintenanceUntil.toISOString(),
-          priceFeePaid: payment.amount,
-        } as never,
-        overrideAccess: true,
-      })
-      // Email the customer their license key — first time issuance
-      await emailLicenseIssued(payload, licenseId, maintenanceUntil)
-      break
-    }
-    case 'maintenance_renewal': {
-      const base = license.maintenanceUntil ? new Date(license.maintenanceUntil) : new Date()
-      const newUntil = new Date(base.getTime() + ONE_YEAR)
-      await payload.update({
-        collection: 'licenses',
-        id: licenseId,
-        data: { maintenanceUntil: newUntil.toISOString() },
-        overrideAccess: true,
-      })
-      // Re-send key email (acts as a renewal receipt; customer often loses the original)
-      await emailLicenseIssued(payload, licenseId, newUntil)
-      break
-    }
-    case 'major_upgrade': {
-      await payload.update({
-        collection: 'licenses',
-        id: licenseId,
-        data: { majorVersionCap: (license.majorVersionCap ?? 1) + 1 },
-        overrideAccess: true,
-      })
-      break
-    }
-    case 'cloud_backup': {
-      const base = license.cloudBackupExpiresAt
-        ? new Date(license.cloudBackupExpiresAt)
-        : new Date()
-      await payload.update({
-        collection: 'licenses',
-        id: licenseId,
-        data: { cloudBackupExpiresAt: new Date(base.getTime() + ONE_MONTH).toISOString() },
-        overrideAccess: true,
-      })
-      break
-    }
+  if (!res.ok || !json.status || !json.data) {
+    throw new Error(`Paystack /transaction/initialize failed: ${res.status}`)
   }
-}
-
-/**
- * Send the LicenseIssued email — pulls the up-to-date license + customer
- * data and renders the React Email template. Best-effort: failures are
- * logged but don't block the payment flow.
- */
-async function emailLicenseIssued(
-  payload: PayloadRequest['payload'],
-  licenseId: string | number,
-  maintenanceUntil: Date,
-): Promise<void> {
-  try {
-    const fullLicense = (await payload.findByID({
-      collection: 'licenses',
-      id: licenseId,
-      depth: 1,
-      overrideAccess: true,
-    })) as unknown as {
-      licenseKey?: string
-      tier?: string
-      customer?: string | { id: string | number; email?: string; name?: string }
-    }
-    if (!fullLicense.licenseKey) return
-    const customer = typeof fullLicense.customer === 'object' ? fullLicense.customer : null
-    if (!customer?.email) {
-      payload.logger.warn({ licenseId }, '[email] license issued but customer has no email; skipping')
-      return
-    }
-    const { renderEmail, sendEmail } = await import('./emails')
-    const html = await renderEmail('LicenseIssued', {
-      name: customer.name ?? 'there',
-      licenseKey: fullLicense.licenseKey,
-      tier: fullLicense.tier ?? 'standard',
-      maintenanceUntil: maintenanceUntil.toISOString(),
-    })
-    await sendEmail({
-      payload,
-      to: customer.email,
-      subject: `Your Omnix license — ${fullLicense.licenseKey}`,
-      html,
-    })
-    payload.logger.info({ licenseId, to: customer.email }, '[email] LicenseIssued sent')
-  } catch (err) {
-    payload.logger.error({ err, licenseId }, '[email] LicenseIssued failed (non-fatal)')
-  }
-}
-
-/* ── Pricing helper (re-used by charge endpoint) ─────────────────── */
-export interface PricingTierMultiCurrency {
-  oneTimeFee?: number
-  maintenanceYearly?: number
-  priceKES?: number | null
-  priceUSD?: number | null
-  priceNGN?: number | null
-  priceGHS?: number | null
-  priceZAR?: number | null
-}
-
-export interface PricingShape {
-  starter?: PricingTierMultiCurrency
-  business?: PricingTierMultiCurrency
-  cloudBackupMonthly?: number
-  extraBranchOneTime?: number
-  extraMachineOneTime?: number
-  majorUpgradeDiscount?: number
-  currency?: string
-}
-
-export type Purpose =
-  | 'license_fee'
-  | 'maintenance_renewal'
-  | 'major_upgrade'
-  | 'cloud_backup'
-  | 'extra_branch'
-  | 'extra_machine'
-
-export type CheckoutCurrency = 'KES' | 'USD' | 'NGN' | 'GHS' | 'ZAR'
-
-/**
- * Pull the per-currency price off a tier with fallback to oneTimeFee
- * (legacy KES-only) and a hardcoded conversion rate as last resort.
- */
-function priceForCurrency(tier: PricingTierMultiCurrency | undefined, currency: CheckoutCurrency, defaultKES: number): number {
-  if (!tier) return defaultKES
-  const direct = ({
-    KES: tier.priceKES,
-    USD: tier.priceUSD,
-    NGN: tier.priceNGN,
-    GHS: tier.priceGHS,
-    ZAR: tier.priceZAR,
-  } as Record<CheckoutCurrency, number | null | undefined>)[currency]
-  if (typeof direct === 'number' && direct > 0) return direct
-
-  // Fall back to oneTimeFee (assumed KES) when querying KES.
-  if (currency === 'KES' && typeof tier.oneTimeFee === 'number') return tier.oneTimeFee
-
-  // Last resort — rough conversion from oneTimeFee. Owner sees a banner
-  // in /admin → Pricing → tab to fill in actual values.
-  if (typeof tier.oneTimeFee === 'number') {
-    return convertKES(tier.oneTimeFee, currency)
-  }
-  return defaultKES
-}
-
-/**
- * Convert a KES-denominated amount to another Paystack-supported
- * currency using static fallback rates. Used as a last-resort when
- * the owner hasn't configured an explicit per-currency price.
- *
- * Rates intentionally rough — better than charging KES on a USD
- * checkout. Owner can override per-tier (license_fee) by setting
- * priceUSD/NGN/GHS/ZAR explicitly. Add-ons will always go through
- * here unless we add per-currency fields to them too (v0.7.x).
- */
-function convertKES(amountKES: number, currency: CheckoutCurrency): number {
-  if (currency === 'KES') return amountKES
-  const RATES: Record<CheckoutCurrency, number> = {
-    KES: 1,
-    USD: 1 / 130,
-    NGN: 12,
-    GHS: 0.13,
-    ZAR: 0.13,
-  }
-  return Math.round(amountKES * RATES[currency])
-}
-
-export function computeAmount(
-  pricing: PricingShape,
-  tier: string,
-  purpose: Purpose,
-  currency: CheckoutCurrency = 'KES',
-): number {
-  const t = tier === 'business' ? pricing.business : pricing.starter
-  const defaultKES = tier === 'business' ? 150_000 : 50_000
-  switch (purpose) {
-    case 'license_fee':
-      return priceForCurrency(t, currency, defaultKES)
-    case 'maintenance_renewal':
-      // Maintenance renewal is KES-priced source-of-truth; convert
-      // for the visitor's currency. When annual recurring billing
-      // lands as a first-class flow we'll add per-currency fields.
-      return convertKES(t?.maintenanceYearly ?? 12000, currency)
-    case 'major_upgrade': {
-      const fee = priceForCurrency(t, currency, defaultKES)
-      const discount = pricing.majorUpgradeDiscount ?? 50
-      return Math.round(fee * (1 - discount / 100))
-    }
-    case 'cloud_backup':
-      return convertKES(pricing.cloudBackupMonthly ?? 500, currency)
-    case 'extra_branch':
-      return convertKES(pricing.extraBranchOneTime ?? 15000, currency)
-    case 'extra_machine':
-      return convertKES(pricing.extraMachineOneTime ?? 5000, currency)
+  return {
+    authorizationUrl: json.data.authorization_url,
+    accessCode: json.data.access_code,
+    reference: json.data.reference,
   }
 }

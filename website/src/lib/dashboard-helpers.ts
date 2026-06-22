@@ -1,117 +1,51 @@
 import 'server-only'
 import { redirect } from 'next/navigation'
-import { getPayload } from 'payload'
-import config from '@/payload.config'
+import { auth } from '@/lib/auth'
 
 /**
- * Defensive customer-auth resolver for dashboard SSR pages.
+ * Resolve the signed-in customer for dashboard SSR pages.
  *
- * payload.auth() throws on stale sessions (cookie JWT for a deleted
- * customer). This helper wraps that call, returns the customer on
- * success, and redirects to /login on any failure (throw OR null user
- * OR wrong collection). Use it as the first line of every dashboard
- * page so a single auth failure doesn't trip the route-group error
- * boundary.
+ * Returns the user object (Better Auth shape) on success. On no-session,
+ * redirects to /login with ?next= so the post-sign-in lands them where
+ * they meant to go.
  */
 export async function getDashboardCustomer(reqHeaders: Headers): Promise<{
-  id: string | number
+  id: string
   email: string
   fullName?: string
   businessName?: string
 }> {
-  const payloadConfig = await config
-  const payload = await getPayload({ config: payloadConfig })
-
-  let user: unknown = null
-  try {
-    const result = await payload.auth({ headers: reqHeaders })
-    user = result.user
-  } catch (err) {
-    console.error('[dashboard] payload.auth() threw:', err)
-    user = null
-  }
-
-  const u = user as
-    | null
-    | {
-        id?: string | number
-        email?: string
-        collection?: string
-        fullName?: string
-        businessName?: string
-      }
-
-  if (!u || u.collection !== 'customers' || u.id == null || !u.email) {
-    redirect('/login?next=/dashboard')
-  }
+  const session = await auth.api.getSession({ headers: reqHeaders }).catch(() => null)
+  if (!session) redirect('/login?next=/dashboard')
 
   return {
-    id: u.id,
-    email: u.email,
-    fullName: u.fullName,
-    businessName: u.businessName,
+    id: session.user.id,
+    email: session.user.email,
+    fullName: session.user.name,
+    businessName: (session.user as { businessName?: string }).businessName,
   }
 }
 
+/** Empty page shape used by safePayloadFind callers. */
+export function emptyPage<T>(): { docs: T[]; totalDocs: number } {
+  return { docs: [], totalDocs: 0 }
+}
+
 /**
- * Defensive Payload query wrapper.
- *
- * Wrap any payload.find() / findByID() call so a single failure (missing
- * row, schema drift, FK pointer to a deleted record, transient DB issue)
- * doesn't 500 the whole server-rendered page. Returns the supplied
- * fallback on error and logs the underlying error to the server console.
- *
- * Use this instead of bare payload.find() in every dashboard SSR page.
+ * Wrap a Drizzle (or any) async query so that unexpected errors surface
+ * as the empty-page shape instead of throwing — keeps the dashboard
+ * resilient when DB rows are sparse.
  */
 export async function safePayloadFind<T>(
-  fn: () => Promise<T>,
-  fallback: T,
-  context: string,
-): Promise<T> {
+  fn: () => Promise<{ docs: T[]; totalDocs?: number }>,
+  fallback: { docs: T[]; totalDocs: number },
+  context = 'dashboard',
+): Promise<{ docs: T[]; totalDocs: number }> {
   try {
-    return await fn()
+    const result = await fn()
+    return { docs: result.docs, totalDocs: result.totalDocs ?? result.docs.length }
   } catch (err) {
-    console.error(`[dashboard] payload query failed (${context}):`, err)
+    console.error(`[${context}] query failed:`, err)
     return fallback
   }
 }
-
-/**
- * Standard empty paginated result. Cast at call site so the consumer's
- * docs[] type is preserved.
- *
- * Usage:
- *   const res = await safePayloadFind(
- *     () => payload.find({ collection: 'licenses', ... }),
- *     emptyPage<License>(),
- *     'licenses-list'
- *   )
- */
-export function emptyPage<T = unknown>(): {
-  docs: T[]
-  totalDocs: number
-  hasNextPage: boolean
-  hasPrevPage: boolean
-  limit: number
-  page?: number
-  pagingCounter: number
-  totalPages: number
-  nextPage?: number | null
-  prevPage?: number | null
-} {
-  return {
-    docs: [] as T[],
-    totalDocs: 0,
-    hasNextPage: false,
-    hasPrevPage: false,
-    limit: 0,
-    page: 1,
-    pagingCounter: 0,
-    totalPages: 0,
-    nextPage: null,
-    prevPage: null,
-  }
-}
-
-/** Backwards-compat alias. Prefer `emptyPage<T>()` for proper typing. */
-export const EMPTY_PAGE = emptyPage<unknown>()

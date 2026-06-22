@@ -1,15 +1,14 @@
 /**
- * Runtime settings resolver.
+ * Runtime settings resolver — env-var only.
  *
- * Reads integration secrets (Paystack, Resend, GA, cloud-backup) from the
- * Payload `settings` global FIRST, falling back to env vars. This means
- * the owner can rotate keys live in /admin without a redeploy.
+ * Was previously CMS-first with env fallback (so the owner could rotate
+ * Paystack keys via /admin without a redeploy). Now env-only since the
+ * Payload global is gone. Rotating a key means updating Vercel env vars
+ * and redeploying — slower but simpler and keeps secrets out of the DB.
  *
- * Cached in-process for 60s to avoid hammering the DB on every webhook
- * or charge call. The cache is keyed by setting name so individual values
- * can refresh independently if needed.
+ * Cache kept for shape compatibility; effectively a no-op since env
+ * doesn't change at runtime.
  */
-import type { Payload } from 'payload'
 
 interface ResolvedSettings {
   paystackPublicKey?: string
@@ -23,78 +22,24 @@ interface ResolvedSettings {
   cloudBackupRetentionDays?: number
 }
 
-interface CachedSettings extends ResolvedSettings {
-  expiresAt: number
-}
+let cache: ResolvedSettings | null = null
 
-const CACHE_TTL_MS = 60_000
-let cache: CachedSettings | null = null
-
-/**
- * Resolve all integration settings. Cached for 60s.
- */
-export async function resolveSettings(payload: Payload): Promise<ResolvedSettings> {
-  if (cache && cache.expiresAt > Date.now()) {
-    const { expiresAt: _e, ...settings } = cache
-    return settings
+export async function resolveSettings(): Promise<ResolvedSettings> {
+  if (cache) return cache
+  cache = {
+    paystackPublicKey: process.env.PAYSTACK_PUBLIC_KEY ?? undefined,
+    paystackSecretKey: process.env.PAYSTACK_SECRET_KEY ?? undefined,
+    paystackWebhookSecret: process.env.PAYSTACK_WEBHOOK_SECRET ?? undefined,
+    resendApiKey: process.env.RESEND_API_KEY ?? undefined,
+    resendFromEmail: process.env.RESEND_FROM ?? undefined,
+    googleAnalyticsId: process.env.NEXT_PUBLIC_GA_ID ?? undefined,
+    cloudBackupEnabled: process.env.CLOUD_BACKUP_ENABLED === 'true',
+    cloudBackupPriceMonthly: process.env.CLOUD_BACKUP_PRICE_MONTHLY
+      ? Number(process.env.CLOUD_BACKUP_PRICE_MONTHLY)
+      : undefined,
+    cloudBackupRetentionDays: process.env.CLOUD_BACKUP_RETENTION_DAYS
+      ? Number(process.env.CLOUD_BACKUP_RETENTION_DAYS)
+      : 30,
   }
-
-  let cmsSettings: Record<string, unknown> | undefined
-  try {
-    const global = (await payload.findGlobal({
-      slug: 'settings',
-      overrideAccess: true, // we're resolving secrets server-side; access already gated upstream
-    })) as unknown as { integrations?: Record<string, unknown> } | undefined
-    cmsSettings = (global?.integrations as Record<string, unknown> | undefined) ?? undefined
-  } catch {
-    // Settings global not yet initialised (e.g. cold-boot). Fall back to env.
-    cmsSettings = undefined
-  }
-
-  const pick = <T = string>(cmsKey: string, envKey: string): T | undefined => {
-    const cmsVal = cmsSettings?.[cmsKey]
-    if (cmsVal !== undefined && cmsVal !== null && cmsVal !== '') return cmsVal as T
-    const envVal = process.env[envKey]
-    if (envVal !== undefined && envVal !== '') return envVal as unknown as T
-    return undefined
-  }
-
-  const resolved: ResolvedSettings = {
-    paystackPublicKey: pick('paystackPublicKey', 'PAYSTACK_PUBLIC_KEY'),
-    paystackSecretKey: pick('paystackSecretKey', 'PAYSTACK_SECRET_KEY'),
-    paystackWebhookSecret: pick('paystackWebhookSecret', 'PAYSTACK_WEBHOOK_SECRET'),
-    resendApiKey: pick('resendApiKey', 'RESEND_API_KEY'),
-    resendFromEmail: pick('resendFromEmail', 'RESEND_FROM_EMAIL'),
-    googleAnalyticsId: pick('googleAnalyticsId', 'NEXT_PUBLIC_GA_ID'),
-    cloudBackupEnabled:
-      (cmsSettings?.cloudBackupEnabled as boolean | undefined) ??
-      (process.env.CLOUD_BACKUP_ENABLED === '1'),
-    cloudBackupPriceMonthly:
-      (cmsSettings?.cloudBackupPriceMonthly as number | undefined) ?? 500,
-    cloudBackupRetentionDays:
-      (cmsSettings?.cloudBackupRetentionDays as number | undefined) ?? 30,
-  }
-
-  cache = { ...resolved, expiresAt: Date.now() + CACHE_TTL_MS }
-  return resolved
-}
-
-/** Force-refresh on the next read. Call this after the owner saves settings. */
-export function invalidateSettingsCache(): void {
-  cache = null
-}
-
-/** Shortcut for the most-needed value: the Paystack secret key. */
-export async function getPaystackSecret(payload: Payload): Promise<string> {
-  const s = await resolveSettings(payload)
-  if (!s.paystackSecretKey) {
-    throw new Error('Paystack secret key not configured (Settings global or PAYSTACK_SECRET_KEY env).')
-  }
-  return s.paystackSecretKey
-}
-
-/** Webhook secret — falls back to the secret key (Paystack default). */
-export async function getPaystackWebhookSecret(payload: Payload): Promise<string> {
-  const s = await resolveSettings(payload)
-  return s.paystackWebhookSecret || s.paystackSecretKey || ''
+  return cache
 }

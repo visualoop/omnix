@@ -2,9 +2,7 @@ import type { Metadata } from 'next'
 import { Icon } from '@/components/icons'
 import { PageHero } from '@/components/marketing/page-hero'
 import { ContactForm } from '@/components/marketing/contact-form'
-import { getPayload } from 'payload'
 import { getLocale } from 'next-intl/server'
-import config from '@/payload.config'
 import { getSiteSettings } from '@/lib/site-settings'
 
 export const metadata: Metadata = {
@@ -25,19 +23,11 @@ interface ContactGlobal {
   ctaPrimaryHref?: string | null
 }
 
-async function getContactContent(locale: string): Promise<ContactGlobal> {
-  try {
-    const payloadConfig = await config
-    const payload = await getPayload({ config: payloadConfig })
-    const g = (await payload.findGlobal({
-      slug: 'contact-content',
-      locale: locale as never,
-      overrideAccess: true,
-    })) as unknown as ContactGlobal
-    return g
-  } catch {
-    return {}
-  }
+async function getContactContent(_locale: string): Promise<ContactGlobal> {
+  // Was a Payload global; the existing fallback logic below produces a
+  // perfectly good page. Promote to a static config later if we want
+  // editable methods.
+  return {}
 }
 
 export default async function ContactPage() {

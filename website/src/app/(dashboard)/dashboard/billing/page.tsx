@@ -1,109 +1,44 @@
 import { headers } from 'next/headers'
-import { cookies } from 'next/headers'
+import { redirect } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowRight, CloudUpload, MapPin, Plus } from '@/components/icons'
-import { getPayload } from 'payload'
-import config from '@/payload.config'
-import { CURRENCIES, formatPrice, type SupportedCurrency } from '@/lib/currency'
+import { eq, desc } from 'drizzle-orm'
+import { db, licenses } from '@/db'
+import { auth } from '@/lib/auth'
 import { Button } from '@/components/ui/button'
-import { formatDate, PageHeading } from '@/components/dashboard/status-utils'
-import { safePayloadFind, emptyPage, getDashboardCustomer } from '@/lib/dashboard-helpers'
+import { PageHeading } from '@/components/dashboard/status-utils'
+import { pricingFor } from '@/config/pricing'
 
 export const metadata = { title: 'Billing' }
 
 export default async function BillingPage() {
-  const reqHeaders = await headers()
-  const customer = await getDashboardCustomer(reqHeaders)
-  const user = customer as unknown as { id: string | number; email: string; fullName?: string; businessName?: string; collection?: string }
-  const payloadConfig = await config
-  const payload = await getPayload({ config: payloadConfig })
+  const session = await auth.api.getSession({ headers: await headers() }).catch(() => null)
+  if (!session) redirect('/login?next=/dashboard/billing')
 
-  const res = await safePayloadFind(
-    () =>
-      payload.find({
-        collection: 'licenses',
-        where: { customer: { equals: user.id } },
-        sort: '-createdAt',
-        limit: 50,
-      }),
-    emptyPage(),
-    'billing-licenses',
-  )
+  const licList = await db
+    .select()
+    .from(licenses)
+    .where(eq(licenses.userId, session.user.id))
+    .orderBy(desc(licenses.createdAt))
 
-  // Pricing for the add-ons — read from CMS, format per visitor currency.
-  const cookieStore = await cookies()
-  const cookieCurrency = cookieStore.get('omnix_currency')?.value as SupportedCurrency | undefined
-  const currency: SupportedCurrency = cookieCurrency && cookieCurrency in CURRENCIES ? cookieCurrency : 'KES'
-  let cloudBackupMonthly = 500
-  let extraBranchOneTime = 15_000
-  let extraMachineOneTime = 5_000
-  try {
-    const pricing = (await payload.findGlobal({ slug: 'pricing', overrideAccess: true })) as unknown as {
-      cloudBackupMonthly?: number
-      extraBranchOneTime?: number
-      extraMachineOneTime?: number
-    }
-    if (typeof pricing.cloudBackupMonthly === 'number') cloudBackupMonthly = pricing.cloudBackupMonthly
-    if (typeof pricing.extraBranchOneTime === 'number') extraBranchOneTime = pricing.extraBranchOneTime
-    if (typeof pricing.extraMachineOneTime === 'number') extraMachineOneTime = pricing.extraMachineOneTime
-  } catch {
-    /* fall through to defaults */
-  }
-  const cloudBackupPrice = `${formatPrice(cloudBackupMonthly, currency)} / month / branch`
-  const extraBranchPrice = `${formatPrice(extraBranchOneTime, currency)} one-time`
-  const extraMachinePrice = `${formatPrice(extraMachineOneTime, currency)} one-time`
-  const licenses = res.docs as unknown as {
-    id: string
-    licenseKey: string
-    tier: string
-    status: string
-    maintenanceUntil?: string
-    cloudBackupEnabled?: boolean
-    cloudBackupExpiresAt?: string
-    maxBranches?: number
-    maxMachines?: number
-  }[]
+  const p = pricingFor((session.user as { currency?: 'KES' }).currency ?? 'KES')
 
   return (
     <div className="space-y-8">
-      <PageHeading
-        title="Billing & add-ons"
-        subtitle="Renew maintenance, enable cloud backup, add branches or machine seats. All without recurring fees you didn't ask for."
-      />
+      <PageHeading title="Billing & add-ons" subtitle="Renew compliance, enable cloud backup, add seats." />
 
-      {/* Maintenance renewals */}
-      <section className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)]">
-        <header className="border-b border-[var(--color-border)] px-6 py-4">
-          <h2 className="font-display text-[18px] font-medium text-[var(--color-fg)]">
-            Maintenance renewals
-          </h2>
-          <p className="mt-1 text-[12px] text-[var(--color-fg-subtle)]">
-            We don't auto-charge. We send reminders 30, 7 and 1 day before expiry.
-          </p>
-        </header>
-        {licenses.length === 0 ? (
-          <div className="px-6 py-12 text-center text-[13px] text-[var(--color-fg-muted)]">
+      <section>
+        <h2 className="font-display text-[18px] font-medium mb-3">Compliance renewals</h2>
+        {licList.length === 0 ? (
+          <div className="rounded-lg border border-dashed border-[var(--color-border)] px-4 py-12 text-center text-[13px] text-[var(--color-fg-muted)]">
             No licences yet.
           </div>
         ) : (
-          <ul className="divide-y divide-[var(--color-border)]">
-            {licenses.map((l) => (
-              <li
-                key={l.id}
-                className="flex flex-col gap-3 px-6 py-4 sm:flex-row sm:items-center sm:justify-between"
-              >
+          <ul className="rounded-lg border border-[var(--color-border)] divide-y divide-[var(--color-border)]">
+            {licList.map((l) => (
+              <li key={l.id} className="flex items-center justify-between gap-3 px-4 py-3 text-[13px]">
                 <div>
-                  <div className="flex items-baseline gap-3">
-                    <code className="font-mono text-[14px] tabular-nums text-[var(--color-fg)]">
-                      {l.licenseKey}
-                    </code>
-                    <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[var(--color-fg-subtle)]">
-                      {l.tier}
-                    </span>
-                  </div>
-                  <div className="mt-1 text-[12px] text-[var(--color-fg-muted)]">
-                    Maintenance until {formatDate(l.maintenanceUntil)}
-                  </div>
+                  <code className="font-mono">{l.licenseKey}</code>
+                  <span className="ml-3 text-[var(--color-fg-muted)]">until {l.maintenanceUntil?.toISOString().slice(0, 10) ?? '—'}</span>
                 </div>
                 <Button asChild size="sm" variant="outline">
                   <Link href={`/buy/${l.id}?type=maintenance`}>Renew</Link>
@@ -114,80 +49,25 @@ export default async function BillingPage() {
         )}
       </section>
 
-      {/* Add-ons */}
-      <section className="grid grid-cols-1 gap-3 lg:grid-cols-2">
-        <AddOnCard
-          icon={CloudUpload}
-          title="Cloud backup"
-          price={cloudBackupPrice}
-          body="Encrypted nightly snapshots to Cloudflare R2. Restore in minutes after a stolen or lost machine."
-          cta="Enable for a licence"
-          href="/buy?type=cloud_backup"
-        />
-        <AddOnCard
-          icon={MapPin}
-          title="Extra branch"
-          price={extraBranchPrice}
-          body="Add a branch to an existing licence. No new key to manage."
-          cta="Add a branch"
-          href="/buy?type=extra_branch"
-        />
-        <AddOnCard
-          icon={Plus}
-          title="Extra machine seat"
-          price={extraMachinePrice}
-          body="Raise the number of PCs that can activate with your licence key."
-          cta="Add a seat"
-          href="/buy?type=extra_machine"
-        />
-        <AddOnCard
-          icon={ArrowRight}
-          title="Major version upgrade"
-          price="50 % off list price"
-          body="Bump your licence's majorVersionCap when v2.x ships. Stay on v1.x as long as you like."
-          cta="Learn more"
-          href="/changelog"
-        />
+      <section className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+        <AddOnCard title="Cloud backup" body="Encrypted nightly snapshots." price={`${p.currency} ${p.cloudBackupMonthly} / month`} href="/buy?type=cloud_backup" />
+        <AddOnCard title="Extra branch" body="Add a branch to an existing licence." price={`${p.currency} ${p.extraBranchOneTime} one-time`} href="/buy?type=extra_branch" />
+        <AddOnCard title="Extra till seat" body="Raise the machine activation cap." price={`${p.currency} ${p.extraMachineOneTime} one-time`} href="/buy?type=extra_machine" />
       </section>
     </div>
   )
 }
 
-function AddOnCard({
-  icon: Icon,
-  title,
-  price,
-  body,
-  cta,
-  href,
-}: {
-  icon: React.ComponentType<{ className?: string }>
-  title: string
-  price: string
-  body: string
-  cta: string
-  href: string
-}) {
+function AddOnCard({ title, body, price, href }: { title: string; body: string; price: string; href: string }) {
   return (
-    <div className="flex flex-col gap-4 rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-6">
-      <div className="flex items-start justify-between gap-3">
-        <div className="inline-flex size-10 items-center justify-center rounded-lg bg-[var(--color-accent-soft)] text-[var(--color-accent)]">
-          <Icon className="size-5" />
-        </div>
-        <div className="text-right font-mono text-[13px] tabular-nums text-[var(--color-accent)]">
-          {price}
-        </div>
+    <div className="rounded-lg border border-[var(--color-border)] p-4">
+      <div className="flex items-baseline justify-between">
+        <h3 className="font-display text-[16px] font-medium">{title}</h3>
+        <span className="font-mono text-[12px] text-[var(--color-fg-muted)]">{price}</span>
       </div>
-      <div>
-        <h3 className="font-display text-[18px] font-medium text-[var(--color-fg)]">
-          {title}
-        </h3>
-        <p className="mt-2 text-[13px] leading-[1.55] text-[var(--color-fg-muted)]">
-          {body}
-        </p>
-      </div>
-      <Button asChild variant="outline" size="sm" className="mt-auto self-start">
-        <Link href={href}>{cta}</Link>
+      <p className="mt-1 text-[13px] text-[var(--color-fg-muted)]">{body}</p>
+      <Button asChild size="sm" variant="outline" className="mt-3">
+        <Link href={href}>Add</Link>
       </Button>
     </div>
   )

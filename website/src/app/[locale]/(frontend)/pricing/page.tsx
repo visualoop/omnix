@@ -1,8 +1,6 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { cookies } from 'next/headers'
-import { getPayload } from 'payload'
-import config from '@/payload.config'
 import { Icon } from '@/components/icons'
 import { Button } from '@/components/ui/button'
 import { OnePriceSection } from '@/components/landing/one-price-section'
@@ -40,13 +38,11 @@ interface PricingShape {
 }
 
 async function getPricing(): Promise<PricingShape> {
-  try {
-    const payloadConfig = await config
-    const payload = await getPayload({ config: payloadConfig })
-    return (await payload.findGlobal({ slug: 'pricing', overrideAccess: true })) as unknown as PricingShape
-  } catch {
-    return {}
-  }
+  // Pricing was a Payload global; lives in static config now.
+  const { pricing } = await import('@/config/pricing')
+  // The PricingShape type expects per-currency maps OR singular values
+  // depending on call sites. Static config is per-currency-map shape.
+  return pricing as unknown as PricingShape
 }
 
 async function getActiveCurrency(): Promise<SupportedCurrency> {

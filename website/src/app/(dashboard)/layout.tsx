@@ -1,50 +1,29 @@
 import { headers } from 'next/headers'
 import { redirect } from 'next/navigation'
-import { getPayload } from 'payload'
-import config from '@/payload.config'
+import { auth } from '@/lib/auth'
 import { DashboardShell } from '@/components/dashboard/dashboard-shell'
 import { RootShell } from '@/components/layout/root-shell'
 import { getSiteSettings } from '@/lib/site-settings'
 
-interface CustomerUser {
-  collection?: string
-  fullName?: string
-  email?: string
-}
-
 /**
  * Dashboard route-group layout.
  *
- * Verifies customer auth server-side. Stale sessions (deleted customer
- * rows) cause payload.auth() to throw — caught and redirected to /login.
+ * Auth gate via Better Auth. No session → redirect to /login with the
+ * intended path so post-sign-in lands them where they meant to go.
  *
- * Uses the shared <RootShell> for html/body/fonts/globals.css. Adding new
- * dashboard subroutes requires no extra wiring — just pages under
- * /app/(dashboard)/dashboard/ inherit this layout automatically.
+ * Shared <RootShell> for html/body/fonts/globals.css. Adding new dashboard
+ * subroutes requires no extra wiring.
  */
 export default async function DashboardLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
-  const reqHeaders = await headers()
-  const payloadConfig = await config
-  const payload = await getPayload({ config: payloadConfig })
+  const session = await auth.api.getSession({ headers: await headers() }).catch(() => null)
+  if (!session) redirect('/login?next=/dashboard')
 
-  let user: CustomerUser | null = null
-  try {
-    const result = await payload.auth({ headers: reqHeaders })
-    user = result.user as CustomerUser | null
-  } catch {
-    user = null
-  }
-
-  if (!user || user.collection !== 'customers' || !user.email) {
-    redirect('/login?next=/dashboard')
-  }
-
-  const email = user.email as string
-  const customerName = user.fullName ?? email.split('@')[0] ?? 'You'
+  const email = session.user.email
+  const customerName = session.user.name || email.split('@')[0] || 'You'
 
   const settings = await getSiteSettings()
 

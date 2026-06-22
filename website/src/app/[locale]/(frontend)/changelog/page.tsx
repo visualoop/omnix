@@ -1,8 +1,6 @@
 import type { Metadata } from 'next'
 import { Icon } from '@/components/icons'
 import { PageHero } from '@/components/marketing/page-hero'
-import { getPayload } from 'payload'
-import config from '@/payload.config'
 
 export const metadata: Metadata = {
   title: 'Changelog — what shipped',
@@ -110,21 +108,24 @@ function groupByVersion(rows: ReleaseRow[]): VersionGroup[] {
 }
 
 export default async function ChangelogPage() {
-  const payloadConfig = await config
-  const payload = await getPayload({ config: payloadConfig })
-  const result = await payload.find({
-    collection: 'releases',
-    where: {
-      and: [
-        { status: { equals: 'published' } },
-        { channel: { equals: 'stable' } },
-      ],
-    },
-    sort: '-publishedAt',
-    limit: 100, // 5 variants per version means we need a wider window than 20
-    depth: 0,
-  })
-  const rows = result.docs as unknown as ReleaseRow[]
+  const { db, releases } = await import('@/db')
+  const { eq, desc } = await import('drizzle-orm')
+  const drizzleRows = await db
+    .select()
+    .from(releases)
+    .where(eq(releases.channel, 'stable'))
+    .orderBy(desc(releases.publishedAt))
+    .limit(100)
+  // Map Drizzle row → ReleaseRow shape used by the rest of this page.
+  const rows: ReleaseRow[] = drizzleRows.map((r) => ({
+    version: r.version,
+    title: r.notes?.split('\n')[0] ?? `Omnix ${r.version}`,
+    summary: r.notes ?? '',
+    publishedAt: r.publishedAt.toISOString(),
+    variant: 'pro',                                       // single shipped variant per row in the new schema
+    status: 'published',
+    channel: r.channel,
+  })) as unknown as ReleaseRow[]
   const groups = groupByVersion(rows)
 
   return (

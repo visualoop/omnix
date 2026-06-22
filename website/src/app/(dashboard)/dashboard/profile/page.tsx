@@ -1,49 +1,27 @@
 import { headers } from 'next/headers'
 import { redirect } from 'next/navigation'
-import { getPayload } from 'payload'
-import config from '@/payload.config'
+import { eq } from 'drizzle-orm'
+import { db, user } from '@/db'
+import { auth } from '@/lib/auth'
 import { ProfileForm } from '@/components/dashboard/profile-form'
 import { PageHeading } from '@/components/dashboard/status-utils'
 import { KE_COUNTIES } from '@/lib/ke-counties'
 
 export const metadata = { title: 'Profile' }
 
-interface FullCustomer {
-  id: string | number
-  collection?: string
-  fullName?: string
-  businessName?: string
-  email: string
-  phone?: string
-  whatsapp?: string
-  kraPin?: string
-  county?: string
-  town?: string
-  physicalAddress?: string
-  businessType?: string
-  employeeCount?: string
-  newsletterOptIn?: boolean
-}
-
 export default async function ProfilePage() {
   const reqHeaders = await headers()
-  const payloadConfig = await config
-  const payload = await getPayload({ config: payloadConfig })
+  const session = await auth.api.getSession({ headers: reqHeaders }).catch(() => null)
+  if (!session) redirect('/login?next=/dashboard/profile')
 
-  let user: FullCustomer | null = null
-  try {
-    const result = await payload.auth({ headers: reqHeaders })
-    user = result.user as FullCustomer | null
-  } catch (err) {
-    console.error('[profile] auth error:', err)
-    user = null
-  }
+  const rows = await db.select().from(user).where(eq(user.id, session.user.id)).limit(1)
+  const customer = rows[0]
+  if (!customer) redirect('/login?next=/dashboard/profile')
 
-  if (!user || user.collection !== 'customers' || !user.email) {
-    redirect('/login?next=/dashboard/profile')
-  }
-
-  const customer = user
+  // Extra customer fields are stored on the user row via additionalFields,
+  // plus a few we left in metadata until we promote them to columns.
+  const extra = (customer as unknown as { metadata?: Record<string, unknown> }).metadata ?? {}
+  const get = (k: string) => (typeof extra[k] === 'string' ? (extra[k] as string) : '')
 
   return (
     <div className="space-y-8">
@@ -55,18 +33,18 @@ export default async function ProfilePage() {
       <div className="max-w-3xl rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-6 lg:p-8">
         <ProfileForm
           initial={{
-            fullName: customer.fullName ?? '',
+            fullName: customer.name ?? '',
             businessName: customer.businessName ?? '',
             email: customer.email,
-            phone: customer.phone ?? '',
-            whatsapp: customer.whatsapp ?? '',
-            kraPin: customer.kraPin ?? '',
-            county: customer.county ?? '',
-            town: customer.town ?? '',
-            physicalAddress: customer.physicalAddress ?? '',
-            businessType: customer.businessType ?? '',
-            employeeCount: customer.employeeCount ?? '',
-            newsletterOptIn: customer.newsletterOptIn ?? true,
+            phone: customer.phoneNumber ?? '',
+            whatsapp: get('whatsapp'),
+            kraPin: get('kraPin'),
+            county: get('county'),
+            town: get('town'),
+            physicalAddress: get('physicalAddress'),
+            businessType: get('businessType'),
+            employeeCount: get('employeeCount'),
+            newsletterOptIn: extra.newsletterOptIn !== false,
           }}
           counties={KE_COUNTIES.map((c) => ({ value: c.value, label: c.label }))}
         />

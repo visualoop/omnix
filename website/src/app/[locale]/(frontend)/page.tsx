@@ -31,10 +31,8 @@ import { AiSection } from '@/components/landing/ai-section'
  * 10. FAQ                 — accordion, plus glyph rotates to ×
  * 11. Closing CTA         — full-bleed dark band, italic 64px, one CTA + WhatsApp
  */
-import { getPayload } from 'payload'
 import { cookies } from 'next/headers'
 import { CURRENCIES, tierPrice, type PricingTierShape, type SupportedCurrency } from '@/lib/currency'
-import config from '@/payload.config'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 60
@@ -46,59 +44,37 @@ export default async function HomePage() {
   const cookieCurrency = cookieStore.get('omnix_currency')?.value as SupportedCurrency | undefined
   const currency: SupportedCurrency = cookieCurrency && cookieCurrency in CURRENCIES ? cookieCurrency : 'KES'
 
-  let onePriceAmount = currency === 'KES' ? 50_000 : currency === 'USD' ? 350 : 50_000
-  try {
-    const payloadInst = await getPayload({ config: await config })
-    const pg = (await payloadInst.findGlobal({ slug: 'pricing', overrideAccess: true })) as unknown as {
-      starter?: PricingTierShape
-    }
-    const amt = tierPrice(pg.starter, currency)
-    if (amt > 0) onePriceAmount = amt
-  } catch { /* fall through to defaults */ }
+  // Pricing read from static config (was Payload global pre-v0.8.x).
+  const { pricing } = await import('@/config/pricing')
+  const onePriceAmount = pricing.starter.oneTimeFee[currency] ?? pricing.starter.oneTimeFee.KES
   const onePrice = onePriceAmount.toLocaleString('en-US')
   const oneCurrency = CURRENCIES[currency].symbol
-  let heroContent: Parameters<typeof HeroSection>[0]["content"] = undefined
-  let latestRelease: Parameters<typeof HeroSection>[0]["latestRelease"] = undefined
-  try {
-    const payload = await getPayload({ config: await config })
-    const lp = (await payload.findGlobal({ slug: 'landing-page', depth: 1 })) as unknown as {
-      hero?: {
-        eyebrow?: string
-        headline?: string
-        subheadline?: string
-        primaryCtaLabel?: string
-        primaryCtaHref?: string
-        screenshot?: { url?: string; width?: number; height?: number; alt?: string } | null
-      }
-    }
-    heroContent = lp?.hero
 
-    const releasesResult = await payload.find({
-      collection: 'releases',
-      where: {
-        and: [
-          { status: { equals: 'published' } },
-          { channel: { equals: 'stable' } },
-        ],
-      },
-      sort: '-publishedAt',
-      limit: 1,
-    })
-    const release = releasesResult.docs[0] as unknown as {
-      version?: string
-      title?: string
-      summary?: string
-    }
-    if (release) {
+  // Landing-page hero override + latest release pulled from Drizzle.
+  // Hero content stays default (FALLBACK in components) — landing-page
+  // global was a Payload concept; promote a static config later if we
+  // want CMS-style overrides.
+  const heroContent: Parameters<typeof HeroSection>[0]['content'] = undefined
+  let latestRelease: Parameters<typeof HeroSection>[0]['latestRelease'] = undefined
+  try {
+    const { db, releases } = await import('@/db')
+    const { eq, desc } = await import('drizzle-orm')
+    const rows = await db
+      .select()
+      .from(releases)
+      .where(eq(releases.channel, 'stable'))
+      .orderBy(desc(releases.publishedAt))
+      .limit(1)
+    const r = rows[0]
+    if (r) {
       latestRelease = {
-        version: release.version ?? '',
-        title: release.title ?? '',
-        summary: release.summary ?? '',
+        version: r.version,
+        title: r.notes?.split('\n')[0] ?? `Omnix ${r.version}`,
+        summary: r.notes ?? '',
       }
     }
   } catch {
-    // Payload unavailable (cold boot / build) — fall back to shipped defaults
-    heroContent = undefined
+    // DB cold or no releases yet — fall through.
   }
 
   return (
