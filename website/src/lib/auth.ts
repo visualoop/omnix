@@ -7,6 +7,15 @@
  *
  * Plugins, in order (nextCookies MUST be last):
  *   magicLink · organization · admin · nextCookies
+ *
+ * Config sources (resolved at module init / cold-start):
+ *   1. platform_settings DB row    ← admin-editable in /admin/settings
+ *   2. process.env (legacy)         ← fallback for Vercel env vars
+ *
+ * Updates to google.client_id / google.client_secret take effect on the
+ * NEXT cold-start (5-15 min on Vercel) — Better Auth doesn't hot-reload
+ * provider config. Magic-link templates + Resend credentials hot-reload
+ * immediately because those are awaited per request.
  */
 import { betterAuth } from 'better-auth'
 import { drizzleAdapter } from 'better-auth/adapters/drizzle'
@@ -22,11 +31,31 @@ import {
   sales_rep,
 } from '@/lib/permissions/platform'
 import { sendMagicLinkEmail, sendInviteEmail } from '@/lib/email'
+import { getSetting } from '@/lib/platform-settings'
+
+// Pre-resolve DB-backed config with a hard timeout so a flaky DB
+// at cold-start can't break /api/auth/* entirely.
+async function resolveOnce<T>(p: Promise<T>, timeoutMs = 1500): Promise<T | undefined> {
+  return Promise.race([
+    p.catch(() => undefined as T | undefined),
+    new Promise<undefined>((r) => setTimeout(() => r(undefined), timeoutMs)),
+  ])
+}
+
+const [googleClientIdDb, googleClientSecretDb] = await Promise.all([
+  resolveOnce(getSetting('google.client_id')),
+  resolveOnce(getSetting('google.client_secret')),
+])
+
+const baseURL = process.env.BETTER_AUTH_URL ?? process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000'
+const secret = process.env.BETTER_AUTH_SECRET ?? 'dev-secret-change-me-in-prod-32chars-min'
+const googleClientId = googleClientIdDb ?? process.env.GOOGLE_CLIENT_ID ?? ''
+const googleClientSecret = googleClientSecretDb ?? process.env.GOOGLE_CLIENT_SECRET ?? ''
 
 export const auth = betterAuth({
   database: drizzleAdapter(db, { provider: 'pg' }),
-  baseURL: process.env.BETTER_AUTH_URL ?? process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000',
-  secret: process.env.BETTER_AUTH_SECRET ?? 'dev-secret-change-me-in-prod-32chars-min',
+  baseURL,
+  secret,
 
   // ── Email + password DISABLED ─────────────────────────────────
   // No password sign-in on the website. Sign in via Google or magic
@@ -36,8 +65,8 @@ export const auth = betterAuth({
   // ── Google OAuth ──────────────────────────────────────────────
   socialProviders: {
     google: {
-      clientId: process.env.GOOGLE_CLIENT_ID ?? '',
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET ?? '',
+      clientId: googleClientId,
+      clientSecret: googleClientSecret,
       mapProfileToUser: (profile) => ({
         emailVerified: profile.email_verified ?? false,
         name: profile.name,

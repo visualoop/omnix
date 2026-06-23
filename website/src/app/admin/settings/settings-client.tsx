@@ -243,6 +243,33 @@ export function SettingsClient({ initial }: Props) {
 
                   <div className="col-span-2 flex items-start justify-end gap-2">
                     <SourceBadge source={s.source} />
+                    {s.key === 'cron.secret' && !isEditing && (
+                      <button
+                        onClick={async () => {
+                          startTransition(async () => {
+                            const res = await fetch('/api/admin/settings/generate', {
+                              method: 'POST',
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify({ key: s.key }),
+                            })
+                            const j = await res.json()
+                            if (j.ok) {
+                              setToast({ kind: 'ok', text: `Generated ${s.label}` })
+                              const next = await fetch('/api/admin/settings').then((r) => r.json())
+                              if (next?.settings) setSettings(next.settings)
+                            } else {
+                              setToast({ kind: 'err', text: j.error ?? 'Generate failed' })
+                            }
+                          })
+                        }}
+                        disabled={busy}
+                        className="rounded-md border border-foreground/15 bg-background p-1.5 text-foreground transition-colors hover:border-foreground/40 disabled:opacity-50"
+                        aria-label="Generate fresh value"
+                        title="Generate fresh value"
+                      >
+                        <ArrowsClockwise weight="bold" className="size-3.5" />
+                      </button>
+                    )}
                     {!isEditing && (
                       <button
                         onClick={() => { setEditingKey(s.key); setDraft('') }}
