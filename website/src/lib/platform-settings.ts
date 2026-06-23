@@ -44,6 +44,24 @@ export const SETTING_DEFINITIONS = [
   { key: 'email.copyright_line',    category: 'email_branding', label: 'Copyright line',          sensitive: false, envFallback: undefined, description: 'Optional override. Default: "© {year} Omnix. Built in Nairobi."' },
   { key: 'email.unsubscribe_text',  category: 'email_branding', label: 'Unsubscribe text',        sensitive: false, envFallback: undefined, description: 'Default: "You\'re receiving this because you have an active Omnix account."' },
 
+  // ── Site (public website footer + contact details) ───────
+  { key: 'site.tagline',            category: 'site',           label: 'Site tagline',           sensitive: false, envFallback: undefined, description: 'Shown under the wordmark in the marketing footer. Default: "Offline-first ERP for Kenyan SMEs".' },
+  { key: 'site.support_email',      category: 'site',           label: 'Support email',          sensitive: false, envFallback: 'NEXT_PUBLIC_SUPPORT_EMAIL', description: 'Footer link + structured-data contact point.' },
+  { key: 'site.sales_email',        category: 'site',           label: 'Sales email',            sensitive: false, envFallback: undefined, description: 'For Custom-tier enquiries. Default falls back to support_email.' },
+  { key: 'site.phone_kenya',        category: 'site',           label: 'Kenya phone',            sensitive: false, envFallback: undefined, description: 'International format, e.g. "+254 712 345 678". Shown on the /ke contact page.' },
+  { key: 'site.phone_intl',         category: 'site',           label: 'International phone',    sensitive: false, envFallback: undefined, description: 'Optional. Shown on non-Kenya locale contact pages.' },
+  { key: 'site.whatsapp',           category: 'site',           label: 'WhatsApp number',        sensitive: false, envFallback: 'NEXT_PUBLIC_WHATSAPP_NUMBER', description: 'Digits only or international format. Powers the floating chat link + footer.' },
+  { key: 'site.address_kenya',      category: 'site',           label: 'Kenya physical address', sensitive: false, envFallback: undefined, description: 'Physical office address (Kenya).' },
+  { key: 'site.address_intl',       category: 'site',           label: 'International address',  sensitive: false, envFallback: undefined, description: 'Optional second address shown on /us / /gb / /in contact pages.' },
+  { key: 'site.twitter_url',        category: 'site',           label: 'X (Twitter) URL',        sensitive: false, envFallback: undefined, description: 'Full https URL. Hidden if empty.' },
+  { key: 'site.linkedin_url',       category: 'site',           label: 'LinkedIn URL',           sensitive: false, envFallback: undefined, description: 'Full https URL.' },
+  { key: 'site.facebook_url',       category: 'site',           label: 'Facebook URL',           sensitive: false, envFallback: undefined, description: 'Full https URL.' },
+  { key: 'site.youtube_url',        category: 'site',           label: 'YouTube URL',            sensitive: false, envFallback: undefined, description: 'Full https URL.' },
+  { key: 'site.instagram_url',      category: 'site',           label: 'Instagram URL',          sensitive: false, envFallback: undefined, description: 'Full https URL.' },
+  { key: 'site.github_url',         category: 'site',           label: 'GitHub URL',             sensitive: false, envFallback: undefined, description: 'Full https URL.' },
+  { key: 'site.legal_name',         category: 'site',           label: 'Legal entity name',      sensitive: false, envFallback: undefined, description: 'Used on Organization JSON-LD + footer copyright.' },
+  { key: 'site.kra_pin',            category: 'site',           label: 'KRA PIN',                sensitive: false, envFallback: undefined, description: 'Kenya tax-compliance footer line. Optional.' },
+
   // ── Google OAuth ───────────────────────────────
   { key: 'google.client_id',        category: 'oauth',     label: 'Google OAuth client ID',     sensitive: false, envFallback: 'GOOGLE_CLIENT_ID',     description: 'From console.cloud.google.com → APIs & Services → Credentials.' },
   { key: 'google.client_secret',    category: 'oauth',     label: 'Google OAuth client secret', sensitive: true,  envFallback: 'GOOGLE_CLIENT_SECRET', description: 'Pair with the client ID above. Restart deploys ignored — read at runtime.' },
@@ -270,6 +288,76 @@ export async function emailBranding(): Promise<{
     copyright: copyrightOverride ?? `© ${year} Omnix. Built in Nairobi.`,
     unsubscribe: unsubscribe ?? "You're receiving this because you have an active Omnix account.",
     brandUrl: process.env.NEXT_PUBLIC_SITE_URL ?? process.env.BETTER_AUTH_URL ?? 'https://omnix.co.ke',
+  }
+}
+
+/**
+ * Public site-wide branding read by the marketing site (footer, contact
+ * page, structured-data Organization schema). All admin-editable from
+ * /admin/settings → Site category.
+ */
+export async function siteBranding(): Promise<{
+  tagline: string
+  supportEmail: string
+  salesEmail: string
+  phoneKenya: string | null
+  phoneIntl: string | null
+  whatsapp: string | null
+  whatsappUrl: string | null
+  addressKenya: string | null
+  addressIntl: string | null
+  social: { twitter: string | null; linkedin: string | null; facebook: string | null; youtube: string | null; instagram: string | null; github: string | null }
+  legalName: string
+  kraPin: string | null
+  brandUrl: string
+}> {
+  const [
+    tagline, supportEmail, salesEmail, phoneKE, phoneIntl, whatsapp,
+    addressKE, addressIntl,
+    twitter, linkedin, facebook, youtube, instagram, github,
+    legalName, kraPin,
+  ] = await Promise.all([
+    getSetting('site.tagline'),
+    getSetting('site.support_email'),
+    getSetting('site.sales_email'),
+    getSetting('site.phone_kenya'),
+    getSetting('site.phone_intl'),
+    getSetting('site.whatsapp'),
+    getSetting('site.address_kenya'),
+    getSetting('site.address_intl'),
+    getSetting('site.twitter_url'),
+    getSetting('site.linkedin_url'),
+    getSetting('site.facebook_url'),
+    getSetting('site.youtube_url'),
+    getSetting('site.instagram_url'),
+    getSetting('site.github_url'),
+    getSetting('site.legal_name'),
+    getSetting('site.kra_pin'),
+  ])
+  const supportE = supportEmail ?? 'support@omnix.co.ke'
+  const wa = whatsapp ?? null
+  const waDigits = wa ? wa.replace(/\D/g, '') : null
+  return {
+    tagline: tagline ?? 'Offline-first ERP for Kenyan SMEs',
+    supportEmail: supportE,
+    salesEmail: salesEmail ?? supportE,
+    phoneKenya: phoneKE ?? null,
+    phoneIntl: phoneIntl ?? null,
+    whatsapp: wa,
+    whatsappUrl: waDigits ? `https://wa.me/${waDigits}` : null,
+    addressKenya: addressKE ?? null,
+    addressIntl: addressIntl ?? null,
+    social: {
+      twitter: twitter ?? null,
+      linkedin: linkedin ?? null,
+      facebook: facebook ?? null,
+      youtube: youtube ?? null,
+      instagram: instagram ?? null,
+      github: github ?? null,
+    },
+    legalName: legalName ?? 'Omnix',
+    kraPin: kraPin ?? null,
+    brandUrl: process.env.NEXT_PUBLIC_SITE_URL ?? 'https://omnix.co.ke',
   }
 }
 

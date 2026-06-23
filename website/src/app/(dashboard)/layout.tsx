@@ -19,8 +19,16 @@ export default async function DashboardLayout({
 }: {
   children: React.ReactNode
 }) {
-  const session = await auth.api.getSession({ headers: await headers() }).catch(() => null)
-  if (!session) redirect('/login?next=/dashboard')
+  const reqHeaders = await headers()
+  const session = await auth.api.getSession({ headers: reqHeaders }).catch(() => null)
+  if (!session) {
+    // Preserve the full URL (path + query) so /login can land them
+    // back here after sign-in. Middleware sets x-omnix-url on every
+    // dashboard request; falls back to /dashboard if the header is
+    // missing (e.g. local dev without middleware).
+    const fullUrl = reqHeaders.get('x-omnix-url') ?? '/dashboard'
+    redirect(`/login?next=${encodeURIComponent(fullUrl)}`)
+  }
 
   const email = session.user.email
   const customerName = session.user.name || email.split('@')[0] || 'You'

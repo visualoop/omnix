@@ -17,9 +17,25 @@ export const dynamic = 'force-dynamic'
  * provisioned in-place. Once a licence exists the page renders the
  * normal licences + machines summary.
  */
-export default async function DashboardOverviewPage() {
+export default async function DashboardOverviewPage({
+  searchParams,
+}: {
+  searchParams?: Promise<{ variant?: string }>
+}) {
   const session = await auth.api.getSession({ headers: await headers() }).catch(() => null)
-  if (!session) redirect('/login?next=/dashboard')
+  if (!session) {
+    const sp = (await searchParams) ?? {}
+    const next = sp.variant ? `/dashboard?variant=${encodeURIComponent(sp.variant)}` : '/dashboard'
+    redirect(`/login?next=${encodeURIComponent(next)}`)
+  }
+
+  const sp = (await searchParams) ?? {}
+  const requestedVariant = sp.variant?.toLowerCase()
+  const VALID_VARIANTS = ['pro', 'dawa', 'retail', 'hospitality', 'hardware'] as const
+  type Variant = (typeof VALID_VARIANTS)[number]
+  const defaultVariant: Variant = (VALID_VARIANTS as readonly string[]).includes(requestedVariant ?? '')
+    ? (requestedVariant as Variant)
+    : 'pro'
 
   const userId = session.user.id
 
@@ -68,7 +84,7 @@ export default async function DashboardOverviewPage() {
       />
 
       {hasNoLicences ? (
-        <StartTrialWizard />
+        <StartTrialWizard defaultVariant={defaultVariant} />
       ) : (
         <>
           <section>

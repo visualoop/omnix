@@ -122,16 +122,24 @@ export function middleware(request: NextRequest) {
   const originHeader = request.headers.get('origin')
   const host = request.headers.get('host')
 
+  // Make the full request URL (path + search) readable from layouts/pages
+  // via headers().get('x-omnix-url'). We can't call request.nextUrl from
+  // a layout, so propagating it through a request header lets every layer
+  // build a proper /login?next=<full-url> redirect that preserves the
+  // ?variant= / ?intent= params the desktop activation flow sends.
+  const fullPath = request.nextUrl.pathname + request.nextUrl.search
+
   let response: NextResponse
   if (isNonLocalizedPath(request.nextUrl.pathname)) {
     // Non-localized routes (api, admin, dashboard, buy) skip next-intl
     // entirely. Just do origin synthesis + cookie persistence.
+    const requestHeaders = new Headers(request.headers)
+    requestHeaders.set('x-omnix-url', fullPath)
     if (originHeader || !host || !TRUSTED_HOSTS.has(host)) {
-      response = NextResponse.next()
+      response = NextResponse.next({ request: { headers: requestHeaders } })
     } else {
       const protocol = host.startsWith('localhost') || host.startsWith('127.') ? 'http' : 'https'
       const synthesizedOrigin = `${protocol}://${host}`
-      const requestHeaders = new Headers(request.headers)
       requestHeaders.set('origin', synthesizedOrigin)
       response = NextResponse.next({ request: { headers: requestHeaders } })
     }

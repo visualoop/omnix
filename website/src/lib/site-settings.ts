@@ -1,10 +1,12 @@
 /**
- * Site settings — typed constants. Was a Payload global; now lives in code.
+ * Site settings — typed accessor that reads from platform_settings (DB,
+ * admin-editable in /admin/settings → Site category) with sensible
+ * code-level defaults so the marketing site never breaks if the admin
+ * leaves a value empty.
  *
- * Edit this file to change brand copy, contact info, social links. Edits
- * ship via PR, just like product code. This is intentional — the previous
- * CMS-edit workflow let typos in copy ship without review.
+ * Hot-reloads via the platform-settings 60-second cache.
  */
+import { siteBranding } from '@/lib/platform-settings'
 
 export interface SiteSettings {
   brandName: string
@@ -24,34 +26,47 @@ export interface SiteSettings {
   social: {
     twitter: string | null
     linkedin: string | null
+    facebook: string | null
     youtube: string | null
+    instagram: string | null
     github: string | null
   }
 }
 
-const SITE_SETTINGS: SiteSettings = {
-  brandName: 'Omnix',
-  tagline: 'Offline-first ERP for Kenyan SMEs',
-  kraPin: null,
-  supportEmail: 'support@omnix.co.ke',
-  salesEmail: 'sales@omnix.co.ke',
-  whatsappNumber: '+254712345678',
-  whatsappUrl: 'https://wa.me/254712345678',
-  whatsappDisplay: '+254 712 345 678',
-  phoneNumber: '+254 712 345 678',
-  office: {
-    address: 'Nairobi, Kenya',
-    mapEmbedUrl: null,
-    workingHours: 'Mon–Fri · 8:00–18:00 EAT',
-  },
-  social: {
-    twitter: 'https://twitter.com/omnixerp',
-    linkedin: 'https://linkedin.com/company/omnix',
-    youtube: null,
-    github: 'https://github.com/visualoop/omnix',
-  },
-}
-
 export async function getSiteSettings(): Promise<SiteSettings> {
-  return SITE_SETTINGS
+  try {
+    const b = await siteBranding()
+    return {
+      brandName: 'Omnix',
+      tagline: b.tagline,
+      kraPin: b.kraPin,
+      supportEmail: b.supportEmail,
+      salesEmail: b.salesEmail,
+      whatsappNumber: b.whatsapp,
+      whatsappUrl: b.whatsappUrl,
+      whatsappDisplay: b.whatsapp,
+      phoneNumber: b.phoneKenya ?? b.phoneIntl,
+      office: {
+        address: b.addressKenya ?? b.addressIntl,
+        mapEmbedUrl: null,
+        workingHours: 'Mon–Fri · 8:00–18:00 EAT',
+      },
+      social: b.social,
+    }
+  } catch {
+    // Fallback if DB is unreachable on cold start.
+    return {
+      brandName: 'Omnix',
+      tagline: 'Offline-first ERP for Kenyan SMEs',
+      kraPin: null,
+      supportEmail: 'support@omnix.co.ke',
+      salesEmail: null,
+      whatsappNumber: null,
+      whatsappUrl: null,
+      whatsappDisplay: null,
+      phoneNumber: null,
+      office: { address: null, mapEmbedUrl: null, workingHours: null },
+      social: { twitter: null, linkedin: null, facebook: null, youtube: null, instagram: null, github: null },
+    }
+  }
 }

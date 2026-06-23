@@ -39,8 +39,12 @@ const NAV = [
 const STAFF_ROLES = ['platform_admin', 'support_agent', 'sales_rep']
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
-  const session = await auth.api.getSession({ headers: await headers() }).catch(() => null)
-  if (!session) redirect('/login?next=/admin')
+  const reqHeaders = await headers()
+  const session = await auth.api.getSession({ headers: reqHeaders }).catch(() => null)
+  if (!session) {
+    const fullUrl = reqHeaders.get('x-omnix-url') ?? '/admin'
+    redirect(`/login?next=${encodeURIComponent(fullUrl)}`)
+  }
 
   const role = (session.user as { role?: string }).role ?? 'user'
   if (!STAFF_ROLES.includes(role)) {

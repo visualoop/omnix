@@ -30,9 +30,14 @@ interface StartedLicense {
   trialEndsAt: string
 }
 
-export function StartTrialWizard() {
+interface Props {
+  /** When set (via /dashboard?variant=X), preselect that variant. */
+  defaultVariant?: Variant
+}
+
+export function StartTrialWizard({ defaultVariant = 'pro' }: Props) {
   const router = useRouter()
-  const [picked, setPicked] = useState<Variant>('pro')
+  const [picked, setPicked] = useState<Variant>(defaultVariant)
   const [busy, startTransition] = useTransition()
   const [started, setStarted] = useState<StartedLicense | null>(null)
   const [error, setError] = useState<string | null>(null)

@@ -1,13 +1,56 @@
-import { cn } from "@/lib/cn"
+import { cn } from '@/lib/cn'
 
-function Skeleton({ className, ...props }: React.ComponentProps<"div">) {
+interface Props {
+  className?: string
+  style?: React.CSSProperties
+}
+
+/**
+ * Skeleton — a single shimmering bar. Matches the editorial brand
+ * (warm taupe tint, hairline borders, subtle pulse). Use to lay out
+ * a loading-state placeholder.
+ */
+export function Skeleton({ className, style }: Props) {
   return (
-    <div
-      data-slot="skeleton"
-      className={cn("animate-pulse rounded-md bg-accent", className)}
-      {...props}
+    <span
+      className={cn(
+        'inline-block animate-pulse rounded',
+        'bg-[var(--color-surface)]',
+        'border border-[var(--color-border)]',
+        className,
+      )}
+      style={style}
+      aria-hidden
     />
   )
 }
 
-export { Skeleton }
+/**
+ * SkeletonText — N rows of varying widths to mimic a paragraph.
+ */
+export function SkeletonText({ lines = 3 }: { lines?: number }) {
+  const widths = ['100%', '92%', '78%', '85%', '70%']
+  return (
+    <div className="space-y-2">
+      {Array.from({ length: lines }).map((_, i) => (
+        <Skeleton
+          key={i}
+          className="block h-3"
+          style={{ width: widths[i % widths.length] }}
+        />
+      ))}
+    </div>
+  )
+}
+
+/**
+ * SkeletonRow — a hairline-bordered list item placeholder.
+ */
+export function SkeletonRow({ height = 56 }: { height?: number }) {
+  return (
+    <div
+      className="rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] animate-pulse"
+      style={{ height }}
+    />
+  )
+}
