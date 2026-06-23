@@ -3,12 +3,25 @@ import { BRAND_DOMAIN } from '@/lib/brand'
 import { POSTS_SEED } from '@/lib/blog-seed'
 import { DOCS_SEED } from '@/lib/docs-seed'
 import { MODULES_SEED } from '@/lib/modules-seed'
+import { COUNTRY_LOCALES } from '@/i18n/routing'
 
+/**
+ * Per-locale sitemap.
+ *
+ * Every public route is emitted once per country locale (/ke, /us, /gb,
+ * /ng, /gh, /za, /in, /tz, /ug, /eg, /ae) so Google indexes each market
+ * variant separately. Priority is weighted toward /ke (the home market)
+ * for the foreseeable future; once /us etc. start ranking we can flatten
+ * the priority distribution.
+ *
+ * `alternates.languages` declares every locale's counterpart so Google
+ * knows the pages are equivalents (no duplicate-content risk).
+ */
 export default function sitemap(): MetadataRoute.Sitemap {
   const base = `https://${BRAND_DOMAIN}`
   const now = new Date().toISOString()
 
-  const staticPaths: MetadataRoute.Sitemap = [
+  const PUBLIC_PATHS = [
     '',
     '/pricing',
     '/ai',
@@ -28,33 +41,64 @@ export default function sitemap(): MetadataRoute.Sitemap {
     '/privacy',
     '/terms',
     '/refund-policy',
-  ].map((path) => ({
-    url: `${base}${path}`,
-    lastModified: now,
-    changeFrequency: path === '' ? ('daily' as const) : ('weekly' as const),
-    priority: path === '' ? 1.0 : 0.7,
-  }))
+  ]
 
-  const modulesPaths: MetadataRoute.Sitemap = MODULES_SEED.map((m) => ({
-    url: `${base}/modules/${m.slug}`,
-    lastModified: now,
-    changeFrequency: 'monthly' as const,
-    priority: 0.6,
-  }))
+  const out: MetadataRoute.Sitemap = []
 
-  const blogPaths: MetadataRoute.Sitemap = POSTS_SEED.map((p) => ({
-    url: `${base}/blog/${p.slug}`,
-    lastModified: p.publishedAt,
-    changeFrequency: 'monthly' as const,
-    priority: 0.5,
-  }))
+  function alternatesFor(path: string): Record<string, string> {
+    return Object.fromEntries(
+      COUNTRY_LOCALES.map((cc) => [cc, `${base}/${cc}${path}`]),
+    )
+  }
 
-  const docsPaths: MetadataRoute.Sitemap = DOCS_SEED.map((d) => ({
-    url: `${base}/docs/${d.slug}`,
-    lastModified: now,
-    changeFrequency: 'monthly' as const,
-    priority: 0.5,
-  }))
+  // Static + product paths × every locale.
+  for (const cc of COUNTRY_LOCALES) {
+    for (const path of PUBLIC_PATHS) {
+      out.push({
+        url: `${base}/${cc}${path}`,
+        lastModified: now,
+        changeFrequency: path === '' ? ('daily' as const) : ('weekly' as const),
+        priority: cc === 'ke' ? (path === '' ? 1.0 : 0.7) : (path === '' ? 0.85 : 0.6),
+        alternates: { languages: alternatesFor(path) },
+      })
+    }
 
-  return [...staticPaths, ...modulesPaths, ...blogPaths, ...docsPaths]
+    // Modules detail pages.
+    for (const m of MODULES_SEED) {
+      const path = `/modules/${m.slug}`
+      out.push({
+        url: `${base}/${cc}${path}`,
+        lastModified: now,
+        changeFrequency: 'monthly' as const,
+        priority: cc === 'ke' ? 0.6 : 0.5,
+        alternates: { languages: alternatesFor(path) },
+      })
+    }
+
+    // Blog posts.
+    for (const p of POSTS_SEED) {
+      const path = `/blog/${p.slug}`
+      out.push({
+        url: `${base}/${cc}${path}`,
+        lastModified: p.publishedAt,
+        changeFrequency: 'monthly' as const,
+        priority: cc === 'ke' ? 0.5 : 0.4,
+        alternates: { languages: alternatesFor(path) },
+      })
+    }
+
+    // Doc pages.
+    for (const d of DOCS_SEED) {
+      const path = `/docs/${d.slug}`
+      out.push({
+        url: `${base}/${cc}${path}`,
+        lastModified: now,
+        changeFrequency: 'monthly' as const,
+        priority: cc === 'ke' ? 0.5 : 0.4,
+        alternates: { languages: alternatesFor(path) },
+      })
+    }
+  }
+
+  return out
 }
