@@ -131,6 +131,29 @@ export function SettingsClient({ initial }: Props) {
         </div>
       )}
 
+      <div className="flex items-center justify-end">
+        <button
+          onClick={async () => {
+            startTransition(async () => {
+              const res = await fetch('/api/admin/settings/import-env', { method: 'POST' })
+              const j = await res.json()
+              if (j.ok) {
+                setToast({ kind: 'ok', text: `Imported ${j.imported.length} value(s) from env` })
+                const next = await fetch('/api/admin/settings').then((r) => r.json())
+                if (next?.settings) setSettings(next.settings)
+              } else {
+                setToast({ kind: 'err', text: j.error ?? 'Import failed' })
+              }
+            })
+          }}
+          disabled={busy}
+          className="inline-flex items-center gap-2 rounded-md border border-foreground/15 bg-background px-3 py-1.5 font-mono text-[11px] uppercase tracking-[0.18em] text-foreground transition-colors hover:border-foreground/40 disabled:opacity-50"
+        >
+          <ArrowsClockwise weight="bold" className="size-3.5" />
+          Import current env → DB
+        </button>
+      </div>
+
       {grouped.map(({ category, items }) => (
         <section key={category}>
           <header className="mb-4 flex items-end justify-between border-b border-foreground/10 pb-3">

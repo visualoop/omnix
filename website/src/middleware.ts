@@ -52,6 +52,12 @@ function isNonLocalizedPath(pathname: string): boolean {
     pathname.startsWith('/dashboard') ||
     pathname.startsWith('/buy') ||
     pathname.startsWith('/_next') ||
+    // SEO files — must stay at root, never localized.
+    pathname === '/robots.txt' ||
+    pathname === '/sitemap.xml' ||
+    pathname === '/favicon.ico' ||
+    pathname === '/manifest.webmanifest' ||
+    pathname === '/site.webmanifest' ||
     // Auth pages — live under app/(auth) outside [locale]. Without
     // this exclusion the geo-redirect rewrites /login → /ke/login,
     // which doesn't exist and 404s.
