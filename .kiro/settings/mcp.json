@@ -1,18 +1,4 @@
 {
-  "_comment_install": [
-    "21st.dev Magic MCP — UI-component generator MCP server.",
-    "Lets the agent generate polished React components on demand via /ui prompts.",
-    "",
-    "BEFORE THIS WORKS:",
-    "  1. Sign up at https://21st.dev/magic and grab your API key",
-    "  2. Either:",
-    "     (a) Replace <ADD_TWENTY_FIRST_API_KEY_HERE> with the key, or",
-    "     (b) Export TWENTY_FIRST_API_KEY in your shell and remove the env block here",
-    "  3. Restart Kiro / reload MCP servers",
-    "",
-    "Once active, this agent gains the @magic-mcp tool surface. Triggers on /ui prompts.",
-    "Remove this _comment_install block once the API key is set so the JSON parses cleanly without commentary."
-  ],
   "mcpServers": {
     "magic": {
       "command": "npx",
@@ -26,6 +12,11 @@
       },
       "disabled": true,
       "_note": "Set disabled to false after adding the API key above."
+    },
+    "better-auth": {
+      "type": "http",
+      "url": "https://mcp.chonkie.ai/better-auth/better-auth-builder/mcp",
+      "_note": "Better Auth's official guided-config MCP. Lets the agent verify config + generate plugin setups against current docs."
     }
   }
 }

@@ -10,6 +10,11 @@
     "shadcn": {
       "command": "npx",
       "args": ["-y", "shadcn@latest", "mcp"]
+    },
+    "better-auth": {
+      "type": "http",
+      "url": "https://mcp.chonkie.ai/better-auth/better-auth-builder/mcp",
+      "_note": "Better Auth's official guided-config MCP — verifies config against current docs."
     }
   }
 }
