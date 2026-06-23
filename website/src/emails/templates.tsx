@@ -744,6 +744,7 @@ function ReceiptRow({ label, value, mono, small }: { label: string; value: strin
 
 function formatKey(key: string): string {
   if (!key) return '—'
+  if (/^OMNIX-/i.test(key)) return key.toUpperCase()
   const compact = key.replace(/[-\s]/g, '').toUpperCase()
   if (compact.length <= 4) return compact
   return compact.match(/.{1,4}/g)?.join('-') ?? compact

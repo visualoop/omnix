@@ -132,16 +132,19 @@ function Stat({ label, value, mono }: { label: string; value: string; mono?: boo
 }
 
 const STATUS_INFO: Record<string, { label: string; colour: string }> = {
-  active:   { label: 'Active',   colour: 'var(--color-positive)' },
-  trial:    { label: 'Trial',    colour: 'var(--color-caution)'  },
-  lapsed:   { label: 'Lapsed',   colour: 'var(--color-fg-subtle)' },
-  revoked:  { label: 'Revoked',  colour: 'var(--color-negative)' },
-  unknown:  { label: 'Unknown',  colour: 'var(--color-fg-subtle)' },
+  active:    { label: 'Active',    colour: 'var(--color-positive)' },
+  trial:     { label: 'Trial',     colour: 'var(--color-caution)'  },
+  lapsed:    { label: 'Lapsed',    colour: 'var(--color-fg-subtle)' },
+  suspended: { label: 'Suspended', colour: 'var(--color-caution)'  },
+  revoked:   { label: 'Revoked',   colour: 'var(--color-negative)' },
+  unknown:   { label: 'Unknown',   colour: 'var(--color-fg-subtle)' },
 }
 
 function formatKey(key: string): string {
-  // Format like XXXX-XXXX-XXXX-XXXX for readability.
+  // Display the licence key as-issued. For OMNIX-VARIANT-XXXX-XXXX-XXXX
+  // we leave the dashes in place; for legacy keys we group into 4s.
   if (!key) return '—'
+  if (/^OMNIX-/i.test(key)) return key.toUpperCase()
   const compact = key.replace(/[-\s]/g, '').toUpperCase()
   if (compact.length <= 4) return compact
   return compact.match(/.{1,4}/g)?.join('-') ?? compact
