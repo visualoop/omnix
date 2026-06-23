@@ -33,11 +33,23 @@ interface StartedLicense {
 interface Props {
   /** When set (via /dashboard?variant=X), preselect that variant. */
   defaultVariant?: Variant
+  /** When the customer already has licences for these variants, hide them
+   *  from the picker and offer the remaining ones. Empty = show all. */
+  ownedVariants?: string[]
+  /** Compact rendering for the "add another variant" surface on a
+   *  dashboard that already has licences. */
+  compact?: boolean
 }
 
-export function StartTrialWizard({ defaultVariant = 'pro' }: Props) {
+export function StartTrialWizard({ defaultVariant = 'pro', ownedVariants = [], compact = false }: Props) {
   const router = useRouter()
-  const [picked, setPicked] = useState<Variant>(defaultVariant)
+  const owned = new Set(ownedVariants)
+  const available = VARIANTS.filter((v) => !owned.has(v.id))
+  // If everything is taken, render a soft "you have all variants" footnote
+  // instead of a full wizard.
+  const allTaken = available.length === 0
+  const initialPick: Variant = available.find((v) => v.id === defaultVariant)?.id ?? available[0]?.id ?? 'pro'
+  const [picked, setPicked] = useState<Variant>(initialPick)
   const [busy, startTransition] = useTransition()
   const [started, setStarted] = useState<StartedLicense | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -69,23 +81,34 @@ export function StartTrialWizard({ defaultVariant = 'pro' }: Props) {
     return <TrialStartedSuccess license={started} copied={copied} setCopied={setCopied} />
   }
 
+  if (allTaken) {
+    return (
+      <div className="rounded-md border border-dashed border-[var(--color-border)] bg-[var(--color-surface)] px-5 py-4 text-[12px] text-[var(--color-fg-muted)]">
+        You already have a licence for every Omnix variant. Need a paid licence?{' '}
+        <a href="/buy" className="text-[var(--color-fg)] underline-offset-4 hover:underline">Buy one →</a>
+      </div>
+    )
+  }
+
   return (
     <div className="space-y-6">
-      <div className="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] p-6">
-        <header className="mb-5">
+      <div className={`rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] ${compact ? 'p-4' : 'p-6'}`}>
+        <header className={compact ? 'mb-3' : 'mb-5'}>
           <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-[var(--color-fg-muted)]">
-            Step 1 · Pick your trade
+            {compact ? 'Try another trade' : 'Step 1 · Pick your trade'}
           </span>
-          <h2
-            style={{ fontFamily: 'var(--font-display)' }}
-            className="mt-1.5 text-[22px] font-medium tracking-[-0.01em] text-[var(--color-fg)]"
-          >
-            Which Omnix variant runs your business?
-          </h2>
+          {!compact && (
+            <h2
+              style={{ fontFamily: 'var(--font-display)' }}
+              className="mt-1.5 text-[22px] font-medium tracking-[-0.01em] text-[var(--color-fg)]"
+            >
+              Which Omnix variant runs your business?
+            </h2>
+          )}
         </header>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-          {VARIANTS.map((v) => {
+        <div className={`grid grid-cols-1 ${compact ? 'md:grid-cols-2 lg:grid-cols-4' : 'md:grid-cols-2 lg:grid-cols-3'} gap-3`}>
+          {available.map((v) => {
             const isPicked = picked === v.id
             return (
               <button

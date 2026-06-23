@@ -46,7 +46,7 @@ export default async function ModuleDetailPage({
       >
         <div className="mt-6 flex flex-col items-center gap-3 sm:flex-row">
           <Button asChild size="lg">
-            <Link href="/signup">Start free trial</Link>
+            <Link href={`/signup?variant=${encodeURIComponent(module.slug)}`}>Start free trial</Link>
           </Button>
           <Button asChild size="lg" variant="outline">
             <Link href="/contact?type=demo">See a live walkthrough</Link>
@@ -239,7 +239,7 @@ export default async function ModuleDetailPage({
             </h2>
             <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row sm:gap-4">
               <Button asChild size="lg">
-                <Link href="/signup">Download {module.shortName}</Link>
+                <Link href={`/signup?variant=${encodeURIComponent(module.slug)}`}>Download {module.shortName}</Link>
               </Button>
               <Button asChild size="lg" variant="outline">
                 <Link href="/contact?type=demo">Get a walkthrough</Link>

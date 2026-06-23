@@ -63,7 +63,7 @@ export async function POST(req: Request) {
   const now = new Date()
   const trialEndsAt = new Date(now.getTime() + TRIAL_DAYS * 24 * 60 * 60 * 1000)
   const id = createId()
-  const licenseKey = makeTrialKey()
+  const licenseKey = makeLicenseKey(variant)
 
   await db.insert(licenses).values({
     id,
@@ -96,14 +96,35 @@ export async function POST(req: Request) {
   })
 }
 
-function makeTrialKey(): string {
-  // 4 groups of 4 base32-ish chars, prefixed with TRIAL.
+/**
+ * Generate a license key in the format the desktop validator expects:
+ *   OMNIX-<VARIANT>-XXXX-XXXX-XXXX
+ *
+ * Variant prefixes (from src/lib/variant.ts variantLicensePrefix):
+ *   pro         → OMNIX-PRO
+ *   dawa        → OMNIX-DAWA
+ *   retail      → OMNIX-RETAIL
+ *   hospitality → OMNIX-HOSP
+ *   hardware    → OMNIX-HW
+ *
+ * The key format is identical for trial and paid licences. The trial vs
+ * active state is tracked in the `status` column. The desktop validator
+ * accepts any well-formed OMNIX- key and asks the website for status.
+ */
+function makeLicenseKey(variant: Variant): string {
+  const variantSuffix: Record<Variant, string> = {
+    pro: 'PRO',
+    dawa: 'DAWA',
+    retail: 'RETAIL',
+    hospitality: 'HOSP',
+    hardware: 'HW',
+  }
   const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
-  const groups: string[] = ['TRIAL']
-  for (let i = 0; i < 4; i++) {
+  const groups: string[] = []
+  for (let i = 0; i < 3; i++) {
     let g = ''
     for (let j = 0; j < 4; j++) g += alphabet[Math.floor(Math.random() * alphabet.length)]
     groups.push(g)
   }
-  return groups.join('-')
+  return `OMNIX-${variantSuffix[variant]}-${groups.join('-')}`
 }

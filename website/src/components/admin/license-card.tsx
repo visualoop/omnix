@@ -1,4 +1,5 @@
 import { CalendarBlank, Tag, User } from '@phosphor-icons/react/dist/ssr'
+import { DeleteLicenseButton } from './delete-license-button'
 
 interface LicenseLike {
   id: string
@@ -72,28 +73,31 @@ export function LicenseCard({ l }: { l: LicenseLike }) {
           />
         </div>
 
-        {/* Footer — owner email + days left */}
+        {/* Footer — owner email + days left + delete */}
         <div className="mt-4 flex items-center justify-between gap-2 border-t border-[var(--color-border)] pt-3 text-[11px] text-[var(--color-fg-subtle)]">
           <span className="flex items-center gap-1.5 truncate min-w-0">
             <User weight="regular" className="size-3" />
             <span className="truncate">{l.customerEmail ?? 'unassigned'}</span>
           </span>
-          {daysLeft !== null && (
-            <span
-              className="flex items-center gap-1 font-mono shrink-0"
-              style={{
-                color:
-                  daysLeft < 0
-                    ? 'var(--color-negative)'
-                    : daysLeft < 14
-                    ? 'var(--color-caution)'
-                    : 'var(--color-fg-subtle)',
-              }}
-            >
-              <CalendarBlank weight="regular" className="size-3" />
-              {daysLeft < 0 ? `expired ${-daysLeft}d ago` : `${daysLeft}d left`}
-            </span>
-          )}
+          <div className="flex items-center gap-3 shrink-0">
+            {daysLeft !== null && (
+              <span
+                className="flex items-center gap-1 font-mono"
+                style={{
+                  color:
+                    daysLeft < 0
+                      ? 'var(--color-negative)'
+                      : daysLeft < 14
+                      ? 'var(--color-caution)'
+                      : 'var(--color-fg-subtle)',
+                }}
+              >
+                <CalendarBlank weight="regular" className="size-3" />
+                {daysLeft < 0 ? `expired ${-daysLeft}d ago` : `${daysLeft}d left`}
+              </span>
+            )}
+            <DeleteLicenseButton licenseId={l.id} licenseKey={l.licenseKey} />
+          </div>
         </div>
       </div>
     </div>

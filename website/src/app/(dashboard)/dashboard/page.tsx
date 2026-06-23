@@ -100,6 +100,17 @@ export default async function DashboardOverviewPage({
                 </li>
               ))}
             </ul>
+            {/* Always offer to try (or buy) another variant — customers
+                often start with one trade and add more (e.g. Dawa pharmacy
+                + Retail mini-mart). The wizard skips variants the customer
+                already has so we don't issue duplicate trial keys. */}
+            <div className="mt-4">
+              <StartTrialWizard
+                defaultVariant={pickFirstUntakenVariant(licList.map((l) => l.variant)) ?? defaultVariant}
+                ownedVariants={licList.map((l) => l.variant).filter(Boolean) as string[]}
+                compact
+              />
+            </div>
           </section>
 
           <section>
@@ -129,4 +140,13 @@ export default async function DashboardOverviewPage({
       )}
     </div>
   )
+}
+
+const ALL_VARIANTS = ['pro', 'dawa', 'retail', 'hospitality', 'hardware'] as const
+function pickFirstUntakenVariant(taken: (string | null)[]): typeof ALL_VARIANTS[number] | null {
+  const set = new Set(taken.filter(Boolean))
+  for (const v of ALL_VARIANTS) {
+    if (!set.has(v)) return v
+  }
+  return null
 }
