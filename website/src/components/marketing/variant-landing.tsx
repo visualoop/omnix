@@ -275,12 +275,23 @@ async function getVariantContent(variant: VariantId, _locale: string): Promise<V
  */
 async function getVariantPrice(variant: VariantId): Promise<{ amount: number; currency: SupportedCurrency; display: string }> {
   const { pricing } = await import('@/config/pricing')
+  const { COUNTRY_TO_CURRENCY } = await import('@/i18n/routing')
+  const locale = await getLocale()
   const cookieStore = await cookies()
   const cookieValue = cookieStore.get('omnix_currency')?.value as SupportedCurrency | undefined
-  const currency: SupportedCurrency = cookieValue && cookieValue in CURRENCIES ? cookieValue : 'KES'
+
+  // Locale URL is the strongest signal (a /us/* page should always price in
+  // USD even if the visitor's cookie disagrees). Cookie is the secondary
+  // hint. Default falls back to USD (Paystack's universal currency) so a
+  // missing cookie + unknown locale doesn't render a Kenya price to the
+  // wrong audience.
+  const fromLocale = COUNTRY_TO_CURRENCY[locale.toLowerCase()] as SupportedCurrency | undefined
+  const currency: SupportedCurrency = (fromLocale && fromLocale in CURRENCIES)
+    ? fromLocale
+    : (cookieValue && cookieValue in CURRENCIES ? cookieValue : 'USD')
 
   const tier = variant === 'pro' ? pricing.business : pricing.starter
-  const amount = tier.oneTimeFee[currency] ?? tier.oneTimeFee.KES
+  const amount = tier.oneTimeFee[currency] ?? tier.oneTimeFee.USD
   return { amount, currency, display: formatPrice(amount, currency) }
 }
 
