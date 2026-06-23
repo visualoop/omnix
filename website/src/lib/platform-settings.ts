@@ -25,9 +25,10 @@ const cache = new Map<string, CacheEntry>()
 /** Set of keys we expose to the admin dashboard with their default config. */
 export const SETTING_DEFINITIONS = [
   // ── Paystack ────────────────────────────────────
+  // Webhooks are HMAC-SHA512 signed using the secret_key (Paystack does
+  // not expose a separate "webhook secret"). One key, two purposes.
   { key: 'paystack.public_key',     category: 'paystack',  label: 'Paystack public key',     sensitive: false, envFallback: 'PAYSTACK_PUBLIC_KEY',     description: 'Used by the in-page Paystack popup.' },
-  { key: 'paystack.secret_key',     category: 'paystack',  label: 'Paystack secret key',     sensitive: true,  envFallback: 'PAYSTACK_SECRET_KEY',     description: 'Used server-side to initialise + verify charges. Rotate after every staff departure.' },
-  { key: 'paystack.webhook_secret', category: 'paystack',  label: 'Paystack webhook secret', sensitive: true,  envFallback: 'PAYSTACK_WEBHOOK_SECRET', description: 'HMAC-SHA512 signature key. Configured in Paystack dashboard → Settings → Webhooks.' },
+  { key: 'paystack.secret_key',     category: 'paystack',  label: 'Paystack secret key',     sensitive: true,  envFallback: 'PAYSTACK_SECRET_KEY',     description: 'Server-side: initialises charges, verifies, AND signs webhooks. Rotate after every staff departure.' },
 
   // ── Email (Resend) ─────────────────────────────
   { key: 'resend.api_key',          category: 'email',     label: 'Resend API key',          sensitive: true,  envFallback: 'RESEND_API_KEY',          description: 'Sends magic links, invitations, receipts, support replies.' },
@@ -221,12 +222,13 @@ export async function countUnsetCritical(): Promise<number> {
 
 // Helper-aliases so callsites read more naturally.
 export async function paystackKeys() {
-  const [pub, sec, hook] = await Promise.all([
+  const [pub, sec] = await Promise.all([
     getSetting('paystack.public_key'),
     getSetting('paystack.secret_key'),
-    getSetting('paystack.webhook_secret'),
   ])
-  return { public: pub, secret: sec, webhook: hook }
+  // The secret_key is also the HMAC-SHA512 webhook signer; Paystack does
+  // not expose a separate "webhook secret" setting in its dashboard.
+  return { public: pub, secret: sec, webhook: sec }
 }
 
 export async function resendConfig() {

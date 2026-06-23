@@ -19,14 +19,18 @@ import { sendLicenseKeyEmail, sendPaymentReceiptEmail } from '@/lib/email'
  *
  * Configure in Paystack dashboard:
  *   POST https://omnix.co.ke/api/paystack/webhook
- *   Sign with paystack.webhook_secret (admin-editable in /admin/settings).
+ *
+ * Paystack signs every webhook with HMAC-SHA512 keyed by the merchant's
+ * `secret_key` (sk_live_... or sk_test_...). There is NO separate
+ * "webhook secret" — the dashboard doesn't let you configure one.
+ * Source: https://paystack.com/docs/payments/webhooks/
  */
 export async function POST(req: Request) {
   const sig = req.headers.get('x-paystack-signature') ?? ''
-  const secret = await getSetting('paystack.webhook_secret')
+  const secret = await getSetting('paystack.secret_key')
   const raw = await req.text()
   if (!secret) {
-    return Response.json({ error: 'paystack.webhook_secret not configured' }, { status: 500 })
+    return Response.json({ error: 'paystack.secret_key not configured' }, { status: 500 })
   }
   const expected = crypto.createHmac('sha512', secret).update(raw).digest('hex')
   if (sig !== expected) {

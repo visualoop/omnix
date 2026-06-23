@@ -100,9 +100,10 @@ function formatDate(d?: string): string {
 }
 
 export default async function DownloadsPage() {
-  // The new schema doesn't split releases by variant — there's one
-  // installer per version + channel. Every variant gets the same
-  // download link until per-variant builds come back.
+  // The new schema stores per-variant download URLs in releases.metadata.variants.
+  // Each variant card resolves to its own .exe / .msi from the latest stable
+  // release. Falls back to the canonical Pro URL stored in exeUrl/msiUrl if
+  // metadata isn't populated yet.
   const { db, releases } = await import('@/db')
   const { eq, desc } = await import('drizzle-orm')
   const rows = await db
@@ -112,12 +113,21 @@ export default async function DownloadsPage() {
     .orderBy(desc(releases.publishedAt))
     .limit(1)
   const r = rows[0]
-  // Explicit field mapping from new schema → ReleaseRow. The page
-  // historically rendered through a `as unknown as ReleaseRow` cast
-  // that masked a column-name change (the columns are now exe_url /
-  // msi_url after the Payload CMS → Drizzle migration; the page was
-  // still reading windowsNsisUrl / windowsMsiUrl so every URL came
-  // out undefined → 'Coming soon' for every variant card).
+
+  type VariantId = 'pro' | 'dawa' | 'retail' | 'hospitality' | 'hardware'
+  interface VariantUrls { exe?: string; msi?: string }
+
+  const meta = (r?.metadata ?? {}) as { variants?: Partial<Record<VariantId, VariantUrls>> }
+  const variants = meta.variants ?? {}
+
+  function urlsFor(v: VariantId): VariantUrls {
+    const stored = variants[v] ?? {}
+    if (stored.exe || stored.msi) return stored
+    // Fallback: every variant gets the canonical Pro installer until the next
+    // sync populates metadata.variants.
+    return { exe: r?.exeUrl ?? undefined, msi: r?.msiUrl ?? undefined }
+  }
+
   const baseRow: ReleaseRow | null = r
     ? {
         version: r.version,
@@ -125,21 +135,17 @@ export default async function DownloadsPage() {
         summary: r.notes ?? '',
         publishedAt: r.publishedAt.toISOString(),
         variant: 'pro',
-        windowsNsisUrl: r.exeUrl ?? undefined,
-        windowsMsiUrl: r.msiUrl ?? undefined,
       }
     : null
 
-  const latestByVariant: Record<VariantId, ReleaseRow | null> = {
-    pro: baseRow,
-    dawa: baseRow,
-    retail: baseRow,
-    hospitality: baseRow,
-    hardware: baseRow,
+  const latestByVariant: Record<VariantId, (ReleaseRow & VariantUrls) | null> = {
+    pro:         baseRow ? { ...baseRow, ...urlsFor('pro'),         windowsNsisUrl: urlsFor('pro').exe,         windowsMsiUrl: urlsFor('pro').msi } : null,
+    dawa:        baseRow ? { ...baseRow, ...urlsFor('dawa'),        windowsNsisUrl: urlsFor('dawa').exe,        windowsMsiUrl: urlsFor('dawa').msi } : null,
+    retail:      baseRow ? { ...baseRow, ...urlsFor('retail'),      windowsNsisUrl: urlsFor('retail').exe,      windowsMsiUrl: urlsFor('retail').msi } : null,
+    hospitality: baseRow ? { ...baseRow, ...urlsFor('hospitality'), windowsNsisUrl: urlsFor('hospitality').exe, windowsMsiUrl: urlsFor('hospitality').msi } : null,
+    hardware:    baseRow ? { ...baseRow, ...urlsFor('hardware'),    windowsNsisUrl: urlsFor('hardware').exe,    windowsMsiUrl: urlsFor('hardware').msi } : null,
   }
 
-  // For pre-v0.4.0 backfill: if a variant has no row yet, fall back to the
-  // latest "pro" row so the legacy installer still appears for visitors.
   const proRelease = latestByVariant.pro
 
   return (

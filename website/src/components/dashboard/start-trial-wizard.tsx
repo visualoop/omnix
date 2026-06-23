@@ -1,0 +1,229 @@
+'use client'
+
+import { useState, useTransition } from 'react'
+import { useRouter } from 'next/navigation'
+import {
+  Pill, Storefront, ForkKnife, Hammer, Stack, ArrowRight, CheckCircle, Copy,
+} from '@phosphor-icons/react'
+
+type Variant = 'pro' | 'dawa' | 'retail' | 'hospitality' | 'hardware'
+
+interface VariantOption {
+  id: Variant
+  name: string
+  tagline: string
+  Icon: typeof Pill
+  recommended?: boolean
+}
+
+const VARIANTS: VariantOption[] = [
+  { id: 'pro',         name: 'Omnix Pro',         tagline: 'All four trades — multi-trade businesses', Icon: Stack, recommended: true },
+  { id: 'dawa',        name: 'Omnix Dawa',        tagline: 'Pharmacy management',                       Icon: Pill },
+  { id: 'retail',      name: 'Omnix Retail',      tagline: 'Shops, mini-marts, dukas',                  Icon: Storefront },
+  { id: 'hospitality', name: 'Omnix Hospitality', tagline: 'Restaurants, bars, lodges',                 Icon: ForkKnife },
+  { id: 'hardware',    name: 'Omnix Hardware',    tagline: 'Hardware stores, contractors',              Icon: Hammer },
+]
+
+interface StartedLicense {
+  licenseKey: string
+  variant: Variant
+  trialEndsAt: string
+}
+
+export function StartTrialWizard() {
+  const router = useRouter()
+  const [picked, setPicked] = useState<Variant>('pro')
+  const [busy, startTransition] = useTransition()
+  const [started, setStarted] = useState<StartedLicense | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  const [copied, setCopied] = useState(false)
+
+  function start() {
+    setError(null)
+    startTransition(async () => {
+      const res = await fetch('/api/dashboard/trial', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ variant: picked }),
+      })
+      const j = await res.json()
+      if (j.ok) {
+        setStarted({
+          licenseKey: j.license.licenseKey,
+          variant: j.license.variant,
+          trialEndsAt: j.license.trialEndsAt,
+        })
+        router.refresh()
+      } else {
+        setError(j.error ?? 'Could not start the trial. Please try again.')
+      }
+    })
+  }
+
+  if (started) {
+    return <TrialStartedSuccess license={started} copied={copied} setCopied={setCopied} />
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] p-6">
+        <header className="mb-5">
+          <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-[var(--color-fg-muted)]">
+            Step 1 · Pick your trade
+          </span>
+          <h2
+            style={{ fontFamily: 'var(--font-display)' }}
+            className="mt-1.5 text-[22px] font-medium tracking-[-0.01em] text-[var(--color-fg)]"
+          >
+            Which Omnix variant runs your business?
+          </h2>
+        </header>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+          {VARIANTS.map((v) => {
+            const isPicked = picked === v.id
+            return (
+              <button
+                key={v.id}
+                onClick={() => setPicked(v.id)}
+                className={`text-left rounded-md border p-4 transition-colors ${
+                  isPicked
+                    ? 'border-[var(--color-accent)] bg-[var(--color-accent-soft)]'
+                    : 'border-[var(--color-border)] bg-transparent hover:border-[var(--color-border-strong)]'
+                }`}
+              >
+                <div className="flex items-start gap-3">
+                  <v.Icon
+                    weight="regular"
+                    className="size-5 shrink-0 mt-0.5"
+                    style={{ color: isPicked ? 'var(--color-accent)' : 'var(--color-fg-muted)' }}
+                  />
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="text-[14px] font-medium text-[var(--color-fg)]">{v.name}</span>
+                      {v.recommended ? (
+                        <span
+                          className="font-mono text-[9px] uppercase tracking-[0.22em] rounded-sm border px-1.5 py-0.5"
+                          style={{ color: 'var(--color-accent)', borderColor: 'var(--color-accent-line)' }}
+                        >
+                          Pick this if unsure
+                        </span>
+                      ) : null}
+                    </div>
+                    <p className="mt-1 text-[12px] leading-[1.5] text-[var(--color-fg-muted)]">{v.tagline}</p>
+                  </div>
+                </div>
+              </button>
+            )
+          })}
+        </div>
+
+        <footer className="mt-6 flex items-center justify-between gap-4 border-t border-[var(--color-border)] pt-5">
+          <p className="text-[12px] text-[var(--color-fg-muted)] leading-[1.55]">
+            30-day trial · runs offline · no card needed. Upgrade to a perpetual licence any time before day 30 to keep going without interruption.
+          </p>
+          <button
+            onClick={start}
+            disabled={busy}
+            className="inline-flex items-center gap-2 rounded-md bg-[var(--color-accent)] px-5 py-2.5 text-[13px] font-medium text-[var(--color-accent-foreground)] hover:bg-[var(--color-accent-hover)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors shrink-0"
+          >
+            {busy ? 'Starting…' : 'Start free trial'}
+            <ArrowRight weight="bold" className="size-3.5" />
+          </button>
+        </footer>
+
+        {error ? (
+          <div className="mt-4 text-[12px]" style={{ color: 'var(--color-negative)' }}>{error}</div>
+        ) : null}
+      </div>
+    </div>
+  )
+}
+
+function TrialStartedSuccess({
+  license, copied, setCopied,
+}: {
+  license: StartedLicense
+  copied: boolean
+  setCopied: (v: boolean) => void
+}) {
+  const variantOpt = VARIANTS.find((v) => v.id === license.variant)
+  const expiresOn = new Date(license.trialEndsAt).toISOString().slice(0, 10)
+
+  function copy() {
+    navigator.clipboard?.writeText(license.licenseKey).then(() => {
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    })
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="rounded-lg border border-[var(--color-accent-line)] bg-[var(--color-accent-soft)] p-6">
+        <div className="flex items-start gap-3">
+          <CheckCircle weight="fill" className="size-6 shrink-0" style={{ color: 'var(--color-accent)' }} />
+          <div className="min-w-0">
+            <h2
+              style={{ fontFamily: 'var(--font-display)' }}
+              className="text-[22px] font-medium tracking-[-0.01em] text-[var(--color-fg)]"
+            >
+              {variantOpt?.name} trial started.
+            </h2>
+            <p className="mt-1.5 text-[13px] text-[var(--color-fg-muted)] leading-[1.55]">
+              You have until <strong className="text-[var(--color-fg)]">{expiresOn}</strong> to try every feature. Save this key — you'll paste it into Omnix on first launch.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div className="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] p-5">
+        <div className="font-mono text-[10px] uppercase tracking-[0.22em] text-[var(--color-fg-muted)] mb-2">
+          Your trial licence key
+        </div>
+        <div className="flex items-center gap-3">
+          <code
+            className="flex-1 font-mono text-[16px] tabular-nums tracking-[0.08em] text-[var(--color-fg)] select-all py-2"
+            style={{ wordBreak: 'break-all' }}
+          >
+            {license.licenseKey}
+          </code>
+          <button
+            onClick={copy}
+            className="inline-flex items-center gap-1.5 rounded-md border border-[var(--color-border)] px-3 py-2 text-[12px] hover:border-[var(--color-border-strong)] transition-colors shrink-0"
+          >
+            <Copy weight="regular" className="size-3.5" />
+            {copied ? 'Copied' : 'Copy'}
+          </button>
+        </div>
+      </div>
+
+      <div className="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] p-5">
+        <h3 className="font-mono text-[10px] uppercase tracking-[0.22em] text-[var(--color-fg-muted)] mb-3">
+          Next steps
+        </h3>
+        <ol className="space-y-3 text-[13px] text-[var(--color-fg)] leading-[1.55]">
+          <li className="flex gap-3">
+            <span className="font-mono text-[11px] text-[var(--color-accent)] mt-0.5">01</span>
+            <span>
+              <a href="/dashboard/downloads" className="underline-offset-4 hover:underline">
+                Download {variantOpt?.name}
+              </a> for Windows.
+            </span>
+          </li>
+          <li className="flex gap-3">
+            <span className="font-mono text-[11px] text-[var(--color-accent)] mt-0.5">02</span>
+            <span>Run the installer and open Omnix.</span>
+          </li>
+          <li className="flex gap-3">
+            <span className="font-mono text-[11px] text-[var(--color-accent)] mt-0.5">03</span>
+            <span>Paste this key on the activation screen.</span>
+          </li>
+          <li className="flex gap-3">
+            <span className="font-mono text-[11px] text-[var(--color-accent)] mt-0.5">04</span>
+            <span>Import your products + ring up your first sale.</span>
+          </li>
+        </ol>
+      </div>
+    </div>
+  )
+}

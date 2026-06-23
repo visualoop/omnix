@@ -91,25 +91,73 @@ export async function POST(req: Request) {
   const updated: string[] = []
   const skipped: string[] = []
 
+  // Variant detection — GitHub release assets are named like:
+  //   Omnix_<v>_x64-setup.exe              ← canonical Pro
+  //   Omnix.Pro_<v>_x64-setup.exe          ← (alt naming)
+  //   Omnix.Dawa_<v>_x64-setup.exe
+  //   Omnix.Retail_<v>_x64-setup.exe
+  //   Omnix.Hospitality_<v>_x64-setup.exe
+  //   Omnix.Hardware_<v>_x64-setup.exe
+  //   plus matching .msi files.
+  type VariantId = 'pro' | 'dawa' | 'retail' | 'hospitality' | 'hardware'
+  const VARIANTS: VariantId[] = ['pro', 'dawa', 'retail', 'hospitality', 'hardware']
+
+  function detectVariant(assetName: string): VariantId | null {
+    const lower = assetName.toLowerCase()
+    if (/^omnix\.dawa[._]/.test(lower)) return 'dawa'
+    if (/^omnix\.retail[._]/.test(lower)) return 'retail'
+    if (/^omnix\.hospitality[._]/.test(lower)) return 'hospitality'
+    if (/^omnix\.hardware[._]/.test(lower)) return 'hardware'
+    if (/^omnix\.pro[._]/.test(lower)) return 'pro'
+    // Plain "Omnix_x.y.z..." with no variant suffix is the canonical Pro build.
+    if (/^omnix_[\d.]+_x64/.test(lower)) return 'pro'
+    return null
+  }
+
   for (const r of ghReleases) {
     if (r.draft) { skipped.push(`${r.tag_name} (draft)`); continue }
     const version = r.tag_name.replace(/^v/, '')
 
-    // Find canonical Pro installer (no variant suffix).
-    const exeAsset = r.assets.find((a) => /^Omnix_[\d.]+_x64-setup\.exe$/i.test(a.name))
-    const msiAsset = r.assets.find((a) => /^Omnix_[\d.]+_x64.*\.msi$/i.test(a.name))
-    const sigAsset = r.assets.find((a) => /^Omnix_[\d.]+_x64-setup\.exe\.sig$/i.test(a.name))
+    // Build a per-variant map of {exe, msi, sig}.
+    const variantMap: Record<VariantId, { exe?: string; msi?: string; signature?: string }> = {
+      pro: {},
+      dawa: {},
+      retail: {},
+      hospitality: {},
+      hardware: {},
+    }
 
-    if (!exeAsset && !msiAsset) {
+    for (const a of r.assets) {
+      const v = detectVariant(a.name)
+      if (!v) continue
+      if (/\.exe$/i.test(a.name) && !/\.sig$/i.test(a.name)) {
+        variantMap[v].exe = a.browser_download_url
+      } else if (/\.msi$/i.test(a.name) && !/\.sig$/i.test(a.name)) {
+        variantMap[v].msi = a.browser_download_url
+      } else if (/\.exe\.sig$/i.test(a.name)) {
+        // Fetch sig content lazily for whatever variant Tauri-updater needs
+        // (we use Pro's sig as the canonical updater signature).
+        variantMap[v].signature = a.browser_download_url
+      }
+    }
+
+    // Pro is the canonical row; every variant card on the website uses Pro
+    // when its own variant has no asset for that release. Fall back to the
+    // first available variant if Pro itself is missing.
+    const primary = variantMap.pro.exe || variantMap.pro.msi
+      ? variantMap.pro
+      : VARIANTS.map((v) => variantMap[v]).find((m) => m.exe || m.msi) ?? variantMap.pro
+
+    if (!primary.exe && !primary.msi) {
       skipped.push(`${r.tag_name} (no installers found)`)
       continue
     }
 
-    // Fetch the .sig content if present (small, ~400 bytes).
+    // Fetch Pro's .sig content (small ~400 bytes) for Tauri-updater signature.
     let signature: string | null = null
-    if (sigAsset) {
+    if (variantMap.pro.signature) {
       try {
-        const sigRes = await fetch(sigAsset.browser_download_url, { cache: 'no-store' })
+        const sigRes = await fetch(variantMap.pro.signature, { cache: 'no-store' })
         if (sigRes.ok) signature = (await sigRes.text()).trim()
       } catch { /* skip */ }
     }
@@ -117,9 +165,17 @@ export async function POST(req: Request) {
     const channel = r.prerelease ? 'beta' : 'stable'
     const publishedAt = new Date(r.published_at)
 
-    // Strip GH's auto-generated changelog repetition.
     const notesLines = (r.body ?? '').split('\n')
     const dedupedNotes = Array.from(new Set(notesLines)).join('\n').trim()
+
+    const metadata = {
+      assetCount: r.assets.length,
+      source: 'github',
+      syncedAt: new Date().toISOString(),
+      // Per-variant download URLs — consumed by the public /downloads page
+      // and the dashboard /downloads page. Each variant has {exe, msi}.
+      variants: variantMap,
+    }
 
     const existing = (await db.select().from(releases).where(eq(releases.version, version)).limit(1))[0]
     if (existing) {
@@ -127,14 +183,10 @@ export async function POST(req: Request) {
         channel,
         publishedAt,
         notes: dedupedNotes || `Omnix ${version}`,
-        exeUrl: exeAsset?.browser_download_url ?? existing.exeUrl,
-        msiUrl: msiAsset?.browser_download_url ?? existing.msiUrl,
+        exeUrl: primary.exe ?? existing.exeUrl,
+        msiUrl: primary.msi ?? existing.msiUrl,
         signature: signature ?? existing.signature,
-        metadata: {
-          assetCount: r.assets.length,
-          source: 'github',
-          syncedAt: new Date().toISOString(),
-        },
+        metadata,
       }).where(eq(releases.id, existing.id))
       updated.push(version)
     } else {
@@ -144,14 +196,10 @@ export async function POST(req: Request) {
         channel,
         publishedAt,
         notes: dedupedNotes || `Omnix ${version}`,
-        exeUrl: exeAsset?.browser_download_url ?? null,
-        msiUrl: msiAsset?.browser_download_url ?? null,
+        exeUrl: primary.exe ?? null,
+        msiUrl: primary.msi ?? null,
         signature,
-        metadata: {
-          assetCount: r.assets.length,
-          source: 'github',
-          syncedAt: new Date().toISOString(),
-        },
+        metadata,
       })
       inserted.push(version)
     }
