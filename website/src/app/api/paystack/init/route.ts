@@ -5,6 +5,7 @@ import { db, licenses, payments } from '@/db'
 import { newReference, initTransaction } from '@/lib/paystack'
 import { pricingFor, type SupportedCurrency } from '@/config/pricing'
 import { createId } from '@/lib/ids'
+import { getSetting } from '@/lib/platform-settings'
 
 interface InitInput {
   licenseId: string
@@ -60,12 +61,13 @@ export async function POST(req: Request) {
     status: 'pending',
   })
 
+  const publicKey = (await getSetting('paystack.public_key')) ?? ''
   return Response.json({
     reference,
     amount: amount * 100,
     currency,
     email: session.user.email,
-    publicKey: process.env.PAYSTACK_PUBLIC_KEY ?? '',
+    publicKey,
     accessCode: init.accessCode,
   })
 }

@@ -3,6 +3,7 @@ import { eq } from 'drizzle-orm'
 import { db, payments, licenses, auditLog } from '@/db'
 import { verify } from '@/lib/paystack'
 import { createId } from '@/lib/ids'
+import { getSetting } from '@/lib/platform-settings'
 
 /**
  * Paystack webhook handler. Verifies HMAC signature, then applies
@@ -10,14 +11,14 @@ import { createId } from '@/lib/ids'
  *
  * Configure in Paystack dashboard:
  *   POST https://omnix.co.ke/api/paystack/webhook
- *   Sign with PAYSTACK_WEBHOOK_SECRET
+ *   Sign with paystack.webhook_secret (admin-editable in /admin/settings).
  */
 export async function POST(req: Request) {
   const sig = req.headers.get('x-paystack-signature') ?? ''
-  const secret = process.env.PAYSTACK_WEBHOOK_SECRET
+  const secret = await getSetting('paystack.webhook_secret')
   const raw = await req.text()
   if (!secret) {
-    return Response.json({ error: 'webhook secret not configured' }, { status: 500 })
+    return Response.json({ error: 'paystack.webhook_secret not configured' }, { status: 500 })
   }
   const expected = crypto.createHmac('sha512', secret).update(raw).digest('hex')
   if (sig !== expected) {

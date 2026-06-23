@@ -3,9 +3,9 @@
  *
  * Vercel doesn't bundle filesystem files in serverless route handlers,
  * so we inline the migration here as a string. Run via /api/migrate-db
- * one-shot route.
+ * (idempotent; tolerates 'already exists').
  *
- * Generated from drizzle/migrations/0000_ancient_steel_serpent.sql.
+ * Concatenated from drizzle/migrations/000*.sql.
  */
 export const MIGRATION_SQL = String.raw`
 CREATE TABLE "account" (
@@ -321,7 +321,22 @@ CREATE INDEX "telemetry_machine_idx" ON "telemetry_events" USING btree ("machine
 CREATE INDEX "telemetry_occurred_idx" ON "telemetry_events" USING btree ("occurred_at");--> statement-breakpoint
 CREATE INDEX "audit_log_actor_idx" ON "audit_log" USING btree ("actor_id");--> statement-breakpoint
 CREATE INDEX "audit_log_action_idx" ON "audit_log" USING btree ("action");--> statement-breakpoint
-CREATE INDEX "audit_log_created_idx" ON "audit_log" USING btree ("created_at");`
+CREATE INDEX "audit_log_created_idx" ON "audit_log" USING btree ("created_at");
+--> statement-breakpoint
+CREATE TABLE "platform_settings" (
+	"key" text PRIMARY KEY NOT NULL,
+	"category" text NOT NULL,
+	"label" text NOT NULL,
+	"description" text,
+	"sensitive" boolean DEFAULT false NOT NULL,
+	"value" text,
+	"metadata" jsonb,
+	"updated_at" timestamp DEFAULT now() NOT NULL,
+	"updated_by" text
+);
+
+--> statement-breakpoint
+`
 
 /** Split into individual statements (Drizzle generates with statement-breakpoints). */
 export function splitStatements(sql: string): string[] {

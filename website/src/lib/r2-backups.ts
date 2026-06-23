@@ -1,37 +1,36 @@
 /**
  * R2 (S3-compatible) client for cloud-backup uploads/downloads.
  *
- * R2 lives at https://<account>.r2.cloudflarestorage.com. We use the AWS S3
- * SDK with `forcePathStyle: false` (R2 supports virtual-host style with the
- * `bucket.<accountid>.r2.cloudflarestorage.com` domain) and S3-compatible
- * SigV4 auth. Region must be 'auto' for R2.
- *
- * The bucket for backups is `omnix-backups` (separate from `omnix-media`).
- * Public access disabled — all reads must be presigned.
+ * Reads s3.endpoint, s3.access_key_id, s3.secret_access_key,
+ * s3.bucket from platform_settings (admin-editable) with env fallback.
  */
 import { S3Client, GetObjectCommand, PutObjectCommand, DeleteObjectCommand, HeadObjectCommand } from '@aws-sdk/client-s3'
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
+import { getSetting } from '@/lib/platform-settings'
 
-const REGION = 'auto'
-const BACKUP_BUCKET = process.env.R2_BACKUP_BUCKET || 'omnix-backups'
+const REGION_DEFAULT = 'auto'
+const BACKUP_BUCKET_DEFAULT = process.env.R2_BACKUP_BUCKET || 'omnix-backups'
 
-let _client: S3Client | null = null
-
-function client(): S3Client {
-  if (_client) return _client
-  const endpoint = process.env.S3_ENDPOINT
-  const accessKeyId = process.env.S3_ACCESS_KEY_ID
-  const secretAccessKey = process.env.S3_SECRET_ACCESS_KEY
+async function client(): Promise<{ s3: S3Client; bucket: string }> {
+  const [endpoint, accessKeyId, secretAccessKey, regionRaw, bucketRaw] = await Promise.all([
+    getSetting('s3.endpoint'),
+    getSetting('s3.access_key_id'),
+    getSetting('s3.secret_access_key'),
+    getSetting('s3.region'),
+    getSetting('s3.bucket'),
+  ])
   if (!endpoint || !accessKeyId || !secretAccessKey) {
-    throw new Error('R2 credentials missing: S3_ENDPOINT / S3_ACCESS_KEY_ID / S3_SECRET_ACCESS_KEY')
+    throw new Error('S3 credentials missing — set s3.endpoint / s3.access_key_id / s3.secret_access_key in /admin/settings')
   }
-  _client = new S3Client({
-    region: REGION,
+  const region = regionRaw ?? REGION_DEFAULT
+  const bucket = bucketRaw ?? BACKUP_BUCKET_DEFAULT
+  const s3 = new S3Client({
+    region,
     endpoint,
     credentials: { accessKeyId, secretAccessKey },
-    forcePathStyle: true, // R2 with the account-scoped endpoint requires path-style
+    forcePathStyle: true,
   })
-  return _client
+  return { s3, bucket }
 }
 
 /** Issue a one-time PUT URL (valid 5 minutes) for the desktop to upload to. */
@@ -42,14 +41,15 @@ export async function presignUpload(opts: {
   bucket?: string
   expiresInSec?: number
 }): Promise<{ url: string; bucket: string; key: string; expiresAt: string }> {
-  const bucket = opts.bucket ?? BACKUP_BUCKET
+  const c = await client()
+  const bucket = opts.bucket ?? c.bucket
   const expiresIn = opts.expiresInSec ?? 5 * 60
   const cmd = new PutObjectCommand({
     Bucket: bucket,
     Key: opts.key,
     ContentType: opts.contentType ?? 'application/octet-stream',
   })
-  const url = await getSignedUrl(client(), cmd, { expiresIn })
+  const url = await getSignedUrl(c.s3, cmd, { expiresIn })
   return {
     url,
     bucket,
@@ -64,21 +64,24 @@ export async function presignDownload(opts: {
   bucket?: string
   expiresInSec?: number
 }): Promise<{ url: string; expiresAt: string }> {
-  const bucket = opts.bucket ?? BACKUP_BUCKET
+  const c = await client()
+  const bucket = opts.bucket ?? c.bucket
   const expiresIn = opts.expiresInSec ?? 5 * 60
   const cmd = new GetObjectCommand({ Bucket: bucket, Key: opts.key })
-  const url = await getSignedUrl(client(), cmd, { expiresIn })
+  const url = await getSignedUrl(c.s3, cmd, { expiresIn })
   return { url, expiresAt: new Date(Date.now() + expiresIn * 1000).toISOString() }
 }
 
 /** Server-side delete (used when pruning past retention). */
 export async function deleteObject(key: string, bucket?: string): Promise<void> {
-  await client().send(new DeleteObjectCommand({ Bucket: bucket ?? BACKUP_BUCKET, Key: key }))
+  const c = await client()
+  await c.s3.send(new DeleteObjectCommand({ Bucket: bucket ?? c.bucket, Key: key }))
 }
 
 /** HEAD an object — used to verify upload completed before finalize. */
 export async function headObject(key: string, bucket?: string): Promise<{ size: number; etag?: string }> {
-  const out = await client().send(new HeadObjectCommand({ Bucket: bucket ?? BACKUP_BUCKET, Key: key }))
+  const c = await client()
+  const out = await c.s3.send(new HeadObjectCommand({ Bucket: bucket ?? c.bucket, Key: key }))
   return { size: out.ContentLength ?? 0, etag: out.ETag }
 }
 
@@ -89,4 +92,4 @@ export function buildBackupKey(licenseId: string | number, machineId: string, ba
   return `backups/${licenseId}/${machineId.slice(0, 16)}/${ts}-${backupId}.sqlite.gz.enc`
 }
 
-export const BACKUP_BUCKET_NAME = BACKUP_BUCKET
+export const BACKUP_BUCKET_NAME = BACKUP_BUCKET_DEFAULT

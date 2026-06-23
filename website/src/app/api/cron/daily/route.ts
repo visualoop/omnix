@@ -2,6 +2,7 @@ import { headers } from 'next/headers'
 import { db, licenses, user } from '@/db'
 import { and, eq, lt } from 'drizzle-orm'
 import { sendMagicLinkEmail } from '@/lib/email'
+import { getSetting } from '@/lib/platform-settings'
 
 /**
  * Vercel Cron — runs daily at 02:00 UTC.
@@ -17,7 +18,7 @@ export const maxDuration = 60
 
 export async function GET() {
   const reqHeaders = await headers()
-  const cronSecret = process.env.CRON_SECRET
+  const cronSecret = await getSetting('cron.secret')
 
   if (cronSecret) {
     const auth = reqHeaders.get('authorization')

@@ -14,6 +14,7 @@ const NAV = [
   { href: '/admin/tickets', label: 'Tickets' },
   { href: '/admin/releases', label: 'Releases' },
   { href: '/admin/audit', label: 'Audit' },
+  { href: '/admin/settings', label: 'Settings' },
 ]
 
 const STAFF_ROLES = ['platform_admin', 'support_agent', 'sales_rep']

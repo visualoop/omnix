@@ -8,6 +8,13 @@
       "when": 1782130841298,
       "tag": "0000_ancient_steel_serpent",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1782202078575,
+      "tag": "0001_broad_scarlet_witch",
+      "breakpoints": true
     }
   ]
 }

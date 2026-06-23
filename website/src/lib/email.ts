@@ -1,17 +1,27 @@
 /**
  * Email helper — Resend SDK.
  *
- * Replaces @payloadcms/email-resend. Same RESEND_API_KEY env var.
- * Templates inline (plain HTML for now; React Email components later).
+ * Reads resend.api_key + resend.from_email + resend.reply_to from
+ * platform_settings (admin-editable) with env fallback.
  */
 import { Resend } from 'resend'
+import { resendConfig } from '@/lib/platform-settings'
 
-const apiKey = process.env.RESEND_API_KEY ?? ''
-
-const resend = new Resend(apiKey || 'stub-key')
-
-const FROM = process.env.RESEND_FROM ?? 'Omnix <noreply@omnix.co.ke>'
-const REPLY_TO = process.env.RESEND_REPLY_TO ?? 'support@omnix.co.ke'
+async function getResend(): Promise<{ client: Resend | null; from: string; replyTo: string }> {
+  const cfg = await resendConfig()
+  if (!cfg.apiKey) {
+    return {
+      client: null,
+      from: cfg.from ?? 'Omnix <noreply@omnix.co.ke>',
+      replyTo: cfg.replyTo ?? 'support@omnix.co.ke',
+    }
+  }
+  return {
+    client: new Resend(cfg.apiKey),
+    from: cfg.from ?? 'Omnix <noreply@omnix.co.ke>',
+    replyTo: cfg.replyTo ?? 'support@omnix.co.ke',
+  }
+}
 
 interface MagicLinkInput {
   to: string
@@ -19,15 +29,16 @@ interface MagicLinkInput {
 }
 
 export async function sendMagicLinkEmail({ to, url }: MagicLinkInput) {
-  if (!apiKey) {
-    console.warn('[email] RESEND_API_KEY missing — magic link not sent')
+  const { client, from, replyTo } = await getResend()
+  if (!client) {
+    console.warn('[email] resend.api_key missing — magic link not sent')
     console.warn(`[email] would have sent to ${to}: ${url}`)
     return
   }
-  await resend.emails.send({
-    from: FROM,
+  await client.emails.send({
+    from,
     to,
-    replyTo: REPLY_TO,
+    replyTo,
     subject: 'Your Omnix sign-in link',
     html: magicLinkTemplate({ url }),
     text: `Sign in to Omnix: ${url}\n\nThis link expires in 15 minutes. If you didn't request it, ignore this message.`,
@@ -42,14 +53,15 @@ interface InviteInput {
 }
 
 export async function sendInviteEmail({ email, inviteLink, inviterName, orgName }: InviteInput) {
-  if (!apiKey) {
-    console.warn('[email] RESEND_API_KEY missing — invite not sent')
+  const { client, from, replyTo } = await getResend()
+  if (!client) {
+    console.warn('[email] resend.api_key missing — invite not sent')
     return
   }
-  await resend.emails.send({
-    from: FROM,
+  await client.emails.send({
+    from,
     to: email,
-    replyTo: REPLY_TO,
+    replyTo,
     subject: `${inviterName} invited you to join ${orgName} on Omnix`,
     html: inviteTemplate({ inviteLink, inviterName, orgName }),
     text: `${inviterName} invited you to join ${orgName} on Omnix.\n\nAccept here: ${inviteLink}\n\nThis link expires in 48 hours.`,
@@ -67,11 +79,12 @@ interface PaymentReceiptInput {
 }
 
 export async function sendPaymentReceiptEmail(input: PaymentReceiptInput) {
-  if (!apiKey) return
-  await resend.emails.send({
-    from: FROM,
+  const { client, from, replyTo } = await getResend()
+  if (!client) return
+  await client.emails.send({
+    from,
     to: input.to,
-    replyTo: REPLY_TO,
+    replyTo,
     subject: `Receipt — ${input.currency} ${input.amount.toLocaleString()} paid to Omnix`,
     html: paymentReceiptTemplate(input),
   })
@@ -86,15 +99,41 @@ interface SupportReplyInput {
 }
 
 export async function sendSupportReplyEmail(input: SupportReplyInput) {
-  if (!apiKey) return
-  await resend.emails.send({
-    from: FROM,
+  const { client, from, replyTo } = await getResend()
+  if (!client) return
+  await client.emails.send({
+    from,
     to: input.to,
-    replyTo: REPLY_TO,
+    replyTo,
     subject: `Re: ${input.ticketSubject} (#${input.ticketId.slice(0, 8)})`,
     html: supportReplyTemplate(input),
     text: `${input.agentName} replied to your ticket:\n\n${input.body}\n\nReply at https://omnix.co.ke/dashboard/support/${input.ticketId}`,
   })
+}
+
+/**
+ * Send an arbitrary test email — used by /admin/settings → "Send test".
+ */
+export async function sendTestEmail(to: string): Promise<{ ok: boolean; error?: string }> {
+  const { client, from, replyTo } = await getResend()
+  if (!client) return { ok: false, error: 'resend.api_key not set' }
+  try {
+    await client.emails.send({
+      from,
+      to,
+      replyTo,
+      subject: 'Test email from Omnix admin',
+      html: shell(`
+        <h1 style="font-family:Georgia,serif;font-size:22px;font-weight:500;margin:0 0 12px;">It works.</h1>
+        <p style="font-size:14px;line-height:1.55;color:#444;margin:0 0 16px;">Your Resend integration is wired correctly.</p>
+        <p style="font-size:12px;color:#888;margin:0;">Sent from <code>${from}</code> at ${new Date().toISOString()}.</p>
+      `),
+      text: 'It works. Resend is correctly configured.',
+    })
+    return { ok: true }
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : String(e) }
+  }
 }
 
 // ─── HTML templates (plain, brand-coloured) ────────────────────────

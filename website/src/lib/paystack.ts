@@ -1,24 +1,25 @@
 /**
  * Paystack API client wrapper — single source of truth.
  *
- * Reads PAYSTACK_SECRET_KEY from env directly (was Payload-CMS-resolved
- * pre-v0.8.x). Provides verify() + newReference() helpers consumed by
- * the /api/paystack/* route handlers.
+ * Reads paystack.secret_key + paystack.webhook_secret from
+ * platform_settings (admin-editable) with env fallback.
  */
+import { getSetting } from '@/lib/platform-settings'
 
 const PAYSTACK_BASE = 'https://api.paystack.co'
 
-function getSecretKey(): string {
-  const key = process.env.PAYSTACK_SECRET_KEY
+async function getSecretKey(): Promise<string> {
+  const key = await getSetting('paystack.secret_key')
   if (!key) {
-    throw new Error('PAYSTACK_SECRET_KEY is not set')
+    throw new Error('paystack.secret_key is not configured (set in /admin/settings or PAYSTACK_SECRET_KEY env)')
   }
   return key
 }
 
-function authHeaders(): HeadersInit {
+async function authHeaders(): Promise<HeadersInit> {
+  const key = await getSecretKey()
   return {
-    Authorization: `Bearer ${getSecretKey()}`,
+    Authorization: `Bearer ${key}`,
     'Content-Type': 'application/json',
     Accept: 'application/json',
   }
@@ -33,7 +34,7 @@ export async function verify(reference: string): Promise<{
 }> {
   const res = await fetch(
     `${PAYSTACK_BASE}/transaction/verify/${encodeURIComponent(reference)}`,
-    { method: 'GET', headers: authHeaders() },
+    { method: 'GET', headers: await authHeaders() },
   )
   const json = (await res.json()) as { status?: boolean; data?: Record<string, unknown> }
   if (!res.ok || !json.status) {
@@ -69,7 +70,7 @@ export async function initTransaction(input: {
 }): Promise<{ authorizationUrl: string; accessCode: string; reference: string }> {
   const res = await fetch(`${PAYSTACK_BASE}/transaction/initialize`, {
     method: 'POST',
-    headers: authHeaders(),
+    headers: await authHeaders(),
     body: JSON.stringify({
       email: input.email,
       amount: input.amountSmallestUnit,

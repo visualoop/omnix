@@ -1,6 +1,7 @@
 import { headers } from 'next/headers'
 import { db, telemetryEvents } from '@/db'
 import { lt } from 'drizzle-orm'
+import { getSetting } from '@/lib/platform-settings'
 
 /**
  * Vercel Cron — runs daily at 03:00 UTC.
@@ -13,7 +14,7 @@ export const maxDuration = 60
 
 export async function GET() {
   const reqHeaders = await headers()
-  const cronSecret = process.env.CRON_SECRET
+  const cronSecret = await getSetting('cron.secret')
 
   if (cronSecret) {
     const auth = reqHeaders.get('authorization')
