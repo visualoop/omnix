@@ -58,7 +58,7 @@ export async function POST(req: Request) {
     u = (await db.select().from(user).where(eq(user.id, id)).limit(1))[0]!
     await db.insert(auditLog).values({
       id: createId(),
-      actorId: 'bootstrap',
+      actorId: null,
       action: 'user.create_seed',
       resource: `user:${u.id}`,
       metadata: { email, role, source: 'bootstrap_promote' },
@@ -70,7 +70,7 @@ export async function POST(req: Request) {
 
   await db.insert(auditLog).values({
     id: createId(),
-    actorId: 'bootstrap',
+    actorId: null,
     action: 'user.role_change',
     resource: `user:${u.id}`,
     metadata: { email: u.email, oldRole: u.role ?? 'user', newRole: role },

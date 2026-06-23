@@ -55,13 +55,13 @@ interface GhRelease {
   assets: GhAsset[]
 }
 
-async function authorize(req: Request): Promise<{ ok: boolean; status?: number; actor: string }> {
+async function authorize(req: Request): Promise<{ ok: boolean; status?: number; actor: string | null }> {
   const bearer = req.headers.get('authorization')?.replace(/^Bearer /, '')
-  if (bearer && bearer === process.env.BOOTSTRAP_TOKEN) return { ok: true, actor: 'bootstrap' }
+  if (bearer && bearer === process.env.BOOTSTRAP_TOKEN) return { ok: true, actor: null }
 
   const session = await auth.api.getSession({ headers: await headers() }).catch(() => null)
-  if (!session) return { ok: false, status: 401, actor: '' }
-  if (session.user.role !== 'platform_admin') return { ok: false, status: 403, actor: '' }
+  if (!session) return { ok: false, status: 401, actor: null }
+  if (session.user.role !== 'platform_admin') return { ok: false, status: 403, actor: null }
   return { ok: true, actor: session.user.id }
 }
 
