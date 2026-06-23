@@ -9,7 +9,9 @@ import { ClosingCtaSection } from '@/components/landing/closing-cta-section'
 import { getSiteSettings } from '@/lib/site-settings'
 import { PageHero } from '@/components/marketing/page-hero'
 import { cn } from '@/lib/cn'
-import { CURRENCIES, formatPrice, tierPrice, type SupportedCurrency, type PricingTierShape } from '@/lib/currency'
+import { CURRENCIES, formatPrice, currencyForCountry, type SupportedCurrency } from '@/lib/currency'
+import { pricing } from '@/config/pricing'
+import { COUNTRY_TO_CURRENCY } from '@/i18n/routing'
 
 export const metadata: Metadata = {
   title: 'Pricing — pay once, use forever',
@@ -26,35 +28,28 @@ interface VariantTile {
   badge?: string
 }
 
-interface PricingShape {
-  currency?: string
-  trialDays?: number
-  starter?: PricingTierShape & { maxBranches?: number; maxMachines?: number }
-  business?: PricingTierShape & { maxBranches?: number; maxMachines?: number }
-  enterprise?: { priceLabel?: string }
-  cloudBackupMonthly?: number
-  extraBranchOneTime?: number
-  extraMachineOneTime?: number
-}
-
-async function getPricing(): Promise<PricingShape> {
-  // Pricing was a Payload global; lives in static config now.
-  const { pricing } = await import('@/config/pricing')
-  // The PricingShape type expects per-currency maps OR singular values
-  // depending on call sites. Static config is per-currency-map shape.
-  return pricing as unknown as PricingShape
-}
-
-async function getActiveCurrency(): Promise<SupportedCurrency> {
+/**
+ * Resolve the currency to render in. Order of preference:
+ *   1. The locale URL prefix (/us/pricing → USD, /ke/pricing → KES, etc.)
+ *   2. The omnix_currency cookie set by middleware
+ *   3. USD as a final fallback
+ *
+ * locale is passed from the [locale] route segment.
+ */
+async function resolveCurrency(locale: string | undefined): Promise<SupportedCurrency> {
+  if (locale) {
+    const fromLocale = COUNTRY_TO_CURRENCY[locale.toLowerCase()]
+    if (fromLocale && fromLocale in CURRENCIES) return fromLocale as SupportedCurrency
+  }
   const cookieStore = await cookies()
-  const c = cookieStore.get('omnix_currency')?.value as SupportedCurrency | undefined
-  if (c && c in CURRENCIES) return c
-  return 'KES'
+  const c = cookieStore.get('omnix_currency')?.value
+  if (c && c in CURRENCIES) return c as SupportedCurrency
+  return currencyForCountry(undefined)
 }
 
-function buildVariants(p: PricingShape, currency: SupportedCurrency): ReadonlyArray<VariantTile> {
-  const proPrice = formatPrice(tierPrice(p.business, currency), currency)
-  const tradePrice = formatPrice(tierPrice(p.starter, currency), currency)
+function buildVariants(currency: SupportedCurrency): ReadonlyArray<VariantTile> {
+  const proPrice = formatPrice(pricing.business.oneTimeFee[currency], currency)
+  const tradePrice = formatPrice(pricing.starter.oneTimeFee[currency], currency)
   return [
     { id: 'pro', name: 'Omnix Pro', tagline: 'All four trades — multi-trade businesses', href: '/pro', price: proPrice, badge: 'Recommended' },
     { id: 'dawa', name: 'Omnix Dawa', tagline: 'Pharmacy management', price: tradePrice, href: '/dawa' },
@@ -64,11 +59,10 @@ function buildVariants(p: PricingShape, currency: SupportedCurrency): ReadonlyAr
   ]
 }
 
-function buildTiers(p: PricingShape, currency: SupportedCurrency) {
-  const trialDays = p.trialDays ?? 30
-  const tradePriceNum = tierPrice(p.starter, currency)
-  const proPriceNum = tierPrice(p.business, currency)
-  const enterprisePrice = p.enterprise?.priceLabel ?? 'Talk to us'
+function buildTiers(currency: SupportedCurrency) {
+  const trialDays = 30
+  const tradePriceNum = pricing.starter.oneTimeFee[currency]
+  const proPriceNum = pricing.business.oneTimeFee[currency]
   const tradePrice = formatPrice(tradePriceNum, currency)
   const proPrice = formatPrice(proPriceNum, currency)
   return [
@@ -93,7 +87,7 @@ function buildTiers(p: PricingShape, currency: SupportedCurrency) {
     {
       name: 'Custom',
       cadence: 'chains · NGOs · on-prem',
-      price: enterprisePrice,
+      price: 'Talk to us',
       body: '5+ branches, custom integrations, dedicated onboarding, signed SLA, on-prem deployment. We meet your CFO, build the install plan, and stand up the system.',
       href: '/contact?type=enterprise',
       cta: 'Book a call',
@@ -102,14 +96,20 @@ function buildTiers(p: PricingShape, currency: SupportedCurrency) {
   ] as const
 }
 
-function buildAddons(p: PricingShape, currency: SupportedCurrency) {
-  const cloud = p.cloudBackupMonthly ?? 500
-  const extraMachine = p.extraMachineOneTime ?? 5_000
+function buildAddons(currency: SupportedCurrency) {
+  const cloud = pricing.cloudBackupMonthly[currency]
+  const extraMachine = pricing.extraMachineOneTime[currency]
+  const trainingDayKES = 25_000
+  // On-site training is a Kenya-only number; we don't expose it for global
+  // visitors yet. Keep the KES copy on /ke; hide elsewhere.
+  const trainingPrice = currency === 'KES'
+    ? `${formatPrice(trainingDayKES, 'KES')} · per day`
+    : 'On request'
   return [
-    { name: 'Cloud backup', price: `${formatPrice(cloud, currency)} · / month / branch`, body: 'Encrypted nightly snapshots to Cloudflare R2. Restore in minutes after a stolen or lost machine.' },
-    { name: 'Extra machine seat', price: `${formatPrice(extraMachine, currency)} · one-time`, body: 'Raise the number of PCs that can activate against your licence beyond the included 10.' },
-    { name: 'Major upgrade', price: '50% off · list price', body: 'When v2.x ships, current owners pay half. Stay on v1.x as long as you like.' },
-    { name: 'On-site training', price: `${formatPrice(25_000, currency)} · per day`, body: 'A trainer walks your team through setup, POS, payroll and KRA filings in your office.' },
+    { name: 'Cloud backup',        price: `${formatPrice(cloud, currency)} · / month / branch`, body: 'Encrypted nightly snapshots to Cloudflare R2. Restore in minutes after a stolen or lost machine.' },
+    { name: 'Extra machine seat',  price: `${formatPrice(extraMachine, currency)} · one-time`,    body: 'Raise the number of PCs that can activate against your licence beyond the included 10.' },
+    { name: 'Major upgrade',       price: '50% off · list price',                                  body: 'When v2.x ships, current owners pay half. Stay on v1.x as long as you like.' },
+    { name: 'On-site training',    price: trainingPrice,                                           body: 'A trainer walks your team through setup, POS, payroll and KRA filings in your office.' },
   ] as const
 }
 
@@ -131,11 +131,12 @@ const COMPARE: ReadonlyArray<readonly [string, string, string, string]> = [
   ['Refund window after payment', 'n/a', '14 days', 'Per contract'],
 ]
 
-export default async function PricingPage() {
-  const [settings, pricing, currency] = await Promise.all([getSiteSettings(), getPricing(), getActiveCurrency()])
-  const VARIANTS = buildVariants(pricing, currency)
-  const TIERS = buildTiers(pricing, currency)
-  const ADDONS = buildAddons(pricing, currency)
+export default async function PricingPage({ params }: { params: Promise<{ locale: string }> }) {
+  const { locale } = await params
+  const [settings, currency] = await Promise.all([getSiteSettings(), resolveCurrency(locale)])
+  const VARIANTS = buildVariants(currency)
+  const TIERS = buildTiers(currency)
+  const ADDONS = buildAddons(currency)
   return (
     <>
       <PageHero
@@ -145,7 +146,7 @@ export default async function PricingPage() {
       />
 
       <OnePriceSection
-        price={tierPrice(pricing.starter, currency).toLocaleString('en-US')}
+        price={pricing.starter.oneTimeFee[currency].toLocaleString('en-US')}
         currency={CURRENCIES[currency].symbol}
       />
 
