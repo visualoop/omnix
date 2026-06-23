@@ -80,7 +80,12 @@ export async function POST(req: Request) {
       try {
         const { render } = await import('@react-email/render')
         const { MagicLinkEmail } = await import('@/emails/templates')
-        const html = await render(MagicLinkEmail({ url: 'https://omnix.co.ke/api/auth/magic-link/verify?token=preview' }))
+        const { emailBranding } = await import('@/lib/platform-settings')
+        const brand = await emailBranding()
+        const html = await render(MagicLinkEmail({
+          url: 'https://omnix.co.ke/api/auth/magic-link/verify?token=preview',
+          brand,
+        }))
         return new Response(html, { headers: { 'Content-Type': 'text/html' } })
       } catch (e) {
         return Response.json({ ok: false, error: e instanceof Error ? e.message : String(e) })

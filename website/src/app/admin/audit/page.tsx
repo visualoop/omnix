@@ -1,29 +1,36 @@
 import { desc } from 'drizzle-orm'
+import { ListMagnifyingGlass } from '@phosphor-icons/react/dist/ssr'
 import { db, auditLog } from '@/db'
+import { AuditEntry } from '@/components/admin/audit-entry'
+import { EmptyState } from '@/components/admin/empty-state'
 import { PageHeader } from '@/components/layout/page-header'
 
 export const metadata = { title: 'Admin · Audit' }
+export const dynamic = 'force-dynamic'
 
 export default async function AdminAuditPage() {
-  const rows = await db.select().from(auditLog).orderBy(desc(auditLog.createdAt)).limit(200)
+  const rows = await db.select().from(auditLog).orderBy(desc(auditLog.createdAt)).limit(300)
+
   return (
-    <div className="space-y-6">
-      <PageHeader eyebrow="Platform" title="Audit log" description="Every system-affecting action. 1-year hot retention; older rows archive to S3." />
+    <div className="space-y-8">
+      <PageHeader
+        eyebrow="Platform"
+        title="Audit log"
+        description="Every system-affecting action — admin role changes, payment outcomes, license issues, ban events. Hot-retained for 1 year; older rows archive to S3."
+      />
+
       {rows.length === 0 ? (
-        <div className="rounded-lg border border-dashed border-[var(--color-border)] px-4 py-12 text-center text-[13px] text-[var(--color-fg-muted)]">
-          No events yet.
-        </div>
+        <EmptyState
+          icon={<ListMagnifyingGlass weight="regular" className="size-8" />}
+          title="Nothing to audit."
+          description="Once admins act on the platform — promote, ban, refund, sync — the events appear here."
+        />
       ) : (
-        <ul className="rounded-lg border border-[var(--color-border)] divide-y divide-[var(--color-border)]">
+        <div className="rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] divide-y divide-[var(--color-border)]">
           {rows.map((a) => (
-            <li key={a.id} className="grid grid-cols-[1fr_2fr_2fr_auto] items-baseline gap-3 px-4 py-3 text-[13px]">
-              <code className="font-mono text-[12px] text-[var(--color-fg-muted)]">{a.action}</code>
-              <code className="font-mono text-[11px] text-[var(--color-fg-subtle)]">{a.resource ?? '—'}</code>
-              <code className="font-mono text-[11px] text-[var(--color-fg-subtle)]">{a.actorId?.slice(0, 12) ?? 'system'}</code>
-              <time className="font-mono text-[11px] text-[var(--color-fg-muted)]">{a.createdAt.toISOString().slice(0, 16).replace('T', ' ')}</time>
-            </li>
+            <AuditEntry key={a.id} a={a} />
           ))}
-        </ul>
+        </div>
       )}
     </div>
   )

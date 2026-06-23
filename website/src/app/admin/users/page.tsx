@@ -1,41 +1,63 @@
-import { desc } from 'drizzle-orm'
+import { desc, eq, ne, sql } from 'drizzle-orm'
+import { Users } from '@phosphor-icons/react/dist/ssr'
 import { db, user } from '@/db'
-import Link from 'next/link'
+import { UserCard } from '@/components/admin/user-card'
+import { EmptyState } from '@/components/admin/empty-state'
 import { PageHeader } from '@/components/layout/page-header'
 
 export const metadata = { title: 'Admin · Users' }
+export const dynamic = 'force-dynamic'
 
 export default async function AdminUsersPage() {
-  const rows = await db.select().from(user).orderBy(desc(user.createdAt)).limit(200)
+  const [all, staff, banned] = await Promise.all([
+    db.select().from(user).orderBy(desc(user.createdAt)).limit(120),
+    db.select({ n: sql<number>`count(*)::int` }).from(user).where(ne(user.role, 'user')),
+    db.select({ n: sql<number>`count(*)::int` }).from(user).where(eq(user.banned, true)),
+  ])
 
   return (
-    <div className="space-y-6">
-      <PageHeader eyebrow="Platform" title="Users" description="Every account on the platform — customers + staff." />
+    <div className="space-y-8">
+      <PageHeader
+        eyebrow="Platform"
+        title="Users"
+        description="Every account — customers, support agents, sales reps, platform admins. Staff get the copper avatar treatment; banned accounts read in clay-red."
+      />
 
-      {rows.length === 0 ? (
-        <div className="rounded-lg border border-dashed border-[var(--color-border)] px-4 py-12 text-center text-[13px] text-[var(--color-fg-muted)]">
-          No users yet.
-        </div>
+      <div className="grid grid-cols-3 gap-3">
+        <Stat label="Total" value={all.length} />
+        <Stat label="Staff" value={staff[0].n} accent />
+        <Stat label="Banned" value={banned[0].n} negative={banned[0].n > 0} />
+      </div>
+
+      {all.length === 0 ? (
+        <EmptyState
+          icon={<Users weight="regular" className="size-8" />}
+          title="No users yet."
+          description="Sign-ups via /login or pre-seeded admins land here."
+        />
       ) : (
-        <ul className="rounded-lg border border-[var(--color-border)] divide-y divide-[var(--color-border)]">
-          {rows.map((u) => (
-            <li key={u.id}>
-              <Link href={`/admin/users/${u.id}`} className="grid grid-cols-[2fr_1fr_auto] items-baseline gap-3 px-4 py-3 hover:bg-[var(--color-surface)]">
-                <div>
-                  <span className="text-[14px] text-[var(--color-fg)]">{u.name || u.email.split('@')[0]}</span>
-                  <span className="ml-2 font-mono text-[11px] text-[var(--color-fg-muted)]">{u.email}</span>
-                </div>
-                <div className="text-[12px] text-[var(--color-fg-muted)]">
-                  {u.country} · {u.currency}
-                </div>
-                <div className="font-mono text-[10px] uppercase tracking-[0.18em]">
-                  {u.role}{u.banned ? ' · banned' : ''}
-                </div>
-              </Link>
-            </li>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+          {all.map((u) => (
+            <UserCard key={u.id} u={u} />
           ))}
-        </ul>
+        </div>
       )}
+    </div>
+  )
+}
+
+function Stat({ label, value, accent, negative }: { label: string; value: number; accent?: boolean; negative?: boolean }) {
+  return (
+    <div className="rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-4 py-3">
+      <div className="font-mono text-[10px] uppercase tracking-[0.22em] text-[var(--color-fg-muted)]">{label}</div>
+      <div
+        className="mt-1 font-mono tabular-nums text-[20px]"
+        style={{
+          color: accent ? 'var(--color-accent)' : negative ? 'var(--color-negative)' : 'var(--color-fg)',
+        }}
+      >
+        {value}
+      </div>
     </div>
   )
 }

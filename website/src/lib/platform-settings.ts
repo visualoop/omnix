@@ -34,6 +34,15 @@ export const SETTING_DEFINITIONS = [
   { key: 'resend.from_email',       category: 'email',     label: 'From address',            sensitive: false, envFallback: 'RESEND_FROM_EMAIL',       description: 'e.g. "Omnix <noreply@omnix.co.ke>".' },
   { key: 'resend.reply_to',         category: 'email',     label: 'Reply-to address',        sensitive: false, envFallback: 'RESEND_REPLY_TO',         description: 'Where customers reach you when they reply to a transactional mail.' },
 
+  // ── Email branding (visible in every email's footer) ─────
+  { key: 'email.brand_tagline',     category: 'email_branding', label: 'Footer tagline',          sensitive: false, envFallback: undefined, description: 'One sentence under the brand mark in every email. Default: "Offline-first ERP for Kenyan SMEs".' },
+  { key: 'email.support_email',     category: 'email_branding', label: 'Support email',           sensitive: false, envFallback: undefined, description: 'Shown in every email footer + used as Reply-To if "resend.reply_to" is empty.' },
+  { key: 'email.support_whatsapp',  category: 'email_branding', label: 'Support WhatsApp',        sensitive: false, envFallback: undefined, description: 'Optional. International format e.g. "+254 712 345 678". Shown as a footer link.' },
+  { key: 'email.business_address',  category: 'email_branding', label: 'Business address',        sensitive: false, envFallback: undefined, description: 'Optional postal/legal address shown in the email footer for compliance.' },
+  { key: 'email.legal_name',        category: 'email_branding', label: 'Legal entity name',       sensitive: false, envFallback: undefined, description: 'e.g. "Blyss Studio Limited". Shown on receipts + the legal-fine-print line.' },
+  { key: 'email.copyright_line',    category: 'email_branding', label: 'Copyright line',          sensitive: false, envFallback: undefined, description: 'Optional override. Default: "© {year} Omnix. Built in Nairobi."' },
+  { key: 'email.unsubscribe_text',  category: 'email_branding', label: 'Unsubscribe text',        sensitive: false, envFallback: undefined, description: 'Default: "You\'re receiving this because you have an active Omnix account."' },
+
   // ── Google OAuth ───────────────────────────────
   { key: 'google.client_id',        category: 'oauth',     label: 'Google OAuth client ID',     sensitive: false, envFallback: 'GOOGLE_CLIENT_ID',     description: 'From console.cloud.google.com → APIs & Services → Credentials.' },
   { key: 'google.client_secret',    category: 'oauth',     label: 'Google OAuth client secret', sensitive: true,  envFallback: 'GOOGLE_CLIENT_SECRET', description: 'Pair with the client ID above. Restart deploys ignored — read at runtime.' },
@@ -227,6 +236,39 @@ export async function resendConfig() {
     getSetting('resend.reply_to'),
   ])
   return { apiKey: key, from, replyTo }
+}
+
+/** Branding values rendered into every email footer. Hot-reloads via the 60s cache. */
+export async function emailBranding(): Promise<{
+  tagline: string
+  supportEmail: string
+  supportWhatsapp: string | null
+  businessAddress: string | null
+  legalName: string
+  copyright: string
+  unsubscribe: string
+  brandUrl: string
+}> {
+  const [tagline, supportEmail, whatsapp, address, legal, copyrightOverride, unsubscribe] = await Promise.all([
+    getSetting('email.brand_tagline'),
+    getSetting('email.support_email'),
+    getSetting('email.support_whatsapp'),
+    getSetting('email.business_address'),
+    getSetting('email.legal_name'),
+    getSetting('email.copyright_line'),
+    getSetting('email.unsubscribe_text'),
+  ])
+  const year = new Date().getFullYear()
+  return {
+    tagline: tagline ?? 'Offline-first ERP for Kenyan SMEs.',
+    supportEmail: supportEmail ?? 'support@omnix.co.ke',
+    supportWhatsapp: whatsapp ?? null,
+    businessAddress: address ?? null,
+    legalName: legal ?? 'Omnix',
+    copyright: copyrightOverride ?? `© ${year} Omnix. Built in Nairobi.`,
+    unsubscribe: unsubscribe ?? "You're receiving this because you have an active Omnix account.",
+    brandUrl: process.env.NEXT_PUBLIC_SITE_URL ?? process.env.BETTER_AUTH_URL ?? 'https://omnix.co.ke',
+  }
 }
 
 export async function googleOAuthConfig() {

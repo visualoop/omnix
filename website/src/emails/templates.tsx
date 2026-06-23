@@ -1,195 +1,417 @@
 /**
- * Email templates — React Email components.
+ * Email templates — React Email components with editorial cream-paper
+ * design language to match the marketing site.
  *
- * Editorial cream-paper design language matched to the marketing site:
- * Fraunces (Georgia fallback) for headlines, hairline rules, mono caps
- * eyebrows, generous whitespace. No card shadows, no gradients.
+ * Design choices (per frontend-design skill):
  *
- * Rendered to HTML at send time via @react-email/render.
+ *   Subject:  transactional email for Kenyan SME owners. Audience reads
+ *             on Gmail/Outlook on phones during the workday.
+ *
+ *   Type:     Georgia (display, with Fraunces-via-Google fallback for
+ *             modern clients), Helvetica/Arial body, monospace for
+ *             keys + references. Sized down vs marketing — emails get
+ *             compressed by clients, so 14px body / 22px display.
+ *
+ *   Color:    cream paper #FBFAF6 surface, espresso ink #1A1410 text,
+ *             copper accent #C77B3F for CTAs + license trim, taupe
+ *             #7A6F5C for muted lines, hairline #E5DFD0 for borders.
+ *             NO pure white anywhere — paper feel.
+ *
+ *   Layout:   480px max-width container, 20px vertical padding (Gmail
+ *             adds ~20px margins of its own; total reads as 40px),
+ *             16-20px horizontal padding inside the card. Letterhead
+ *             eyebrow + hairline rule on every email like a piece of
+ *             stationery.
+ *
+ *   Signature: license-key card uses a perforated-ticket motif with a
+ *              copper trim down the left edge. Other emails are quiet.
+ *
+ * Templates exported:
+ *   - MagicLinkEmail       sign-in
+ *   - WelcomeEmail         first sign-up
+ *   - InviteEmail          org invitation
+ *   - LicenseKeyEmail      purchase-confirmation with the key
+ *   - PaymentReceiptEmail  generic receipt
+ *   - PaymentFailedEmail   charge declined
+ *   - TrialEndingEmail     7/3/1-day trial reminders
+ *   - MaintenanceEndingEmail  renewal reminders
+ *   - MaintenanceLapsedEmail  expired
+ *   - CloudBackupEndingEmail  S3 backup expires
+ *   - SupportReplyEmail    customer-facing support reply
+ *   - DiagnosticEmail      admin smoke-test
  */
 import {
-  Body,
-  Button,
-  Container,
-  Head,
-  Heading,
-  Hr,
-  Html,
-  Link,
-  Preview,
-  Section,
-  Text,
+  Body, Button, Container, Head, Heading, Hr, Html,
+  Link, Preview, Section, Text,
 } from '@react-email/components'
 
-// ─── Shared layout primitives ────────────────────────────────
+// ─── Tokens ─────────────────────────────────────────────────────
 
-const colors = {
-  bg: '#FBFAF6',
-  surface: '#ffffff',
-  fg: '#1a1a1a',
-  fgMuted: '#6b6b6b',
-  fgSubtle: '#888888',
-  accent: '#1a1a1a',
-  border: 'rgba(0,0,0,0.10)',
+const c = {
+  bg: '#F4F1EA',                  // cream OUTSIDE the card (Gmail's frame)
+  surface: '#FBFAF6',             // cream paper INSIDE the card
+  surfaceTint: '#F7F2E6',         // tinted band for receipt rows
+  fg: '#1A1410',                  // espresso ink
+  fgMuted: '#5C5249',             // warm taupe for body
+  fgSubtle: '#8A8278',            // mid taupe for footnotes
+  accent: '#C77B3F',              // copper
+  accentSoft: '#F1E4D6',          // copper wash
+  border: '#E5DFD0',              // hairline cream-grey
+  borderStrong: '#D5CCB8',
+  positive: '#5F7E47',            // moss green for success
+  warning: '#B5904A',             // gilded amber for warnings
+  negative: '#A33A2C',             // warm clay-red
 }
 
-const fontStack = {
-  body: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
-  display: 'Fraunces, Georgia, "Times New Roman", serif',
-  mono: 'ui-monospace, SFMono-Regular, "SF Mono", Consolas, monospace',
+const fonts = {
+  body: 'Helvetica, Arial, sans-serif',
+  display: 'Georgia, "Times New Roman", serif',
+  mono: '"Courier New", Courier, monospace',
+}
+
+interface BrandValues {
+  tagline: string
+  supportEmail: string
+  supportWhatsapp: string | null
+  businessAddress: string | null
+  legalName: string
+  copyright: string
+  unsubscribe: string
+  brandUrl: string
 }
 
 interface ShellProps {
   preview: string
+  brand: BrandValues
   children: React.ReactNode
 }
 
-function Shell({ preview, children }: ShellProps) {
+/**
+ * Shell — letterhead-style frame around every email. Tight padding
+ * because Gmail/Outlook add their own outer margins. The letterhead
+ * top is a small caps "OMNIX" with a hairline rule + tagline beneath.
+ */
+function Shell({ preview, brand, children }: ShellProps) {
   return (
     <Html>
-      <Head />
+      <Head>
+        <meta name="color-scheme" content="light" />
+        <meta name="supported-color-schemes" content="light" />
+      </Head>
       <Preview>{preview}</Preview>
-      <Body style={{ backgroundColor: colors.bg, fontFamily: fontStack.body, color: colors.fg, margin: 0 }}>
-        <Container style={{ maxWidth: 520, margin: '0 auto', padding: '40px 16px' }}>
-          <Section
-            style={{
-              backgroundColor: colors.surface,
-              border: `1px solid ${colors.border}`,
-              borderRadius: 8,
-              padding: '32px',
-            }}
-          >
+      <Body
+        style={{
+          backgroundColor: c.bg,
+          fontFamily: fonts.body,
+          color: c.fg,
+          margin: 0,
+          padding: '24px 12px',
+          WebkitFontSmoothing: 'antialiased',
+        }}
+      >
+        <Container
+          style={{
+            maxWidth: 480,
+            margin: '0 auto',
+            backgroundColor: c.surface,
+            border: `1px solid ${c.border}`,
+            borderRadius: 4,
+          }}
+        >
+          {/* Letterhead — small caps + hairline + tagline */}
+          <Section style={{ padding: '20px 24px 14px' }}>
             <Text
               style={{
-                fontFamily: fontStack.mono,
-                fontSize: 11,
+                fontFamily: fonts.display,
+                fontSize: 13,
                 letterSpacing: '0.18em',
                 textTransform: 'uppercase',
-                color: colors.fgMuted,
+                color: c.fg,
                 margin: 0,
-                marginBottom: 12,
+                fontWeight: 500,
               }}
             >
               Omnix
             </Text>
+            <Text
+              style={{
+                fontFamily: fonts.body,
+                fontSize: 11,
+                color: c.fgSubtle,
+                margin: '4px 0 0',
+              }}
+            >
+              {brand.tagline}
+            </Text>
+          </Section>
+          <Hr style={{ borderColor: c.border, margin: '0 24px', borderTop: `1px solid ${c.border}` }} />
+
+          {/* Main content */}
+          <Section style={{ padding: '20px 24px 24px' }}>
             {children}
           </Section>
-          <Text style={{ marginTop: 24, fontSize: 11, color: colors.fgSubtle, textAlign: 'center' }}>
-            Omnix · Offline-first ERP for Kenyan SMEs · <Link href="https://omnix.co.ke" style={{ color: colors.fgSubtle }}>omnix.co.ke</Link>
-          </Text>
+
+          {/* Footer */}
+          <Hr style={{ borderColor: c.border, margin: '0 24px', borderTop: `1px solid ${c.border}` }} />
+          <Section style={{ padding: '14px 24px 18px' }}>
+            <Text style={{ fontSize: 11, color: c.fgSubtle, margin: 0, lineHeight: 1.55 }}>
+              {brand.unsubscribe}
+            </Text>
+            <Text style={{ fontSize: 11, color: c.fgSubtle, margin: '8px 0 0', lineHeight: 1.55 }}>
+              Reply to this email or contact us:&nbsp;
+              <Link href={`mailto:${brand.supportEmail}`} style={{ color: c.fgMuted, textDecoration: 'underline' }}>
+                {brand.supportEmail}
+              </Link>
+              {brand.supportWhatsapp && (
+                <>
+                  {' · '}
+                  <Link href={`https://wa.me/${brand.supportWhatsapp.replace(/\D/g, '')}`} style={{ color: c.fgMuted, textDecoration: 'underline' }}>
+                    WhatsApp {brand.supportWhatsapp}
+                  </Link>
+                </>
+              )}
+            </Text>
+            {brand.businessAddress && (
+              <Text style={{ fontSize: 10, color: c.fgSubtle, margin: '8px 0 0', lineHeight: 1.55 }}>
+                {brand.businessAddress}
+              </Text>
+            )}
+            <Text style={{ fontSize: 10, color: c.fgSubtle, margin: '8px 0 0', lineHeight: 1.55 }}>
+              {brand.copyright} · <Link href={brand.brandUrl} style={{ color: c.fgSubtle, textDecoration: 'underline' }}>{brand.brandUrl.replace(/^https?:\/\//, '')}</Link>
+            </Text>
+          </Section>
         </Container>
       </Body>
     </Html>
   )
 }
 
-// ─── Magic link ──────────────────────────────────────────────
+// Common element styles
+const headingStyle: React.CSSProperties = {
+  fontFamily: fonts.display,
+  fontSize: 22,
+  fontWeight: 500,
+  lineHeight: 1.2,
+  color: c.fg,
+  margin: 0,
+  letterSpacing: '-0.01em',
+}
+const ledeStyle: React.CSSProperties = {
+  fontSize: 14,
+  lineHeight: 1.6,
+  color: c.fgMuted,
+  margin: '10px 0 18px',
+}
+const buttonStyle: React.CSSProperties = {
+  display: 'inline-block',
+  backgroundColor: c.accent,
+  color: '#FBFAF6',
+  textDecoration: 'none',
+  padding: '10px 20px',
+  borderRadius: 4,
+  fontSize: 13,
+  fontWeight: 600,
+  letterSpacing: '0.02em',
+}
+const eyebrowStyle: React.CSSProperties = {
+  fontFamily: fonts.body,
+  fontSize: 10,
+  letterSpacing: '0.18em',
+  textTransform: 'uppercase',
+  color: c.fgSubtle,
+  margin: 0,
+  fontWeight: 600,
+}
+
+// ─── 1. Magic link sign-in ───────────────────────────────────
 
 interface MagicLinkProps {
   url: string
   expiresInMinutes?: number
+  brand: BrandValues
 }
 
-export function MagicLinkEmail({ url, expiresInMinutes = 15 }: MagicLinkProps) {
+export function MagicLinkEmail({ url, expiresInMinutes = 15, brand }: MagicLinkProps) {
   return (
-    <Shell preview={`Sign in to Omnix · expires in ${expiresInMinutes} min`}>
-      <Heading
-        as="h1"
-        style={{
-          fontFamily: fontStack.display,
-          fontSize: 28,
-          fontWeight: 500,
-          lineHeight: 1.1,
-          margin: 0,
-          marginBottom: 12,
-          color: colors.fg,
-        }}
-      >
-        Sign in to Omnix
-      </Heading>
-      <Text style={{ fontSize: 14, lineHeight: 1.55, color: '#444', margin: 0, marginBottom: 24 }}>
-        Click the button below to sign in. The link expires in {expiresInMinutes}&nbsp;minutes.
+    <Shell preview={`Sign in to Omnix · expires in ${expiresInMinutes} min`} brand={brand}>
+      <Text style={eyebrowStyle}>Sign-in link</Text>
+      <Heading style={{ ...headingStyle, marginTop: 6 }}>One click and you&apos;re in.</Heading>
+      <Text style={ledeStyle}>
+        Click the button to sign in. The link expires in {expiresInMinutes}&nbsp;minutes
+        and can only be used once.
       </Text>
-      <Button
-        href={url}
-        style={{
-          display: 'inline-block',
-          backgroundColor: colors.accent,
-          color: '#fff',
-          textDecoration: 'none',
-          padding: '12px 24px',
-          borderRadius: 6,
-          fontSize: 14,
-          fontWeight: 500,
-        }}
-      >
-        Sign in
-      </Button>
-      <Hr style={{ borderColor: colors.border, marginTop: 32, marginBottom: 16 }} />
-      <Text style={{ fontSize: 12, color: colors.fgSubtle, lineHeight: 1.55, margin: 0 }}>
-        If the button doesn&apos;t work, paste this URL into your browser:
+      <Button href={url} style={buttonStyle}>Sign in to Omnix</Button>
+      <Text style={{ fontSize: 11, color: c.fgSubtle, margin: '20px 0 0', lineHeight: 1.55 }}>
+        Trouble with the button? Paste this URL into your browser:
       </Text>
-      <Text style={{ fontSize: 11, fontFamily: fontStack.mono, color: colors.fgSubtle, lineHeight: 1.55, marginTop: 6, marginBottom: 0, wordBreak: 'break-all' }}>
-        <Link href={url} style={{ color: colors.fgSubtle }}>{url}</Link>
+      <Text style={{ fontSize: 11, fontFamily: fonts.mono, color: c.fgSubtle, margin: '4px 0 0', wordBreak: 'break-all' }}>
+        <Link href={url} style={{ color: c.fgSubtle }}>{url}</Link>
       </Text>
-      <Text style={{ fontSize: 11, color: colors.fgSubtle, lineHeight: 1.55, marginTop: 16, marginBottom: 0 }}>
+      <Text style={{ fontSize: 11, color: c.fgSubtle, margin: '14px 0 0', lineHeight: 1.55 }}>
         Didn&apos;t request this? Ignore the email — no account changes happen until someone clicks the link.
       </Text>
     </Shell>
   )
 }
 
-// ─── Invitation ──────────────────────────────────────────────
+// ─── 2. Welcome (post first sign-up) ─────────────────────────
 
-interface InviteEmailProps {
-  inviteLink: string
-  inviterName: string
-  orgName: string
+interface WelcomeProps {
+  name: string
+  brand: BrandValues
 }
 
-export function InviteEmail({ inviteLink, inviterName, orgName }: InviteEmailProps) {
+export function WelcomeEmail({ name, brand }: WelcomeProps) {
   return (
-    <Shell preview={`${inviterName} invited you to ${orgName} on Omnix`}>
-      <Heading
-        as="h1"
-        style={{
-          fontFamily: fontStack.display,
-          fontSize: 24,
-          fontWeight: 500,
-          lineHeight: 1.15,
-          margin: 0,
-          marginBottom: 12,
-          color: colors.fg,
-        }}
-      >
-        {inviterName} invited you to {orgName}
+    <Shell preview={`Welcome to Omnix, ${name}.`} brand={brand}>
+      <Text style={eyebrowStyle}>Welcome</Text>
+      <Heading style={{ ...headingStyle, marginTop: 6 }}>
+        Karibu, <em>{name}</em>.
       </Heading>
-      <Text style={{ fontSize: 14, lineHeight: 1.55, color: '#444', margin: 0, marginBottom: 24 }}>
-        You&apos;ll be added as a member of <strong>{orgName}</strong> on Omnix. Click the button to accept.
+      <Text style={ledeStyle}>
+        Your Omnix account is set up. You can start a 30-day trial of any module from the dashboard, or buy a licence right away.
       </Text>
-      <Button
-        href={inviteLink}
-        style={{
-          display: 'inline-block',
-          backgroundColor: colors.accent,
-          color: '#fff',
-          textDecoration: 'none',
-          padding: '12px 24px',
-          borderRadius: 6,
-          fontSize: 14,
-          fontWeight: 500,
-        }}
-      >
-        Accept invitation
-      </Button>
-      <Text style={{ fontSize: 11, color: colors.fgSubtle, lineHeight: 1.55, marginTop: 24, marginBottom: 0 }}>
-        This invitation expires in 48&nbsp;hours.
+      <Button href={`${brand.brandUrl}/dashboard`} style={buttonStyle}>Open dashboard</Button>
+      <Hr style={{ borderColor: c.border, margin: '24px 0' }} />
+      <Text style={{ fontSize: 13, color: c.fgMuted, margin: '0 0 6px' }}>
+        Three things you can do today:
+      </Text>
+      <Text style={{ fontSize: 13, color: c.fg, margin: 0, lineHeight: 1.7 }}>
+        1. Download the installer for your trade — Pro, Dawa, Retail, Hospitality, or Hardware<br />
+        2. Activate your trial on the first machine to get a 30-day free run<br />
+        3. Add your team and a second machine if you have one (LAN sync is built-in)
       </Text>
     </Shell>
   )
 }
 
-// ─── Payment receipt ─────────────────────────────────────────
+// ─── 3. Org invitation ───────────────────────────────────────
+
+interface InviteProps {
+  inviteLink: string
+  inviterName: string
+  orgName: string
+  brand: BrandValues
+}
+
+export function InviteEmail({ inviteLink, inviterName, orgName, brand }: InviteProps) {
+  return (
+    <Shell preview={`${inviterName} invited you to ${orgName} on Omnix`} brand={brand}>
+      <Text style={eyebrowStyle}>Invitation</Text>
+      <Heading style={{ ...headingStyle, marginTop: 6 }}>{inviterName} added you to {orgName}.</Heading>
+      <Text style={ledeStyle}>
+        You&apos;ll be a member of <strong>{orgName}</strong> on Omnix once you accept.
+        The invitation expires in 48&nbsp;hours.
+      </Text>
+      <Button href={inviteLink} style={buttonStyle}>Accept invitation</Button>
+    </Shell>
+  )
+}
+
+// ─── 4. License key delivery (purchase confirmation) ────────
+
+interface LicenseKeyProps {
+  customerName: string
+  licenseKey: string
+  variant: string
+  amountPaid: number
+  currency: string
+  reference: string
+  date: string
+  downloadUrl: string
+  maintenanceUntil: string
+  brand: BrandValues
+}
+
+export function LicenseKeyEmail({
+  customerName, licenseKey, variant, amountPaid, currency, reference, date,
+  downloadUrl, maintenanceUntil, brand,
+}: LicenseKeyProps) {
+  return (
+    <Shell preview={`Your Omnix licence — ${variant} · ${formatKey(licenseKey)}`} brand={brand}>
+      <Text style={eyebrowStyle}>Receipt + Licence</Text>
+      <Heading style={{ ...headingStyle, marginTop: 6 }}>
+        Thanks, <em>{customerName}</em>. Your licence is ready.
+      </Heading>
+      <Text style={ledeStyle}>
+        Keep this email — it contains your activation key. You can also see it any time at the dashboard.
+      </Text>
+
+      {/* The license card — copper trim left, mono key, ticket-style edge */}
+      <table
+        cellPadding={0}
+        cellSpacing={0}
+        role="presentation"
+        style={{
+          width: '100%',
+          borderCollapse: 'collapse',
+          margin: '20px 0',
+        }}
+      >
+        <tbody>
+          <tr>
+            <td
+              style={{
+                width: 6,
+                backgroundColor: c.accent,
+                borderTopLeftRadius: 4,
+                borderBottomLeftRadius: 4,
+              }}
+            />
+            <td
+              style={{
+                padding: '18px 20px',
+                backgroundColor: c.surfaceTint,
+                border: `1px solid ${c.border}`,
+                borderLeft: 'none',
+                borderTopRightRadius: 4,
+                borderBottomRightRadius: 4,
+              }}
+            >
+              <Text style={{ fontFamily: fonts.body, fontSize: 10, letterSpacing: '0.22em', textTransform: 'uppercase', color: c.fgSubtle, margin: 0 }}>
+                Omnix · {variant}
+              </Text>
+              <Text
+                style={{
+                  fontFamily: fonts.mono,
+                  fontSize: 16,
+                  letterSpacing: '0.08em',
+                  color: c.fg,
+                  margin: '8px 0 12px',
+                  wordBreak: 'break-all',
+                  fontWeight: 600,
+                }}
+              >
+                {formatKey(licenseKey)}
+              </Text>
+              <Text style={{ fontSize: 11, color: c.fgMuted, margin: 0, lineHeight: 1.55 }}>
+                Maintenance + updates until <strong>{maintenanceUntil}</strong>
+              </Text>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+
+      <Button href={downloadUrl} style={buttonStyle}>Download Omnix {variant}</Button>
+
+      <Hr style={{ borderColor: c.border, margin: '24px 0 12px' }} />
+
+      {/* Receipt rows */}
+      <ReceiptRow label="Amount paid" value={`${currency} ${amountPaid.toLocaleString()}`} mono />
+      <ReceiptRow label="Reference"   value={reference} mono small />
+      <ReceiptRow label="Date"        value={date} />
+
+      <Hr style={{ borderColor: c.border, margin: '12px 0 16px' }} />
+
+      <Text style={{ fontSize: 12, color: c.fgMuted, margin: 0, lineHeight: 1.6 }}>
+        <strong>How to activate:</strong> install Omnix, open it, and paste the licence key
+        into the activation screen. The first machine you activate becomes your master device.
+      </Text>
+    </Shell>
+  )
+}
+
+// ─── 5. Generic payment receipt ──────────────────────────────
 
 interface PaymentReceiptProps {
   customerName: string
@@ -198,151 +420,270 @@ interface PaymentReceiptProps {
   reference: string
   purpose: string
   date: string
+  brand: BrandValues
 }
 
-function purposeLabel(p: string) {
-  return p
-    .replace(/_/g, ' ')
-    .replace(/\b\w/g, (c) => c.toUpperCase())
-}
-
-export function PaymentReceiptEmail({ customerName, amount, currency, reference, purpose, date }: PaymentReceiptProps) {
+export function PaymentReceiptEmail({
+  customerName, amount, currency, reference, purpose, date, brand,
+}: PaymentReceiptProps) {
+  const purposeLabel = purpose.replace(/_/g, ' ').replace(/\b\w/g, (m) => m.toUpperCase())
   return (
-    <Shell preview={`Receipt · ${currency} ${amount.toLocaleString()} paid to Omnix`}>
-      <Heading
-        as="h1"
-        style={{ fontFamily: fontStack.display, fontSize: 22, fontWeight: 500, margin: 0, marginBottom: 12, color: colors.fg }}
-      >
-        Receipt
-      </Heading>
-      <Text style={{ fontSize: 14, color: '#444', margin: 0, marginBottom: 16 }}>
-        Thanks {customerName}. Your payment was received.
-      </Text>
-      <Hr style={{ borderColor: colors.border, marginTop: 16, marginBottom: 0 }} />
-      <ReceiptRow label="Amount" value={`${currency} ${amount.toLocaleString()}`} mono />
-      <ReceiptRow label="For" value={purposeLabel(purpose)} />
+    <Shell preview={`Receipt · ${currency} ${amount.toLocaleString()} paid to Omnix`} brand={brand}>
+      <Text style={eyebrowStyle}>Receipt</Text>
+      <Heading style={{ ...headingStyle, marginTop: 6 }}>Payment received.</Heading>
+      <Text style={ledeStyle}>Thanks {customerName}. We&apos;ve recorded your payment.</Text>
+
+      <Hr style={{ borderColor: c.border, margin: '16px 0 0' }} />
+      <ReceiptRow label="Amount"    value={`${currency} ${amount.toLocaleString()}`} mono />
+      <ReceiptRow label="For"       value={purposeLabel} />
       <ReceiptRow label="Reference" value={reference} mono small />
-      <ReceiptRow label="Date" value={date} />
-      <Hr style={{ borderColor: colors.border, marginTop: 0, marginBottom: 24 }} />
-      <Button
-        href="https://omnix.co.ke/dashboard"
-        style={{
-          display: 'inline-block',
-          backgroundColor: colors.accent,
-          color: '#fff',
-          textDecoration: 'none',
-          padding: '10px 20px',
-          borderRadius: 6,
-          fontSize: 13,
-          fontWeight: 500,
-        }}
-      >
-        Open dashboard
-      </Button>
+      <ReceiptRow label="Date"      value={date} />
+      <Hr style={{ borderColor: c.border, margin: '0 0 16px' }} />
+
+      <Button href={`${brand.brandUrl}/dashboard/payments`} style={buttonStyle}>Open dashboard</Button>
     </Shell>
   )
 }
 
-function ReceiptRow({ label, value, mono, small }: { label: string; value: string; mono?: boolean; small?: boolean }) {
+// ─── 6. Payment failed ───────────────────────────────────────
+
+interface PaymentFailedProps {
+  customerName: string
+  amount: number
+  currency: string
+  reference: string
+  purpose: string
+  reason: string
+  retryUrl: string
+  brand: BrandValues
+}
+
+export function PaymentFailedEmail({
+  customerName, amount, currency, reference, purpose, reason, retryUrl, brand,
+}: PaymentFailedProps) {
   return (
-    <Section style={{ display: 'block', padding: '8px 0' }}>
-      <Text style={{ fontSize: 13, color: colors.fgMuted, margin: 0, display: 'inline-block', width: '40%' }}>{label}</Text>
-      <Text
-        style={{
-          fontSize: small ? 12 : 13,
-          color: small ? colors.fgSubtle : colors.fg,
-          margin: 0,
-          display: 'inline-block',
-          width: '60%',
-          textAlign: 'right',
-          fontFamily: mono ? fontStack.mono : fontStack.body,
-        }}
-      >
-        {value}
+    <Shell preview={`Payment didn't go through · ${currency} ${amount.toLocaleString()}`} brand={brand}>
+      <Text style={eyebrowStyle}>Payment failed</Text>
+      <Heading style={{ ...headingStyle, marginTop: 6, color: c.negative }}>
+        We couldn&apos;t complete your payment.
+      </Heading>
+      <Text style={ledeStyle}>
+        Hi {customerName} — your card or M-Pesa charge for <strong>{currency} {amount.toLocaleString()}</strong> didn&apos;t go through.
       </Text>
-    </Section>
+
+      <Hr style={{ borderColor: c.border, margin: '16px 0 0' }} />
+      <ReceiptRow label="Amount"    value={`${currency} ${amount.toLocaleString()}`} mono />
+      <ReceiptRow label="For"       value={purpose.replace(/_/g, ' ')} />
+      <ReceiptRow label="Reason"    value={reason} />
+      <ReceiptRow label="Reference" value={reference} mono small />
+      <Hr style={{ borderColor: c.border, margin: '0 0 16px' }} />
+
+      <Button href={retryUrl} style={buttonStyle}>Retry payment</Button>
+      <Text style={{ fontSize: 12, color: c.fgMuted, margin: '14px 0 0', lineHeight: 1.55 }}>
+        If retries keep failing, reply to this email and we&apos;ll sort it manually.
+      </Text>
+    </Shell>
   )
 }
 
-// ─── Support reply ───────────────────────────────────────────
+// ─── 7. Trial ending ─────────────────────────────────────────
+
+interface TrialEndingProps {
+  customerName: string
+  variant: string
+  daysLeft: number
+  buyUrl: string
+  brand: BrandValues
+}
+
+export function TrialEndingEmail({ customerName, variant, daysLeft, buyUrl, brand }: TrialEndingProps) {
+  const tone = daysLeft <= 1 ? c.negative : daysLeft <= 3 ? c.warning : c.fgMuted
+  return (
+    <Shell preview={`Your ${variant} trial ends in ${daysLeft} ${daysLeft === 1 ? 'day' : 'days'}`} brand={brand}>
+      <Text style={eyebrowStyle}>Trial reminder</Text>
+      <Heading style={{ ...headingStyle, marginTop: 6, color: tone }}>
+        {daysLeft === 0 ? 'Your trial ends today.' : `${daysLeft} ${daysLeft === 1 ? 'day' : 'days'} left on your trial.`}
+      </Heading>
+      <Text style={ledeStyle}>
+        Hi {customerName} — your <strong>{variant}</strong> trial expires in {daysLeft} {daysLeft === 1 ? 'day' : 'days'}.
+        Buy a licence now to keep working without interruption. Same machine, same data, same login.
+      </Text>
+      <Button href={buyUrl} style={buttonStyle}>Buy {variant} licence</Button>
+      <Text style={{ fontSize: 12, color: c.fgMuted, margin: '14px 0 0', lineHeight: 1.55 }}>
+        Need more time or have questions? Reply to this email.
+      </Text>
+    </Shell>
+  )
+}
+
+// ─── 8. Maintenance ending soon ──────────────────────────────
+
+interface MaintenanceEndingProps {
+  customerName: string
+  variant: string
+  daysLeft: number
+  expiresOn: string
+  renewUrl: string
+  brand: BrandValues
+}
+
+export function MaintenanceEndingEmail({
+  customerName, variant, daysLeft, expiresOn, renewUrl, brand,
+}: MaintenanceEndingProps) {
+  return (
+    <Shell preview={`Maintenance for ${variant} expires in ${daysLeft} days`} brand={brand}>
+      <Text style={eyebrowStyle}>Maintenance reminder</Text>
+      <Heading style={{ ...headingStyle, marginTop: 6 }}>
+        Renewal is due in {daysLeft} {daysLeft === 1 ? 'day' : 'days'}.
+      </Heading>
+      <Text style={ledeStyle}>
+        Hi {customerName} — your maintenance + updates plan for <strong>{variant}</strong> ends on <strong>{expiresOn}</strong>.
+        Renew to keep getting eTIMS + SHA compliance updates and the latest features.
+      </Text>
+      <Button href={renewUrl} style={buttonStyle}>Renew maintenance</Button>
+      <Text style={{ fontSize: 12, color: c.fgMuted, margin: '14px 0 0', lineHeight: 1.55 }}>
+        After expiry, the app keeps running but stops receiving updates.
+      </Text>
+    </Shell>
+  )
+}
+
+// ─── 9. Maintenance lapsed ───────────────────────────────────
+
+interface MaintenanceLapsedProps {
+  customerName: string
+  variant: string
+  expiredOn: string
+  renewUrl: string
+  brand: BrandValues
+}
+
+export function MaintenanceLapsedEmail({
+  customerName, variant, expiredOn, renewUrl, brand,
+}: MaintenanceLapsedProps) {
+  return (
+    <Shell preview={`Maintenance for ${variant} has expired`} brand={brand}>
+      <Text style={eyebrowStyle}>Maintenance expired</Text>
+      <Heading style={{ ...headingStyle, marginTop: 6 }}>
+        Your maintenance plan lapsed on {expiredOn}.
+      </Heading>
+      <Text style={ledeStyle}>
+        Hi {customerName} — Omnix {variant} keeps working, but it stopped receiving updates on {expiredOn}.
+        That includes eTIMS rule changes and SHA payer updates. Renew at any time to catch up.
+      </Text>
+      <Button href={renewUrl} style={buttonStyle}>Renew now</Button>
+    </Shell>
+  )
+}
+
+// ─── 10. Cloud backup ending ─────────────────────────────────
+
+interface CloudBackupEndingProps {
+  customerName: string
+  daysLeft: number
+  expiresOn: string
+  renewUrl: string
+  brand: BrandValues
+}
+
+export function CloudBackupEndingEmail({
+  customerName, daysLeft, expiresOn, renewUrl, brand,
+}: CloudBackupEndingProps) {
+  return (
+    <Shell preview={`Cloud backup expires in ${daysLeft} days`} brand={brand}>
+      <Text style={eyebrowStyle}>Cloud backup</Text>
+      <Heading style={{ ...headingStyle, marginTop: 6 }}>
+        Cloud backup ends in {daysLeft} {daysLeft === 1 ? 'day' : 'days'}.
+      </Heading>
+      <Text style={ledeStyle}>
+        Hi {customerName} — your cloud-backup add-on ends on <strong>{expiresOn}</strong>.
+        Without it, backups stay local-only. Top up to keep encrypted off-site copies running.
+      </Text>
+      <Button href={renewUrl} style={buttonStyle}>Renew cloud backup</Button>
+    </Shell>
+  )
+}
+
+// ─── 11. Support reply ───────────────────────────────────────
 
 interface SupportReplyProps {
   ticketSubject: string
   ticketId: string
   body: string
   agentName: string
+  brand: BrandValues
 }
 
-export function SupportReplyEmail({ ticketSubject, ticketId, body, agentName }: SupportReplyProps) {
+export function SupportReplyEmail({ ticketSubject, ticketId, body, agentName, brand }: SupportReplyProps) {
   return (
-    <Shell preview={`Re: ${ticketSubject} (#${ticketId.slice(0, 8)})`}>
-      <Heading
-        as="h1"
-        style={{ fontFamily: fontStack.display, fontSize: 20, fontWeight: 500, margin: 0, marginBottom: 8, color: colors.fg }}
-      >
-        {ticketSubject}
-      </Heading>
-      <Text
-        style={{
-          fontSize: 11,
-          color: colors.fgSubtle,
-          textTransform: 'uppercase',
-          letterSpacing: '0.1em',
-          margin: 0,
-          marginBottom: 16,
-        }}
-      >
+    <Shell preview={`Re: ${ticketSubject}`} brand={brand}>
+      <Text style={eyebrowStyle}>Support reply</Text>
+      <Heading style={{ ...headingStyle, marginTop: 6 }}>{ticketSubject}</Heading>
+      <Text style={{ fontSize: 11, color: c.fgSubtle, margin: '6px 0 16px', textTransform: 'uppercase', letterSpacing: '0.1em' }}>
         {agentName} · Omnix support
       </Text>
       <Section
         style={{
-          fontSize: 14,
+          fontSize: 13,
           lineHeight: 1.6,
-          color: '#222',
-          borderLeft: `3px solid ${colors.border}`,
-          paddingLeft: 16,
-          margin: '16px 0',
-          whiteSpace: 'pre-wrap',
+          color: c.fg,
+          borderLeft: `3px solid ${c.borderStrong}`,
+          paddingLeft: 14,
+          margin: '0 0 16px',
         }}
       >
         <Text style={{ margin: 0, whiteSpace: 'pre-wrap' as const }}>{body}</Text>
       </Section>
-      <Button
-        href={`https://omnix.co.ke/dashboard/support/${ticketId}`}
-        style={{
-          display: 'inline-block',
-          backgroundColor: colors.accent,
-          color: '#fff',
-          textDecoration: 'none',
-          padding: '10px 20px',
-          borderRadius: 6,
-          fontSize: 13,
-          fontWeight: 500,
-        }}
-      >
-        View ticket
-      </Button>
+      <Button href={`${brand.brandUrl}/dashboard/support/${ticketId}`} style={buttonStyle}>View ticket</Button>
     </Shell>
   )
 }
 
-// ─── Test diagnostic email ───────────────────────────────────
+// ─── 12. Diagnostic ─────────────────────────────────────────
 
-export function DiagnosticEmail({ from, sentAt }: { from: string; sentAt: string }) {
+export function DiagnosticEmail({ from, sentAt, brand }: { from: string; sentAt: string; brand: BrandValues }) {
   return (
-    <Shell preview="Resend integration is working">
-      <Heading
-        as="h1"
-        style={{ fontFamily: fontStack.display, fontSize: 22, fontWeight: 500, margin: 0, marginBottom: 12, color: colors.fg }}
-      >
-        It works.
-      </Heading>
-      <Text style={{ fontSize: 14, lineHeight: 1.55, color: '#444', margin: 0, marginBottom: 16 }}>
-        Your Resend integration is wired correctly.
-      </Text>
-      <Text style={{ fontSize: 12, color: colors.fgSubtle, margin: 0 }}>
-        Sent from <code style={{ fontFamily: fontStack.mono }}>{from}</code> at {sentAt}.
+    <Shell preview="Resend integration is working" brand={brand}>
+      <Text style={eyebrowStyle}>Diagnostic</Text>
+      <Heading style={{ ...headingStyle, marginTop: 6 }}>It works.</Heading>
+      <Text style={ledeStyle}>Resend is wired correctly. This email rendered through the React Email pipeline.</Text>
+      <Text style={{ fontFamily: fonts.mono, fontSize: 11, color: c.fgSubtle, margin: 0 }}>
+        from: {from}<br />
+        sent: {sentAt}
       </Text>
     </Shell>
   )
+}
+
+// ─── Receipt-row helper ─────────────────────────────────────
+
+function ReceiptRow({ label, value, mono, small }: { label: string; value: string; mono?: boolean; small?: boolean }) {
+  return (
+    <table cellPadding={0} cellSpacing={0} role="presentation" style={{ width: '100%', borderCollapse: 'collapse' }}>
+      <tbody>
+        <tr>
+          <td style={{ padding: '8px 0', fontSize: 12, color: c.fgMuted, width: '40%' }}>{label}</td>
+          <td
+            style={{
+              padding: '8px 0',
+              fontSize: small ? 11 : 13,
+              color: small ? c.fgSubtle : c.fg,
+              fontFamily: mono ? fonts.mono : fonts.body,
+              textAlign: 'right',
+              width: '60%',
+            }}
+          >
+            {value}
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  )
+}
+
+function formatKey(key: string): string {
+  if (!key) return '—'
+  const compact = key.replace(/[-\s]/g, '').toUpperCase()
+  if (compact.length <= 4) return compact
+  return compact.match(/.{1,4}/g)?.join('-') ?? compact
 }

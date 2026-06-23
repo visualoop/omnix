@@ -1,29 +1,53 @@
-import { desc } from 'drizzle-orm'
-import { db, licenses } from '@/db'
+import { desc, eq } from 'drizzle-orm'
+import { Key } from '@phosphor-icons/react/dist/ssr'
+import { db, licenses, user } from '@/db'
+import { LicenseCard } from '@/components/admin/license-card'
+import { EmptyState } from '@/components/admin/empty-state'
 import { PageHeader } from '@/components/layout/page-header'
 
 export const metadata = { title: 'Admin · Licences' }
+export const dynamic = 'force-dynamic'
 
 export default async function AdminLicensesPage() {
-  const rows = await db.select().from(licenses).orderBy(desc(licenses.createdAt)).limit(200)
+  const rows = await db
+    .select({
+      id: licenses.id,
+      licenseKey: licenses.licenseKey,
+      variant: licenses.variant,
+      tier: licenses.tier,
+      status: licenses.status,
+      trialEndsAt: licenses.trialEndsAt,
+      maintenanceUntil: licenses.maintenanceUntil,
+      maxMachines: licenses.maxMachines,
+      maxBranches: licenses.maxBranches,
+      createdAt: licenses.createdAt,
+      customerEmail: user.email,
+    })
+    .from(licenses)
+    .leftJoin(user, eq(licenses.userId, user.id))
+    .orderBy(desc(licenses.createdAt))
+    .limit(120)
+
   return (
-    <div className="space-y-6">
-      <PageHeader eyebrow="Platform" title="Licences" description="Every issued licence — trials, paid, lapsed." />
+    <div className="space-y-8">
+      <PageHeader
+        eyebrow="Platform"
+        title="Licences"
+        description="Every issued licence — drawn as a paper certificate. The copper strip on the left signals one issued by Omnix; status seal on the right tells you whether it's active, on trial, or expired."
+      />
+
       {rows.length === 0 ? (
-        <div className="rounded-lg border border-dashed border-[var(--color-border)] px-4 py-12 text-center text-[13px] text-[var(--color-fg-muted)]">
-          None yet.
-        </div>
+        <EmptyState
+          icon={<Key weight="regular" className="size-8" />}
+          title="No licences yet."
+          description="The first one will show up here as soon as a customer completes a license_fee payment."
+        />
       ) : (
-        <ul className="rounded-lg border border-[var(--color-border)] divide-y divide-[var(--color-border)]">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           {rows.map((l) => (
-            <li key={l.id} className="grid grid-cols-[2fr_1fr_1fr_auto] items-baseline gap-3 px-4 py-3 text-[13px]">
-              <code className="font-mono text-[12px]">{l.licenseKey}</code>
-              <span className="text-[var(--color-fg-muted)]">{l.variant} · {l.tier}</span>
-              <span className="font-mono text-[11px] text-[var(--color-fg-muted)]">{l.maintenanceUntil?.toISOString().slice(0, 10) ?? 'trial'}</span>
-              <span className="font-mono text-[10px] uppercase tracking-[0.18em]">{l.status}</span>
-            </li>
+            <LicenseCard key={l.id} l={l} />
           ))}
-        </ul>
+        </div>
       )}
     </div>
   )
