@@ -31,7 +31,7 @@ export const SETTING_DEFINITIONS = [
 
   // ── Email (Resend) ─────────────────────────────
   { key: 'resend.api_key',          category: 'email',     label: 'Resend API key',          sensitive: true,  envFallback: 'RESEND_API_KEY',          description: 'Sends magic links, invitations, receipts, support replies.' },
-  { key: 'resend.from_email',       category: 'email',     label: 'From address',            sensitive: false, envFallback: 'RESEND_FROM',             description: 'e.g. "Omnix <noreply@omnix.co.ke>".' },
+  { key: 'resend.from_email',       category: 'email',     label: 'From address',            sensitive: false, envFallback: 'RESEND_FROM_EMAIL',       description: 'e.g. "Omnix <noreply@omnix.co.ke>".' },
   { key: 'resend.reply_to',         category: 'email',     label: 'Reply-to address',        sensitive: false, envFallback: 'RESEND_REPLY_TO',         description: 'Where customers reach you when they reply to a transactional mail.' },
 
   // ── Google OAuth ───────────────────────────────
