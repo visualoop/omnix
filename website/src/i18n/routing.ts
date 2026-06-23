@@ -49,18 +49,30 @@ export const COUNTRY_TO_LANG: Record<string, string> = {
   in: 'en', rw: 'en', tz: 'en', ug: 'en', eg: 'en', ae: 'en',
 }
 
-/** Country code → ISO 4217 currency for price components. */
+/** Country code → ISO 4217 currency for price components.
+ *
+ * Restricted to Paystack-supported currencies (KES, NGN, GHS, ZAR, USD).
+ * Visitors from non-native-Paystack countries (UK/EU/Tanzania/Uganda/
+ * India/Egypt/UAE etc.) see USD prices and pay in USD. Paystack settles
+ * the foreign exchange.
+ */
 export const COUNTRY_TO_CURRENCY: Record<string, string> = {
-  ke: 'KES', tz: 'TZS', ug: 'UGX', rw: 'RWF',
-  us: 'USD', gb: 'GBP', ng: 'NGN', gh: 'GHS',
-  za: 'ZAR', in: 'INR', eg: 'EGP', ae: 'AED',
+  ke: 'KES', ng: 'NGN', gh: 'GHS', za: 'ZAR',
+  // Everything else: Paystack accepts USD universally.
+  us: 'USD', gb: 'USD', in: 'USD',
+  tz: 'USD', ug: 'USD', rw: 'USD', eg: 'USD', ae: 'USD',
 }
 
-/** Geo header value (ISO 3166-1 alpha-2) → routed locale. */
+/** Geo header value (ISO 3166-1 alpha-2) → routed locale.
+ *
+ * Defaults to 'us' (USD) when geo is missing or the visitor's country
+ * is not in the COUNTRY_LOCALES list. The home market is still 'ke'
+ * but the *fallback for the rest of the world* is USD.
+ */
 export function localeForGeoCountry(country: string | null | undefined): string {
-  if (!country) return 'ke'
+  if (!country) return 'us'
   const lc = country.toLowerCase()
-  return (COUNTRY_LOCALES as readonly string[]).includes(lc) ? lc : 'ke'
+  return (COUNTRY_LOCALES as readonly string[]).includes(lc) ? lc : 'us'
 }
 
 export const routing = defineRouting({

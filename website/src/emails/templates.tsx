@@ -655,6 +655,67 @@ export function DiagnosticEmail({ from, sentAt, brand }: { from: string; sentAt:
   )
 }
 
+// ─── 13. Team invite (staff onboarding) ─────────────────────
+
+interface TeamInviteProps {
+  inviterName: string
+  inviteeName: string
+  role: string
+  signInUrl: string
+  brand: BrandValues
+}
+
+const ROLE_HUMAN: Record<string, string> = {
+  platform_admin: 'Platform admin — full access to every page in the operator console',
+  support_agent: 'Support agent — can read users + reply to tickets',
+  sales_rep: 'Sales rep — can read customers + payments + licences',
+}
+
+export function TeamInviteEmail({ inviterName, inviteeName, role, signInUrl, brand }: TeamInviteProps) {
+  return (
+    <Shell preview={`${inviterName} added you to the Omnix team as ${role.replace('_', ' ')}`} brand={brand}>
+      <Text style={eyebrowStyle}>Team invite</Text>
+      <Heading style={{ ...headingStyle, marginTop: 6 }}>
+        {inviterName} added you to the Omnix team.
+      </Heading>
+      <Text style={ledeStyle}>
+        Hi {inviteeName} — your account is set up with the role below. Click the
+        button to sign in. The link expires in 15&nbsp;minutes.
+      </Text>
+
+      <table cellPadding={0} cellSpacing={0} role="presentation" style={{ width: '100%', borderCollapse: 'collapse', margin: '4px 0 18px' }}>
+        <tbody>
+          <tr>
+            <td
+              style={{
+                padding: '12px 14px',
+                backgroundColor: c.surfaceTint,
+                border: `1px solid ${c.border}`,
+                borderRadius: 4,
+              }}
+            >
+              <Text style={{ fontFamily: fonts.body, fontSize: 10, letterSpacing: '0.22em', textTransform: 'uppercase', color: c.fgSubtle, margin: 0 }}>
+                Role
+              </Text>
+              <Text style={{ fontFamily: fonts.display, fontSize: 16, color: c.fg, margin: '4px 0 4px', fontWeight: 500 }}>
+                {role.replace('_', ' ')}
+              </Text>
+              <Text style={{ fontSize: 12, color: c.fgMuted, margin: 0, lineHeight: 1.5 }}>
+                {ROLE_HUMAN[role] ?? 'Custom role.'}
+              </Text>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+
+      <Button href={signInUrl} style={buttonStyle}>Sign in to Omnix</Button>
+      <Text style={{ fontSize: 11, color: c.fgSubtle, margin: '20px 0 0', lineHeight: 1.55 }}>
+        We use magic-link sign-in — no passwords. Same link works from any device.
+      </Text>
+    </Shell>
+  )
+}
+
 // ─── Receipt-row helper ─────────────────────────────────────
 
 function ReceiptRow({ label, value, mono, small }: { label: string; value: string; mono?: boolean; small?: boolean }) {

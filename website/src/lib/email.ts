@@ -26,6 +26,7 @@ import {
   CloudBackupEndingEmail,
   SupportReplyEmail,
   DiagnosticEmail,
+  TeamInviteEmail,
 } from '@/emails/templates'
 
 interface ResolvedConfig {
@@ -324,6 +325,35 @@ export async function sendSupportReplyEmail(input: SupportReplyInput) {
     html,
     text: `${input.agentName} replied:\n\n${input.body}\n\nReply at ${brand.brandUrl}/dashboard/support/${input.ticketId}`,
   })
+}
+
+// ─── Team invite (staff onboarding) ──────────────────
+
+interface TeamInviteInput {
+  to: string
+  inviterName: string
+  inviteeName: string
+  role: 'platform_admin' | 'support_agent' | 'sales_rep'
+  signInUrl: string
+}
+
+export async function sendTeamInviteEmail(input: TeamInviteInput) {
+  const { client, from, replyTo } = await getResend()
+  if (!client) {
+    console.warn(`[email] resend.api_key missing — team invite not sent to ${input.to}`)
+    return
+  }
+  const brand = await emailBranding()
+  const html = await render(TeamInviteEmail({ ...input, brand }))
+  const result = await client.emails.send({
+    from,
+    to: input.to,
+    replyTo,
+    subject: `${input.inviterName} added you to the Omnix team`,
+    html,
+    text: `${input.inviterName} added you to the Omnix team as ${input.role.replace('_', ' ')}.\n\nSign in: ${input.signInUrl}\n\nLink expires in 15 minutes.`,
+  })
+  if (result.error) throw new Error(`Team invite send failed: ${result.error.message ?? 'unknown'}`)
 }
 
 // ─── Diagnostic test ─────────────────────────────────

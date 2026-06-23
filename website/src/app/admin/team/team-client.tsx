@@ -1,0 +1,279 @@
+'use client'
+
+import { useState, useTransition } from 'react'
+import { useRouter } from 'next/navigation'
+import {
+  ShieldStar, UserPlus, Prohibit, Check, ArrowsClockwise, X,
+} from '@phosphor-icons/react'
+
+interface Member {
+  id: string
+  email: string
+  name: string | null
+  role: string | null
+  banned: boolean
+  banReason: string | null
+  createdAt: string
+}
+
+const ROLES = [
+  { value: 'platform_admin', label: 'Platform admin', hint: 'full access' },
+  { value: 'support_agent',  label: 'Support agent',  hint: 'tickets + customers' },
+  { value: 'sales_rep',      label: 'Sales rep',      hint: 'customers + payments' },
+] as const
+
+const ROLE_LABEL: Record<string, string> = {
+  platform_admin: 'Platform admin',
+  support_agent: 'Support agent',
+  sales_rep: 'Sales rep',
+  user: 'Customer',
+}
+
+export function TeamClient({ initial }: { initial: Member[] }) {
+  const router = useRouter()
+  const [members, setMembers] = useState(initial)
+  const [busy, startTransition] = useTransition()
+  const [toast, setToast] = useState<{ kind: 'ok' | 'err'; text: string } | null>(null)
+
+  // Invite form state
+  const [email, setEmail] = useState('')
+  const [name, setName] = useState('')
+  const [role, setRole] = useState<typeof ROLES[number]['value']>('support_agent')
+
+  async function refresh() {
+    const j = await fetch('/api/admin/team').then((r) => r.json())
+    if (j.members) setMembers(j.members)
+  }
+
+  function flash(kind: 'ok' | 'err', text: string) {
+    setToast({ kind, text })
+    setTimeout(() => setToast(null), 4000)
+  }
+
+  function invite() {
+    if (!email.trim()) return
+    startTransition(async () => {
+      const res = await fetch('/api/admin/team', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: email.trim(), name: name.trim() || undefined, role }),
+      })
+      const j = await res.json()
+      if (j.ok) {
+        flash('ok', j.created ? `Invited ${email}` : `Updated ${email} to ${ROLE_LABEL[role]}`)
+        setEmail('')
+        setName('')
+        await refresh()
+        router.refresh()
+      } else {
+        flash('err', j.error ?? 'Invite failed')
+      }
+    })
+  }
+
+  function changeRole(memberId: string, newRole: string) {
+    startTransition(async () => {
+      const res = await fetch(`/api/admin/team/${memberId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ role: newRole }),
+      })
+      const j = await res.json()
+      if (j.ok) {
+        flash('ok', newRole === 'user' ? 'Removed from staff' : `Role updated to ${ROLE_LABEL[newRole]}`)
+        await refresh()
+        router.refresh()
+      } else {
+        flash('err', j.error ?? 'Update failed')
+      }
+    })
+  }
+
+  function toggleBan(member: Member) {
+    const newState = !member.banned
+    let reason: string | null = null
+    if (newState) {
+      reason = prompt(`Why are you banning ${member.email}? (optional)`) || null
+    }
+    startTransition(async () => {
+      const res = await fetch(`/api/admin/team/${member.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ banned: newState, banReason: reason }),
+      })
+      const j = await res.json()
+      if (j.ok) {
+        flash('ok', newState ? 'Account banned' : 'Account restored')
+        await refresh()
+        router.refresh()
+      } else {
+        flash('err', j.error ?? 'Update failed')
+      }
+    })
+  }
+
+  return (
+    <div className="space-y-8">
+      {toast && (
+        <div
+          className={`fixed bottom-6 right-6 z-50 rounded-md px-4 py-3 text-[13px] shadow-sm ${
+            toast.kind === 'ok'
+              ? 'border border-[var(--color-positive)] bg-[var(--color-surface)]'
+              : 'border border-[var(--color-negative)] bg-[var(--color-surface)]'
+          }`}
+          style={{ color: toast.kind === 'ok' ? 'var(--color-positive)' : 'var(--color-negative)' }}
+        >
+          {toast.text}
+        </div>
+      )}
+
+      {/* Invite form */}
+      <section className="rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] p-5">
+        <header className="mb-4 flex items-center gap-2">
+          <UserPlus weight="regular" className="size-4 text-[var(--color-accent)]" />
+          <h3
+            style={{ fontFamily: 'var(--font-display)' }}
+            className="text-[18px] font-medium text-[var(--color-fg)] tracking-[-0.01em]"
+          >
+            Invite a teammate
+          </h3>
+        </header>
+
+        <div className="grid grid-cols-1 md:grid-cols-[2fr_1fr_1fr_auto] gap-3 items-end">
+          <div>
+            <label className="font-mono text-[10px] uppercase tracking-[0.22em] text-[var(--color-fg-muted)] block mb-1.5">
+              Email
+            </label>
+            <input
+              type="email"
+              autoComplete="off"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="teammate@yourdomain.com"
+              className="w-full rounded-md border border-[var(--color-border)] bg-transparent px-3 py-2 text-[13px] outline-none focus:border-[var(--color-accent)] text-[var(--color-fg)]"
+            />
+          </div>
+          <div>
+            <label className="font-mono text-[10px] uppercase tracking-[0.22em] text-[var(--color-fg-muted)] block mb-1.5">
+              Name (optional)
+            </label>
+            <input
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="Aisha Wanjiku"
+              className="w-full rounded-md border border-[var(--color-border)] bg-transparent px-3 py-2 text-[13px] outline-none focus:border-[var(--color-accent)] text-[var(--color-fg)]"
+            />
+          </div>
+          <div>
+            <label className="font-mono text-[10px] uppercase tracking-[0.22em] text-[var(--color-fg-muted)] block mb-1.5">
+              Role
+            </label>
+            <select
+              value={role}
+              onChange={(e) => setRole(e.target.value as typeof role)}
+              className="w-full rounded-md border border-[var(--color-border)] bg-transparent px-3 py-2 text-[13px] outline-none focus:border-[var(--color-accent)] text-[var(--color-fg)] cursor-pointer"
+            >
+              {ROLES.map((r) => (
+                <option key={r.value} value={r.value} className="bg-[var(--color-surface)]">
+                  {r.label}
+                </option>
+              ))}
+            </select>
+          </div>
+          <button
+            onClick={invite}
+            disabled={busy || !email.trim()}
+            className="rounded-md bg-[var(--color-accent)] px-5 py-2 text-[13px] font-medium text-[var(--color-accent-foreground)] hover:bg-[var(--color-accent-hover)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          >
+            {busy ? 'Sending…' : 'Send invite'}
+          </button>
+        </div>
+        <p className="mt-3 font-mono text-[10px] text-[var(--color-fg-subtle)] leading-[1.55]">
+          The invitee gets a magic-link sign-in to /admin + a branded letter explaining their role.
+        </p>
+      </section>
+
+      {/* Roster */}
+      {members.length > 0 && (
+        <section>
+          <header className="mb-3 flex items-baseline justify-between border-b border-[var(--color-border)] pb-2">
+            <h3 className="font-mono text-[10px] uppercase tracking-[0.22em] text-[var(--color-fg-muted)]">
+              Current team
+              <span className="ml-2 font-mono tabular-nums text-[var(--color-fg-subtle)]">{members.length}</span>
+            </h3>
+          </header>
+          <div className="rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] divide-y divide-[var(--color-border)]">
+            {members.map((m) => (
+              <div key={m.id} className="grid grid-cols-[auto_1fr_auto_auto] items-center gap-4 px-4 py-3">
+                {/* Avatar */}
+                <div
+                  className="size-10 rounded-full grid place-items-center font-mono text-[12px] font-medium shrink-0"
+                  style={{
+                    background: m.banned ? 'rgba(176,67,47,0.12)' : 'var(--color-accent-soft)',
+                    color: m.banned ? 'var(--color-negative)' : 'var(--color-accent)',
+                    border: `1px solid ${m.banned ? 'var(--color-negative)' : 'var(--color-accent-line)'}`,
+                  }}
+                >
+                  {(m.name ?? m.email).slice(0, 2).toUpperCase()}
+                </div>
+
+                {/* Identity */}
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-[14px] font-medium text-[var(--color-fg)] truncate">
+                      {m.name || m.email.split('@')[0]}
+                    </span>
+                    {m.banned && (
+                      <span className="inline-flex items-center gap-1 rounded-sm border px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-[0.18em]"
+                        style={{ color: 'var(--color-negative)', borderColor: 'var(--color-negative)' }}>
+                        <Prohibit weight="bold" className="size-2.5" />
+                        Banned
+                      </span>
+                    )}
+                  </div>
+                  <div className="font-mono text-[11px] text-[var(--color-fg-muted)] truncate">{m.email}</div>
+                  {m.banned && m.banReason && (
+                    <div className="text-[11px] text-[var(--color-negative)] italic mt-0.5">{m.banReason}</div>
+                  )}
+                </div>
+
+                {/* Role select */}
+                <select
+                  value={m.role ?? 'user'}
+                  onChange={(e) => changeRole(m.id, e.target.value)}
+                  disabled={busy}
+                  className="rounded-md border border-[var(--color-border)] bg-transparent px-2.5 py-1.5 text-[12px] outline-none focus:border-[var(--color-accent)] text-[var(--color-fg)] cursor-pointer disabled:opacity-50"
+                >
+                  {ROLES.map((r) => (
+                    <option key={r.value} value={r.value} className="bg-[var(--color-surface)]">{r.label}</option>
+                  ))}
+                  <option value="user" className="bg-[var(--color-surface)]">— Demote to customer —</option>
+                </select>
+
+                {/* Ban toggle */}
+                <button
+                  onClick={() => toggleBan(m)}
+                  disabled={busy}
+                  className="rounded-md border border-[var(--color-border)] p-2 hover:border-[var(--color-border-strong)] disabled:opacity-50 transition-colors"
+                  aria-label={m.banned ? 'Unban' : 'Ban'}
+                  title={m.banned ? 'Restore access' : 'Ban'}
+                >
+                  {m.banned ? (
+                    <Check weight="bold" className="size-3.5 text-[var(--color-positive)]" />
+                  ) : (
+                    <Prohibit weight="bold" className="size-3.5 text-[var(--color-fg-muted)]" />
+                  )}
+                </button>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+    </div>
+  )
+}
+
+void ShieldStar
+void ArrowsClockwise
+void X

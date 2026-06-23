@@ -30,32 +30,26 @@ export const CURRENCIES: Record<SupportedCurrency, Currency> = {
 
 /**
  * ISO-3166 country code → primary currency for that visitor.
- *   - East Africa is mostly served via KES (cross-border tourism etc.)
- *   - Paystack-native markets use their local currency.
- *   - Everywhere else uses USD (Paystack accepts it universally).
+ *
+ * Paystack natively supports KES, NGN, GHS, ZAR and USD. We charge in
+ * the visitor's local currency only when Paystack supports it; everyone
+ * else (the rest of the world, including Tanzania/Uganda/Rwanda/Egypt/
+ * UK/EU/US/India/Asia/the Americas) sees USD prices and pays USD.
+ *
+ *   KE  → KES (home market)
+ *   NG  → NGN
+ *   GH  → GHS
+ *   ZA  → ZAR
+ *   *   → USD
  */
 export function currencyForCountry(countryCode: string | null | undefined): SupportedCurrency {
   const cc = (countryCode ?? '').toUpperCase()
   switch (cc) {
-    case 'KE':
-    case 'UG':
-    case 'TZ':
-    case 'RW':
-    case 'BI':
-    case 'SS':
-      return 'KES'
-    case 'NG':
-      return 'NGN'
-    case 'GH':
-      return 'GHS'
-    case 'ZA':
-    case 'NA':
-    case 'BW':
-    case 'LS':
-    case 'SZ':
-      return 'ZAR'
-    default:
-      return 'USD'
+    case 'KE': return 'KES'
+    case 'NG': return 'NGN'
+    case 'GH': return 'GHS'
+    case 'ZA': return 'ZAR'
+    default:   return 'USD'
   }
 }
 
