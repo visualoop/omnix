@@ -7,6 +7,7 @@ import { CURRENCIES, formatPrice, tierPrice, type PricingTierShape, type Support
 import { PageHero } from '@/components/marketing/page-hero'
 import { ClosingCtaSection } from '@/components/landing/closing-cta-section'
 import { getSiteSettings } from '@/lib/site-settings'
+import { SoftwareJsonLd } from '@/components/seo/jsonld'
 
 export type VariantId = 'dawa' | 'retail' | 'hospitality' | 'hardware' | 'pro'
 
@@ -324,6 +325,7 @@ export async function VariantLanding({ variant }: { variant: VariantId }) {
 
   return (
     <>
+      <SoftwareJsonLd variant={variant} currency={price.currency} locale={locale} />
       <PageHero
         eyebrow={hero.eyebrow ?? productName}
         title={

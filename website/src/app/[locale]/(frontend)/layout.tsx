@@ -9,6 +9,7 @@ import { BRAND, BRAND_NAME, BRAND_TAGLINE } from '@/lib/brand'
 import { SiteHeader } from '@/components/layout/site-header'
 import { SiteFooter } from '@/components/layout/site-footer'
 import { RootShell } from '@/components/layout/root-shell'
+import { OrgJsonLd } from '@/components/seo/jsonld'
 import { routing } from '@/i18n/routing'
 
 export const metadata: Metadata = {
@@ -82,6 +83,7 @@ export default async function FrontendLayout({
         <main>{children}</main>
         <SiteFooter />
         {gaId && <GoogleAnalytics gaId={gaId} />}
+        <OrgJsonLd />
       </RootShell>
     </NextIntlClientProvider>
   )
