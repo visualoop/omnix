@@ -75,7 +75,11 @@ interface ReleaseRow {
   publishedAt?: string
   title?: string
   summary?: string
+  /** NSIS .exe installer (the per-user click-to-install one). Mapped
+   *  from `releases.exe_url` in the new schema. */
   windowsNsisUrl?: string
+  /** MSI installer (IT-managed / GPO deploys). Mapped from
+   *  `releases.msi_url`. */
   windowsMsiUrl?: string
   windowsNsisSize?: number
   windowsMsiSize?: number
@@ -108,20 +112,22 @@ export default async function DownloadsPage() {
     .orderBy(desc(releases.publishedAt))
     .limit(1)
   const r = rows[0]
+  // Explicit field mapping from new schema → ReleaseRow. The page
+  // historically rendered through a `as unknown as ReleaseRow` cast
+  // that masked a column-name change (the columns are now exe_url /
+  // msi_url after the Payload CMS → Drizzle migration; the page was
+  // still reading windowsNsisUrl / windowsMsiUrl so every URL came
+  // out undefined → 'Coming soon' for every variant card).
   const baseRow: ReleaseRow | null = r
-    ? ({
+    ? {
         version: r.version,
         title: r.notes?.split('\n')[0] ?? `Omnix ${r.version}`,
         summary: r.notes ?? '',
         publishedAt: r.publishedAt.toISOString(),
         variant: 'pro',
-        status: 'published',
-        channel: r.channel,
-        msiUrl: r.msiUrl ?? undefined,
-        exeUrl: r.exeUrl ?? undefined,
-        dmgUrl: r.dmgUrl ?? undefined,
-        appImageUrl: r.appImageUrl ?? undefined,
-      } as unknown as ReleaseRow)
+        windowsNsisUrl: r.exeUrl ?? undefined,
+        windowsMsiUrl: r.msiUrl ?? undefined,
+      }
     : null
 
   const latestByVariant: Record<VariantId, ReleaseRow | null> = {
