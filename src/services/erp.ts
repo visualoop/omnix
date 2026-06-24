@@ -144,7 +144,7 @@ export interface PurchaseOrder {
   user_id: string;
   order_date: string;
   expected_date: string | null;
-  status: "draft" | "sent" | "partial" | "received" | "cancelled";
+  status: "draft" | "pending_approval" | "approved" | "sent" | "partial" | "received" | "cancelled";
   subtotal: number;
   tax_amount: number;
   total: number;
