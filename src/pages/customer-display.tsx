@@ -39,6 +39,8 @@ export function CustomerDisplayPage() {
   const [privacyMode, setPrivacyMode] = useState(cfg.privacyMode);
   const [now, setNow] = useState(new Date());
   const [paidTotal, setPaidTotal] = useState<number | null>(null);
+  const [playlist, setPlaylist] = useState<Array<{ type: "image" | "video" | "iframe"; url: string; durationSeconds: number }>>([]);
+  const [slideIdx, setSlideIdx] = useState(0);
   const prevCount = useRef(items.length);
   const prevTotal = useRef(grandTotal);
 
@@ -47,6 +49,31 @@ export function CustomerDisplayPage() {
     const t = setInterval(() => setNow(new Date()), 30_000);
     return () => clearInterval(t);
   }, []);
+
+  // Load idle playlist (rotation slides shown when cart is empty)
+  useEffect(() => {
+    query<{ value: string }>(
+      `SELECT value FROM settings WHERE key = 'customer_display.playlist'`,
+    )
+      .then((rows) => {
+        if (rows[0]?.value) {
+          try {
+            setPlaylist(JSON.parse(rows[0].value));
+          } catch {
+            setPlaylist([]);
+          }
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  // Rotate playlist when idle
+  useEffect(() => {
+    if (items.length > 0 || playlist.length === 0) return;
+    const dur = (playlist[slideIdx]?.durationSeconds ?? 15) * 1000;
+    const t = setTimeout(() => setSlideIdx((i) => (i + 1) % playlist.length), dur);
+    return () => clearTimeout(t);
+  }, [slideIdx, items.length, playlist]);
 
   // Per-module privacy: setting key is `customer_display.privacy.<moduleId>`
   // (e.g. `customer_display.privacy.dawa`). If the per-module key isn't set,
@@ -103,6 +130,34 @@ export function CustomerDisplayPage() {
 
   // ── Idle ─────────────────────────────────────────────────────────
   if (items.length === 0) {
+    // If a playlist is configured, take over the idle screen with the
+    // current slide. Falls through to the default logo screen otherwise.
+    const slide = playlist[slideIdx];
+    if (slide) {
+      return (
+        <div className="relative min-h-screen bg-stone-950 text-stone-200 overflow-hidden">
+          {slide.type === "image" ? (
+            <img src={slide.url} alt="" className="absolute inset-0 h-full w-full object-cover" />
+          ) : slide.type === "video" || slide.type === "iframe" ? (
+            <iframe
+              src={slide.url}
+              title={`Slide ${slideIdx + 1}`}
+              className="absolute inset-0 h-full w-full"
+              allow="autoplay; encrypted-media; picture-in-picture"
+              allowFullScreen
+            />
+          ) : null}
+          <div className="absolute bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-stone-950/90 to-transparent flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <ModuleLogo moduleId={moduleId} size={40} />
+              <span className="text-base font-medium text-white">{businessName}</span>
+            </div>
+            <span className="font-mono text-sm text-stone-400 tabular-nums">{clock}</span>
+          </div>
+        </div>
+      );
+    }
+
     return (
       <div className="relative min-h-screen bg-stone-950 text-stone-200 flex flex-col items-center justify-center p-12 overflow-hidden">
         {/* Ambient module-tinted glow */}
