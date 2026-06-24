@@ -30,11 +30,13 @@ export interface LatestRelease {
  * when no screenshot is set we fall back to the hand-built PosPreview.
  */
 export function HeroSection({
-  content, latestRelease, locale,
+  content, latestRelease, locale, priceCaption: priceCaptionOverride,
 }: {
   content?: HeroContent
   latestRelease?: LatestRelease
   locale?: string
+  /** Caption shown under the CTA. e.g. "KES 50,000 once" or "$620 once". */
+  priceCaption?: string
 }) {
   const isKenya = (locale ?? 'ke').toLowerCase() === 'ke'
   const cmsEyebrow = content?.eyebrow?.trim() || (isKenya ? 'Banking & Recurring Invoices shipped' : 'Built offline-first. Pay once. Own forever.')
@@ -51,9 +53,9 @@ export function HeroSection({
   const ctaHref = content?.primaryCtaHref?.trim() || '/signup'
   const screenshot = content?.screenshot ?? null
 
-  // Caption price — show local currency reference. KES 50,000 on /ke,
-  // $620 on the rest of the world (matches /us/pricing one-time fee).
-  const priceCaption = isKenya ? 'KES 50,000 once' : '$620 once'
+  // Caption price — show local currency reference. Falls back to a per-
+  // locale generic if no explicit caption was passed.
+  const priceCaption = priceCaptionOverride ?? (isKenya ? 'KES 50,000 once' : '$620 once')
 
   return (
     <section className="relative overflow-hidden pt-20 pb-16 sm:pt-24 lg:pt-28 lg:pb-20">

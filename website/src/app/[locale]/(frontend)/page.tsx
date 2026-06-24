@@ -32,7 +32,7 @@ import { AiSection } from '@/components/landing/ai-section'
  * 11. Closing CTA         — full-bleed dark band, italic 64px, one CTA + WhatsApp
  */
 import { cookies } from 'next/headers'
-import { CURRENCIES, tierPrice, type PricingTierShape, type SupportedCurrency } from '@/lib/currency'
+import { CURRENCIES, formatPrice, tierPrice, type PricingTierShape, type SupportedCurrency } from '@/lib/currency'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 60
@@ -87,7 +87,12 @@ export default async function HomePage({
 
   return (
     <>
-      <HeroSection content={heroContent} latestRelease={latestRelease} locale={locale} />
+      <HeroSection
+        content={heroContent}
+        latestRelease={latestRelease}
+        locale={locale}
+        priceCaption={`${formatPrice(onePriceAmount, currency)} once`}
+      />
       <FounderNoteSection />
       <AiSection />
       <ModulesRowsSection />
