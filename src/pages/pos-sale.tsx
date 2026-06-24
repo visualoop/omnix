@@ -855,6 +855,12 @@ function ProductCard({ product, onClick }: {
           without overpowering the typographic hierarchy. */}
       <span aria-hidden className={`absolute inset-0 ${cc.bg} opacity-[0.35] pointer-events-none`} />
 
+      {/* Soft gloss — single hairline gradient at the top, gives the card
+          an "off-the-shelf" feel without resorting to drop-shadows. Stays
+          consistent in dark mode by leaning on foreground/background
+          tokens rather than literal white. */}
+      <span aria-hidden className="absolute inset-x-0 top-0 h-[18%] bg-gradient-to-b from-foreground/[0.04] to-transparent pointer-events-none" />
+
       {/* Watermark icon — Package glyph behind the name, low opacity. The
           glyph is large (60% of card height) so it reads as a background
           texture, not as content. */}
