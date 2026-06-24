@@ -219,6 +219,72 @@ export default function ETIMSPage() {
         </div>
       </section>
 
+      {/* Once it's signed — what comes out the other end */}
+      <section className="section">
+        <div className="container-wide">
+          <div className="mb-12 max-w-[44rem]">
+            <span className="eyebrow">Once it&rsquo;s signed</span>
+            <h2 className="headline-section mt-5 text-balance">
+              Here&rsquo;s what comes out.
+            </h2>
+            <p className="mt-4 text-[15px] leading-[1.65] text-[var(--color-fg-muted)] max-w-[58ch]">
+              The eTIMS sign-off is just step one. Omnix turns those signed receipts into
+              the documents you actually file with KRA &mdash; populated, branded, ready to
+              copy across.
+            </p>
+          </div>
+
+          <ul className="grid grid-cols-1 gap-x-10 gap-y-10 md:grid-cols-3">
+            {[
+              {
+                eyebrow: 'KRA · Monthly',
+                title: 'VAT3 Return',
+                body: 'Output VAT minus input VAT, period totals, payable line. Branded with your KRA PIN.',
+                href: '/samples/vat3-sample.pdf',
+              },
+              {
+                eyebrow: 'Daily',
+                title: 'Day book',
+                body: 'Every product sold, every payment method, refunds, expenses, net cash.',
+                href: '/#pdf-pack',
+              },
+              {
+                eyebrow: 'Receivables',
+                title: 'Aged AR + claims',
+                body: 'Customers who owe you, by bucket. Insurance claim batches grouped by provider.',
+                href: '/#pdf-pack',
+              },
+            ].map((p) => (
+              <li
+                key={p.title}
+                className="flex flex-col gap-3 border-t border-[var(--color-border)] pt-5"
+              >
+                <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-[var(--color-fg-subtle)]">
+                  {p.eyebrow}
+                </span>
+                <h3
+                  style={{ fontFamily: 'var(--font-display, serif)' }}
+                  className="text-[22px] font-medium leading-[1.1] tracking-[-0.01em]"
+                >
+                  {p.title}
+                </h3>
+                <p className="text-[14px] leading-[1.55] text-[var(--color-fg-muted)]">
+                  {p.body}
+                </p>
+                <a
+                  href={p.href}
+                  target={p.href.startsWith('/samples/') ? '_blank' : undefined}
+                  rel={p.href.startsWith('/samples/') ? 'noopener noreferrer' : undefined}
+                  className="font-mono text-[11px] uppercase tracking-[0.18em] underline-offset-4 hover:underline"
+                >
+                  {p.href.startsWith('/samples/') ? 'Download sample →' : 'See all →'}
+                </a>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </section>
+
       {/* FAQ */}
       <section className="section">
         <div className="container-wide">

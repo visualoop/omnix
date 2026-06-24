@@ -167,6 +167,67 @@ If you run a vertical we haven't built yet — agro-vet, fuel station, butchery,
 
 If you're moving from a competitor's software that hasn't updated for SHA, you have a problem in the order of weeks not months — claims will start failing.`,
   },
+  {
+    slug: 'v0-10-what-it-means',
+    title: 'What v0.10 means for Kenyan SMEs',
+    excerpt:
+      'Sixteen branded PDFs. Mixed-currency POs. A purchase-order workflow that finally matches how Kenyan finance offices actually work. Here\'s what changed and why.',
+    category: 'announcement',
+    author: 'Justin, founder',
+    publishedAt: '2026-06-24',
+    readTime: 7,
+    featured: true,
+    body: `Today's release is the biggest single jump Omnix has shipped. Not in feature count — in the proportion of work it lifts off the people who run the business at the end of every month.
+
+The summary: every Kenyan tax filing now prints to a branded PDF in one click, the purchase-order flow has been rebuilt to handle mixed currency and three-way match, customer profile pages got their own dedicated views, and onboarding shrank from "talk to support" to a 7-step wizard you finish before your tea cools.
+
+## Why we did this
+
+Three months of customer interviews kept landing on the same complaint: "the software is good but my accountant still spends a Saturday formatting Excel into something KRA accepts." We weren't doing the last mile.
+
+The KRA filings are the most obvious example. Every Kenyan business that registers for VAT, PAYE, and SHIF is on the hook for at least three monthly returns and one annual one. Most software up to v0.10 stopped at "here's a CSV, you figure it out from here." The accountant then opened it in Excel, formatted columns to match the iTax form, fixed two cells that wouldn't sum, exported to PDF, emailed it to themselves, and copied figures into iTax line by line.
+
+That's eight to twelve hours of cognitive overhead per month per business. We watched it happen, recorded the time, and rebuilt the layer that sits between "here's a number" and "ready to file."
+
+## What changed in v0.10
+
+**Compliance pack** — VAT3, P9 yearly tax certificate, P10 monthly PAYE batch, controlled-substances register, and the full operations cluster (day book, Z-report, aged AR/AP) all generate to branded PDFs now. Same masthead. Same currency formatting. Same layout language. You learn one, you know all sixteen.
+
+The format is intentional. We don't try to file directly with KRA — iTax doesn't expose that API to third parties anyway, and we don't trust soft assurances that it will. We populate the form, format it the way the iTax web UI expects to see it, and let you copy across in five minutes instead of fifty.
+
+**Purchase orders** — finally a complete state machine. A PO can be in draft, pending approval, approved, sent, partial receipt, fully received, paid, or cancelled. The approval threshold is configurable (default KES 100,000); above it the PO must transit through approval before being sent. Three-way match runs at payment time — PO total, GRN total, supplier invoice total all need to align within tolerance. If they don't, you reverse the GRN, fix the discrepancy, and try again.
+
+Mixed currency was the other big change. Kenyan businesses that buy from China or Europe have been doing manual currency conversion in spreadsheets for years. Now you set the PO currency at creation, the exchange rate snapshots at goods-receipt time, and the books record cost-of-goods in your base currency at the rate you actually paid. The PO itself stays in foreign currency for the audit trail.
+
+**Customer display** — the second-monitor display now supports an idle playlist. While the till is empty, rotate through promo images, YouTube embeds, or arbitrary iframe URLs. Configure from Settings → Customer Display.
+
+**Detail pages** — every record (product, customer, supplier, sale, employee, branch) now has its own page with tabs for related history. Where before clicking a product opened a slide-out, now you get a dedicated page with overview, stock, sales, suppliers, and activity tabs. Easier to share, easier to bookmark, easier to find your way back to a year-old transaction.
+
+**CSV import** — auto-mapping for English and Swahili headers. Drop in a CSV with "Bei ya Kuuza" instead of "selling_price"; Omnix figures it out. We tested against 21 different naming conventions; the test suite locks them in so no future change can regress them.
+
+## The bug we fixed
+
+We also caught a real one: P&L gross-profit was equal to revenue when sale items had no batch_id. The COGS fallback chain wasn't firing. This affected any retail or hardware sale where stock was received without an explicit batch (most of them). If you've been wondering why your P&L looked too good — that's why. v0.10 fixes it; we'd recommend regenerating last month's P&L now to see the corrected figures.
+
+## What it costs
+
+Nothing extra. v0.10 lands as part of the standard licence, free to anyone on active maintenance.
+
+## How to upgrade
+
+Open Omnix → Settings → Updates → Check now. The update downloads and installs on next restart. Your data is unchanged.
+
+## What's coming
+
+We've started on the next batch:
+- Mobile companion app for owners (read-only access to sales + alerts)
+- AI receipt-to-supplier-invoice matching
+- Per-employee leave + attendance reporting
+
+If you have a feature you've been waiting for, the fastest way is to email **founder@omnix.co.ke** — every customer email goes to my inbox.
+
+— Justin`,
+  },
 ] as const
 
 export function postBySlug(slug: string): BlogPostSeed | null {

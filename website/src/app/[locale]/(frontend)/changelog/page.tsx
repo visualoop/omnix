@@ -45,6 +45,24 @@ const VARIANT_LABEL: Record<VariantId, string> = {
   hardware: 'Hardware',
 }
 
+/**
+ * Per-version highlight chips. Hand-curated for releases that warrant a
+ * bullet recap above and beyond the GitHub-release summary line.
+ * Empty by default — the standard summary is enough for most patches.
+ */
+const VERSION_HIGHLIGHTS: Record<string, string[]> = {
+  '0.10.0': [
+    '16 branded PDFs',
+    'PO lifecycle hardening',
+    'Customer display playlist',
+    '14 entity detail pages',
+    '7-step onboarding wizard',
+    'CSV auto-map (English + Swahili)',
+    'Unified PDF engine',
+    'P&L COGS bug fix',
+  ],
+}
+
 function formatBytes(n?: number): string {
   if (!n || n <= 0) return ''
   return `${(n / (1024 * 1024)).toFixed(1)} MB`
@@ -185,6 +203,22 @@ function ReleaseCard({ group }: { group: VersionGroup }) {
           <p className="mt-3 text-[15px] leading-[1.65] text-[var(--color-fg-muted)] max-w-[60ch] break-words">
             {cleanSummary(headline.summary)}
           </p>
+        ) : null}
+
+        {/* Hand-curated highlight chips for marquee releases. The fallback
+            is empty (most releases don't need bullet copy beyond the
+            summary above). Add new versions here as they ship. */}
+        {VERSION_HIGHLIGHTS[version] ? (
+          <ul className="mt-5 flex flex-wrap gap-1.5">
+            {VERSION_HIGHLIGHTS[version].map((h) => (
+              <li
+                key={h}
+                className="inline-flex items-center rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-2.5 py-1 font-mono text-[10px] uppercase tracking-[0.16em] text-[var(--color-fg-muted)]"
+              >
+                {h}
+              </li>
+            ))}
+          </ul>
         ) : null}
 
         {/* Download grid — one button per variant that has an installer */}

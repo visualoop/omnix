@@ -156,6 +156,59 @@ export default async function DownloadsPage() {
         description="Five Omnix variants — one purpose-built for each Kenyan SME trade, plus Pro for multi-trade businesses. Windows 10 / 11, 64-bit, ~30s install."
       />
 
+      {/* What's new in v0.10 */}
+      <section className="section pb-0">
+        <div className="container-wide">
+          <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-6 lg:p-8">
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+              <div className="max-w-[44rem]">
+                <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-[var(--color-accent)]">
+                  What&rsquo;s new in v0.10
+                </span>
+                <h2
+                  style={{ fontFamily: 'var(--font-display, serif)' }}
+                  className="mt-2 text-[clamp(22px,2vw,28px)] font-medium leading-[1.15] tracking-[-0.01em]"
+                >
+                  Sixteen branded PDFs, mixed-currency POs, customer display playlist, every record gets its own page.
+                </h2>
+              </div>
+              <Link
+                href="/changelog"
+                className="font-mono text-[11px] uppercase tracking-[0.18em] underline-offset-4 hover:underline whitespace-nowrap"
+              >
+                Full changelog →
+              </Link>
+            </div>
+            <ul className="mt-6 grid grid-cols-1 gap-3 text-[13.5px] leading-[1.55] text-[var(--color-fg-muted)] sm:grid-cols-3">
+              {[
+                {
+                  title: '16 branded PDFs',
+                  body: 'VAT3, P9, P10, GRN, hardware quote, Z-report, aged AR/AP and more.',
+                  href: '/#pdf-pack',
+                },
+                {
+                  title: 'PO lifecycle',
+                  body: 'Mixed currency, approval thresholds, three-way match, reverse-GRN.',
+                  href: '/docs/purchase-orders',
+                },
+                {
+                  title: '14 entity detail pages',
+                  body: 'Product, customer, supplier, sale, employee, branch — each on its own page with tabs + activity.',
+                  href: '/changelog',
+                },
+              ].map((b) => (
+                <li key={b.title} className="flex flex-col gap-1">
+                  <Link href={b.href} className="font-medium text-[var(--color-fg)] hover:text-[var(--color-accent)] transition-colors">
+                    {b.title}
+                  </Link>
+                  <span>{b.body}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+      </section>
+
       <section className="section">
         <div className="container-wide">
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">

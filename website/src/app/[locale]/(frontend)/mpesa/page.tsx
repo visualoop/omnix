@@ -146,6 +146,31 @@ export default function MPESAPage() {
         </div>
       </section>
 
+      {/* Z-report — shift close */}
+      <section className="section">
+        <div className="container-wide">
+          <div className="mb-12 max-w-[44rem]">
+            <span className="eyebrow">Shift close</span>
+            <h2 className="headline-section mt-5 text-balance">
+              The cashier&rsquo;s last screen, <em>printed.</em>
+            </h2>
+            <p className="mt-4 text-[15px] leading-[1.65] text-[var(--color-fg-muted)] max-w-[58ch]">
+              At the end of every shift Omnix prints a single PDF that breaks down cash,
+              M-Pesa, card and insurance receipts &mdash; with the cash variance flagged
+              when the till count doesn&rsquo;t match the system.
+            </p>
+          </div>
+          <a
+            href="/samples/z-report-sample.pdf"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-2 font-mono text-[11px] uppercase tracking-[0.18em] underline-offset-4 hover:underline"
+          >
+            Download a sample Z-report PDF →
+          </a>
+        </div>
+      </section>
+
       <section className="section">
         <div className="container-wide">
           <div className="grid grid-cols-1 gap-12 lg:grid-cols-12 lg:gap-16">

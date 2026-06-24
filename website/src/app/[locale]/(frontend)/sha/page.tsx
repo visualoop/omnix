@@ -130,6 +130,62 @@ export default function SHAPage() {
         </div>
       </section>
 
+      {/* What you can show the insurer */}
+      <section className="section">
+        <div className="container-wide">
+          <div className="mb-12 max-w-[44rem]">
+            <span className="eyebrow">What you submit</span>
+            <h2 className="headline-section mt-5 text-balance">
+              Every claim, <em>on letterhead.</em>
+            </h2>
+            <p className="mt-4 text-[15px] leading-[1.65] text-[var(--color-fg-muted)] max-w-[58ch]">
+              Each batch prints to a single PDF in your facility&rsquo;s name. Insurer
+              reads one document instead of stapled receipts.
+            </p>
+          </div>
+          <div className="grid grid-cols-1 gap-x-10 gap-y-10 md:grid-cols-2">
+            <a
+              href="/samples/grn-sample.pdf"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex flex-col gap-3 border-t border-[var(--color-border)] pt-5 hover:opacity-80"
+            >
+              <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-[var(--color-fg-subtle)]">
+                Sample · Insurance batch
+              </span>
+              <h3
+                style={{ fontFamily: 'var(--font-display, serif)' }}
+                className="text-[22px] font-medium leading-[1.1] tracking-[-0.01em]"
+              >
+                Claims batch PDF
+              </h3>
+              <p className="text-[14px] leading-[1.55] text-[var(--color-fg-muted)]">
+                Member name, claim number, diagnosis, copay, claim amount, paid-to-date
+                &mdash; one row per claim, totals at the bottom.
+              </p>
+              <span className="font-mono text-[11px] uppercase tracking-[0.18em] underline-offset-4 hover:underline">
+                Download sample →
+              </span>
+            </a>
+            <div className="flex flex-col gap-3 border-t border-[var(--color-border)] pt-5">
+              <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-[var(--color-fg-subtle)]">
+                Audit + reconciliation
+              </span>
+              <h3
+                style={{ fontFamily: 'var(--font-display, serif)' }}
+                className="text-[22px] font-medium leading-[1.1] tracking-[-0.01em]"
+              >
+                Approval + payment trail
+              </h3>
+              <p className="text-[14px] leading-[1.55] text-[var(--color-fg-muted)]">
+                Submitted → approved → partially paid → paid. Every state stamped with the
+                actor + timestamp so when SHA disputes a figure you have the receipts.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
       <section className="section">
         <div className="container-wide">
           <div className="grid grid-cols-1 gap-12 lg:grid-cols-12 lg:gap-16">

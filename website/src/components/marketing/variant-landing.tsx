@@ -435,6 +435,71 @@ export async function VariantLanding({ variant }: { variant: VariantId }) {
         </div>
       </section>
 
+      {/* v0.10 highlights — same shape across every variant landing.
+          Anchors the cold visitor on what shipped recently without
+          competing with the variant-specific feature copy above. */}
+      <section className="section">
+        <div className="container-wide">
+          <div className="mb-12 max-w-[44rem]">
+            <span className="eyebrow">New in v0.10</span>
+            <h2 className="headline-section mt-5 text-balance">
+              The latest, <em>by way of compliance.</em>
+            </h2>
+            <p className="mt-4 text-[15px] leading-[1.65] text-[var(--color-fg-muted)] max-w-[58ch]">
+              The fee buys every Kenyan-tax filing as a branded PDF, the procurement
+              workflow Kenyan finance offices actually need, and a customer display that
+              looks the part on your second monitor.
+            </p>
+          </div>
+          <ul className="grid grid-cols-1 gap-x-10 gap-y-10 md:grid-cols-3">
+            {[
+              {
+                eyebrow: 'Compliance',
+                title: '16 branded PDFs',
+                body: 'VAT3, P9, P10, GRN, hardware quote, Z-report, aged AR/AP and more.',
+                href: '/#pdf-pack',
+              },
+              {
+                eyebrow: 'Procurement',
+                title: 'PO lifecycle hardening',
+                body: 'Mixed currency, approval thresholds, three-way match, reverse-GRN.',
+                href: '/docs/purchase-orders',
+              },
+              {
+                eyebrow: 'Front-of-house',
+                title: 'Customer display playlist',
+                body: 'Image, YouTube, or iframe slides on the second monitor while idle.',
+                href: '/docs/customer-display',
+              },
+            ].map((h) => (
+              <li
+                key={h.title}
+                className="flex flex-col gap-3 border-t border-[var(--color-border)] pt-5"
+              >
+                <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-[var(--color-fg-subtle)]">
+                  {h.eyebrow}
+                </span>
+                <h3
+                  style={{ fontFamily: 'var(--font-display, serif)' }}
+                  className="text-[22px] font-medium leading-[1.1] tracking-[-0.01em]"
+                >
+                  {h.title}
+                </h3>
+                <p className="text-[14px] leading-[1.55] text-[var(--color-fg-muted)]">
+                  {h.body}
+                </p>
+                <Link
+                  href={h.href}
+                  className="font-mono text-[11px] uppercase tracking-[0.18em] underline-offset-4 hover:underline"
+                >
+                  Read more →
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </section>
+
       <ClosingCtaSection whatsappUrl={settings.whatsappUrl} />
     </>
   )
