@@ -78,6 +78,7 @@ export default async function DashboardOverviewPage({
 
   const firstName = session.user.name?.split(' ')[0] ?? 'there'
   const hasNoLicences = licList.length === 0
+  const hasTrial = licList.some((l) => l.status === 'trial')
 
   return (
     <div className="space-y-8">
@@ -90,6 +91,31 @@ export default async function DashboardOverviewPage({
         }
       />
 
+      {/* Trial → buy banner. Shows when at least one licence is on trial.
+          Each visible licence below also gets its own Upgrade button — this
+          banner is the "see this everywhere" gentle prompt. */}
+      {!hasNoLicences && hasTrial ? (
+        <div className="rounded-xl border border-[var(--color-accent)] bg-[var(--color-accent-soft)] p-4 lg:p-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex flex-col gap-0.5">
+            <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-[var(--color-accent)]">
+              Trial active
+            </span>
+            <span className="font-display text-[16px] font-medium text-[var(--color-fg)]">
+              Lock in your licence — pay once, use forever.
+            </span>
+            <span className="text-[13px] text-[var(--color-fg-muted)]">
+              KES 50,000 one-time per trade. Pro covers all four trades for KES 150,000.
+            </span>
+          </div>
+          <a
+            href={`/buy?variant=${encodeURIComponent(licList.find((l) => l.status === 'trial')?.variant ?? 'pro')}`}
+            className="shrink-0 inline-flex items-center justify-center rounded-md bg-[var(--color-accent)] px-4 py-2 font-mono text-[12px] uppercase tracking-[0.16em] text-white transition-colors hover:bg-[var(--color-accent)]/90 cursor-pointer"
+          >
+            Purchase licence →
+          </a>
+        </div>
+      ) : null}
+
       {hasNoLicences ? (
         <StartTrialWizard defaultVariant={defaultVariant} />
       ) : (
@@ -101,9 +127,24 @@ export default async function DashboardOverviewPage({
             <ul className="rounded-lg border border-[var(--color-border)] divide-y divide-[var(--color-border)]">
               {licList.map((l) => (
                 <li key={l.id} className="flex items-center justify-between gap-3 px-4 py-3 text-[13px]">
-                  <code className="font-mono text-[12px] text-[var(--color-fg)] select-all">{l.licenseKey}</code>
-                  <span className="text-[var(--color-fg-muted)]">{l.variant} · {l.tier}</span>
-                  <span className="font-mono text-[10px] uppercase tracking-[0.18em]">{l.status}</span>
+                  <code className="font-mono text-[12px] text-[var(--color-fg)] select-all flex-1 min-w-0 truncate">{l.licenseKey}</code>
+                  <span className="text-[var(--color-fg-muted)] shrink-0">{l.variant} · {l.tier}</span>
+                  <span className="font-mono text-[10px] uppercase tracking-[0.18em] shrink-0">{l.status}</span>
+                  {l.status === 'trial' ? (
+                    <a
+                      href={`/buy?variant=${encodeURIComponent(l.variant ?? 'pro')}`}
+                      className="shrink-0 inline-flex items-center rounded-md border border-[var(--color-accent)] bg-[var(--color-accent)] px-2.5 py-1 font-mono text-[10px] uppercase tracking-[0.18em] text-white hover:bg-[var(--color-accent)]/90 transition-colors cursor-pointer"
+                    >
+                      Upgrade
+                    </a>
+                  ) : (
+                    <a
+                      href={`/dashboard/licenses/${l.id}`}
+                      className="shrink-0 inline-flex items-center rounded-md border border-[var(--color-border)] px-2.5 py-1 font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--color-fg-muted)] hover:text-[var(--color-fg)] hover:border-[var(--color-border-strong)] transition-colors cursor-pointer"
+                    >
+                      Open
+                    </a>
+                  )}
                 </li>
               ))}
             </ul>
@@ -135,9 +176,26 @@ export default async function DashboardOverviewPage({
               <ul className="rounded-lg border border-[var(--color-border)] divide-y divide-[var(--color-border)]">
                 {machList.map((m) => (
                   <li key={m.id} className="flex items-center justify-between gap-3 px-4 py-3 text-[13px]">
-                    <span className="text-[var(--color-fg)] font-medium">{m.hostname ?? '—'}</span>
-                    <span className="text-[var(--color-fg-muted)]">{m.os} · v{m.currentVersion ?? '?'}</span>
-                    <span className="font-mono text-[10px] uppercase tracking-[0.18em]">{m.status}</span>
+                    <span className="text-[var(--color-fg)] font-medium flex-1 min-w-0 truncate">{m.hostname ?? '—'}</span>
+                    <span className="text-[var(--color-fg-muted)] shrink-0">{m.os} · v{m.currentVersion ?? '?'}</span>
+                    <span className="font-mono text-[10px] uppercase tracking-[0.18em] shrink-0">{m.status}</span>
+                    {/* Show an Upgrade CTA when this machine's bound licence
+                        is still on trial. We pre-select the variant so the
+                        user can't accidentally pay for the wrong module. */}
+                    {hasTrial ? (
+                      <a
+                        href={`/buy?variant=${encodeURIComponent(licList.find((l) => l.status === 'trial')?.variant ?? 'pro')}`}
+                        className="shrink-0 inline-flex items-center rounded-md border border-[var(--color-accent)] bg-[var(--color-accent)] px-2.5 py-1 font-mono text-[10px] uppercase tracking-[0.18em] text-white hover:bg-[var(--color-accent)]/90 transition-colors cursor-pointer"
+                      >
+                        Upgrade
+                      </a>
+                    ) : null}
+                    <a
+                      href={`/dashboard/machines/${m.id}`}
+                      className="shrink-0 inline-flex items-center rounded-md border border-[var(--color-border)] px-2.5 py-1 font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--color-fg-muted)] hover:text-[var(--color-fg)] hover:border-[var(--color-border-strong)] transition-colors cursor-pointer"
+                    >
+                      Open
+                    </a>
                   </li>
                 ))}
               </ul>

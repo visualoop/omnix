@@ -1,4 +1,5 @@
 import { Robot, User as UserIcon } from '@phosphor-icons/react/dist/ssr'
+import Link from 'next/link'
 
 interface AuditLike {
   id: string
@@ -19,7 +20,10 @@ export function AuditEntry({ a }: { a: AuditLike }) {
   const isSystem = a.actorId === null || a.actorId === '' || a.actorId === 'bootstrap'
   const tone = actionTone(a.action)
   return (
-    <div className="grid grid-cols-[20px_1fr_auto] items-baseline gap-3 px-4 py-2.5 hover:bg-[var(--color-surface-2)] transition-colors text-[12px]">
+    <Link
+      href={`/admin/audit/${a.id}`}
+      className="grid grid-cols-[20px_1fr_auto] items-baseline gap-3 px-4 py-2.5 hover:bg-[var(--color-surface-2)] transition-colors text-[12px] cursor-pointer"
+    >
       {isSystem ? (
         <Robot weight="regular" className="size-3.5 text-[var(--color-fg-subtle)]" />
       ) : (
@@ -41,7 +45,7 @@ export function AuditEntry({ a }: { a: AuditLike }) {
       <time className="font-mono text-[11px] text-[var(--color-fg-subtle)] tabular-nums whitespace-nowrap">
         {a.createdAt.toISOString().slice(0, 16).replace('T', ' ')}
       </time>
-    </div>
+    </Link>
   )
 }
 

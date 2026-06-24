@@ -1,5 +1,6 @@
 import { CalendarBlank, Tag, User } from '@phosphor-icons/react/dist/ssr'
 import { DeleteLicenseButton } from './delete-license-button'
+import Link from 'next/link'
 
 interface LicenseLike {
   id: string
@@ -34,10 +35,17 @@ export function LicenseCard({ l }: { l: LicenseLike }) {
 
   return (
     <div className="relative grid grid-cols-[6px_1fr] rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] hover:border-[var(--color-border-strong)] transition-colors overflow-hidden">
+      {/* Whole-card click target. The delete button calls stopPropagation
+          so destructive actions don't accidentally trigger navigation. */}
+      <Link
+        href={`/admin/licenses/${l.id}`}
+        aria-label={`Open licence ${l.licenseKey}`}
+        className="absolute inset-0 z-0"
+      />
       {/* Copper accent strip on the left — the single strong note */}
-      <div style={{ background: 'var(--color-accent)' }} className="opacity-90" />
+      <div style={{ background: 'var(--color-accent)' }} className="relative z-[1] opacity-90 pointer-events-none" />
 
-      <div className="px-5 py-4">
+      <div className="relative z-[1] px-5 py-4 pointer-events-none">
         {/* Top row: brand + status seal */}
         <div className="flex items-start justify-between gap-3">
           <div>
@@ -79,7 +87,7 @@ export function LicenseCard({ l }: { l: LicenseLike }) {
             <User weight="regular" className="size-3" />
             <span className="truncate">{l.customerEmail ?? 'unassigned'}</span>
           </span>
-          <div className="flex items-center gap-3 shrink-0">
+          <div className="flex items-center gap-3 shrink-0 pointer-events-auto">
             {daysLeft !== null && (
               <span
                 className="flex items-center gap-1 font-mono"

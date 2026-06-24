@@ -25,6 +25,7 @@ import {
   type LicenseStatus,
 } from "@/services/license";
 import { APP_NAME } from "@/lib/brand";
+import { LICENSE_PREFIX } from "@/lib/variant";
 import { toast } from "sonner";
 import { intlLocale } from "@/lib/intl";
 
@@ -297,14 +298,14 @@ function NoLicenseOrTrialView({
         </div>
         <p className="text-xs text-muted-foreground">
           Paste the license key from your purchase email (looks like{" "}
-          <span className="font-mono text-foreground">OMNIX-XXXX-XXXX-...</span>).
+          <span className="font-mono text-foreground">{LICENSE_PREFIX}-XXXX-XXXX-…</span>).
         </p>
         <div className="flex gap-2">
           <Input
             value={key}
             onChange={(e) => setKey(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && handleActivate()}
-            placeholder="OMNIX-XXXX-XXXX-XXXX-XXXX"
+            placeholder={`${LICENSE_PREFIX}-XXXX-XXXX-XXXX`}
             className="font-mono text-xs"
             disabled={activating}
             autoFocus

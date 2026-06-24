@@ -51,6 +51,16 @@ export default async function MachineDetailPage({ params }: { params: Promise<{ 
           { label: m.networkMode ?? 'standalone', variant: 'outline' },
           ...(m.activeModule ? [{ label: m.activeModule, variant: 'outline' as const }] : []),
         ]}
+        actions={
+          license?.status === 'trial' ? (
+            <a
+              href={`/buy?variant=${encodeURIComponent(license.variant)}`}
+              className="inline-flex items-center justify-center rounded-md bg-[var(--color-accent)] px-4 py-2 font-mono text-[11px] uppercase tracking-[0.18em] text-white hover:bg-[var(--color-accent)]/90 transition-colors cursor-pointer"
+            >
+              Upgrade · {license.variant}
+            </a>
+          ) : null
+        }
         stats={[
           { label: 'App version', value: `v${m.currentVersion ?? '?'}` },
           { label: 'OS', value: `${m.os ?? 'windows'} ${m.osVersion ?? ''}` },

@@ -66,7 +66,11 @@ function isNonLocalizedPath(pathname: string): boolean {
     pathname === '/forgot-password' ||
     pathname.startsWith('/verify-email') ||
     pathname === '/region-unavailable' ||
-    pathname.startsWith('/region-unavailable')
+    pathname.startsWith('/region-unavailable') ||
+    // Onboarding lives at /onboarding (outside [locale]) so the wizard
+    // saves through Better Auth's session cookie regardless of which
+    // locale the user landed on. Without this, /ke/onboarding 404s.
+    pathname === '/onboarding'
   )
 }
 

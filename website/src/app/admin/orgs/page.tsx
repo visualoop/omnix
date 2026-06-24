@@ -1,5 +1,6 @@
 import { desc, eq, sql } from 'drizzle-orm'
 import { Buildings, Desktop, Users as UsersIcon } from '@phosphor-icons/react/dist/ssr'
+import Link from 'next/link'
 import { db, organization, machines, member } from '@/db'
 import { EmptyState } from '@/components/admin/empty-state'
 import { PageHeader } from '@/components/layout/page-header'
@@ -41,7 +42,11 @@ export default async function AdminOrgsPage() {
           {orgs.map((o) => {
             const c = countMap.get(o.id) ?? { machines: 0, members: 0 }
             return (
-              <div key={o.id} className="rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] hover:border-[var(--color-border-strong)] transition-colors p-5">
+              <Link
+                key={o.id}
+                href={`/admin/orgs/${o.id}`}
+                className="block rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] hover:border-[var(--color-border-strong)] transition-colors p-5 cursor-pointer"
+              >
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
                     <div style={{ fontFamily: 'var(--font-display)' }} className="text-[18px] font-medium text-[var(--color-fg)] truncate">
@@ -57,7 +62,7 @@ export default async function AdminOrgsPage() {
                   <Stat icon={<UsersIcon weight="regular" className="size-3.5" />} label="Members" value={c.members} />
                   <Stat icon={<Desktop weight="regular" className="size-3.5" />} label="Machines" value={c.machines} />
                 </div>
-              </div>
+              </Link>
             )
           })}
         </div>

@@ -45,6 +45,23 @@ export default async function LicenseDetailPage({ params }: { params: Promise<{ 
           { label: l.status, variant: l.status === 'active' ? 'default' : l.status === 'lapsed' || l.status === 'revoked' ? 'destructive' : 'secondary' },
           ...(l.cloudBackupEnabled ? [{ label: 'Cloud backup', variant: 'outline' as const }] : []),
         ]}
+        actions={
+          l.status === 'trial' ? (
+            <a
+              href={`/buy?variant=${encodeURIComponent(l.variant)}`}
+              className="inline-flex items-center justify-center rounded-md bg-[var(--color-accent)] px-4 py-2 font-mono text-[11px] uppercase tracking-[0.18em] text-white hover:bg-[var(--color-accent)]/90 transition-colors cursor-pointer"
+            >
+              Upgrade · {l.variant}
+            </a>
+          ) : l.status === 'lapsed' ? (
+            <a
+              href={`/buy?variant=${encodeURIComponent(l.variant)}&intent=renew`}
+              className="inline-flex items-center justify-center rounded-md bg-[var(--color-accent)] px-4 py-2 font-mono text-[11px] uppercase tracking-[0.18em] text-white hover:bg-[var(--color-accent)]/90 transition-colors cursor-pointer"
+            >
+              Renew maintenance
+            </a>
+          ) : null
+        }
         stats={[
           { label: 'Variant', value: l.variant },
           { label: 'Tier', value: l.tier },

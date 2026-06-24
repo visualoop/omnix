@@ -54,6 +54,25 @@ export default async function CheckoutPage({
           Pay via M-Pesa, card, or bank transfer. Secure checkout via Paystack.
         </p>
 
+        {/* Variant lock — makes it impossible for the user to mistakenly
+            pay for the wrong module. The variant is fixed by the licence
+            row; if they want a different module they go back to /pricing
+            and pick again (which issues / finds the right licence). */}
+        <div className="mt-6 inline-flex items-center gap-3 rounded-md border border-[var(--color-accent)] bg-[var(--color-accent-soft)] px-4 py-2.5">
+          <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-[var(--color-accent)]">
+            Upgrading
+          </span>
+          <span className="font-display text-[16px] font-medium text-[var(--color-fg)]">
+            {variantDisplayName(license.variant)}
+          </span>
+          <Link
+            href="/pricing"
+            className="font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--color-fg-muted)] underline-offset-4 hover:underline hover:text-[var(--color-fg)]"
+          >
+            Change module
+          </Link>
+        </div>
+
         <div className="mt-10 grid grid-cols-1 gap-6 lg:grid-cols-[1fr_1fr] lg:gap-10">
           <aside className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-6 lg:p-8">
             <h2 className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--color-fg-subtle)]">
@@ -117,6 +136,21 @@ function purposeLabel(purpose: string): string {
     extra_machine: 'Add an extra machine seat',
   }
   return map[purpose] ?? 'Pay'
+}
+
+/**
+ * Variant → display name for the checkout. The bare DB value ("dawa")
+ * isn't friendly enough at this point in the funnel.
+ */
+function variantDisplayName(variant: string): string {
+  const map: Record<string, string> = {
+    pro: 'Omnix Pro · all four trades',
+    dawa: 'Omnix Dawa · pharmacy',
+    retail: 'Omnix Retail · shops + mini-marts',
+    hospitality: 'Omnix Hospitality · restaurants + lodges',
+    hardware: 'Omnix Hardware · stores + contractors',
+  }
+  return map[variant] ?? `Omnix ${variant.charAt(0).toUpperCase()}${variant.slice(1)}`
 }
 
 function computeLines({ purpose, tier, p }: {

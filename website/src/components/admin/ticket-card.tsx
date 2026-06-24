@@ -1,4 +1,5 @@
 import { ChatCircleDots, FireSimple, Warning, Question } from '@phosphor-icons/react/dist/ssr'
+import Link from 'next/link'
 
 interface TicketLike {
   id: string
@@ -26,7 +27,10 @@ export function TicketCard({ t }: { t: TicketLike }) {
   const prio = PRIORITY_TONE[t.priority ?? 'low'] ?? PRIORITY_TONE.low
   const Icon = prio.Icon
   return (
-    <div className="rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] hover:border-[var(--color-border-strong)] transition-colors p-4">
+    <Link
+      href={`/admin/tickets/${t.id}`}
+      className="block rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] hover:border-[var(--color-border-strong)] transition-colors p-4 cursor-pointer"
+    >
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
           <div
@@ -52,7 +56,7 @@ export function TicketCard({ t }: { t: TicketLike }) {
         <span className="truncate">{t.customerEmail ?? '—'}</span>
         <time>{relative(t.updatedAt)}</time>
       </div>
-    </div>
+    </Link>
   )
 }
 

@@ -22,7 +22,7 @@ import {
 } from "@/services/license";
 import { OmnixLogo } from "@/components/omnix-logo";
 import { APP_NAME, BRAND } from "@/lib/brand";
-import { IS_PRO, LOCKED_MODULE } from "@/lib/variant";
+import { IS_PRO, LOCKED_MODULE, LICENSE_PREFIX } from "@/lib/variant";
 
 // One-time price for this build's variant. Pro = 150k, trade variants = 50k.
 const VARIANT_PRICE = IS_PRO ? "KES 150,000" : "KES 50,000";
@@ -314,7 +314,7 @@ export function LicenseActivationPage({ onActivated }: Props) {
                 value={key}
                 onChange={(e) => { setKey(e.target.value); setError(null); }}
                 onPaste={handlePaste}
-                placeholder="OMNIX-PRO-XXXX-XXXX-XXXX"
+                placeholder={`${LICENSE_PREFIX}-XXXX-XXXX-XXXX`}
                 className="w-full min-h-[110px] rounded-xl glass-thin p-3 text-[11.5px] font-mono leading-relaxed resize-y focus:outline-none focus:ring-2 focus:ring-primary/40 transition"
                 spellCheck={false}
               />

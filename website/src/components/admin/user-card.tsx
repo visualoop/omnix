@@ -1,6 +1,7 @@
 import {
   ShieldStar, Prohibit, MapPin, At, Phone, Buildings,
 } from '@phosphor-icons/react/dist/ssr'
+import Link from 'next/link'
 
 interface UserLike {
   id: string
@@ -39,8 +40,9 @@ export function UserCard({ u }: { u: UserLike }) {
   const banned = u.banned === true
 
   return (
-    <div
-      className="relative rounded-md border bg-[var(--color-surface)] hover:border-[var(--color-border-strong)] transition-colors p-4"
+    <Link
+      href={`/admin/users/${u.id}`}
+      className="relative block rounded-md border bg-[var(--color-surface)] hover:border-[var(--color-border-strong)] transition-colors p-4 cursor-pointer"
       style={{
         borderColor: banned ? 'rgba(176,67,47,0.32)' : 'var(--color-border)',
         background: banned
@@ -129,6 +131,6 @@ export function UserCard({ u }: { u: UserLike }) {
           {u.banReason}
         </div>
       )}
-    </div>
+    </Link>
   )
 }

@@ -1,4 +1,5 @@
 import { CheckCircle, XCircle, ClockCounterClockwise, ArrowsClockwise } from '@phosphor-icons/react/dist/ssr'
+import Link from 'next/link'
 
 interface PaymentLike {
   id: string
@@ -29,8 +30,9 @@ export function PaymentCard({ p }: { p: PaymentLike }) {
   const info = STATUS_INFO[p.status ?? 'unknown'] ?? STATUS_INFO.unknown
   const Icon = info.Icon
   return (
-    <div
-      className="relative rounded-md border bg-[var(--color-surface)] hover:border-[var(--color-border-strong)] transition-colors px-5 py-4"
+    <Link
+      href={`/admin/payments/${p.id}`}
+      className="relative block rounded-md border bg-[var(--color-surface)] hover:border-[var(--color-border-strong)] transition-colors px-5 py-4 cursor-pointer"
       style={{ borderColor: 'var(--color-border)' }}
     >
       <div className="flex items-start justify-between gap-3">
@@ -61,6 +63,6 @@ export function PaymentCard({ p }: { p: PaymentLike }) {
           {p.customerEmail}
         </div>
       )}
-    </div>
+    </Link>
   )
 }

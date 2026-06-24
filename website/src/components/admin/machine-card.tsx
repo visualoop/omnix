@@ -1,5 +1,6 @@
 import { Desktop, MapPin, ShieldCheck, ShieldWarning, Network } from '@phosphor-icons/react/dist/ssr'
 import { StatusDot } from './status-dot'
+import Link from 'next/link'
 
 interface MachineLike {
   id: string
@@ -39,7 +40,10 @@ export function MachineCard({ m }: { m: MachineLike }) {
   const isMaster = m.networkMode === 'lan_master'
 
   return (
-    <div className="group relative rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] hover:border-[var(--color-border-strong)] transition-colors overflow-hidden">
+    <Link
+      href={`/admin/machines/${m.id}`}
+      className="group relative block rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] hover:border-[var(--color-border-strong)] transition-colors overflow-hidden cursor-pointer"
+    >
       {/* CRT header — three control dots like a window chrome, then hostname mono */}
       <div className="flex items-center gap-3 border-b border-[var(--color-border)] px-4 py-2.5 bg-[var(--color-surface-2)]">
         <span className="flex gap-1.5 shrink-0">
@@ -93,7 +97,7 @@ export function MachineCard({ m }: { m: MachineLike }) {
           <span className="uppercase tracking-[0.18em]">{m.status ?? 'unknown'}</span>
         </span>
       </div>
-    </div>
+    </Link>
   )
 }
 
