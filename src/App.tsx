@@ -88,6 +88,12 @@ import { NetworkSettingsPage } from "@/pages/network-settings";
 import { SuppliersPage } from "@/pages/suppliers";
 import { PurchaseOrdersPage, NewPurchaseOrderPage, PurchaseOrderDetailPage } from "@/pages/purchase-orders";
 import { CustomersPage } from "@/pages/customers";
+import { CustomerDetailPage } from "@/pages/customer-detail";
+import { SupplierDetailPage } from "@/pages/supplier-detail";
+import { ProductDetailPage } from "@/pages/product-detail";
+import { SaleDetailPage } from "@/pages/sale-detail";
+import { EmployeeDetailPage } from "@/pages/employee-detail";
+import { BranchDetailPage } from "@/pages/branch-detail";
 import { ReturnsPage, NewReturnPage } from "@/pages/returns";
 import { StockTakesPage, StockTakeDetailPage } from "@/pages/stock-take";
 import { PatientProfilePage } from "@/pages/patient-profile";
@@ -188,11 +194,13 @@ function AppContent() {
           <Route path="/pos/sale" element={<RequireRole permission="pos.use"><POSSalePage /></RequireRole>} />
           <Route path="/inventory" element={<RequireRole permission="inventory.view"><InventoryHubPage /></RequireRole>} />
           <Route path="/inventory/products" element={<RequireRole permission="inventory.view"><InventoryPage /></RequireRole>} />
+          <Route path="/inventory/products/:id" element={<RequireRole permission="inventory.view"><ProductDetailPage /></RequireRole>} />
           <Route path="/inventory/categories" element={<RequireRole permission="inventory.edit"><CategoriesPage /></RequireRole>} />
           <Route path="/inventory/stock" element={<RequireRole permission="inventory.view"><StockPage /></RequireRole>} />
           <Route path="/inventory/import" element={<RequireRole permission="inventory.edit"><ImportProductsPage /></RequireRole>} />
           <Route path="/sales" element={<RequireRole permission="sales.view"><SalesHubPage /></RequireRole>} />
           <Route path="/sales/history" element={<RequireRole permission="sales.view"><SalesHistoryPage /></RequireRole>} />
+          <Route path="/sales/:id" element={<RequireRole permission="sales.view"><SaleDetailPage /></RequireRole>} />
           <Route path="/users" element={<RequireRole permission="users.view"><UsersPage /></RequireRole>} />
           <Route path="/pharmacy" element={<RequireRole permission="pharmacy.dispense"><PharmacyHubPage /></RequireRole>} />
           <Route path="/pharmacy/dispense" element={<RequireRole permission="pharmacy.dispense"><PharmacyPage /></RequireRole>} />
@@ -215,6 +223,7 @@ function AppContent() {
           <Route path="/stock-transfers/:id" element={<RequireRole permission="inventory.view"><StockTransferDetailPage /></RequireRole>} />
           <Route path="/people" element={<RequireRole permission={["hr.employees.view","hr.attendance.view","hr.leave.request","hr.payroll.view"]}><PeopleHubPage /></RequireRole>} />
           <Route path="/hr/employees" element={<RequireRole permission="hr.employees.view"><EmployeesPage /></RequireRole>} />
+          <Route path="/hr/employees/:id" element={<RequireRole permission="hr.employees.view"><EmployeeDetailPage /></RequireRole>} />
           <Route path="/hr/attendance" element={<RequireRole permission="hr.attendance.view"><AttendancePage /></RequireRole>} />
           <Route path="/hr/leave" element={<RequireRole permission="hr.leave.request"><LeavePage /></RequireRole>} />
           <Route path="/hr/payroll" element={<RequireRole permission="hr.payroll.view"><PayrollPage /></RequireRole>} />
@@ -243,6 +252,7 @@ function AppContent() {
           <Route path="/settings" element={<SettingsLayout />}>
             <Route index element={<RequireRole permission="settings.business"><SettingsPage /></RequireRole>} />
             <Route path="branches" element={<RequireRole permission="settings.business"><BranchesPage /></RequireRole>} />
+            <Route path="branches/:id" element={<RequireRole permission="settings.business"><BranchDetailPage /></RequireRole>} />
             <Route path="users" element={<RequireRole permission="users.view"><UsersPage /></RequireRole>} />
             <Route path="roles" element={<RequireRole permission="users.manage"><SettingsRolesPage /></RequireRole>} />
             <Route path="groups" element={<RequireRole permission="users.manage"><SettingsGroupsPage /></RequireRole>} />
@@ -267,10 +277,12 @@ function AppContent() {
           </Route>
           <Route path="/audit" element={<Navigate to="/settings/audit" replace />} />
           <Route path="/suppliers" element={<RequireRole permission="suppliers.view"><SuppliersPage /></RequireRole>} />
+          <Route path="/suppliers/:id" element={<RequireRole permission="suppliers.view"><SupplierDetailPage /></RequireRole>} />
           <Route path="/purchase-orders" element={<RequireRole permission="purchase_orders.view"><PurchaseOrdersPage /></RequireRole>} />
           <Route path="/purchase-orders/new" element={<RequireRole permission="purchase_orders.create"><NewPurchaseOrderPage /></RequireRole>} />
           <Route path="/purchase-orders/:id" element={<RequireRole permission="purchase_orders.view"><PurchaseOrderDetailPage /></RequireRole>} />
           <Route path="/customers" element={<RequireRole permission="customers.view"><CustomersPage /></RequireRole>} />
+          <Route path="/customers/:id" element={<RequireRole permission="customers.view"><CustomerDetailPage /></RequireRole>} />
           <Route path="/returns" element={<RequireRole permission="sales.refund"><ReturnsPage /></RequireRole>} />
           <Route path="/returns/new" element={<RequireRole permission="sales.refund"><NewReturnPage /></RequireRole>} />
           <Route path="/stock-take" element={<RequireRole permission="stock_take.use"><StockTakesPage /></RequireRole>} />

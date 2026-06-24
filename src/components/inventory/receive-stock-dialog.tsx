@@ -25,11 +25,13 @@ interface StockLine {
   batch_number: string;
 }
 
-export function ReceiveStockDialog({ open, onClose, onSaved, supplierName }: {
+export function ReceiveStockDialog({ open, onClose, onSaved, supplierName, prefillProductId }: {
   open: boolean;
   onClose: () => void;
   onSaved: () => void;
   supplierName?: string;
+  /** Optional product to seed into the line list when the dialog opens — used by /inventory/products/:id "Receive stock" action so the user doesn't have to search again. */
+  prefillProductId?: string;
 }) {
   const userId = useAuthStore((s) => s.user?.id);
   const [supplier, setSupplier] = useState(supplierName || "");
@@ -47,6 +49,34 @@ export function ReceiveStockDialog({ open, onClose, onSaved, supplierName }: {
       setSearch("");
     }
   }, [open, supplierName]);
+
+  // When opened with a prefill, fetch the product + add as a line. Runs
+  // once per open with prefill, never overwrites if the user already
+  // started building lines.
+  useEffect(() => {
+    if (!open || !prefillProductId) return;
+    if (items.length > 0) return;
+    let cancelled = false;
+    getProducts().then((all) => {
+      if (cancelled) return;
+      const p = all.find((x) => x.id === prefillProductId);
+      if (!p) return;
+      setItems([
+        {
+          product_id: p.id,
+          product_name: p.name,
+          quantity: "1",
+          buying_price: String(p.buying_price || 0),
+          expiry_date: "",
+          batch_number: "",
+        },
+      ]);
+    });
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, prefillProductId]);
 
   useEffect(() => {
     if (search) getProducts(search).then(setProducts);
