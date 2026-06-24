@@ -336,6 +336,8 @@ CREATE TABLE "platform_settings" (
 );
 
 --> statement-breakpoint
+ALTER TABLE "user" ADD COLUMN IF NOT EXISTS "metadata" jsonb DEFAULT '{}'::jsonb NOT NULL;
+--> statement-breakpoint
 `
 
 /** Split into individual statements (Drizzle generates with statement-breakpoints). */

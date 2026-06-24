@@ -2,12 +2,13 @@
  * PATCH /api/customers/me — save the signed-in user's profile.
  *
  * Updates the user table's column-backed customer fields (phone,
- * business name, country, currency). Ancillary fields (KRA PIN,
- * county, town, address, business type, team size, WhatsApp) were
- * supposed to live on a `metadata` jsonb column added in migration
- * 0002 — that column hasn't been applied to production yet, so we
- * silently drop those fields here until the migration runs. Once
- * production has the column, restore the metadata write block.
+ * business name, country, currency) and stashes ancillary fields
+ * (KRA PIN, county, town, address, business type, team size, WhatsApp,
+ * newsletter pref) on a `metadata` jsonb column.
+ *
+ * Metadata writes are a deep-merge — fields the caller didn't pass
+ * stay as they were, so the onboarding wizard + the profile form can
+ * each write a partial subset without clobbering each other.
  */
 import { headers } from 'next/headers'
 import { NextResponse } from 'next/server'
@@ -24,7 +25,7 @@ type Payload = {
   phone?: string
   country?: string
   currency?: string
-  // Fields below are accepted but ignored until the metadata column lands.
+  // Stored on metadata jsonb
   whatsapp?: string
   kraPin?: string
   county?: string
@@ -34,6 +35,18 @@ type Payload = {
   employeeCount?: string
   newsletterOptIn?: boolean
 }
+
+const COLUMN_FIELDS = ['fullName', 'businessName', 'phone', 'country', 'currency'] as const
+const META_FIELDS = [
+  'whatsapp',
+  'kraPin',
+  'county',
+  'town',
+  'physicalAddress',
+  'businessType',
+  'employeeCount',
+  'newsletterOptIn',
+] as const
 
 export async function PATCH(req: Request) {
   const session = await auth.api.getSession({ headers: await headers() }).catch(() => null)
@@ -48,9 +61,25 @@ export async function PATCH(req: Request) {
     return NextResponse.json({ errors: [{ message: 'Invalid JSON body' }] }, { status: 400 })
   }
 
-  // Build the column update. Drop unknown fields silently — they're
-  // either reserved for the metadata column we haven't deployed yet,
-  // or they're noise we don't want to write to the user row.
+  // Pull existing row so we can deep-merge metadata.
+  const rows = await db.select().from(user).where(eq(user.id, session.user.id)).limit(1)
+  const existing = rows[0]
+  if (!existing) {
+    return NextResponse.json({ errors: [{ message: 'User not found' }] }, { status: 404 })
+  }
+
+  const existingMeta =
+    (existing as unknown as { metadata?: Record<string, unknown> }).metadata ?? {}
+  const newMeta: Record<string, unknown> = { ...existingMeta }
+  let metaChanged = false
+  for (const k of META_FIELDS) {
+    if (body[k] !== undefined) {
+      newMeta[k] = body[k]
+      metaChanged = true
+    }
+  }
+
+  // Build the column update.
   const update: Partial<typeof user.$inferInsert> = {}
   if (body.fullName !== undefined) update.name = body.fullName
   if (body.businessName !== undefined) update.businessName = body.businessName
@@ -58,14 +87,18 @@ export async function PATCH(req: Request) {
   if (body.country !== undefined) update.country = body.country
   if (body.currency !== undefined) update.currency = body.currency
 
-  if (Object.keys(update).length === 0) {
+  if (Object.keys(update).length === 0 && !metaChanged) {
     return NextResponse.json({ ok: true, applied: 0 })
   }
 
   try {
     await db
       .update(user)
-      .set({ ...update, updatedAt: new Date() })
+      .set({
+        ...update,
+        ...(metaChanged ? { metadata: newMeta as never } : {}),
+        updatedAt: new Date(),
+      })
       .where(eq(user.id, session.user.id))
   } catch (err) {
     return NextResponse.json(
@@ -76,3 +109,6 @@ export async function PATCH(req: Request) {
 
   return NextResponse.json({ ok: true })
 }
+
+// Constants exported for tests + future cron jobs that touch profile data.
+export { COLUMN_FIELDS, META_FIELDS }

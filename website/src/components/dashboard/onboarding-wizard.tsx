@@ -78,7 +78,13 @@ export function OnboardingWizard({ initial, onComplete }: Props) {
     variant: initial?.variant ?? 'dawa',
   })
 
-  const steps: Array<{ title: string; eyebrow: string; valid: () => boolean; render: () => React.ReactNode }> = [
+  const steps: Array<{
+    title: string
+    eyebrow: string
+    valid: () => boolean
+    optional?: boolean
+    render: () => React.ReactNode
+  }> = [
     {
       eyebrow: 'Step 1 of 7',
       title: 'What\'s your business called?',
@@ -148,7 +154,8 @@ export function OnboardingWizard({ initial, onComplete }: Props) {
     {
       eyebrow: 'Step 4 of 7',
       title: 'How big is your team?',
-      valid: () => !!data.employeeCount,
+      valid: () => true, // optional — defaults to "" if skipped
+      optional: true,
       render: () => (
         <div className="grid grid-cols-1 gap-2">
           {TEAM_SIZES.map((t) => {
@@ -196,6 +203,7 @@ export function OnboardingWizard({ initial, onComplete }: Props) {
       eyebrow: 'Step 6 of 7',
       title: data.country === 'KE' ? 'Your KRA PIN (optional)' : 'Your tax ID (optional)',
       valid: () => true, // optional
+      optional: true,
       render: () => (
         <div className="flex flex-col gap-2">
           <input
@@ -303,9 +311,16 @@ export function OnboardingWizard({ initial, onComplete }: Props) {
         </div>
 
         <div className="flex flex-col gap-1">
-          <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
-            {current.eyebrow}
-          </span>
+          <div className="flex items-baseline gap-2">
+            <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
+              {current.eyebrow}
+            </span>
+            {current.optional && (
+              <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-muted-foreground/70">
+                · Optional
+              </span>
+            )}
+          </div>
           <h1
             style={{ fontFamily: 'var(--font-display, serif)' }}
             className="text-[clamp(24px,3vw,32px)] font-medium leading-[1.1] tracking-[-0.01em]"
@@ -332,10 +347,22 @@ export function OnboardingWizard({ initial, onComplete }: Props) {
             <CaretLeft className="h-3.5 w-3.5" />
             Back
           </button>
-          <Button onClick={handleNext} disabled={!current.valid() || submitting}>
-            {submitting ? 'Saving…' : isLast ? 'Finish' : 'Next'}
-            {isLast ? <Check className="h-3.5 w-3.5" /> : <CaretRight className="h-3.5 w-3.5" />}
-          </Button>
+          <div className="flex items-center gap-2">
+            {current.optional && !isLast && (
+              <button
+                type="button"
+                onClick={() => setStep(step + 1)}
+                disabled={submitting}
+                className="px-3 py-1.5 text-[13px] text-muted-foreground hover:text-foreground disabled:opacity-30 cursor-pointer"
+              >
+                Skip for now
+              </button>
+            )}
+            <Button onClick={handleNext} disabled={!current.valid() || submitting}>
+              {submitting ? 'Saving…' : isLast ? 'Finish' : 'Next'}
+              {isLast ? <Check className="h-3.5 w-3.5" /> : <CaretRight className="h-3.5 w-3.5" />}
+            </Button>
+          </div>
         </div>
       </div>
     </div>
