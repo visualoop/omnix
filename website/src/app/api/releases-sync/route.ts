@@ -120,40 +120,73 @@ export async function POST(req: Request) {
   const signature = asString(body.updaterSignature)
   const title = asString(body.title)
   const summary = asString(body.summary)
+  const variant = asString(body.variant)
 
   // Synthesise the markdown notes column from title + summary. The
   // /downloads page reads notes.split('\n')[0] as the headline.
   const notes = [title, summary].filter(Boolean).join('\n\n') || undefined
 
-  // Stuff the legacy fields the new schema doesn't have a column for
-  // into the metadata jsonb so they're available for future use
-  // (sha256 verification, R2 size hints, variant tracking).
-  const metadata = JSON.parse(
-    JSON.stringify({
-      variant: asString(body.variant),
-      gitTag: asString(body.gitTag),
-      sha256: {
-        exe: asString(body.sha256Nsis),
-        msi: asString(body.sha256Msi),
-      },
-    }),
-  )
+  // ── Per-variant merge logic ────────────────────────────────
+  //
+  // CI calls this endpoint 5 times in parallel (one per matrix variant).
+  // The naive write-and-overwrite pattern means whichever variant
+  // finishes last wins, and the public /downloads page renders that
+  // variant's URL for every card.
+  //
+  // Fix: each variant's call merges into metadata.variants[variant],
+  // never overwriting other variants. The top-level exeUrl / msiUrl
+  // always points at the canonical Pro build (it's what the Tauri
+  // auto-updater pulls). Other variants' URLs live in metadata.variants
+  // for the per-variant card grid on /downloads.
 
   // UPSERT on version (unique constraint).
   const id = `rel_${version}_${channel}`
-  const existing = await db
+  const existing = (await db
     .select()
     .from(releases)
     .where(eq(releases.version, version))
-    .limit(1)
+    .limit(1))[0]
 
-  if (existing.length > 0) {
+  // Build the merged metadata.variants object.
+  type VariantUrls = { exe?: string; msi?: string }
+  const existingMeta = (existing?.metadata ?? {}) as {
+    variants?: Record<string, VariantUrls>
+    sha256?: { exe?: string; msi?: string }
+    gitTag?: string
+  }
+  const variantsMap = { ...(existingMeta.variants ?? {}) } as Record<string, VariantUrls>
+  if (variant) {
+    variantsMap[variant] = {
+      exe: exeUrl ?? variantsMap[variant]?.exe,
+      msi: msiUrl ?? variantsMap[variant]?.msi,
+    }
+  }
+
+  const metadata = {
+    ...existingMeta,
+    variants: variantsMap,
+    sha256: {
+      ...(existingMeta.sha256 ?? {}),
+      ...(asString(body.sha256Nsis) ? { exe: asString(body.sha256Nsis) } : {}),
+      ...(asString(body.sha256Msi) ? { msi: asString(body.sha256Msi) } : {}),
+    },
+    gitTag: asString(body.gitTag) ?? existingMeta.gitTag,
+    source: 'ci-notify',
+    syncedAt: new Date().toISOString(),
+  }
+
+  // Top-level exeUrl/msiUrl ONLY get written when the canonical Pro
+  // build calls in. Other variants merge into the variants map but
+  // don't touch the canonical URLs (which power the auto-updater).
+  const isCanonicalPro = variant === 'pro' || !variant
+
+  if (existing) {
     const updateValues: Record<string, unknown> = {
       channel,
       ...(notes !== undefined ? { notes } : {}),
-      ...(exeUrl !== undefined ? { exeUrl } : {}),
-      ...(msiUrl !== undefined ? { msiUrl } : {}),
-      ...(signature !== undefined ? { signature } : {}),
+      ...(isCanonicalPro && exeUrl !== undefined ? { exeUrl } : {}),
+      ...(isCanonicalPro && msiUrl !== undefined ? { msiUrl } : {}),
+      ...(isCanonicalPro && signature !== undefined ? { signature } : {}),
       metadata,
     }
     await db
@@ -161,7 +194,7 @@ export async function POST(req: Request) {
       .set(updateValues)
       .where(eq(releases.version, version))
     return NextResponse.json(
-      { ok: true, action: 'updated', version, channel },
+      { ok: true, action: 'updated', version, channel, variant },
       { status: 200 },
     )
   }
@@ -171,13 +204,13 @@ export async function POST(req: Request) {
     version,
     channel,
     notes,
-    exeUrl,
-    msiUrl,
-    signature,
+    exeUrl: isCanonicalPro ? exeUrl : undefined,
+    msiUrl: isCanonicalPro ? msiUrl : undefined,
+    signature: isCanonicalPro ? signature : undefined,
     metadata,
   })
   return NextResponse.json(
-    { ok: true, action: 'created', version, channel },
+    { ok: true, action: 'created', version, channel, variant },
     { status: 200 },
   )
 }
