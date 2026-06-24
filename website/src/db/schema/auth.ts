@@ -7,7 +7,7 @@
  * these by literal column name. Use `additionalFields` in lib/auth.ts
  * to extend instead.
  */
-import { pgTable, text, boolean, timestamp, jsonb } from 'drizzle-orm/pg-core'
+import { pgTable, text, boolean, timestamp } from 'drizzle-orm/pg-core'
 
 export const user = pgTable('user', {
   id: text('id').primaryKey(),
@@ -31,11 +31,12 @@ export const user = pgTable('user', {
   currency: text('currency').notNull().default('KES'),
   staffTeam: text('staff_team'), // 'support' | 'sales' | 'eng' | null
 
-  // Free-form ancillary profile fields (KRA PIN, county, town, physical
-  // address, business type, employee count, WhatsApp, newsletter pref).
-  // We add these here rather than as columns to keep the user table
-  // narrow + leave room for fields we haven't promoted yet.
-  metadata: jsonb('metadata').notNull().default({}),
+  // NOTE: a `metadata` jsonb column was provisionally added in the
+  // migration 0002 batch but ROLLED BACK from the live schema because
+  // production Neon hadn't applied the column yet — and Drizzle's
+  // SELECT user.* breaks the entire auth flow when a referenced column
+  // doesn't exist on the database. Re-add this field once migration
+  // 0002 has been applied to production via /api/migrate-db.
 })
 
 export const session = pgTable('session', {
