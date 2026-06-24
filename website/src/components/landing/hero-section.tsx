@@ -29,19 +29,31 @@ export interface LatestRelease {
  * The uploaded screenshot renders inside BrowserFrame (Windows Chrome chrome);
  * when no screenshot is set we fall back to the hand-built PosPreview.
  */
-export function HeroSection({ content, latestRelease }: { content?: HeroContent; latestRelease?: LatestRelease }) {
-  const cmsEyebrow = content?.eyebrow?.trim() || 'Banking & Recurring Invoices shipped'
+export function HeroSection({
+  content, latestRelease, locale,
+}: {
+  content?: HeroContent
+  latestRelease?: LatestRelease
+  locale?: string
+}) {
+  const isKenya = (locale ?? 'ke').toLowerCase() === 'ke'
+  const cmsEyebrow = content?.eyebrow?.trim() || (isKenya ? 'Banking & Recurring Invoices shipped' : 'Built offline-first. Pay once. Own forever.')
   const releaseEyebrow = latestRelease
     ? `NEW · v${latestRelease.version} — ${latestRelease.title || latestRelease.summary || 'Latest release'}`
     : null
   const eyebrow = releaseEyebrow || cmsEyebrow
   const headline = content?.headline?.trim()
-  const subheadline =
-    content?.subheadline?.trim() ||
-    'Omnix is the desktop ERP built for Kenyan owner-operators. POS, inventory, banking, payroll, KRA receipts — one Windows app you download, run offline, and own. One payment, no subscription.'
+  // Subheadline — Kenya-pinned for /ke, globally framed for everyone else.
+  const defaultSubKenya = 'Omnix is the desktop ERP built for Kenyan owner-operators. POS, inventory, banking, payroll, KRA receipts — one Windows app you download, run offline, and own. One payment, no subscription.'
+  const defaultSubGlobal = 'Omnix is the offline-first desktop ERP for owner-operators. POS, inventory, banking, payroll, compliance — one Windows app you download, run offline, and own. One payment, no subscription, no per-user fees.'
+  const subheadline = content?.subheadline?.trim() || (isKenya ? defaultSubKenya : defaultSubGlobal)
   const ctaLabel = content?.primaryCtaLabel?.trim() || 'Start free trial'
   const ctaHref = content?.primaryCtaHref?.trim() || '/signup'
   const screenshot = content?.screenshot ?? null
+
+  // Caption price — show local currency reference. KES 50,000 on /ke,
+  // $620 on the rest of the world (matches /us/pricing one-time fee).
+  const priceCaption = isKenya ? 'KES 50,000 once' : '$620 once'
 
   return (
     <section className="relative overflow-hidden pt-20 pb-16 sm:pt-24 lg:pt-28 lg:pb-20">
@@ -85,11 +97,17 @@ export function HeroSection({ content, latestRelease }: { content?: HeroContent;
         >
           {headline ? (
             headline
-          ) : (
+          ) : isKenya ? (
             <>
               Run your duka.
               <br />
               <em>Pay yourself.</em>
+            </>
+          ) : (
+            <>
+              Run your business.
+              <br />
+              <em>Own the software.</em>
             </>
           )}
         </motion.h1>
@@ -131,7 +149,7 @@ export function HeroSection({ content, latestRelease }: { content?: HeroContent;
           <span aria-hidden className="mx-2 text-[var(--color-fg-subtle)]">
             ·
           </span>
-          <span className="text-[var(--color-fg-muted)]">KES 50,000 once</span>
+          <span className="text-[var(--color-fg-muted)]">{priceCaption}</span>
         </motion.p>
 
         {/* Product preview — only renders when a screenshot is uploaded in

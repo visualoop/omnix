@@ -37,12 +37,20 @@ import { CURRENCIES, tierPrice, type PricingTierShape, type SupportedCurrency } 
 export const dynamic = 'force-dynamic'
 export const revalidate = 60
 
-export default async function HomePage() {
+export default async function HomePage({
+  params,
+}: { params: Promise<{ locale: string }> }) {
+  const { locale } = await params
   const settings = await getSiteSettings()
-  // Currency from middleware-set cookie (geo-detected on first visit).
+  // Currency from locale URL (strongest signal) → cookie → USD fallback.
+  const { COUNTRY_TO_CURRENCY } = await import('@/i18n/routing')
+  const localeCurrency = COUNTRY_TO_CURRENCY[locale.toLowerCase()] as SupportedCurrency | undefined
   const cookieStore = await cookies()
   const cookieCurrency = cookieStore.get('omnix_currency')?.value as SupportedCurrency | undefined
-  const currency: SupportedCurrency = cookieCurrency && cookieCurrency in CURRENCIES ? cookieCurrency : 'KES'
+  const currency: SupportedCurrency =
+    (localeCurrency && localeCurrency in CURRENCIES) ? localeCurrency :
+    (cookieCurrency && cookieCurrency in CURRENCIES) ? cookieCurrency :
+    'USD'
 
   // Pricing read from static config (was Payload global pre-v0.8.x).
   const { pricing } = await import('@/config/pricing')
@@ -79,7 +87,7 @@ export default async function HomePage() {
 
   return (
     <>
-      <HeroSection content={heroContent} latestRelease={latestRelease} />
+      <HeroSection content={heroContent} latestRelease={latestRelease} locale={locale} />
       <FounderNoteSection />
       <AiSection />
       <ModulesRowsSection />
