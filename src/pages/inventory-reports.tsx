@@ -6,6 +6,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { getStockValuation, getReorderList, getDeadStock, getStockMovementsByDay, type StockMovementByDay } from "@/services/reports";
 import { exportToCSV } from "@/lib/export";
+import { renderReorderListPdf, renderDeadStockPdf } from "@/services/reports-pdf";
+import { loadBrandHeader, downloadBytes } from "@/services/pdf-brand";
 import { ComparisonBar } from "@/components/charts";
 
 export function InventoryReportsPage() {
@@ -99,9 +101,28 @@ export function InventoryReportsPage() {
 
       {tab === "reorder" && (
         <div className="space-y-3">
-          <div className="flex justify-end">
+          <div className="flex justify-end gap-1">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={async () => {
+                const brand = await loadBrandHeader();
+                const bytes = renderReorderListPdf({
+                  brand,
+                  rows: reorder.map((r) => ({
+                    productName: r.name,
+                    onHand: r.current_stock,
+                    reorderLevel: r.reorder_level,
+                    suggestedOrder: Math.max(r.deficit, 1),
+                  })),
+                });
+                downloadBytes(bytes, "reorder-list");
+              }}
+            >
+              <Download className="h-3.5 w-3.5 mr-1" /> PDF
+            </Button>
             <Button variant="ghost" size="sm" onClick={() => exportToCSV("reorder-list", reorder)}>
-              <Download className="h-3.5 w-3.5 mr-1" /> CSV
+              CSV
             </Button>
           </div>
           {reorder.length === 0 ? (
@@ -133,9 +154,29 @@ export function InventoryReportsPage() {
 
       {tab === "dead" && (
         <div className="space-y-3">
-          <div className="flex justify-end">
+          <div className="flex justify-end gap-1">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={async () => {
+                const brand = await loadBrandHeader();
+                const bytes = renderDeadStockPdf({
+                  brand,
+                  daysSinceSold: 60,
+                  rows: dead.map((d) => ({
+                    productName: d.name,
+                    onHand: d.current_stock,
+                    valueAtCost: 0,
+                    lastSold: d.last_sale,
+                  })),
+                });
+                downloadBytes(bytes, "dead-stock");
+              }}
+            >
+              <Download className="h-3.5 w-3.5 mr-1" /> PDF
+            </Button>
             <Button variant="ghost" size="sm" onClick={() => exportToCSV("dead-stock", dead)}>
-              <Download className="h-3.5 w-3.5 mr-1" /> CSV
+              CSV
             </Button>
           </div>
           <p className="text-xs text-muted-foreground">Items not sold in 60+ days but still in stock.</p>

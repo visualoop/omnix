@@ -42,8 +42,9 @@ import {
 } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { getPnL, type PnLData } from "@/services/accounting";
-import { printPage } from "@/lib/print";
 import { exportToCSV } from "@/lib/export";
+import { renderPnlPdf } from "@/services/reports-pdf";
+import { loadBrandHeader, downloadBytes } from "@/services/pdf-brand";
 import { money as KES } from "@/lib/money";
 import { intlLocale } from "@/lib/intl";
 
@@ -103,29 +104,37 @@ export function PnLPage() {
     setEndDate(today);
   };
 
-  const handleExport = () => {
+  const handlePrint = async () => {
     if (!data) return;
-    const rows = [
-      { line: "REVENUE", amount: "" },
-      { line: "  Cash sales", amount: data.revenue.sales_cash.toFixed(2) },
-      { line: "  Credit sales", amount: data.revenue.sales_credit.toFixed(2) },
-      { line: "  Other methods", amount: data.revenue.sales_other.toFixed(2) },
-      { line: "  Sales returns", amount: `-${data.revenue.returns.toFixed(2)}` },
-      { line: "  Other income", amount: data.revenue.other_income.toFixed(2) },
-      { line: "Net revenue", amount: data.revenue.total.toFixed(2) },
-      { line: "", amount: "" },
-      { line: "Cost of goods sold", amount: data.cogs.toFixed(2) },
-      { line: "Returned COGS", amount: `-${data.returned_cogs.toFixed(2)}` },
-      { line: "Gross profit", amount: data.gross_profit.toFixed(2) },
-      { line: "", amount: "" },
-      { line: "OPERATING EXPENSES", amount: "" },
-      ...data.expenses.map((e) => ({ line: `  ${e.category}`, amount: e.amount.toFixed(2) })),
-      { line: "Total expenses", amount: data.total_expenses.toFixed(2) },
-      { line: "", amount: "" },
-      { line: "NET PROFIT", amount: data.net_profit.toFixed(2) },
-      { line: `Margin: ${data.margin.toFixed(2)}%`, amount: "" },
+    const brand = await loadBrandHeader();
+    const rows: Array<{ category: string; amount: number }> = [
+      { category: "Cash sales", amount: data.revenue.sales_cash },
+      { category: "Credit sales", amount: data.revenue.sales_credit },
+      { category: "Other methods", amount: data.revenue.sales_other },
+      { category: "Sales returns", amount: -data.revenue.returns },
+      { category: "Other income", amount: data.revenue.other_income },
+      { category: "Net revenue", amount: data.revenue.total },
+      { category: "Cost of goods sold", amount: data.cogs },
+      { category: "Returned COGS", amount: -data.returned_cogs },
+      { category: "Gross profit", amount: data.gross_profit },
+      ...data.expenses.map((e) => ({ category: e.category, amount: e.amount })),
+      { category: "Total expenses", amount: data.total_expenses },
+      { category: "Net profit", amount: data.net_profit },
     ];
-    exportToCSV(`pnl-${startDate}-to-${endDate}`, rows);
+    const bytes = renderPnlPdf({
+      brand,
+      startDate,
+      endDate,
+      rows,
+      totals: {
+        revenue: data.revenue.total,
+        cogs: data.cogs,
+        grossProfit: data.gross_profit,
+        expenses: data.total_expenses,
+        netProfit: data.net_profit,
+      },
+    });
+    downloadBytes(bytes, `pnl-${startDate}-to-${endDate}`);
   };
 
   const days = daysBetween(startDate, endDate);
@@ -142,10 +151,29 @@ export function PnLPage() {
           <span>{days} {days === 1 ? "day" : "days"}</span>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={() => printPage(`P&L ${startDate} to ${endDate}`)} disabled={!data}>
-            <Printer className="h-3.5 w-3.5 mr-1" /> Print
+          <Button variant="outline" size="sm" onClick={handlePrint} disabled={!data}>
+            <Printer className="h-3.5 w-3.5 mr-1" /> PDF
           </Button>
-          <Button variant="outline" size="sm" onClick={handleExport} disabled={!data}>
+          <Button variant="outline" size="sm" onClick={() => {
+            if (!data) return;
+            const rows = [
+              { line: "REVENUE", amount: "" },
+              { line: "  Cash sales", amount: data.revenue.sales_cash.toFixed(2) },
+              { line: "  Credit sales", amount: data.revenue.sales_credit.toFixed(2) },
+              { line: "  Other methods", amount: data.revenue.sales_other.toFixed(2) },
+              { line: "  Sales returns", amount: `-${data.revenue.returns.toFixed(2)}` },
+              { line: "  Other income", amount: data.revenue.other_income.toFixed(2) },
+              { line: "Net revenue", amount: data.revenue.total.toFixed(2) },
+              { line: "Cost of goods sold", amount: data.cogs.toFixed(2) },
+              { line: "Returned COGS", amount: `-${data.returned_cogs.toFixed(2)}` },
+              { line: "Gross profit", amount: data.gross_profit.toFixed(2) },
+              ...data.expenses.map((e) => ({ line: `  ${e.category}`, amount: e.amount.toFixed(2) })),
+              { line: "Total expenses", amount: data.total_expenses.toFixed(2) },
+              { line: "NET PROFIT", amount: data.net_profit.toFixed(2) },
+              { line: `Margin: ${data.margin.toFixed(2)}%`, amount: "" },
+            ];
+            exportToCSV(`pnl-${startDate}-to-${endDate}`, rows);
+          }} disabled={!data}>
             <Download className="h-3.5 w-3.5 mr-1" /> CSV
           </Button>
         </div>

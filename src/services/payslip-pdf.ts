@@ -203,6 +203,26 @@ export async function downloadPayslipPdf(payslip: PayslipForPdf, run: PayrollRun
   pdf.save(`payslip-${payslip.employee_number}-${run.period_year}-${String(run.period_month).padStart(2, "0")}.pdf`);
 }
 
+/** Pure-shape render: take loaded data + business info, return PDF bytes. */
+export async function renderPayslipBytes(payslip: PayslipForPdf, run: PayrollRun): Promise<Uint8Array> {
+  const business = await getBusinessInfo();
+  const pdf = new jsPDF({ unit: "mm", format: "a4" });
+  renderPayslip(pdf, payslip, run, business);
+  const buf = pdf.output("arraybuffer") as ArrayBuffer;
+  return new Uint8Array(buf);
+}
+
+export async function renderPayrollRunBytes(payslips: PayslipForPdf[], run: PayrollRun): Promise<Uint8Array> {
+  const business = await getBusinessInfo();
+  const pdf = new jsPDF({ unit: "mm", format: "a4" });
+  payslips.forEach((p, idx) => {
+    if (idx > 0) pdf.addPage();
+    renderPayslip(pdf, p, run, business);
+  });
+  const buf = pdf.output("arraybuffer") as ArrayBuffer;
+  return new Uint8Array(buf);
+}
+
 export async function downloadPayrollRunPdf(payslips: PayslipForPdf[], run: PayrollRun) {
   const business = await getBusinessInfo();
   const pdf = new jsPDF({ unit: "mm", format: "a4" });

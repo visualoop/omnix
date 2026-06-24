@@ -12,9 +12,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { TableRowSkeleton } from "@/components/ui/skeletons";
 import { query } from "@/lib/db";
-import { printPage } from "@/lib/print";
-import jsPDF from "jspdf";
-import autoTable from "jspdf-autotable";
+import { renderControlledRegisterPdf } from "@/services/reports-pdf";
+import { loadBrandHeader, downloadBytes } from "@/services/pdf-brand";
 import { intlLocale } from "@/lib/intl";
 
 interface ControlledEntry {
@@ -71,44 +70,22 @@ export function ControlledRegisterPage() {
     .reduce((s, e) => s + e.quantity, 0);
 
   const exportPdf = async () => {
-    const pdf = new jsPDF({ unit: "mm", format: "a4", orientation: "landscape" });
-    pdf.setFontSize(14);
-    pdf.text(`Daily Controlled Substances Register — ${date}`, 14, 12);
-    pdf.setFontSize(9);
-    pdf.text("Per the Pharmacy and Poisons Act (Cap 244) and Narcotic Drugs and Psychotropic Substances Act", 14, 18);
-
-    autoTable(pdf, {
-      startY: 23,
-      head: [["Time", "Drug", "Action", "Qty", "Patient", "ID #", "Prescriber", "Pharmacist", "License", "Balance", "Cashier"]],
-      body: entries.map((e) => [
-        new Date(e.created_at).toLocaleTimeString(intlLocale(), { hour: "2-digit", minute: "2-digit" }),
-        e.product_name,
-        e.action,
-        e.quantity.toString(),
-        e.patient_name || "—",
-        e.patient_id_number || "—",
-        e.prescribed_by || "—",
-        e.pharmacist_name || "—",
-        e.pharmacist_license || "—",
-        e.balance_after.toString(),
-        e.user_name,
-      ]),
-      styles: { fontSize: 7, cellPadding: 1 },
-      headStyles: { fillColor: [50, 50, 50], textColor: 255 },
+    const brand = await loadBrandHeader();
+    const bytes = renderControlledRegisterPdf({
+      brand,
+      date,
+      rows: entries.map((e) => ({
+        drugName: e.product_name,
+        batchNumber: null,
+        stockBefore: e.action === "dispense" ? e.balance_after + e.quantity : e.balance_after - e.quantity,
+        dispensed: e.action === "dispense" ? e.quantity : 0,
+        received: e.action === "receive" ? e.quantity : 0,
+        stockAfter: e.balance_after,
+        prescriber: e.prescribed_by ?? null,
+        patient: e.patient_name ?? null,
+      })),
     });
-
-    const finalY = (pdf as any).lastAutoTable.finalY;
-    pdf.setFontSize(9);
-    pdf.text(`Total Dispensed: ${totalDispensed} units · Total Received: ${totalReceived} units`, 14, finalY + 8);
-
-    pdf.text("________________________", 14, finalY + 25);
-    pdf.text("Pharmacist Signature", 14, finalY + 30);
-    pdf.text("________________________", 100, finalY + 25);
-    pdf.text("Pharmacist Name & License", 100, finalY + 30);
-    pdf.text("________________________", 200, finalY + 25);
-    pdf.text("Date", 200, finalY + 30);
-
-    pdf.save(`controlled-register-${date}.pdf`);
+    downloadBytes(bytes, `controlled-register-${date}`);
   };
 
   return (
@@ -135,7 +112,7 @@ export function ControlledRegisterPage() {
           <Button variant="outline" onClick={exportPdf}>
             <Download className="h-3.5 w-3.5 mr-1.5" /> PDF
           </Button>
-          <Button variant="outline" onClick={() => printPage("Controlled Substances Register")}>
+          <Button variant="outline" onClick={exportPdf}>
             <Printer className="h-3.5 w-3.5 mr-1.5" /> Print
           </Button>
         </div>

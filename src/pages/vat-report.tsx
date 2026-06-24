@@ -8,6 +8,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { getVatReport } from "@/services/etims";
 import { exportToCSV } from "@/lib/export";
+import { renderVat3Pdf } from "@/services/reports-pdf";
+import { loadBrandHeader, downloadBytes } from "@/services/pdf-brand";
 import { money } from "@/lib/money";
 
 export function VatReportPage() {
@@ -65,9 +67,30 @@ export function VatReportPage() {
             Output VAT summary for KRA monthly filing (VAT3 form)
           </p>
         </div>
-        <Button onClick={handleExport} disabled={!report}>
-          <Download className="h-4 w-4 mr-2" /> Export CSV
-        </Button>
+        <div className="flex gap-2">
+          <Button
+            onClick={async () => {
+              if (!report) return;
+              const brand = await loadBrandHeader();
+              const bytes = renderVat3Pdf({
+                brand,
+                startDate,
+                endDate,
+                salesNet: report.taxable_sales,
+                outputVat: report.output_vat,
+                purchasesNet: 0,
+                inputVat: 0,
+              });
+              downloadBytes(bytes, `vat3-${startDate}-to-${endDate}`);
+            }}
+            disabled={!report}
+          >
+            <Download className="h-4 w-4 mr-2" /> PDF
+          </Button>
+          <Button variant="outline" onClick={handleExport} disabled={!report}>
+            CSV
+          </Button>
+        </div>
       </div>
 
       {/* Period selector */}

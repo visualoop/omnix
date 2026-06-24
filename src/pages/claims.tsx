@@ -31,6 +31,8 @@ import {
   type InsuranceBatch,
 } from "@/services/insurance";
 import { exportToCSV } from "@/lib/export";
+import { renderClaimsPdf } from "@/services/reports-pdf";
+import { loadBrandHeader, downloadBytes } from "@/services/pdf-brand";
 import { toast } from "sonner";
 import { prompt } from "@/components/ui/confirm-dialog";
 import { intlLocale } from "@/lib/intl";
@@ -75,8 +77,30 @@ export function ClaimsPage() {
           </p>
         </div>
         <div className="flex gap-2">
+          <Button
+            variant="outline"
+            onClick={async () => {
+              const brand = await loadBrandHeader();
+              const bytes = renderClaimsPdf({
+                brand,
+                rangeLabel: `Generated ${new Date().toLocaleDateString("en-KE", { dateStyle: "medium" })}`,
+                rows: claims.map((c) => ({
+                  claimNumber: c.claim_number ?? c.id.slice(0, 8),
+                  patientName: c.member_name,
+                  insurer: c.provider_id,
+                  submittedDate: c.submitted_at ?? c.created_at,
+                  status: c.status,
+                  claimAmount: c.claim_amount,
+                  paidAmount: c.paid_amount,
+                })),
+              });
+              downloadBytes(bytes, `claims-${new Date().toISOString().slice(0, 10)}`);
+            }}
+          >
+            <Download className="h-4 w-4 mr-2" /> PDF
+          </Button>
           <Button variant="outline" onClick={() => exportToCSV(`claims-${new Date().toISOString().slice(0,10)}`, claims)}>
-            <Download className="h-4 w-4 mr-2" /> Export
+            CSV
           </Button>
           <Button onClick={() => setShowBatchDialog(true)} disabled={(stats?.draft_count ?? 0) === 0}>
             <Send className="h-4 w-4 mr-2" /> Submit Batch

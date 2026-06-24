@@ -423,6 +423,29 @@ export async function generateQuotationPdf(
   return buildDocumentPdf(fromQuotation(quotation), items);
 }
 
+/** Pure-shape render — returns PDF bytes. No DB calls inside (callers
+ *  pass the loaded document + items + payments). Side-effecting wrappers
+ *  (downloadInvoicePdf, previewInvoicePdf) call this then dispatch.
+ */
+export async function renderInvoicePdfBytes(
+  invoice: Invoice,
+  items: DocumentItem[],
+  payments?: PdfPayment[],
+): Promise<Uint8Array> {
+  const pdf = await generateInvoicePdf(invoice, items, payments);
+  const buf = pdf.output("arraybuffer") as ArrayBuffer;
+  return new Uint8Array(buf);
+}
+
+export async function renderQuotationPdfBytes(
+  quotation: Quotation,
+  items: DocumentItem[],
+): Promise<Uint8Array> {
+  const pdf = await generateQuotationPdf(quotation, items);
+  const buf = pdf.output("arraybuffer") as ArrayBuffer;
+  return new Uint8Array(buf);
+}
+
 export async function downloadInvoicePdf(invoice: Invoice, items: DocumentItem[], payments?: PdfPayment[]) {
   const pdf = await generateInvoicePdf(invoice, items, payments);
   pdf.save(`${invoice.invoice_number}.pdf`);

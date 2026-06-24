@@ -11,7 +11,6 @@ import {
   Eye,
   FileText,
   PaperPlaneTilt as Send,
-  Printer as Printer,
   X,
 } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
@@ -20,7 +19,6 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { printPage } from "@/lib/print";
 import {
   getInvoice, getQuotation, markInvoiceSent, recordInvoicePayment, cancelInvoice,
   updateQuotationStatus, convertQuotationToInvoice,
@@ -191,9 +189,6 @@ export function DocumentDetailPage({ type }: Props) {
           else await downloadQuotationPdf(data.quotation!, data.items);
         }}>
           <Download className="h-3.5 w-3.5 mr-1.5" /> Download PDF
-        </Button>
-        <Button variant="outline" onClick={() => printPage(`${isInvoice ? "Invoice" : "Quotation"} ${number}`)}>
-          <Printer className="h-3.5 w-3.5 mr-1.5" /> Print
         </Button>
       </div>
 

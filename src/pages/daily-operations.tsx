@@ -20,8 +20,10 @@ import { cogsExpr } from "@/services/cogs";
 import { getActiveBranchId } from "@/stores/active-branch";
 import { EmptyState } from "@/components/ui/empty-state";
 import { TableRowSkeleton } from "@/components/ui/skeletons";
-import { printPage, PrintHeader } from "@/lib/print";
+import { PrintHeader } from "@/lib/print";
 import { exportToCSV } from "@/lib/export";
+import { renderDayBookPdf } from "@/services/reports-pdf";
+import { loadBrandHeader, downloadBytes } from "@/services/pdf-brand";
 import { money as KES } from "@/lib/money";
 
 
@@ -209,8 +211,27 @@ export function DailyOperationsPage() {
           <p className="text-sm text-muted-foreground mt-1">End-of-day summary: everything sold, payments, returns, and cash movement.</p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" size="sm" onClick={() => printPage(`Daily Operations — ${data.date}`)} className="cursor-pointer">
-            <Printer className="h-3.5 w-3.5 mr-1.5" /> Print
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={async () => {
+              const brand = await loadBrandHeader();
+              const bytes = renderDayBookPdf({
+                brand,
+                date: data.date,
+                rows: data.productItems.map((p) => ({
+                  productName: p.product_name,
+                  qtySold: p.qty_sold,
+                  revenue: p.revenue,
+                  cost: p.cost,
+                  profit: p.profit,
+                })),
+              });
+              downloadBytes(bytes, `day-book-${data.date}`);
+            }}
+            className="cursor-pointer"
+          >
+            <Printer className="h-3.5 w-3.5 mr-1.5" /> PDF
           </Button>
           <Button variant="outline" size="sm" onClick={handleExport} className="cursor-pointer">
             <Download className="h-3.5 w-3.5 mr-1.5" /> Export CSV

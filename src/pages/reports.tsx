@@ -5,6 +5,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { getSalesByDay, getTopProducts, getSalesByPaymentMethod, type SalesByDay, type TopProduct, type SalesByPaymentMethod } from "@/services/reports";
 import { exportToCSV } from "@/lib/export";
+import { renderTopProductsPdf, renderPaymentMixPdf } from "@/services/reports-pdf";
+import { loadBrandHeader, downloadBytes } from "@/services/pdf-brand";
 import { AreaChart, PieChart, BarChart } from "@/components/charts";
 import { ComparisonPanel } from "@/components/shared/comparison-panel";
 import { money } from "@/lib/money";
@@ -77,13 +79,34 @@ export function ReportsPage() {
       <div className="border border-border rounded-lg p-4">
         <div className="flex items-center justify-between mb-3">
           <h2 className="text-sm font-semibold">Top Products</h2>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => exportToCSV("top-products", topProducts)}
-          >
-            <Download className="h-3.5 w-3.5 mr-1" /> CSV
-          </Button>
+          <div className="flex gap-1">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={async () => {
+                const brand = await loadBrandHeader();
+                const bytes = renderTopProductsPdf({
+                  brand,
+                  rangeLabel: `Last ${period} days`,
+                  rows: topProducts.map((p) => ({
+                    productName: p.product_name,
+                    quantity: p.qty_sold,
+                    revenue: p.total_revenue,
+                  })),
+                });
+                downloadBytes(bytes, "top-products");
+              }}
+            >
+              <Download className="h-3.5 w-3.5 mr-1" /> PDF
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => exportToCSV("top-products", topProducts)}
+            >
+              CSV
+            </Button>
+          </div>
         </div>
         {topProducts.length === 0 ? (
           <p className="text-xs text-muted-foreground text-center py-6">No sales in this period</p>
@@ -126,13 +149,34 @@ export function ReportsPage() {
       <div className="border border-border rounded-lg p-4">
         <div className="flex items-center justify-between mb-3">
           <h2 className="text-sm font-semibold">Payment Methods</h2>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => exportToCSV("payment-mix", paymentMix)}
-          >
-            <Download className="h-3.5 w-3.5 mr-1" /> CSV
-          </Button>
+          <div className="flex gap-1">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={async () => {
+                const brand = await loadBrandHeader();
+                const bytes = renderPaymentMixPdf({
+                  brand,
+                  rangeLabel: `Last ${period} days`,
+                  rows: paymentMix.map((p) => ({
+                    method: p.method_name,
+                    transactions: p.count,
+                    amount: p.total,
+                  })),
+                });
+                downloadBytes(bytes, "payment-mix");
+              }}
+            >
+              <Download className="h-3.5 w-3.5 mr-1" /> PDF
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => exportToCSV("payment-mix", paymentMix)}
+            >
+              CSV
+            </Button>
+          </div>
         </div>
         {paymentMix.length === 0 ? (
           <p className="text-xs text-muted-foreground text-center py-6">No payments in this period</p>
