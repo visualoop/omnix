@@ -16,6 +16,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { query } from "@/lib/db";
+import { cogsExpr } from "@/services/cogs";
 import { getActiveBranchId } from "@/stores/active-branch";
 import { EmptyState } from "@/components/ui/empty-state";
 import { TableRowSkeleton } from "@/components/ui/skeletons";
@@ -71,11 +72,10 @@ export function DailyOperationsPage() {
           `SELECT si.product_name,
                   SUM(si.quantity) AS qty_sold,
                   SUM(si.total) AS revenue,
-                  COALESCE(SUM(COALESCE(b.buying_price, 0) * si.quantity), 0) AS cost,
+                  COALESCE(SUM(${cogsExpr("si")} * si.quantity), 0) AS cost,
                   0 AS profit
            FROM sale_items si
            JOIN sales s ON s.id = si.sale_id
-           LEFT JOIN batches b ON b.id = si.batch_id
            WHERE s.created_at BETWEEN ?1 AND ?2 AND s.status = 'completed' AND s.branch_id = ?3
            GROUP BY si.product_id, si.product_name
            ORDER BY qty_sold DESC`,

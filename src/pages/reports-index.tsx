@@ -7,7 +7,7 @@ import {
   FileXls as FileSpreadsheet,
   Heart,
   Money as Banknote,
-  Package,
+  SquaresFour,
   PaperPlaneTilt as Send,
   Pill,
   Receipt,
@@ -59,7 +59,7 @@ const reports: ReportLink[] = [
     to: "/reports/inventory",
     title: "Inventory Reports",
     description: "Stock valuation, reorder list, dead stock",
-    icon: Package,
+    icon: SquaresFour,
     category: "inventory",
   },
   {
@@ -122,7 +122,7 @@ const reports: ReportLink[] = [
 
 const categories = [
   { id: "sales", label: "Sales", icon: TrendingUp },
-  { id: "inventory", label: "Inventory", icon: Package },
+  { id: "inventory", label: "Inventory", icon: SquaresFour },
   { id: "finance", label: "Finance & Accounting", icon: Banknote },
   { id: "pharmacy", label: "Pharmacy", icon: Pill },
 ] as const;

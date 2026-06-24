@@ -1,5 +1,6 @@
 import { query, execute } from "@/lib/db";
 import { getActiveBranchId } from "@/stores/active-branch";
+import { cogsExpr, cogsExprForReturn } from "@/services/cogs";
 
 export interface ExpenseCategory {
   id: string;
@@ -234,28 +235,23 @@ export async function getPnL(startDate: string, endDate: string): Promise<PnLDat
   const returnsAmount = returns[0]?.total || 0;
   const totalRevenue = sales_cash + sales_credit + sales_other - returnsAmount + (otherIncome[0]?.total || 0);
 
-  // COGS — buying price * quantity sold
+  // COGS — buying price * quantity sold.
+  // Uses cogsExpr() helper for the 4-step fallback chain so sales without
+  // a batch_id still get a real cost (most-recent batch → default price list
+  // → 0). Was: SUM(COALESCE(b.buying_price, 0) * qty) which falls to 0 and
+  // mis-reports gross_profit as full revenue when batch_id is NULL.
   const cogs = await query<{ total: number }>(
-    `SELECT COALESCE(SUM(COALESCE(b.buying_price, 0) * si.quantity), 0) as total
+    `SELECT COALESCE(SUM(${cogsExpr("si")} * si.quantity), 0) as total
      FROM sale_items si
      JOIN sales s ON s.id = si.sale_id
-     LEFT JOIN batches b ON b.id = si.batch_id
      WHERE s.status = 'completed' AND date(s.created_at) BETWEEN ?1 AND ?2`,
     [startDate, endDate]
   );
 
   const returnedCogs = await query<{ total: number }>(
-    `SELECT COALESCE(SUM(
-       COALESCE(
-         b.buying_price,
-         (SELECT b2.buying_price FROM batches b2 WHERE b2.product_id = sri.product_id ORDER BY b2.received_at DESC LIMIT 1),
-         0
-       ) * sri.quantity
-     ), 0) as total
+    `SELECT COALESCE(SUM(${cogsExprForReturn("sri")} * sri.quantity), 0) as total
      FROM sale_return_items sri
      JOIN sale_returns sr ON sr.id = sri.return_id
-     LEFT JOIN sale_items si ON si.id = sri.sale_item_id
-     LEFT JOIN batches b ON b.id = si.batch_id
      WHERE date(sr.return_date) BETWEEN ?1 AND ?2`,
     [startDate, endDate]
   );

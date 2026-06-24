@@ -14,6 +14,7 @@ import { createProduct, type CreateProductInput } from "@/services/inventory";
 import { toast } from "sonner";
 import { AiButton } from "@/components/ai/AiButton";
 import { ai } from "@/services/ai";
+import { mapHeaders, projectRow } from "@/services/csv-automap";
 
 interface ParsedRow {
   rowIndex: number;
@@ -58,30 +59,37 @@ export function ImportProductsPage() {
       return;
     }
 
-    const headers = lines[0].split(",").map((h) => h.trim().toLowerCase());
-    const required = ["name", "buying_price", "selling_price"];
-    const missingRequired = required.filter((r) => !headers.includes(r));
+    // Auto-map headers — supports English + Swahili + casing/punctuation variation.
+    // E.g. "Bidhaa, Bei ya Kununua, Bei ya Kuuza" → name, buying_price, selling_price.
+    const rawHeaders = parseCSVLine(lines[0]);
+    const { mapped, missingRequired, unmappedHeaders } = mapHeaders(rawHeaders);
     if (missingRequired.length > 0) {
-      toast.error(`Missing required columns: ${missingRequired.join(", ")}`);
+      toast.error(`Missing required columns: ${missingRequired.join(", ")}`, {
+        description: rawHeaders.length
+          ? `We saw: ${rawHeaders.join(", ")}. Couldn't map: ${unmappedHeaders.join(", ") || "(none)"}.`
+          : undefined,
+      });
       setParsed([]);
       return;
+    }
+    if (unmappedHeaders.length > 0) {
+      toast.warning(`Skipped ${unmappedHeaders.length} unrecognised column${unmappedHeaders.length > 1 ? "s" : ""}: ${unmappedHeaders.join(", ")}`);
     }
 
     const rows: ParsedRow[] = [];
     for (let i = 1; i < lines.length; i++) {
       const cells = parseCSVLine(lines[i]);
-      const row: Record<string, string> = {};
-      headers.forEach((h, idx) => { row[h] = cells[idx]?.trim() || ""; });
+      const row = projectRow(cells, mapped);
 
       const errors: string[] = [];
       if (!row.name) errors.push("Name required");
-      const buyingPrice = parseFloat(row.buying_price);
-      const sellingPrice = parseFloat(row.selling_price);
+      const buyingPrice = parseFloat(row.buying_price ?? "");
+      const sellingPrice = parseFloat(row.selling_price ?? "");
       if (isNaN(buyingPrice) || buyingPrice < 0) errors.push("Invalid buying_price");
       if (isNaN(sellingPrice) || sellingPrice < 0) errors.push("Invalid selling_price");
 
       const data: CreateProductInput = {
-        name: row.name,
+        name: row.name ?? "",
         sku: row.sku || undefined,
         barcode: row.barcode || undefined,
         unit: row.unit || "piece",

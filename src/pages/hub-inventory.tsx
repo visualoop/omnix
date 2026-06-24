@@ -10,7 +10,7 @@ import {
   ArrowsLeftRight as ArrowLeftRight,
   Building as Building2,
   ClipboardText as ClipboardCheck,
-  Package,
+  SquaresFour,
   Tag,
   Truck,
 } from "@phosphor-icons/react";
@@ -31,7 +31,7 @@ export function InventoryHubPage() {
       title="Inventory"
       description="Products, stock movements, purchases, and the people you buy from."
       tabs={[
-        { id: "products", label: "Products", icon: Package, component: InventoryPage, permission: "inventory.view" },
+        { id: "products", label: "Products", icon: SquaresFour, component: InventoryPage, permission: "inventory.view" },
         { id: "categories", label: "Categories", icon: Tag, component: CategoriesSettingsPage, permission: "inventory.edit" },
         { id: "transfers", label: "Transfers", icon: ArrowLeftRight, component: StockTransfersPage, permission: "inventory.view" },
         { id: "purchases", label: "Purchases", icon: Truck, component: PurchaseOrdersPage, permission: "purchase_orders.view" },

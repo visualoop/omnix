@@ -1,5 +1,6 @@
 import { query } from "@/lib/db";
 import { getActiveBranchId } from "@/stores/active-branch";
+import { cogsExpr } from "@/services/cogs";
 
 export interface DashboardKPIs {
   today_sales_count: number;
@@ -51,10 +52,9 @@ export async function getDashboardKPIs(): Promise<DashboardKPIs> {
   );
 
   const todayProfit = await query<{ profit: number }>(
-    `SELECT COALESCE(SUM(si.unit_price * si.quantity - COALESCE(b.buying_price, 0) * si.quantity), 0) as profit
+    `SELECT COALESCE(SUM(si.unit_price * si.quantity - ${cogsExpr("si")} * si.quantity), 0) as profit
      FROM sale_items si
      JOIN sales s ON s.id = si.sale_id
-     LEFT JOIN batches b ON b.id = si.batch_id
      WHERE date(s.created_at) = ?1 AND s.status = 'completed' AND s.branch_id = ?2`,
     [today, branchId]
   );
@@ -234,10 +234,9 @@ export async function getSalesComparison(
       [start, end]
     );
     const profit = await query<{ profit: number }>(
-      `SELECT COALESCE(SUM(si.unit_price * si.quantity - COALESCE(b.buying_price, 0) * si.quantity), 0) as profit
+      `SELECT COALESCE(SUM(si.unit_price * si.quantity - ${cogsExpr("si")} * si.quantity), 0) as profit
        FROM sale_items si
        JOIN sales s ON s.id = si.sale_id
-       LEFT JOIN batches b ON b.id = si.batch_id
        WHERE s.status = 'completed' AND date(s.created_at) BETWEEN ?1 AND ?2`,
       [start, end]
     );

@@ -4,6 +4,7 @@
  * the caller's onClick handler stays focused on the AI invocation itself.
  */
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   CircleNotch as Loader2,
   Sparkle as Sparkles,
@@ -35,6 +36,7 @@ export function AiButton({
   className,
 }: AiButtonProps) {
   const [busy, setBusy] = useState(false);
+  const navigate = useNavigate();
 
   const handleClick = async () => {
     if (busy) return;
@@ -46,7 +48,7 @@ export function AiButton({
         if (e.status === "no_provider") {
           toast.error("No AI provider configured", {
             description: "Open Settings → AI to add an API key. Free tiers from Groq, OpenRouter, DeepSeek work great.",
-            action: { label: "Open settings", onClick: () => { window.location.hash = "#/settings/ai"; } },
+            action: { label: "Open settings", onClick: () => navigate("/settings/ai") },
           });
         } else if (e.status === "blocked_privacy") {
           toast.error("Blocked by privacy", { description: e.message });

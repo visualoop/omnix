@@ -251,7 +251,7 @@ export function AiAssistantPanel() {
         if (e instanceof AiError && e.status === "no_provider") {
           toast.error("AI not configured", {
             description: "Add a key in Settings → AI to enable the assistant.",
-            action: { label: "Open settings", onClick: () => { window.location.hash = "#/settings/ai" } },
+            action: { label: "Open settings", onClick: () => navigate("/settings/ai") },
           })
         } else if (e instanceof AiError && e.status === "blocked_privacy") {
           toast.error("Blocked by privacy settings", { description: e.message })

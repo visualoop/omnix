@@ -24,7 +24,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, useMotionValue, useTransform, animate } from "motion/react";
 import {
-  ShoppingCart, Package, Users, ChartBar, Receipt,
+  ShoppingCart, SquaresFour, Users, ChartBar, Receipt,
 } from "@phosphor-icons/react";
 import {
   getDashboardKPIs, getSalesByDay, getTopProducts, getSalesByPaymentMethod,
@@ -196,7 +196,7 @@ export function DashboardPage() {
         </div>
         <ul className="divide-y divide-foreground/10">
           <ActionRow k="S" label="New sale" hint="Open POS" icon={ShoppingCart} onClick={() => navigate("/pos/sale")} primary />
-          <ActionRow k="I" label="Inventory" hint="Stock + categories" icon={Package} onClick={() => navigate("/inventory")} />
+          <ActionRow k="I" label="Inventory" hint="Stock + categories" icon={SquaresFour} onClick={() => navigate("/inventory")} />
           <ActionRow k="C" label="Customers" hint="Member directory" icon={Users} onClick={() => navigate("/customers")} />
           <ActionRow k="R" label="Sales reports" hint="Last 30 days" icon={ChartBar} onClick={() => navigate("/analytics?tab=sales")} />
           <ActionRow k="Z" label="Z-Report" hint="End of day totals" icon={Receipt} onClick={() => navigate("/reports/zreport")} muted />

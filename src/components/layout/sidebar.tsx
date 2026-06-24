@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils";
 import {
   House as LayoutDashboard,
   ShoppingCart,
-  Package,
+  SquaresFour,
   Pill,
   ChartBar as BarChart3,
   GearSix as Settings,
@@ -59,7 +59,7 @@ const CORE_NAV: NavItem[] = [
   { to: "/", icon: LayoutDashboard, label: "Dashboard", permissions: [] },
   { to: "/pos", icon: ShoppingCart, label: "POS", permissions: ["pos.use"] },
   { to: "/sales", icon: Receipt, label: "Sales", permissions: ["sales.view"] },
-  { to: "/inventory", icon: Package, label: "Inventory", permissions: ["inventory.view"] },
+  { to: "/inventory", icon: SquaresFour, label: "Inventory", permissions: ["inventory.view"] },
   { to: "/customers", icon: Users, label: "Customers", permissions: ["customers.view"] },
   { to: "/people", icon: UserCog, label: "People", permissions: ["hr.employees.view","hr.attendance.view","hr.leave.request","hr.payroll.view"] },
   { to: "/banking", icon: Landmark, label: "Banking", permissions: ["banking.view","petty_cash.use","expenses.view"] },
@@ -159,16 +159,16 @@ export function Sidebar({ onCommandOpen }: { onCommandOpen: () => void }) {
         data-tour="cmd-k"
         aria-label="Search (⌘K)"
         className={cn(
-          "group mx-2 mt-2 flex h-8 items-center gap-2 rounded-md border border-border/60 bg-foreground/[0.02] text-[12px] text-muted-foreground transition-colors hover:border-border hover:bg-foreground/[0.04] hover:text-foreground cursor-pointer",
+          "group mx-2 mt-2 flex h-8 items-center gap-2 rounded-md border border-border/60 bg-foreground/[0.02] py-0 text-[12px] text-muted-foreground transition-colors hover:border-border hover:bg-foreground/[0.04] hover:text-foreground cursor-pointer",
           collapsed ? "justify-center px-0" : "px-2",
         )}
       >
-        <Search className="h-3.5 w-3.5 shrink-0" />
+        <Search className="h-3.5 w-3.5 shrink-0" aria-hidden />
         {!collapsed && (
           <>
-            <span className="flex-1 text-left leading-none">Search</span>
+            <span className="flex-1 text-left">Search</span>
             <kbd
-              className="inline-flex h-5 items-center rounded-[5px] border border-border/60 bg-background px-1.5 font-mono text-[10px] font-medium leading-none text-muted-foreground group-hover:text-foreground"
+              className="inline-flex h-[18px] items-center rounded-[4px] border border-border/60 bg-background px-1.5 font-mono text-[10px] font-medium text-muted-foreground group-hover:text-foreground"
             >
               ⌘K
             </kbd>

@@ -21,6 +21,7 @@
  *   />
  */
 import type { ReactNode } from "react";
+import { BackButton } from "@/components/ui/back-button";
 
 interface Props {
   /** Mono caption above the title (e.g. 'Operations', 'HR', 'Finance'). */
@@ -33,32 +34,46 @@ interface Props {
   actions?: ReactNode;
   /** Optional className override on the outer wrapper. */
   className?: string;
+  /**
+   * When set, render a <BackButton> above the eyebrow + title. Pass either
+   *   - true        → generic "Back", uses history with no fallback
+   *   - { fallback, label } → routed back-with-fallback
+   */
+  back?: true | { fallback?: string; label?: string };
 }
 
-export function PageHeader({ eyebrow, title, description, actions, className }: Props) {
+export function PageHeader({ eyebrow, title, description, actions, className, back }: Props) {
   return (
-    <header
-      className={`flex flex-col gap-4 border-b border-foreground/10 pb-5 lg:flex-row lg:items-end lg:justify-between ${className ?? ""}`}
-    >
-      <div>
-        {eyebrow ? (
-          <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
-            {eyebrow}
-          </span>
-        ) : null}
-        <h1
-          style={{ fontFamily: "var(--font-display, serif)" }}
-          className="mt-1.5 text-[clamp(24px,3vw,32px)] font-medium leading-[1.05] tracking-[-0.01em]"
-        >
-          {title}
-        </h1>
-        {description ? (
-          <p className="mt-2 max-w-[60ch] text-[13px] leading-[1.55] text-muted-foreground">
-            {description}
-          </p>
-        ) : null}
-      </div>
-      {actions ? <div className="shrink-0">{actions}</div> : null}
-    </header>
+    <div className="flex flex-col gap-0">
+      {back ? (
+        <BackButton
+          fallback={typeof back === "object" ? back.fallback : undefined}
+          label={typeof back === "object" ? back.label : undefined}
+        />
+      ) : null}
+      <header
+        className={`flex flex-col gap-4 border-b border-foreground/10 pb-5 lg:flex-row lg:items-end lg:justify-between ${className ?? ""}`}
+      >
+        <div>
+          {eyebrow ? (
+            <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
+              {eyebrow}
+            </span>
+          ) : null}
+          <h1
+            style={{ fontFamily: "var(--font-display, serif)" }}
+            className="mt-1.5 text-[clamp(24px,3vw,32px)] font-medium leading-[1.05] tracking-[-0.01em]"
+          >
+            {title}
+          </h1>
+          {description ? (
+            <p className="mt-2 max-w-[60ch] text-[13px] leading-[1.55] text-muted-foreground">
+              {description}
+            </p>
+          ) : null}
+        </div>
+        {actions ? <div className="shrink-0">{actions}</div> : null}
+      </header>
+    </div>
   );
 }
