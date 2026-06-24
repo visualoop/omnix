@@ -7,7 +7,7 @@
  * these by literal column name. Use `additionalFields` in lib/auth.ts
  * to extend instead.
  */
-import { pgTable, text, boolean, timestamp } from 'drizzle-orm/pg-core'
+import { pgTable, text, boolean, timestamp, jsonb } from 'drizzle-orm/pg-core'
 
 export const user = pgTable('user', {
   id: text('id').primaryKey(),
@@ -30,6 +30,12 @@ export const user = pgTable('user', {
   country: text('country').notNull().default('KE'),
   currency: text('currency').notNull().default('KES'),
   staffTeam: text('staff_team'), // 'support' | 'sales' | 'eng' | null
+
+  // Free-form ancillary profile fields (KRA PIN, county, town, physical
+  // address, business type, employee count, WhatsApp, newsletter pref).
+  // We add these here rather than as columns to keep the user table
+  // narrow + leave room for fields we haven't promoted yet.
+  metadata: jsonb('metadata').notNull().default({}),
 })
 
 export const session = pgTable('session', {
