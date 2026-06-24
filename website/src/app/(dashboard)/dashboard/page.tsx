@@ -29,6 +29,13 @@ export default async function DashboardOverviewPage({
     redirect(`/login?next=${encodeURIComponent(next)}`)
   }
 
+  // First-time-user check: route to /onboarding when business name is
+  // missing. The wizard captures business + country + currency + phone
+  // + KRA PIN + variant before the user lands on the trial dashboard.
+  if (!session.user.businessName || !session.user.phoneNumber) {
+    redirect('/onboarding')
+  }
+
   const sp = (await searchParams) ?? {}
   const requestedVariant = sp.variant?.toLowerCase()
   const VALID_VARIANTS = ['pro', 'dawa', 'retail', 'hospitality', 'hardware'] as const
