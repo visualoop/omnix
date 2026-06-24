@@ -10,41 +10,159 @@ import { SiteHeader } from '@/components/layout/site-header'
 import { SiteFooter } from '@/components/layout/site-footer'
 import { RootShell } from '@/components/layout/root-shell'
 import { OrgJsonLd } from '@/components/seo/jsonld'
-import { routing } from '@/i18n/routing'
+import { routing, COUNTRY_LOCALES } from '@/i18n/routing'
 
-export const metadata: Metadata = {
-  metadataBase: new URL(BRAND.url),
-  title: {
-    default: `${BRAND_NAME} — ${BRAND_TAGLINE}`,
-    template: `%s · ${BRAND_NAME}`,
+/**
+ * Per-locale metadata.
+ *
+ * Was: a single static `metadata` block with Kenya-specific copy and
+ * og:locale='en_KE' served on every locale, hurting search relevance for
+ * /us, /gb, /in, /ng, /gh, /za visitors.
+ *
+ * Now: generateMetadata reads the [locale] segment and emits
+ *   - country-aware title + description
+ *   - country-specific keyword set (Kenya keywords on /ke only)
+ *   - og:locale that matches the country
+ *   - alternates.languages for hreflang (one entry per country locale + x-default)
+ */
+
+interface LocaleCopy {
+  title: string
+  description: string
+  ogLocale: string
+  keywords: string[]
+}
+
+const KENYA_KEYWORDS = [
+  'ERP Kenya', 'POS Kenya', 'pharmacy software Kenya', 'KRA eTIMS',
+  'M-Pesa POS', 'NHIF SHA billing', 'Nairobi business software',
+]
+const GLOBAL_KEYWORDS = [
+  'ERP software', 'small business ERP', 'pharmacy ERP',
+  'retail ERP', 'hotel ERP', 'POS software',
+  'offline ERP', 'inventory management software', 'AI ERP',
+]
+const NIGERIA_KEYWORDS = ['ERP Nigeria', 'POS Nigeria', 'pharmacy software Nigeria', 'Lagos POS', 'FIRS compliance']
+const GHANA_KEYWORDS = ['ERP Ghana', 'POS Ghana', 'pharmacy software Ghana', 'Accra POS']
+const SOUTH_AFRICA_KEYWORDS = ['ERP South Africa', 'POS South Africa', 'SARS compliance', 'Johannesburg POS']
+const INDIA_KEYWORDS = ['ERP India', 'small business ERP India', 'GST software', 'pharmacy ERP India']
+
+const LOCALE_COPY: Record<string, LocaleCopy> = {
+  ke: {
+    title: `${BRAND_NAME} — ERP for Kenyan SMEs · pharmacies, retailers, hospitality, hardware`,
+    description: 'All-in-one ERP for Kenyan businesses. One installer, one fee, every module included. KRA eTIMS, M-Pesa, SHA insurance billing built-in.',
+    ogLocale: 'en_KE',
+    keywords: KENYA_KEYWORDS,
   },
-  description:
-    'All-in-one ERP for Kenyan businesses. One installer, one fee, every module included. Built in Nairobi for pharmacies, retailers, hardware shops, and hospitality.',
-  applicationName: BRAND_NAME,
-  authors: [{ name: BRAND_NAME }],
-  keywords: [
-    'ERP Kenya',
-    'POS Kenya',
-    'pharmacy software Kenya',
-    'KRA eTIMS',
-    'M-Pesa POS',
-    'NHIF SHA billing',
-    'Nairobi business software',
-  ],
-  openGraph: {
-    type: 'website',
-    siteName: BRAND_NAME,
-    title: `${BRAND_NAME} — ${BRAND_TAGLINE}`,
-    description: 'Run your duka properly. Offline-first ERP, built in Nairobi.',
-    locale: 'en_KE',
+  us: {
+    title: `${BRAND_NAME} — Offline ERP & POS for small business`,
+    description: 'Offline-first ERP for retail, pharmacy, hospitality and hardware stores. One-time licence, perpetual ownership, no subscription. Windows.',
+    ogLocale: 'en_US',
+    keywords: GLOBAL_KEYWORDS,
   },
-  twitter: { card: 'summary_large_image', title: `${BRAND_NAME} — ${BRAND_TAGLINE}` },
-  icons: { icon: '/favicon.ico' },
-  robots: { index: true, follow: true },
-  verification: {
-    google: process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION || undefined,
+  gb: {
+    title: `${BRAND_NAME} — Offline ERP & POS for SMEs`,
+    description: 'Offline-first ERP for retail, pharmacy, hospitality and hardware. One-time licence, no monthly subscription. Runs on Windows.',
+    ogLocale: 'en_GB',
+    keywords: GLOBAL_KEYWORDS,
+  },
+  ng: {
+    title: `${BRAND_NAME} — ERP for Nigerian SMEs`,
+    description: 'Offline-first ERP and POS for Nigerian businesses. Pharmacies, retail, hospitality, hardware. Pay once, use forever.',
+    ogLocale: 'en_NG',
+    keywords: [...NIGERIA_KEYWORDS, ...GLOBAL_KEYWORDS],
+  },
+  gh: {
+    title: `${BRAND_NAME} — ERP for Ghanaian SMEs`,
+    description: 'Offline-first ERP for Ghanaian retailers, pharmacies and restaurants. One-time licence, no recurring fees.',
+    ogLocale: 'en_GH',
+    keywords: [...GHANA_KEYWORDS, ...GLOBAL_KEYWORDS],
+  },
+  za: {
+    title: `${BRAND_NAME} — ERP for South African SMEs`,
+    description: 'Offline-first ERP and POS for South African businesses. Retail, pharmacy, hospitality, hardware. Pay once, own forever.',
+    ogLocale: 'en_ZA',
+    keywords: [...SOUTH_AFRICA_KEYWORDS, ...GLOBAL_KEYWORDS],
+  },
+  in: {
+    title: `${BRAND_NAME} — Offline ERP for Indian SMEs`,
+    description: 'Offline-first ERP for Indian retailers, pharmacies and small businesses. One-time licence, no monthly fees.',
+    ogLocale: 'en_IN',
+    keywords: [...INDIA_KEYWORDS, ...GLOBAL_KEYWORDS],
+  },
+  rw: {
+    title: `${BRAND_NAME} — ERP for Rwandan SMEs`,
+    description: 'Offline-first ERP for Rwandan businesses. Pharmacies, retail, hospitality, hardware. Pay once, own forever.',
+    ogLocale: 'en_RW',
+    keywords: GLOBAL_KEYWORDS,
+  },
+  tz: {
+    title: `${BRAND_NAME} — ERP for Tanzanian SMEs`,
+    description: 'Offline-first ERP for Tanzanian businesses. Pharmacies, retail, hospitality, hardware. Pay once, own forever.',
+    ogLocale: 'en_TZ',
+    keywords: GLOBAL_KEYWORDS,
+  },
+  ug: {
+    title: `${BRAND_NAME} — ERP for Ugandan SMEs`,
+    description: 'Offline-first ERP for Ugandan businesses. Pharmacies, retail, hospitality, hardware. Pay once, own forever.',
+    ogLocale: 'en_UG',
+    keywords: GLOBAL_KEYWORDS,
+  },
+  eg: {
+    title: `${BRAND_NAME} — ERP for Egyptian SMEs`,
+    description: 'Offline-first ERP for Egyptian businesses. Pharmacies, retail, hospitality, hardware. Pay once, own forever.',
+    ogLocale: 'en_EG',
+    keywords: GLOBAL_KEYWORDS,
+  },
+  ae: {
+    title: `${BRAND_NAME} — Offline ERP for UAE SMEs`,
+    description: 'Offline-first ERP for UAE businesses. Pharmacies, retail, hospitality, hardware. Pay once, own forever.',
+    ogLocale: 'en_AE',
+    keywords: GLOBAL_KEYWORDS,
   },
 }
+
+function copyFor(locale: string): LocaleCopy {
+  return LOCALE_COPY[locale] ?? LOCALE_COPY.us
+}
+
+export async function generateMetadata({
+  params,
+}: { params: Promise<{ locale: string }> }): Promise<Metadata> {
+  const { locale } = await params
+  const c = copyFor(locale)
+  const altLanguages: Record<string, string> = Object.fromEntries(
+    COUNTRY_LOCALES.map((cc) => [cc, `${BRAND.url}/${cc}`]),
+  )
+  altLanguages['x-default'] = `${BRAND.url}/ke`
+  return {
+    metadataBase: new URL(BRAND.url),
+    title: { default: c.title, template: `%s · ${BRAND_NAME}` },
+    description: c.description,
+    applicationName: BRAND_NAME,
+    authors: [{ name: BRAND_NAME }],
+    keywords: c.keywords,
+    openGraph: {
+      type: 'website',
+      siteName: BRAND_NAME,
+      title: c.title,
+      description: c.description,
+      locale: c.ogLocale,
+    },
+    twitter: { card: 'summary_large_image', title: c.title, description: c.description },
+    icons: { icon: '/favicon.ico' },
+    robots: { index: true, follow: true },
+    alternates: {
+      canonical: `${BRAND.url}/${locale}`,
+      languages: altLanguages,
+    },
+    verification: {
+      google: process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION || undefined,
+    },
+  }
+}
+
+void BRAND_TAGLINE
 
 export default async function FrontendLayout({
   children,

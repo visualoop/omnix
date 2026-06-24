@@ -85,7 +85,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     <RootShell>
       <div className="flex min-h-screen bg-[var(--color-bg)] text-[var(--color-fg)]">
         {/* ── Sidebar ────────────────────────────────────────────── */}
-        <aside className="w-[244px] shrink-0 border-r border-[var(--color-border)] flex flex-col">
+        <aside className="w-[244px] shrink-0 border-r border-[var(--color-border)] flex flex-col sticky top-0 h-screen overflow-y-auto">
           {/* Brand */}
           <div className="px-5 pt-6 pb-5 border-b border-[var(--color-border)]">
             <Link href="/admin" className="block">
