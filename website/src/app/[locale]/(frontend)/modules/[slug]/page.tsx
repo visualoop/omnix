@@ -8,6 +8,89 @@ import { Container, SectionHeader } from '@/components/ui/section'
 import { PageHero } from '@/components/marketing/page-hero'
 import { moduleBySlug, moduleSlugs, MODULES_SEED } from '@/lib/modules-seed'
 
+interface V10Highlight {
+  eyebrow: string
+  title: string
+  body: string
+  href?: string
+}
+
+/**
+ * v0.10 highlights tailored per module. Each entry shows three things
+ * the module gained in the latest release. Keep these tight — the
+ * module page already has a long features bento; this row is the
+ * "what's actually new" recap for repeat visitors.
+ */
+function moduleV10Highlights(slug: string): V10Highlight[] {
+  const COMMON: V10Highlight[] = [
+    {
+      eyebrow: 'Compliance',
+      title: 'VAT3, P9, P10 — branded',
+      body: 'Every Kenyan filing prints to PDF in your masthead. Sample on the homepage.',
+      href: '/#pdf-pack',
+    },
+    {
+      eyebrow: 'Detail pages',
+      title: 'Every record has its own page',
+      body: 'Product, customer, supplier, sale, employee, branch — no more inline-only views.',
+      href: '/changelog',
+    },
+  ]
+  switch (slug) {
+    case 'dawa':
+      return [
+        {
+          eyebrow: 'Pharmacy compliance',
+          title: 'Controlled-substances register PDF',
+          body: 'Daily register with batch numbers + prescriber + patient ID, ready for the Pharmacy & Poisons Board inspection.',
+          href: '/samples/grn-sample.pdf',
+        },
+        ...COMMON,
+      ]
+    case 'retail':
+      return [
+        {
+          eyebrow: 'Stock control',
+          title: 'Stock-take variance + dead stock + reorder',
+          body: 'Three branded PDFs that turn a Saturday count into a 5-minute reconciliation.',
+          href: '/samples/grn-sample.pdf',
+        },
+        ...COMMON,
+      ]
+    case 'hardware':
+      return [
+        {
+          eyebrow: 'Quotation flow',
+          title: 'Hardware Quote PDF with bulk discount + VAT',
+          body: 'Replaces the Excel quote you used to email. Validity stamped on the page so customers know the lock-in.',
+          href: '/samples/hardware-quote-sample.pdf',
+        },
+        ...COMMON,
+      ]
+    case 'hospitality':
+      return [
+        {
+          eyebrow: 'Shift close',
+          title: 'Z-Report — every payment method',
+          body: 'Cash, M-Pesa, card, room-charge folio reconciled at shift close with cash variance flagged.',
+          href: '/samples/z-report-sample.pdf',
+        },
+        ...COMMON,
+      ]
+    case 'pro':
+    default:
+      return [
+        {
+          eyebrow: 'Procurement',
+          title: 'Mixed-currency PO + three-way match',
+          body: 'Foreign-supplier POs in USD or EUR with FX snapshot at receipt. Approval workflow for high-value orders.',
+          href: '/docs/purchase-orders',
+        },
+        ...COMMON,
+      ]
+  }
+}
+
 export async function generateStaticParams() {
   return moduleSlugs().map((slug) => ({ slug }))
 }
@@ -161,6 +244,42 @@ export default async function ModuleDetailPage({
                 <p className="mt-2 text-[14px] leading-[1.6] text-[var(--color-fg-muted)]">
                   {item.body}
                 </p>
+              </div>
+            ))}
+          </div>
+        </Container>
+      </section>
+
+      {/* ── v0.10 highlights — module-specific ──────────────────── */}
+      <section className="border-t border-[var(--color-border)] py-20 sm:py-24">
+        <Container width="wide">
+          <SectionHeader
+            eyebrow="New in v0.10"
+            title={<>What just shipped <em>for {module.name.toLowerCase()}.</em></>}
+          />
+          <div className="mt-12 grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+            {moduleV10Highlights(module.slug).map((h) => (
+              <div
+                key={h.title}
+                className="flex flex-col gap-3 border-t border-[var(--color-border)] pt-5"
+              >
+                <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-[var(--color-fg-subtle)]">
+                  {h.eyebrow}
+                </span>
+                <h3 className="font-display text-[20px] font-medium leading-snug text-[var(--color-fg)]">
+                  {h.title}
+                </h3>
+                <p className="text-[14px] leading-[1.55] text-[var(--color-fg-muted)]">
+                  {h.body}
+                </p>
+                {h.href ? (
+                  <Link
+                    href={h.href}
+                    className="font-mono text-[11px] uppercase tracking-[0.18em] underline-offset-4 hover:underline"
+                  >
+                    See it →
+                  </Link>
+                ) : null}
               </div>
             ))}
           </div>

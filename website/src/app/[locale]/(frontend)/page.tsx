@@ -7,6 +7,7 @@ import { HeroSection } from '@/components/landing/hero-section'
 import { ModulesRowsSection } from '@/components/landing/modules-rows-section'
 import { OnePriceSection } from '@/components/landing/one-price-section'
 import { ReceiptProofSection } from '@/components/landing/receipt-proof-section'
+import { PdfPackSection } from '@/components/landing/pdf-pack-section'
 import { RecentWorkSection } from '@/components/landing/recent-work-section'
 import { StudiosHandSection } from '@/components/landing/studios-hand-section'
 import { ThreeQuotesSection } from '@/components/landing/three-quotes-section'
@@ -97,6 +98,7 @@ export default async function HomePage({
       <AiSection />
       <ModulesRowsSection />
       <ReceiptProofSection />
+      <PdfPackSection />
       <StudiosHandSection />
       <RecentWorkSection />
       <ComplianceSection />

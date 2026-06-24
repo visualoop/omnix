@@ -267,6 +267,155 @@ export default async function PricingPage({ params }: { params: Promise<{ locale
         </div>
       </section>
 
+      {/* What's actually included — expanded inventory of every category
+          so cold visitors don't have to read between the lines. Used to
+          back the "fair price" claim on /pricing. */}
+      <section className="section-tight">
+        <div className="container-wide">
+          <div className="mb-12 max-w-[44rem]">
+            <span className="eyebrow">What&rsquo;s actually included</span>
+            <h2 className="headline-section mt-5 text-balance">
+              Every line, <em>in the box.</em>
+            </h2>
+            <p className="mt-4 text-[15px] leading-[1.65] text-[var(--color-fg-muted)] max-w-[60ch]">
+              No tier-locked features. The fee buys the whole product. The list below
+              shows what arrives the moment you install &mdash; same for every variant,
+              same for every business size.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 gap-x-12 gap-y-10 lg:grid-cols-[2fr_1fr]">
+            {/* Left column — full feature list grouped by category */}
+            <div className="flex flex-col gap-7">
+              {[
+                {
+                  group: 'Core',
+                  items: [
+                    'Point of sale (cash, M-Pesa STK push, card, credit, layby)',
+                    'Inventory + batches + expiry + barcode scanner',
+                    'Customers + suppliers + multi-branch ledgers',
+                    'Accounting (P&L, expenses, petty cash, banking)',
+                    'Cash register with shift open/close + Z-report',
+                  ],
+                },
+                {
+                  group: 'Compliance pack',
+                  items: [
+                    'KRA eTIMS sale signing on every receipt',
+                    'VAT3 PDF — populated for the period, branded with your masthead',
+                    'P9 yearly tax certificate per employee',
+                    'P10 monthly PAYE batch for iTax filing',
+                    'GRN (Goods Received Note) with batch + expiry',
+                    'Pharmacy controlled-substances register',
+                  ],
+                },
+                {
+                  group: 'Procurement',
+                  items: [
+                    'Mixed-currency purchase orders with FX snapshot at receipt',
+                    'Three-way match (PO ↔ GRN ↔ supplier invoice)',
+                    'Approval workflow for high-value POs',
+                    'Reverse-GRN for receiving errors',
+                    'Partial receipts + supplier balance tracking',
+                  ],
+                },
+                {
+                  group: 'Reports',
+                  items: [
+                    'P&L · day book · top products · payment mix',
+                    'Aged receivables · aged payables',
+                    'Reorder list · dead stock · stock-take variance',
+                    'Insurance claims batch (SHA + private)',
+                    'Every report exports to a branded PDF in one click',
+                  ],
+                },
+                {
+                  group: 'Ops + multi-branch',
+                  items: [
+                    'Customer display on a second monitor (idle playlist + cart)',
+                    'LAN sync between master + client tills (no internet needed)',
+                    'Per-machine RSA-signed licence',
+                    'Cloud backup add-on (encrypted, your key)',
+                    'In-app AI assistant (BYOK, free tiers work)',
+                  ],
+                },
+              ].map(({ group, items }) => (
+                <div key={group}>
+                  <div className="caption-mono mb-3">{group}</div>
+                  <ul className="flex flex-col divide-y divide-[var(--color-border)]">
+                    {items.map((item) => (
+                      <li
+                        key={item}
+                        className="py-2.5 text-[14px] leading-[1.55] text-[var(--color-fg)]"
+                      >
+                        {item}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ))}
+            </div>
+
+            {/* Right column — v0.10 highlights sidebar */}
+            <aside className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-6 lg:p-7 self-start">
+              <span className="eyebrow">New in v0.10</span>
+              <h3
+                style={{ fontFamily: 'var(--font-display, serif)' }}
+                className="mt-3 text-[24px] font-normal leading-[1.1] tracking-[-0.01em]"
+              >
+                A bigger box, same price.
+              </h3>
+              <ul className="mt-5 flex flex-col gap-4">
+                {[
+                  {
+                    title: '16 branded PDFs',
+                    body: 'VAT3, P9, P10, GRN, hardware quote, Z-report, aged AR/AP and more.',
+                    href: '/#pdf-pack',
+                  },
+                  {
+                    title: 'PO lifecycle hardening',
+                    body: 'Mixed currency, approval thresholds, three-way match, reverse-GRN.',
+                    href: '/docs/purchase-orders',
+                  },
+                  {
+                    title: 'Customer display playlist',
+                    body: 'Image, video, or iframe slides on the idle screen of your second monitor.',
+                    href: '/docs/customer-display',
+                  },
+                  {
+                    title: '14 entity detail pages',
+                    body: 'Product, customer, supplier, sale, employee — every record gets its own page.',
+                    href: '/changelog',
+                  },
+                  {
+                    title: '7-step onboarding wizard',
+                    body: 'Skips optional steps. Captures only what licensing actually needs.',
+                    href: '/docs/onboarding',
+                  },
+                ].map((h) => (
+                  <li key={h.title} className="border-t border-[var(--color-border)] pt-4 first:border-0 first:pt-0">
+                    <Link href={h.href} className="group block">
+                      <div className="text-[14px] font-medium text-[var(--color-fg)] group-hover:text-[var(--color-accent)] transition-colors">
+                        {h.title}
+                      </div>
+                      <p className="mt-1 text-[12.5px] leading-[1.55] text-[var(--color-fg-muted)]">
+                        {h.body}
+                      </p>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+              <Link
+                href="/changelog"
+                className="caption-mono mt-7 inline-flex items-center gap-1.5 hover:underline"
+              >
+                Full changelog <Icon.ArrowRight className="size-3" weight="bold" />
+              </Link>
+            </aside>
+          </div>
+        </div>
+      </section>
+
       <FaqSection />
       <ClosingCtaSection whatsappUrl={settings.whatsappUrl} />
     </>

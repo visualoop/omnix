@@ -154,6 +154,22 @@ export function HeroSection({
           <span className="text-[var(--color-fg-muted)]">{priceCaption}</span>
         </motion.p>
 
+        {/* v0.10 sub-rail — anchors the cold visitor on what makes the
+            release worth their time. Mono, hairline-thin, sits below the
+            price caption so it doesn't compete with the headline. */}
+        <motion.p
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.5, delay: 0.5 }}
+          className="caption-mono mt-2 text-center text-[var(--color-fg-muted)]"
+        >
+          <span>Now with VAT3 · P9 · P10 · GRN</span>
+          <span aria-hidden className="mx-2 text-[var(--color-fg-subtle)]">
+            ·
+          </span>
+          <span>every Kenyan filing as a one-click PDF</span>
+        </motion.p>
+
         {/* Product preview — only renders when a screenshot is uploaded in
             /admin → Landing Page → Hero → Screenshot. Until then the section
             stays empty so we don't ship a fake mock that misrepresents the app. */}

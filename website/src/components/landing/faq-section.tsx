@@ -20,6 +20,18 @@ import { cn } from '@/lib/cn'
 
 const FAQS: { q: string; a: string }[] = [
   {
+    q: 'Can I file VAT3 directly from Omnix?',
+    a: 'Not directly to KRA — every Kenyan business still files on iTax through the official portal. What Omnix does is generate a VAT3 PDF in your business colours, with every figure already populated for the period: total taxable supplies, output VAT, total taxable purchases, input VAT, and the payable line. You copy the figures into iTax and you\'re done. Same flow for P9, P10 and the Hardware Quote.',
+  },
+  {
+    q: 'Does Omnix support multi-currency purchase orders?',
+    a: 'Yes, since v0.10. When you create a PO with a foreign supplier, you set the PO currency (USD, EUR, CNY, etc.) and the exchange rate. Line items stay in the foreign currency on the PO; the moment goods are received, Omnix snapshots that exchange rate and writes cost-of-goods into your books in KES. So your P&L stays correct even if the rate moves between order and delivery.',
+  },
+  {
+    q: 'How does the customer display work?',
+    a: 'Plug a second monitor into the same machine. Open Settings → Customer Display → Open Display. Omnix opens a separate Tauri window on the second screen showing your business logo + clock when the till is idle, and a clean cart breakdown when there\'s a sale in progress. You can configure idle-screen slides — image promos, YouTube embeds, your live menu — from the same settings page. The display updates in real time as the cashier rings up items.',
+  },
+  {
     q: 'What does the one-time payment actually cover?',
     a: 'KES 50,000 buys a perpetual licence for any trade variant (Dawa, Retail, Hospitality, Hardware). KES 150,000 unlocks Pro (all four trades in one binary). Both are one-time, no annual fees, no subscription. Every minor + patch release within the same major version is free.',
   },
