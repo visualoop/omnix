@@ -1,7 +1,7 @@
 import { headers } from 'next/headers'
 import { redirect } from 'next/navigation'
-import { eq, desc } from 'drizzle-orm'
-import { db, licenses, machines } from '@/db'
+import { eq, desc, inArray } from 'drizzle-orm'
+import { db, licenses, machines, activations } from '@/db'
 import { auth } from '@/lib/auth'
 import { PageHeading } from '@/components/dashboard/status-utils'
 import { StartTrialWizard } from '@/components/dashboard/start-trial-wizard'
@@ -75,6 +75,36 @@ export default async function DashboardOverviewPage({
       .orderBy(desc(machines.lastSeenAt))
       .limit(10),
   ])
+
+  // Resolve which licences each machine is bound to (via activations).
+  // The dashboard uses this so the per-machine Upgrade button only
+  // appears when that specific machine has a TRIAL licence bound to it
+  // (not whenever any licence in the account is on trial — that gave
+  // false positives when a machine was on a paid trade licence but the
+  // account also had a Pro trial running on a different machine).
+  const machineIds = machList.map((m) => m.id)
+  const licenseIds = licList.map((l) => l.id)
+  const activationRows =
+    machineIds.length && licenseIds.length
+      ? await db
+          .select({
+            machineId: activations.machineId,
+            licenseId: activations.licenseId,
+          })
+          .from(activations)
+          .where(inArray(activations.machineId, machineIds))
+      : []
+  // machineId → array of bound licence rows (filtered to this user's licList)
+  const licenseById = new Map(licList.map((l) => [l.id, l]))
+  const boundLicencesByMachine = new Map<string, typeof licList>()
+  for (const a of activationRows) {
+    if (!a.machineId) continue
+    const lic = licenseById.get(a.licenseId)
+    if (!lic) continue
+    const bucket = boundLicencesByMachine.get(a.machineId) ?? []
+    if (!bucket.find((x) => x.id === lic.id)) bucket.push(lic)
+    boundLicencesByMachine.set(a.machineId, bucket)
+  }
 
   const firstName = session.user.name?.split(' ')[0] ?? 'there'
   const hasNoLicences = licList.length === 0
@@ -213,31 +243,42 @@ export default async function DashboardOverviewPage({
               </div>
             ) : (
               <ul className="rounded-lg border border-[var(--color-border)] divide-y divide-[var(--color-border)]">
-                {machList.map((m) => (
-                  <li key={m.id} className="flex items-center justify-between gap-3 px-4 py-3 text-[13px]">
-                    <span className="text-[var(--color-fg)] font-medium flex-1 min-w-0 truncate">{m.hostname ?? '—'}</span>
-                    <span className="text-[var(--color-fg-muted)] shrink-0">{m.os} · v{m.currentVersion ?? '?'}</span>
-                    <span className="font-mono text-[10px] uppercase tracking-[0.18em] shrink-0">{m.status}</span>
-                    {/* Show an Upgrade CTA when there's a trial worth
-                        promoting. If Pro is on trial, that's the only
-                        upgrade worth offering (covers everything). If
-                        Pro isn't in play, the first non-Pro trial wins. */}
-                    {trialToBanner ? (
+                {machList.map((m) => {
+                  // Per-machine Upgrade rule: only show Upgrade when this
+                  // specific machine has a licence ON TRIAL bound to it.
+                  // Default to the first trial bound here; if none, no CTA.
+                  const bound = boundLicencesByMachine.get(m.id) ?? []
+                  const trialBound = bound.find((l) => l.status === 'trial')
+                  // Visual cue: list the variants bound to this machine.
+                  // Tells the user at a glance which licence(s) this PC runs.
+                  const variantsLabel = bound.length
+                    ? Array.from(new Set(bound.map((l) => l.variant))).join(' + ')
+                    : null
+                  return (
+                    <li key={m.id} className="flex items-center justify-between gap-3 px-4 py-3 text-[13px]">
+                      <span className="text-[var(--color-fg)] font-medium flex-1 min-w-0 truncate">{m.hostname ?? '—'}</span>
+                      <span className="text-[var(--color-fg-muted)] shrink-0">
+                        {m.os} · v{m.currentVersion ?? '?'}
+                        {variantsLabel ? <> · <span className="text-[var(--color-fg)]">{variantsLabel}</span></> : null}
+                      </span>
+                      <span className="font-mono text-[10px] uppercase tracking-[0.18em] shrink-0">{m.status}</span>
+                      {trialBound ? (
+                        <a
+                          href={`/buy?variant=${encodeURIComponent(trialBound.variant ?? 'pro')}`}
+                          className="shrink-0 inline-flex items-center rounded-md border border-[var(--color-accent)] bg-[var(--color-accent)] px-2.5 py-1 font-mono text-[10px] uppercase tracking-[0.18em] text-white hover:bg-[var(--color-accent)]/90 transition-colors cursor-pointer"
+                        >
+                          Upgrade
+                        </a>
+                      ) : null}
                       <a
-                        href={`/buy?variant=${encodeURIComponent(trialToBanner.variant ?? 'pro')}`}
-                        className="shrink-0 inline-flex items-center rounded-md border border-[var(--color-accent)] bg-[var(--color-accent)] px-2.5 py-1 font-mono text-[10px] uppercase tracking-[0.18em] text-white hover:bg-[var(--color-accent)]/90 transition-colors cursor-pointer"
+                        href={`/dashboard/machines/${m.id}`}
+                        className="shrink-0 inline-flex items-center rounded-md border border-[var(--color-border)] px-2.5 py-1 font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--color-fg-muted)] hover:text-[var(--color-fg)] hover:border-[var(--color-border-strong)] transition-colors cursor-pointer"
                       >
-                        Upgrade
+                        Open
                       </a>
-                    ) : null}
-                    <a
-                      href={`/dashboard/machines/${m.id}`}
-                      className="shrink-0 inline-flex items-center rounded-md border border-[var(--color-border)] px-2.5 py-1 font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--color-fg-muted)] hover:text-[var(--color-fg)] hover:border-[var(--color-border-strong)] transition-colors cursor-pointer"
-                    >
-                      Open
-                    </a>
-                  </li>
-                ))}
+                    </li>
+                  )
+                })}
               </ul>
             )}
           </section>
