@@ -397,6 +397,12 @@ fn run_inner() {
         .plugin(tauri_plugin_http::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())
+        // persisted-scope MUST come after fs per the plugin docs. It
+        // remembers which paths the user picked via the dialog plugin
+        // so the asset:// protocol keeps serving them across restarts
+        // (e.g. customer-display playlist files sitting on D:/ which
+        // isn't in the static scope inside tauri.conf.json).
+        .plugin(tauri_plugin_persisted_scope::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_process::init())
         .plugin(

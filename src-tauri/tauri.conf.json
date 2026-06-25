@@ -23,7 +23,26 @@
       }
     ],
     "security": {
-      "csp": null
+      "csp": null,
+      "assetProtocol": {
+        "enable": true,
+        "scope": {
+          "requireLiteralLeadingDot": false,
+          "allow": [
+            "$HOME/**/*",
+            "$DOCUMENT/**/*",
+            "$DOWNLOAD/**/*",
+            "$PICTURE/**/*",
+            "$VIDEO/**/*",
+            "$DESKTOP/**/*",
+            "$APPDATA/**/*",
+            "$APPLOCALDATA/**/*",
+            "$APPCACHE/**/*",
+            "$RESOURCE/**/*",
+            "$TEMP/**/*"
+          ]
+        }
+      }
     }
   },
   "plugins": {
