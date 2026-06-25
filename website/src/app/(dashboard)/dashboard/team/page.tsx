@@ -7,6 +7,7 @@ import { Breadcrumbs } from '@/components/layout/breadcrumbs'
 import { EntityHero } from '@/components/layout/entity-hero'
 import { LazyTabs } from '@/components/layout/lazy-tabs'
 import { formatDate } from '@/lib/format-date'
+import { InvitationsPanel } from '@/components/dashboard/invitations-panel'
 
 export const dynamic = 'force-dynamic'
 
@@ -89,44 +90,19 @@ export default async function DashboardTeamPage() {
             label: 'Invitations',
             count: invites.length,
             content: (
-              <ul className="flex flex-col divide-y divide-foreground/5 rounded-md border border-foreground/10">
-                {invites.map((inv) => (
-                  <li key={inv.id} className="flex items-center justify-between gap-4 px-4 py-3">
-                    <div className="flex flex-col">
-                      <span className="text-[13px] font-medium">{inv.email}</span>
-                      <span className="text-[11px] text-muted-foreground">
-                        {inv.role ?? 'member'} · {inv.status}
-                      </span>
-                    </div>
-                    <span className="font-mono text-[11px] text-muted-foreground">
-                      Expires {formatDate(inv.expiresAt)}
-                    </span>
-                  </li>
-                ))}
-                {invites.length === 0 && <li className="px-4 py-3 text-sm text-muted-foreground">No invitations yet.</li>}
-              </ul>
+              <InvitationsPanel
+                invites={invites.map((i) => ({
+                  id: i.id,
+                  email: i.email,
+                  role: i.role,
+                  status: i.status,
+                  expiresAt: i.expiresAt.toISOString(),
+                }))}
+                canManage={isOwner}
+                orgName={primary.org.name}
+              />
             ),
           },
-          ...(isOwner
-            ? [
-                {
-                  id: 'invite',
-                  label: 'Invite',
-                  content: (
-                    <div className="rounded-md border border-foreground/10 p-4 max-w-md">
-                      <p className="text-[13px] text-muted-foreground mb-3">
-                        Invite a teammate via email. They'll receive a link to join {primary.org.name}.
-                      </p>
-                      <p className="text-[12px] text-muted-foreground">
-                        Better Auth's organisation plugin handles invites — POST{' '}
-                        <code className="font-mono text-[11px]">/api/auth/organization/invite-member</code> with
-                        {` `}email, organizationId={primary.org.id}, role.
-                      </p>
-                    </div>
-                  ),
-                },
-              ]
-            : []),
         ]}
       />
     </div>
