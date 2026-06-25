@@ -75,6 +75,7 @@ import { EtimsQueuePage } from "@/pages/etims-queue";
 import { VatReportPage } from "@/pages/vat-report";
 import { LicensePage } from "@/pages/license";
 import { SettingsLicensesPage } from "@/pages/settings-licenses";
+import { SettingsDisplayPage } from "@/pages/settings-display";
 import { ImportProductsPage } from "@/pages/import-products";
 import { SalesHistoryPage } from "@/pages/sales-history";
 import { UsersPage } from "@/pages/users";
@@ -279,6 +280,7 @@ function AppContent() {
             <Route path="audit" element={<RequireRole permission="audit.view"><AuditLogPage /></RequireRole>} />
             <Route path="license" element={<RequireRole permission="license.view"><LicensePage /></RequireRole>} />
             <Route path="licenses" element={<RequireRole permission="license.view"><SettingsLicensesPage /></RequireRole>} />
+            <Route path="display" element={<RequireRole permission="settings.business"><SettingsDisplayPage /></RequireRole>} />
           </Route>
           <Route path="/audit" element={<Navigate to="/settings/audit" replace />} />
           <Route path="/suppliers" element={<RequireRole permission="suppliers.view"><SuppliersPage /></RequireRole>} />

@@ -95,7 +95,7 @@ export function OpenShiftDialog({ open, onClose, onOpened }: {
         </div>
         <DialogFooter>
           <Button variant="outline" size="sm" onClick={onClose} disabled={submitting}>Cancel</Button>
-          <Button size="sm" onClick={handleOpen} disabled={submitting} className="bg-emerald-600 hover:bg-emerald-700">
+          <Button size="sm" onClick={handleOpen} disabled={submitting}>
             {submitting && <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />}
             <Unlock className="h-3.5 w-3.5 mr-1.5" /> Open Shift
           </Button>
@@ -239,7 +239,7 @@ export function CloseShiftDialog({ open, onClose, onClosed }: {
             </div>
             <DialogFooter>
               <Button variant="outline" size="sm" onClick={onClose} disabled={submitting}>Cancel</Button>
-              <Button size="sm" onClick={handleClose} disabled={submitting || actualCash === ""} className="bg-rose-600 hover:bg-rose-700">
+              <Button size="sm" onClick={handleClose} disabled={submitting || actualCash === ""}>
                 {submitting && <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />}
                 <Lock className="h-3.5 w-3.5 mr-1.5" /> Close Shift
               </Button>
@@ -376,9 +376,7 @@ export function PettyCashDialog({ open, onClose, onSaved }: {
         </div>
         <DialogFooter>
           <Button variant="outline" size="sm" onClick={onClose} disabled={submitting}>Cancel</Button>
-          <Button size="sm" onClick={save} disabled={submitting} className={
-            type === "expense" ? "bg-rose-600 hover:bg-rose-700" : "bg-emerald-600 hover:bg-emerald-700"
-          }>
+          <Button size="sm" onClick={save} disabled={submitting}>
             {submitting && <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />}
             <Receipt className="h-3.5 w-3.5 mr-1.5" /> Record
           </Button>

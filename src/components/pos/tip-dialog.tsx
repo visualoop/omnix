@@ -159,7 +159,7 @@ export function TipDialog({ open, onClose }: { open: boolean; onClose: () => voi
             </Button>
           )}
           <Button variant="outline" size="sm" onClick={onClose}>Cancel</Button>
-          <Button size="sm" onClick={apply} className="bg-rose-600 hover:bg-rose-700">
+          <Button size="sm" onClick={apply}>
             <Heart className="h-3.5 w-3.5 mr-1.5" /> Apply Tip
           </Button>
         </DialogFooter>
