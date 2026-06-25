@@ -1,82 +1,126 @@
-import { desc, eq, sql } from 'drizzle-orm'
-import { Buildings, Desktop, Users as UsersIcon } from '@phosphor-icons/react/dist/ssr'
+import { count, desc, eq, ilike, sql } from 'drizzle-orm'
 import Link from 'next/link'
+import { Buildings } from '@phosphor-icons/react/dist/ssr'
 import { db, organization, machines, member } from '@/db'
 import { EmptyState } from '@/components/admin/empty-state'
 import { PageHeader } from '@/components/layout/page-header'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
+import { AdminPagination, AdminSearch } from '@/components/admin/data-controls'
 
 export const metadata = { title: 'Admin · Organisations' }
 export const dynamic = 'force-dynamic'
 
-export default async function AdminOrgsPage() {
-  const orgs = await db.select().from(organization).orderBy(desc(organization.createdAt)).limit(120)
+const PAGE_SIZE = 50
 
-  // For each org, count machines + members. Cheap because orgs are small (<150).
-  const counts = await Promise.all(
-    orgs.map(async (o) => {
-      const [m, u] = await Promise.all([
-        db.select({ n: sql<number>`count(*)::int` }).from(machines).where(eq(machines.organizationId, o.id)),
-        db.select({ n: sql<number>`count(*)::int` }).from(member).where(eq(member.organizationId, o.id)),
-      ])
-      return { id: o.id, machines: m[0].n, members: u[0].n }
-    }),
-  )
-  const countMap = new Map(counts.map((c) => [c.id, c]))
+export default async function AdminOrgsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ page?: string; q?: string }>
+}) {
+  const sp = await searchParams
+  const page = Math.max(1, parseInt(sp.page ?? '1', 10) || 1)
+  const q = sp.q?.trim() ?? ''
+
+  const where = q ? ilike(organization.name, `%${q}%`) : undefined
+
+  const [orgs, totalRow] = await Promise.all([
+    db
+      .select({
+        id: organization.id,
+        name: organization.name,
+        slug: organization.slug,
+        createdAt: organization.createdAt,
+        members: sql<number>`(SELECT count(*)::int FROM ${member} WHERE ${member.organizationId} = ${organization.id})`,
+        machines: sql<number>`(SELECT count(*)::int FROM ${machines} WHERE ${machines.organizationId} = ${organization.id})`,
+      })
+      .from(organization)
+      .where(where)
+      .orderBy(desc(organization.createdAt))
+      .limit(PAGE_SIZE)
+      .offset((page - 1) * PAGE_SIZE),
+    db.select({ n: count() }).from(organization).where(where),
+  ])
+
+  const total = totalRow[0]?.n ?? 0
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       <PageHeader
         eyebrow="Platform"
         title="Organisations"
-        description="Customer businesses that opened multi-user accounts. Each card shows the team size and machine count alongside the brand details."
+        description="Customer businesses with multi-user accounts. Solo customers don't have one."
       />
 
-      {orgs.length === 0 ? (
+      <AdminSearch placeholder="Search by organisation name…" />
+
+      {orgs.length === 0 && total === 0 ? (
         <EmptyState
           icon={<Buildings weight="regular" className="size-8" />}
-          title="No organisations yet."
-          description="Solo customers don't need an org. Once a customer adds a teammate, the org row gets created and lands here."
+          title={q ? 'No matches.' : 'No organisations yet.'}
+          description={
+            q
+              ? 'Adjust the search above.'
+              : 'Solo customers don\'t need an org. Once a customer adds a teammate, the org row gets created and lands here.'
+          }
         />
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {orgs.map((o) => {
-            const c = countMap.get(o.id) ?? { machines: 0, members: 0 }
-            return (
-              <Link
-                key={o.id}
-                href={`/admin/orgs/${o.id}`}
-                className="block rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] hover:border-[var(--color-border-strong)] transition-colors p-5 cursor-pointer"
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <div style={{ fontFamily: 'var(--font-display)' }} className="text-[18px] font-medium text-[var(--color-fg)] truncate">
+        <>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Organisation</TableHead>
+                <TableHead>Slug</TableHead>
+                <TableHead className="text-right">Members</TableHead>
+                <TableHead className="text-right">Machines</TableHead>
+                <TableHead>Created</TableHead>
+                <TableHead className="w-12 text-right">·</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {orgs.map((o) => (
+                <TableRow key={o.id}>
+                  <TableCell className="min-w-[200px]">
+                    <Link
+                      href={`/admin/orgs/${o.id}`}
+                      style={{ fontFamily: 'var(--font-display)' }}
+                      className="text-[15px] font-medium hover:text-[var(--color-accent)] underline-offset-4 hover:underline truncate block max-w-[280px]"
+                    >
                       {o.name}
-                    </div>
-                    <code className="font-mono text-[11px] text-[var(--color-fg-subtle)]">{o.slug}</code>
-                  </div>
-                  <time className="font-mono text-[10px] uppercase tracking-[0.22em] text-[var(--color-fg-subtle)] shrink-0">
-                    {o.createdAt.toISOString().slice(0, 10)}
-                  </time>
-                </div>
-                <div className="mt-4 grid grid-cols-2 gap-3 border-t border-[var(--color-border)] pt-3">
-                  <Stat icon={<UsersIcon weight="regular" className="size-3.5" />} label="Members" value={c.members} />
-                  <Stat icon={<Desktop weight="regular" className="size-3.5" />} label="Machines" value={c.machines} />
-                </div>
-              </Link>
-            )
-          })}
-        </div>
+                    </Link>
+                  </TableCell>
+                  <TableCell>
+                    <code className="font-mono text-[11px] text-[var(--color-fg-muted)]">{o.slug}</code>
+                  </TableCell>
+                  <TableCell className="text-right font-mono tabular-nums">{o.members}</TableCell>
+                  <TableCell className="text-right font-mono tabular-nums">{o.machines}</TableCell>
+                  <TableCell className="font-mono text-[11px] tabular-nums text-[var(--color-fg-muted)]">
+                    {new Date(o.createdAt).toISOString().slice(0, 10)}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <Link
+                      href={`/admin/orgs/${o.id}`}
+                      className="font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--color-fg-muted)] hover:text-[var(--color-fg)]"
+                    >
+                      Open →
+                    </Link>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+          <AdminPagination page={page} pageSize={PAGE_SIZE} total={total} />
+        </>
       )}
     </div>
   )
 }
 
-function Stat({ icon, label, value }: { icon: React.ReactNode; label: string; value: number }) {
-  return (
-    <div className="flex items-center gap-2">
-      <span className="text-[var(--color-fg-subtle)]">{icon}</span>
-      <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-[var(--color-fg-muted)]">{label}</span>
-      <span className="ml-auto font-mono tabular-nums text-[14px] text-[var(--color-fg)]">{value}</span>
-    </div>
-  )
-}
+// Silence unused import lint when running tsc on the original eq import.
+void eq
