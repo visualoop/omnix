@@ -52,14 +52,25 @@ export default async function DashboardDownloadsPage() {
       .orderBy(desc(licenses.createdAt)),
   ])
 
+  // ownedSet = variants the user owns in any active/trial form (drives
+  // the badges + visible row list).
+  // ownedActive = paid-active variants only. Pro coverage rules only
+  // apply when Pro is in this set — a Pro trial doesn't supersede the
+  // user's actual paid trade licences.
   const ownedSet = new Set(
     customerLicences
       .filter((l) => l.status !== 'lapsed' && l.status !== 'revoked')
       .map((l) => l.variant as VariantId),
   )
-  // If the customer owns Pro, hide the per-trade rows (Pro covers them).
-  // Otherwise show every variant row with badges on the ones they own.
-  const ownsPro = ownedSet.has('pro')
+  const ownedActive = new Set(
+    customerLicences
+      .filter((l) => l.status === 'active')
+      .map((l) => l.variant as VariantId),
+  )
+  // Pro-supersede only when Pro is the user's PAID licence. Trial Pro
+  // doesn't override their paid trades — if the trial expires, the
+  // trades are what they actually keep.
+  const ownsPro = ownedActive.has('pro')
   const visibleVariants: VariantId[] = ownsPro
     ? ['pro']
     : (['pro', 'dawa', 'retail', 'hospitality', 'hardware'] as const).filter(

@@ -78,11 +78,15 @@ export default async function DashboardOverviewPage({
 
   const firstName = session.user.name?.split(' ')[0] ?? 'there'
   const hasNoLicences = licList.length === 0
-  // Pro is "owned" if any pro licence is active OR on trial. Pro covers
-  // every trade module, so we suppress trade-specific upgrade nudges
-  // (the "Try another trade" wizard, per-trade upgrade banners) once
-  // Pro is in the mix.
-  const ownsPro = licList.some(
+  // Pro coverage only counts when Pro is ACTIVE (paid). A Pro trial is a
+  // 30-day taste — it doesn't supersede the user's paid trade licences,
+  // because if Pro trial expires unconverted, the trades are what they
+  // keep. Only the paid Pro licence "Covers" trades.
+  const ownsProActive = licList.some((l) => l.variant === 'pro' && l.status === 'active')
+  // Used to decide whether to hide the "Try another trade" wizard / show
+  // the Pro trial banner. We still suppress trial-wizard noise while a
+  // Pro trial is running.
+  const hasAnyPro = licList.some(
     (l) => l.variant === 'pro' && (l.status === 'active' || l.status === 'trial'),
   )
   const proTrial = licList.find((l) => l.variant === 'pro' && l.status === 'trial')
@@ -144,7 +148,7 @@ export default async function DashboardOverviewPage({
                 // A trade-variant licence becomes redundant once the user
                 // also owns Pro — show a "Covered by Pro" pill instead of
                 // an Upgrade button so we don't push them to pay twice.
-                const supersededByPro = ownsPro && l.variant !== 'pro'
+                const supersededByPro = ownsProActive && l.variant !== 'pro'
                 const isTrialOffer = l.status === 'trial' && !supersededByPro
                 return (
                   <li key={l.id} className="flex items-center justify-between gap-3 px-4 py-3 text-[13px]">
@@ -181,10 +185,11 @@ export default async function DashboardOverviewPage({
                 often start with one trade and add more (e.g. Dawa pharmacy
                 + Retail mini-mart). The wizard skips variants the customer
                 already has so we don't issue duplicate trial keys. */}
-            {/* When the user owns Pro (active OR trial) we hide the
-                "try another trade" wizard entirely — Pro already covers
-                every trade variant, no need to nudge them to buy extras. */}
-            {!ownsPro ? (
+            {/* Hide the "try another trade" wizard while any Pro licence
+                is in play. Active Pro covers everything; Pro on trial
+                already gives the user a 30-day taste of every variant
+                so they don't need to start more trials in parallel. */}
+            {!hasAnyPro ? (
               <div className="mt-4">
                 <StartTrialWizard
                   defaultVariant={pickFirstUntakenVariant(licList.map((l) => l.variant)) ?? defaultVariant}
