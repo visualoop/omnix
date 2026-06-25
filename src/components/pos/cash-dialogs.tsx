@@ -11,6 +11,7 @@ import {
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent } from "@/components/ui/card";
 import {
   getOpenShift, openShift, closeShift, type CashShift,
@@ -228,10 +229,9 @@ export function CloseShiftDialog({ open, onClose, onClosed }: {
               {hasVariance && (
                 <div className="space-y-1">
                   <label className="text-[11px] font-medium text-muted-foreground">Variance reason</label>
-                  <textarea
+                  <Textarea
                     value={notes}
                     onChange={(e) => setNotes(e.target.value)}
-                    className="w-full min-h-[60px] rounded-md border border-input bg-background px-2 py-1.5 text-[13px]"
                     placeholder="e.g., Wrong change given in PM, customer paid in cash but rang as M-Pesa..."
                   />
                 </div>

@@ -7,6 +7,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/layout/page-header";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { getExpenses, getExpenseCategories, createExpense, deleteExpense, type Expense, type ExpenseCategory } from "@/services/accounting";
 import { useAuthStore } from "@/stores/auth";
@@ -229,8 +230,7 @@ function ExpensePanel({ open, onClose, categories, onSaved }: { open: boolean; o
           </Field>
 
           <Field label="Notes">
-            <textarea
-              className="w-full min-h-[60px] rounded-md border border-input bg-background px-3 py-2 text-sm"
+            <Textarea
               value={form.notes}
               onChange={(e) => setForm({ ...form, notes: e.target.value })}
             />

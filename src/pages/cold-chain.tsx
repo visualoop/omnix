@@ -10,6 +10,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Can } from "@/components/require-role";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter } from "@/components/ui/sheet";
@@ -301,7 +302,7 @@ function RecordDialog({ unit, userId, onClose, onSaved }: {
           {showAction && (
             <div className="space-y-1">
               <label className="text-[11px] font-medium text-rose-700">Action Taken *</label>
-              <textarea
+              <Textarea
                 value={actionTaken}
                 onChange={(e) => setActionTaken(e.target.value)}
                 className="w-full min-h-[60px] rounded-md border border-rose-300 bg-rose-50 px-2 py-1.5 text-[13px]"

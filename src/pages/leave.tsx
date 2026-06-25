@@ -10,6 +10,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/layout/page-header";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter } from "@/components/ui/sheet";
@@ -302,10 +303,9 @@ function NewLeaveRequest({ open, onClose, onSaved, types, employees }: {
           </div>
 
           <Field label="Reason">
-            <textarea
+            <Textarea
               value={form.reason}
               onChange={(e) => setForm({ ...form, reason: e.target.value })}
-              className="w-full min-h-[80px] rounded-md border border-input bg-background px-2 py-1.5 text-[13px]"
               placeholder="Optional"
             />
           </Field>

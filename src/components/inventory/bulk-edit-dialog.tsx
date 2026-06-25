@@ -10,6 +10,7 @@ import {
 } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { execute } from "@/lib/db";
 import { toast } from "sonner";
 
@@ -45,8 +46,15 @@ export function BulkEditDialog({ open, selectedIds, onClose, onComplete, categor
       switch (action) {
         case "markup": {
           const factor = direction === "up" ? 1 + (parseFloat(percent) / 100) : 1 - (parseFloat(percent) / 100);
+          // Prices live in product_prices.default. We update only the
+          // default list rows that actually exist; products without a
+          // price row are skipped (markup of NULL is meaningless).
           await execute(
-            `UPDATE products SET selling_price = ROUND(selling_price * ?1, 2) WHERE id IN (${ids})`,
+            `UPDATE product_prices
+                SET selling_price = ROUND(selling_price * ?1, 2),
+                    updated_at = datetime('now')
+              WHERE price_list_id = 'default'
+                AND product_id IN (${ids})`,
             [factor, ...selectedIds],
           );
           toast.success(`Updated prices on ${selectedIds.length} products`);
@@ -164,16 +172,14 @@ export function BulkEditDialog({ open, selectedIds, onClose, onComplete, categor
           {action === "category" && (
             <div className="space-y-1.5">
               <label className="text-xs font-medium text-muted-foreground">New category</label>
-              <select
-                value={categoryId}
-                onChange={(e) => setCategoryId(e.target.value)}
-                className="w-full h-10 rounded-md border border-input bg-transparent px-3 text-sm"
-              >
-                <option value="">Pick a category...</option>
-                {categories.map((c) => (
-                  <option key={c.id} value={c.id}>{c.name}</option>
-                ))}
-              </select>
+              <Select value={categoryId} onValueChange={(v) => setCategoryId(String(v))}>
+                <SelectTrigger><SelectValue placeholder="Pick a category…" /></SelectTrigger>
+                <SelectContent>
+                  {categories.map((c) => (
+                    <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           )}
 

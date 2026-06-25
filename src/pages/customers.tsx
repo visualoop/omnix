@@ -15,6 +15,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/layout/page-header";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -287,10 +288,9 @@ function CustomerForm({ open, customer, onClose, onSaved }: {
             </p>
           </Field>
           <Field label="Notes">
-            <textarea
+            <Textarea
               value={form.notes || ""}
               onChange={(e) => setForm({ ...form, notes: e.target.value })}
-              className="w-full min-h-[60px] rounded-md border border-input bg-transparent p-2 text-sm"
             />
           </Field>
 

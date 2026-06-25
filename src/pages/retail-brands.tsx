@@ -9,6 +9,7 @@ import {
 } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent } from "@/components/ui/card";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter } from "@/components/ui/sheet";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -164,10 +165,9 @@ function BrandForm({ open, brand, onClose, onSaved }: {
             <Input value={form.country_of_origin || ""} onChange={(e) => setForm({ ...form, country_of_origin: e.target.value })} placeholder='e.g., "Kenya", "USA", "France"' />
           </Field>
           <Field label="Description">
-            <textarea
+            <Textarea
               value={form.description || ""}
               onChange={(e) => setForm({ ...form, description: e.target.value })}
-              className="w-full min-h-[60px] rounded-md border border-input bg-background px-2 py-1.5 text-[13px]"
               placeholder="Optional"
             />
           </Field>

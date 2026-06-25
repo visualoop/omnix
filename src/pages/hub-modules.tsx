@@ -39,6 +39,7 @@ import { useCountry } from "@/stores/country";
 import { pharmacyTerm } from "@/lib/locale";
 
 import { PharmacyPage } from "@/pages/pharmacy";
+import { PatientsPage } from "@/pages/patients";
 import { ColdChainPage } from "@/pages/cold-chain";
 import { ControlledRegisterPage } from "@/pages/controlled-register";
 import { ExpiryPage } from "@/pages/expiry";
@@ -77,6 +78,7 @@ export function PharmacyHubPage() {
       description="Dispensing, controlled drugs, expiry watch, claims and refills."
       tabs={[
         { id: "dispense", label: "Dispense", icon: Pill, component: PharmacyPage, permission: "pharmacy.dispense" },
+        { id: "patients", label: "Patients", icon: UsersIcon, component: PatientsPage, permission: "pharmacy.dispense" },
         { id: "expiry", label: "Expiry", icon: FileWarning, component: ExpiryPage, permission: "inventory.view" },
         { id: "controlled", label: "Controlled register", icon: ClipboardList, component: ControlledRegisterPage, permission: "pharmacy.dispense" },
         { id: "cold-chain", label: "Cold chain", icon: Snowflake, component: ColdChainPage, permission: "pharmacy.dispense" },

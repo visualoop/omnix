@@ -16,6 +16,7 @@ import {
   POSIcon, InventoryIcon, ETIMSIcon, InsuranceIcon, LANIcon, ReportsIcon,
 } from "@/components/icons/feature-icons";
 import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
 import {
   getMachineInfo, activateLicense, getTrialState,
   type MachineInfo, type TrialState,
@@ -310,7 +311,7 @@ export function LicenseActivationPage({ onActivated }: Props) {
                 <Key className="h-3.5 w-3.5 text-primary" />
                 <span className="text-[12px] font-medium">Licence key</span>
               </div>
-              <textarea
+              <Textarea
                 value={key}
                 onChange={(e) => { setKey(e.target.value); setError(null); }}
                 onPaste={handlePaste}

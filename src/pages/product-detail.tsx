@@ -28,6 +28,7 @@ import { BackButton } from "@/components/ui/back-button"
 import { EntityHero } from "@/components/ui/entity-hero"
 import { LazyTabs } from "@/components/ui/lazy-tabs"
 import { Button } from "@/components/ui/button"
+import { Textarea } from "@/components/ui/textarea"
 import { Input } from "@/components/ui/input"
 import { getProduct, updateProduct, type Product } from "@/services/inventory"
 import { listVariants, type ProductVariant } from "@/services/retail"
@@ -375,7 +376,7 @@ function EditField({
         {required ? <span className="text-rose-600">*</span> : null}
       </span>
       {multiline ? (
-        <textarea
+        <Textarea
           value={value}
           onChange={(e) => onChange(e.target.value)}
           rows={3}

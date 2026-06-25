@@ -13,6 +13,7 @@ import {
   X,
 } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
 import { PageHeader } from "@/components/layout/page-header";
 import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter } from "@/components/ui/sheet";
@@ -246,10 +247,9 @@ function BranchForm({ open, branch, onClose, onSaved }: {
             <Input value={form.kra_pin || ""} onChange={(e) => setForm({ ...form, kra_pin: e.target.value })} />
           </Field>
           <Field label="Notes">
-            <textarea
+            <Textarea
               value={form.notes || ""}
               onChange={(e) => setForm({ ...form, notes: e.target.value })}
-              className="w-full min-h-[60px] rounded-md border border-input bg-background p-2 text-[13px]"
             />
           </Field>
 

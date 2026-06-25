@@ -11,6 +11,7 @@ import {
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter } from "@/components/ui/sheet";
 import { Tabs, TabsList, TabsTrigger, TabsPanel } from "@/components/ui/tabs";
 import { TableRowSkeleton } from "@/components/ui/skeletons";
@@ -337,10 +338,9 @@ function NewSpecialOrderSheet({ open, onClose, onSaved }: {
 
           <div className="space-y-1">
             <label className="text-[11px] font-medium text-muted-foreground">Notes</label>
-            <textarea
+            <Textarea
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              className="w-full min-h-[60px] rounded-md border border-input bg-background px-2 py-1.5 text-[13px]"
               placeholder="Any special requirements, source preferences, etc."
             />
           </div>

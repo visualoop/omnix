@@ -6,6 +6,7 @@ import {
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useCartStore } from "@/stores/cart";
 import { useActiveBranch } from "@/stores/active-branch";
 import { listEmployees, type EmployeeWithDetails } from "@/services/employees";
@@ -139,16 +140,18 @@ export function TipDialog({ open, onClose }: { open: boolean; onClose: () => voi
           {assignToStaff && employees.length > 0 && (
             <div className="space-y-1">
               <label className="text-[11px] font-medium text-muted-foreground">Tip for (optional)</label>
-              <select
-                value={employeeId || ""}
-                onChange={(e) => setEmployeeId(e.target.value || null)}
-                className="w-full h-8 rounded-md border border-input bg-background px-2 text-[13px]"
+              <Select
+                value={employeeId || "__none"}
+                onValueChange={(v) => setEmployeeId(String(v) === "__none" ? null : String(v))}
               >
-                <option value="">Pool / Direct (no specific staff)</option>
-                {employees.map((e) => (
-                  <option key={e.id} value={e.id}>{e.full_name}{e.job_title ? ` — ${e.job_title}` : ""}</option>
-                ))}
-              </select>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none">Pool / Direct (no specific staff)</SelectItem>
+                  {employees.map((e) => (
+                    <SelectItem key={e.id} value={e.id}>{e.full_name}{e.job_title ? ` — ${e.job_title}` : ""}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           )}
         </div>

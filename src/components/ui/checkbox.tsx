@@ -23,6 +23,8 @@ function Checkbox({
       data-slot="checkbox"
       className={cn(
         "peer h-3.5 w-3.5 shrink-0 rounded-[3px] border border-input bg-background shadow-sm",
+        // Touch density — bigger target so a finger can land on it.
+        "touch:h-5 touch:w-5 touch:rounded-[4px]",
         "transition-colors duration-80",
         "focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
         "disabled:cursor-not-allowed disabled:opacity-50",
@@ -37,7 +39,7 @@ function Checkbox({
         data-slot="checkbox-indicator"
         className="flex items-center justify-center text-current"
       >
-        <Check className="h-2.5 w-2.5 data-[indeterminate]:hidden" strokeWidth={3} />
+        <Check className="h-2.5 w-2.5 touch:h-3.5 touch:w-3.5 data-[indeterminate]:hidden" strokeWidth={3} />
       </CheckboxPrimitive.Indicator>
     </CheckboxPrimitive.Root>
   );

@@ -10,6 +10,7 @@ import {
 } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent } from "@/components/ui/card";
 import { getProducts, type Product } from "@/services/inventory";
 import { listCustomers } from "@/services/erp";
@@ -381,19 +382,17 @@ export function NewDocumentPage({ type }: Props) {
           </div>
           <div className="space-y-1">
             <label className="text-[11px] font-medium text-muted-foreground">Notes</label>
-            <textarea
+            <Textarea
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              className="w-full min-h-[60px] rounded-md border border-input bg-background px-2 py-1.5 text-[13px]"
               placeholder="Optional notes for the customer"
             />
           </div>
           <div className="space-y-1">
             <label className="text-[11px] font-medium text-muted-foreground">Terms & Conditions</label>
-            <textarea
+            <Textarea
               value={terms}
               onChange={(e) => setTerms(e.target.value)}
-              className="w-full min-h-[60px] rounded-md border border-input bg-background px-2 py-1.5 text-[13px]"
             />
           </div>
         </CardContent>

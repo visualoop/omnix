@@ -9,6 +9,7 @@ import {
   X,
 } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { createProduct, type CreateProductInput } from "@/services/inventory";
 import { toast } from "sonner";
@@ -223,7 +224,7 @@ export function ImportProductsPage() {
           {/* Or paste CSV */}
           <div className="space-y-2">
             <label className="text-xs font-medium text-muted-foreground">Or paste CSV text:</label>
-            <textarea
+            <Textarea
               value={csvText}
               onChange={(e) => { setCsvText(e.target.value); parseCSV(e.target.value); }}
               placeholder={CSV_TEMPLATE}

@@ -167,16 +167,17 @@ export function ClaimsPage() {
                 <SelectItem value="rejected">Rejected</SelectItem>
               </SelectContent>
             </Select>
-            <select
-              value={providerFilter}
-              onChange={(e) => setProviderFilter(e.target.value)}
-              className="h-9 rounded-md border border-input bg-transparent px-3 text-sm"
-            >
-              <option value="all">All Providers</option>
-              {providers.map((p) => (
-                <option key={p.id} value={p.id}>{p.name}</option>
-              ))}
-            </select>
+            <Select value={providerFilter} onValueChange={(v) => setProviderFilter(String(v))}>
+              <SelectTrigger className="h-9 w-44">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Providers</SelectItem>
+                {providers.map((p) => (
+                  <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           {/* Claims table */}
@@ -563,15 +564,16 @@ function BatchDialog({
         <div className="space-y-3">
           <div className="space-y-1.5">
             <label className="text-xs font-medium text-muted-foreground">Provider</label>
-            <select
-              value={providerId}
-              onChange={(e) => setProviderId(e.target.value)}
-              className="w-full h-9 rounded-md border border-input bg-transparent px-3 text-sm"
-            >
-              {providers.filter((p) => p.active === 1).map((p) => (
-                <option key={p.id} value={p.id}>{p.name}</option>
-              ))}
-            </select>
+            <Select value={providerId} onValueChange={(v) => setProviderId(String(v))}>
+              <SelectTrigger className="h-9">
+                <SelectValue placeholder="Pick a provider" />
+              </SelectTrigger>
+              <SelectContent>
+                {providers.filter((p) => p.active === 1).map((p) => (
+                  <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
           <div className="grid grid-cols-2 gap-2">
             <div className="space-y-1.5">

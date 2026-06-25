@@ -10,6 +10,14 @@ import {
 } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Badge } from "@/components/ui/badge";
 import { listDoctors, upsertDoctor, deactivateDoctor, SPECIALTIES, type Doctor, type DoctorWithStats } from "@/services/doctors";
@@ -170,16 +178,19 @@ function DoctorForm({ open, doctor, onClose, onSaved }: {
               <Input value={form.license_number || ""} onChange={(e) => setForm({ ...form, license_number: e.target.value })} placeholder="KMPDC..." />
             </Field>
             <Field label="Specialty">
-              <select
+              <Select
                 value={form.specialty || ""}
-                onChange={(e) => setForm({ ...form, specialty: e.target.value })}
-                className="w-full h-9 rounded-md border border-input bg-transparent px-2 text-sm"
+                onValueChange={(v) => setForm({ ...form, specialty: String(v ?? "") })}
               >
-                <option value="">—</option>
-                {SPECIALTIES.map((s) => (
-                  <option key={s} value={s}>{s}</option>
-                ))}
-              </select>
+                <SelectTrigger>
+                  <SelectValue placeholder="Pick a specialty…" />
+                </SelectTrigger>
+                <SelectContent>
+                  {SPECIALTIES.map((s) => (
+                    <SelectItem key={s} value={s}>{s}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </Field>
           </div>
           <Field label="Hospital / Clinic">
@@ -194,10 +205,9 @@ function DoctorForm({ open, doctor, onClose, onSaved }: {
             </Field>
           </div>
           <Field label="Notes">
-            <textarea
+            <Textarea
               value={form.notes || ""}
               onChange={(e) => setForm({ ...form, notes: e.target.value })}
-              className="w-full min-h-[60px] rounded-md border border-input bg-transparent p-2 text-sm"
             />
           </Field>
 

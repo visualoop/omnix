@@ -19,6 +19,7 @@ import { useEffect, useRef, useState, useCallback, useMemo } from "react"
 import { useLocation, useNavigate } from "react-router-dom"
 import { Sparkle as Sparkles, X, ArrowUp, CircleNotch as Loader2, Plus, ClockCounterClockwise as History, Trash as Trash2, PushPin as Pin } from "@phosphor-icons/react"
 import { Button } from "@/components/ui/button"
+import { Textarea } from "@/components/ui/textarea"
 import { cn } from "@/lib/utils"
 import { useAuthStore } from "@/stores/auth"
 import { useActiveModule } from "@/stores/active-module"
@@ -367,7 +368,7 @@ export function AiAssistantPanel() {
           {!showHistory && (
             <div className="border-t border-border/50 p-3 shrink-0">
               <div className="relative glass-thin rounded-2xl">
-                <textarea
+                <Textarea
                   ref={inputRef}
                   value={draft}
                   onChange={(e) => setDraft(e.target.value)}

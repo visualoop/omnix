@@ -6,6 +6,7 @@ import {
 } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter } from "@/components/ui/sheet";
@@ -398,10 +399,9 @@ function RecordShrinkageDialog({ open, onClose, onSaved }: {
 
           <div className="space-y-1">
             <label className="text-[11px] font-medium text-muted-foreground">Notes</label>
-            <textarea
+            <Textarea
               value={form.notes}
               onChange={(e) => setForm({ ...form, notes: e.target.value })}
-              className="w-full min-h-[60px] rounded-md border border-input bg-background px-2 py-1.5 text-[13px]"
               placeholder="Describe what happened, who reported, etc."
             />
           </div>

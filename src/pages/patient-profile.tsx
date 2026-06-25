@@ -17,6 +17,14 @@ import {
 } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import {
   getCustomer, getPatientProfile, upsertPatientProfile, addAllergy, removeAllergy,
@@ -150,28 +158,30 @@ export function PatientProfilePage() {
             />
           </Field>
           <Field label="Gender">
-            <select
+            <Select
               value={profile.gender || ""}
-              onChange={(e) => setProfile({ ...profile, gender: e.target.value as PatientProfile["gender"] || null })}
-              className="w-full h-9 rounded-md border border-input bg-transparent px-3 text-sm"
+              onValueChange={(v) => setProfile({ ...profile, gender: (String(v) || null) as PatientProfile["gender"] })}
             >
-              <option value="">—</option>
-              <option value="male">Male</option>
-              <option value="female">Female</option>
-              <option value="other">Other</option>
-            </select>
+              <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="male">Male</SelectItem>
+                <SelectItem value="female">Female</SelectItem>
+                <SelectItem value="other">Other</SelectItem>
+              </SelectContent>
+            </Select>
           </Field>
           <Field label="Blood Type">
-            <select
+            <Select
               value={profile.blood_type || ""}
-              onChange={(e) => setProfile({ ...profile, blood_type: e.target.value || null })}
-              className="w-full h-9 rounded-md border border-input bg-transparent px-3 text-sm"
+              onValueChange={(v) => setProfile({ ...profile, blood_type: String(v) || null })}
             >
-              <option value="">—</option>
-              {["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"].map((bt) => (
-                <option key={bt} value={bt}>{bt}</option>
-              ))}
-            </select>
+              <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
+              <SelectContent>
+                {["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"].map((bt) => (
+                  <SelectItem key={bt} value={bt}>{bt}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </Field>
         </div>
       </Section>
@@ -266,18 +276,16 @@ export function PatientProfilePage() {
       <Section title="Medical History">
         <div className="grid grid-cols-2 gap-3">
           <Field label="Chronic Conditions">
-            <textarea
+            <Textarea
               value={profile.chronic_conditions || ""}
               onChange={(e) => setProfile({ ...profile, chronic_conditions: e.target.value || null })}
-              className="w-full min-h-[80px] rounded-md border border-input bg-transparent p-2 text-sm"
               placeholder="e.g., Hypertension, Diabetes Type 2, Asthma"
             />
           </Field>
           <Field label="Current Medications">
-            <textarea
+            <Textarea
               value={profile.current_medications || ""}
               onChange={(e) => setProfile({ ...profile, current_medications: e.target.value || null })}
-              className="w-full min-h-[80px] rounded-md border border-input bg-transparent p-2 text-sm"
               placeholder="e.g., Metformin 500mg BD, Amlodipine 5mg OD"
             />
           </Field>
@@ -304,10 +312,9 @@ export function PatientProfilePage() {
 
       {/* Notes */}
       <Section title="Notes">
-        <textarea
+        <Textarea
           value={profile.notes || ""}
           onChange={(e) => setProfile({ ...profile, notes: e.target.value || null })}
-          className="w-full min-h-[80px] rounded-md border border-input bg-transparent p-2 text-sm"
           placeholder="Other relevant medical information..."
         />
       </Section>

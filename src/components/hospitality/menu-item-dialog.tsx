@@ -9,6 +9,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import {
   CircleNotch as Loader2,
@@ -176,7 +177,7 @@ export function MenuItemDialog({ open, onClose, onSubmit, initial, categories = 
           </div>
 
           <Field label="Description">
-            <textarea
+            <Textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder="Optional — shown on customer display + receipts"

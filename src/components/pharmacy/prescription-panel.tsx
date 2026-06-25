@@ -2,6 +2,8 @@ import { useState, useEffect } from "react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { EntityCombobox } from "@/components/ui/entity-combobox";
 import {
   MagnifyingGlass as Search,
   Trash as Trash2,
@@ -30,6 +32,7 @@ interface RxItem {
 
 export function PrescriptionPanel({ open, onClose, onSaved }: Props) {
   const [patient, setPatient] = useState({
+    customer_id: "",
     name: "", phone: "", age: "",
     doctor_name: "", doctor_license: "",
     hospital: "", diagnosis: "", notes: "",
@@ -42,7 +45,7 @@ export function PrescriptionPanel({ open, onClose, onSaved }: Props) {
 
   useEffect(() => {
     if (!open) return;
-    setPatient({ name: "", phone: "", age: "", doctor_name: "", doctor_license: "", hospital: "", diagnosis: "", notes: "" });
+    setPatient({ customer_id: "", name: "", phone: "", age: "", doctor_name: "", doctor_license: "", hospital: "", diagnosis: "", notes: "" });
     setItems([]);
     setSearch("");
   }, [open]);
@@ -114,7 +117,38 @@ export function PrescriptionPanel({ open, onClose, onSaved }: Props) {
         <div className="space-y-5 mt-6">
           {/* Patient info */}
           <Section title="Patient">
-            <Input placeholder="Patient name *" value={patient.name} onChange={(e) => setPatient({ ...patient, name: e.target.value })} autoFocus />
+            <EntityCombobox
+              kind="patient"
+              value={patient.customer_id}
+              onChange={async (id) => {
+                if (!id) {
+                  setPatient({ ...patient, customer_id: "", name: "", phone: "" });
+                  return;
+                }
+                // Fetch the picked customer so we can auto-fill name + phone.
+                const { listCustomers } = await import("@/services/erp");
+                const rows = await listCustomers();
+                const c = rows.find((r) => r.id === id);
+                setPatient({
+                  ...patient,
+                  customer_id: id,
+                  name: c?.name ?? patient.name,
+                  phone: c?.phone ?? patient.phone,
+                });
+              }}
+              onCreate={async (name) => {
+                // Quick-create: just a name. Phone + age can be filled in
+                // below this picker before saving the prescription.
+                const id = crypto.randomUUID();
+                const { execute } = await import("@/lib/db");
+                await execute(`INSERT INTO customers (id, name) VALUES (?1, ?2)`, [id, name]);
+                // Patient profile gets created lazily on first Save — we
+                // don't require every customer to have a clinical record.
+                setPatient({ ...patient, customer_id: id, name });
+                return { value: id, label: name };
+              }}
+              placeholder="Pick or add a patient…"
+            />
             <div className="grid grid-cols-2 gap-2">
               <Input placeholder="Phone" value={patient.phone} onChange={(e) => setPatient({ ...patient, phone: e.target.value })} />
               <Input placeholder="Age" type="number" value={patient.age} onChange={(e) => setPatient({ ...patient, age: e.target.value })} />
@@ -123,7 +157,32 @@ export function PrescriptionPanel({ open, onClose, onSaved }: Props) {
 
           {/* Doctor info */}
           <Section title="Doctor">
-            <Input placeholder="Doctor name" value={patient.doctor_name} onChange={(e) => setPatient({ ...patient, doctor_name: e.target.value })} />
+            <EntityCombobox
+              kind="doctor"
+              value={(patient as { doctor_id?: string }).doctor_id ?? ""}
+              onChange={async (id) => {
+                if (!id) {
+                  setPatient({ ...patient, doctor_name: "", doctor_license: "" });
+                  return;
+                }
+                const { listDoctors } = await import("@/services/doctors");
+                const rows = await listDoctors();
+                const d = rows.find((r) => r.id === id);
+                setPatient({
+                  ...patient,
+                  doctor_name: d?.full_name ?? "",
+                  doctor_license: d?.license_number ?? "",
+                });
+              }}
+              onCreate={async (name) => {
+                const id = crypto.randomUUID();
+                const { execute } = await import("@/lib/db");
+                await execute(`INSERT INTO doctors (id, full_name, active) VALUES (?1, ?2, 1)`, [id, name]);
+                setPatient({ ...patient, doctor_name: name });
+                return { value: id, label: name };
+              }}
+              placeholder="Pick or add a doctor…"
+            />
             <div className="grid grid-cols-2 gap-2">
               <Input placeholder="License #" value={patient.doctor_license} onChange={(e) => setPatient({ ...patient, doctor_license: e.target.value })} />
               <Input placeholder="Hospital" value={patient.hospital} onChange={(e) => setPatient({ ...patient, hospital: e.target.value })} />
@@ -190,8 +249,7 @@ export function PrescriptionPanel({ open, onClose, onSaved }: Props) {
 
           {/* Notes */}
           <Section title="Notes">
-            <textarea
-              className="w-full min-h-[60px] rounded-md border border-input bg-background px-3 py-2 text-sm"
+            <Textarea
               placeholder="Additional notes..."
               value={patient.notes}
               onChange={(e) => setPatient({ ...patient, notes: e.target.value })}

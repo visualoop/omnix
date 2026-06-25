@@ -143,8 +143,16 @@ export async function preparePrescriptionForPosCheckout(
 
   const productIds = [...new Set(items.map((it) => it.product_id))];
   const placeholders = productIds.map(() => "?").join(",");
+  // Prices moved from `products` to `product_prices` (default list).
+  // Join + COALESCE handles products that don't yet have a price row.
   const prices = await query<{ id: string; selling_price: number; tax_rate: number }>(
-    `SELECT id, COALESCE(selling_price, 0) AS selling_price, COALESCE(tax_rate, 0) AS tax_rate FROM products WHERE id IN (${placeholders})`,
+    `SELECT p.id,
+            COALESCE(pp.selling_price, 0) AS selling_price,
+            COALESCE(p.tax_rate, 0)      AS tax_rate
+       FROM products p
+       LEFT JOIN product_prices pp
+         ON pp.product_id = p.id AND pp.price_list_id = 'default'
+      WHERE p.id IN (${placeholders})`,
     productIds
   );
   const priceMap = new Map(prices.map((p) => [p.id, p]));

@@ -16,6 +16,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/layout/page-header";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import {
   listPurchaseOrders, getPurchaseOrder, createPurchaseOrder, updatePOStatus,
@@ -224,7 +225,7 @@ export function NewPurchaseOrderPage() {
           </Field>
         </div>
         <Field label="Notes">
-          <textarea
+          <Textarea
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
             className="w-full h-[88px] rounded-md border border-input bg-transparent p-2 text-sm"
