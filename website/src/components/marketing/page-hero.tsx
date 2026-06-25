@@ -17,6 +17,8 @@ interface PageHeroProps {
   description?: React.ReactNode
   align?: 'left' | 'center'
   pattern?: 'glow' | 'grid' | 'none'
+  /** Optional admin-uploaded background image (overrides the pattern). */
+  backgroundImage?: { url: string; alt?: string | null } | null
   children?: React.ReactNode
 }
 
@@ -26,17 +28,32 @@ export function PageHero({
   description,
   align = 'center',
   pattern = 'glow',
+  backgroundImage,
   children,
 }: PageHeroProps) {
+  // If an admin uploaded a background, render it underneath the
+  // content with a soft scrim so the headline + lede stay readable.
+  const renderPattern = backgroundImage ? 'none' : pattern
   return (
     <section className="relative overflow-hidden border-b border-[var(--color-border)] pt-24 pb-16 sm:pt-28 sm:pb-20">
-      {pattern === 'glow' ? (
+      {backgroundImage ? (
+        <div aria-hidden className="pointer-events-none absolute inset-0 -z-10">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={backgroundImage.url}
+            alt={backgroundImage.alt ?? ''}
+            className="h-full w-full object-cover opacity-25"
+          />
+          <div className="absolute inset-0 bg-[linear-gradient(to_bottom,var(--color-bg)/40,var(--color-bg)_92%)]" />
+        </div>
+      ) : null}
+      {renderPattern === 'glow' ? (
         <div aria-hidden className="pointer-events-none absolute inset-0 -z-10">
           <div className="absolute left-1/2 top-0 h-[420px] w-[1100px] -translate-x-1/2 rounded-full bg-[radial-gradient(closest-side,var(--color-accent-soft),transparent_72%)] blur-3xl" />
           <div className="absolute inset-0 bg-[linear-gradient(to_bottom,transparent_30%,var(--color-bg)_92%)]" />
         </div>
       ) : null}
-      {pattern === 'grid' ? (
+      {renderPattern === 'grid' ? (
         <div
           aria-hidden
           className="pointer-events-none absolute inset-0 -z-10 opacity-[0.04]"

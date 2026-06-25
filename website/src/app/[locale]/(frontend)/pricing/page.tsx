@@ -133,7 +133,18 @@ const COMPARE: ReadonlyArray<readonly [string, string, string, string]> = [
 
 export default async function PricingPage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params
-  const [settings, currency] = await Promise.all([getSiteSettings(), resolveCurrency(locale)])
+  const [settings, currency, pricingHero] = await Promise.all([
+    getSiteSettings(),
+    resolveCurrency(locale),
+    (async () => {
+      try {
+        const { getSlotImage } = await import('@/lib/media-slots')
+        return await getSlotImage('pricing.hero')
+      } catch {
+        return null
+      }
+    })(),
+  ])
   const VARIANTS = buildVariants(currency)
   const TIERS = buildTiers(currency)
   const ADDONS = buildAddons(currency)
@@ -143,6 +154,7 @@ export default async function PricingPage({ params }: { params: Promise<{ locale
         eyebrow="Pricing"
         title={<>Pay once. <em>Use forever.</em></>}
         description="One product, one fee. No subscriptions, no per-user upcharges, no surprise renewal emails. Free 30-day trial first — you only pay if you keep it."
+        backgroundImage={pricingHero ? { url: pricingHero.url, alt: pricingHero.alt } : null}
       />
 
       <OnePriceSection

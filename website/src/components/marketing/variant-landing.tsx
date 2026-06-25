@@ -316,10 +316,20 @@ function HeroTitle({
 
 export async function VariantLanding({ variant }: { variant: VariantId }) {
   const locale = await getLocale()
-  const [content, settings, price] = await Promise.all([
+  const [content, settings, price, slotImage] = await Promise.all([
     getVariantContent(variant, locale),
     getSiteSettings(),
     getVariantPrice(variant),
+    // Admin-uploaded module hero (per /admin/media). Falls back to the
+    // default glow pattern when nothing is uploaded for this variant.
+    (async () => {
+      try {
+        const { getSlotImage } = await import('@/lib/media-slots')
+        return await getSlotImage(`module.${variant}.hero`)
+      } catch {
+        return null
+      }
+    })(),
   ])
 
   const productName = content.productName ?? FALLBACK[variant].productName ?? 'Omnix'
@@ -347,6 +357,7 @@ export async function VariantLanding({ variant }: { variant: VariantId }) {
           />
         }
         description={hero.description ?? ''}
+        backgroundImage={slotImage ? { url: slotImage.url, alt: slotImage.alt } : null}
       >
         <div className="mt-6 flex flex-col items-center gap-3 sm:flex-row">
           <Button asChild size="lg">
