@@ -22,17 +22,17 @@
  * is append-only, stock_qty is computed via SUM).
  */
 import { useEffect, useState } from "react"
-import { useParams, useNavigate } from "react-router-dom"
+import { useParams } from "react-router-dom"
 import { Breadcrumbs } from "@/components/ui/breadcrumbs"
 import { BackButton } from "@/components/ui/back-button"
 import { EntityHero } from "@/components/ui/entity-hero"
 import { LazyTabs } from "@/components/ui/lazy-tabs"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { getProduct, type Product } from "@/services/inventory"
+import { getProduct, updateProduct, type Product } from "@/services/inventory"
 import { listVariants, type ProductVariant } from "@/services/retail"
 import { useEntityHistory } from "@/hooks/use-entity-history"
-import { Pencil, PlusCircle, Stack as Layers, ImageSquare } from "@phosphor-icons/react"
+import { Pencil, PlusCircle, Stack as Layers, ImageSquare, Check, X as XIcon } from "@phosphor-icons/react"
 import { format, isAfter, isBefore, addDays } from "date-fns"
 import { execute, query } from "@/lib/db"
 import { ReceiveStockDialog } from "@/components/inventory/receive-stock-dialog"
@@ -63,7 +63,6 @@ interface SupplierAggregate {
 
 export function ProductDetailPage() {
   const { id } = useParams<{ id: string }>()
-  const navigate = useNavigate()
   const [product, setProduct] = useState<Product | null>(null)
   const [batches, setBatches] = useState<BatchRow[]>([])
   const [suppliers, setSuppliers] = useState<SupplierAggregate[]>([])
@@ -71,6 +70,7 @@ export function ProductDetailPage() {
   const [loading, setLoading] = useState(true)
   const [receiveOpen, setReceiveOpen] = useState(false)
   const [variantsOpen, setVariantsOpen] = useState(false)
+  const [editing, setEditing] = useState(false)
 
   const reload = () => {
     if (!id) return
@@ -171,9 +171,9 @@ export function ProductDetailPage() {
               <Layers className="h-3.5 w-3.5" />
               Variants ({variants.length})
             </Button>
-            <Button size="sm" variant="outline" onClick={() => navigate(`/inventory/products?edit=${product.id}`)}>
+            <Button size="sm" variant={editing ? "default" : "outline"} onClick={() => setEditing((v) => !v)}>
               <Pencil className="h-3.5 w-3.5" />
-              Edit
+              {editing ? "Done editing" : "Edit"}
             </Button>
           </>
         }
@@ -188,7 +188,7 @@ export function ProductDetailPage() {
       />
       <LazyTabs
         tabs={[
-          { id: "overview", label: "Overview", render: () => <OverviewTab product={product} /> },
+          { id: "overview", label: "Overview", render: () => <OverviewTab product={product} editing={editing} onSaved={() => { setEditing(false); reload() }} /> },
           { id: "stock", label: "Stock", count: batches.length, render: () => <BatchesTab batches={batches} /> },
           { id: "variants", label: "Variants", count: variants.length, render: () => <VariantsTab variants={variants} onManage={() => setVariantsOpen(true)} /> },
           { id: "images", label: "Images", render: () => <ImagesTab product={product} onSaved={reload} /> },
@@ -219,17 +219,179 @@ export function ProductDetailPage() {
   )
 }
 
-function OverviewTab({ product }: { product: Product }) {
+function OverviewTab({ product, editing, onSaved }: { product: Product; editing: boolean; onSaved: () => void }) {
+  const [draft, setDraft] = useState({
+    sku: product.sku ?? "",
+    barcode: product.barcode ?? "",
+    unit: product.unit ?? "pcs",
+    reorder_level: product.reorder_level,
+    tax_rate: product.tax_rate,
+    description: product.description ?? "",
+    name: product.name,
+    buying_price: product.buying_price,
+    selling_price: product.selling_price,
+  })
+  const [saving, setSaving] = useState(false)
+
+  // Re-sync draft when product changes (e.g. after reload).
+  useEffect(() => {
+    setDraft({
+      sku: product.sku ?? "",
+      barcode: product.barcode ?? "",
+      unit: product.unit ?? "pcs",
+      reorder_level: product.reorder_level,
+      tax_rate: product.tax_rate,
+      description: product.description ?? "",
+      name: product.name,
+      buying_price: product.buying_price,
+      selling_price: product.selling_price,
+    })
+  }, [product])
+
+  const save = async () => {
+    setSaving(true)
+    try {
+      await updateProduct(product.id, {
+        name: draft.name,
+        sku: draft.sku || undefined,
+        barcode: draft.barcode || undefined,
+        unit: draft.unit,
+        reorder_level: draft.reorder_level,
+        tax_rate: draft.tax_rate,
+        description: draft.description,
+        buying_price: draft.buying_price,
+        selling_price: draft.selling_price,
+      })
+      toast.success("Product updated")
+      onSaved()
+    } catch (e) {
+      toast.error(String(e))
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  if (!editing) {
+    return (
+      <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
+        <Field label="Name" value={product.name} className="md:col-span-2" />
+        <Field label="SKU" value={product.sku} />
+        <Field label="Barcode" value={product.barcode} />
+        <Field label="Unit" value={product.unit} />
+        <Field label="Category" value={product.category_name ?? "Uncategorised"} />
+        <Field label="VAT rate" value={`${product.tax_rate}%`} />
+        <Field label="Reorder level" value={String(product.reorder_level)} />
+        <Field label="Cost" value={KES(product.buying_price)} />
+        <Field label="Sell" value={KES(product.selling_price)} />
+        <Field label="Description" value={product.description} className="md:col-span-2" />
+      </div>
+    )
+  }
+
+  // Edit mode — each field is an Input. Save / Cancel pinned at the
+  // bottom right so the user sees their change before committing.
   return (
-    <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
-      <Field label="SKU" value={product.sku} />
-      <Field label="Barcode" value={product.barcode} />
-      <Field label="Unit" value={product.unit} />
-      <Field label="Category" value={product.category_name ?? "Uncategorised"} />
-      <Field label="VAT rate" value={`${product.tax_rate}%`} />
-      <Field label="Reorder level" value={String(product.reorder_level)} />
-      <Field label="Description" value={product.description} className="md:col-span-2" />
-    </div>
+    <form
+      onSubmit={(e) => {
+        e.preventDefault()
+        save()
+      }}
+      className="flex flex-col gap-5"
+    >
+      <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
+        <EditField label="Name" value={draft.name} onChange={(v) => setDraft({ ...draft, name: v })} required className="md:col-span-2" />
+        <EditField label="SKU" value={draft.sku} onChange={(v) => setDraft({ ...draft, sku: v })} />
+        <EditField label="Barcode" value={draft.barcode} onChange={(v) => setDraft({ ...draft, barcode: v })} />
+        <EditField label="Unit" value={draft.unit} onChange={(v) => setDraft({ ...draft, unit: v })} placeholder="pcs / kg / pack" />
+        <EditField
+          label="VAT rate (%)"
+          type="number"
+          value={String(draft.tax_rate)}
+          onChange={(v) => setDraft({ ...draft, tax_rate: parseFloat(v) || 0 })}
+        />
+        <EditField
+          label="Reorder level"
+          type="number"
+          value={String(draft.reorder_level)}
+          onChange={(v) => setDraft({ ...draft, reorder_level: parseFloat(v) || 0 })}
+        />
+        <EditField
+          label="Cost (buying)"
+          type="number"
+          value={String(draft.buying_price)}
+          onChange={(v) => setDraft({ ...draft, buying_price: parseFloat(v) || 0 })}
+        />
+        <EditField
+          label="Sell (retail)"
+          type="number"
+          value={String(draft.selling_price)}
+          onChange={(v) => setDraft({ ...draft, selling_price: parseFloat(v) || 0 })}
+        />
+        <EditField
+          label="Description"
+          value={draft.description}
+          onChange={(v) => setDraft({ ...draft, description: v })}
+          multiline
+          className="md:col-span-2"
+        />
+      </div>
+      <div className="flex items-center justify-end gap-2 border-t border-foreground/10 pt-4">
+        <Button type="button" variant="outline" size="sm" onClick={onSaved} disabled={saving}>
+          <XIcon className="h-3.5 w-3.5" />
+          Cancel
+        </Button>
+        <Button type="submit" size="sm" disabled={saving}>
+          <Check className="h-3.5 w-3.5" />
+          {saving ? "Saving…" : "Save changes"}
+        </Button>
+      </div>
+    </form>
+  )
+}
+
+function EditField({
+  label,
+  value,
+  onChange,
+  type = "text",
+  required = false,
+  placeholder,
+  multiline = false,
+  className = "",
+}: {
+  label: string
+  value: string
+  onChange: (v: string) => void
+  type?: string
+  required?: boolean
+  placeholder?: string
+  multiline?: boolean
+  className?: string
+}) {
+  return (
+    <label className={`flex flex-col gap-1 ${className}`}>
+      <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+        {label}
+        {required ? <span className="text-rose-600">*</span> : null}
+      </span>
+      {multiline ? (
+        <textarea
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          rows={3}
+          className="rounded-md border border-foreground/15 bg-background px-3 py-2 text-[14px] outline-none focus:border-foreground/40 resize-y"
+          placeholder={placeholder}
+        />
+      ) : (
+        <Input
+          type={type}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          required={required}
+          placeholder={placeholder}
+        />
+      )}
+    </label>
   )
 }
 

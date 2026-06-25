@@ -123,6 +123,8 @@ export async function updateProduct(id: string, input: Partial<CreateProductInpu
   if (input.category_id !== undefined) { fields.push(`category_id = ?${idx}`); values.push(input.category_id); idx++; }
   if (input.unit !== undefined) { fields.push(`unit = ?${idx}`); values.push(input.unit); idx++; }
   if (input.reorder_level !== undefined) { fields.push(`reorder_level = ?${idx}`); values.push(input.reorder_level); idx++; }
+  if (input.tax_rate !== undefined) { fields.push(`tax_rate = ?${idx}`); values.push(input.tax_rate); idx++; }
+  if (input.description !== undefined) { fields.push(`description = ?${idx}`); values.push(input.description || null); idx++; }
 
   if (fields.length > 0) {
     fields.push(`updated_at = datetime('now')`);

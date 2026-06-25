@@ -60,7 +60,7 @@ import { TipDialog } from "@/components/pos/tip-dialog";
 import { PromoDialog } from "@/components/pos/promo-dialog";
 import { openCustomerDisplay } from "@/lib/customer-display";
 import { countHeldSales } from "@/services/held-sales";
-import { categoryColor, stockColor } from "@/lib/category-colors";
+import { categoryColor } from "@/lib/category-colors";
 import { VARIANT_ACCENT } from "@/lib/variant";
 import { useNavigate } from "react-router-dom";
 import { money as KES } from "@/lib/money";
@@ -827,116 +827,125 @@ function ProductCard({ product, onClick }: {
 }) {
   const stock = (product as any).stock_qty || 0;
   const reorder = (product as any).reorder_level || 0;
-  const categoryId = (product as any).category_id || null;
   const buyingPrice = (product as any).buying_price as number | undefined;
   const imagePath = (product as any).image_path as string | null | undefined;
+  const categoryName = (product as any).category_name as string | undefined;
   const sellingPrice = product.selling_price;
   const oos = stock <= 0;
   const lowStock = !oos && stock <= reorder;
-  const sc = stockColor(stock, reorder);
-  const cc = categoryColor(categoryId);
 
   // Margin — only computable if we have a positive buying price.
   const hasMargin =
     typeof buyingPrice === "number" && buyingPrice > 0 && sellingPrice > buyingPrice;
-  const marginAbs = hasMargin ? sellingPrice - (buyingPrice as number) : 0;
-  const marginPct = hasMargin ? (marginAbs / sellingPrice) * 100 : 0;
+  const marginPct = hasMargin ? ((sellingPrice - (buyingPrice as number)) / sellingPrice) * 100 : 0;
+
+  // Stock chip tone. Editorial palette only — no sky/cyan/lilac.
+  const stockTone = oos
+    ? "bg-rose-500/12 text-rose-700 dark:text-rose-300 ring-1 ring-rose-500/30"
+    : lowStock
+      ? "bg-amber-500/12 text-amber-700 dark:text-amber-300 ring-1 ring-amber-500/30"
+      : "bg-foreground/[0.06] text-foreground/70";
 
   return (
     <button
       onClick={onClick}
       disabled={oos}
-      // Module-themed card: variant accent drives the border + soft tint
-      // background. Drops the previous `bg-card` (which rendered near-
-      // black in dark mode regardless of which trade module you ran).
+      // Editorial card shape: paper-cream surface in light mode, deep stone
+      // in dark — never near-black. Hairline border in the module accent,
+      // intensifying on hover. Image (or accent-tinted glyph) sits at top;
+      // type stack underneath. No category palette, no sky blues.
       style={{
-        // Soft module-accent wash + hairline accent border. Both fall
-        // back gracefully in light AND dark mode because they're built
-        // off a single hex (15% alpha for the tint, 30% for the border).
-        background: `linear-gradient(180deg, ${VARIANT_ACCENT}10, ${VARIANT_ACCENT}05)`,
-        borderColor: `${VARIANT_ACCENT}40`,
+        background: `linear-gradient(180deg, color-mix(in oklab, ${VARIANT_ACCENT} 6%, var(--background) 94%), var(--background))`,
+        borderColor: `color-mix(in oklab, ${VARIANT_ACCENT} 22%, transparent)`,
       }}
-      className={`group relative flex flex-col text-left overflow-hidden rounded-xl border-2 p-3 transition-all antialiased ${
-        oos
-          ? "opacity-40 cursor-not-allowed"
-          : "hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.97] hover:[border-color:var(--accent-strong)]"
-      }`}
+      className={
+        "group relative flex flex-col text-left overflow-hidden rounded-xl border " +
+        "transition-all duration-150 antialiased " +
+        (oos
+          ? "opacity-50 cursor-not-allowed"
+          : "hover:-translate-y-[1px] active:translate-y-0 active:scale-[0.99] cursor-pointer")
+      }
     >
-      {/* Override hover border color to a stronger version of the accent */}
-      <style>{`.group:hover { --accent-strong: ${VARIANT_ACCENT}; }`}</style>
+      {/* Strengthen the border on hover via inline CSS so we can drive it
+          from the variant accent without leaking a CSS custom property
+          to global scope. */}
+      <style>{`.group:hover { box-shadow: 0 1px 0 0 ${VARIANT_ACCENT}33 inset, 0 8px 20px -8px ${VARIANT_ACCENT}33; }`}</style>
 
-      {/* Soft gloss — single hairline gradient at the top. */}
-      <span
-        aria-hidden
-        className="absolute inset-x-0 top-0 h-[18%] bg-gradient-to-b from-foreground/[0.04] to-transparent pointer-events-none"
-      />
-
-      {/* Product image — when set, fills the bottom-right ~50% of the
-          card as a square thumbnail. When NOT set, fall through to the
-          themed Package glyph placeholder. */}
-      {imagePath ? (
-        <span
-          aria-hidden
-          className="absolute right-1 bottom-1 w-[52%] aspect-square rounded-md overflow-hidden border border-foreground/5 pointer-events-none"
-        >
-          {/* eslint-disable-next-line @next/next/no-img-element */}
+      {/* ── Image / glyph block (top ~55% of card height) ─────────── */}
+      <div className="relative w-full aspect-[4/3] overflow-hidden">
+        {imagePath ? (
+          // eslint-disable-next-line @next/next/no-img-element
           <img
             src={imagePath}
             alt=""
             className="h-full w-full object-cover"
             onError={(e) => {
-              // Hide on error so the placeholder shows through.
+              // Hide so the placeholder block shows through behind it.
               e.currentTarget.style.display = "none";
             }}
           />
-        </span>
-      ) : (
-        <span aria-hidden className="absolute right-1 bottom-1 pointer-events-none">
+        ) : null}
+        {/* Themed placeholder — sits underneath the image. If image fails
+            to load it shows through. */}
+        <div
+          aria-hidden
+          className="absolute inset-0 -z-10 grid place-items-center"
+          style={{
+            background: `linear-gradient(135deg, color-mix(in oklab, ${VARIANT_ACCENT} 12%, transparent), color-mix(in oklab, ${VARIANT_ACCENT} 4%, transparent))`,
+          }}
+        >
           <Package
-            className="h-14 w-14 opacity-[0.18]"
-            strokeWidth={1.5}
+            className="size-12 opacity-30"
+            strokeWidth={1.25}
             style={{ color: VARIANT_ACCENT }}
           />
-        </span>
-      )}
-
-      {/* Category dot top-left — stays category-tinted (not module-tinted)
-          so different SKUs in the same module are still visually
-          distinguishable. */}
-      <span className={`relative z-[1] absolute top-2.5 left-2.5 size-2 rounded-full ${cc.dot}`} />
-
-      {/* Stock / margin chip — top-right. */}
-      <span
-        className={`absolute top-2 right-2 px-1.5 py-0.5 rounded-md text-[10px] font-mono font-bold tabular-nums tracking-wider transition-opacity ${sc.bg} ${sc.text} ${
-          lowStock ? "ring-1 ring-amber-500/30" : ""
-        } ${oos ? "ring-1 ring-rose-500/40" : ""} ${hasMargin ? "group-hover:opacity-0" : ""}`}
-      >
-        {oos ? "OUT" : stock}
-      </span>
-      {hasMargin && !oos ? (
-        <span
-          className="absolute top-2 right-2 px-1.5 py-0.5 rounded-md text-[10px] font-mono font-bold tabular-nums tracking-wider bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 opacity-0 group-hover:opacity-100 transition-opacity"
-          title={`Margin: ${marginAbs.toFixed(0)} (cost ${(buyingPrice ?? 0).toFixed(0)})`}
-        >
-          +{marginPct.toFixed(0)}%
-        </span>
-      ) : null}
-
-      {/* Product name — primary readable surface */}
-      <div className="relative z-[1] mt-5 mb-2.5">
-        <div className="text-[13.5px] font-semibold text-foreground line-clamp-2 leading-[1.25] tracking-[-0.005em]">
-          {product.name}
         </div>
+
+        {/* Stock chip — top-right, on top of the image. Margin chip swaps
+            in on hover when we have a positive buying price. */}
+        <span
+          className={
+            "absolute top-2 right-2 rounded-md px-1.5 py-0.5 font-mono text-[10px] font-semibold tabular-nums tracking-wider " +
+            stockTone +
+            (hasMargin && !oos ? " group-hover:opacity-0" : "")
+          }
+        >
+          {oos ? "OUT" : `${stock}`}
+        </span>
+        {hasMargin && !oos ? (
+          <span
+            className="absolute top-2 right-2 rounded-md px-1.5 py-0.5 font-mono text-[10px] font-semibold tabular-nums tracking-wider bg-emerald-500/12 text-emerald-700 dark:text-emerald-300 ring-1 ring-emerald-500/30 opacity-0 group-hover:opacity-100 transition-opacity"
+            title={`Margin ${marginPct.toFixed(0)}% (cost ${(buyingPrice ?? 0).toFixed(0)})`}
+          >
+            +{marginPct.toFixed(0)}%
+          </span>
+        ) : null}
       </div>
 
-      {/* Footer: category caption + price */}
-      <div className="relative z-[1] mt-auto flex items-end justify-between gap-2">
-        <span className="text-[10px] uppercase tracking-[0.06em] truncate text-muted-foreground">
-          {(product as any).category_name || ""}
+      {/* ── Type stack (bottom of card) ───────────────────────────── */}
+      <div className="flex flex-col gap-1 px-3 pt-2.5 pb-2.5">
+        {/* Mono category eyebrow — falls back to "uncategorised" so the
+            slot never collapses. */}
+        <span className="font-mono text-[9px] uppercase tracking-[0.18em] text-muted-foreground/80 truncate">
+          {categoryName || "Uncategorised"}
         </span>
-        <span className="font-mono font-bold text-[16px] tabular-nums leading-none text-foreground">
-          {product.selling_price.toFixed(0)}
+
+        {/* Product name — primary readable surface. 2-line clamp. */}
+        <span className="text-[13.5px] font-semibold text-foreground leading-[1.25] tracking-[-0.005em] line-clamp-2">
+          {product.name}
         </span>
+
+        {/* Price + small accent rule below for visual cadence */}
+        <div className="mt-1 flex items-baseline justify-between gap-2">
+          <span
+            aria-hidden
+            className="h-[2px] flex-1 rounded-full"
+            style={{ background: `${VARIANT_ACCENT}40` }}
+          />
+          <span className="font-mono font-bold text-[16px] tabular-nums leading-none text-foreground shrink-0">
+            {product.selling_price.toFixed(0)}
+          </span>
+        </div>
       </div>
     </button>
   );
