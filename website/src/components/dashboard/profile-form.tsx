@@ -3,6 +3,15 @@
 import * as React from 'react'
 import { Save } from '@/components/icons'
 import { Button } from '@/components/ui/button'
+import { Textarea } from '@/components/ui/textarea'
+import { Checkbox } from '@/components/ui/checkbox'
+import {
+  Select as ShadcnSelect,
+  SelectContent as ShadcnSelectContent,
+  SelectItem as ShadcnSelectItem,
+  SelectTrigger as ShadcnSelectTrigger,
+  SelectValue as ShadcnSelectValue,
+} from '@/components/ui/select'
 
 interface ProfileInitial {
   fullName: string
@@ -116,14 +125,13 @@ export function ProfileForm({
       <Field name="kraPin" label="KRA PIN" defaultValue={initial.kraPin} />
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <Select name="county" label="County" defaultValue={initial.county}>
-          <option value="">Select county</option>
-          {counties.map((c) => (
-            <option key={c.value} value={c.value}>
-              {c.label}
-            </option>
-          ))}
-        </Select>
+        <Select
+          name="county"
+          label="County"
+          defaultValue={initial.county}
+          placeholder="Select county"
+          options={counties.map((c) => ({ value: c.value, label: c.label }))}
+        />
         <Field name="town" label="Town" defaultValue={initial.town} />
       </div>
 
@@ -135,35 +143,24 @@ export function ProfileForm({
       />
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <Select name="businessType" label="Business type" defaultValue={initial.businessType}>
-          <option value="">Select trade</option>
-          {BUSINESS_TYPES.map((t) => (
-            <option key={t.value} value={t.value}>
-              {t.label}
-            </option>
-          ))}
-        </Select>
+        <Select
+          name="businessType"
+          label="Business type"
+          defaultValue={initial.businessType}
+          placeholder="Select trade"
+          options={BUSINESS_TYPES.map((t) => ({ value: t.value, label: t.label }))}
+        />
         <Select
           name="employeeCount"
           label="Team size"
           defaultValue={initial.employeeCount}
-        >
-          <option value="">Select range</option>
-          {EMPLOYEE_BANDS.map((b) => (
-            <option key={b.value} value={b.value}>
-              {b.label}
-            </option>
-          ))}
-        </Select>
+          placeholder="Select range"
+          options={EMPLOYEE_BANDS.map((b) => ({ value: b.value, label: b.label }))}
+        />
       </div>
 
       <label className="flex items-start gap-2.5 text-[12px] text-[var(--color-fg-muted)]">
-        <input
-          type="checkbox"
-          name="newsletterOptIn"
-          defaultChecked={initial.newsletterOptIn}
-          className="mt-0.5 size-4 accent-[var(--color-accent)]"
-        />
+        <Checkbox name="newsletterOptIn" defaultChecked={initial.newsletterOptIn} className="mt-0.5" />
         Email me when there's a major release.
       </label>
 
@@ -217,7 +214,7 @@ function Field({
         {required ? <span className="text-[var(--color-accent)]"> *</span> : null}
       </label>
       {textarea ? (
-        <textarea
+        <Textarea
           id={name}
           name={name}
           required={required}
@@ -252,12 +249,14 @@ function Select({
   name,
   label,
   defaultValue,
-  children,
+  placeholder,
+  options,
 }: {
   name: string
   label: string
   defaultValue?: string
-  children: React.ReactNode
+  placeholder?: string
+  options: Array<{ value: string; label: string }>
 }) {
   return (
     <div className="flex flex-col gap-1.5">
@@ -267,14 +266,14 @@ function Select({
       >
         {label}
       </label>
-      <select
-        id={name}
-        name={name}
-        defaultValue={defaultValue}
-        className="rounded-md border border-[var(--color-border-strong)] bg-[var(--color-bg)] px-3 py-2.5 text-[14px] text-[var(--color-fg)] outline-none focus:border-[var(--color-accent)]"
-      >
-        {children}
-      </select>
+      <ShadcnSelect name={name} defaultValue={defaultValue}>
+        <ShadcnSelectTrigger><ShadcnSelectValue placeholder={placeholder} /></ShadcnSelectTrigger>
+        <ShadcnSelectContent>
+          {options.map((o) => (
+            <ShadcnSelectItem key={o.value} value={o.value}>{o.label}</ShadcnSelectItem>
+          ))}
+        </ShadcnSelectContent>
+      </ShadcnSelect>
     </div>
   )
 }

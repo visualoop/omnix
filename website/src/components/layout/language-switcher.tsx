@@ -4,6 +4,7 @@ import { useLocale } from 'next-intl'
 import { usePathname, useRouter } from 'next/navigation'
 import { useTransition } from 'react'
 import { routing } from '@/i18n/routing'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 
 const LOCALE_LABELS: Record<string, { flag: string; name: string }> = {
   en: { flag: '🇬🇧', name: 'English' },
@@ -46,24 +47,15 @@ export function LanguageSwitcher({ className }: { className?: string }) {
   }
 
   return (
-    <select
-      value={locale}
-      disabled={isPending}
-      onChange={(e) => switchTo(e.target.value)}
-      className={
-        className ??
-        'rounded-md border border-[var(--color-border)] bg-transparent py-1 pl-2 pr-7 font-[family-name:var(--font-ui)] text-[12px] text-[var(--color-fg-muted)] hover:border-[var(--color-fg-subtle)] hover:text-[var(--color-fg)] focus:outline-none focus:border-[var(--color-accent)] cursor-pointer'
-      }
-      aria-label="Language"
-    >
+    <Select value={locale} onValueChange={(v) => switchTo(String(v))} disabled={isPending}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>
       {routing.locales.map((l) => {
         const label = LOCALE_LABELS[l] ?? { flag: '', name: l }
         return (
-          <option key={l} value={l}>
+          <SelectItem key={l} value={l}>
             {label.flag} {label.name}
-          </option>
+          </SelectItem>
         )
       })}
-    </select>
+    </SelectContent></Select>
   )
 }

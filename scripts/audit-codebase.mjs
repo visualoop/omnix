@@ -43,6 +43,8 @@ const ALLOWLIST = new Set([
   'src/components/ui/textarea.tsx',
   'src/components/ui/combobox.tsx',
   'website/src/components/ui/select.tsx',
+  'website/src/components/ui/checkbox.tsx',
+  'website/src/components/ui/textarea.tsx',
   // settings registry / icon picker = legacy markup, low-volume
 ])
 
@@ -59,7 +61,7 @@ const RULES = [
       for (const m of text.matchAll(selectRe)) {
         hits.push({ kind: 'SELECT', snippet: trim(m[0]) })
       }
-      const updateRe = /\bUPDATE\s+products\s+SET\s+[\s\S]{0,200}?\bselling_price\s*=/gi
+      const updateRe = /\bUPDATE\s+products\s+SET\s+(?![^`]*?`)[^`]*?\bselling_price\s*=/gi
       for (const m of text.matchAll(updateRe)) {
         hits.push({ kind: 'UPDATE', snippet: trim(m[0]) })
       }
@@ -83,7 +85,7 @@ const RULES = [
       for (const m of text.matchAll(re)) {
         hits.push({ kind: 'SELECT', snippet: trim(m[0]) })
       }
-      const updateRe = /\bUPDATE\s+products\s+SET\s+[\s\S]{0,200}?\bbuying_price\s*=/gi
+      const updateRe = /\bUPDATE\s+products\s+SET\s+(?![^`]*?`)[^`]*?\bbuying_price\s*=/gi
       for (const m of text.matchAll(updateRe)) {
         hits.push({ kind: 'UPDATE', snippet: trim(m[0]) })
       }

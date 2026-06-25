@@ -264,9 +264,14 @@ def patch_file(path):
     if converted == 0:
         return False, f"bailed-only ({bailed})"
     if '"@/components/ui/select"' not in new_src:
-        m = re.search(r'(^import \{[^}]*\} from "@/components/ui/(?:input|button|badge|dialog|textarea)";\n)', new_src, re.M)
+        m = re.search(r'(^import \{[^}]*\} from "@/components/ui/(?:input|button|badge|dialog|textarea|checkbox)";\n)', new_src, re.M)
         if m:
             new_src = new_src[:m.end()] + SELECT_IMPORT + new_src[m.end():]
+        else:
+            # Try the website-style imports without trailing semicolon variant
+            m2 = re.search(r"(^import \{[^}]*\} from ['\"]@/components/ui/(?:input|button|badge|dialog|textarea|checkbox)['\"];?\n)", new_src, re.M)
+            if m2:
+                new_src = new_src[:m2.end()] + SELECT_IMPORT + new_src[m2.end():]
     with open(path, 'w') as f:
         f.write(new_src)
     return True, f"converted {converted}, bailed {bailed}"

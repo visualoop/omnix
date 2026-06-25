@@ -2,6 +2,7 @@
 
 import { useState, useTransition, useRef } from 'react'
 import { useRouter } from 'next/navigation'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 
 interface MediaItem {
   id: string
@@ -192,18 +193,14 @@ export function MediaLibrary({
                       {Math.round(it.sizeBytes / 1024)} KB
                     </span>
                   </div>
-                  <select
-                    value={it.slot ?? ''}
-                    onChange={(e) => patchSlot(it.id, e.target.value || null)}
-                    className="rounded-md border border-[var(--color-border)] bg-[var(--color-bg)] px-2 py-1 font-mono text-[11px]"
-                  >
-                    <option value="">— unassigned —</option>
+                  <Select value={it.slot ?? ''} onValueChange={(v) => patchSlot(it.id, String(v) || null)}><SelectTrigger><SelectValue placeholder="— unassigned —" /></SelectTrigger><SelectContent>
+                    
                     {slotBindings.map((b) => (
-                      <option key={b.slot} value={b.slot}>
+                      <SelectItem key={b.slot} value={b.slot}>
                         {b.label}
-                      </option>
+                      </SelectItem>
                     ))}
-                  </select>
+                  </SelectContent></Select>
                   <input
                     type="text"
                     defaultValue={it.alt ?? ''}

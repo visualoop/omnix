@@ -11,6 +11,7 @@
 import { useRouter, useSearchParams, usePathname } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { CaretLeft, CaretRight, MagnifyingGlass, X } from '@phosphor-icons/react'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 
 export function AdminPagination({
   page,
@@ -151,18 +152,20 @@ export function AdminSelectFilter({
       <label className="font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--color-fg-muted)]">
         {label}
       </label>
-      <select
-        value={current}
-        onChange={(e) => change(e.target.value)}
-        className="h-8 rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-2 text-[12px] cursor-pointer"
+      <Select
+        value={current || '__all'}
+        onValueChange={(v) => change(v === '__all' ? '' : String(v))}
       >
-        <option value="">All</option>
-        {options.map((o) => (
-          <option key={o.value} value={o.value}>
-            {o.label}
-          </option>
-        ))}
-      </select>
+        <SelectTrigger><SelectValue placeholder="All" /></SelectTrigger>
+        <SelectContent>
+          <SelectItem value="__all">All</SelectItem>
+          {options.map((o) => (
+            <SelectItem key={o.value} value={o.value}>
+              {o.label}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
     </div>
   )
 }

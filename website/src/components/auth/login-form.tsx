@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { ArrowRight } from '@/components/icons'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/cn'
+import { Checkbox } from '@/components/ui/checkbox'
 
 export function LoginForm() {
   const [submitting, setSubmitting] = React.useState(false)
@@ -50,12 +51,7 @@ export function LoginForm() {
 
       <div className="flex items-center justify-between text-[12px]">
         <label className="flex items-center gap-2 text-[var(--color-fg-muted)]">
-          <input
-            type="checkbox"
-            name="rememberMe"
-            defaultChecked
-            className="size-4 accent-[var(--color-accent)]"
-          />
+          <Checkbox name="rememberMe" defaultChecked />
           Stay signed in
         </label>
         <Link

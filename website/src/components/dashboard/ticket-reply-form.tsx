@@ -3,6 +3,7 @@
 import * as React from 'react'
 import { Send } from '@/components/icons'
 import { Button } from '@/components/ui/button'
+import { Textarea } from '@/components/ui/textarea'
 
 export function TicketReplyForm({ ticketId }: { ticketId: string }) {
   const [submitting, setSubmitting] = React.useState(false)
@@ -34,7 +35,7 @@ export function TicketReplyForm({ ticketId }: { ticketId: string }) {
 
   return (
     <form onSubmit={onSubmit} className="flex flex-col gap-3">
-      <textarea
+      <Textarea
         name="body"
         required
         rows={5}

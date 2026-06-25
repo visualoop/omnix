@@ -3,6 +3,7 @@
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { formatDate } from '@/lib/format-date'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 
 interface Invite {
   id: string
@@ -119,14 +120,10 @@ export function InvitationsPanel({
             <label className="font-mono text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
               Role
             </label>
-            <select
-              value={role}
-              onChange={(e) => setRole(e.target.value as 'admin' | 'member')}
-              className="h-9 rounded-md border border-foreground/15 bg-background px-3 text-[13px]"
-            >
-              <option value="member">Member</option>
-              <option value="admin">Admin</option>
-            </select>
+            <Select value={role} onValueChange={(v) => setRole(String(v) as 'admin' | 'member')}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>
+              <SelectItem value="member">Member</SelectItem>
+              <SelectItem value="admin">Admin</SelectItem>
+            </SelectContent></Select>
           </div>
           <button
             type="submit"

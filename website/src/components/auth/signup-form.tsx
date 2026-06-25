@@ -3,8 +3,16 @@
 import * as React from 'react'
 import { ArrowRight } from '@/components/icons'
 import { Button } from '@/components/ui/button'
+import {
+  Select as ShadcnSelect,
+  SelectContent as ShadcnSelectContent,
+  SelectItem as ShadcnSelectItem,
+  SelectTrigger as ShadcnSelectTrigger,
+  SelectValue as ShadcnSelectValue,
+} from '@/components/ui/select'
 import { KE_COUNTIES } from '@/lib/ke-counties'
 import { cn } from '@/lib/cn'
+import { Checkbox } from '@/components/ui/checkbox'
 
 const BUSINESS_TYPES = [
   { value: 'pharmacy', label: 'Pharmacy / Chemist' },
@@ -87,31 +95,24 @@ export function SignupForm() {
       />
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <Select name="county" label="County" required>
-          <option value="">Select county</option>
-          {KE_COUNTIES.map((c) => (
-            <option key={c.value} value={c.value}>
-              {c.label}
-            </option>
-          ))}
-        </Select>
-        <Select name="businessType" label="Business type" required>
-          <option value="">Select trade</option>
-          {BUSINESS_TYPES.map((t) => (
-            <option key={t.value} value={t.value}>
-              {t.label}
-            </option>
-          ))}
-        </Select>
+        <Select
+          name="county"
+          label="County"
+          required
+          placeholder="Select county"
+          options={KE_COUNTIES.map((c) => ({ value: c.value, label: c.label }))}
+        />
+        <Select
+          name="businessType"
+          label="Business type"
+          required
+          placeholder="Select trade"
+          options={BUSINESS_TYPES.map((t) => ({ value: t.value, label: t.label }))}
+        />
       </div>
 
       <label className="mt-2 flex items-start gap-2.5 text-[12px] text-[var(--color-fg-muted)]">
-        <input
-          type="checkbox"
-          name="newsletterOptIn"
-          defaultChecked
-          className="mt-0.5 size-4 accent-[var(--color-accent)]"
-        />
+        <Checkbox name="newsletterOptIn" defaultChecked className="mt-0.5" />
         <span>
           Email me when there's a major release. One short summary per release. Unsubscribe in
           one click.
@@ -119,12 +120,7 @@ export function SignupForm() {
       </label>
 
       <label className="flex items-start gap-2.5 text-[12px] text-[var(--color-fg-muted)]">
-        <input
-          type="checkbox"
-          name="termsAccepted"
-          required
-          className="mt-0.5 size-4 accent-[var(--color-accent)]"
-        />
+        <Checkbox name="termsAccepted" required className="mt-0.5" />
         <span>
           I agree to the{' '}
           <a
@@ -212,10 +208,11 @@ interface SelectProps {
   name: string
   label: string
   required?: boolean
-  children: React.ReactNode
+  placeholder?: string
+  options: Array<{ value: string; label: string }>
 }
 
-function Select({ name, label, required, children }: SelectProps) {
+function Select({ name, label, required, placeholder, options }: SelectProps) {
   return (
     <div className="flex flex-col gap-1.5">
       <label
@@ -225,14 +222,14 @@ function Select({ name, label, required, children }: SelectProps) {
         {label}
         {required ? <span className="text-[var(--color-accent)]"> *</span> : null}
       </label>
-      <select
-        id={name}
-        name={name}
-        required={required}
-        className="rounded-md border border-[var(--color-border-strong)] bg-[var(--color-surface)] px-3 py-2.5 text-[14px] text-[var(--color-fg)] outline-none transition-colors focus:border-[var(--color-accent)] focus:ring-1 focus:ring-[var(--color-accent)]"
-      >
-        {children}
-      </select>
+      <ShadcnSelect name={name} required={required}>
+        <ShadcnSelectTrigger><ShadcnSelectValue placeholder={placeholder} /></ShadcnSelectTrigger>
+        <ShadcnSelectContent>
+          {options.map((o) => (
+            <ShadcnSelectItem key={o.value} value={o.value}>{o.label}</ShadcnSelectItem>
+          ))}
+        </ShadcnSelectContent>
+      </ShadcnSelect>
     </div>
   )
 }

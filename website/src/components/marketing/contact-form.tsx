@@ -3,6 +3,9 @@
 import * as React from 'react'
 import { Send } from '@/components/icons'
 import { Button } from '@/components/ui/button'
+import { Textarea } from '@/components/ui/textarea'
+import { Checkbox } from '@/components/ui/checkbox'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 
 const CATEGORIES = [
   { value: 'general', label: 'General question' },
@@ -85,19 +88,14 @@ export function ContactForm() {
         >
           What's this about? <span className="text-[var(--color-accent)]">*</span>
         </label>
-        <select
-          id="category"
-          name="category"
-          required
-          defaultValue="general"
-          className="rounded-md border border-[var(--color-border-strong)] bg-[var(--color-surface)] px-3 py-2.5 text-[14px] text-[var(--color-fg)] outline-none transition-colors focus:border-[var(--color-accent)]"
-        >
-          {CATEGORIES.map((c) => (
-            <option key={c.value} value={c.value}>
-              {c.label}
-            </option>
-          ))}
-        </select>
+        <Select name="category" required defaultValue="general">
+          <SelectTrigger><SelectValue /></SelectTrigger>
+          <SelectContent>
+            {CATEGORIES.map((c) => (
+              <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
 
       <div className="flex flex-col gap-2">
@@ -107,7 +105,7 @@ export function ContactForm() {
         >
           Message <span className="text-[var(--color-accent)]">*</span>
         </label>
-        <textarea
+        <Textarea
           id="message"
           name="message"
           required
@@ -118,12 +116,7 @@ export function ContactForm() {
       </div>
 
       <label className="flex items-start gap-2.5 text-[12px] text-[var(--color-fg-muted)]">
-        <input
-          type="checkbox"
-          name="optIn"
-          defaultChecked
-          className="mt-0.5 size-4 accent-[var(--color-accent)]"
-        />
+        <Checkbox name="optIn" defaultChecked className="mt-0.5" />
         <span>
           Email me when there's a major release. One short summary per release. Unsubscribe in
           one click.

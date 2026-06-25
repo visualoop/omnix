@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import {
   ShieldStar, UserPlus, Prohibit, Check, ArrowsClockwise, X,
 } from '@phosphor-icons/react'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 
 interface Member {
   id: string
@@ -181,17 +182,13 @@ export function TeamClient({ initial }: { initial: Member[] }) {
             <label className="font-mono text-[10px] uppercase tracking-[0.22em] text-[var(--color-fg-muted)] block mb-1.5">
               Role
             </label>
-            <select
-              value={role}
-              onChange={(e) => setRole(e.target.value as typeof role)}
-              className="w-full rounded-md border border-[var(--color-border)] bg-transparent px-3 py-2 text-[13px] outline-none focus:border-[var(--color-accent)] text-[var(--color-fg)] cursor-pointer"
-            >
+            <Select value={role} onValueChange={(v) => setRole(String(v) as typeof role)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>
               {ROLES.map((r) => (
-                <option key={r.value} value={r.value} className="bg-[var(--color-surface)]">
+                <SelectItem key={r.value} value={r.value}>
                   {r.label}
-                </option>
+                </SelectItem>
               ))}
-            </select>
+            </SelectContent></Select>
           </div>
           <button
             onClick={invite}
@@ -251,17 +248,12 @@ export function TeamClient({ initial }: { initial: Member[] }) {
                 </div>
 
                 {/* Role select */}
-                <select
-                  value={m.role ?? 'user'}
-                  onChange={(e) => changeRole(m.id, e.target.value)}
-                  disabled={busy}
-                  className="rounded-md border border-[var(--color-border)] bg-transparent px-2.5 py-1.5 text-[12px] outline-none focus:border-[var(--color-accent)] text-[var(--color-fg)] cursor-pointer disabled:opacity-50"
-                >
+                <Select value={m.role ?? 'user'} onValueChange={(v) => changeRole(m.id, String(v))} disabled={busy}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>
                   {ROLES.map((r) => (
-                    <option key={r.value} value={r.value} className="bg-[var(--color-surface)]">{r.label}</option>
+                    <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>
                   ))}
-                  <option value="user" className="bg-[var(--color-surface)]">— Demote to customer —</option>
-                </select>
+                  <SelectItem value="user">— Demote to customer —</SelectItem>
+                </SelectContent></Select>
 
                 {/* Resend invite — re-fires the magic-link + branded
                     letter so the teammate gets a fresh sign-in URL. */}

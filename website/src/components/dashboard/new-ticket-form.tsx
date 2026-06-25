@@ -3,6 +3,8 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
+import { Textarea } from '@/components/ui/textarea'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 
 export function NewTicketForm() {
   const router = useRouter()
@@ -41,22 +43,28 @@ export function NewTicketForm() {
     <form onSubmit={onSubmit} className="space-y-4">
       <Field label="Subject"><input name="subject" required className={inputClass} /></Field>
       <Field label="Category">
-        <select name="category" defaultValue="general" className={inputClass}>
-          <option value="general">General</option>
-          <option value="billing">Billing</option>
-          <option value="bug">Bug report</option>
-          <option value="feature">Feature request</option>
-        </select>
+        <Select name="category" defaultValue="general">
+          <SelectTrigger><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="general">General</SelectItem>
+            <SelectItem value="billing">Billing</SelectItem>
+            <SelectItem value="bug">Bug report</SelectItem>
+            <SelectItem value="feature">Feature request</SelectItem>
+          </SelectContent>
+        </Select>
       </Field>
       <Field label="Priority">
-        <select name="priority" defaultValue="normal" className={inputClass}>
-          <option value="low">Low</option>
-          <option value="normal">Normal</option>
-          <option value="high">High</option>
-        </select>
+        <Select name="priority" defaultValue="normal">
+          <SelectTrigger><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="low">Low</SelectItem>
+            <SelectItem value="normal">Normal</SelectItem>
+            <SelectItem value="high">High</SelectItem>
+          </SelectContent>
+        </Select>
       </Field>
       <Field label="Describe the problem">
-        <textarea name="body" required rows={6} className={`${inputClass} font-mono`} />
+        <Textarea name="body" required rows={6} className={`${inputClass} font-mono`} />
       </Field>
       {error ? <p className="text-[12px] text-rose-600">{error}</p> : null}
       <Button type="submit" disabled={busy}>{busy ? 'Opening…' : 'Open ticket'}</Button>
