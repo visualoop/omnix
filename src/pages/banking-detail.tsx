@@ -15,6 +15,7 @@ import {
   WarningCircle as AlertCircle,
 } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
@@ -369,17 +370,13 @@ function NewTransactionDialog({ open, onClose, onSaved, accountId, userId }: {
           <div className="grid grid-cols-2 gap-2">
             <div className="space-y-1">
               <label className="text-[11px] font-medium text-muted-foreground">Type</label>
-              <select
-                value={form.transaction_type}
-                onChange={(e) => setForm({ ...form, transaction_type: e.target.value as BankTxType })}
-                className="w-full h-8 rounded-md border border-input bg-background px-2 text-[13px]"
-              >
-                <option value="deposit">Deposit (money in)</option>
-                <option value="withdrawal">Withdrawal (money out)</option>
-                <option value="fee">Bank Fee / Charge</option>
-                <option value="interest">Interest Earned</option>
-                <option value="adjustment">Adjustment</option>
-              </select>
+              <Select value={form.transaction_type} onValueChange={(v) => setForm({ ...form, transaction_type: String(v) as BankTxType })}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>
+                <SelectItem value="deposit">Deposit (money in)</SelectItem>
+                <SelectItem value="withdrawal">Withdrawal (money out)</SelectItem>
+                <SelectItem value="fee">Bank Fee / Charge</SelectItem>
+                <SelectItem value="interest">Interest Earned</SelectItem>
+                <SelectItem value="adjustment">Adjustment</SelectItem>
+              </SelectContent></Select>
             </div>
             <div className="space-y-1">
               <label className="text-[11px] font-medium text-muted-foreground">Date</label>
@@ -410,17 +407,13 @@ function NewTransactionDialog({ open, onClose, onSaved, accountId, userId }: {
             </div>
             <div className="space-y-1">
               <label className="text-[11px] font-medium text-muted-foreground">Method</label>
-              <select
-                value={form.payment_method}
-                onChange={(e) => setForm({ ...form, payment_method: e.target.value })}
-                className="w-full h-8 rounded-md border border-input bg-background px-2 text-[13px]"
-              >
-                <option value="cash">Cash</option>
-                <option value="mpesa">M-Pesa</option>
-                <option value="cheque">Cheque</option>
-                <option value="wire">Wire Transfer</option>
-                <option value="card">Card</option>
-              </select>
+              <Select value={form.payment_method} onValueChange={(v) => setForm({ ...form, payment_method: String(v) })}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>
+                <SelectItem value="cash">Cash</SelectItem>
+                <SelectItem value="mpesa">M-Pesa</SelectItem>
+                <SelectItem value="cheque">Cheque</SelectItem>
+                <SelectItem value="wire">Wire Transfer</SelectItem>
+                <SelectItem value="card">Card</SelectItem>
+              </SelectContent></Select>
             </div>
           </div>
 
@@ -508,16 +501,12 @@ function TransferDialog({ open, onClose, onSaved, currentAccount, userId }: {
 
           <div className="space-y-1">
             <label className="text-[11px] font-medium text-muted-foreground">To Account</label>
-            <select
-              value={toAccountId}
-              onChange={(e) => setToAccountId(e.target.value)}
-              className="w-full h-8 rounded-md border border-input bg-background px-2 text-[13px]"
-            >
-              <option value="">Select destination...</option>
+            <Select value={toAccountId} onValueChange={(v) => setToAccountId(String(v))}><SelectTrigger><SelectValue placeholder="Select destination..." /></SelectTrigger><SelectContent>
+              
               {accounts.filter((a) => a.id !== currentAccount.id).map((a) => (
-                <option key={a.id} value={a.id}>{a.name} · {KES(a.current_balance)}</option>
+                <SelectItem key={a.id} value={a.id}>{a.name} · {KES(a.current_balance)}</SelectItem>
               ))}
-            </select>
+            </SelectContent></Select>
           </div>
 
           <div className="grid grid-cols-2 gap-2">

@@ -5,6 +5,7 @@ import {
   Trash as Trash2,
 } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { PageHeader } from "@/components/layout/page-header";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -187,14 +188,10 @@ function ExpensePanel({ open, onClose, categories, onSaved }: { open: boolean; o
         <SheetHeader><SheetTitle>Add Expense</SheetTitle></SheetHeader>
         <div className="space-y-4 mt-6">
           <Field label="Category *">
-            <select
-              className="w-full h-9 rounded-md border border-input bg-background px-3 text-sm"
-              value={form.category_id}
-              onChange={(e) => setForm({ ...form, category_id: e.target.value })}
-            >
-              <option value="">Select category</option>
-              {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-            </select>
+            <Select value={form.category_id} onValueChange={(v) => setForm({ ...form, category_id: String(v) })}><SelectTrigger><SelectValue placeholder="Select category" /></SelectTrigger><SelectContent>
+              
+              {categories.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+            </SelectContent></Select>
           </Field>
 
           <Field label="Amount *">
@@ -207,17 +204,13 @@ function ExpensePanel({ open, onClose, categories, onSaved }: { open: boolean; o
 
           <div className="grid grid-cols-2 gap-3">
             <Field label="Payment method">
-              <select
-                className="w-full h-9 rounded-md border border-input bg-background px-3 text-sm"
-                value={form.payment_method}
-                onChange={(e) => setForm({ ...form, payment_method: e.target.value })}
-              >
-                <option value="cash">Cash</option>
-                <option value="mpesa">M-Pesa</option>
-                <option value="bank">Bank</option>
-                <option value="card">Card</option>
-                <option value="cheque">Cheque</option>
-              </select>
+              <Select value={form.payment_method} onValueChange={(v) => setForm({ ...form, payment_method: String(v) })}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>
+                <SelectItem value="cash">Cash</SelectItem>
+                <SelectItem value="mpesa">M-Pesa</SelectItem>
+                <SelectItem value="bank">Bank</SelectItem>
+                <SelectItem value="card">Card</SelectItem>
+                <SelectItem value="cheque">Cheque</SelectItem>
+              </SelectContent></Select>
             </Field>
 
             <Field label="Date">

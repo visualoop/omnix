@@ -5,6 +5,7 @@ import {
   Shield,
 } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Badge } from "@/components/ui/badge";
@@ -201,12 +202,7 @@ function Toggle({ label, value, onChange }: { label: string; value: boolean; onC
   return (
     <label className="flex items-center justify-between text-sm py-1 cursor-pointer">
       <span>{label}</span>
-      <input
-        type="checkbox"
-        checked={value}
-        onChange={(e) => onChange(e.target.checked)}
-        className="rounded"
-      />
+      <Checkbox checked={value} onCheckedChange={(v) => onChange(Boolean(v))} />
     </label>
   );
 }

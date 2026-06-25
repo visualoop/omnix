@@ -6,6 +6,7 @@ import {
   WarningCircle as AlertCircle,
 } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { getEtimsConfig, saveEtimsConfig, verifyEtimsConnection, disableEtims } from "@/services/etims";
 import { toast } from "sonner";
@@ -159,13 +160,7 @@ export function EtimsSettingsPage() {
         </Field>
 
         <div className="flex items-center gap-2">
-          <input
-            type="checkbox"
-            id="test-mode"
-            checked={form.test_mode}
-            onChange={(e) => setForm({ ...form, test_mode: e.target.checked })}
-            className="rounded border-input"
-          />
+          <Checkbox checked={form.test_mode} onCheckedChange={(v) => setForm({ ...form, test_mode: Boolean(v) })} id="test-mode" />
           <label htmlFor="test-mode" className="text-sm">Use sandbox (test) mode</label>
           <span className="text-xs text-muted-foreground">
             (recommended until verified)

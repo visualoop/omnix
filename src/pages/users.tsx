@@ -11,6 +11,7 @@ import {
   WarningCircle as AlertCircle,
 } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
@@ -467,12 +468,7 @@ function BranchAssignmentBlock({ userId }: { userId: string }) {
       <div className="space-y-1.5">
         {branches.map((b) => (
           <label key={b.id} className="flex items-center gap-2 text-sm cursor-pointer">
-            <input
-              type="checkbox"
-              checked={b.assigned}
-              onChange={() => toggle(b.id, b.assigned)}
-              className="rounded"
-            />
+            <Checkbox checked={b.assigned} onCheckedChange={() => toggle(b.id, b.assigned)} />
             <span>{b.name}</span>
           </label>
         ))}

@@ -16,6 +16,7 @@ import {
   Scales as Weight,
 } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -214,21 +215,11 @@ export function PatientProfilePage() {
         <Section title="Special Conditions">
           <div className="space-y-2">
             <label className="flex items-center gap-2 text-sm">
-              <input
-                type="checkbox"
-                checked={profile.pregnant === 1}
-                onChange={(e) => setProfile({ ...profile, pregnant: e.target.checked ? 1 : 0 })}
-                className="rounded"
-              />
+              <Checkbox checked={profile.pregnant === 1} onCheckedChange={(v) => setProfile({ ...profile, pregnant: Boolean(v) ? 1 : 0 })} />
               Currently pregnant
             </label>
             <label className="flex items-center gap-2 text-sm">
-              <input
-                type="checkbox"
-                checked={profile.breastfeeding === 1}
-                onChange={(e) => setProfile({ ...profile, breastfeeding: e.target.checked ? 1 : 0 })}
-                className="rounded"
-              />
+              <Checkbox checked={profile.breastfeeding === 1} onCheckedChange={(v) => setProfile({ ...profile, breastfeeding: Boolean(v) ? 1 : 0 })} />
               Currently breastfeeding
             </label>
           </div>
@@ -413,16 +404,12 @@ function AllergyDialog({
           />
         </Field>
         <Field label="Severity">
-          <select
-            value={severity}
-            onChange={(e) => setSeverity(e.target.value as PatientAllergy["severity"])}
-            className="w-full h-9 rounded-md border border-input bg-transparent px-3 text-sm"
-          >
-            <option value="mild">Mild</option>
-            <option value="moderate">Moderate</option>
-            <option value="severe">Severe</option>
-            <option value="life-threatening">Life-threatening (anaphylaxis)</option>
-          </select>
+          <Select value={severity} onValueChange={(v) => setSeverity(String(v) as PatientAllergy["severity"])}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>
+            <SelectItem value="mild">Mild</SelectItem>
+            <SelectItem value="moderate">Moderate</SelectItem>
+            <SelectItem value="severe">Severe</SelectItem>
+            <SelectItem value="life-threatening">Life-threatening (anaphylaxis)</SelectItem>
+          </SelectContent></Select>
         </Field>
         <Field label="Reaction">
           <Input

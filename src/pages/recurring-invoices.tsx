@@ -9,6 +9,8 @@ import {
   Trash as Trash2,
 } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -327,13 +329,9 @@ function NewTemplateSheet({ open, onClose, onSaved }: {
             <h3 className="text-xs font-semibold text-muted-foreground">Schedule</h3>
             <div className="grid grid-cols-2 gap-2">
               <Field label="Frequency">
-                <select
-                  value={frequency}
-                  onChange={(e) => setFrequency(e.target.value as RecurringFrequency)}
-                  className="w-full h-8 rounded-md border border-input bg-background px-2 text-[13px]"
-                >
-                  {Object.entries(FREQ_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-                </select>
+                <Select value={frequency} onValueChange={(v) => setFrequency(String(v) as RecurringFrequency)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>
+                  {Object.entries(FREQ_LABELS).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}
+                </SelectContent></Select>
               </Field>
               <Field label="Every N">
                 <Input type="number" min={1} value={intervalCount} onChange={(e) => setIntervalCount(parseInt(e.target.value) || 1)} />
@@ -351,7 +349,7 @@ function NewTemplateSheet({ open, onClose, onSaved }: {
               <Input type="number" value={paymentTermsDays} onChange={(e) => setPaymentTermsDays(parseInt(e.target.value) || 30)} />
             </Field>
             <label className="flex items-center gap-2 text-xs cursor-pointer">
-              <input type="checkbox" checked={autoSend} onChange={(e) => setAutoSend(e.target.checked)} className="rounded" />
+              <Checkbox checked={autoSend} onCheckedChange={(v) => setAutoSend(Boolean(v))} />
               <span>Auto-mark as Sent on generation (skip Draft state)</span>
             </label>
           </div>

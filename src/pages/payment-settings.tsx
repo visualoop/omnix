@@ -8,6 +8,7 @@ import {
   WarningCircle as AlertCircle,
 } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { getPaystackConfig, savePaystackConfig, verifyPaystackKey, disablePaystack } from "@/services/paystack";
 import { getDarajaConfig, saveDarajaConfig, verifyDarajaKey, disableDaraja } from "@/services/daraja";
@@ -184,7 +185,7 @@ export function PaymentSettingsPage() {
           </div>
 
           <div className="flex items-center gap-2">
-            <input type="checkbox" id="test-mode" checked={testMode} onChange={(e) => setTestMode(e.target.checked)} className="rounded border-input" />
+            <Checkbox checked={testMode} onCheckedChange={(v) => setTestMode(Boolean(v))} id="test-mode" />
             <label htmlFor="test-mode" className="text-sm">Use test mode</label>
             <span className="text-xs text-muted-foreground">(no real money, for testing)</span>
           </div>
@@ -274,7 +275,7 @@ export function PaymentSettingsPage() {
           </div>
 
           <div className="flex items-center gap-2">
-            <input type="checkbox" id="daraja-test-mode" checked={darajaTestMode} onChange={(e) => setDarajaTestMode(e.target.checked)} className="rounded border-input" />
+            <Checkbox checked={darajaTestMode} onCheckedChange={(v) => setDarajaTestMode(Boolean(v))} id="daraja-test-mode" />
             <label htmlFor="daraja-test-mode" className="text-sm">Use test mode (sandbox)</label>
             <span className="text-xs text-muted-foreground">(no real money, for testing)</span>
           </div>

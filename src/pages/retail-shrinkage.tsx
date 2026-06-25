@@ -5,6 +5,7 @@ import {
   Warning as AlertTriangle,
 } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent } from "@/components/ui/card";
@@ -104,14 +105,10 @@ export function ShrinkagePage() {
         <Input type="date" value={period.start} onChange={(e) => setPeriod({ ...period, start: e.target.value })} className="h-7 w-36" />
         <span className="text-xs text-muted-foreground">to</span>
         <Input type="date" value={period.end} onChange={(e) => setPeriod({ ...period, end: e.target.value })} className="h-7 w-36" />
-        <select
-          value={reasonFilter}
-          onChange={(e) => setReasonFilter(e.target.value as ShrinkageReason | "")}
-          className="h-7 rounded-md border border-input bg-background px-2 text-xs"
-        >
-          <option value="">All reasons</option>
-          {Object.entries(REASON_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-        </select>
+        <Select value={reasonFilter} onValueChange={(v) => setReasonFilter(String(v) as ShrinkageReason | "")}><SelectTrigger><SelectValue placeholder="All reasons" /></SelectTrigger><SelectContent>
+          
+          {Object.entries(REASON_LABELS).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}
+        </SelectContent></Select>
       </div>
 
       <Tabs value={tab} onValueChange={(v) => setTab(v as any)}>
@@ -373,13 +370,9 @@ function RecordShrinkageDialog({ open, onClose, onSaved }: {
 
           <div className="space-y-1">
             <label className="text-[11px] font-medium text-muted-foreground">Reason *</label>
-            <select
-              value={form.reason}
-              onChange={(e) => setForm({ ...form, reason: e.target.value as ShrinkageReason })}
-              className="w-full h-8 rounded-md border border-input bg-background px-2 text-[13px]"
-            >
-              {Object.entries(REASON_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-            </select>
+            <Select value={form.reason} onValueChange={(v) => setForm({ ...form, reason: String(v) as ShrinkageReason })}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>
+              {Object.entries(REASON_LABELS).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}
+            </SelectContent></Select>
           </div>
 
           <div className="space-y-1">

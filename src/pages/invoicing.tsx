@@ -9,6 +9,7 @@ import {
   WarningCircle as AlertCircle,
 } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { PageHeader } from "@/components/layout/page-header";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
@@ -114,19 +115,15 @@ function InvoiceList({ branchId }: { branchId?: string }) {
           <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
           <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search invoice or customer..." className="pl-8" />
         </div>
-        <select
-          value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value as InvoiceStatus | "")}
-          className="h-8 rounded-md border border-input bg-background px-2 text-[13px]"
-        >
-          <option value="">All statuses</option>
-          <option value="draft">Draft</option>
-          <option value="sent">Sent</option>
-          <option value="partial">Partial</option>
-          <option value="paid">Paid</option>
-          <option value="overdue">Overdue</option>
-          <option value="cancelled">Cancelled</option>
-        </select>
+        <Select value={statusFilter} onValueChange={(v) => setStatusFilter(String(v) as InvoiceStatus | "")}><SelectTrigger><SelectValue placeholder="All statuses" /></SelectTrigger><SelectContent>
+          
+          <SelectItem value="draft">Draft</SelectItem>
+          <SelectItem value="sent">Sent</SelectItem>
+          <SelectItem value="partial">Partial</SelectItem>
+          <SelectItem value="paid">Paid</SelectItem>
+          <SelectItem value="overdue">Overdue</SelectItem>
+          <SelectItem value="cancelled">Cancelled</SelectItem>
+        </SelectContent></Select>
       </div>
 
       <div className="border border-border rounded-md overflow-hidden">

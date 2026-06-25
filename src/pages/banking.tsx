@@ -12,6 +12,7 @@ import {
   Wallet,
 } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { PageHeader } from "@/components/layout/page-header";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
@@ -324,18 +325,14 @@ function AccountForm({ open, account, onClose, onSaved }: {
           </Field>
 
           <Field label="Account Type">
-            <select
-              value={form.account_type || "bank"}
-              onChange={(e) => setForm({ ...form, account_type: e.target.value as BankAccountType })}
-              className="w-full h-8 rounded-md border border-input bg-background px-2 text-[13px]"
-            >
-              <option value="bank">Bank Account</option>
-              <option value="mpesa_till">M-Pesa Till</option>
-              <option value="mpesa_paybill">M-Pesa Paybill</option>
-              <option value="mobile_money">Other Mobile Money</option>
-              <option value="cash_box">Cash Box</option>
-              <option value="credit_card">Credit Card</option>
-            </select>
+            <Select value={form.account_type || "bank"} onValueChange={(v) => setForm({ ...form, account_type: String(v) as BankAccountType })}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>
+              <SelectItem value="bank">Bank Account</SelectItem>
+              <SelectItem value="mpesa_till">M-Pesa Till</SelectItem>
+              <SelectItem value="mpesa_paybill">M-Pesa Paybill</SelectItem>
+              <SelectItem value="mobile_money">Other Mobile Money</SelectItem>
+              <SelectItem value="cash_box">Cash Box</SelectItem>
+              <SelectItem value="credit_card">Credit Card</SelectItem>
+            </SelectContent></Select>
           </Field>
 
           {(form.account_type === "bank") && (

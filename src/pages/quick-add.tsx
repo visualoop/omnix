@@ -11,6 +11,7 @@ import {
   WarningCircle as AlertCircle,
 } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { createProduct, getCategories, type Category } from "@/services/inventory";
@@ -231,26 +232,16 @@ export function QuickAddProductsPage() {
                     />
                   </td>
                   <td className="px-1 py-1">
-                    <select
-                      value={r.category_id}
-                      onChange={(e) => update(r.id, { category_id: e.target.value })}
-                      disabled={r.status === "saved"}
-                      className="w-full h-7 rounded-md border border-input bg-background px-1.5 text-[11px]"
-                    >
-                      <option value="">—</option>
-                      {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-                    </select>
+                    <Select value={r.category_id} onValueChange={(v) => update(r.id, { category_id: String(v) })} disabled={r.status === "saved"}><SelectTrigger><SelectValue placeholder="—" /></SelectTrigger><SelectContent>
+                      
+                      {categories.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+                    </SelectContent></Select>
                   </td>
                   <td className="px-1 py-1">
-                    <select
-                      value={r.brand_id}
-                      onChange={(e) => update(r.id, { brand_id: e.target.value })}
-                      disabled={r.status === "saved"}
-                      className="w-full h-7 rounded-md border border-input bg-background px-1.5 text-[11px]"
-                    >
-                      <option value="">—</option>
-                      {brands.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
-                    </select>
+                    <Select value={r.brand_id} onValueChange={(v) => update(r.id, { brand_id: String(v) })} disabled={r.status === "saved"}><SelectTrigger><SelectValue placeholder="—" /></SelectTrigger><SelectContent>
+                      
+                      {brands.map((b) => <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>)}
+                    </SelectContent></Select>
                   </td>
                   <td className="px-1 py-1">
                     <div className="flex items-center gap-0.5">

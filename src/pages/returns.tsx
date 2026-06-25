@@ -11,6 +11,8 @@ import {
   WarningCircle as AlertCircle,
 } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { PageHeader } from "@/components/layout/page-header";
 import { Input } from "@/components/ui/input";
@@ -354,34 +356,26 @@ export function NewReturnPage() {
               <div className="space-y-3">
                 <div className="space-y-1.5">
                   <label className="text-xs font-medium text-muted-foreground">Reason *</label>
-                  <select
-                    value={reason}
-                    onChange={(e) => setReason(e.target.value)}
-                    className="w-full h-9 rounded-md border border-input bg-transparent px-3 text-sm"
-                  >
-                    <option value="">Select reason...</option>
-                    <option value="defective">Defective product</option>
-                    <option value="wrong_item">Wrong item dispensed</option>
-                    <option value="customer_changed_mind">Customer changed mind</option>
-                    <option value="expired">Expired stock</option>
-                    <option value="prescribed_alternative">Doctor prescribed alternative</option>
-                    <option value="duplicate">Duplicate purchase</option>
-                    <option value="other">Other</option>
-                  </select>
+                  <Select value={reason} onValueChange={(v) => setReason(String(v))}><SelectTrigger><SelectValue placeholder="Select reason..." /></SelectTrigger><SelectContent>
+                    
+                    <SelectItem value="defective">Defective product</SelectItem>
+                    <SelectItem value="wrong_item">Wrong item dispensed</SelectItem>
+                    <SelectItem value="customer_changed_mind">Customer changed mind</SelectItem>
+                    <SelectItem value="expired">Expired stock</SelectItem>
+                    <SelectItem value="prescribed_alternative">Doctor prescribed alternative</SelectItem>
+                    <SelectItem value="duplicate">Duplicate purchase</SelectItem>
+                    <SelectItem value="other">Other</SelectItem>
+                  </SelectContent></Select>
                 </div>
                 <div className="space-y-1.5">
                   <label className="text-xs font-medium text-muted-foreground">Refund Method *</label>
-                  <select
-                    value={refundMethod}
-                    onChange={(e) => setRefundMethod(e.target.value)}
-                    className="w-full h-9 rounded-md border border-input bg-transparent px-3 text-sm"
-                  >
-                    <option value="cash">Cash</option>
-                    <option value="mpesa">M-Pesa</option>
-                    <option value="bank">Bank Transfer</option>
-                    <option value="store_credit">Store Credit</option>
-                    <option value="exchange">Item Exchange (no cash)</option>
-                  </select>
+                  <Select value={refundMethod} onValueChange={(v) => setRefundMethod(String(v))}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>
+                    <SelectItem value="cash">Cash</SelectItem>
+                    <SelectItem value="mpesa">M-Pesa</SelectItem>
+                    <SelectItem value="bank">Bank Transfer</SelectItem>
+                    <SelectItem value="store_credit">Store Credit</SelectItem>
+                    <SelectItem value="exchange">Item Exchange (no cash)</SelectItem>
+                  </SelectContent></Select>
                 </div>
               </div>
               <div className="space-y-3">
@@ -394,12 +388,7 @@ export function NewReturnPage() {
                   />
                 </div>
                 <label className="flex items-center gap-2 text-sm cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={restockToInventory}
-                    onChange={(e) => setRestockToInventory(e.target.checked)}
-                    className="rounded"
-                  />
+                  <Checkbox checked={restockToInventory} onCheckedChange={(v) => setRestockToInventory(Boolean(v))} />
                   Restock to inventory
                 </label>
                 {!restockToInventory && (

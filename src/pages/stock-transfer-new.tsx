@@ -8,6 +8,7 @@ import {
   Trash as Trash2,
 } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { listBranches, type BranchWithStats } from "@/services/branches";
@@ -125,25 +126,17 @@ export function NewStockTransferPage() {
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1">
               <label className="text-[11px] font-medium text-muted-foreground">From Branch *</label>
-              <select
-                value={fromBranchId}
-                onChange={(e) => setFromBranchId(e.target.value)}
-                className="w-full h-8 rounded-md border border-input bg-background px-2 text-[13px]"
-              >
-                <option value="">Select source...</option>
-                {branches.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
-              </select>
+              <Select value={fromBranchId} onValueChange={(v) => setFromBranchId(String(v))}><SelectTrigger><SelectValue placeholder="Select source..." /></SelectTrigger><SelectContent>
+                
+                {branches.map((b) => <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>)}
+              </SelectContent></Select>
             </div>
             <div className="space-y-1">
               <label className="text-[11px] font-medium text-muted-foreground">To Branch *</label>
-              <select
-                value={toBranchId}
-                onChange={(e) => setToBranchId(e.target.value)}
-                className="w-full h-8 rounded-md border border-input bg-background px-2 text-[13px]"
-              >
-                <option value="">Select destination...</option>
-                {branches.filter((b) => b.id !== fromBranchId).map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
-              </select>
+              <Select value={toBranchId} onValueChange={(v) => setToBranchId(String(v))}><SelectTrigger><SelectValue placeholder="Select destination..." /></SelectTrigger><SelectContent>
+                
+                {branches.filter((b) => b.id !== fromBranchId).map((b) => <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>)}
+              </SelectContent></Select>
             </div>
           </div>
           <div className="space-y-1">

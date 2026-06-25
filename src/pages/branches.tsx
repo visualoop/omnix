@@ -13,6 +13,7 @@ import {
   X,
 } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
 import { PageHeader } from "@/components/layout/page-header";
 import { Input } from "@/components/ui/input";
@@ -69,7 +70,7 @@ export function BranchesPage() {
       </div>
 
       <label className="flex items-center gap-2 text-xs">
-        <input type="checkbox" checked={showAll} onChange={(e) => setShowAll(e.target.checked)} className="rounded" />
+        <Checkbox checked={showAll} onCheckedChange={(v) => setShowAll(Boolean(v))} />
         Show inactive
       </label>
 

@@ -14,6 +14,7 @@ import {
   Trash as Trash2,
 } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { PageHeader } from "@/components/layout/page-header";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -211,14 +212,10 @@ export function NewPurchaseOrderPage() {
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-3">
           <Field label="Supplier *">
-            <select
-              value={supplierId}
-              onChange={(e) => setSupplierId(e.target.value)}
-              className="w-full h-9 rounded-md border border-input bg-transparent px-3 text-sm"
-            >
-              <option value="">Select supplier...</option>
-              {suppliers.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
-            </select>
+            <Select value={supplierId} onValueChange={(v) => setSupplierId(String(v))}><SelectTrigger><SelectValue placeholder="Select supplier..." /></SelectTrigger><SelectContent>
+              
+              {suppliers.map((s) => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
+            </SelectContent></Select>
           </Field>
           <Field label="Expected Delivery Date">
             <Input type="date" value={expectedDate} onChange={(e) => setExpectedDate(e.target.value)} />

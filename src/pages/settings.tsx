@@ -6,6 +6,7 @@ import {
   Power,
 } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { UpdateChecker } from "@/components/update-checker";
 import { query, execute } from "@/lib/db";
@@ -147,7 +148,7 @@ function AutostartToggle() {
       ) : (
         <label className="flex items-center justify-between text-sm cursor-pointer">
           <span>{enabled ? "Enabled" : "Disabled"}</span>
-          <input type="checkbox" checked={enabled} onChange={(e) => toggle(e.target.checked)} disabled={updating} className="rounded" />
+          <Checkbox checked={enabled} onCheckedChange={(v) => toggle(Boolean(v))} disabled={updating} />
         </label>
       )}
     </div>

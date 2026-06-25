@@ -10,6 +10,7 @@ import {
   Users,
 } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { PageHeader } from "@/components/layout/page-header";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
@@ -95,7 +96,7 @@ export function EmployeesPage() {
           />
         </div>
         <label className="flex items-center gap-1.5 text-xs">
-          <input type="checkbox" checked={showInactive} onChange={(e) => setShowInactive(e.target.checked)} className="rounded" />
+          <Checkbox checked={showInactive} onCheckedChange={(v) => setShowInactive(Boolean(v))} />
           Show terminated
         </label>
       </div>
@@ -281,16 +282,12 @@ function EmployeeForm({ open, employee, departments, branches, onClose, onSaved 
                 </Field>
               </div>
               <Field label="Gender">
-                <select
-                  value={form.gender || ""}
-                  onChange={(e) => setForm({ ...form, gender: (e.target.value || null) as any })}
-                  className="w-full h-8 rounded-md border border-input bg-background px-2 text-[13px]"
-                >
-                  <option value="">—</option>
-                  <option value="male">Male</option>
-                  <option value="female">Female</option>
-                  <option value="other">Other</option>
-                </select>
+                <Select value={form.gender || ""} onValueChange={(v) => setForm({ ...form, gender: (String(v) || null) as any })}><SelectTrigger><SelectValue placeholder="—" /></SelectTrigger><SelectContent>
+                  
+                  <SelectItem value="male">Male</SelectItem>
+                  <SelectItem value="female">Female</SelectItem>
+                  <SelectItem value="other">Other</SelectItem>
+                </SelectContent></Select>
               </Field>
               <div className="grid grid-cols-2 gap-2">
                 <Field label="Phone">
@@ -322,16 +319,12 @@ function EmployeeForm({ open, employee, departments, branches, onClose, onSaved 
             <TabsPanel value="employment" className="space-y-3 mt-3">
               <Field label="System User Account" hint="Optional. Link only staff who need to log in to Omnix.">
                 <div className="flex gap-2">
-                  <select
-                    value={form.user_id || ""}
-                    onChange={(e) => setForm({ ...form, user_id: e.target.value || null })}
-                    className="w-full h-8 rounded-md border border-input bg-background px-2 text-[13px]"
-                  >
-                    <option value="">No login access</option>
+                  <Select value={form.user_id || ""} onValueChange={(v) => setForm({ ...form, user_id: String(v) || null })}><SelectTrigger><SelectValue placeholder="No login access" /></SelectTrigger><SelectContent>
+                    
                     {users.map((u) => (
-                      <option key={u.id} value={u.id}>{u.full_name} (@{u.username}) - {u.role}</option>
+                      <SelectItem key={u.id} value={u.id}>{u.full_name} (@{u.username}) - {u.role}</SelectItem>
                     ))}
-                  </select>
+                  </SelectContent></Select>
                   <Button type="button" variant="outline" size="sm" onClick={() => setCreateLoginOpen(true)}>
                     Create
                   </Button>
@@ -342,38 +335,26 @@ function EmployeeForm({ open, employee, departments, branches, onClose, onSaved 
               </Field>
               <div className="grid grid-cols-2 gap-2">
                 <Field label="Department">
-                  <select
-                    value={form.department_id || ""}
-                    onChange={(e) => setForm({ ...form, department_id: e.target.value || null })}
-                    className="w-full h-8 rounded-md border border-input bg-background px-2 text-[13px]"
-                  >
-                    <option value="">—</option>
-                    {departments.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
-                  </select>
+                  <Select value={form.department_id || ""} onValueChange={(v) => setForm({ ...form, department_id: String(v) || null })}><SelectTrigger><SelectValue placeholder="—" /></SelectTrigger><SelectContent>
+                    
+                    {departments.map((d) => <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>)}
+                  </SelectContent></Select>
                 </Field>
                 <Field label="Branch">
-                  <select
-                    value={form.branch_id || ""}
-                    onChange={(e) => setForm({ ...form, branch_id: e.target.value || null })}
-                    className="w-full h-8 rounded-md border border-input bg-background px-2 text-[13px]"
-                  >
-                    <option value="">—</option>
-                    {branches.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
-                  </select>
+                  <Select value={form.branch_id || ""} onValueChange={(v) => setForm({ ...form, branch_id: String(v) || null })}><SelectTrigger><SelectValue placeholder="—" /></SelectTrigger><SelectContent>
+                    
+                    {branches.map((b) => <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>)}
+                  </SelectContent></Select>
                 </Field>
               </div>
               <div className="grid grid-cols-2 gap-2">
                 <Field label="Type">
-                  <select
-                    value={form.employment_type || "permanent"}
-                    onChange={(e) => setForm({ ...form, employment_type: e.target.value as any })}
-                    className="w-full h-8 rounded-md border border-input bg-background px-2 text-[13px]"
-                  >
-                    <option value="permanent">Permanent</option>
-                    <option value="contract">Contract</option>
-                    <option value="casual">Casual</option>
-                    <option value="intern">Intern</option>
-                  </select>
+                  <Select value={form.employment_type || "permanent"} onValueChange={(v) => setForm({ ...form, employment_type: String(v) as any })}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>
+                    <SelectItem value="permanent">Permanent</SelectItem>
+                    <SelectItem value="contract">Contract</SelectItem>
+                    <SelectItem value="casual">Casual</SelectItem>
+                    <SelectItem value="intern">Intern</SelectItem>
+                  </SelectContent></Select>
                 </Field>
                 <Field label="Hire date *">
                   <Input type="date" value={form.hire_date || ""} onChange={(e) => setForm({ ...form, hire_date: e.target.value })} />
@@ -412,17 +393,13 @@ function EmployeeForm({ open, employee, departments, branches, onClose, onSaved 
 
             <TabsPanel value="compensation" className="space-y-3 mt-3">
               <Field label="Pay Type">
-                <select
-                  value={form.pay_type || "monthly"}
-                  onChange={(e) => setForm({ ...form, pay_type: e.target.value as any })}
-                  className="w-full h-8 rounded-md border border-input bg-background px-2 text-[13px]"
-                >
-                  <option value="monthly">Monthly Salary</option>
-                  <option value="daily">Daily Wage</option>
-                  <option value="hourly">Hourly</option>
-                  <option value="piece_rate">Piece Rate</option>
-                  <option value="commission_only">Commission Only</option>
-                </select>
+                <Select value={form.pay_type || "monthly"} onValueChange={(v) => setForm({ ...form, pay_type: String(v) as any })}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>
+                  <SelectItem value="monthly">Monthly Salary</SelectItem>
+                  <SelectItem value="daily">Daily Wage</SelectItem>
+                  <SelectItem value="hourly">Hourly</SelectItem>
+                  <SelectItem value="piece_rate">Piece Rate</SelectItem>
+                  <SelectItem value="commission_only">Commission Only</SelectItem>
+                </SelectContent></Select>
               </Field>
               <Field label="Base Salary (KES / month)">
                 <Input
@@ -464,12 +441,7 @@ function EmployeeForm({ open, employee, departments, branches, onClose, onSaved 
 
               <div className="border-t border-border pt-3 mt-3">
                 <label className="flex items-center gap-2 text-xs">
-                  <input
-                    type="checkbox"
-                    checked={(form as any).is_pharmacist === 1}
-                    onChange={(e) => setForm({ ...form, is_pharmacist: e.target.checked ? 1 : 0 } as any)}
-                    className="rounded"
-                  />
+                  <Checkbox checked={(form as any).is_pharmacist === 1} onCheckedChange={(v) => setForm({ ...form, is_pharmacist: Boolean(v) ? 1 : 0 } as any)} />
                   <span>Registered Pharmacist (PPB licensed)</span>
                 </label>
                 {(form as any).is_pharmacist === 1 && (

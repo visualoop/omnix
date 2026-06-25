@@ -9,6 +9,8 @@ import {
   X,
 } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { PageHeader } from "@/components/layout/page-header";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -68,7 +70,7 @@ export function PromotionsPage() {
           />
         </div>
         <label className="flex items-center gap-2 text-sm">
-          <input type="checkbox" checked={showExpired} onChange={(e) => setShowExpired(e.target.checked)} className="rounded" />
+          <Checkbox checked={showExpired} onCheckedChange={(v) => setShowExpired(Boolean(v))} />
           Show expired
         </label>
       </div>
@@ -239,15 +241,11 @@ function PromotionDialog({ promotion, onClose, onSaved }: {
 
           <div className="grid grid-cols-2 gap-2">
             <Field label="Type">
-              <select
-                value={form.type}
-                onChange={(e) => setForm({ ...form, type: e.target.value as PromotionType })}
-                className="w-full h-9 rounded-md border border-input bg-transparent px-2 text-sm"
-              >
-                <option value="percent_off">Percent off</option>
-                <option value="amount_off">Amount off</option>
-                <option value="buy_x_get_y">Buy X Get Y</option>
-              </select>
+              <Select value={form.type} onValueChange={(v) => setForm({ ...form, type: String(v) as PromotionType })}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>
+                <SelectItem value="percent_off">Percent off</SelectItem>
+                <SelectItem value="amount_off">Amount off</SelectItem>
+                <SelectItem value="buy_x_get_y">Buy X Get Y</SelectItem>
+              </SelectContent></Select>
             </Field>
             <Field label={form.type === "percent_off" ? "Percent (%)" : "Amount (KES)"}>
               <Input
@@ -259,15 +257,11 @@ function PromotionDialog({ promotion, onClose, onSaved }: {
           </div>
 
           <Field label="Applies to">
-            <select
-              value={form.target_type}
-              onChange={(e) => setForm({ ...form, target_type: e.target.value as PromotionTarget })}
-              className="w-full h-9 rounded-md border border-input bg-transparent px-2 text-sm"
-            >
-              <option value="cart">Whole cart</option>
-              <option value="product">Specific product</option>
-              <option value="category">Category</option>
-            </select>
+            <Select value={form.target_type} onValueChange={(v) => setForm({ ...form, target_type: String(v) as PromotionTarget })}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>
+              <SelectItem value="cart">Whole cart</SelectItem>
+              <SelectItem value="product">Specific product</SelectItem>
+              <SelectItem value="category">Category</SelectItem>
+            </SelectContent></Select>
           </Field>
 
           <div className="grid grid-cols-2 gap-2">
@@ -314,12 +308,7 @@ function PromotionDialog({ promotion, onClose, onSaved }: {
           </Field>
 
           <label className="flex items-center gap-2 text-sm pt-1">
-            <input
-              type="checkbox"
-              checked={form.active === 1}
-              onChange={(e) => setForm({ ...form, active: e.target.checked ? 1 : 0 })}
-              className="rounded"
-            />
+            <Checkbox checked={form.active === 1} onCheckedChange={(v) => setForm({ ...form, active: Boolean(v) ? 1 : 0 })} />
             Active
           </label>
 

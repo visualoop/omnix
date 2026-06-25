@@ -8,6 +8,7 @@ import { useEffect, useState } from "react";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
 } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -85,13 +86,9 @@ export function CompactFormDialog({ open, onClose, title, description, fields, o
                 {f.required && <span className="text-primary"> *</span>}
               </span>
               {f.type === "select" ? (
-                <select
-                  value={values[f.name] ?? ""}
-                  onChange={(e) => setValues((v) => ({ ...v, [f.name]: e.target.value }))}
-                  className="w-full h-9 rounded-md border border-input bg-background px-2.5 text-[13px] cursor-pointer focus-visible:ring-[3px] focus-visible:ring-ring/30 outline-none"
-                >
-                  {f.options?.map((opt) => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
-                </select>
+                <Select value={values[f.name] ?? ""} onValueChange={(next) => setValues((prev) => ({ ...prev, [f.name]: String(next) }))}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>
+                  {f.options?.map((opt) => <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>)}
+                </SelectContent></Select>
               ) : (
                 <Input
                   type={f.type === "number" ? "number" : "text"}

@@ -34,6 +34,7 @@ import {
 import { Switch } from "@/components/ui/switch"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { PageHeader } from "@/components/layout/page-header"
 import { query, execute } from "@/lib/db"
 import {
@@ -597,15 +598,11 @@ function AddSlide({ onAdd }: { onAdd: (slide: PlaylistSlide) => void }) {
           Or paste a URL
         </span>
         <div className="flex items-center gap-2">
-          <select
-            value={type}
-            onChange={(e) => setType(e.target.value as PlaylistSlide["type"])}
-            className="h-8 rounded-md border border-foreground/15 bg-background px-2 text-[12px]"
-          >
-            <option value="image">Image URL</option>
-            <option value="video">Video URL (YouTube / Vimeo / direct .mp4)</option>
-            <option value="iframe">Iframe / web embed</option>
-          </select>
+          <Select value={type} onValueChange={(v) => setType(String(v) as PlaylistSlide["type"])}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>
+            <SelectItem value="image">Image URL</SelectItem>
+            <SelectItem value="video">Video URL (YouTube / Vimeo / direct .mp4)</SelectItem>
+            <SelectItem value="iframe">Iframe / web embed</SelectItem>
+          </SelectContent></Select>
           <Input
             type="url"
             value={url}

@@ -8,6 +8,7 @@ import {
   X,
 } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { PageHeader } from "@/components/layout/page-header";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -252,28 +253,20 @@ function NewLeaveRequest({ open, onClose, onSaved, types, employees }: {
         </SheetHeader>
         <div className="flex-1 overflow-auto space-y-3">
           <Field label="Employee">
-            <select
-              value={form.employee_id}
-              onChange={(e) => setForm({ ...form, employee_id: e.target.value })}
-              className="w-full h-8 rounded-md border border-input bg-background px-2 text-[13px]"
-            >
-              <option value="">Select employee...</option>
+            <Select value={form.employee_id} onValueChange={(v) => setForm({ ...form, employee_id: String(v) })}><SelectTrigger><SelectValue placeholder="Select employee..." /></SelectTrigger><SelectContent>
+              
               {employees.map((e) => (
-                <option key={e.id} value={e.id}>{e.full_name} — {e.employee_number}</option>
+                <SelectItem key={e.id} value={e.id}>{e.full_name} — {e.employee_number}</SelectItem>
               ))}
-            </select>
+            </SelectContent></Select>
           </Field>
           <Field label="Leave Type">
-            <select
-              value={form.leave_type_id}
-              onChange={(e) => setForm({ ...form, leave_type_id: e.target.value })}
-              className="w-full h-8 rounded-md border border-input bg-background px-2 text-[13px]"
-            >
-              <option value="">Select type...</option>
+            <Select value={form.leave_type_id} onValueChange={(v) => setForm({ ...form, leave_type_id: String(v) })}><SelectTrigger><SelectValue placeholder="Select type..." /></SelectTrigger><SelectContent>
+              
               {types.map((t) => (
-                <option key={t.id} value={t.id}>{t.name} ({t.days_per_year}d/yr)</option>
+                <SelectItem key={t.id} value={t.id}>{t.name} ({t.days_per_year}d/yr)</SelectItem>
               ))}
-            </select>
+            </SelectContent></Select>
           </Field>
 
           {balance && (

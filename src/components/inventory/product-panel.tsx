@@ -11,6 +11,7 @@ import { VariantsDrawer } from "@/components/inventory/variants-drawer";
 import { useScanner } from "@/hooks/use-scanner";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Combobox } from "@/components/ui/combobox";
 import { AiButton } from "@/components/ai/AiButton";
@@ -372,33 +373,25 @@ export function ProductPanel({ open, onClose, productId, onSaved }: Props) {
             {activeModule === "retail" && (
               <TabsPanel value="retail" className="mt-3 space-y-3">
                 <Field label="Brand">
-                  <select
-                    className="w-full h-8 rounded-md border border-input bg-background px-2 text-[13px]"
-                    value={form.brand_id || ""}
-                    onChange={(e) => update("brand_id", e.target.value)}
-                  >
-                    <option value="">No brand</option>
-                    {brands.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
-                  </select>
+                  <Select value={form.brand_id || ""} onValueChange={(v) => update("brand_id", String(v))}><SelectTrigger><SelectValue placeholder="No brand" /></SelectTrigger><SelectContent>
+                    
+                    {brands.map((b) => <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>)}
+                  </SelectContent></Select>
                 </Field>
                 <Field label="Short SKU (for keyboard entry)">
                   <Input value={form.sku_short} onChange={(e) => update("sku_short", e.target.value)} placeholder="e.g., 042 for cashier shortcut" className="font-mono" />
                 </Field>
                 <Field label="Unit of sale">
-                  <select
-                    className="w-full h-8 rounded-md border border-input bg-background px-2 text-[13px]"
-                    value={form.unit_of_sale}
-                    onChange={(e) => update("unit_of_sale", e.target.value)}
-                  >
-                    <option value="piece">Piece</option>
-                    <option value="pack">Pack</option>
-                    <option value="kg">Kilogram (kg)</option>
-                    <option value="g">Gram (g)</option>
-                    <option value="l">Litre (L)</option>
-                    <option value="ml">Millilitre (ml)</option>
-                    <option value="m">Metre (m)</option>
-                    <option value="dozen">Dozen</option>
-                  </select>
+                  <Select value={form.unit_of_sale} onValueChange={(v) => update("unit_of_sale", String(v))}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>
+                    <SelectItem value="piece">Piece</SelectItem>
+                    <SelectItem value="pack">Pack</SelectItem>
+                    <SelectItem value="kg">Kilogram (kg)</SelectItem>
+                    <SelectItem value="g">Gram (g)</SelectItem>
+                    <SelectItem value="l">Litre (L)</SelectItem>
+                    <SelectItem value="ml">Millilitre (ml)</SelectItem>
+                    <SelectItem value="m">Metre (m)</SelectItem>
+                    <SelectItem value="dozen">Dozen</SelectItem>
+                  </SelectContent></Select>
                 </Field>
                 <label className="flex items-center gap-2 text-xs cursor-pointer">
                   <Switch checked={form.sold_by_weight} onCheckedChange={(c: boolean) => update("sold_by_weight", c)} />
@@ -835,19 +828,11 @@ function UomsManager({ productId }: { productId: string }) {
         </div>
         <div className="space-y-1.5 pt-2 border-t border-border">
           <label className="flex items-center gap-2 text-xs cursor-pointer">
-            <input
-              type="checkbox"
-              checked={!!form.is_default_purchase}
-              onChange={(e) => setForm({ ...form, is_default_purchase: e.target.checked ? 1 : 0 })}
-            />
+            <Checkbox checked={!!form.is_default_purchase} onCheckedChange={(v) => setForm({ ...form, is_default_purchase: Boolean(v) ? 1 : 0 })} />
             Default purchase pack (orders use this size by default)
           </label>
           <label className="flex items-center gap-2 text-xs cursor-pointer">
-            <input
-              type="checkbox"
-              checked={!!form.is_default_sale}
-              onChange={(e) => setForm({ ...form, is_default_sale: e.target.checked ? 1 : 0 })}
-            />
+            <Checkbox checked={!!form.is_default_sale} onCheckedChange={(v) => setForm({ ...form, is_default_sale: Boolean(v) ? 1 : 0 })} />
             Default sale pack (POS sells this size by default)
           </label>
         </div>

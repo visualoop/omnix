@@ -6,6 +6,7 @@ import {
   ShieldChevron as ShieldX,
 } from "@phosphor-icons/react";
 import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { PERMISSION_CATALOG } from "@/lib/permissions";
 import { resolveEffectivePermissions, explainPermission } from "@/services/rbac";
@@ -60,15 +61,11 @@ export function SettingsAccessAuditPage() {
   return (
     <div className="space-y-4 max-w-3xl">
       <div className="flex flex-wrap items-center gap-2">
-        <select
-          value={userId}
-          onChange={(e) => setUserId(e.target.value)}
-          className="h-8 rounded-md border border-input bg-background px-2 text-[13px] cursor-pointer"
-        >
+        <Select value={userId} onValueChange={(v) => setUserId(String(v))}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>
           {users.map((u) => (
-            <option key={u.id} value={u.id}>{u.full_name} (@{u.username})</option>
+            <SelectItem key={u.id} value={u.id}>{u.full_name} (@{u.username})</SelectItem>
           ))}
-        </select>
+        </SelectContent></Select>
         <div className="relative flex-1 min-w-[200px] max-w-sm">
           <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
           <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search permissions…" className="pl-8 h-8 text-[13px]" />

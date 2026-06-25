@@ -2,6 +2,7 @@ import { useState } from "react";
 import { CircleNotch, WarningCircle, CheckCircle } from "@phosphor-icons/react";
 import { Flag } from "@/components/ui/flag";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { useAuthStore } from "@/stores/auth";
 import { runSetup } from "@/services/auth";
@@ -404,12 +405,7 @@ export function SetupWizard() {
       </div>
 
       <label className="flex items-start gap-3 border border-border rounded-lg p-4 cursor-pointer hover:bg-accent/30 transition-colors">
-        <input
-          type="checkbox"
-          checked={data.autostart}
-          onChange={(e) => update("autostart", e.target.checked)}
-          className="mt-0.5 rounded"
-        />
+        <Checkbox checked={data.autostart} onCheckedChange={(v) => update("autostart", Boolean(v))} />
         <div className="flex-1">
           <p className="text-sm font-medium">Start {APP_NAME} when Windows boots</p>
           <p className="text-xs text-muted-foreground mt-1">

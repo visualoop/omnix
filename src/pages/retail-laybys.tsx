@@ -383,16 +383,12 @@ function NewLaybyDialog({ open, onClose, onCreated }: {
             </div>
             <div className="space-y-1">
               <label className="text-[11px] font-medium text-muted-foreground">Method</label>
-              <select
-                value={depositMethod}
-                onChange={(e) => setDepositMethod(e.target.value)}
-                className="w-full h-8 rounded-md border border-input bg-background px-2 text-[13px]"
-              >
-                <option value="cash">Cash</option>
-                <option value="mpesa">M-Pesa</option>
-                <option value="card">Card</option>
-                <option value="bank">Bank Transfer</option>
-              </select>
+              <Select value={depositMethod} onValueChange={(v) => setDepositMethod(String(v))}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>
+                <SelectItem value="cash">Cash</SelectItem>
+                <SelectItem value="mpesa">M-Pesa</SelectItem>
+                <SelectItem value="card">Card</SelectItem>
+                <SelectItem value="bank">Bank Transfer</SelectItem>
+              </SelectContent></Select>
             </div>
             <div className="space-y-1">
               <label className="text-[11px] font-medium text-muted-foreground">Expires</label>

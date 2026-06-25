@@ -15,6 +15,7 @@ import {
 } from "@phosphor-icons/react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Combobox } from "@/components/ui/combobox";
@@ -157,12 +158,7 @@ export function InventoryPage() {
             <thead className="bg-muted/50">
               <tr className="border-b border-border">
                 <th className="px-3 py-2.5 w-8">
-                  <input
-                    type="checkbox"
-                    checked={selected.size > 0 && selected.size === products.length}
-                    onChange={toggleSelectAll}
-                    className="rounded"
-                  />
+                  <Checkbox checked={selected.size > 0 && selected.size === products.length} onCheckedChange={toggleSelectAll} />
                 </th>
                 <th className="text-left px-4 py-2.5 font-medium">Product</th>
                 <th className="text-left px-4 py-2.5 font-medium">Category</th>
@@ -182,12 +178,7 @@ export function InventoryPage() {
                   className="border-b border-border last:border-0 hover:bg-muted/30 transition-colors cursor-pointer"
                 >
                   <td className="px-3 py-2.5" onClick={(e) => e.stopPropagation()}>
-                    <input
-                      type="checkbox"
-                      checked={selected.has(p.id)}
-                      onChange={() => toggleSelect(p.id)}
-                      className="rounded"
-                    />
+                    <Checkbox checked={selected.has(p.id)} onCheckedChange={() => toggleSelect(p.id)} />
                   </td>
                   <td className="px-4 py-2.5">
                     <div>

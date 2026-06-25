@@ -11,6 +11,7 @@ import {
   Wallet,
 } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { PageHeader } from "@/components/layout/page-header";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
@@ -184,35 +185,23 @@ function NewPayrollRunDialog({ open, onClose, onCreated }: {
           <div className="grid grid-cols-2 gap-2">
             <div className="space-y-1">
               <label className="text-[11px] font-medium text-muted-foreground">Month</label>
-              <select
-                value={month}
-                onChange={(e) => setMonth(parseInt(e.target.value))}
-                className="w-full h-8 rounded-md border border-input bg-background px-2 text-[13px]"
-              >
-                {MONTHS.map((m, i) => <option key={i} value={i + 1}>{m}</option>)}
-              </select>
+              <Select value={month} onValueChange={(v) => setMonth(parseInt(String(v)))}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>
+                {MONTHS.map((m, i) => <SelectItem key={i} value={i + 1}>{m}</SelectItem>)}
+              </SelectContent></Select>
             </div>
             <div className="space-y-1">
               <label className="text-[11px] font-medium text-muted-foreground">Year</label>
-              <select
-                value={year}
-                onChange={(e) => setYear(parseInt(e.target.value))}
-                className="w-full h-8 rounded-md border border-input bg-background px-2 text-[13px]"
-              >
-                {[year - 1, year, year + 1].map((y) => <option key={y} value={y}>{y}</option>)}
-              </select>
+              <Select value={year} onValueChange={(v) => setYear(parseInt(String(v)))}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>
+                {[year - 1, year, year + 1].map((y) => <SelectItem key={y} value={y}>{y}</SelectItem>)}
+              </SelectContent></Select>
             </div>
           </div>
           <div className="space-y-1">
             <label className="text-[11px] font-medium text-muted-foreground">Branch (optional)</label>
-            <select
-              value={branchId}
-              onChange={(e) => setBranchId(e.target.value)}
-              className="w-full h-8 rounded-md border border-input bg-background px-2 text-[13px]"
-            >
-              <option value="">All branches</option>
-              {branches.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
-            </select>
+            <Select value={branchId} onValueChange={(v) => setBranchId(String(v))}><SelectTrigger><SelectValue placeholder="All branches" /></SelectTrigger><SelectContent>
+              
+              {branches.map((b) => <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>)}
+            </SelectContent></Select>
           </div>
           <div className="text-xs text-muted-foreground bg-muted/30 rounded p-2 leading-relaxed">
             <p>Generates draft payslips for all <b>active employees with a salary &gt; 0</b>.</p>

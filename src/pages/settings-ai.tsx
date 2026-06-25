@@ -10,6 +10,7 @@ import {
 } from "@phosphor-icons/react";
 import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { listProviders, listFeatures, loadSettings, saveSetting, updateFeature } from "@/services/ai";
 import type { AiProvider, AiFeature, AiSettings, PrivacyTier } from "@/services/ai/types";
 import { AiProviderCard } from "@/components/ai/AiProviderCard";
@@ -167,14 +168,9 @@ function FeaturesTab({ features, onChange }: { features: AiFeature[]; onChange: 
             <div className="text-[11px] text-muted-foreground mt-0.5">{f.description}</div>
             <div className="text-[10px] text-muted-foreground mt-1 font-mono">{f.feature_id} · {f.task_kind}</div>
           </div>
-          <select
-            value={f.privacy_tier}
-            disabled={!f.enabled}
-            onChange={async (e) => { await updateFeature(f.feature_id, { privacy_tier: e.target.value as PrivacyTier }); onChange(); }}
-            className="text-xs border border-input rounded-md bg-background px-2 py-1"
-          >
-            {tiers.map((t) => <option key={t} value={t}>{t}</option>)}
-          </select>
+          <Select value={f.privacy_tier} onValueChange={async (v) => { await updateFeature(f.feature_id, { privacy_tier: String(v) as PrivacyTier }); onChange(); }} disabled={!f.enabled}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>
+            {tiers.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}
+          </SelectContent></Select>
         </div>
       ))}
     </div>

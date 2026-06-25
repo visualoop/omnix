@@ -11,6 +11,7 @@ import {
   Wallet,
 } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { PageHeader } from "@/components/layout/page-header";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -77,12 +78,7 @@ export function SuppliersPage() {
           />
         </div>
         <label className="flex items-center gap-2 text-sm">
-          <input
-            type="checkbox"
-            checked={showAll}
-            onChange={(e) => setShowAll(e.target.checked)}
-            className="rounded"
-          />
+          <Checkbox checked={showAll} onCheckedChange={(v) => setShowAll(Boolean(v))} />
           Show inactive
         </label>
       </div>

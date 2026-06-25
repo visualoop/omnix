@@ -27,6 +27,7 @@ import {
   Warning as AlertTriangle,
 } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { confirm, prompt } from "@/components/ui/confirm-dialog";
@@ -445,18 +446,13 @@ function AutoScheduleCard() {
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-[12px]">
         <div className="rounded-xl border border-border/40 bg-foreground/[0.02] px-3 py-2.5">
           <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">Interval</div>
-          <select
-            value={intervalHours}
-            onChange={(e) => onIntervalChange(parseInt(e.target.value, 10))}
-            disabled={!enabled}
-            className="w-full bg-transparent text-[13px] font-medium focus:outline-none disabled:opacity-50 cursor-pointer"
-          >
-            <option value={1}>Every hour</option>
-            <option value={6}>Every 6 hours</option>
-            <option value={12}>Every 12 hours</option>
-            <option value={24}>Every 24 hours</option>
-            <option value={168}>Every 7 days</option>
-          </select>
+          <Select value={intervalHours} onValueChange={(v) => onIntervalChange(parseInt(String(v), 10))} disabled={!enabled}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>
+            <SelectItem value={1}>Every hour</SelectItem>
+            <SelectItem value={6}>Every 6 hours</SelectItem>
+            <SelectItem value={12}>Every 12 hours</SelectItem>
+            <SelectItem value={24}>Every 24 hours</SelectItem>
+            <SelectItem value={168}>Every 7 days</SelectItem>
+          </SelectContent></Select>
         </div>
         <div className="rounded-xl border border-border/40 bg-foreground/[0.02] px-3 py-2.5">
           <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">Last run</div>

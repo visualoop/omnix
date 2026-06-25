@@ -7,6 +7,7 @@ import {
   WarningCircle as AlertCircle,
 } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { useAuthStore } from "@/stores/auth";
 import { OmnixLogo } from "@/components/omnix-logo";
@@ -196,17 +197,13 @@ export function LoginPage() {
         ) : view.kind === "reset" ? (
           <form onSubmit={handleResetPassword} className="space-y-3">
             <label className="text-xs font-medium text-muted-foreground">User to reset</label>
-            <select
-              value={resetUsername}
-              onChange={(e) => setResetUsername(e.target.value)}
-              className="w-full h-9 rounded-md border border-border bg-background px-2.5 text-sm font-mono"
-            >
+            <Select value={resetUsername} onValueChange={(v) => setResetUsername(String(v))}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>
               {view.usernames.map((u) => (
-                <option key={u} value={u}>
+                <SelectItem key={u} value={u}>
                   {u}
-                </option>
+                </SelectItem>
               ))}
-            </select>
+            </SelectContent></Select>
             <Input
               type="password"
               placeholder="New password (min 4 chars)"
