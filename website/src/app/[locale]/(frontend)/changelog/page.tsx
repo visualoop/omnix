@@ -51,7 +51,6 @@ const VARIANT_LABEL: Record<VariantId, string> = {
  * Empty by default — the standard summary is enough for most patches.
  */
 const VERSION_HIGHLIGHTS: Record<string, string[]> = {
-const VERSION_HIGHLIGHTS: Record<string, string[]> = {
   '0.11.1': [
     'Touch keypad on every cash dialog (POS terminals)',
     'Customer display local images now render',
