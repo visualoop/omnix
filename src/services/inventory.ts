@@ -14,6 +14,8 @@ export interface Product {
   buying_price: number;
   selling_price: number;
   stock_qty: number;
+  /** Optional product image. Path (file://, app data, or http URL). */
+  image_path?: string | null;
   created_at: string;
   category_name?: string;
 }

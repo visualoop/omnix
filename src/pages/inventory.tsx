@@ -178,7 +178,8 @@ export function InventoryPage() {
                 .map((p) => (
                 <tr
                   key={p.id}
-                  className="border-b border-border last:border-0 hover:bg-muted/30 transition-colors"
+                  onClick={() => navigate(`/inventory/products/${p.id}`)}
+                  className="border-b border-border last:border-0 hover:bg-muted/30 transition-colors cursor-pointer"
                 >
                   <td className="px-3 py-2.5" onClick={(e) => e.stopPropagation()}>
                     <input
@@ -190,7 +191,7 @@ export function InventoryPage() {
                   </td>
                   <td className="px-4 py-2.5">
                     <div>
-                      <span className="font-medium">{p.name}</span>
+                      <span className="font-medium hover:underline underline-offset-4">{p.name}</span>
                       {p.barcode && (
                         <span className="ml-2 text-xs text-muted-foreground font-mono">{p.barcode}</span>
                       )}
