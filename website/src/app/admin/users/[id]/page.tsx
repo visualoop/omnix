@@ -61,7 +61,7 @@ export default async function AdminUserDetailPage({ params }: PageProps) {
           {
             id: 'overview',
             label: 'Overview',
-            render: () => (
+            content: (
               <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
                 <Field label="Email" value={userRow.email} />
                 <Field label="Phone" value={userRow.phoneNumber} />
@@ -95,31 +95,31 @@ export default async function AdminUserDetailPage({ params }: PageProps) {
             id: 'licenses',
             label: 'Licences',
             count: userLicenses.length,
-            render: () => <LicensesList rows={userLicenses} />,
+            content: <LicensesList rows={userLicenses} />,
           },
           {
             id: 'machines',
             label: 'Machines',
             count: userMachines.length,
-            render: () => <MachinesList rows={userMachines} />,
+            content: <MachinesList rows={userMachines} />,
           },
           {
             id: 'payments',
             label: 'Payments',
             count: userPayments.length,
-            render: () => <PaymentsList rows={userPayments} />,
+            content: <PaymentsList rows={userPayments} />,
           },
           {
             id: 'tickets',
             label: 'Tickets',
             count: userTickets.length,
-            render: () => <TicketsList rows={userTickets} />,
+            content: <TicketsList rows={userTickets} />,
           },
           {
             id: 'audit',
             label: 'Audit',
             count: userAudit.length,
-            render: () => <AuditList rows={userAudit} />,
+            content: <AuditList rows={userAudit} />,
           },
         ]}
       />

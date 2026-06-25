@@ -8,7 +8,22 @@ export interface LazyTab {
   id: string
   label: string
   count?: number | string
-  render: () => ReactNode
+  /**
+   * Pre-rendered tab content. Pass JSX directly — NOT a render function.
+   *
+   * Why ReactNode and not `() => ReactNode`: this component is `'use client'`,
+   * which means props cross the server/client boundary. Functions can't be
+   * passed across that boundary, so a render-prop API would crash any
+   * Server Component caller with "Functions cannot be passed to Client
+   * Components." Passing rendered JSX (ReactNode) is the supported pattern.
+   *
+   * Note: all tabs are rendered server-side up-front. Tabs that aren't
+   * currently active are hidden via `hidden` + `className=hidden` so they
+   * cost no layout work. There's no longer a real "lazy mount" — but the
+   * cost was tiny anyway (a tab body is usually <10 elements), and the
+   * Server Component compatibility gain is worth it.
+   */
+  content: ReactNode
 }
 
 interface Props {
@@ -19,10 +34,8 @@ interface Props {
 }
 
 /**
- * LazyTabs — URL-deeplinked tab strip with lazy mounting. Mirrors the
- * desktop primitive but uses Next.js' useRouter + searchParams.
- *
- * Once a tab is opened it stays mounted (so going back doesn't refetch).
+ * URL-deeplinked tab strip. Active tab id is stored in `?tab=…` so links
+ * and refreshes preserve the open tab.
  */
 export function LazyTabs({ tabs, defaultTab, paramKey = 'tab', className }: Props) {
   const router = useRouter()
@@ -30,8 +43,6 @@ export function LazyTabs({ tabs, defaultTab, paramKey = 'tab', className }: Prop
   const params = useSearchParams()
   const initial = params.get(paramKey) ?? defaultTab ?? tabs[0]?.id
   const [activeId, setActiveId] = useState<string>(initial ?? '')
-  const mounted = useRef<Set<string>>(new Set())
-  if (activeId) mounted.current.add(activeId)
 
   function activate(id: string) {
     setActiveId(id)
@@ -42,9 +53,7 @@ export function LazyTabs({ tabs, defaultTab, paramKey = 'tab', className }: Prop
 
   const renderedTabs = useMemo(() => {
     return tabs.map((t) => {
-      const shouldRender = mounted.current.has(t.id)
       const isActive = t.id === activeId
-      if (!shouldRender) return null
       return (
         <div
           key={t.id}
@@ -54,7 +63,7 @@ export function LazyTabs({ tabs, defaultTab, paramKey = 'tab', className }: Prop
           hidden={!isActive}
           className={isActive ? 'block' : 'hidden'}
         >
-          {t.render()}
+          {t.content}
         </div>
       )
     })

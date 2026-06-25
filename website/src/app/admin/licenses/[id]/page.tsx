@@ -62,7 +62,7 @@ export default async function AdminLicenseDetailPage({ params }: PageProps) {
           {
             id: 'overview',
             label: 'Overview',
-            render: () => (
+            content: (
               <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
                 <Field label="Issued" value={lic.paidAt ? formatDate(lic.paidAt) : null} />
                 <Field label="Trial started" value={lic.trialStartedAt ? formatDate(lic.trialStartedAt) : null} />
@@ -77,7 +77,7 @@ export default async function AdminLicenseDetailPage({ params }: PageProps) {
             id: 'machines',
             label: 'Machines',
             count: licenseMachines.length,
-            render: () => (
+            content: (
               <ul className="flex flex-col divide-y divide-foreground/5 rounded-md border border-foreground/10">
                 {licenseMachines.map((m) => (
                   <li key={m.id}>
@@ -100,7 +100,7 @@ export default async function AdminLicenseDetailPage({ params }: PageProps) {
             id: 'payments',
             label: 'Payments',
             count: licensePayments.length,
-            render: () => (
+            content: (
               <ul className="flex flex-col divide-y divide-foreground/5 rounded-md border border-foreground/10">
                 {licensePayments.map((p) => (
                   <li key={p.id}>

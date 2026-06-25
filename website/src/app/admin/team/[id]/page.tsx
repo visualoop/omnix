@@ -52,7 +52,7 @@ export default async function AdminTeamMemberPage({ params }: PageProps) {
             id: 'tickets',
             label: 'Assigned tickets',
             count: assignedTickets.length,
-            render: () => (
+            content: (
               <ul className="flex flex-col divide-y divide-foreground/5 rounded-md border border-foreground/10">
                 {assignedTickets.map((t) => (
                   <li key={t.id}>
@@ -75,7 +75,7 @@ export default async function AdminTeamMemberPage({ params }: PageProps) {
             id: 'actions',
             label: 'Actions',
             count: actions.length,
-            render: () => (
+            content: (
               <ol className="flex flex-col gap-3">
                 {actions.map((a) => (
                   <li key={a.id} className="grid grid-cols-[120px_1fr] items-baseline gap-4 border-b border-foreground/5 pb-2.5">

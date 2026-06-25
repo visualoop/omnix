@@ -77,7 +77,7 @@ export default async function LicenseDetailPage({ params }: { params: Promise<{ 
           {
             id: 'overview',
             label: 'Overview',
-            render: () => (
+            content: (
               <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
                 <Field label="Major-version cap" value={`v${l.majorVersionCap}.x`} />
                 <Field label="Modules" value={(l.modules as string[]).join(', ') || '—'} />
@@ -92,7 +92,7 @@ export default async function LicenseDetailPage({ params }: { params: Promise<{ 
             id: 'machines',
             label: 'Machines',
             count: bound.length,
-            render: () => (
+            content: (
               <ul className="flex flex-col divide-y divide-foreground/5 rounded-md border border-foreground/10">
                 {bound.map((m) => (
                   <li key={m.id}>
@@ -113,7 +113,7 @@ export default async function LicenseDetailPage({ params }: { params: Promise<{ 
             id: 'payments',
             label: 'Payments',
             count: paid.length,
-            render: () => (
+            content: (
               <ul className="flex flex-col divide-y divide-foreground/5 rounded-md border border-foreground/10">
                 {paid.map((p) => (
                   <li key={p.id} className="flex items-center justify-between gap-4 px-4 py-3">

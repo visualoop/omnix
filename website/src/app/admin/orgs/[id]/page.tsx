@@ -69,7 +69,7 @@ export default async function AdminOrgDetailPage({ params }: PageProps) {
             id: 'members',
             label: 'Members',
             count: members.length,
-            render: () => (
+            content: (
               <ul className="flex flex-col divide-y divide-foreground/5 rounded-md border border-foreground/10">
                 {members.map((m) => (
                   <li key={m.member.id}>
@@ -89,7 +89,7 @@ export default async function AdminOrgDetailPage({ params }: PageProps) {
             id: 'invitations',
             label: 'Invitations',
             count: openInvitations.length,
-            render: () => (
+            content: (
               <ul className="flex flex-col divide-y divide-foreground/5 rounded-md border border-foreground/10">
                 {openInvitations.map((inv) => (
                   <li key={inv.id} className="flex items-center justify-between gap-4 px-4 py-3">
@@ -110,7 +110,7 @@ export default async function AdminOrgDetailPage({ params }: PageProps) {
             id: 'licenses',
             label: 'Licences',
             count: orgLicenses.length,
-            render: () => (
+            content: (
               <ul className="flex flex-col divide-y divide-foreground/5 rounded-md border border-foreground/10">
                 {orgLicenses.map((l) => (
                   <li key={l.id}>
@@ -130,7 +130,7 @@ export default async function AdminOrgDetailPage({ params }: PageProps) {
             id: 'machines',
             label: 'Machines',
             count: orgMachines.length,
-            render: () => (
+            content: (
               <ul className="flex flex-col divide-y divide-foreground/5 rounded-md border border-foreground/10">
                 {orgMachines.map((m) => (
                   <li key={m.id}>
@@ -153,7 +153,7 @@ export default async function AdminOrgDetailPage({ params }: PageProps) {
             id: 'payments',
             label: 'Payments',
             count: orgPayments.length,
-            render: () => (
+            content: (
               <ul className="flex flex-col divide-y divide-foreground/5 rounded-md border border-foreground/10">
                 {orgPayments.map((p) => (
                   <li key={p.id}>

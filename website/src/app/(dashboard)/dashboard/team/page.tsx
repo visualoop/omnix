@@ -70,7 +70,7 @@ export default async function DashboardTeamPage() {
             id: 'members',
             label: 'Members',
             count: members.length,
-            render: () => (
+            content: (
               <ul className="flex flex-col divide-y divide-foreground/5 rounded-md border border-foreground/10">
                 {members.map((m) => (
                   <li key={m.memberId} className="flex items-center justify-between gap-4 px-4 py-3">
@@ -88,7 +88,7 @@ export default async function DashboardTeamPage() {
             id: 'invitations',
             label: 'Invitations',
             count: invites.length,
-            render: () => (
+            content: (
               <ul className="flex flex-col divide-y divide-foreground/5 rounded-md border border-foreground/10">
                 {invites.map((inv) => (
                   <li key={inv.id} className="flex items-center justify-between gap-4 px-4 py-3">
@@ -112,7 +112,7 @@ export default async function DashboardTeamPage() {
                 {
                   id: 'invite',
                   label: 'Invite',
-                  render: () => (
+                  content: (
                     <div className="rounded-md border border-foreground/10 p-4 max-w-md">
                       <p className="text-[13px] text-muted-foreground mb-3">
                         Invite a teammate via email. They'll receive a link to join {primary.org.name}.

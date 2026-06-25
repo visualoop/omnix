@@ -76,7 +76,7 @@ export default async function MachineDetailPage({ params }: { params: Promise<{ 
           {
             id: 'overview',
             label: 'Overview',
-            render: () => (
+            content: (
               <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
                 <Field label="Hostname" value={m.hostname} />
                 <Field label="Machine ID" value={<span className="font-mono">{m.machineId}</span>} />
@@ -95,7 +95,7 @@ export default async function MachineDetailPage({ params }: { params: Promise<{ 
             id: 'telemetry',
             label: 'Activity',
             count: telemetry.length,
-            render: () => (
+            content: (
               <ol className="flex flex-col gap-3">
                 {telemetry.map((t) => (
                   <li key={t.id} className="grid grid-cols-[120px_1fr] items-baseline gap-4 border-b border-foreground/5 pb-2.5">
@@ -115,7 +115,7 @@ export default async function MachineDetailPage({ params }: { params: Promise<{ 
             id: 'backups',
             label: 'Cloud backups',
             count: backups.length,
-            render: () => (
+            content: (
               <ul className="flex flex-col divide-y divide-foreground/5 rounded-md border border-foreground/10">
                 {backups.map((b) => (
                   <li key={b.id} className="flex items-center justify-between gap-4 px-4 py-3">
