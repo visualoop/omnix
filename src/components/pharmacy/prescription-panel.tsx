@@ -137,13 +137,17 @@ export function PrescriptionPanel({ open, onClose, onSaved }: Props) {
                 });
               }}
               onCreate={async (name) => {
-                // Quick-create: just a name. Phone + age can be filled in
-                // below this picker before saving the prescription.
+                // Quick-create from the dispense flow: customer + patient_profiles
+                // in one go so the patient also shows up in /pharmacy/patients.
+                // Optional fields (DOB, allergies, conditions) get filled later
+                // from the patient-profile detail page or the dispense form.
                 const id = crypto.randomUUID();
                 const { execute } = await import("@/lib/db");
                 await execute(`INSERT INTO customers (id, name) VALUES (?1, ?2)`, [id, name]);
-                // Patient profile gets created lazily on first Save — we
-                // don't require every customer to have a clinical record.
+                await execute(
+                  `INSERT OR IGNORE INTO patient_profiles (customer_id) VALUES (?1)`,
+                  [id],
+                );
                 setPatient({ ...patient, customer_id: id, name });
                 return { value: id, label: name };
               }}

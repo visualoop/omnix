@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   ArrowLineDown as ArrowDownToLine,
   ArrowLineUp as ArrowUpFromLine,
@@ -11,6 +11,8 @@ import {
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { TouchKeypad } from "@/components/ui/touch-keypad";
+import { useIsTouch } from "@/stores/density";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent } from "@/components/ui/card";
 import {
@@ -32,6 +34,9 @@ export function OpenShiftDialog({ open, onClose, onOpened }: {
   const userId = useAuthStore((s) => s.user?.id);
   const [openingBalance, setOpeningBalance] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const touch = useIsTouch();
+  const balanceRef = useRef<HTMLInputElement>(null);
+  const [keypadOpen, setKeypadOpen] = useState(false);
 
   useEffect(() => {
     if (open) setOpeningBalance("");
@@ -67,9 +72,12 @@ export function OpenShiftDialog({ open, onClose, onOpened }: {
           <div className="space-y-1">
             <label className="text-[11px] font-medium text-muted-foreground">Opening Cash (KES)</label>
             <Input
+              ref={balanceRef}
               type="number"
+              inputMode="decimal"
               value={openingBalance}
               onChange={(e) => setOpeningBalance(e.target.value)}
+              onFocus={() => touch && setKeypadOpen(true)}
               placeholder="0.00"
               autoFocus
               className="text-lg font-mono h-11"
@@ -102,6 +110,16 @@ export function OpenShiftDialog({ open, onClose, onOpened }: {
           </Button>
         </DialogFooter>
       </DialogContent>
+      <TouchKeypad
+        inputRef={balanceRef}
+        mode="currency"
+        open={keypadOpen}
+        onDismiss={() => setKeypadOpen(false)}
+        onCommit={() => {
+          setKeypadOpen(false);
+          handleOpen();
+        }}
+      />
     </Dialog>
   );
 }
@@ -121,6 +139,9 @@ export function CloseShiftDialog({ open, onClose, onClosed }: {
     petty_in: number; petty_out: number;
   } | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const touch = useIsTouch();
+  const cashRef = useRef<HTMLInputElement>(null);
+  const [keypadOpen, setKeypadOpen] = useState(false);
 
   useEffect(() => {
     if (open && userId) {
@@ -205,9 +226,12 @@ export function CloseShiftDialog({ open, onClose, onClosed }: {
                   Actual cash counted in till *
                 </label>
                 <Input
+                  ref={cashRef}
                   type="number"
+                  inputMode="decimal"
                   value={actualCash}
                   onChange={(e) => setActualCash(e.target.value)}
+                  onFocus={() => touch && setKeypadOpen(true)}
                   placeholder={expectedCash.toFixed(2)}
                   autoFocus
                   className="text-lg font-mono h-11"
@@ -247,6 +271,16 @@ export function CloseShiftDialog({ open, onClose, onClosed }: {
           </>
         )}
       </DialogContent>
+      <TouchKeypad
+        inputRef={cashRef}
+        mode="currency"
+        open={keypadOpen}
+        onDismiss={() => setKeypadOpen(false)}
+        onCommit={() => {
+          setKeypadOpen(false);
+          handleClose();
+        }}
+      />
     </Dialog>
   );
 }
@@ -290,6 +324,9 @@ export function PettyCashDialog({ open, onClose, onSaved }: {
   const [type, setType] = useState<"topup" | "expense">("expense");
   const [amount, setAmount] = useState("");
   const [reason, setReason] = useState("");
+  const touch = useIsTouch();
+  const amountRef = useRef<HTMLInputElement>(null);
+  const [keypadOpen, setKeypadOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
@@ -356,9 +393,12 @@ export function PettyCashDialog({ open, onClose, onSaved }: {
           <div className="space-y-1">
             <label className="text-[11px] font-medium text-muted-foreground">Amount (KES)</label>
             <Input
+              ref={amountRef}
               type="number"
+              inputMode="decimal"
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
+              onFocus={() => touch && setKeypadOpen(true)}
               placeholder="0.00"
               autoFocus
               className="text-lg font-mono h-11"
@@ -382,6 +422,16 @@ export function PettyCashDialog({ open, onClose, onSaved }: {
           </Button>
         </DialogFooter>
       </DialogContent>
+      <TouchKeypad
+        inputRef={amountRef}
+        mode="currency"
+        open={keypadOpen}
+        onDismiss={() => setKeypadOpen(false)}
+        onCommit={() => {
+          setKeypadOpen(false);
+          save();
+        }}
+      />
     </Dialog>
   );
 }
