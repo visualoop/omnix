@@ -84,7 +84,8 @@ const CORE_SETTINGS: SettingsNavItem[] = [
   { to: "/settings/ai", label: "AI Integration", description: "Provider keys, features, activity", icon: Sparkles, permission: "settings.business", group: "Operations" },
   { to: "/settings/receipt", label: "Receipt Template", description: "Footer message and branding", icon: Printer, permission: "settings.business", group: "Operations" },
   { to: "/settings/audit", label: "Audit Log", description: "Security and compliance history", icon: Activity, permission: "audit.view", group: "Operations" },
-  { to: "/settings/license", label: "License", description: "Machine binding and updates", icon: Key, permission: "license.view", group: "Operations" },
+  { to: "/settings/licenses", label: "Licences", description: "Active modules, sync, add another licence", icon: Key, permission: "license.view", group: "Operations" },
+  { to: "/settings/license", label: "License (legacy)", description: "Single-licence view (legacy)", icon: Key, permission: "license.view", group: "Operations" },
   { to: "/settings/insurance", label: "Insurance Providers", description: "SHA and private insurers", icon: Shield, permission: "claims.view", group: "Dawa", module: "dawa" },
 ];
 

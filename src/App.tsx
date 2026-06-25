@@ -74,6 +74,7 @@ import { ClaimsPage } from "@/pages/claims";
 import { EtimsQueuePage } from "@/pages/etims-queue";
 import { VatReportPage } from "@/pages/vat-report";
 import { LicensePage } from "@/pages/license";
+import { SettingsLicensesPage } from "@/pages/settings-licenses";
 import { ImportProductsPage } from "@/pages/import-products";
 import { SalesHistoryPage } from "@/pages/sales-history";
 import { UsersPage } from "@/pages/users";
@@ -274,6 +275,7 @@ function AppContent() {
             <Route path="hospitality/service-charge" element={<RequireRole permission="hospitality.service_charge.manage"><HospitalitySettingsPage /></RequireRole>} />
             <Route path="audit" element={<RequireRole permission="audit.view"><AuditLogPage /></RequireRole>} />
             <Route path="license" element={<RequireRole permission="license.view"><LicensePage /></RequireRole>} />
+            <Route path="licenses" element={<RequireRole permission="license.view"><SettingsLicensesPage /></RequireRole>} />
           </Route>
           <Route path="/audit" element={<Navigate to="/settings/audit" replace />} />
           <Route path="/suppliers" element={<RequireRole permission="suppliers.view"><SuppliersPage /></RequireRole>} />

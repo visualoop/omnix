@@ -94,6 +94,35 @@ export async function setActiveLicenseKey(key: string): Promise<void> {
      ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = datetime('now')`,
     [key],
   )
+  // Pin the workspace's active module to match the licence's variant.
+  // We pick the first allowed module: Pro defaults to "dawa" (most
+  // common starting point), trade licences default to their own module.
+  // The user can still drill into other modules via the sidebar after
+  // load; this just decides what they land in after a switch.
+  const rows = await query<{ variant: string; modules: string | null }>(
+    `SELECT variant, modules FROM local_licenses WHERE license_key = ?1 LIMIT 1`,
+    [key],
+  )
+  const row = rows[0]
+  if (!row) return
+  const defaultModule =
+    row.variant === "pro"
+      ? "dawa"
+      : row.variant === "dawa"
+        ? "dawa"
+        : row.variant === "retail"
+          ? "retail"
+          : row.variant === "hardware"
+            ? "hardware"
+            : row.variant === "hospitality"
+              ? "hospitality"
+              : "dawa"
+  await execute(
+    `INSERT INTO settings (key, value, category)
+     VALUES ('app.active_module', ?1, 'app')
+     ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = datetime('now')`,
+    [defaultModule],
+  )
 }
 
 /** The active local licence, full row (or null if none set / set value

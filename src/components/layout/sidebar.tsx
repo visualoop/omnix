@@ -24,6 +24,7 @@ import {
 } from "@phosphor-icons/react";
 import { NavLink } from "react-router-dom";
 import { OmnixLogo } from "@/components/omnix-logo";
+import { ModuleSwitcher } from "@/components/layout/module-switcher";
 import { ModuleLogo } from "@/components/module-logos";
 import { APP_NAME } from "@/lib/brand";
 import { useAuthStore } from "@/stores/auth";
@@ -149,6 +150,11 @@ export function Sidebar({ onCommandOpen }: { onCommandOpen: () => void }) {
           </div>
         )}
       </div>
+
+      {/* Module switcher — shown only when more than one licence is
+          installed on this PC. Keeps the single-licence UX exactly the
+          same; ramps up to a real switcher for multi-licence users. */}
+      {!collapsed ? <ModuleSwitcher /> : null}
 
       {/* Search trigger — looks like a real input, not a nav row.
           Hairline border, subtle inner shadow, key-cap kbd badge with the
