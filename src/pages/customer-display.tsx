@@ -58,14 +58,46 @@ export function CustomerDisplayPage() {
       .then((rows) => {
         if (rows[0]?.value) {
           try {
-            setPlaylist(JSON.parse(rows[0].value));
+            const raw = JSON.parse(rows[0].value) as Array<{
+              type: "image" | "video" | "iframe"
+              url: string
+              durationSeconds: number
+            }>
+            // Normalise any saved YouTube /watch URLs to /embed so the
+            // iframe doesn't get refused by X-Frame-Options. We do this
+            // on every load (cheap) instead of migrating the DB row so
+            // settings-side edits don't need to know about it.
+            setPlaylist(raw.map((s) => ({ ...s, url: normalizePlaylistUrl(s.url) })))
           } catch {
-            setPlaylist([]);
+            setPlaylist([])
           }
         }
       })
-      .catch(() => {});
-  }, []);
+      .catch(() => {})
+  }, [])
+
+  // (Duplicate of the helper in settings-customer-display.tsx; kept inline
+  // so this file stays free of cross-page imports. If the rules diverge
+  // we'll lift it to a shared module.)
+  function normalizePlaylistUrl(raw: string): string {
+    const ytPatterns: Array<RegExp> = [
+      /youtube\.com\/watch\?(?:.*&)?v=([\w-]{6,})/i,
+      /youtu\.be\/([\w-]{6,})/i,
+      /youtube\.com\/shorts\/([\w-]{6,})/i,
+    ]
+    for (const re of ytPatterns) {
+      const m = raw.match(re)
+      if (m && m[1]) {
+        const id = m[1]
+        return `https://www.youtube.com/embed/${id}?autoplay=1&mute=1&controls=0&modestbranding=1&playsinline=1&rel=0&loop=1&playlist=${id}`
+      }
+    }
+    const vimeo = raw.match(/(?:^|\/)vimeo\.com\/(\d+)/i)
+    if (vimeo) {
+      return `https://player.vimeo.com/video/${vimeo[1]}?autoplay=1&muted=1&loop=1`
+    }
+    return raw
+  }
 
   // Rotate playlist when idle
   useEffect(() => {

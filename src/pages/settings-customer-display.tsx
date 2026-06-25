@@ -443,6 +443,54 @@ function SlideTile({
   )
 }
 
+/**
+ * Convert paste-able URLs into iframe-friendly equivalents.
+ *
+ * YouTube refuses to render its `/watch?v=…` URLs inside an iframe
+ * (X-Frame-Options: SAMEORIGIN), so the iframe shows "youtube refused
+ * to connect". We rewrite those URLs to the `/embed/…` form which
+ * YouTube explicitly supports for embedding, optionally adding
+ * autoplay + mute params so the slide actually starts playing.
+ *
+ * Vimeo has the same problem; convert `vimeo.com/ID` →
+ * `player.vimeo.com/video/ID`.
+ *
+ * Anything we don't recognise passes through unchanged.
+ */
+function normalizeUrl(raw: string, type: PlaylistSlide["type"]): { normalized: string; note?: string } {
+  // YouTube
+  // - youtube.com/watch?v=XYZ
+  // - youtu.be/XYZ
+  // - m.youtube.com/watch?v=XYZ
+  // - youtube.com/shorts/XYZ
+  const ytPatterns: Array<{ re: RegExp; group: number }> = [
+    { re: /youtube\.com\/watch\?(?:.*&)?v=([\w-]{6,})/i, group: 1 },
+    { re: /youtu\.be\/([\w-]{6,})/i, group: 1 },
+    { re: /youtube\.com\/shorts\/([\w-]{6,})/i, group: 1 },
+    { re: /youtube\.com\/embed\/([\w-]{6,})/i, group: 1 }, // already in embed form — keep
+  ]
+  for (const p of ytPatterns) {
+    const m = raw.match(p.re)
+    if (m && m[p.group]) {
+      const videoId = m[p.group]
+      const embed = `https://www.youtube.com/embed/${videoId}?autoplay=1&mute=1&controls=0&modestbranding=1&playsinline=1&rel=0&loop=1&playlist=${videoId}`
+      const noteText = type === "video" && !raw.includes("/embed/") ? "Converted to YouTube embed URL" : undefined
+      return { normalized: embed, note: noteText }
+    }
+  }
+
+  // Vimeo
+  const vimeoMatch = raw.match(/(?:vimeo\.com|player\.vimeo\.com\/video)\/(\d+)/i)
+  if (vimeoMatch) {
+    const id = vimeoMatch[1]
+    const embed = `https://player.vimeo.com/video/${id}?autoplay=1&muted=1&loop=1`
+    const note = raw.includes("player.vimeo.com") ? undefined : "Converted to Vimeo embed URL"
+    return { normalized: embed, note }
+  }
+
+  return { normalized: raw }
+}
+
 function AddSlide({ onAdd }: { onAdd: (slide: PlaylistSlide) => void }) {
   const [type, setType] = useState<PlaylistSlide["type"]>("image")
   const [url, setUrl] = useState("")
@@ -499,9 +547,14 @@ function AddSlide({ onAdd }: { onAdd: (slide: PlaylistSlide) => void }) {
       toast.error("Paste a URL or pick a file first")
       return
     }
-    onAdd({ type, url: url.trim(), durationSeconds: Math.max(3, duration) })
+    const { normalized, note } = normalizeUrl(url.trim(), type)
+    onAdd({ type, url: normalized, durationSeconds: Math.max(3, duration) })
     setUrl("")
-    toast.success("Slide added to playlist")
+    if (note) {
+      toast.success("Slide added", { description: note })
+    } else {
+      toast.success("Slide added to playlist")
+    }
   }
 
   return (
@@ -550,20 +603,32 @@ function AddSlide({ onAdd }: { onAdd: (slide: PlaylistSlide) => void }) {
             className="h-8 rounded-md border border-foreground/15 bg-background px-2 text-[12px]"
           >
             <option value="image">Image URL</option>
-            <option value="video">Video URL</option>
-            <option value="iframe">Iframe / YouTube embed</option>
+            <option value="video">Video URL (YouTube / Vimeo / direct .mp4)</option>
+            <option value="iframe">Iframe / web embed</option>
           </select>
           <Input
             type="url"
             value={url}
             onChange={(e) => setUrl(e.target.value)}
-            placeholder="https://…"
+            placeholder={
+              type === "video"
+                ? "Paste any YouTube watch URL — we'll convert"
+                : type === "image"
+                  ? "https://example.com/promo.jpg"
+                  : "https://example.com/menu"
+            }
             className="flex-1 h-8 text-[12px]"
           />
           <Button size="sm" onClick={addFromUrl}>
             Add
           </Button>
         </div>
+        <p className="text-[11px] leading-[1.55] text-muted-foreground">
+          YouTube videos: paste any URL (<span className="font-mono">/watch</span>,{" "}
+          <span className="font-mono">youtu.be/…</span>, or <span className="font-mono">/embed/…</span>) — we convert to the embed
+          form so YouTube doesn&rsquo;t refuse the iframe. Direct{" "}
+          <span className="font-mono">.mp4</span>/<span className="font-mono">.webm</span> URLs also work.
+        </p>
       </div>
     </div>
   )
