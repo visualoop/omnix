@@ -51,6 +51,46 @@ const VARIANT_LABEL: Record<VariantId, string> = {
  * Empty by default — the standard summary is enough for most patches.
  */
 const VERSION_HIGHLIGHTS: Record<string, string[]> = {
+const VERSION_HIGHLIGHTS: Record<string, string[]> = {
+  '0.11.1': [
+    'Touch keypad on every cash dialog (POS terminals)',
+    'Customer display local images now render',
+    'Pharmacy → Patients tab',
+    'Search-and-create patient/doctor pickers in dispense',
+    'Mobile-responsive admin shell',
+    'Editorial tables with search + pagination + filters on every list page',
+    'Schema-stale SQL audit prevents dispense + bulk-edit crashes',
+    '48 native form elements migrated to shadcn primitives',
+  ],
+  '0.11.0': [
+    'Multi-licence per machine — seven activation gates',
+    'Pro covers all four trades, trade variants compose freely',
+    'Local↔cloud licence sync with auto-heal of orphan seats',
+    'Settings → Licences page with module switcher',
+    'Sidebar module switcher (auto-hides single-licence installs)',
+    'Pro pricing fixed: KES 150,000 (was charging trade price)',
+    'Downloads page lists every owned variant',
+    'Dashboard release-seat button',
+  ],
+  '0.10.7': [
+    'Trade variants now KES 30,000 (was 50,000)',
+    'Pro stays at KES 150,000 — all four trades covered',
+    'Checkout page redesigned with bigger total + accent rule',
+  ],
+  '0.10.6': [
+    'POS product cards: image-first when set, module accent throughout',
+    'Inline edit on inventory detail page (Edit toggles every field)',
+  ],
+  '0.10.5': [
+    'YouTube + Vimeo URLs in customer display auto-convert to embed form',
+  ],
+  '0.10.4': [
+    'Customer display playlist supports local images + videos (file picker)',
+    'Toast confirmation on every PDF download',
+  ],
+  '0.10.3': ['Row click drills to detail page (customers, suppliers, sales, employees, branches)'],
+  '0.10.2': ['Product detail page — Variants tab + Images tab'],
+  '0.10.1': ['Login profile picker — tile per active user with avatar + role pill'],
   '0.10.0': [
     '16 branded PDFs',
     'PO lifecycle hardening',
