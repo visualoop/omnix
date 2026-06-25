@@ -356,6 +356,23 @@ CREATE TABLE IF NOT EXISTS "license_sync_log" (
 --> statement-breakpoint
 CREATE INDEX IF NOT EXISTS "license_sync_log_user_idx" ON "license_sync_log" ("user_id");
 --> statement-breakpoint
+CREATE TABLE IF NOT EXISTS "platform_media" (
+  "id" text PRIMARY KEY NOT NULL,
+  "key" text NOT NULL,
+  "url" text NOT NULL,
+  "mime_type" text NOT NULL,
+  "size_bytes" integer NOT NULL,
+  "filename" text,
+  "alt" text,
+  "slot" text,
+  "uploaded_by" text NOT NULL,
+  "created_at" timestamp DEFAULT now() NOT NULL
+);
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "platform_media_slot_idx" ON "platform_media" ("slot");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "platform_media_created_at_idx" ON "platform_media" ("created_at");
+--> statement-breakpoint
 `
 
 /** Split into individual statements (Drizzle generates with statement-breakpoints). */

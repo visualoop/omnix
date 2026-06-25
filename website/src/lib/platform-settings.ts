@@ -72,6 +72,8 @@ export const SETTING_DEFINITIONS = [
   { key: 's3.bucket',               category: 'storage',   label: 'S3 bucket',                  sensitive: false, envFallback: 'S3_BUCKET',            description: 'Bucket where encrypted backups land.' },
   { key: 's3.access_key_id',        category: 'storage',   label: 'S3 access key ID',           sensitive: true,  envFallback: 'S3_ACCESS_KEY_ID',     description: '' },
   { key: 's3.secret_access_key',    category: 'storage',   label: 'S3 secret access key',       sensitive: true,  envFallback: 'S3_SECRET_ACCESS_KEY', description: '' },
+  { key: 's3.media_bucket',         category: 'storage',   label: 'Media bucket name',          sensitive: false, envFallback: 'S3_BUCKET',            description: 'Bucket for marketing images (separate from encrypted backups, public-read).' },
+  { key: 's3.public_url',           category: 'storage',   label: 'Media public base URL',      sensitive: false, envFallback: 'S3_PUBLIC_URL',        description: 'CDN URL prefix for served images, e.g. "https://media.omnix.co.ke" or the R2 pub-XXX domain.' },
 
   // ── Cron / system ──────────────────────────────
   { key: 'cron.secret',             category: 'system',    label: 'Cron Bearer secret',         sensitive: true,  envFallback: 'CRON_SECRET',          description: 'Vercel cron jobs send Authorization: Bearer <this>.' },

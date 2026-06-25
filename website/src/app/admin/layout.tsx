@@ -5,7 +5,7 @@ import { count, eq, sql } from 'drizzle-orm'
 import {
   Gauge, Users, Buildings, Desktop, Key, CreditCard,
   ChatCircle, ArrowSquareOut, ListMagnifyingGlass, GearSix, SignOut,
-  UsersFour,
+  UsersFour, Image as ImageIcon,
 } from '@phosphor-icons/react/dist/ssr'
 import { auth } from '@/lib/auth'
 import { db, machines } from '@/db'
@@ -30,6 +30,7 @@ const NAV = [
   { href: '/admin/payments', label: 'Payments',  Icon: CreditCard },
   { href: '/admin/tickets',  label: 'Tickets',   Icon: ChatCircle },
   { href: '/admin/releases', label: 'Releases',  Icon: ArrowSquareOut },
+  { href: '/admin/media',    label: 'Media',     Icon: ImageIcon },
   { href: '/admin/audit',    label: 'Audit',     Icon: ListMagnifyingGlass },
   { href: '/admin/team',     label: 'Team',      Icon: UsersFour },
   { href: '/admin/settings', label: 'Settings',  Icon: GearSix },

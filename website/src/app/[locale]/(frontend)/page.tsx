@@ -63,7 +63,24 @@ export default async function HomePage({
   // Hero content stays default (FALLBACK in components) — landing-page
   // global was a Payload concept; promote a static config later if we
   // want CMS-style overrides.
-  const heroContent: Parameters<typeof HeroSection>[0]['content'] = undefined
+  let heroContent: Parameters<typeof HeroSection>[0]['content'] = undefined
+  // Admin can upload a hero product-shot via /admin/media; we wire it in
+  // here so the homepage swaps from PosPreview to the real screenshot
+  // without a redeploy.
+  try {
+    const { getSlotImage } = await import('@/lib/media-slots')
+    const shot = await getSlotImage('hero.product_shot')
+    if (shot) {
+      heroContent = {
+        screenshot: {
+          url: shot.url,
+          alt: shot.alt ?? 'Omnix product screenshot',
+        },
+      }
+    }
+  } catch {
+    // platform_media table cold or query failed — keep PosPreview fallback.
+  }
   let latestRelease: Parameters<typeof HeroSection>[0]['latestRelease'] = undefined
   try {
     const { db, releases } = await import('@/db')
