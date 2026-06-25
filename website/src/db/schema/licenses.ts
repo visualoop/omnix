@@ -27,6 +27,12 @@ export const licenses = pgTable(
     // RSA-signed payload (set on issue, never updated)
     signedKey: text('signed_key'),
 
+    // Where this licence came from — distinguishes normal Paystack
+    // purchases from rows we recreated server-side via the sync
+    // endpoint (rescuing keys that survived the Payload→Better Auth
+    // migration only on local SQLite copies).
+    origin: text('origin').notNull().default('paystack'), // paystack | payload_migrated | admin_issued
+
     // Cycle dates
     trialStartedAt: timestamp('trial_started_at'),
     trialEndsAt: timestamp('trial_ends_at'),

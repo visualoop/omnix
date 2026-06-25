@@ -33,7 +33,7 @@ export default async function CheckoutPage({
 
   const purpose = type ?? 'license_fee'
   const p = pricingFor((license.currency as 'KES') ?? 'KES')
-  const lines = computeLines({ purpose, tier: license.tier, p })
+  const lines = computeLines({ purpose, variant: license.variant, p })
   const total = lines.reduce((s, l) => s + l.amount, 0)
 
   return (
@@ -171,24 +171,30 @@ function variantDisplayName(variant: string): string {
   return map[variant] ?? `Omnix ${variant.charAt(0).toUpperCase()}${variant.slice(1)}`
 }
 
-function computeLines({ purpose, tier, p }: {
+function computeLines({ purpose, variant, p }: {
   purpose: string
-  tier: string
+  variant: string
   p: ReturnType<typeof pricingFor>
 }): { label: string; amount: number }[] {
+  // Pro multi-trade licence is sold at the "business" price (KES 150k).
+  // Every other variant (dawa / retail / hospitality / hardware) is the
+  // single "starter" price (KES 30k). Tier on the licence row is just
+  // a state flag (trial / starter / business) — pricing is driven by
+  // VARIANT so a Pro trial upgrades to KES 150k, not 30k.
+  const isPro = variant === 'pro'
   switch (purpose) {
     case 'license_fee': {
-      const fee = tier === 'business' ? p.business.oneTimeFee : p.starter.oneTimeFee
-      return [{ label: 'Omnix licence (one-time)', amount: fee }]
+      const fee = isPro ? p.business.oneTimeFee : p.starter.oneTimeFee
+      return [{ label: isPro ? 'Omnix Pro · all trades (one-time)' : 'Omnix licence (one-time)', amount: fee }]
     }
     case 'maintenance_renewal': {
-      const yearly = tier === 'business' ? p.business.maintenanceYearly : p.starter.maintenanceYearly
+      const yearly = isPro ? p.business.maintenanceYearly : p.starter.maintenanceYearly
       return [{ label: '1 year compliance updates', amount: yearly }]
     }
     case 'major_upgrade': {
-      const fee = tier === 'business' ? p.business.oneTimeFee : p.starter.oneTimeFee
+      const fee = isPro ? p.business.oneTimeFee : p.starter.oneTimeFee
       const discounted = Math.round(fee * (1 - p.majorUpgradeDiscount / 100))
-      return [{ label: `Major version upgrade (${p.majorUpgradeDiscount}% off ${tier})`, amount: discounted }]
+      return [{ label: `Major version upgrade (${p.majorUpgradeDiscount}% off ${isPro ? 'Pro' : 'trade'})`, amount: discounted }]
     }
     case 'cloud_backup':
       return [{ label: 'Cloud backup · 1 month / 1 branch', amount: p.cloudBackupMonthly }]

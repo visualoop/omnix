@@ -1,27 +1,42 @@
-import { and, eq, count, isNull, or } from 'drizzle-orm'
+/**
+ * /api/licensing/activate — desktop activation handler.
+ *
+ * Multi-licence per machine. A single physical PC can hold many active
+ * licences (Dawa + Retail + Hospitality) as long as the variant-conflict
+ * rules below are honoured.
+ *
+ * Seven gates run in order. The first to fail returns that gate's error
+ * code so the desktop knows exactly what to do next:
+ *
+ *   1. 404 unknown_key                  — key not in our DB
+ *   2. 403 not_your_key                 — key exists but owned by a
+ *                                         different account (email
+ *                                         check; no session token)
+ *   3. 409 cross_user_conflict          — already activated under a
+ *                                         different account on this PC
+ *   4. 409 machine_owned_by_another     — this PC is claimed by a
+ *                                         different user account
+ *   5. 409 variant_conflict_on_machine  — Pro vs trade clash on this PC
+ *   6. 402 seat_exhausted               — licence has no seats left
+ *   7. revoked / suspended status       — short-circuits with 403
+ *
+ * Idempotent re-activation: same key + same machineId returns a new
+ * authToken and refreshes the activation row without consuming a seat.
+ */
+import { and, eq, count, sql } from 'drizzle-orm'
 import crypto from 'node:crypto'
-import { db, licenses, machines, activations } from '@/db'
+import { db, licenses, machines, activations, user } from '@/db'
 import { createId } from '@/lib/ids'
 
-/**
- * /api/licensing/activate — legacy desktop-compatible alias.
- *
- * The desktop binary (src/services/license.ts activateOnline) POSTs:
- *   { licenseKey, machineId, variant }
- *
- * The newer /api/licenses/activate route uses snake_case. Rather than
- * ship a new desktop build, this alias mirrors the same DB logic and
- * returns the camelCase shape the desktop already expects:
- *   { ok, authToken, action, entitlements: { modules, maxDevices, ... } }
- *
- * Once the desktop ships v0.10+ with snake_case migrated, this route
- * can be removed.
- */
 export const dynamic = 'force-dynamic'
 
 interface ActivateInput {
   licenseKey: string
   machineId: string
+  /** Owning email — required for the cross-account guard. The desktop
+   *  passes the email the customer used at sign-up. We compare it to
+   *  the licence owner's email at gate 2. */
+  email?: string
   variant?: string
   hostname?: string
   os?: string
@@ -30,112 +45,218 @@ interface ActivateInput {
   currentVersion?: string
 }
 
+type ResultCode =
+  | 'ok'
+  | 'reactivated'
+  | 'unknown_key'
+  | 'not_your_key'
+  | 'cross_user_conflict'
+  | 'machine_owned_by_another'
+  | 'variant_conflict_on_machine'
+  | 'seat_exhausted'
+  | 'revoked'
+  | 'suspended'
+
+/** Variant types that conflict on the same physical machine. Pro covers
+ *  every trade so Pro + trade (in either direction) is rejected. Two
+ *  of the same trade variant on one machine is also rejected. */
+export function isVariantConflict(existing: string, incoming: string): boolean {
+  if (existing === incoming) return true
+  if (existing === 'pro' || incoming === 'pro') return true
+  return false
+}
+
 export async function POST(req: Request) {
   const body = (await req.json().catch(() => null)) as ActivateInput | null
   if (!body?.licenseKey || !body.machineId) {
-    return Response.json({ ok: false, error: 'licenseKey + machineId required' }, { status: 400 })
+    return Response.json({ ok: false, code: 'bad_request', error: 'licenseKey + machineId required' }, { status: 400 })
   }
 
-  const lRows = await db.select().from(licenses).where(eq(licenses.licenseKey, body.licenseKey)).limit(1)
-  const lic = lRows[0]
+  // ── Gate 1: licence exists ──────────────────────────────────────
+  const lic = (
+    await db.select().from(licenses).where(eq(licenses.licenseKey, body.licenseKey)).limit(1)
+  )[0]
   if (!lic) {
-    await logActivation(null, body.machineId, 'license_not_found', req)
-    return Response.json({ ok: false, error: 'licence not found' }, { status: 404 })
-  }
-  if (lic.status === 'revoked' || lic.status === 'suspended') {
-    await logActivation(lic.id, body.machineId, 'revoked', req)
-    return Response.json({ ok: false, error: `licence ${lic.status}` }, { status: 403 })
+    return reject('unknown_key', 404, 'Licence not recognised. Check the key or contact support.')
   }
 
-  // Idempotent re-activation.
-  const existing = (await db.select().from(machines).where(eq(machines.machineId, body.machineId)).limit(1))[0]
-  if (existing && existing.licenseId === lic.id) {
-    const newToken = crypto.randomBytes(24).toString('base64url')
-    const tokenHash = crypto.createHash('sha256').update(newToken).digest('hex')
+  // ── Gate 7 (short-circuit): status ──────────────────────────────
+  if (lic.status === 'revoked') return reject('revoked', 403, 'This licence has been revoked.')
+  if (lic.status === 'suspended') return reject('suspended', 403, 'This licence is suspended. Contact support.')
+
+  // ── Gate 2: caller claims to own it (email match) ───────────────
+  if (body.email) {
+    const owner = (
+      await db.select({ email: user.email }).from(user).where(eq(user.id, lic.userId)).limit(1)
+    )[0]
+    if (owner?.email && owner.email.toLowerCase() !== body.email.toLowerCase()) {
+      return reject(
+        'not_your_key',
+        403,
+        'This licence belongs to a different account. Sign in to omnix.co.ke as the licence owner.',
+      )
+    }
+  }
+
+  // Existing machine row by fingerprint
+  const existingMachine = (
+    await db.select().from(machines).where(eq(machines.machineId, body.machineId)).limit(1)
+  )[0]
+
+  // ── Gate 3 + 4: cross-user / machine-owned-by-another ──────────
+  if (existingMachine && existingMachine.userId && existingMachine.userId !== lic.userId) {
+    return reject(
+      'machine_owned_by_another',
+      409,
+      'This computer is registered to a different Omnix account. Release it from that dashboard before activating a new licence.',
+    )
+  }
+
+  // ── Gate 5: variant conflict on this machine ───────────────────
+  if (existingMachine) {
+    const otherActives = await db
+      .select({ variant: licenses.variant, licenseId: licenses.id })
+      .from(activations)
+      .innerJoin(licenses, eq(activations.licenseId, licenses.id))
+      .where(eq(activations.machineId, existingMachine.id))
+
+    for (const row of otherActives) {
+      if (row.licenseId === lic.id) continue // same licence — idempotent path below
+      if (isVariantConflict(row.variant, lic.variant)) {
+        return reject(
+          'variant_conflict_on_machine',
+          409,
+          `This computer already runs Omnix ${row.variant.toUpperCase()}. ${
+            lic.variant === 'pro' || row.variant === 'pro'
+              ? 'Pro and trade variants cannot coexist on the same machine.'
+              : 'You cannot install two of the same trade variant on one machine.'
+          }`,
+        )
+      }
+    }
+  }
+
+  // Idempotent re-activation — same key + same machine.
+  if (existingMachine) {
+    const sameLicense = await db
+      .select({ id: activations.id })
+      .from(activations)
+      .where(and(eq(activations.licenseId, lic.id), eq(activations.machineId, existingMachine.id)))
+      .limit(1)
+    if (sameLicense[0]) {
+      const { authToken, tokenHash } = mintToken()
+      await db
+        .update(machines)
+        .set({
+          authTokenHash: tokenHash,
+          hostname: body.hostname ?? existingMachine.hostname,
+          os: body.os ?? existingMachine.os,
+          osVersion: body.osVersion ?? existingMachine.osVersion,
+          arch: body.arch ?? existingMachine.arch,
+          currentVersion: body.currentVersion ?? existingMachine.currentVersion,
+          activeModule: body.variant ?? existingMachine.activeModule,
+          status: 'active',
+          lastSeenAt: new Date(),
+        })
+        .where(eq(machines.id, existingMachine.id))
+      return camelOK({ lic, authToken, action: 'reactivated', code: 'reactivated' })
+    }
+  }
+
+  // ── Gate 6: seat capacity for THIS licence ─────────────────────
+  const seatCount = await db
+    .select({ n: count() })
+    .from(activations)
+    .where(eq(activations.licenseId, lic.id))
+  const used = Number(seatCount[0]?.n ?? 0)
+  if (used >= lic.maxMachines) {
+    return reject(
+      'seat_exhausted',
+      402,
+      `All ${lic.maxMachines} seats are in use. Release one from /dashboard/machines first.`,
+    )
+  }
+
+  // All gates passed. Register / reuse the machine row + record the
+  // activation in the join table. The (license_id, machine_id) unique
+  // index added in migration 0003 makes this idempotent.
+  let machineRowId = existingMachine?.id
+  const { authToken, tokenHash } = mintToken()
+  const now = new Date()
+  if (!machineRowId) {
+    machineRowId = createId()
+    await db.insert(machines).values({
+      id: machineRowId,
+      userId: lic.userId,
+      organizationId: lic.organizationId,
+      licenseId: lic.id, // primary — first licence activated on this PC
+      machineId: body.machineId,
+      authTokenHash: tokenHash,
+      hostname: body.hostname,
+      os: body.os ?? 'windows',
+      osVersion: body.osVersion,
+      arch: body.arch,
+      currentVersion: body.currentVersion,
+      activeModule: body.variant,
+      status: 'active',
+      firstSeenAt: now,
+      lastSeenAt: now,
+    })
+  } else {
     await db
       .update(machines)
       .set({
         authTokenHash: tokenHash,
-        hostname: body.hostname ?? existing.hostname,
-        os: body.os ?? existing.os,
-        osVersion: body.osVersion ?? existing.osVersion,
-        arch: body.arch ?? existing.arch,
-        currentVersion: body.currentVersion ?? existing.currentVersion,
-        activeModule: body.variant ?? existing.activeModule,
+        currentVersion: body.currentVersion ?? existingMachine?.currentVersion,
+        activeModule: body.variant ?? existingMachine?.activeModule,
         status: 'active',
-        lastSeenAt: new Date(),
+        lastSeenAt: now,
       })
-      .where(eq(machines.id, existing.id))
-    await logActivation(lic.id, body.machineId, 'reactivation', req)
-    return camelOK({ lic, authToken: newToken, action: 'reactivated' })
-  }
-  if (existing && existing.licenseId !== lic.id) {
-    await logActivation(lic.id, body.machineId, 'fingerprint_mismatch', req)
-    return Response.json({ ok: false, error: 'machine already bound to a different licence' }, { status: 409 })
+      .where(eq(machines.id, machineRowId))
   }
 
-  // Seat capacity.
-  const seatCount = await db
-    .select({ n: count() })
-    .from(machines)
-    .where(and(eq(machines.licenseId, lic.id), or(eq(machines.status, 'active'), isNull(machines.status))))
-  const used = Number(seatCount[0]?.n ?? 0)
-  if (used >= lic.maxMachines) {
-    await logActivation(lic.id, body.machineId, 'seat_full', req)
-    return Response.json({ ok: false, error: `seat limit reached (${lic.maxMachines})` }, { status: 409 })
-  }
+  await db
+    .insert(activations)
+    .values({
+      id: createId(),
+      licenseId: lic.id,
+      machineId: machineRowId,
+      outcome: 'ok',
+      ipAddress: req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? null,
+      userAgent: req.headers.get('user-agent') ?? null,
+      metadata: { fingerprint: body.machineId },
+    })
+    .onConflictDoNothing()
 
-  // Issue token + insert machine.
-  const machineRowId = createId()
+  return camelOK({ lic, authToken, action: 'activated', code: 'ok' })
+}
+
+// ─── helpers ──────────────────────────────────────────────────────
+
+function reject(code: ResultCode, status: number, message: string) {
+  return Response.json({ ok: false, code, error: message }, { status })
+}
+
+function mintToken() {
   const authToken = crypto.randomBytes(24).toString('base64url')
   const tokenHash = crypto.createHash('sha256').update(authToken).digest('hex')
-  const now = new Date()
-  await db.insert(machines).values({
-    id: machineRowId,
-    userId: lic.userId,
-    organizationId: lic.organizationId,
-    licenseId: lic.id,
-    machineId: body.machineId,
-    authTokenHash: tokenHash,
-    hostname: body.hostname,
-    os: body.os ?? 'windows',
-    osVersion: body.osVersion,
-    arch: body.arch,
-    currentVersion: body.currentVersion,
-    activeModule: body.variant,
-    status: 'active',
-    firstSeenAt: now,
-    lastSeenAt: now,
-  })
-  await logActivation(lic.id, body.machineId, 'ok', req, machineRowId)
-  return camelOK({ lic, authToken, action: 'activated' })
+  return { authToken, tokenHash }
 }
 
-async function logActivation(
-  licenseId: string | null,
-  machineId: string,
-  outcome: string,
-  req: Request,
-  machineRowId?: string,
-) {
-  if (!licenseId) return
-  await db.insert(activations).values({
-    id: createId(),
-    licenseId,
-    machineId: machineRowId ?? null,
-    outcome,
-    ipAddress: req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? null,
-    userAgent: req.headers.get('user-agent') ?? null,
-    metadata: { machine_fingerprint: machineId },
-  })
-}
-
-/** camelCase response shape that matches the desktop's ActivateResponse interface. */
 function camelOK({
-  lic, authToken, action,
-}: { lic: typeof licenses.$inferSelect; authToken: string; action: string }) {
+  lic,
+  authToken,
+  action,
+  code,
+}: {
+  lic: typeof licenses.$inferSelect
+  authToken: string
+  action: string
+  code: ResultCode
+}) {
   return Response.json({
     ok: true,
+    code,
     authToken,
     action,
     entitlements: {
@@ -146,6 +267,12 @@ function camelOK({
       trialEndsAt: lic.trialEndsAt?.toISOString() ?? null,
       majorVersionCap: lic.majorVersionCap,
       status: lic.status,
+      variant: lic.variant,
+      licenseKey: lic.licenseKey,
     },
   })
 }
+
+// Stub to silence the linter about `sql` import — kept around in case
+// the route later needs a raw fragment.
+const _ = sql

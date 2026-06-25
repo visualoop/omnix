@@ -52,7 +52,28 @@ export default async function DashboardDownloadsPage() {
       .orderBy(desc(licenses.createdAt)),
   ])
 
-  const ownedVariant = customerLicences.find((l) => l.status !== 'lapsed')?.variant as VariantId | undefined
+  const ownedSet = new Set(
+    customerLicences
+      .filter((l) => l.status !== 'lapsed' && l.status !== 'revoked')
+      .map((l) => l.variant as VariantId),
+  )
+  // If the customer owns Pro, hide the per-trade rows (Pro covers them).
+  // Otherwise show every variant row with badges on the ones they own.
+  const ownsPro = ownedSet.has('pro')
+  const visibleVariants: VariantId[] = ownsPro
+    ? ['pro']
+    : (['pro', 'dawa', 'retail', 'hospitality', 'hardware'] as const).filter(
+        (v) => ownedSet.size === 0 || ownedSet.has(v),
+      )
+  // When the user owns nothing yet show all five; when they own one or
+  // more trades, show only those trades (clean the noise). They can
+  // still see every variant on /downloads if they want to.
+  const showAllRows = ownedSet.size === 0
+  const finalVariants = showAllRows
+    ? (['pro', 'dawa', 'retail', 'hospitality', 'hardware'] as const)
+    : (visibleVariants as readonly VariantId[])
+
+  const ownedList = [...ownedSet]
 
   const meta = (latestRow?.metadata ?? {}) as { variants?: Partial<Record<VariantId, VariantUrls>> }
   const variants = meta.variants ?? {}
@@ -75,9 +96,11 @@ export default async function DashboardDownloadsPage() {
       <PageHeading
         title="Downloads"
         subtitle={
-          ownedVariant
-            ? `You own ${VARIANT_LABELS[ownedVariant]}. Pick the matching installer below.`
-            : 'Pick the installer for your trade.'
+          ownedList.length === 0
+            ? 'Pick the installer for your trade.'
+            : ownedList.length === 1
+              ? `You own ${VARIANT_LABELS[ownedList[0]]}. Pick the matching installer below.`
+              : `You own ${ownedList.map((v) => VARIANT_LABELS[v]).join(' + ')}. Pick the installer for the variant you want to set up first — you'll add the others from Settings → Licences inside the app.`
         }
       />
 
@@ -99,9 +122,9 @@ export default async function DashboardDownloadsPage() {
             </header>
 
             <ul className="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] divide-y divide-[var(--color-border)]">
-              {(['pro', 'dawa', 'retail', 'hospitality', 'hardware'] as const).map((v) => {
+              {finalVariants.map((v) => {
                 const u = urlsFor(v)
-                const isOwned = ownedVariant === v
+                const isOwned = ownedSet.has(v)
                 return (
                   <li key={v} className="grid grid-cols-[1fr_auto_auto] items-center gap-3 px-4 py-3">
                     <div>

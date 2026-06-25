@@ -32,7 +32,7 @@ export async function POST(req: Request) {
   // Compute amount in smallest currency unit (cents/kobo).
   const currency = (lic.currency as SupportedCurrency) ?? 'KES'
   const p = pricingFor(currency)
-  const amount = computeAmount(body.purpose, lic.tier, p)
+  const amount = computeAmount(body.purpose, lic.variant, p)
   if (amount <= 0) return Response.json({ error: 'no amount due' }, { status: 400 })
 
   const reference = newReference('OMX')
@@ -74,16 +74,21 @@ export async function POST(req: Request) {
 
 function computeAmount(
   purpose: InitInput['purpose'],
-  tier: string,
+  variant: string,
   p: ReturnType<typeof pricingFor>,
 ): number {
+  // Pro variant pays the business price (KES 150k); every other variant
+  // (dawa / retail / hospitality / hardware) pays the starter price
+  // (KES 30k). Tier is a state flag (trial / starter / business) and
+  // does not drive pricing.
+  const isPro = variant === 'pro'
   switch (purpose) {
     case 'license_fee':
-      return tier === 'business' ? p.business.oneTimeFee : p.starter.oneTimeFee
+      return isPro ? p.business.oneTimeFee : p.starter.oneTimeFee
     case 'maintenance_renewal':
-      return tier === 'business' ? p.business.maintenanceYearly : p.starter.maintenanceYearly
+      return isPro ? p.business.maintenanceYearly : p.starter.maintenanceYearly
     case 'major_upgrade': {
-      const fee = tier === 'business' ? p.business.oneTimeFee : p.starter.oneTimeFee
+      const fee = isPro ? p.business.oneTimeFee : p.starter.oneTimeFee
       return Math.round(fee * (1 - p.majorUpgradeDiscount / 100))
     }
     case 'cloud_backup':

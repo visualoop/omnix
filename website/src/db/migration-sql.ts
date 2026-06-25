@@ -338,6 +338,24 @@ CREATE TABLE "platform_settings" (
 --> statement-breakpoint
 ALTER TABLE "user" ADD COLUMN IF NOT EXISTS "metadata" jsonb DEFAULT '{}'::jsonb NOT NULL;
 --> statement-breakpoint
+ALTER TABLE "licenses" ADD COLUMN IF NOT EXISTS "origin" text DEFAULT 'paystack' NOT NULL;
+--> statement-breakpoint
+CREATE UNIQUE INDEX IF NOT EXISTS "activations_license_machine_uidx"
+  ON "activations" ("license_id", "machine_id")
+  WHERE "machine_id" IS NOT NULL;
+--> statement-breakpoint
+CREATE TABLE IF NOT EXISTS "license_sync_log" (
+  "id" text PRIMARY KEY NOT NULL,
+  "user_id" text REFERENCES "user"("id") ON DELETE SET NULL,
+  "machine_id" text,
+  "license_key" text NOT NULL,
+  "status" text NOT NULL,
+  "message" text,
+  "created_at" timestamp DEFAULT now() NOT NULL
+);
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "license_sync_log_user_idx" ON "license_sync_log" ("user_id");
+--> statement-breakpoint
 `
 
 /** Split into individual statements (Drizzle generates with statement-breakpoints). */
