@@ -98,9 +98,11 @@ export default async function DashboardDownloadsPage() {
         subtitle={
           ownedList.length === 0
             ? 'Pick the installer for your trade.'
-            : ownedList.length === 1
-              ? `You own ${VARIANT_LABELS[ownedList[0]]}. Pick the matching installer below.`
-              : `You own ${ownedList.map((v) => VARIANT_LABELS[v]).join(' + ')}. Pick the installer for the variant you want to set up first — you'll add the others from Settings → Licences inside the app.`
+            : ownsPro
+              ? 'You own Omnix Pro — covers every trade. Download the Pro installer below.'
+              : ownedList.length === 1
+                ? `You own ${VARIANT_LABELS[ownedList[0]]}. Pick the matching installer below.`
+                : `You own ${ownedList.map((v) => VARIANT_LABELS[v]).join(' + ')}. Pick the installer for the variant you want to set up first — you'll add the others from Settings → Licences inside the app.`
         }
       />
 

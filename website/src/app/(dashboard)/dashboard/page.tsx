@@ -78,7 +78,20 @@ export default async function DashboardOverviewPage({
 
   const firstName = session.user.name?.split(' ')[0] ?? 'there'
   const hasNoLicences = licList.length === 0
-  const hasTrial = licList.some((l) => l.status === 'trial')
+  // Pro is "owned" if any pro licence is active OR on trial. Pro covers
+  // every trade module, so we suppress trade-specific upgrade nudges
+  // (the "Try another trade" wizard, per-trade upgrade banners) once
+  // Pro is in the mix.
+  const ownsPro = licList.some(
+    (l) => l.variant === 'pro' && (l.status === 'active' || l.status === 'trial'),
+  )
+  const proTrial = licList.find((l) => l.variant === 'pro' && l.status === 'trial')
+  const otherTrials = licList.filter((l) => l.status === 'trial' && l.variant !== 'pro')
+  // "Show the trial banner" rule: a Pro trial is the only banner that
+  // matters when Pro is in play (it covers everything). Otherwise show
+  // the first non-Pro trial.
+  const trialToBanner = proTrial ?? otherTrials[0]
+  const hasTrialBanner = !!trialToBanner
 
   return (
     <div className="space-y-8">
@@ -94,7 +107,7 @@ export default async function DashboardOverviewPage({
       {/* Trial → buy banner. Shows when at least one licence is on trial.
           Each visible licence below also gets its own Upgrade button — this
           banner is the "see this everywhere" gentle prompt. */}
-      {!hasNoLicences && hasTrial ? (
+      {!hasNoLicences && hasTrialBanner ? (
         <div className="rounded-xl border border-[var(--color-accent)] bg-[var(--color-accent-soft)] p-4 lg:p-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex flex-col gap-0.5">
             <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-[var(--color-accent)]">
@@ -104,14 +117,16 @@ export default async function DashboardOverviewPage({
               Lock in your licence — pay once, use forever.
             </span>
             <span className="text-[13px] text-[var(--color-fg-muted)]">
-              KES 30,000 one-time per trade. Pro covers all four trades for KES 150,000.
+              {trialToBanner!.variant === 'pro'
+                ? 'Pro covers all four trades for KES 150,000 once. No subscription.'
+                : 'KES 30,000 one-time per trade. Pro covers all four trades for KES 150,000.'}
             </span>
           </div>
           <a
-            href={`/buy?variant=${encodeURIComponent(licList.find((l) => l.status === 'trial')?.variant ?? 'pro')}`}
+            href={`/buy?variant=${encodeURIComponent(trialToBanner!.variant ?? 'pro')}`}
             className="shrink-0 inline-flex items-center justify-center rounded-md bg-[var(--color-accent)] px-4 py-2 font-mono text-[12px] uppercase tracking-[0.16em] text-white transition-colors hover:bg-[var(--color-accent)]/90 cursor-pointer"
           >
-            Purchase licence →
+            Purchase {trialToBanner!.variant === 'pro' ? 'Pro' : 'licence'} →
           </a>
         </div>
       ) : null}
@@ -125,40 +140,59 @@ export default async function DashboardOverviewPage({
               Licences
             </h2>
             <ul className="rounded-lg border border-[var(--color-border)] divide-y divide-[var(--color-border)]">
-              {licList.map((l) => (
-                <li key={l.id} className="flex items-center justify-between gap-3 px-4 py-3 text-[13px]">
-                  <code className="font-mono text-[12px] text-[var(--color-fg)] select-all flex-1 min-w-0 truncate">{l.licenseKey}</code>
-                  <span className="text-[var(--color-fg-muted)] shrink-0">{l.variant} · {l.tier}</span>
-                  <span className="font-mono text-[10px] uppercase tracking-[0.18em] shrink-0">{l.status}</span>
-                  {l.status === 'trial' ? (
-                    <a
-                      href={`/buy?variant=${encodeURIComponent(l.variant ?? 'pro')}`}
-                      className="shrink-0 inline-flex items-center rounded-md border border-[var(--color-accent)] bg-[var(--color-accent)] px-2.5 py-1 font-mono text-[10px] uppercase tracking-[0.18em] text-white hover:bg-[var(--color-accent)]/90 transition-colors cursor-pointer"
-                    >
-                      Upgrade
-                    </a>
-                  ) : (
-                    <a
-                      href={`/dashboard/licenses/${l.id}`}
-                      className="shrink-0 inline-flex items-center rounded-md border border-[var(--color-border)] px-2.5 py-1 font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--color-fg-muted)] hover:text-[var(--color-fg)] hover:border-[var(--color-border-strong)] transition-colors cursor-pointer"
-                    >
-                      Open
-                    </a>
-                  )}
-                </li>
-              ))}
+              {licList.map((l) => {
+                // A trade-variant licence becomes redundant once the user
+                // also owns Pro — show a "Covered by Pro" pill instead of
+                // an Upgrade button so we don't push them to pay twice.
+                const supersededByPro = ownsPro && l.variant !== 'pro'
+                const isTrialOffer = l.status === 'trial' && !supersededByPro
+                return (
+                  <li key={l.id} className="flex items-center justify-between gap-3 px-4 py-3 text-[13px]">
+                    <code className="font-mono text-[12px] text-[var(--color-fg)] select-all flex-1 min-w-0 truncate">{l.licenseKey}</code>
+                    <span className="text-[var(--color-fg-muted)] shrink-0">{l.variant} · {l.tier}</span>
+                    <span className="font-mono text-[10px] uppercase tracking-[0.18em] shrink-0">{l.status}</span>
+                    {supersededByPro ? (
+                      <span
+                        className="shrink-0 inline-flex items-center rounded-md border border-[var(--color-border)] px-2.5 py-1 font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--color-fg-muted)]"
+                        title="Pro covers every trade module — this individual licence is redundant. You can release it from Settings → Licences inside the app."
+                      >
+                        Covered by Pro
+                      </span>
+                    ) : isTrialOffer ? (
+                      <a
+                        href={`/buy?variant=${encodeURIComponent(l.variant ?? 'pro')}`}
+                        className="shrink-0 inline-flex items-center rounded-md border border-[var(--color-accent)] bg-[var(--color-accent)] px-2.5 py-1 font-mono text-[10px] uppercase tracking-[0.18em] text-white hover:bg-[var(--color-accent)]/90 transition-colors cursor-pointer"
+                      >
+                        Upgrade
+                      </a>
+                    ) : (
+                      <a
+                        href={`/dashboard/licenses/${l.id}`}
+                        className="shrink-0 inline-flex items-center rounded-md border border-[var(--color-border)] px-2.5 py-1 font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--color-fg-muted)] hover:text-[var(--color-fg)] hover:border-[var(--color-border-strong)] transition-colors cursor-pointer"
+                      >
+                        Open
+                      </a>
+                    )}
+                  </li>
+                )
+              })}
             </ul>
             {/* Always offer to try (or buy) another variant — customers
                 often start with one trade and add more (e.g. Dawa pharmacy
                 + Retail mini-mart). The wizard skips variants the customer
                 already has so we don't issue duplicate trial keys. */}
-            <div className="mt-4">
-              <StartTrialWizard
-                defaultVariant={pickFirstUntakenVariant(licList.map((l) => l.variant)) ?? defaultVariant}
-                ownedVariants={licList.map((l) => l.variant).filter(Boolean) as string[]}
-                compact
-              />
-            </div>
+            {/* When the user owns Pro (active OR trial) we hide the
+                "try another trade" wizard entirely — Pro already covers
+                every trade variant, no need to nudge them to buy extras. */}
+            {!ownsPro ? (
+              <div className="mt-4">
+                <StartTrialWizard
+                  defaultVariant={pickFirstUntakenVariant(licList.map((l) => l.variant)) ?? defaultVariant}
+                  ownedVariants={licList.map((l) => l.variant).filter(Boolean) as string[]}
+                  compact
+                />
+              </div>
+            ) : null}
           </section>
 
           <section>
@@ -179,12 +213,13 @@ export default async function DashboardOverviewPage({
                     <span className="text-[var(--color-fg)] font-medium flex-1 min-w-0 truncate">{m.hostname ?? '—'}</span>
                     <span className="text-[var(--color-fg-muted)] shrink-0">{m.os} · v{m.currentVersion ?? '?'}</span>
                     <span className="font-mono text-[10px] uppercase tracking-[0.18em] shrink-0">{m.status}</span>
-                    {/* Show an Upgrade CTA when this machine's bound licence
-                        is still on trial. We pre-select the variant so the
-                        user can't accidentally pay for the wrong module. */}
-                    {hasTrial ? (
+                    {/* Show an Upgrade CTA when there's a trial worth
+                        promoting. If Pro is on trial, that's the only
+                        upgrade worth offering (covers everything). If
+                        Pro isn't in play, the first non-Pro trial wins. */}
+                    {trialToBanner ? (
                       <a
-                        href={`/buy?variant=${encodeURIComponent(licList.find((l) => l.status === 'trial')?.variant ?? 'pro')}`}
+                        href={`/buy?variant=${encodeURIComponent(trialToBanner.variant ?? 'pro')}`}
                         className="shrink-0 inline-flex items-center rounded-md border border-[var(--color-accent)] bg-[var(--color-accent)] px-2.5 py-1 font-mono text-[10px] uppercase tracking-[0.18em] text-white hover:bg-[var(--color-accent)]/90 transition-colors cursor-pointer"
                       >
                         Upgrade

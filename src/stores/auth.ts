@@ -61,6 +61,37 @@ export const useAuthStore = create<AuthState>()(
           }
           // Resolve + cache effective RBAC permissions for this user.
           get().loadPermissions();
+          // Run a one-shot multi-licence sync so legacy local keys (from
+          // before the Better Auth migration) get reconciled with the
+          // cloud DB. Fire-and-forget; never blocks sign-in.
+          import("@/services/local-licenses").then((m) =>
+            Promise.all([
+              import("@tauri-apps/api/core").then(({ invoke }) => invoke<string>("fingerprint").catch(() => "")),
+              import("@/lib/db").then(({ query }) =>
+                query<{ value: string }>(
+                  `SELECT value FROM settings WHERE key = 'licensing.owner_email'`,
+                ).then((rows) => rows[0]?.value || ""),
+              ),
+            ]).then(([machineId, email]) => {
+              if (!email || !machineId) return;
+              return m.syncLicenses(email, machineId).then((results) => {
+                const verified = results.filter((r) => r.status === "verified").length;
+                const trouble = results.filter((r) => r.status !== "verified").length;
+                if (trouble > 0) {
+                  import("sonner").then(({ toast }) =>
+                    toast.warning(`${trouble} licence${trouble === 1 ? "" : "s"} need attention`, {
+                      description: "Open Settings → Licences for details.",
+                      duration: 8000,
+                    }),
+                  );
+                } else if (verified > 0) {
+                  import("sonner").then(({ toast }) =>
+                    toast.success(`${verified} licence${verified === 1 ? "" : "s"} synced`),
+                  );
+                }
+              });
+            }).catch(() => {}),
+          ).catch(() => {});
           // Run recurring invoice schedule (once per session, async fire-and-forget)
           import("@/services/recurring-invoicing").then((m) =>
             m.runRecurringSchedule(user.id).then((r) => {

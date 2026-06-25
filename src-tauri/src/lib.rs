@@ -376,6 +376,18 @@ fn run_inner() {
             sql: include_str!("../migrations/044_ai_chat_history.sql"),
             kind: MigrationKind::Up,
         },
+        Migration {
+            version: 45,
+            description: "PO lifecycle hardening: currency + exchange rate + approval workflow + 3-way match tolerance + reverse-GRN audit fields",
+            sql: include_str!("../migrations/045_po_lifecycle.sql"),
+            kind: MigrationKind::Up,
+        },
+        Migration {
+            version: 46,
+            description: "Multi-license per machine: local_licenses table + backfill from legacy `license`",
+            sql: include_str!("../migrations/046_local_licenses.sql"),
+            kind: MigrationKind::Up,
+        },
     ];
 
     tauri::Builder::default()
