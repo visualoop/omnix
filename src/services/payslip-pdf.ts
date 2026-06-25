@@ -4,6 +4,7 @@
  */
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
+import { toast } from "sonner";
 import { query } from "@/lib/db";
 import type { PayrollRun, Payslip } from "@/services/payroll";
 import { intlLocale } from "@/lib/intl";
@@ -197,10 +198,16 @@ function renderPayslip(pdf: jsPDF, payslip: PayslipForPdf, run: PayrollRun, busi
 }
 
 export async function downloadPayslipPdf(payslip: PayslipForPdf, run: PayrollRun) {
-  const business = await getBusinessInfo();
-  const pdf = new jsPDF({ unit: "mm", format: "a4" });
-  renderPayslip(pdf, payslip, run, business);
-  pdf.save(`payslip-${payslip.employee_number}-${run.period_year}-${String(run.period_month).padStart(2, "0")}.pdf`);
+  try {
+    const business = await getBusinessInfo();
+    const pdf = new jsPDF({ unit: "mm", format: "a4" });
+    renderPayslip(pdf, payslip, run, business);
+    const filename = `payslip-${payslip.employee_number}-${run.period_year}-${String(run.period_month).padStart(2, "0")}.pdf`;
+    pdf.save(filename);
+    toast.success("Payslip PDF downloaded", { description: filename });
+  } catch (e) {
+    toast.error("Couldn't generate payslip PDF", { description: e instanceof Error ? e.message : String(e) });
+  }
 }
 
 /** Pure-shape render: take loaded data + business info, return PDF bytes. */
@@ -224,13 +231,21 @@ export async function renderPayrollRunBytes(payslips: PayslipForPdf[], run: Payr
 }
 
 export async function downloadPayrollRunPdf(payslips: PayslipForPdf[], run: PayrollRun) {
-  const business = await getBusinessInfo();
-  const pdf = new jsPDF({ unit: "mm", format: "a4" });
-  payslips.forEach((p, idx) => {
-    if (idx > 0) pdf.addPage();
-    renderPayslip(pdf, p, run, business);
-  });
-  pdf.save(`payroll-${run.period_year}-${String(run.period_month).padStart(2, "0")}.pdf`);
+  try {
+    const business = await getBusinessInfo();
+    const pdf = new jsPDF({ unit: "mm", format: "a4" });
+    payslips.forEach((p, idx) => {
+      if (idx > 0) pdf.addPage();
+      renderPayslip(pdf, p, run, business);
+    });
+    const filename = `payroll-${run.period_year}-${String(run.period_month).padStart(2, "0")}.pdf`;
+    pdf.save(filename);
+    toast.success(`Payroll batch downloaded (${payslips.length} payslip${payslips.length === 1 ? "" : "s"})`, {
+      description: filename,
+    });
+  } catch (e) {
+    toast.error("Couldn't generate payroll PDF", { description: e instanceof Error ? e.message : String(e) });
+  }
 }
 
 export async function previewPayslipPdf(payslip: PayslipForPdf, run: PayrollRun) {

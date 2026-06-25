@@ -7,6 +7,7 @@
  */
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
+import { toast } from "sonner";
 import { query } from "@/lib/db";
 import type { Invoice, Quotation, DocumentItem } from "@/services/invoicing";
 import { intlLocale } from "@/lib/intl";
@@ -447,13 +448,25 @@ export async function renderQuotationPdfBytes(
 }
 
 export async function downloadInvoicePdf(invoice: Invoice, items: DocumentItem[], payments?: PdfPayment[]) {
-  const pdf = await generateInvoicePdf(invoice, items, payments);
-  pdf.save(`${invoice.invoice_number}.pdf`);
+  try {
+    const pdf = await generateInvoicePdf(invoice, items, payments);
+    const filename = `${invoice.invoice_number}.pdf`;
+    pdf.save(filename);
+    toast.success("Invoice PDF downloaded", { description: filename });
+  } catch (e) {
+    toast.error("Couldn't generate invoice PDF", { description: e instanceof Error ? e.message : String(e) });
+  }
 }
 
 export async function downloadQuotationPdf(quotation: Quotation, items: DocumentItem[]) {
-  const pdf = await generateQuotationPdf(quotation, items);
-  pdf.save(`${quotation.quotation_number}.pdf`);
+  try {
+    const pdf = await generateQuotationPdf(quotation, items);
+    const filename = `${quotation.quotation_number}.pdf`;
+    pdf.save(filename);
+    toast.success("Quotation PDF downloaded", { description: filename });
+  } catch (e) {
+    toast.error("Couldn't generate quotation PDF", { description: e instanceof Error ? e.message : String(e) });
+  }
 }
 
 /** Open in new tab for preview (Tauri webview shows native PDF viewer). */

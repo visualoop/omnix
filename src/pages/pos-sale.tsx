@@ -61,6 +61,7 @@ import { PromoDialog } from "@/components/pos/promo-dialog";
 import { openCustomerDisplay } from "@/lib/customer-display";
 import { countHeldSales } from "@/services/held-sales";
 import { categoryColor, stockColor } from "@/lib/category-colors";
+import { VARIANT_ACCENT } from "@/lib/variant";
 import { useNavigate } from "react-router-dom";
 import { money as KES } from "@/lib/money";
 import { useCountry } from "@/stores/country";
@@ -828,6 +829,7 @@ function ProductCard({ product, onClick }: {
   const reorder = (product as any).reorder_level || 0;
   const categoryId = (product as any).category_id || null;
   const buyingPrice = (product as any).buying_price as number | undefined;
+  const imagePath = (product as any).image_path as string | null | undefined;
   const sellingPrice = product.selling_price;
   const oos = stock <= 0;
   const lowStock = !oos && stock <= reorder;
@@ -844,35 +846,66 @@ function ProductCard({ product, onClick }: {
     <button
       onClick={onClick}
       disabled={oos}
-      className={`group relative flex flex-col text-left overflow-hidden rounded-xl border-2 bg-card p-3 transition-all antialiased ${
+      // Module-themed card: variant accent drives the border + soft tint
+      // background. Drops the previous `bg-card` (which rendered near-
+      // black in dark mode regardless of which trade module you ran).
+      style={{
+        // Soft module-accent wash + hairline accent border. Both fall
+        // back gracefully in light AND dark mode because they're built
+        // off a single hex (15% alpha for the tint, 30% for the border).
+        background: `linear-gradient(180deg, ${VARIANT_ACCENT}10, ${VARIANT_ACCENT}05)`,
+        borderColor: `${VARIANT_ACCENT}40`,
+      }}
+      className={`group relative flex flex-col text-left overflow-hidden rounded-xl border-2 p-3 transition-all antialiased ${
         oos
-          ? "opacity-40 cursor-not-allowed border-dashed border-rose-500/40"
-          : `${cc.border} hover:border-current ${cc.fg} hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.97]`
+          ? "opacity-40 cursor-not-allowed"
+          : "hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.97] hover:[border-color:var(--accent-strong)]"
       }`}
-      style={{ minHeight: 96 }}
     >
-      {/* Category-tinted wash — subtle, lives behind the name. Adds life
-          without overpowering the typographic hierarchy. */}
-      <span aria-hidden className={`absolute inset-0 ${cc.bg} opacity-[0.35] pointer-events-none`} />
+      {/* Override hover border color to a stronger version of the accent */}
+      <style>{`.group:hover { --accent-strong: ${VARIANT_ACCENT}; }`}</style>
 
-      {/* Soft gloss — single hairline gradient at the top, gives the card
-          an "off-the-shelf" feel without resorting to drop-shadows. Stays
-          consistent in dark mode by leaning on foreground/background
-          tokens rather than literal white. */}
-      <span aria-hidden className="absolute inset-x-0 top-0 h-[18%] bg-gradient-to-b from-foreground/[0.04] to-transparent pointer-events-none" />
+      {/* Soft gloss — single hairline gradient at the top. */}
+      <span
+        aria-hidden
+        className="absolute inset-x-0 top-0 h-[18%] bg-gradient-to-b from-foreground/[0.04] to-transparent pointer-events-none"
+      />
 
-      {/* Watermark icon — Package glyph behind the name, low opacity. The
-          glyph is large (60% of card height) so it reads as a background
-          texture, not as content. */}
-      <span aria-hidden className="absolute right-1 bottom-1 pointer-events-none">
-        <Package className={`h-14 w-14 ${cc.fg} opacity-[0.06]`} strokeWidth={1.5} />
-      </span>
+      {/* Product image — when set, fills the bottom-right ~50% of the
+          card as a square thumbnail. When NOT set, fall through to the
+          themed Package glyph placeholder. */}
+      {imagePath ? (
+        <span
+          aria-hidden
+          className="absolute right-1 bottom-1 w-[52%] aspect-square rounded-md overflow-hidden border border-foreground/5 pointer-events-none"
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={imagePath}
+            alt=""
+            className="h-full w-full object-cover"
+            onError={(e) => {
+              // Hide on error so the placeholder shows through.
+              e.currentTarget.style.display = "none";
+            }}
+          />
+        </span>
+      ) : (
+        <span aria-hidden className="absolute right-1 bottom-1 pointer-events-none">
+          <Package
+            className="h-14 w-14 opacity-[0.18]"
+            strokeWidth={1.5}
+            style={{ color: VARIANT_ACCENT }}
+          />
+        </span>
+      )}
 
-      {/* Category dot top-left */}
+      {/* Category dot top-left — stays category-tinted (not module-tinted)
+          so different SKUs in the same module are still visually
+          distinguishable. */}
       <span className={`relative z-[1] absolute top-2.5 left-2.5 size-2 rounded-full ${cc.dot}`} />
 
-      {/* Stock / margin chip — top-right. Stock by default; margin on hover
-          (when a buying price is recorded). Swap is via group-hover. */}
+      {/* Stock / margin chip — top-right. */}
       <span
         className={`absolute top-2 right-2 px-1.5 py-0.5 rounded-md text-[10px] font-mono font-bold tabular-nums tracking-wider transition-opacity ${sc.bg} ${sc.text} ${
           lowStock ? "ring-1 ring-amber-500/30" : ""
@@ -898,7 +931,7 @@ function ProductCard({ product, onClick }: {
 
       {/* Footer: category caption + price */}
       <div className="relative z-[1] mt-auto flex items-end justify-between gap-2">
-        <span className={`text-[10px] uppercase tracking-[0.06em] truncate ${cc.fg} opacity-70`}>
+        <span className="text-[10px] uppercase tracking-[0.06em] truncate text-muted-foreground">
           {(product as any).category_name || ""}
         </span>
         <span className="font-mono font-bold text-[16px] tabular-nums leading-none text-foreground">

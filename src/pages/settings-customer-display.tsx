@@ -1,23 +1,49 @@
 /**
- * Customer display settings page.
- * Controls what shows on the second-screen customer display.
+ * Customer display settings — fully redesigned.
  *
- * Privacy mode is PER MODULE — Dawa defaults to ON (medication-name privacy
- * required), retail / hospitality / hardware default to OFF (customers need
- * to see what they're paying for and what's coming from the kitchen).
+ * Editorial layout (frontend-design + emil-design-eng skills):
+ *   - Newspaper-masthead PageHeader at the top (eyebrow + serif title +
+ *     plain-language lede + right-aligned "Open display" CTA).
+ *   - Three vertical sections separated by hairline rules: Privacy,
+ *     What's shown, Idle playlist.
+ *   - Generous gutters between sections. Mono captions for axis labels.
+ *   - Playlist tiles are bigger, show thumbnails for image slides, source
+ *     icon for iframe/local-video, and have drag-style reorder controls
+ *     (up/down arrows) plus per-slide duration inline-editable.
+ *
+ * Local video files supported alongside the existing image/iframe types.
+ * We use Tauri's dialog plugin to let the user pick from the file system
+ * and `convertFileSrc()` to turn the absolute path into a URL the
+ * second-window webview can load.
  */
-import { useEffect, useState } from "react";
+import { useEffect, useState } from "react"
 import {
   Eye,
   Monitor,
   Receipt,
   User,
-} from "@phosphor-icons/react";
-import { Switch } from "@/components/ui/switch";
-import { Button } from "@/components/ui/button";
-import { query, execute } from "@/lib/db";
-import { openCustomerDisplay, closeCustomerDisplay, isCustomerDisplayOpen } from "@/lib/customer-display";
-import { toast } from "sonner";
+  PlusCircle,
+  Trash,
+  ArrowUp,
+  ArrowDown,
+  ImageSquare,
+  VideoCamera,
+  Globe,
+  Folder,
+} from "@phosphor-icons/react"
+import { Switch } from "@/components/ui/switch"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { PageHeader } from "@/components/layout/page-header"
+import { query, execute } from "@/lib/db"
+import {
+  openCustomerDisplay,
+  closeCustomerDisplay,
+  isCustomerDisplayOpen,
+} from "@/lib/customer-display"
+import { toast } from "sonner"
+import { open as openFileDialog } from "@tauri-apps/plugin-dialog"
+import { convertFileSrc } from "@tauri-apps/api/core"
 
 const MODULES = [
   { id: "core" as const, label: "Core (POS only)", defaultPrivacy: false },
@@ -25,19 +51,21 @@ const MODULES = [
   { id: "retail" as const, label: "Retail (Soko)", defaultPrivacy: false },
   { id: "hardware" as const, label: "Hardware", defaultPrivacy: false },
   { id: "hospitality" as const, label: "Hospitality", defaultPrivacy: false },
-];
+]
 
 export function CustomerDisplaySettingsPage() {
-  const [privacyByModule, setPrivacyByModule] = useState<Record<string, boolean>>({});
-  const [showTax, setShowTax] = useState(true);
-  const [showCustomer, setShowCustomer] = useState(true);
-  const [displayOpen, setDisplayOpen] = useState(false);
-  const [loading, setLoading] = useState(true);
+  const [privacyByModule, setPrivacyByModule] = useState<Record<string, boolean>>({})
+  const [showTax, setShowTax] = useState(true)
+  const [showCustomer, setShowCustomer] = useState(true)
+  const [displayOpen, setDisplayOpen] = useState(false)
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    const keys = MODULES.map((m) => `customer_display.privacy.${m.id}`)
-      .concat(["customer_display.show_tax", "customer_display.show_customer"]);
-    const placeholders = keys.map((_, i) => `?${i + 1}`).join(",");
+    const keys = MODULES.map((m) => `customer_display.privacy.${m.id}`).concat([
+      "customer_display.show_tax",
+      "customer_display.show_customer",
+    ])
+    const placeholders = keys.map((_, i) => `?${i + 1}`).join(",")
     Promise.all([
       query<{ key: string; value: string }>(
         `SELECT key, value FROM settings WHERE key IN (${placeholders})`,
@@ -45,112 +73,185 @@ export function CustomerDisplaySettingsPage() {
       ),
       isCustomerDisplayOpen(),
     ]).then(([rows, open]) => {
-      const map = Object.fromEntries(rows.map((r) => [r.key, r.value]));
-      const pm: Record<string, boolean> = {};
+      const map = Object.fromEntries(rows.map((r) => [r.key, r.value]))
+      const pm: Record<string, boolean> = {}
       for (const m of MODULES) {
-        const v = map[`customer_display.privacy.${m.id}`];
-        pm[m.id] = v === undefined ? m.defaultPrivacy : v === "1";
+        const v = map[`customer_display.privacy.${m.id}`]
+        pm[m.id] = v === undefined ? m.defaultPrivacy : v === "1"
       }
-      setPrivacyByModule(pm);
-      setShowTax(map["customer_display.show_tax"] !== "0");
-      setShowCustomer(map["customer_display.show_customer"] !== "0");
-      setDisplayOpen(open);
-      setLoading(false);
-    });
-  }, []);
+      setPrivacyByModule(pm)
+      setShowTax(map["customer_display.show_tax"] !== "0")
+      setShowCustomer(map["customer_display.show_customer"] !== "0")
+      setDisplayOpen(open)
+      setLoading(false)
+    })
+  }, [])
 
   const save = async (key: string, value: string) => {
     await execute(
       `INSERT INTO settings (key, value, category) VALUES (?1, ?2, 'customer_display')
        ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = datetime('now')`,
       [key, value],
-    );
-  };
+    )
+  }
 
   const toggleDisplay = async () => {
     try {
       if (displayOpen) {
-        await closeCustomerDisplay();
-        setDisplayOpen(false);
-        toast.success("Customer display closed");
+        await closeCustomerDisplay()
+        setDisplayOpen(false)
+        toast.success("Customer display closed")
       } else {
-        await openCustomerDisplay();
-        setDisplayOpen(true);
-        toast.success("Customer display opened");
+        await openCustomerDisplay()
+        setDisplayOpen(true)
+        toast.success("Customer display opened")
       }
     } catch (e) {
-      toast.error(String(e));
+      toast.error(String(e))
     }
-  };
+  }
 
-  if (loading) return <div className="text-sm text-muted-foreground">Loading...</div>;
+  if (loading) {
+    return <div className="p-6 text-sm text-muted-foreground">Loading…</div>
+  }
 
   return (
-    <div className="space-y-6 max-w-lg">
-      <div className="flex items-center justify-between">
-        <div>
-          <h3 className="text-sm font-medium flex items-center gap-2">
-            <Monitor className="h-4 w-4" /> Test Display
-          </h3>
-          <p className="text-[11px] text-muted-foreground mt-0.5">
-            Open a window on your second monitor to preview the customer-facing screen.
+    <div className="flex flex-col gap-10 max-w-3xl">
+      <PageHeader
+        eyebrow="Settings"
+        title="Customer display"
+        description="The second-monitor screen your customers face while you ring up sales. Set what they see and what stays private."
+        actions={
+          <Button onClick={toggleDisplay} variant={displayOpen ? "outline" : "default"} size="sm">
+            <Monitor className="h-3.5 w-3.5" />
+            {displayOpen ? "Close display" : "Open display"}
+          </Button>
+        }
+      />
+
+      {/* ─── Privacy mode per module ──────────────────────────── */}
+      <section className="flex flex-col gap-5">
+        <header className="flex flex-col gap-1.5">
+          <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
+            Privacy
+          </span>
+          <h2
+            style={{ fontFamily: "var(--font-display, serif)" }}
+            className="text-[20px] font-medium tracking-[-0.01em]"
+          >
+            What customers see <em>per module</em>
+          </h2>
+          <p className="text-[13px] leading-[1.55] text-muted-foreground max-w-[60ch]">
+            When ON, item names hide on the customer-facing screen — useful for pharmacies
+            where medication names are confidential. Off elsewhere so the customer can
+            confirm what they&rsquo;re paying for.
           </p>
-        </div>
-        <Button variant="outline" size="sm" onClick={toggleDisplay}>
-          {displayOpen ? "Close" : "Open"} Display
-        </Button>
-      </div>
-
-      <div className="border-t border-border" />
-
-      <div>
-        <h3 className="text-sm font-medium flex items-center gap-2 mb-1">
-          <Eye className="h-4 w-4" /> Privacy mode (per module)
-        </h3>
-        <p className="text-[11px] text-muted-foreground mb-3">
-          When ON, item names are hidden on the customer display for that module
-          (e.g. for Dawa to keep medications private). Off elsewhere so the
-          customer can confirm what's being prepared or rung up.
-        </p>
-        <div className="space-y-3 pl-6">
+        </header>
+        <ul className="rounded-md border border-foreground/10 divide-y divide-foreground/5">
           {MODULES.map((m) => (
-            <div key={m.id} className="flex items-center justify-between gap-4">
-              <div className="text-sm">{m.label}</div>
+            <li key={m.id} className="flex items-center justify-between gap-4 px-4 py-3">
+              <div className="flex items-center gap-3">
+                <Eye className="h-3.5 w-3.5 text-muted-foreground/60" />
+                <span className="text-[14px]">{m.label}</span>
+              </div>
               <Switch
                 checked={privacyByModule[m.id] ?? m.defaultPrivacy}
                 onCheckedChange={(v) => {
-                  setPrivacyByModule((p) => ({ ...p, [m.id]: v }));
-                  save(`customer_display.privacy.${m.id}`, v ? "1" : "0");
+                  setPrivacyByModule((p) => ({ ...p, [m.id]: v }))
+                  save(`customer_display.privacy.${m.id}`, v ? "1" : "0")
                 }}
               />
-            </div>
+            </li>
           ))}
+        </ul>
+      </section>
+
+      {/* ─── What's shown on screen ──────────────────────────── */}
+      <section className="flex flex-col gap-5">
+        <header className="flex flex-col gap-1.5">
+          <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
+            On screen
+          </span>
+          <h2
+            style={{ fontFamily: "var(--font-display, serif)" }}
+            className="text-[20px] font-medium tracking-[-0.01em]"
+          >
+            Layout <em>details</em>
+          </h2>
+        </header>
+        <ul className="rounded-md border border-foreground/10 divide-y divide-foreground/5">
+          <SettingRow
+            icon={Receipt}
+            label="Tax breakdown"
+            description="Show the tax line separately from the total."
+            checked={showTax}
+            onChange={(v) => {
+              setShowTax(v)
+              save("customer_display.show_tax", v ? "1" : "0")
+            }}
+          />
+          <SettingRow
+            icon={User}
+            label="Customer name"
+            description="Show the selected customer&rsquo;s name on the display."
+            checked={showCustomer}
+            onChange={(v) => {
+              setShowCustomer(v)
+              save("customer_display.show_customer", v ? "1" : "0")
+            }}
+          />
+        </ul>
+      </section>
+
+      {/* ─── Idle playlist ──────────────────────────────────── */}
+      <section className="flex flex-col gap-5">
+        <header className="flex flex-col gap-1.5">
+          <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
+            Idle playlist
+          </span>
+          <h2
+            style={{ fontFamily: "var(--font-display, serif)" }}
+            className="text-[20px] font-medium tracking-[-0.01em]"
+          >
+            What plays <em>when the till is empty</em>
+          </h2>
+          <p className="text-[13px] leading-[1.55] text-muted-foreground max-w-[60ch]">
+            Rotate through promo images, local videos saved on this computer, or live
+            YouTube/web embeds. Slides switch automatically. The cart takes over the
+            instant a cashier rings up an item.
+          </p>
+        </header>
+        <PlaylistEditor />
+      </section>
+    </div>
+  )
+}
+
+function SettingRow({
+  icon: Icon,
+  label,
+  description,
+  checked,
+  onChange,
+}: {
+  icon: typeof Monitor
+  label: string
+  description: string
+  checked: boolean
+  onChange: (v: boolean) => void
+}) {
+  return (
+    <li className="flex items-start justify-between gap-4 px-4 py-3">
+      <div className="flex items-start gap-3 min-w-0">
+        <Icon className="h-3.5 w-3.5 mt-1 text-muted-foreground/60 shrink-0" />
+        <div className="min-w-0">
+          <div className="text-[14px] font-medium">{label}</div>
+          <div className="text-[12px] text-muted-foreground mt-0.5">{description}</div>
         </div>
       </div>
-
-      <div className="border-t border-border" />
-
-      <SettingToggle
-        icon={Receipt}
-        label="Show tax breakdown"
-        description="Display tax line separately on totals."
-        checked={showTax}
-        onChange={(v) => { setShowTax(v); save("customer_display.show_tax", v ? "1" : "0"); }}
-      />
-
-      <SettingToggle
-        icon={User}
-        label="Show customer name"
-        description="Show the selected customer name on the display."
-        checked={showCustomer}
-        onChange={(v) => { setShowCustomer(v); save("customer_display.show_customer", v ? "1" : "0"); }}
-      />
-
-      <div className="border-t border-border" />
-
-      <PlaylistEditor />
-    </div>
-  );
+      <Switch checked={checked} onCheckedChange={onChange} />
+    </li>
+  )
 }
 
 interface PlaylistSlide {
@@ -161,9 +262,6 @@ interface PlaylistSlide {
 
 function PlaylistEditor() {
   const [slides, setSlides] = useState<PlaylistSlide[]>([])
-  const [draftUrl, setDraftUrl] = useState("")
-  const [draftType, setDraftType] = useState<PlaylistSlide["type"]>("image")
-  const [draftDuration, setDraftDuration] = useState(15)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -190,15 +288,10 @@ function PlaylistEditor() {
     )
   }
 
-  const addSlide = () => {
-    if (!draftUrl.trim()) {
-      toast.error("URL required")
-      return
-    }
-    const next = [...slides, { type: draftType, url: draftUrl.trim(), durationSeconds: Math.max(3, draftDuration) }]
+  const addSlide = (slide: PlaylistSlide) => {
+    const next = [...slides, slide]
     setSlides(next)
     persist(next)
-    setDraftUrl("")
   }
 
   const removeSlide = (idx: number) => {
@@ -207,82 +300,271 @@ function PlaylistEditor() {
     persist(next)
   }
 
-  if (loading) return null
+  const move = (idx: number, dir: -1 | 1) => {
+    const target = idx + dir
+    if (target < 0 || target >= slides.length) return
+    const next = [...slides]
+    const tmp = next[idx]
+    next[idx] = next[target]
+    next[target] = tmp
+    setSlides(next)
+    persist(next)
+  }
+
+  const updateDuration = (idx: number, dur: number) => {
+    const next = [...slides]
+    next[idx] = { ...next[idx], durationSeconds: Math.max(3, Math.min(600, dur)) }
+    setSlides(next)
+    persist(next)
+  }
+
+  if (loading) return <div className="text-[12px] text-muted-foreground">Loading playlist…</div>
 
   return (
-    <div>
-      <h3 className="text-sm font-medium flex items-center gap-2 mb-1">
-        <Monitor className="h-4 w-4" /> Idle playlist
-      </h3>
-      <p className="text-[11px] text-muted-foreground mb-3">
-        When the cart is empty, rotate through these slides on the customer display.
-        Use images for promos, YouTube embed URLs for video, or iframe URLs for live menus.
-      </p>
-
-      <div className="flex flex-col gap-2 mb-3">
-        {slides.map((s, i) => (
-          <div key={i} className="flex items-center justify-between gap-2 rounded-md border border-border/60 px-3 py-2">
-            <div className="flex flex-col">
-              <span className="text-[12px] font-mono">{s.type} · {s.durationSeconds}s</span>
-              <span className="text-[11px] text-muted-foreground truncate max-w-[300px]">{s.url}</span>
-            </div>
-            <Button size="sm" variant="ghost" onClick={() => removeSlide(i)}>Remove</Button>
-          </div>
-        ))}
-        {slides.length === 0 && <p className="text-[12px] text-muted-foreground italic">No slides yet — fall back to logo + clock.</p>}
-      </div>
-
-      <div className="flex flex-col gap-2 rounded-md border border-border/60 p-3">
-        <div className="flex gap-2">
-          <select
-            value={draftType}
-            onChange={(e) => setDraftType(e.target.value as PlaylistSlide["type"])}
-            className="rounded-md border border-border/60 bg-background px-2 text-[12px]"
-          >
-            <option value="image">Image</option>
-            <option value="video">Video / YouTube embed</option>
-            <option value="iframe">iframe URL</option>
-          </select>
-          <input
-            type="number"
-            min={3}
-            max={600}
-            value={draftDuration}
-            onChange={(e) => setDraftDuration(parseInt(e.target.value) || 15)}
-            className="w-20 rounded-md border border-border/60 bg-background px-2 text-[12px]"
-            placeholder="15s"
-          />
+    <div className="flex flex-col gap-4">
+      {slides.length === 0 ? (
+        <div className="rounded-md border border-dashed border-foreground/15 p-8 text-center">
+          <Monitor className="h-8 w-8 mx-auto mb-3 text-muted-foreground/40" />
+          <p className="text-[13px] text-muted-foreground">
+            No slides yet. Falls back to the business logo + clock when idle.
+          </p>
         </div>
-        <input
-          type="url"
-          value={draftUrl}
-          onChange={(e) => setDraftUrl(e.target.value)}
-          placeholder="https://… or https://www.youtube.com/embed/…"
-          className="w-full rounded-md border border-border/60 bg-background px-2 py-1.5 text-[12px]"
-        />
-        <Button size="sm" onClick={addSlide}>Add slide</Button>
-      </div>
+      ) : (
+        <ul className="flex flex-col gap-3">
+          {slides.map((s, i) => (
+            <SlideTile
+              key={`${s.url}-${i}`}
+              slide={s}
+              index={i}
+              total={slides.length}
+              onRemove={() => removeSlide(i)}
+              onMove={(dir) => move(i, dir)}
+              onDuration={(d) => updateDuration(i, d)}
+            />
+          ))}
+        </ul>
+      )}
+      <AddSlide onAdd={addSlide} />
     </div>
   )
 }
 
-function SettingToggle({ icon: Icon, label, description, checked, onChange }: {
-  icon: typeof Monitor;
-  label: string;
-  description: string;
-  checked: boolean;
-  onChange: (v: boolean) => void;
+function SlideTile({
+  slide,
+  index,
+  total,
+  onRemove,
+  onMove,
+  onDuration,
+}: {
+  slide: PlaylistSlide
+  index: number
+  total: number
+  onRemove: () => void
+  onMove: (dir: -1 | 1) => void
+  onDuration: (d: number) => void
 }) {
+  const TypeIcon = slide.type === "image" ? ImageSquare : slide.type === "video" ? VideoCamera : Globe
+
   return (
-    <div className="flex items-start justify-between gap-4">
-      <div className="flex items-start gap-2.5">
-        <Icon className="h-4 w-4 mt-0.5 text-muted-foreground" />
-        <div>
-          <div className="text-sm font-medium">{label}</div>
-          <div className="text-[11px] text-muted-foreground mt-0.5">{description}</div>
+    <li className="flex items-center gap-4 rounded-md border border-foreground/10 bg-foreground/[0.02] p-3">
+      {/* Thumbnail / source preview */}
+      <div className="size-16 shrink-0 rounded-md overflow-hidden border border-foreground/10 bg-foreground/[0.03] grid place-items-center">
+        {slide.type === "image" ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={slide.url}
+            alt=""
+            className="h-full w-full object-cover"
+            onError={(e) => {
+              e.currentTarget.style.display = "none"
+            }}
+          />
+        ) : (
+          <TypeIcon className="h-6 w-6 text-muted-foreground/60" />
+        )}
+      </div>
+
+      {/* Body */}
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2">
+          <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
+            {slide.type === "image" ? "Image" : slide.type === "video" ? "Local video" : "Iframe"}
+          </span>
+          <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground/70">
+            #{index + 1} of {total}
+          </span>
+        </div>
+        <p className="mt-0.5 text-[12.5px] text-foreground/85 truncate" title={slide.url}>
+          {slide.url}
+        </p>
+      </div>
+
+      {/* Duration */}
+      <div className="flex items-center gap-1 shrink-0">
+        <Input
+          type="number"
+          min={3}
+          max={600}
+          value={slide.durationSeconds}
+          onChange={(e) => onDuration(parseInt(e.target.value) || 15)}
+          className="w-16 h-8 font-mono text-[12px] text-right"
+        />
+        <span className="text-[11px] text-muted-foreground">s</span>
+      </div>
+
+      {/* Reorder + remove */}
+      <div className="flex items-center gap-0.5 shrink-0">
+        <Button
+          size="icon-xs"
+          variant="ghost"
+          disabled={index === 0}
+          onClick={() => onMove(-1)}
+          title="Move up"
+          className="h-7 w-7"
+        >
+          <ArrowUp className="h-3.5 w-3.5" />
+        </Button>
+        <Button
+          size="icon-xs"
+          variant="ghost"
+          disabled={index === total - 1}
+          onClick={() => onMove(1)}
+          title="Move down"
+          className="h-7 w-7"
+        >
+          <ArrowDown className="h-3.5 w-3.5" />
+        </Button>
+        <Button size="icon-xs" variant="ghost" onClick={onRemove} title="Remove" className="h-7 w-7">
+          <Trash className="h-3.5 w-3.5 text-rose-600" />
+        </Button>
+      </div>
+    </li>
+  )
+}
+
+function AddSlide({ onAdd }: { onAdd: (slide: PlaylistSlide) => void }) {
+  const [type, setType] = useState<PlaylistSlide["type"]>("image")
+  const [url, setUrl] = useState("")
+  const [duration, setDuration] = useState(15)
+
+  const pickLocalVideo = async () => {
+    try {
+      const picked = await openFileDialog({
+        multiple: false,
+        directory: false,
+        filters: [
+          {
+            name: "Video files",
+            extensions: ["mp4", "webm", "mov", "mkv", "avi", "m4v"],
+          },
+        ],
+      })
+      if (!picked || typeof picked !== "string") return
+      // convertFileSrc turns "C:/Users/…/promo.mp4" → "asset://localhost/…"
+      // which the second-window webview can load.
+      const assetUrl = convertFileSrc(picked)
+      onAdd({ type: "video", url: assetUrl, durationSeconds: Math.max(3, duration) })
+      setUrl("")
+      toast.success("Video added to playlist", { description: picked.split(/[\\/]/).pop() })
+    } catch (e) {
+      toast.error("Couldn't open video", { description: String(e) })
+    }
+  }
+
+  const pickLocalImage = async () => {
+    try {
+      const picked = await openFileDialog({
+        multiple: false,
+        directory: false,
+        filters: [
+          {
+            name: "Image files",
+            extensions: ["jpg", "jpeg", "png", "webp", "gif"],
+          },
+        ],
+      })
+      if (!picked || typeof picked !== "string") return
+      const assetUrl = convertFileSrc(picked)
+      onAdd({ type: "image", url: assetUrl, durationSeconds: Math.max(3, duration) })
+      setUrl("")
+      toast.success("Image added to playlist", { description: picked.split(/[\\/]/).pop() })
+    } catch (e) {
+      toast.error("Couldn't open image", { description: String(e) })
+    }
+  }
+
+  const addFromUrl = () => {
+    if (!url.trim()) {
+      toast.error("Paste a URL or pick a file first")
+      return
+    }
+    onAdd({ type, url: url.trim(), durationSeconds: Math.max(3, duration) })
+    setUrl("")
+    toast.success("Slide added to playlist")
+  }
+
+  return (
+    <div className="rounded-md border border-foreground/10 bg-foreground/[0.02] p-4 flex flex-col gap-3">
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2">
+          <PlusCircle className="h-4 w-4 text-muted-foreground" />
+          <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
+            Add a slide
+          </span>
+        </div>
+        <div className="flex items-center gap-1">
+          <Input
+            type="number"
+            min={3}
+            max={600}
+            value={duration}
+            onChange={(e) => setDuration(parseInt(e.target.value) || 15)}
+            className="w-16 h-8 font-mono text-[12px] text-right"
+          />
+          <span className="text-[11px] text-muted-foreground">s each</span>
         </div>
       </div>
-      <Switch checked={checked} onCheckedChange={onChange} />
+
+      {/* From file (local) */}
+      <div className="grid grid-cols-2 gap-2">
+        <Button variant="outline" size="sm" onClick={pickLocalImage}>
+          <Folder className="h-3.5 w-3.5" />
+          Pick local image
+        </Button>
+        <Button variant="outline" size="sm" onClick={pickLocalVideo}>
+          <Folder className="h-3.5 w-3.5" />
+          Pick local video
+        </Button>
+      </div>
+
+      {/* Or paste a URL */}
+      <div className="border-t border-foreground/5 pt-3 flex flex-col gap-2">
+        <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground/70">
+          Or paste a URL
+        </span>
+        <div className="flex items-center gap-2">
+          <select
+            value={type}
+            onChange={(e) => setType(e.target.value as PlaylistSlide["type"])}
+            className="h-8 rounded-md border border-foreground/15 bg-background px-2 text-[12px]"
+          >
+            <option value="image">Image URL</option>
+            <option value="video">Video URL</option>
+            <option value="iframe">Iframe / YouTube embed</option>
+          </select>
+          <Input
+            type="url"
+            value={url}
+            onChange={(e) => setUrl(e.target.value)}
+            placeholder="https://…"
+            className="flex-1 h-8 text-[12px]"
+          />
+          <Button size="sm" onClick={addFromUrl}>
+            Add
+          </Button>
+        </div>
+      </div>
     </div>
-  );
+  )
 }
