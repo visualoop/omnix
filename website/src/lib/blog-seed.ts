@@ -53,7 +53,7 @@ First the headline: VAT-registered businesses turning over more than KES 5 milli
 
 If you're using a manual receipt printer plus an Excel file you bulk-upload at end of day, that flow no longer holds. The receipts have to be issued in real time at the till — same minute the customer pays — or KRA's system will flag and ultimately disallow the sale's input VAT for your supplier later.
 
-Second: the receipt format gained two new fields. Buyer KRA PIN (was optional, now required for B2B sales above KES 50,000). And the receipt must include a QR-code link to the eTIMS verification page so the customer can verify legitimacy on their phone.
+Second: the receipt format gained two new fields. Buyer KRA PIN (was optional, now required for B2B sales above KES 30,000). And the receipt must include a QR-code link to the eTIMS verification page so the customer can verify legitimacy on their phone.
 
 What Omnix does automatically:
 - Receipts issue at the till the same second the customer pays. There's no batch upload step.

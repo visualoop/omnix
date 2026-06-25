@@ -25,7 +25,7 @@ import { APP_NAME, BRAND } from "@/lib/brand";
 import { IS_PRO, LOCKED_MODULE, LICENSE_PREFIX } from "@/lib/variant";
 
 // One-time price for this build's variant. Pro = 150k, trade variants = 50k.
-const VARIANT_PRICE = IS_PRO ? "KES 150,000" : "KES 50,000";
+const VARIANT_PRICE = IS_PRO ? "KES 150,000" : "KES 30,000";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 

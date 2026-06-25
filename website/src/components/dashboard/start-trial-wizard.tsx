@@ -241,7 +241,7 @@ function TrialStartedSuccess({
               Already convinced? Upgrade to a perpetual licence.
             </h3>
             <p className="text-[12.5px] text-[var(--color-fg-muted)] leading-[1.55]">
-              {license.variant === 'pro' ? 'KES 150,000 once · all four trades' : `KES 50,000 once · ${variantOpt?.name}`}. Pay any time during your trial — your data carries over without re-installing.
+              {license.variant === 'pro' ? 'KES 130,000 once · all four trades' : `KES 30,000 once · ${variantOpt?.name}`}. Pay any time during your trial — your data carries over without re-installing.
             </p>
           </div>
           <a

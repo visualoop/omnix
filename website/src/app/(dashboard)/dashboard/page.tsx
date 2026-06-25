@@ -104,7 +104,7 @@ export default async function DashboardOverviewPage({
               Lock in your licence — pay once, use forever.
             </span>
             <span className="text-[13px] text-[var(--color-fg-muted)]">
-              KES 50,000 one-time per trade. Pro covers all four trades for KES 150,000.
+              KES 30,000 one-time per trade. Pro covers all four trades for KES 150,000.
             </span>
           </div>
           <a

@@ -74,15 +74,17 @@ export default async function CheckoutPage({
         </div>
 
         <div className="mt-10 grid grid-cols-1 gap-6 lg:grid-cols-[1fr_1fr] lg:gap-10">
-          <aside className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-6 lg:p-8">
-            <h2 className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--color-fg-subtle)]">
+          <aside className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-6 lg:p-8 self-start">
+            <h2 className="font-mono text-[10px] font-semibold uppercase tracking-[0.22em] text-[var(--color-fg-subtle)]">
               Order summary
             </h2>
-            <div className="mt-3 flex items-baseline gap-2">
-              <code className="font-mono text-[14px] tabular-nums text-[var(--color-fg)]">
+            <div className="mt-4 flex items-center justify-between gap-3 rounded-md border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-2.5">
+              <code className="font-mono text-[12px] tabular-nums text-[var(--color-fg)] truncate">
                 {license.licenseKey}
               </code>
-              <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[var(--color-fg-subtle)]">
+              <span
+                className="shrink-0 rounded-md border border-[var(--color-accent)] bg-[var(--color-accent-soft)] px-2 py-0.5 font-mono text-[9px] font-semibold uppercase tracking-[0.22em] text-[var(--color-accent)]"
+              >
                 {license.tier}
               </span>
             </div>
@@ -98,17 +100,33 @@ export default async function CheckoutPage({
               ))}
             </ul>
 
-            <div className="mt-6 flex items-baseline justify-between border-t border-[var(--color-border)] pt-4">
-              <span className="text-[14px] font-medium">Total</span>
-              <span className="font-display text-[28px] font-medium tabular-nums">
-                {p.currency} {total.toLocaleString()}
-              </span>
+            <div className="mt-6 border-t border-[var(--color-border)] pt-5">
+              <div className="font-mono text-[10px] uppercase tracking-[0.22em] text-[var(--color-fg-subtle)]">
+                Total
+              </div>
+              <div className="mt-1 flex items-baseline gap-2">
+                <span
+                  style={{ fontFamily: 'var(--font-display)', color: 'var(--color-accent)' }}
+                  className="text-[44px] font-medium leading-none tabular-nums tracking-[-0.02em]"
+                >
+                  {total.toLocaleString()}
+                </span>
+                <span className="font-mono text-[14px] text-[var(--color-fg-muted)] tabular-nums">
+                  {p.currency}
+                </span>
+              </div>
+              <div className="mt-1.5 font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--color-fg-subtle)]">
+                One-time · No subscription
+              </div>
             </div>
 
             <div className="mt-6 rounded-md border border-[var(--color-border)] bg-[var(--color-bg)] p-4 text-[12px] leading-[1.55] text-[var(--color-fg-muted)]">
               <ShieldCheck className="mb-2 size-4 text-[var(--color-accent)]" />
               14-day refund window after payment. Read the{' '}
-              <a href="/refund-policy" className="text-[var(--color-accent)] underline-offset-4 hover:underline">refund policy</a>.
+              <a href="/refund-policy" className="text-[var(--color-accent)] underline-offset-4 hover:underline">
+                refund policy
+              </a>
+              .
             </div>
           </aside>
 

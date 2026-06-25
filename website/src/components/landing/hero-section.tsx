@@ -35,7 +35,7 @@ export function HeroSection({
   content?: HeroContent
   latestRelease?: LatestRelease
   locale?: string
-  /** Caption shown under the CTA. e.g. "KES 50,000 once" or "$620 once". */
+  /** Caption shown under the CTA. e.g. "KES 30,000 once" or "$620 once". */
   priceCaption?: string
 }) {
   const isKenya = (locale ?? 'ke').toLowerCase() === 'ke'
@@ -55,7 +55,7 @@ export function HeroSection({
 
   // Caption price — show local currency reference. Falls back to a per-
   // locale generic if no explicit caption was passed.
-  const priceCaption = priceCaptionOverride ?? (isKenya ? 'KES 50,000 once' : '$620 once')
+  const priceCaption = priceCaptionOverride ?? (isKenya ? 'KES 30,000 once' : '$620 once')
 
   return (
     <section className="relative overflow-hidden pt-20 pb-16 sm:pt-24 lg:pt-28 lg:pb-20">

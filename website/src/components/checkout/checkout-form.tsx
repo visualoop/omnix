@@ -13,7 +13,6 @@
 import * as React from 'react'
 import Script from 'next/script'
 import { CreditCard, Lock } from '@/components/icons'
-import { Button } from '@/components/ui/button'
 
 interface InitResponse {
   reference: string
@@ -119,44 +118,67 @@ export function CheckoutForm({
         strategy="afterInteractive"
         onLoad={() => setScriptReady(true)}
       />
-      <div className="space-y-6">
-        <div className="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] p-5">
+      <div className="flex flex-col gap-6">
+        {/* Payment method panel — quiet copy, no competing colours so the
+            CTA below is the only loud thing in the column. */}
+        <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-5 lg:p-6">
           <div className="flex items-start gap-3">
             <CreditCard className="size-5 shrink-0 text-[var(--color-accent)] mt-0.5" />
             <div className="flex-1">
-              <div className="font-display text-[18px] font-medium text-[var(--color-fg)]">
+              <div
+                style={{ fontFamily: 'var(--font-display)' }}
+                className="text-[18px] font-medium text-[var(--color-fg)]"
+              >
                 Pay with card or M-Pesa
               </div>
-              <p className="mt-1 text-[13px] leading-[1.55] text-[var(--color-fg-muted)]">
-                Paystack handles the secure popup. Card, M-Pesa STK push, bank transfer — all in one flow.
+              <p className="mt-1.5 text-[13px] leading-[1.6] text-[var(--color-fg-muted)] max-w-[42ch]">
+                Paystack handles the secure popup. Card, M-Pesa STK push, bank transfer —
+                all in one flow.
               </p>
             </div>
           </div>
         </div>
 
         {error ? (
-          <div className="rounded-md border border-[var(--color-negative)] bg-[var(--color-negative)]/10 px-3 py-2 text-[13px] text-[var(--color-fg)]">
+          <div className="rounded-md border border-[var(--color-negative)] bg-[var(--color-negative)]/10 px-3 py-2.5 text-[13px] text-[var(--color-fg)]">
             {error}
           </div>
         ) : null}
 
-        <Button
+        {/* The CTA. Inline-styled to the copper accent so it can't get
+            swallowed by a passing surface token in dark mode. The amount
+            sits in the button itself with serif weight; a separate
+            caption below repeats the currency in mono for clarity. */}
+        <button
           type="button"
-          size="lg"
           disabled={!scriptReady || submitting}
           onClick={onPay}
-          className="w-full"
+          style={{
+            background: 'var(--color-accent)',
+            color: 'var(--color-accent-foreground, white)',
+            boxShadow: '0 8px 24px -8px var(--color-accent)',
+          }}
+          className="group relative w-full inline-flex items-center justify-center gap-3 rounded-xl px-6 py-5 font-medium text-[18px] tracking-[-0.01em] cursor-pointer transition-all hover:opacity-95 hover:-translate-y-[1px] active:translate-y-0 disabled:opacity-50 disabled:cursor-not-allowed disabled:translate-y-0"
         >
-          {submitting
-            ? 'Opening Paystack…'
-            : !scriptReady
-              ? 'Loading payment…'
-              : `Pay ${currency} ${amount.toLocaleString()}`}
-        </Button>
+          <CreditCard className="size-5" />
+          <span style={{ fontFamily: 'var(--font-display)' }}>
+            {submitting
+              ? 'Opening Paystack…'
+              : !scriptReady
+                ? 'Loading payment…'
+                : `Pay ${currency} ${amount.toLocaleString()}`}
+          </span>
+        </button>
 
-        <div className="flex items-center justify-center gap-2 text-[11px] text-[var(--color-fg-subtle)]">
-          <Lock className="size-3" />
-          Secured by Paystack · Card details never touch our server
+        {/* Confirmation line + secondary mono caption */}
+        <div className="flex flex-col items-center gap-1.5">
+          <div className="flex items-center justify-center gap-2 text-[12px] text-[var(--color-fg-muted)]">
+            <Lock className="size-3" />
+            <span>Secured by Paystack · Card details never touch our server</span>
+          </div>
+          <div className="font-mono text-[10px] uppercase tracking-[0.22em] text-[var(--color-fg-subtle)]">
+            {currency} {amount.toLocaleString()} · One-time
+          </div>
         </div>
       </div>
     </>

@@ -18,7 +18,7 @@ SQLite. One Windows .exe, runs on the till even with no internet. Pay once,
 own forever. Built by Visualoop (Nairobi).
 
 Pricing (KES):
-  - Licence (one-time):       50,000 (trade variants) / 150,000 (Pro) — perpetual, 1 device
+  - Licence (one-time):       30,000 (trade variants) / 150,000 (Pro) — perpetual, 1 device
   - Annual maintenance:       12,000/year  — eTIMS updates, SHA updates,
                                             new features, support; first year
                                             included so first payment is the variant price

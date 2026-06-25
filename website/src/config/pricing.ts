@@ -45,11 +45,11 @@ export const pricing: PricingShape = {
   },
   business: {
     oneTimeFee: {
-      KES: 80_000,
-      USD: 620,
-      NGN: 980_000,
-      GHS: 9_200,
-      ZAR: 11_300,
+      KES: 150_000,
+      USD: 1_150,
+      NGN: 1_830_000,
+      GHS: 17_300,
+      ZAR: 21_200,
     },
     maintenanceYearly: {
       KES: 30_000,

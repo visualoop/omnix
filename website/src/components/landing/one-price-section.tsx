@@ -9,7 +9,7 @@ import { Icon } from '@/components/icons'
  *
  * Per OMNIX-BRIEF §6.1 ⑩:
  *   - eyebrow "Pricing"
- *   - single huge KES 50,000 in Fraunces 144px (number-display utility)
+ *   - single huge KES 30,000 in Fraunces 144px (number-display utility)
  *   - italic line "Once. For the whole product."
  *   - three quiet text-link entry points separated by mid-dot
  *     (NOT three competing cards — editorial, not competitive)
@@ -19,7 +19,7 @@ import { Icon } from '@/components/icons'
  * compete; three text links of equal weight read as a directory.
  */
 export function OnePriceSection({
-  price = '50,000',
+  price = '30,000',
   currency = 'KES',
 }: {
   price?: string
