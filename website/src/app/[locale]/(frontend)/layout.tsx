@@ -8,7 +8,6 @@ import { getMessages, setRequestLocale } from 'next-intl/server'
 import { BRAND, BRAND_NAME, BRAND_TAGLINE } from '@/lib/brand'
 import { SiteHeader } from '@/components/layout/site-header'
 import { SiteFooter } from '@/components/layout/site-footer'
-import { RootShell } from '@/components/layout/root-shell'
 import { OrgJsonLd } from '@/components/seo/jsonld'
 import { routing, COUNTRY_LOCALES } from '@/i18n/routing'
 
@@ -196,13 +195,11 @@ export default async function FrontendLayout({
 
   return (
     <NextIntlClientProvider locale={locale} messages={messages}>
-      <RootShell locale={locale}>
-        <SiteHeader isAuthed={isAuthed} />
-        <main>{children}</main>
-        <SiteFooter />
-        {gaId && <GoogleAnalytics gaId={gaId} />}
-        <OrgJsonLd />
-      </RootShell>
+      <SiteHeader isAuthed={isAuthed} />
+      <main>{children}</main>
+      <SiteFooter />
+      {gaId && <GoogleAnalytics gaId={gaId} />}
+      <OrgJsonLd />
     </NextIntlClientProvider>
   )
 }
