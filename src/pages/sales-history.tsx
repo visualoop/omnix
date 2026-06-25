@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   Calendar,
   Eye,
@@ -41,6 +42,7 @@ interface SaleDetail extends SaleRow {
 
 export function SalesHistoryPage() {
   const [sales, setSales] = useState<SaleRow[]>([]);
+  const navigate = useNavigate();
   const [search, setSearch] = useState("");
   const [period, setPeriod] = useState<"today" | "week" | "month" | "all">("today");
   const [activeSale, setActiveSale] = useState<SaleDetail | null>(null);
@@ -172,8 +174,12 @@ export function SalesHistoryPage() {
             </thead>
             <tbody>
               {sales.map((sale) => (
-                <tr key={sale.id} className="border-b border-border last:border-0 hover:bg-muted/30">
-                  <td className="px-3 py-2 font-mono text-xs">#{sale.sale_number}</td>
+                <tr
+                  key={sale.id}
+                  onClick={() => navigate(`/sales/${sale.id}`)}
+                  className="border-b border-border last:border-0 hover:bg-muted/30 cursor-pointer"
+                >
+                  <td className="px-3 py-2 font-mono text-xs hover:underline underline-offset-4">#{sale.sale_number}</td>
                   <td className="px-3 py-2 text-xs whitespace-nowrap">
                     {new Date(sale.created_at).toLocaleString(intlLocale(), {
                       day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit",

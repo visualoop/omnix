@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { confirm, prompt } from "@/components/ui/confirm-dialog";
 import {
   Check,
@@ -30,6 +31,7 @@ import { money } from "@/lib/money";
 
 export function EmployeesPage() {
   const [employees, setEmployees] = useState<EmployeeWithDetails[]>([]);
+  const navigate = useNavigate();
   const [departments, setDepartments] = useState<Department[]>([]);
   const [branches, setBranches] = useState<BranchWithStats[]>([]);
   const [search, setSearch] = useState("");
@@ -124,7 +126,7 @@ export function EmployeesPage() {
               </td></tr>
             ) : (
               employees.map((e) => (
-                <tr key={e.id} className="border-b border-border/60 hover:bg-accent/30 cursor-pointer" onClick={() => setEditing(e)}>
+                <tr key={e.id} className="border-b border-border/60 hover:bg-accent/30 cursor-pointer" onClick={() => navigate(`/hr/employees/${e.id}`)}>
                   <td className="px-3 py-2">
                     <div className="flex items-center gap-2">
                       <div className="h-7 w-7 rounded-full bg-primary/15 text-primary font-medium flex items-center justify-center text-xs shrink-0">

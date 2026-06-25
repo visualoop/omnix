@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { confirm } from "@/components/ui/confirm-dialog";
 import {
   Envelope as Mail,
@@ -23,6 +24,7 @@ import { money } from "@/lib/money";
 
 export function SuppliersPage() {
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
+  const navigate = useNavigate();
   const [search, setSearch] = useState("");
   const [showAll, setShowAll] = useState(false);
   const [editing, setEditing] = useState<Supplier | null>(null);
@@ -105,9 +107,13 @@ export function SuppliersPage() {
             </thead>
             <tbody>
               {filtered.map((s) => (
-                <tr key={s.id} className="border-b border-border last:border-0 hover:bg-muted/30">
+                <tr
+                  key={s.id}
+                  onClick={() => navigate(`/suppliers/${s.id}`)}
+                  className="border-b border-border last:border-0 hover:bg-muted/30 cursor-pointer"
+                >
                   <td className="px-3 py-2.5">
-                    <div className="font-medium">{s.name}</div>
+                    <div className="font-medium hover:underline underline-offset-4">{s.name}</div>
                     {s.contact_person && <div className="text-xs text-muted-foreground">{s.contact_person}</div>}
                   </td>
                   <td className="px-3 py-2.5">
@@ -129,7 +135,7 @@ export function SuppliersPage() {
                       <Badge variant="secondary">Inactive</Badge>
                     )}
                   </td>
-                  <td className="px-3 py-2.5 text-right">
+                  <td className="px-3 py-2.5 text-right" onClick={(e) => e.stopPropagation()}>
                     <div className="flex justify-end gap-1">
                       {s.balance_owed > 0 && (
                         <Button

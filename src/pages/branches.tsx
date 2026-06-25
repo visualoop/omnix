@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { confirm } from "@/components/ui/confirm-dialog";
 import {
   Building as Building2,
@@ -28,6 +29,7 @@ import { money } from "@/lib/money";
 
 export function BranchesPage() {
   const [branches, setBranches] = useState<BranchWithStats[]>([]);
+  const navigate = useNavigate();
   const [showAll, setShowAll] = useState(false);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState<Branch | null>(null);
@@ -85,7 +87,7 @@ export function BranchesPage() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
           {branches.map((b) => (
-            <Card key={b.id} className="hover:border-primary/40 transition-colors cursor-pointer" onClick={() => setEditing(b)}>
+            <Card key={b.id} className="hover:border-primary/40 transition-colors cursor-pointer" onClick={() => navigate(`/settings/branches/${b.id}`)}>
               <CardContent className="p-4 space-y-2.5">
                 <div className="flex items-start justify-between gap-2">
                   <div className="flex-1 min-w-0">

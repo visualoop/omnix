@@ -94,13 +94,17 @@ export function CustomersPage() {
               {customers.map((c) => {
                 const overLim = c.credit_limit > 0 && c.balance > c.credit_limit;
                 return (
-                  <tr key={c.id} className="border-b border-border last:border-0 hover:bg-muted/30">
+                  <tr
+                    key={c.id}
+                    onClick={() => navigate(`/customers/${c.id}`)}
+                    className="border-b border-border last:border-0 hover:bg-muted/30 cursor-pointer"
+                  >
                     <td className="px-3 py-2.5">
                       <div className="flex items-center gap-2">
                         <div className="h-7 w-7 rounded-full bg-primary/10 flex items-center justify-center text-xs font-medium">
                           {c.name.charAt(0).toUpperCase()}
                         </div>
-                        <div className="font-medium">{c.name}</div>
+                        <div className="font-medium hover:underline underline-offset-4">{c.name}</div>
                       </div>
                     </td>
                     <td className="px-3 py-2.5">
@@ -120,7 +124,7 @@ export function CustomersPage() {
                         <span className="text-muted-foreground">0.00</span>
                       )}
                     </td>
-                    <td className="px-3 py-2.5 text-right">
+                    <td className="px-3 py-2.5 text-right" onClick={(e) => e.stopPropagation()}>
                       <div className="flex justify-end gap-1">
                         {c.balance > 0 && (
                           <Button
