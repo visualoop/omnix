@@ -145,6 +145,9 @@ function AppContent() {
         refreshSetupState();
         // Load active country (defaults to 'KE' for unconfigured installs)
         import("@/stores/country").then(({ useCountry }) => useCountry.getState().load().catch(() => {}));
+        // Load UI density preference (touch vs comfortable) — drives
+        // bigger targets on tablet/touchscreen POS terminals.
+        import("@/stores/density").then(({ useDensityStore }) => useDensityStore.getState().load().catch(() => {}));
         // Seed the RBAC permission catalog + system-role grants (idempotent).
         import("@/services/rbac").then(({ seedRbac }) => seedRbac().catch(() => {}));
         // Restore effective-permission cache for a persisted session.
