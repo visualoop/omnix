@@ -112,6 +112,18 @@ export function TeamClient({ initial }: { initial: Member[] }) {
     })
   }
 
+  function resendInvite(member: Member) {
+    startTransition(async () => {
+      const res = await fetch(`/api/admin/team/${member.id}/resend`, { method: 'POST' })
+      const j = await res.json()
+      if (j.ok) {
+        flash('ok', `Invite resent to ${member.email}`)
+      } else {
+        flash('err', j.error ?? 'Resend failed')
+      }
+    })
+  }
+
   return (
     <div className="space-y-8">
       {toast && (
@@ -205,7 +217,7 @@ export function TeamClient({ initial }: { initial: Member[] }) {
           </header>
           <div className="rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] divide-y divide-[var(--color-border)]">
             {members.map((m) => (
-              <div key={m.id} className="grid grid-cols-[auto_1fr_auto_auto] items-center gap-4 px-4 py-3">
+              <div key={m.id} className="grid grid-cols-[auto_1fr_auto_auto_auto] items-center gap-4 px-4 py-3">
                 {/* Avatar */}
                 <div
                   className="size-10 rounded-full grid place-items-center font-mono text-[12px] font-medium shrink-0"
@@ -251,6 +263,18 @@ export function TeamClient({ initial }: { initial: Member[] }) {
                   <option value="user" className="bg-[var(--color-surface)]">— Demote to customer —</option>
                 </select>
 
+                {/* Resend invite — re-fires the magic-link + branded
+                    letter so the teammate gets a fresh sign-in URL. */}
+                <button
+                  onClick={() => resendInvite(m)}
+                  disabled={busy || m.banned}
+                  className="inline-flex items-center gap-1.5 rounded-md border border-[var(--color-border)] px-2.5 py-1.5 font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--color-fg-muted)] hover:text-[var(--color-fg)] hover:border-[var(--color-border-strong)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  title={m.banned ? 'Unban first, then resend' : 'Resend invite email'}
+                >
+                  <ArrowsClockwise weight="regular" className="size-3" />
+                  Resend
+                </button>
+
                 {/* Ban toggle */}
                 <button
                   onClick={() => toggleBan(m)}
@@ -275,5 +299,4 @@ export function TeamClient({ initial }: { initial: Member[] }) {
 }
 
 void ShieldStar
-void ArrowsClockwise
 void X
