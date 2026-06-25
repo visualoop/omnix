@@ -1,7 +1,9 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { TouchKeypad } from "@/components/ui/touch-keypad";
+import { useIsTouch } from "@/stores/density";
 import { useCartStore } from "@/stores/cart";
 import { useAuthStore } from "@/stores/auth";
 import { completeSale, getPaymentMethods, type CartItem, type PaymentMethod, type PaymentEntry } from "@/services/sales";
@@ -43,6 +45,9 @@ export function PaymentModal({ open, onClose }: Props) {
   const [methods, setMethods] = useState<PaymentMethod[]>([]);
   const [selectedMethod, setSelectedMethod] = useState<string>("cash");
   const [amount, setAmount] = useState("");
+  const touch = useIsTouch();
+  const amountRef = useRef<HTMLInputElement>(null);
+  const [keypadOpen, setKeypadOpen] = useState(false);
   const [reference, setReference] = useState("");
   const [payments, setPayments] = useState<PaymentEntry[]>([]);
   const [processing, setProcessing] = useState(false);
@@ -348,9 +353,12 @@ export function PaymentModal({ open, onClose }: Props) {
           <div className="space-y-1.5">
             <label className="text-xs font-medium text-muted-foreground">Amount</label>
             <Input
+              ref={amountRef}
               type="number"
+              inputMode="decimal"
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
+              onFocus={() => touch && setKeypadOpen(true)}
               className="text-lg font-mono h-11"
               autoFocus
               onKeyDown={(e) => e.key === "Enter" && handleComplete()}
@@ -428,6 +436,16 @@ export function PaymentModal({ open, onClose }: Props) {
         </div>
         )}
       </DialogContent>
+      <TouchKeypad
+        inputRef={amountRef}
+        mode="currency"
+        open={keypadOpen}
+        onDismiss={() => setKeypadOpen(false)}
+        onCommit={() => {
+          setKeypadOpen(false);
+          handleComplete();
+        }}
+      />
     </Dialog>
   );
 }

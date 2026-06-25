@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   Heart,
   X,
@@ -7,6 +7,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { TouchKeypad } from "@/components/ui/touch-keypad";
+import { useIsTouch } from "@/stores/density";
 import { useCartStore } from "@/stores/cart";
 import { useActiveBranch } from "@/stores/active-branch";
 import { listEmployees, type EmployeeWithDetails } from "@/services/employees";
@@ -29,6 +31,9 @@ export function TipDialog({ open, onClose }: { open: boolean; onClose: () => voi
   const [percentages, setPercentages] = useState([5, 10, 15, 20]);
   const [employees, setEmployees] = useState<EmployeeWithDetails[]>([]);
   const [assignToStaff, setAssignToStaff] = useState(false);
+  const touch = useIsTouch();
+  const amountRef = useRef<HTMLInputElement>(null);
+  const [keypadOpen, setKeypadOpen] = useState(false);
 
   useEffect(() => {
     if (!open) return;
@@ -109,9 +114,12 @@ export function TipDialog({ open, onClose }: { open: boolean; onClose: () => voi
           <div className="space-y-1">
             <label className="text-[11px] font-medium text-muted-foreground">Or enter custom amount (KES)</label>
             <Input
+              ref={amountRef}
               type="number"
+              inputMode="decimal"
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
+              onFocus={() => touch && setKeypadOpen(true)}
               className="text-lg font-mono h-11"
               placeholder="0"
               autoFocus
@@ -167,6 +175,16 @@ export function TipDialog({ open, onClose }: { open: boolean; onClose: () => voi
           </Button>
         </DialogFooter>
       </DialogContent>
+      <TouchKeypad
+        inputRef={amountRef}
+        mode="currency"
+        open={keypadOpen}
+        onDismiss={() => setKeypadOpen(false)}
+        onCommit={() => {
+          setKeypadOpen(false);
+          apply();
+        }}
+      />
     </Dialog>
   );
 }
