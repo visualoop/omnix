@@ -14,6 +14,7 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { AdminPagination, AdminSearch } from '@/components/admin/data-controls'
+import { ReleaseSeatButton } from '@/components/dashboard/release-seat-button'
 
 export const metadata = { title: 'Machines' }
 
@@ -110,7 +111,7 @@ export default async function MachinesPage({
                 <TableHead>Version</TableHead>
                 <TableHead>Branch</TableHead>
                 <TableHead>Heartbeat</TableHead>
-                <TableHead className="w-12 text-right">·</TableHead>
+                <TableHead className="text-right">·</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -137,12 +138,21 @@ export default async function MachinesPage({
                     <HeartbeatPill lastSeenAt={m.lastSeenAt} />
                   </TableCell>
                   <TableCell className="text-right">
-                    <Link
-                      href={`/dashboard/machines/${m.id}`}
-                      className="font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--color-fg-muted)] hover:text-[var(--color-fg)]"
-                    >
-                      Open →
-                    </Link>
+                    <div className="inline-flex items-center gap-2">
+                      {m.status !== 'revoked' ? (
+                        <ReleaseSeatButton machineId={m.id} hostname={m.hostname} variant="compact" />
+                      ) : (
+                        <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--color-fg-muted)]">
+                          Revoked
+                        </span>
+                      )}
+                      <Link
+                        href={`/dashboard/machines/${m.id}`}
+                        className="font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--color-fg-muted)] hover:text-[var(--color-fg)]"
+                      >
+                        Open →
+                      </Link>
+                    </div>
                   </TableCell>
                 </TableRow>
               ))}

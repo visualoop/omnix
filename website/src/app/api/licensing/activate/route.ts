@@ -23,7 +23,7 @@
  * Idempotent re-activation: same key + same machineId returns a new
  * authToken and refreshes the activation row without consuming a seat.
  */
-import { and, eq, count, sql } from 'drizzle-orm'
+import { and, eq, count, isNull, sql } from 'drizzle-orm'
 import crypto from 'node:crypto'
 import { db, licenses, machines, activations, user } from '@/db'
 import { createId } from '@/lib/ids'
@@ -164,10 +164,32 @@ export async function POST(req: Request) {
   }
 
   // ── Gate 6: seat capacity for THIS licence ─────────────────────
+  // Auto-heal: drop any orphan activations (machineId IS NULL) for
+  // this licence. These leak in when a machine row is hard-deleted
+  // (activations.machine_id is ON DELETE SET NULL). We don't count
+  // them in the seat-cap calculation below, but cleaning them up keeps
+  // the activation history sane + speeds up future joins.
+  await db
+    .delete(activations)
+    .where(and(eq(activations.licenseId, lic.id), isNull(activations.machineId)))
+    .catch(() => {
+      // Best-effort cleanup. Don't fail activation if the delete errors.
+    })
+
+  // Count only activations bound to a real, non-revoked machine. The
+  // current machine (existingMachine) is also excluded — re-activating
+  // on the same machine is idempotent and must never consume a seat.
   const seatCount = await db
     .select({ n: count() })
     .from(activations)
-    .where(eq(activations.licenseId, lic.id))
+    .innerJoin(machines, eq(machines.id, activations.machineId))
+    .where(
+      and(
+        eq(activations.licenseId, lic.id),
+        sql`${machines.status} != 'revoked'`,
+        existingMachine ? sql`${machines.id} != ${existingMachine.id}` : sql`true`,
+      ),
+    )
   const used = Number(seatCount[0]?.n ?? 0)
   if (used >= lic.maxMachines) {
     return reject(

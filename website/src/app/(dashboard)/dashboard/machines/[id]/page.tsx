@@ -8,6 +8,7 @@ import { BackButton } from '@/components/layout/back-button'
 import { EntityHero } from '@/components/layout/entity-hero'
 import { LazyTabs } from '@/components/layout/lazy-tabs'
 import { formatDate, formatDateShort, formatRelative } from '@/lib/format-date'
+import { ReleaseSeatButton } from '@/components/dashboard/release-seat-button'
 import Link from 'next/link'
 
 export const dynamic = 'force-dynamic'
@@ -52,14 +53,19 @@ export default async function MachineDetailPage({ params }: { params: Promise<{ 
           ...(m.activeModule ? [{ label: m.activeModule, variant: 'outline' as const }] : []),
         ]}
         actions={
-          license?.status === 'trial' ? (
-            <a
-              href={`/buy?variant=${encodeURIComponent(license.variant)}`}
-              className="inline-flex items-center justify-center rounded-md bg-[var(--color-accent)] px-4 py-2 font-mono text-[11px] uppercase tracking-[0.18em] text-white hover:bg-[var(--color-accent)]/90 transition-colors cursor-pointer"
-            >
-              Upgrade · {license.variant}
-            </a>
-          ) : null
+          <div className="flex flex-wrap items-center gap-2">
+            {license?.status === 'trial' ? (
+              <a
+                href={`/buy?variant=${encodeURIComponent(license.variant)}`}
+                className="inline-flex items-center justify-center rounded-md bg-[var(--color-accent)] px-4 py-2 font-mono text-[11px] uppercase tracking-[0.18em] text-white hover:bg-[var(--color-accent)]/90 transition-colors cursor-pointer"
+              >
+                Upgrade · {license.variant}
+              </a>
+            ) : null}
+            {m.status !== 'revoked' ? (
+              <ReleaseSeatButton machineId={m.id} hostname={m.hostname} />
+            ) : null}
+          </div>
         }
         stats={[
           { label: 'App version', value: `v${m.currentVersion ?? '?'}` },
