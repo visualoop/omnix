@@ -92,11 +92,11 @@ const FALLBACK: Record<VariantId, VariantData> = {
     tagline: 'Pharmacy management for Kenyan chemists',
     hero: {
       eyebrow: 'Omnix Dawa',
-      titlePrefix: 'The till every ',
-      titleEmphasis: 'chemist',
-      titleSuffix: ' deserves',
+      titlePrefix: 'Pharmacy POS with ',
+      titleEmphasis: 'M-Pesa',
+      titleSuffix: ' for Kenya',
       description:
-        'Pharmacy-grade POS with prescriptions, expiry tracking, controlled-substance register, drug-drug warnings, KRA eTIMS and SHA insurance claims. Calm and compliant.',
+        'Lipa na M-Pesa (STK push, Paybill & Till), KRA eTIMS receipts, SHA & private insurance claims, prescriptions, expiry tracking and a controlled-substance register. The chemist till that\'s calm and compliant.',
     },
     whoFor: {
       eyebrow: 'Built for',
@@ -134,11 +134,11 @@ const FALLBACK: Record<VariantId, VariantData> = {
     tagline: 'Retail POS for shops, mini-marts, and dukas',
     hero: {
       eyebrow: 'Omnix Retail',
-      titlePrefix: 'A till that ',
-      titleEmphasis: 'thinks',
-      titleSuffix: ' like a shopkeeper',
+      titlePrefix: 'Retail POS with ',
+      titleEmphasis: 'M-Pesa',
+      titleSuffix: ' for Kenya',
       description:
-        'Barcode scanning, layby, M-Pesa, customer credit, supplier reconciliation, KRA eTIMS — built for Kenyan retail.',
+        'Lipa na M-Pesa (STK push, Paybill & Till), barcode scanning, layby, customer credit, supplier reconciliation and KRA eTIMS — built for shops, mini-marts and dukas.',
     },
     whoFor: {
       eyebrow: 'Built for',
@@ -176,11 +176,11 @@ const FALLBACK: Record<VariantId, VariantData> = {
     tagline: 'POS for restaurants, bars, lodges',
     hero: {
       eyebrow: 'Omnix Hospitality',
-      titlePrefix: 'Tickets to ',
-      titleEmphasis: 'kitchen',
-      titleSuffix: '. Bills to table.',
+      titlePrefix: 'Restaurant & bar POS with ',
+      titleEmphasis: 'M-Pesa',
+      titleSuffix: '',
       description:
-        'KOT printing, table-side orders, room folios, recipe costing, F&B levy, M-Pesa, KRA eTIMS — for restaurants, bars and lodges.',
+        'Lipa na M-Pesa at the table, KOT printing, room folios, recipe costing, F&B levy and KRA eTIMS — for restaurants, bars and lodges across Kenya.',
     },
     whoFor: {
       eyebrow: 'Built for',
@@ -218,11 +218,11 @@ const FALLBACK: Record<VariantId, VariantData> = {
     tagline: 'POS for hardware stores and contractors',
     hero: {
       eyebrow: 'Omnix Hardware',
-      titlePrefix: 'Built like ',
-      titleEmphasis: 'rebar',
-      titleSuffix: '.',
+      titlePrefix: 'Hardware POS with ',
+      titleEmphasis: 'M-Pesa',
+      titleSuffix: ' for Kenya',
       description:
-        'Bulk pricing tiers, contractor accounts, parts catalogues, deliveries, GRNs, KRA eTIMS — for hardware stores supplying construction in Kenya.',
+        'Lipa na M-Pesa (STK push, Paybill & Till), bulk pricing tiers, contractor accounts, quotations, parts catalogues, deliveries, GRNs and KRA eTIMS — for hardware stores supplying construction.',
     },
     whoFor: {
       eyebrow: 'Built for',

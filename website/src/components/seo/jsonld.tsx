@@ -77,11 +77,11 @@ const VARIANT_NAMES: Record<SoftwareProps['variant'], string> = {
 }
 
 const VARIANT_DESCRIPTIONS: Record<SoftwareProps['variant'], string> = {
-  pro: 'Multi-trade ERP for businesses spanning pharmacy, retail, hospitality and hardware. One offline-first binary, perpetual licence.',
-  dawa: 'Pharmacy ERP and POS — prescriptions, drug labels, expiry tracking, controlled-substance register, KRA eTIMS, SHA insurance billing. Offline-first.',
-  retail: 'Retail ERP and POS for shops, mini-marts and dukas. Variants, layby, shrinkage, fast till. Offline-first, M-Pesa native.',
-  hospitality: 'Hospitality ERP for restaurants, bars and lodges. Tables, KOT, recipe costing, room bookings, folios. Offline-first.',
-  hardware: 'Hardware-store ERP. Bulk pricing, quotations, delivery notes, contractor accounts. Offline-first.',
+  pro: 'Multi-trade POS + business platform for pharmacy, retail, hospitality and hardware. Lipa na M-Pesa, KRA eTIMS, offline-first. One binary, perpetual licence.',
+  dawa: 'Pharmacy POS with M-Pesa (STK push, Paybill & Till), KRA eTIMS receipts, SHA insurance billing, prescriptions, expiry tracking and controlled-substance register. Offline-first.',
+  retail: 'Retail POS with M-Pesa for shops, mini-marts and dukas. Lipa na M-Pesa, barcode scanning, layby, customer credit, KRA eTIMS. Offline-first.',
+  hospitality: 'Restaurant & bar POS with M-Pesa for Kenya. Lipa na M-Pesa at the table, KOT, recipe costing, room folios, KRA eTIMS. Offline-first.',
+  hardware: 'Hardware-store POS with M-Pesa. Lipa na M-Pesa, bulk pricing, quotations, contractor accounts, delivery notes, KRA eTIMS. Offline-first.',
 }
 
 export function SoftwareJsonLd({ variant, currency, locale, brandUrl = 'https://omnix.co.ke' }: SoftwareProps) {

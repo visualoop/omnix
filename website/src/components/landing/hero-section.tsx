@@ -39,15 +39,16 @@ export function HeroSection({
   priceCaption?: string
 }) {
   const isKenya = (locale ?? 'ke').toLowerCase() === 'ke'
-  const cmsEyebrow = content?.eyebrow?.trim() || (isKenya ? 'Banking & Recurring Invoices shipped' : 'Built offline-first. Pay once. Own forever.')
+  const cmsEyebrow = content?.eyebrow?.trim() || (isKenya ? 'Lipa na M-Pesa · eTIMS · offline-first' : 'Built offline-first. Pay once. Own forever.')
   const releaseEyebrow = latestRelease
     ? `NEW · v${latestRelease.version} — ${latestRelease.title || latestRelease.summary || 'Latest release'}`
     : null
   const eyebrow = releaseEyebrow || cmsEyebrow
   const headline = content?.headline?.trim()
-  // Subheadline — Kenya-pinned for /ke, globally framed for everyone else.
-  const defaultSubKenya = 'Omnix is the desktop ERP built for Kenyan owner-operators. POS, inventory, banking, payroll, KRA receipts — one Windows app you download, run offline, and own. One payment, no subscription.'
-  const defaultSubGlobal = 'Omnix is the offline-first desktop ERP for owner-operators. POS, inventory, banking, payroll, compliance — one Windows app you download, run offline, and own. One payment, no subscription, no per-user fees.'
+  // Subheadline — leads with M-Pesa + eTIMS, the terms Kenyan SMEs
+  // actually search for. "ERP" is a category nobody types into Google.
+  const defaultSubKenya = 'Omnix is the POS built for Kenyan businesses. Take Lipa na M-Pesa (STK push, Paybill & Till), print KRA eTIMS receipts, track stock, and run it all offline. One Windows app you download, own, and pay for once — no monthly fees.'
+  const defaultSubGlobal = 'Omnix is the offline-first POS + business platform for owner-operators. Mobile-money and card payments, inventory, banking, payroll, tax receipts — one Windows app you download, run offline, and own. Pay once, no subscription.'
   const subheadline = content?.subheadline?.trim() || (isKenya ? defaultSubKenya : defaultSubGlobal)
   const ctaLabel = content?.primaryCtaLabel?.trim() || 'Start free trial'
   const ctaHref = content?.primaryCtaHref?.trim() || '/signup'
@@ -101,9 +102,9 @@ export function HeroSection({
             headline
           ) : isKenya ? (
             <>
-              Run your duka.
+              POS with M-Pesa.
               <br />
-              <em>Pay yourself.</em>
+              <em>Built for Kenya.</em>
             </>
           ) : (
             <>
@@ -163,11 +164,11 @@ export function HeroSection({
           transition={{ duration: 0.5, delay: 0.5 }}
           className="caption-mono mt-2 text-center text-[var(--color-fg-muted)]"
         >
-          <span>Now with VAT3 · P9 · P10 · GRN</span>
+          <span>STK Push · Paybill · Till · eTIMS</span>
           <span aria-hidden className="mx-2 text-[var(--color-fg-subtle)]">
             ·
           </span>
-          <span>every Kenyan filing as a one-click PDF</span>
+          <span>every M-Pesa payment + KRA receipt, built in</span>
         </motion.p>
 
         {/* Product preview — only renders when a screenshot is uploaded in

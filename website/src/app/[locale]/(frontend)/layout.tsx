@@ -33,8 +33,11 @@ interface LocaleCopy {
 }
 
 const KENYA_KEYWORDS = [
-  'ERP Kenya', 'POS Kenya', 'pharmacy software Kenya', 'KRA eTIMS',
-  'M-Pesa POS', 'NHIF SHA billing', 'Nairobi business software',
+  'POS with M-Pesa', 'M-Pesa POS', 'POS system Kenya', 'Lipa na M-Pesa POS',
+  'M-Pesa STK push POS', 'Paybill POS', 'Till number POS', 'Buy Goods POS',
+  'KRA eTIMS POS', 'eTIMS receipt', 'pharmacy POS Kenya', 'restaurant POS Kenya',
+  'hardware POS Kenya', 'retail POS Kenya', 'offline POS Kenya', 'duka POS',
+  'pharmacy software Kenya', 'NHIF SHA billing', 'POS software Nairobi',
 ]
 const GLOBAL_KEYWORDS = [
   'ERP software', 'small business ERP', 'pharmacy ERP',
@@ -48,8 +51,8 @@ const INDIA_KEYWORDS = ['ERP India', 'small business ERP India', 'GST software',
 
 const LOCALE_COPY: Record<string, LocaleCopy> = {
   ke: {
-    title: `${BRAND_NAME} — ERP for Kenyan SMEs · pharmacies, retailers, hospitality, hardware`,
-    description: 'All-in-one ERP for Kenyan businesses. One installer, one fee, every module included. KRA eTIMS, M-Pesa, SHA insurance billing built-in.',
+    title: `${BRAND_NAME} — POS with M-Pesa for Kenyan businesses · eTIMS, pharmacy, retail, hospitality`,
+    description: 'POS with M-Pesa for Kenyan businesses. Lipa na M-Pesa (STK push, Paybill & Till), KRA eTIMS receipts, inventory and SHA insurance billing — built in. Works offline. Pay once, no subscription.',
     ogLocale: 'en_KE',
     keywords: KENYA_KEYWORDS,
   },
