@@ -51,6 +51,20 @@ const VARIANT_LABEL: Record<VariantId, string> = {
  * Empty by default — the standard summary is enough for most patches.
  */
 const VERSION_HIGHLIGHTS: Record<string, string[]> = {
+  '0.12.0': [
+    'Payment modal rebuilt — remaining always visible, brand-coloured method blocks, single contextual CTA, internal scroll',
+    'Paystack Popup (hosted iframe) for card payments — no PCI scope, no fraud-flag penalty',
+    'Manual M-Pesa Paybill/Till — the no-API flow most Kenyan SMEs use, with confirmation-code capture',
+    'STK push "Mark as paid manually" fallback when Safaricom is slow',
+    'Upgraded payment brand icons (M-Pesa, Paystack, Visa, Mastercard, cash, card)',
+    'Tap a cart quantity to type it; on-screen QWERTY keyboard for touch terminals',
+    'Customer display now carries Omnix branding + your business name + module + www.blyss.co.ke',
+    'Fixed: variants now add from the product page, POS shows product images, SKU is optional',
+    'Fixed: PDFs + receipts now show your real business name (was "Your Business")',
+    'Marketing site leads with M-Pesa: hero, variant landings, SEO keywords, structured data',
+    'In-app setup guides for M-Pesa, Paystack, and AI keys + dashboard setup prompts',
+    'Public Team page (admin-managed) + WhatsApp chat widget',
+  ],
   '0.11.1': [
     'Touch keypad on every cash dialog (POS terminals)',
     'Customer display local images now render',
