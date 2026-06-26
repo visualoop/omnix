@@ -20,6 +20,7 @@ const COLUMNS = [
     title: 'Company',
     items: [
       { label: 'About', href: '/about' },
+      { label: 'Team', href: '/team' },
       { label: 'Blog', href: '/blog' },
       { label: 'Contact', href: '/contact' },
     ],

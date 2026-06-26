@@ -373,6 +373,22 @@ CREATE INDEX IF NOT EXISTS "platform_media_slot_idx" ON "platform_media" ("slot"
 --> statement-breakpoint
 CREATE INDEX IF NOT EXISTS "platform_media_created_at_idx" ON "platform_media" ("created_at");
 --> statement-breakpoint
+CREATE TABLE IF NOT EXISTS "team_members" (
+  "id" text PRIMARY KEY NOT NULL,
+  "name" text NOT NULL,
+  "role" text NOT NULL,
+  "bio" text,
+  "photo_url" text,
+  "linkedin_url" text,
+  "sort_order" integer DEFAULT 0 NOT NULL,
+  "active" boolean DEFAULT true NOT NULL,
+  "created_at" timestamp DEFAULT now() NOT NULL
+);
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "team_members_active_idx" ON "team_members" ("active");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "team_members_sort_idx" ON "team_members" ("sort_order");
+--> statement-breakpoint
 `
 
 /** Split into individual statements (Drizzle generates with statement-breakpoints). */

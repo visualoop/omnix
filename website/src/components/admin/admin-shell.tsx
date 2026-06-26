@@ -29,8 +29,9 @@ const NAV: NavItem[] = [
   { href: '/admin/tickets',  label: 'Tickets',   Icon: ChatCircle },
   { href: '/admin/releases', label: 'Releases',  Icon: ArrowSquareOut },
   { href: '/admin/media',    label: 'Media',     Icon: ImageIcon },
+  { href: '/admin/team-members', label: 'Team page', Icon: UsersFour },
   { href: '/admin/audit',    label: 'Audit',     Icon: ListMagnifyingGlass },
-  { href: '/admin/team',     label: 'Team',      Icon: UsersFour },
+  { href: '/admin/team',     label: 'Staff',     Icon: UsersFour },
   { href: '/admin/settings', label: 'Settings',  Icon: GearSix },
 ]
 
