@@ -394,6 +394,12 @@ fn run_inner() {
             sql: include_str!("../migrations/047_prescription_customer_link.sql"),
             kind: MigrationKind::Up,
         },
+        Migration {
+            version: 48,
+            description: "Manual M-Pesa: paybill/till columns on payment_providers + mpesa-manual provider row",
+            sql: include_str!("../migrations/048_manual_mpesa.sql"),
+            kind: MigrationKind::Up,
+        },
     ];
 
     tauri::Builder::default()

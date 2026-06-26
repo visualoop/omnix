@@ -8,7 +8,8 @@ import { useCartStore } from "@/stores/cart";
 import { useAuthStore } from "@/stores/auth";
 import { completeSale, getPaymentMethods, type CartItem, type PaymentMethod, type PaymentEntry } from "@/services/sales";
 import { getPaystackConfig } from "@/services/paystack";
-import { getDarajaConfig } from "@/services/daraja";
+import { getDarajaConfig, getManualMpesaConfig, type ManualMpesaConfig } from "@/services/daraja";
+import { payByPaystackPopup } from "@/services/paystack-popup";
 import { createClaim, type InsuranceProvider, type InsuranceMember } from "@/services/insurance";
 import { buildReceiptData, printReceipt } from "@/services/receipt";
 import { markOrderPaidFromPos } from "@/services/hospitality";
@@ -53,7 +54,9 @@ export function PaymentModal({ open, onClose }: Props) {
   const [payments, setPayments] = useState<PaymentEntry[]>([]);
   const [processing, setProcessing] = useState(false);
   const [paystackActive, setPaystackActive] = useState(false);
+  const [paystackKey, setPaystackKey] = useState<string | null>(null);
   const [darajaActive, setDarajaActive] = useState(false);
+  const [manualMpesa, setManualMpesa] = useState<ManualMpesaConfig | null>(null);
   const [showStkPush, setShowStkPush] = useState(false);
   const [showDarajaStk, setShowDarajaStk] = useState(false);
   const [showInsuranceVerify, setShowInsuranceVerify] = useState(false);
@@ -83,8 +86,9 @@ export function PaymentModal({ open, onClose }: Props) {
       };
       setSnapshot(nextSnapshot);
       getPaymentMethods().then(setMethods);
-      getPaystackConfig().then((c) => setPaystackActive(!!c?.active));
+      getPaystackConfig().then((c) => { setPaystackActive(!!c?.active); setPaystackKey(c?.public_key ?? null); });
       getDarajaConfig().then((c) => setDarajaActive(!!c?.active));
+      getManualMpesaConfig().then(setManualMpesa);
       setPayments([]);
       setAmount(String(nextSnapshot.total.toFixed(2)));
       setReference("");
@@ -142,6 +146,36 @@ export function PaymentModal({ open, onClose }: Props) {
     const newRemaining = total - next.reduce((s, p) => s + p.amount, 0);
     setAmount(String(Math.max(0, newRemaining).toFixed(2)));
     if (removed?.method_id === "insurance") setInsurance(null);
+  };
+
+  /**
+   * Card payment via the Paystack Popup (hosted iframe). Keeps us out of
+   * PCI scope + the RAMS fraud penalty box. The popup amount is the
+   * current input (a chunk) or the whole remaining balance.
+   */
+  const payViaPaystackPopup = async () => {
+    if (!paystackKey) { toast.error("Paystack not configured"); return; }
+    const amt = parseFloat(amount) || remaining;
+    if (amt <= 0) { toast.error("Enter amount"); return; }
+    const ref = `OMX-${Date.now()}-${Math.floor(Math.random() * 1e4)}`;
+    const result = await payByPaystackPopup({
+      publicKey: paystackKey,
+      email: "sales@omnix.local",
+      amountKes: amt,
+      reference: ref,
+    });
+    if (result.status === "success") {
+      setPayments([...payments, {
+        method_id: "card",
+        method_name: "Card (Paystack)",
+        amount: amt,
+        reference: result.reference,
+      }]);
+      setAmount(String(Math.max(0, remaining - amt).toFixed(2)));
+      toast.success("Card payment captured — verify on the dashboard");
+    } else if (result.status === "error") {
+      toast.error(result.message || "Paystack error");
+    }
   };
 
   const handleComplete = async () => {
@@ -451,6 +485,46 @@ export function PaymentModal({ open, onClose }: Props) {
             {paystackActive && selectedMethod === "mpesa-manual" && (
               <Button variant="outline" className="w-full border-[#13B7F5] text-[#0A6F9E] hover:bg-[#13B7F5]/10" onClick={() => setShowStkPush(true)}>
                 Send STK push via Paystack
+              </Button>
+            )}
+
+            {/* Manual M-Pesa — show the business Paybill/Till prominently so
+                the cashier can read it to the customer, then capture the
+                confirmation code. Shown when no Daraja STK is configured. */}
+            {selectedMethod === "mpesa-manual" && !darajaActive &&
+              (manualMpesa?.paybill_number || manualMpesa?.till_number) && (
+              <div className="rounded-xl bg-[#4FC52E]/[0.07] ring-1 ring-[#4FC52E]/30 p-4 space-y-2">
+                <p className="text-[10px] font-medium uppercase tracking-[0.18em] text-[#2E7D1B]">
+                  Ask the customer to pay
+                </p>
+                {manualMpesa?.till_number ? (
+                  <div>
+                    <p className="text-xs text-muted-foreground">Buy Goods · Till number</p>
+                    <p className="text-3xl font-bold font-mono tabular-nums text-[#2E7D1B]">{manualMpesa.till_number}</p>
+                  </div>
+                ) : (
+                  <div className="space-y-1">
+                    <div>
+                      <p className="text-xs text-muted-foreground">Paybill number</p>
+                      <p className="text-3xl font-bold font-mono tabular-nums text-[#2E7D1B]">{manualMpesa?.paybill_number}</p>
+                    </div>
+                    {manualMpesa?.paybill_account_hint && (
+                      <p className="text-xs text-muted-foreground">
+                        Account: <span className="font-medium text-foreground">{manualMpesa.paybill_account_hint}</span>
+                      </p>
+                    )}
+                  </div>
+                )}
+                <p className="text-xs text-muted-foreground pt-1">
+                  Then enter the M-Pesa confirmation code from the customer's SMS in the reference field above.
+                </p>
+              </div>
+            )}
+
+            {/* Card via Paystack Popup (hosted iframe) */}
+            {paystackActive && selectedMethod === "card" && (
+              <Button variant="outline" className="w-full border-[#13B7F5] text-[#0A6F9E] hover:bg-[#13B7F5]/10" onClick={payViaPaystackPopup}>
+                Pay by card via Paystack
               </Button>
             )}
 

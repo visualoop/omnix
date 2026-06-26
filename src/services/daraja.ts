@@ -68,6 +68,51 @@ export async function disableDaraja(): Promise<void> {
   await execute("UPDATE payment_providers SET active = 0 WHERE id = 'daraja'");
 }
 
+/* ─── Manual M-Pesa (Paybill / Till) ──────────────────────────────────
+ *
+ * The flow most Kenyan SMEs actually use: customer pays the business's
+ * Paybill or Till directly on their phone, the cashier reads the M-Pesa
+ * confirmation code from the customer's SMS and records it. No API.
+ */
+export interface ManualMpesaConfig {
+  active: number;
+  paybill_number: string | null;
+  paybill_account_hint: string | null;
+  till_number: string | null;
+}
+
+export async function getManualMpesaConfig(): Promise<ManualMpesaConfig | null> {
+  const rows = await query<ManualMpesaConfig>(
+    `SELECT active, paybill_number, paybill_account_hint, till_number
+     FROM payment_providers WHERE id = 'mpesa-manual'`,
+  );
+  return rows[0] || null;
+}
+
+export async function saveManualMpesaConfig(params: {
+  paybillNumber: string;
+  paybillAccountHint: string;
+  tillNumber: string;
+}): Promise<void> {
+  // Active when at least one of paybill/till is set.
+  const active = params.paybillNumber.trim() || params.tillNumber.trim() ? 1 : 0;
+  await execute(
+    `INSERT INTO payment_providers (id, name, active, paybill_number, paybill_account_hint, till_number)
+     VALUES ('mpesa-manual', 'M-Pesa (Manual)', ?1, ?2, ?3, ?4)
+     ON CONFLICT(id) DO UPDATE SET
+       active = ?1,
+       paybill_number = ?2,
+       paybill_account_hint = ?3,
+       till_number = ?4`,
+    [
+      active,
+      params.paybillNumber.trim() || null,
+      params.paybillAccountHint.trim() || null,
+      params.tillNumber.trim() || null,
+    ],
+  );
+}
+
 async function getOAuthToken(config: DarajaConfig): Promise<string> {
   const auth = btoa(`${config.public_key}:${config.secret_key}`);
   const base = darajaBase(config.test_mode === 1);

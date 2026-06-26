@@ -1,8 +1,6 @@
 import { useState, useEffect } from "react";
 import {
   CheckCircle as CheckCircle2,
-  CreditCard as CreditCard,
-  DeviceMobile as Smartphone,
   Eye,
   EyeSlash as EyeOff,
   WarningCircle as AlertCircle,
@@ -11,8 +9,9 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { getPaystackConfig, savePaystackConfig, verifyPaystackKey, disablePaystack } from "@/services/paystack";
-import { getDarajaConfig, saveDarajaConfig, verifyDarajaKey, disableDaraja } from "@/services/daraja";
+import { getDarajaConfig, saveDarajaConfig, verifyDarajaKey, disableDaraja, getManualMpesaConfig, saveManualMpesaConfig } from "@/services/daraja";
 import { getPaymentFees, savePaymentFees, type PaymentFees } from "@/services/payment-fees";
+import { MpesaIcon, PaystackIcon } from "@/components/icons/payment-brands";
 import { toast } from "sonner";
 
 export function PaymentSettingsPage() {
@@ -47,6 +46,14 @@ export function PaymentSettingsPage() {
   });
   const [savingFees, setSavingFees] = useState(false);
 
+  // Manual M-Pesa (Paybill / Till) — the flow for businesses without
+  // Daraja API keys. Customer pays the till directly; cashier records
+  // the confirmation code.
+  const [paybillNumber, setPaybillNumber] = useState("");
+  const [paybillAccountHint, setPaybillAccountHint] = useState("");
+  const [tillNumber, setTillNumber] = useState("");
+  const [savingManual, setSavingManual] = useState(false);
+
   const load = async () => {
     const config = await getPaystackConfig();
     if (config) {
@@ -74,6 +81,30 @@ export function PaymentSettingsPage() {
       setFees(f);
     } catch {
       /* keep defaults */
+    }
+
+    // Manual M-Pesa Paybill/Till.
+    try {
+      const m = await getManualMpesaConfig();
+      if (m) {
+        setPaybillNumber(m.paybill_number || "");
+        setPaybillAccountHint(m.paybill_account_hint || "");
+        setTillNumber(m.till_number || "");
+      }
+    } catch {
+      /* table may not exist on older DBs until migration 048 runs */
+    }
+  };
+
+  const saveManual = async () => {
+    setSavingManual(true);
+    try {
+      await saveManualMpesaConfig({ paybillNumber, paybillAccountHint, tillNumber });
+      toast.success("Manual M-Pesa saved");
+    } catch (e) {
+      toast.error(String(e));
+    } finally {
+      setSavingManual(false);
     }
   };
 
@@ -148,9 +179,7 @@ export function PaymentSettingsPage() {
       <div className="border border-border rounded-lg p-5 space-y-4">
         <div className="flex items-start justify-between">
           <div className="flex items-start gap-3">
-            <div className="h-10 w-10 rounded-md bg-primary/10 flex items-center justify-center">
-              <CreditCard className="h-5 w-5 text-primary" />
-            </div>
+            <PaystackIcon size={40} />
             <div>
               <h2 className="font-semibold">Paystack</h2>
               <p className="text-xs text-muted-foreground mt-0.5">
@@ -224,9 +253,7 @@ export function PaymentSettingsPage() {
       <div className="border border-border rounded-lg p-5 space-y-4">
         <div className="flex items-start justify-between">
           <div className="flex items-start gap-3">
-            <div className="h-10 w-10 rounded-md bg-green-500/10 flex items-center justify-center">
-              <Smartphone className="h-5 w-5 text-green-600" />
-            </div>
+            <MpesaIcon size={40} />
             <div>
               <h2 className="font-semibold">M-Pesa Daraja (Direct)</h2>
               <p className="text-xs text-muted-foreground mt-0.5">
@@ -307,6 +334,39 @@ export function PaymentSettingsPage() {
             </Button>
             {darajaConnected && <Button variant="outline" onClick={handleDisconnectDaraja}>Disconnect</Button>}
           </div>
+        </div>
+      </div>
+
+      {/* Manual M-Pesa (Paybill / Till) */}
+      <div className="border border-border rounded-lg p-5">
+        <div className="flex items-center gap-2.5 mb-1">
+          <MpesaIcon size={28} />
+          <div>
+            <h2 className="font-semibold">Manual M-Pesa (Paybill / Till)</h2>
+            <p className="text-xs text-muted-foreground">
+              For paying directly to your Safaricom Paybill or Buy-Goods Till. The cashier
+              reads the number to the customer and records the M-Pesa confirmation code. No API keys needed.
+            </p>
+          </div>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-4">
+          <div className="space-y-1.5">
+            <label className="text-xs font-medium text-muted-foreground">Paybill number</label>
+            <Input value={paybillNumber} onChange={(e) => setPaybillNumber(e.target.value)} placeholder="e.g. 174379" className="font-mono" />
+          </div>
+          <div className="space-y-1.5">
+            <label className="text-xs font-medium text-muted-foreground">Paybill account hint</label>
+            <Input value={paybillAccountHint} onChange={(e) => setPaybillAccountHint(e.target.value)} placeholder="e.g. your phone number, or invoice no." />
+          </div>
+          <div className="space-y-1.5 md:col-span-2">
+            <label className="text-xs font-medium text-muted-foreground">Buy Goods Till number</label>
+            <Input value={tillNumber} onChange={(e) => setTillNumber(e.target.value)} placeholder="e.g. 5202020" className="font-mono" />
+          </div>
+        </div>
+        <div className="flex gap-2 pt-3">
+          <Button onClick={saveManual} disabled={savingManual}>
+            {savingManual ? "Saving…" : "Save"}
+          </Button>
         </div>
       </div>
 
