@@ -116,7 +116,7 @@ function Row({ row, index }: { row: ModuleRow; index: number }) {
           reversed ? 'lg:order-2 lg:col-start-6' : 'lg:order-1 lg:col-start-1',
         )}
       >
-        <ModulePlaceholder name={row.name} size={row.size} status={row.status} />
+        <ModulePlaceholder name={row.name} slug={row.slug} size={row.size} status={row.status} />
       </div>
 
       <div
@@ -170,16 +170,21 @@ function Row({ row, index }: { row: ModuleRow; index: number }) {
  */
 function ModulePlaceholder({
   name,
+  slug,
   size,
   status,
 }: {
   name: string
+  slug: string
   size: string
   status: 'live' | 'planned'
 }) {
+  // Seeded module-row screenshots live on R2. Show the real image; the
+  // striped placeholder below only shows through if the image 404s.
+  const imageUrl = `https://media.omnix.co.ke/marketing/module-row-${slug}.jpg`
   return (
     <div className="relative aspect-[16/10] overflow-hidden rounded-xl border border-[var(--color-border-strong)] bg-[var(--color-surface-2)]">
-      {/* Warm diagonal stripes — honest placeholder treatment */}
+      {/* Warm diagonal stripes — fallback treatment behind the image */}
       <div
         aria-hidden
         className="absolute inset-0 opacity-[0.35]"
@@ -189,6 +194,18 @@ function ModulePlaceholder({
         }}
       />
 
+      {/* Real trade photo */}
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={imageUrl}
+        alt={`${name} — Omnix`}
+        loading="lazy"
+        className="absolute inset-0 h-full w-full object-cover"
+      />
+
+      {/* Subtle bottom gradient so the mono caption stays legible */}
+      <div aria-hidden className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-black/55 to-transparent" />
+
       {/* Subtle accent pool top-right */}
       <div
         aria-hidden
@@ -196,22 +213,20 @@ function ModulePlaceholder({
       />
 
       {/* Hairline frame inset */}
-      <div className="absolute inset-4 rounded-md border border-[var(--color-border)]" />
-
-      {/* Mono caption — bottom-left */}
-      <div className="absolute bottom-5 left-5 right-5 flex items-end justify-between gap-4">
-        <div className="caption-mono">
-          {name.toLowerCase().replace(/[^a-z]+/g, '-')} · screenshot
-          <br />
-          <span className="text-[var(--color-fg-subtle)]">{size}</span>
-        </div>
-
-        {status === 'live' ? (
-          <span className="rounded-full border border-[var(--color-positive)]/40 bg-[var(--color-positive)]/10 px-2.5 py-0.5 font-[family-name:var(--font-ui)] text-[10px] font-semibold uppercase tracking-[0.18em] text-[var(--color-positive)]">
+      {/* Shipping badge — top-right over the photo */}
+      {status === 'live' ? (
+        <div className="absolute right-4 top-4">
+          <span className="rounded-full border border-white/30 bg-black/40 px-2.5 py-0.5 font-[family-name:var(--font-ui)] text-[10px] font-semibold uppercase tracking-[0.18em] text-white backdrop-blur-sm">
             Shipping
           </span>
-        ) : null}
-      </div>
+        </div>
+      ) : (
+        <div className="absolute right-4 top-4">
+          <span className="rounded-full border border-white/30 bg-black/40 px-2.5 py-0.5 font-[family-name:var(--font-ui)] text-[10px] font-semibold uppercase tracking-[0.18em] text-white backdrop-blur-sm">
+            Planned
+          </span>
+        </div>
+      )}
     </div>
   )
 }

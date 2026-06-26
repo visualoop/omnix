@@ -5,6 +5,7 @@ import { count, sql } from 'drizzle-orm'
 import { auth } from '@/lib/auth'
 import { db, machines } from '@/db'
 import { AdminShell } from '@/components/admin/admin-shell'
+import { ensureMigrated } from '@/lib/auto-migrate'
 
 /**
  * Admin shell — espresso paper, mono nav, hairline rules, single copper
@@ -22,6 +23,11 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     const fullUrl = reqHeaders.get('x-omnix-url') ?? '/admin'
     redirect(`/login?next=${encodeURIComponent(fullUrl)}`)
   }
+
+  // Self-migrate on first admin access after a deploy — idempotent +
+  // memoised per process, so this only does work once on a cold start
+  // (creates team_members etc. without anyone hitting /api/migrate-db).
+  void ensureMigrated()
 
   const role = (session.user as { role?: string }).role ?? 'user'
   if (!STAFF_ROLES.includes(role)) {

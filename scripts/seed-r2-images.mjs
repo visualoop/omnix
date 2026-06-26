@@ -33,6 +33,11 @@ const SLOTS = [
   { slot: "pricing.hero", query: "small business owner shop laptop working Africa" },
   { slot: "about.team_photo", query: "diverse software team working office laptops" },
   { slot: "og.default", query: "retail shop checkout payment mobile money Africa" },
+  // Homepage "Four trades" rows (modules-rows-section ModulePlaceholder).
+  { slot: "module-row.dawa-pharmacy", query: "pharmacy counter pharmacist dispensing medicine bright" },
+  { slot: "module-row.soko-retail", query: "minimart grocery shop shelves products checkout counter" },
+  { slot: "module-row.hardware", query: "hardware store tools building materials showroom interior" },
+  { slot: "module-row.hospitality", query: "restaurant bar dining counter interior warm" },
 ];
 
 async function findImages(query) {
