@@ -15,8 +15,9 @@ import {
   Heart,
 } from "@phosphor-icons/react";
 import { useCartStore } from "@/stores/cart";
-import { useActiveModule } from "@/stores/active-module";
+import { useActiveModule, MODULE_DEFINITIONS, type ModuleId } from "@/stores/active-module";
 import { ModuleLogo } from "@/components/module-logos";
+import { OmnixLogo } from "@/components/omnix-logo";
 import { getDisplayConfig } from "@/lib/display-registry";
 import { query } from "@/lib/db";
 import { money as KES } from "@/lib/money";
@@ -34,6 +35,9 @@ export function CustomerDisplayPage() {
   const sourceLabel = useCartStore((s) => s.sourceLabel);
   const moduleId = useActiveModule((s) => s.active);
   const cfg = getDisplayConfig(moduleId);
+  // Module display label for the customer-facing branding (e.g. "Dawa
+  // Pharmacy", "Retail", "Hardware", "Hospitality").
+  const moduleLabel = MODULE_DEFINITIONS[(moduleId as ModuleId)]?.name ?? "POS";
 
   const [businessName, setBusinessName] = useState("Omnix");
   const [privacyMode, setPrivacyMode] = useState(cfg.privacyMode);
@@ -184,11 +188,11 @@ export function CustomerDisplayPage() {
               allowFullScreen
             />
           ) : null}
-          <div className="absolute bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-stone-950/90 to-transparent flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <ModuleLogo moduleId={moduleId} size={40} />
-              <span className="text-base font-medium text-white">{businessName}</span>
-            </div>
+          <div className="absolute top-0 left-0 right-0 p-6 bg-gradient-to-b from-stone-950/80 to-transparent flex items-start justify-between">
+            <BusinessNameBadge name={businessName} />
+          </div>
+          <div className="absolute bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-stone-950/90 to-transparent flex items-end justify-between">
+            <OmnixBrandBlock moduleLabel={moduleLabel} size="md" />
             <span className="font-mono text-sm text-stone-400 tabular-nums">{clock}</span>
           </div>
         </div>
@@ -218,6 +222,10 @@ export function CustomerDisplayPage() {
           )}
           <p className="mt-8 text-stone-600 text-sm">{cfg.idleHint}</p>
         </div>
+        {/* Omnix branding — bottom-left on the idle canvas */}
+        <div className="absolute bottom-6 left-6 z-10">
+          <OmnixBrandBlock moduleLabel={moduleLabel} size="md" />
+        </div>
       </div>
     );
   }
@@ -229,13 +237,10 @@ export function CustomerDisplayPage() {
         <div className={`h-1 ${cfg.accentLine}`} />
         <div className="px-10 py-5 flex items-center justify-between border-b border-stone-800">
           <div className="flex items-center gap-3">
-            <ModuleLogo moduleId={moduleId} size={40} />
-            <div>
-              <div className="text-base font-medium text-white">{businessName}</div>
-              <div className="text-sm text-stone-500">
-                {cfg.activeLabels.orderTitle}
-                {sourceLabel && <span className="ml-2 text-stone-400">· {sourceLabel}</span>}
-              </div>
+            <BusinessNameBadge name={businessName} />
+            <div className="text-sm text-stone-500">
+              {cfg.activeLabels.orderTitle}
+              {sourceLabel && <span className="ml-2 text-stone-400">· {sourceLabel}</span>}
             </div>
           </div>
           <div className="text-right">
@@ -305,7 +310,66 @@ export function CustomerDisplayPage() {
             <div className={`text-7xl font-bold font-mono tabular-nums leading-none mt-2 text-white`}>{KES(grandTotal)}</div>
           </div>
         </div>
+        {/* Omnix branding strip — our shop window on the live sale */}
+        <div className="max-w-5xl mx-auto mt-6 pt-4 border-t border-stone-800/60 flex items-center justify-between">
+          <OmnixBrandBlock moduleLabel={moduleLabel} size="sm" />
+        </div>
       </div>
+    </div>
+  );
+}
+
+/** Our public domain, shown in the customer-facing Omnix branding. */
+const OMNIX_DOMAIN = "www.blyss.co.ke";
+
+/**
+ * Omnix branding block for the customer display.
+ *
+ * Replaces the old "module icon + business name" bottom-left cluster.
+ * Now reads as OUR brand: the Omnix mark, the "Omnix" wordmark, a short
+ * capability tagline, the active module name, and our domain. This is
+ * the block the customer sees while watching idle videos and during a
+ * live sale — it's our shop window on every till in the country.
+ */
+function OmnixBrandBlock({
+  moduleLabel,
+  size = "md",
+}: {
+  moduleLabel: string;
+  size?: "sm" | "md" | "lg";
+}) {
+  const logoSize = size === "lg" ? 44 : size === "sm" ? 28 : 36;
+  const wordmark = size === "lg" ? "text-2xl" : size === "sm" ? "text-base" : "text-lg";
+  return (
+    <div className="flex items-center gap-3">
+      <OmnixLogo size={logoSize} />
+      <div className="leading-tight">
+        <div className="flex items-baseline gap-2">
+          <span className={`font-semibold tracking-tight text-white ${wordmark}`}>Omnix</span>
+          <span className="text-[11px] font-medium uppercase tracking-[0.18em] text-stone-400">
+            {moduleLabel}
+          </span>
+        </div>
+        <div className="text-[11px] text-stone-500">POS • Inventory • Accounting</div>
+        <div className="text-[11px] font-mono text-stone-500">{OMNIX_DOMAIN}</div>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * The customer's own business name — shown top-left so the customer
+ * sees who they're buying from. Sourced from the `business` table
+ * (Settings → Business Profile / setup wizard).
+ */
+function BusinessNameBadge({ name }: { name: string }) {
+  if (!name || name === "Omnix") return null;
+  return (
+    <div className="leading-tight">
+      <div className="text-[10px] font-medium uppercase tracking-[0.2em] text-stone-500">
+        Welcome to
+      </div>
+      <div className="text-base font-semibold text-white">{name}</div>
     </div>
   );
 }
