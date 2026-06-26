@@ -334,7 +334,8 @@ function OverviewTab({ product, editing, onSaved }: { product: Product; editing:
                 [id, name],
               )
               const next = { value: id, label: name }
-              setCategories((prev) => [...prev, { id, name, created_at: new Date().toISOString() } as Category])
+              const fresh: Category = { id, name, parent_id: null, sort_order: 0 }
+              setCategories((prev) => [...prev, fresh])
               return next
             }}
           />
