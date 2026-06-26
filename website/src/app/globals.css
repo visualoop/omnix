@@ -43,8 +43,8 @@
 
   /* ── Foregrounds (warm creams instead of pure white) ── */
   --color-fg: #F2EDE3;            /* primary text */
-  --color-fg-muted: #B8AC95;      /* secondary text, sand */
-  --color-fg-subtle: #7A6F5C;     /* captions, taupe */
+  --color-fg-muted: #BEB29B;      /* secondary text, sand (AA on espresso bg) */
+  --color-fg-subtle: #9A8E78;     /* captions, taupe (AA 4.5:1 on espresso bg) */
 
   /* ── Single accent (deep terracotta-copper, distinctly Kenyan-earth) ── */
   --color-accent: #C77B3F;

@@ -21,6 +21,17 @@ interface AlternateLink {
  *   ...
  *   x-default → /ke/dawa
  */
+/**
+ * Country route → valid BCP-47 hreflang. Google rejects bare country
+ * codes like "ke"; it needs a language(-REGION) form. Every market is
+ * English-language, so we emit en-KE / en-US / etc.
+ */
+const HREFLANG_BY_COUNTRY: Record<string, string> = {
+  ke: 'en-KE', us: 'en-US', gb: 'en-GB', ng: 'en-NG', gh: 'en-GH',
+  za: 'en-ZA', in: 'en-IN', rw: 'en-RW', tz: 'en-TZ', ug: 'en-UG',
+  eg: 'en-EG', ae: 'en-AE',
+}
+
 export function buildHreflangLinks(pathname: string): AlternateLink[] {
   // Strip leading slash + first segment if it's a known country locale.
   const parts = pathname.split('/').filter(Boolean)
@@ -31,7 +42,7 @@ export function buildHreflangLinks(pathname: string): AlternateLink[] {
   const cleanRest = restPath === '/' ? '' : restPath
 
   const out: AlternateLink[] = COUNTRY_LOCALES.map((cc) => ({
-    hreflang: cc,
+    hreflang: HREFLANG_BY_COUNTRY[cc] ?? `en-${cc.toUpperCase()}`,
     href: `${BRAND_URL}/${cc}${cleanRest}`,
   }))
   out.push({ hreflang: 'x-default', href: `${BRAND_URL}/ke${cleanRest}` })

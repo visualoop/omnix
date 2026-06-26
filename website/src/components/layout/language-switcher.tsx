@@ -47,7 +47,7 @@ export function LanguageSwitcher({ className }: { className?: string }) {
   }
 
   return (
-    <Select value={locale} onValueChange={(v) => switchTo(String(v))} disabled={isPending}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>
+    <Select value={locale} onValueChange={(v) => switchTo(String(v))} disabled={isPending}><SelectTrigger aria-label="Select country / region"><SelectValue /></SelectTrigger><SelectContent>
       {routing.locales.map((l) => {
         const label = LOCALE_LABELS[l] ?? { flag: '', name: l }
         return (

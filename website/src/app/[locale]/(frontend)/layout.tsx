@@ -134,8 +134,15 @@ export async function generateMetadata({
 }: { params: Promise<{ locale: string }> }): Promise<Metadata> {
   const { locale } = await params
   const c = copyFor(locale)
+  // Valid BCP-47 hreflang codes (en-KE, not bare 'ke') so Google accepts
+  // the alternates. Each country route still resolves to its /xx URL.
+  const HREFLANG: Record<string, string> = {
+    ke: 'en-KE', us: 'en-US', gb: 'en-GB', ng: 'en-NG', gh: 'en-GH',
+    za: 'en-ZA', in: 'en-IN', rw: 'en-RW', tz: 'en-TZ', ug: 'en-UG',
+    eg: 'en-EG', ae: 'en-AE',
+  }
   const altLanguages: Record<string, string> = Object.fromEntries(
-    COUNTRY_LOCALES.map((cc) => [cc, `${BRAND.url}/${cc}`]),
+    COUNTRY_LOCALES.map((cc) => [HREFLANG[cc] ?? `en-${cc.toUpperCase()}`, `${BRAND.url}/${cc}`]),
   )
   altLanguages['x-default'] = `${BRAND.url}/ke`
   return {
