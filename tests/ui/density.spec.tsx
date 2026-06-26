@@ -42,7 +42,7 @@ afterEach(() => {
 })
 
 describe("Input density", () => {
-  it("renders with h-8 + text-[13px] in comfortable mode", () => {
+  it("renders with h-9 + text-[13px] in comfortable mode", () => {
     setDensity("comfortable")
     const { container } = render(<Input data-testid="i" />)
     const el = container.querySelector("input")
@@ -50,7 +50,7 @@ describe("Input density", () => {
     // The class string is the source of truth. We check that the
     // comfortable token set is present and the touch one is too —
     // Tailwind will resolve which wins via the variant selector.
-    expect(el!.className).toMatch(/\bh-8\b/)
+    expect(el!.className).toMatch(/\bh-9\b/)
     expect(el!.className).toMatch(/text-\[13px\]/)
   })
 

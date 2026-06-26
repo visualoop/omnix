@@ -60,6 +60,10 @@ function DialogContent({
           // The backdrop already blurs the page behind, so this floats cleanly.
           "fixed top-1/2 left-1/2 z-50 grid w-full max-w-[calc(100%-2rem)] -translate-x-1/2 -translate-y-1/2 gap-3",
           "glass-thick rounded-2xl p-4 text-sm text-popover-foreground",
+          // Never spill off-screen — cap height + scroll the body. POS
+          // monitors are often 768px tall; tall dialogs (payment, receive
+          // stock, prescription) used to clip their footer.
+          "max-h-[90vh] overflow-y-auto",
           "outline-none sm:max-w-md",
           // Faster, less bouncy enter/exit (no big zoom)
           "duration-150 data-open:animate-in data-open:fade-in-0 data-open:zoom-in-[0.98]",
@@ -93,7 +97,7 @@ function DialogHeader({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
       data-slot="dialog-header"
-      className={cn("flex flex-col gap-1.5 pr-8", className)}
+      className={cn("flex flex-col gap-2 pr-8 pb-4", className)}
       {...props}
     />
   )

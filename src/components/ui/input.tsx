@@ -10,7 +10,7 @@ function Input({ className, type, ...props }: React.ComponentProps<"input">) {
       data-slot="input"
       className={cn(
         // Liquid-native: soft 3px focus halo + 1px primary border
-        "h-8 w-full min-w-0 rounded-md border border-input bg-background px-2.5 py-1 text-[13px] transition-all duration-150 outline-none",
+        "h-9 w-full min-w-0 rounded-md border border-input bg-background px-3 py-1 text-[13px] transition-all duration-150 outline-none",
         // Touch density — bumps target ≥44px and text to 15px so the
         // user can actually tap and read on tablet/POS terminals.
         "touch:h-11 touch:px-3 touch:text-[15px]",
