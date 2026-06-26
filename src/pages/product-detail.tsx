@@ -31,7 +31,14 @@ import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { Input } from "@/components/ui/input"
 import { Combobox } from "@/components/ui/combobox"
-import { getProduct, updateProduct, getCategories, type Product, type Category } from "@/services/inventory"
+import { getProduct, updateProduct, getCategories, getProducts, type Product, type Category } from "@/services/inventory"
+import {
+  getSubstitutions,
+  addSubstitution,
+  removeSubstitution,
+  suggestSubstitutionsFromGeneric,
+  type SubstitutionWithProduct,
+} from "@/services/pharmacy-extras"
 import { execute, query } from "@/lib/db"
 import { listVariants, type ProductVariant } from "@/services/retail"
 import { useEntityHistory } from "@/hooks/use-entity-history"
@@ -193,6 +200,7 @@ export function ProductDetailPage() {
           { id: "overview", label: "Overview", render: () => <OverviewTab product={product} editing={editing} onSaved={() => { setEditing(false); reload() }} /> },
           { id: "stock", label: "Stock", count: batches.length, render: () => <BatchesTab batches={batches} /> },
           { id: "variants", label: "Variants", count: variants.length, render: () => <VariantsTab variants={variants} onManage={() => setVariantsOpen(true)} /> },
+          { id: "substitutes", label: "Substitutes", render: () => <SubstitutesTab product={product} /> },
           { id: "images", label: "Images", render: () => <ImagesTab product={product} onSaved={reload} /> },
           { id: "sales", label: "Sales", render: () => <SalesTab id={product.id} /> },
           { id: "suppliers", label: "Suppliers", count: suppliers.length, render: () => <SuppliersTab suppliers={suppliers} /> },
@@ -626,6 +634,157 @@ function VariantsTab({ variants, onManage }: { variants: ProductVariant[]; onMan
           ))}
         </tbody>
       </table>
+    </div>
+  )
+}
+
+function SubstitutesTab({ product }: { product: Product }) {
+  const [subs, setSubs] = useState<SubstitutionWithProduct[]>([])
+  const [suggestions, setSuggestions] = useState<Array<{ id: string; name: string; sku: string; selling_price: number; stock: number; generic_name: string }>>([])
+  const [allProducts, setAllProducts] = useState<Product[]>([])
+  const [loading, setLoading] = useState(true)
+  const [adding, setAdding] = useState(false)
+
+  const reload = async () => {
+    setLoading(true)
+    try {
+      const [s, g] = await Promise.all([
+        getSubstitutions(product.id),
+        suggestSubstitutionsFromGeneric(product.id).catch(() => []),
+      ])
+      setSubs(s)
+      setSuggestions(g)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    reload()
+    getProducts().then((rows) => setAllProducts(rows.filter((p) => p.id !== product.id))).catch(() => {})
+  }, [product.id])
+
+  const add = async (substituteId: string) => {
+    setAdding(true)
+    try {
+      await addSubstitution(product.id, substituteId)
+      toast.success("Substitute added")
+      await reload()
+    } catch (e) {
+      toast.error(String(e))
+    } finally {
+      setAdding(false)
+    }
+  }
+
+  const remove = async (substituteId: string) => {
+    if (!confirm("Remove this substitute?")) return
+    try {
+      await removeSubstitution(product.id, substituteId)
+      toast.success("Substitute removed")
+      await reload()
+    } catch (e) {
+      toast.error(String(e))
+    }
+  }
+
+  const currentIds = new Set(subs.map((s) => s.substitute_product_id))
+  const filteredSuggestions = suggestions.filter((s) => !currentIds.has(s.id))
+  const pickableProducts = allProducts.filter((p) => !currentIds.has(p.id))
+
+  return (
+    <div className="flex flex-col gap-6">
+      {/* Current substitutes */}
+      <section className="flex flex-col gap-3">
+        <div className="flex items-baseline justify-between">
+          <h3 className="font-mono text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
+            Current substitutes
+            <span className="ml-2 tabular-nums text-foreground/70">{subs.length}</span>
+          </h3>
+          <span className="text-[11px] text-muted-foreground">
+            Suggested at POS when this product is out of stock or the patient asks for an alternative.
+          </span>
+        </div>
+
+        {loading ? (
+          <p className="text-sm text-muted-foreground">Loading…</p>
+        ) : subs.length === 0 ? (
+          <div className="rounded-md border border-dashed border-foreground/15 p-6 text-center text-[13px] text-muted-foreground">
+            No substitutes set up yet. Use the picker below to add equivalents.
+          </div>
+        ) : (
+          <ul className="flex flex-col divide-y divide-foreground/5 rounded-md border border-foreground/10">
+            {subs.map((s) => (
+              <li key={s.id} className="grid grid-cols-[1fr_auto_auto] items-center gap-4 px-4 py-3">
+                <div className="min-w-0">
+                  <div className="text-[13px] font-medium truncate">{s.substitute_name}</div>
+                  <div className="text-[11px] text-muted-foreground truncate">
+                    {s.substitute_sku ? `SKU ${s.substitute_sku} · ` : ""}
+                    {s.substitute_generic ? `Generic: ${s.substitute_generic} · ` : ""}
+                    Stock {s.substitute_stock}
+                  </div>
+                </div>
+                <span className="font-mono tabular-nums text-[12px] text-muted-foreground">
+                  {KES(s.substitute_price)}
+                </span>
+                <Button variant="ghost" size="icon-xs" onClick={() => remove(s.substitute_product_id)} title="Remove substitute">
+                  <XIcon className="h-3 w-3 text-rose-600" />
+                </Button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
+      {/* Auto-suggestions from generic_name */}
+      {filteredSuggestions.length > 0 ? (
+        <section className="flex flex-col gap-3">
+          <h3 className="font-mono text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
+            Suggested · same generic
+            <span className="ml-2 tabular-nums text-foreground/70">{filteredSuggestions.length}</span>
+          </h3>
+          <ul className="flex flex-col divide-y divide-foreground/5 rounded-md border border-foreground/10 bg-foreground/[0.02]">
+            {filteredSuggestions.map((s) => (
+              <li key={s.id} className="grid grid-cols-[1fr_auto_auto] items-center gap-4 px-4 py-3">
+                <div className="min-w-0">
+                  <div className="text-[13px] font-medium truncate">{s.name}</div>
+                  <div className="text-[11px] text-muted-foreground truncate">
+                    Generic: {s.generic_name} · Stock {s.stock}
+                  </div>
+                </div>
+                <span className="font-mono tabular-nums text-[12px] text-muted-foreground">{KES(s.selling_price)}</span>
+                <Button size="sm" disabled={adding} onClick={() => add(s.id)}>
+                  <PlusCircle className="h-3.5 w-3.5" />
+                  Add
+                </Button>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
+
+      {/* Manual picker — any product */}
+      <section className="flex flex-col gap-3">
+        <h3 className="font-mono text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
+          Add any product as substitute
+        </h3>
+        <Combobox
+          value=""
+          onChange={(id) => {
+            if (id) add(id)
+          }}
+          options={pickableProducts.map((p) => ({ value: p.id, label: p.name, hint: p.sku ?? undefined }))}
+          placeholder="Search the catalogue…"
+          searchPlaceholder="Type product name or SKU…"
+          emptyText="No matches"
+          disabled={adding}
+        />
+        <p className="text-[11px] leading-[1.55] text-muted-foreground">
+          Use this when the substitute isn't a same-generic match (e.g. a different brand, a different
+          dosage form, or a non-pharmacy alternative). Once added, the POS will offer it whenever the
+          current product is dispensed or out of stock.
+        </p>
+      </section>
     </div>
   )
 }
