@@ -74,8 +74,8 @@ export async function getDrugLabelsForPrescription(prescriptionId: string): Prom
        COALESCE(ph.is_controlled, 0) AS is_controlled,
        COALESCE(ph.cold_chain, 0) AS cold_chain,
        ph.storage_conditions,
-       COALESCE((SELECT value FROM settings WHERE key = 'business.name'), ?2) AS pharmacy_name,
-       (SELECT value FROM settings WHERE key = 'business.phone') AS pharmacy_phone,
+       COALESCE((SELECT name FROM business LIMIT 1), ?2) AS pharmacy_name,
+       (SELECT phone FROM business LIMIT 1) AS pharmacy_phone,
        COALESCE(u.full_name, u.username) AS dispenser,
        p.created_at
      FROM prescriptions p

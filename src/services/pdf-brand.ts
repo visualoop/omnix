@@ -6,27 +6,29 @@
  * so adding a new field (e.g. tagline, phone secondary) is one change
  * instead of scattered across every PDF service.
  */
-import { query } from "@/lib/db"
 import { toast } from "sonner"
 import type { BrandHeader } from "@/services/pdf-engine"
+import { getBusinessProfile } from "@/services/business-profile"
 
+/**
+ * Build the PDF brand header from the canonical business profile.
+ *
+ * Previously this read `business.*` keys from the `settings` table —
+ * keys that nothing ever wrote — so every PDF showed "Your Business".
+ * Now it reads the real `business` table (+ etims_config KRA PIN) via
+ * getBusinessProfile(). The "Your Business" fallback only appears when
+ * the business genuinely hasn't been named, which setup.tsx prevents.
+ */
 export async function loadBrandHeader(): Promise<BrandHeader> {
-  const rows = await query<{ key: string; value: string }>(
-    `SELECT key, value FROM settings
-     WHERE key IN (
-       'business.name','business.address','business.phone','business.email',
-       'business.kra_pin','business.logo_path','business.website'
-     )`,
-  )
-  const map = Object.fromEntries(rows.map((r) => [r.key, r.value]))
+  const p = await getBusinessProfile()
   return {
-    businessName: map["business.name"] || "Your Business",
-    address: map["business.address"] || null,
-    phone: map["business.phone"] || null,
-    email: map["business.email"] || null,
-    kraPin: map["business.kra_pin"] || null,
-    logoPath: map["business.logo_path"] || null,
-    website: map["business.website"] || null,
+    businessName: p.name || "Your Business",
+    address: p.address,
+    phone: p.phone,
+    email: p.email,
+    kraPin: p.kraPin,
+    logoPath: p.logoPath,
+    website: p.website,
   }
 }
 

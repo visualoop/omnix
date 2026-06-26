@@ -5,7 +5,7 @@
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { toast } from "sonner";
-import { query } from "@/lib/db";
+import { getBusinessProfile } from "@/services/business-profile";
 import type { PayrollRun, Payslip } from "@/services/payroll";
 import { intlLocale } from "@/lib/intl";
 import { money } from "@/lib/money";
@@ -20,16 +20,12 @@ const fmtKES = (n: number) => money(n);
 interface BusinessInfo { name: string; address: string | null; phone: string | null; kra_pin: string | null; }
 
 async function getBusinessInfo(): Promise<BusinessInfo> {
-  const rows = await query<{ key: string; value: string }>(
-    `SELECT key, value FROM settings
-     WHERE key IN ('business.name','business.address','business.phone','business.kra_pin')`,
-  );
-  const map = Object.fromEntries(rows.map((r) => [r.key, r.value]));
+  const p = await getBusinessProfile();
   return {
-    name: map["business.name"] || "Your Business",
-    address: map["business.address"] || null,
-    phone: map["business.phone"] || null,
-    kra_pin: map["business.kra_pin"] || null,
+    name: p.name || "Your Business",
+    address: p.address,
+    phone: p.phone,
+    kra_pin: p.kraPin,
   };
 }
 

@@ -91,8 +91,8 @@ export async function getShiftHandover(shiftId: string): Promise<ShiftHandover |
     [shift.user_id, start, end],
   );
 
-  const [bizName] = await query<{ value: string }>(`SELECT value FROM settings WHERE key = 'business.name'`);
-  const [bizPhone] = await query<{ value: string }>(`SELECT value FROM settings WHERE key = 'business.phone'`);
+  const [bizName] = await query<{ value: string }>(`SELECT name AS value FROM business LIMIT 1`);
+  const [bizPhone] = await query<{ value: string }>(`SELECT phone AS value FROM business LIMIT 1`);
 
   return {
     shift_id: shift.id,

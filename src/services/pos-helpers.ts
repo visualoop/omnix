@@ -60,12 +60,13 @@ export interface PopularProduct {
   category_id: string | null;
   category_name: string | null;
   units_sold: number;
+  image_path?: string | null;
 }
 
 /** Top 24 products by units sold in the last 30 days. */
 export async function getPopularProducts(limit = 24): Promise<PopularProduct[]> {
   return query<PopularProduct>(
-    `SELECT p.id, p.name, p.tax_rate, p.reorder_level, p.category_id,
+    `SELECT p.id, p.name, p.tax_rate, p.reorder_level, p.category_id, p.image_path,
        COALESCE(pp.selling_price, 0) AS selling_price,
        COALESCE((SELECT SUM(b.quantity) FROM batches b WHERE b.product_id = p.id), 0) AS stock_qty,
        c.name AS category_name,
@@ -108,7 +109,7 @@ export interface ProductsByCategory {
 export async function getProductsForCategory(categoryId: string | null, limit = 60): Promise<PopularProduct[]> {
   const where = categoryId ? "p.category_id = ?1" : "p.category_id IS NULL";
   return query<PopularProduct>(
-    `SELECT p.id, p.name, p.tax_rate, p.reorder_level, p.category_id,
+    `SELECT p.id, p.name, p.tax_rate, p.reorder_level, p.category_id, p.image_path,
        COALESCE(pp.selling_price, 0) AS selling_price,
        COALESCE((SELECT SUM(b.quantity) FROM batches b WHERE b.product_id = p.id), 0) AS stock_qty,
        c.name AS category_name,

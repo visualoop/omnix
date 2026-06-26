@@ -419,7 +419,59 @@ Cannot run from this sandbox (no Chrome) but configure:
     test: cash 2k → switch to M-Pesa → enter 3k → assert remaining
     is 0, Complete button is primary.
 
-### Phase 16 — Release
+### Phase 16 — Field-report bug fixes (v0.12.0-blocking)
+
+These came in during planning. All real:
+
+- **Variants can't be added from the product detail page.** The
+  VariantsManager + upsertVariant + product_variants INSERT look
+  structurally fine. Suspect: `variant_sku` is `UNIQUE NOT NULL` —
+  adding a variant with a blank SKU once works, a second blank SKU
+  collides and the insert throws silently. Fix: auto-generate a
+  variant SKU when blank; surface insert errors via toast.
+- **POS product card not loading the product image.**
+  `getPopularProducts` + `getProductsForCategory` SELECT lists omit
+  `p.image_path`, so the card's `image_path` is always undefined.
+  Add `p.image_path` to both SELECTs.
+- **SKU should be optional.** Product create/edit + variant form both
+  hard-require SKU. Make optional: auto-generate `SKU-{shortid}`
+  server-side when blank, relabel "SKU *" → "SKU", drop the required
+  check. Same on CSV import.
+- **PDFs show "Your Business" instead of real settings.** Build a
+  single `getBusinessProfile()` in `src/services/business-profile.ts`
+  returning `{ name, address, phone, email, kraPin, logoPath }` from
+  the settings table. Wire EVERY PDF/print/export through it
+  (invoice-pdf, payslip-pdf, pdf-brand, controlled-substance
+  register, AMR report, drug-labels, z-report, reports-pdf). Add an
+  audit rule `pdf.hardcoded.business` to catch future "Your Business"
+  literals in PDF code.
+
+### Phase 17 — WhatsApp floating widget (marketing)
+
+- `website/src/components/marketing/whatsapp-widget.tsx` — fixed
+  bottom-right FAB (WhatsApp green + logo). Click opens a small
+  in-page chat panel styled like a WhatsApp thread: avatar + name
+  header, greeting bubble, text input + send. On send, deep-link to
+  `https://wa.me/254740455200?text=<encoded>` in a new tab. No
+  backend — the message lands in the owner's WhatsApp.
+- Mounted in the frontend layout (every marketing page, NOT
+  dashboard/admin). Respects reduced-motion; hidden on print.
+
+### Phase 18 — Team page (marketing + admin CRUD)
+
+- Migration: `team_members` table in the website DB
+  (`id, name, role, bio, photo_url, sort_order, active, created_at`).
+- `website/src/db/schema/team_members.ts` + schema index +
+  `migration-sql.ts`.
+- Admin CRUD at `website/src/app/admin/team-members/` (distinct from
+  the existing `admin/team` platform-staff manager) — list, add,
+  edit, delete, reorder, R2 photo upload via `/api/admin/media`.
+- Public page `website/src/app/[locale]/(frontend)/team/page.tsx` —
+  active members by sort_order, grid of cards (photo, name, role,
+  bio). Full metadata + JSON-LD `Person` items.
+- Add "Team" to site header nav + footer.
+
+### Phase 19 — Release
 41. Bump to v0.12.0, commit, tag, push.
 42. Update `website/src/app/[locale]/(frontend)/changelog/page.tsx`
     with v0.12.0 highlights.

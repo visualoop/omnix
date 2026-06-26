@@ -138,6 +138,28 @@ const RULES = [
       return hits
     },
   },
+  {
+    id: 'sql.business.settings',
+    label: "Reading business identity from settings table (use getBusinessProfile() / the business table — the settings 'business.*' keys are never written)",
+    severity: 'error',
+    extensions: ['.ts', '.tsx'],
+    test(text) {
+      const hits = []
+      // Match: SELECT … FROM settings WHERE key = 'business.name' (or .phone/.address/.email)
+      const re = /FROM\s+settings\s+WHERE\s+key\s*=\s*['"]business\.(name|phone|address|email)['"]/gi
+      for (const m of text.matchAll(re)) {
+        const line = text.slice(0, m.index).split('\n').length
+        hits.push({ kind: 'SELECT', snippet: trim(m[0]), line })
+      }
+      // Match: key IN ('business.name', …) lists pulling identity from settings
+      const inRe = /key\s+IN\s*\([^)]*['"]business\.name['"][^)]*\)/gi
+      for (const m of text.matchAll(inRe)) {
+        const line = text.slice(0, m.index).split('\n').length
+        hits.push({ kind: 'SELECT-IN', snippet: trim(m[0]), line })
+      }
+      return hits
+    },
+  },
 ]
 
 /* ────────────────────────────────────────────────────────────────── *

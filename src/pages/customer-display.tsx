@@ -119,7 +119,7 @@ export function CustomerDisplayPage() {
   // defaults to ON for medication-name privacy.
   useEffect(() => {
     Promise.all([
-      query<{ value: string }>(`SELECT value FROM settings WHERE key = 'business.name'`),
+      query<{ value: string }>(`SELECT name AS value FROM business LIMIT 1`),
       query<{ value: string }>(
         `SELECT value FROM settings WHERE key = ?1`,
         [`customer_display.privacy.${moduleId}`],

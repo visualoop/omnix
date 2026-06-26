@@ -550,15 +550,20 @@ export function VariantsManager({ productId, variants, onChange }: {
   };
 
   const save = async () => {
-    if (!editForm.variant_sku || !editForm.variant_name) {
-      toast.error("SKU and name required");
+    if (!editForm.variant_name) {
+      toast.error("Variant name required");
       return;
     }
     try {
+      // SKU is optional — auto-generate a stable one when blank so the
+      // UNIQUE NOT NULL column never collides on empty strings.
+      const sku =
+        editForm.variant_sku?.trim() ||
+        `VAR-${crypto.randomUUID().slice(0, 8).toUpperCase()}`;
       await upsertVariant({
         ...editForm,
         product_id: productId,
-        variant_sku: editForm.variant_sku!,
+        variant_sku: sku,
         variant_name: editForm.variant_name!,
       });
       toast.success(editingId ? "Variant updated" : "Variant added");
@@ -583,12 +588,12 @@ export function VariantsManager({ productId, variants, onChange }: {
       <div className="space-y-3 border border-border rounded-md p-3 bg-muted/10">
         <h3 className="text-xs font-semibold">{editingId ? "Edit" : "New"} Variant</h3>
         <div className="grid grid-cols-2 gap-2">
-          <Field label="SKU *">
+          <Field label="SKU">
             <Input
               value={editForm.variant_sku || ""}
               onChange={(e) => setEditForm({ ...editForm, variant_sku: e.target.value })}
               className="font-mono"
-              placeholder="e.g., LIPSTICK-RED-S"
+              placeholder="Auto-generated if blank"
             />
           </Field>
           <Field label="Variant Name *">

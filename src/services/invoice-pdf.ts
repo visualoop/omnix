@@ -8,7 +8,7 @@
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { toast } from "sonner";
-import { query } from "@/lib/db";
+import { getBusinessProfile } from "@/services/business-profile";
 import type { Invoice, Quotation, DocumentItem } from "@/services/invoicing";
 import { intlLocale } from "@/lib/intl";
 import { money } from "@/lib/money";
@@ -26,18 +26,14 @@ interface BusinessInfo {
 }
 
 async function getBusinessInfo(): Promise<BusinessInfo> {
-  const rows = await query<{ key: string; value: string }>(
-    `SELECT key, value FROM settings
-     WHERE key IN ('business.name','business.address','business.phone','business.email','business.kra_pin','business.logo_path')`,
-  );
-  const map = Object.fromEntries(rows.map((r) => [r.key, r.value]));
+  const p = await getBusinessProfile();
   return {
-    name: map["business.name"] || "Your Business",
-    address: map["business.address"] || null,
-    phone: map["business.phone"] || null,
-    email: map["business.email"] || null,
-    kra_pin: map["business.kra_pin"] || null,
-    logo_path: map["business.logo_path"] || null,
+    name: p.name || "Your Business",
+    address: p.address,
+    phone: p.phone,
+    email: p.email,
+    kra_pin: p.kraPin,
+    logo_path: p.logoPath,
   };
 }
 

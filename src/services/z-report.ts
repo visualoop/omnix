@@ -190,10 +190,10 @@ export async function getZReport(date?: string): Promise<ZReport> {
 
   // Pharmacy info
   const [bizName] = await query<{ value: string }>(
-    `SELECT value FROM settings WHERE key = 'business.name'`,
+    `SELECT name AS value FROM business LIMIT 1`,
   );
   const [bizPhone] = await query<{ value: string }>(
-    `SELECT value FROM settings WHERE key = 'business.phone'`,
+    `SELECT phone AS value FROM business LIMIT 1`,
   );
 
   const cashIn = (cashSalesAgg?.total || 0) + (custPayAgg?.cash_total || 0);
