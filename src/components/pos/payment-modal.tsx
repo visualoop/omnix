@@ -15,6 +15,7 @@ import { markOrderPaidFromPos } from "@/services/hospitality";
 import { PaystackMpesaCharge } from "@/components/pos/paystack-mpesa";
 import { DarajaMpesaCharge } from "@/components/pos/daraja-mpesa";
 import { InsuranceVerifyPanel } from "@/components/pos/insurance-verify";
+import { paymentBrandIcon, paymentBrandTint } from "@/components/icons/payment-brands";
 import { toast } from "sonner";
 
 interface Props {
@@ -130,6 +131,17 @@ export function PaymentModal({ open, onClose }: Props) {
     setPayments([...payments, { method_id: method.id, method_name: method.name, amount: amt, reference: reference || undefined }]);
     setAmount(String(Math.max(0, remaining - amt).toFixed(2)));
     setReference("");
+  };
+
+  /** Remove a split chunk and restore its amount to the input for re-entry. */
+  const removePayment = (index: number) => {
+    const removed = payments[index];
+    const next = payments.filter((_, i) => i !== index);
+    setPayments(next);
+    // Restore the freed amount into the input so the cashier can re-key it.
+    const newRemaining = total - next.reduce((s, p) => s + p.amount, 0);
+    setAmount(String(Math.max(0, newRemaining).toFixed(2)));
+    if (removed?.method_id === "insurance") setInsurance(null);
   };
 
   const handleComplete = async () => {
@@ -324,121 +336,172 @@ export function PaymentModal({ open, onClose }: Props) {
             onCancel={() => { setShowInsuranceVerify(false); setSelectedMethod("cash"); }}
           />
         ) : (
-        <div className="space-y-4">
-          <div className="text-center py-2">
-            <p className="text-xs text-muted-foreground">Total Due</p>
-            <p className="text-3xl font-bold font-mono">{total.toFixed(2)}</p>
-            {paidSoFar > 0 && (
-              <p className="text-sm text-muted-foreground mt-1">
-                Remaining: <span className="font-mono">{remaining.toFixed(2)}</span>
-              </p>
-            )}
+        <div className="flex flex-col max-h-[82vh]">
+          {/* ── Sticky header: total + remaining + progress ───────── */}
+          <div className="flex-shrink-0 border-b border-border/60 pb-4">
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <p className="text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground">Total due</p>
+                <p className="text-2xl font-bold font-mono tabular-nums leading-tight">{total.toFixed(2)}</p>
+              </div>
+              <div className="text-right">
+                <p className="text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground">Remaining</p>
+                <p className={`text-2xl font-bold font-mono tabular-nums leading-tight ${remaining <= 0 ? "text-emerald-600" : ""}`}>
+                  {Math.max(0, remaining).toFixed(2)}
+                </p>
+              </div>
+            </div>
+            {/* progress bar */}
+            <div className="mt-3 h-1.5 w-full rounded-full bg-foreground/[0.08] overflow-hidden">
+              <div
+                className="h-full rounded-full bg-emerald-500 transition-all duration-300"
+                style={{ width: `${total > 0 ? Math.min(100, (paidSoFar / total) * 100) : 0}%` }}
+              />
+            </div>
             {insurance && (
-              <p className="text-xs text-amber-700 mt-1">
-                Member pays copay: KES {insurance.copay.toFixed(0)}
+              <p className="text-xs text-amber-700 mt-2">
+                Insurance covers KES {insurance.claim.toFixed(0)} · member pays copay KES {insurance.copay.toFixed(0)}
               </p>
             )}
           </div>
 
-          <div className="grid grid-cols-2 gap-2">
-            {methods.map((m) => (
-              <button
-                key={m.id}
-                onClick={() => handleSelectMethod(m.id)}
-                className={`px-3 py-2 rounded-md border text-sm transition-colors ${
-                  selectedMethod === m.id
-                    ? "border-primary bg-primary/5 font-medium"
-                    : "border-border hover:bg-accent/50"
-                }`}
-              >
-                {m.name}
-              </button>
-            ))}
-          </div>
-
-          <div className="space-y-1.5">
-            <label className="text-xs font-medium text-muted-foreground">Amount</label>
-            <Input
-              ref={amountRef}
-              type="number"
-              inputMode="decimal"
-              value={amount}
-              onChange={(e) => setAmount(e.target.value)}
-              onFocus={() => touch && setKeypadOpen(true)}
-              className="text-lg font-mono h-11"
-              autoFocus
-              onKeyDown={(e) => e.key === "Enter" && handleComplete()}
-            />
-            {selectedMethod === "cash" && (
-              <>
-                <div className="flex flex-wrap gap-1.5 pt-1">
-                  {[50, 100, 200, 500, 1000, 2000].map((denom) => (
-                    <button key={denom} type="button" onClick={() => { const current = parseFloat(amount) || 0; setAmount(String(current + denom)); }} className="h-8 px-2.5 text-xs font-mono rounded-md border border-border bg-background hover:bg-accent transition">
-                      +{denom}
+          {/* ── Scrollable body ───────────────────────────────────── */}
+          <div className="flex-1 overflow-y-auto py-4 space-y-4 min-h-0">
+            {/* Method picker — brand-coloured full-width blocks */}
+            <div>
+              <p className="text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground mb-2">Pay with</p>
+              <div className="grid grid-cols-2 gap-2">
+                {methods.map((m) => {
+                  const Icon = paymentBrandIcon(m.id + " " + m.name);
+                  const tint = paymentBrandTint(m.id + " " + m.name);
+                  const selected = selectedMethod === m.id;
+                  return (
+                    <button
+                      key={m.id}
+                      onClick={() => handleSelectMethod(m.id)}
+                      className={`flex items-center gap-2.5 px-3 py-2.5 rounded-xl border text-left transition-all ${
+                        selected
+                          ? `${tint.bg} ring-2 ${tint.ring} border-transparent`
+                          : "border-border hover:bg-accent/40"
+                      }`}
+                    >
+                      <Icon size={26} />
+                      <span className={`text-sm font-medium leading-tight ${selected ? tint.text : "text-foreground"}`}>
+                        {m.name}
+                      </span>
                     </button>
-                  ))}
-                  <button type="button" onClick={() => setAmount(String(total.toFixed(2)))} className="h-8 px-2.5 text-xs rounded-md border border-primary text-primary bg-background hover:bg-primary/5 transition">Exact</button>
-                  <button type="button" onClick={() => setAmount("")} className="h-8 px-2.5 text-xs rounded-md border border-border bg-background hover:bg-accent transition text-muted-foreground">Clear</button>
-                </div>
-                {parseFloat(amount) > total && (
-                  <div className="text-sm pt-1">
-                    <span className="text-muted-foreground">Change: </span>
-                    <span className="font-mono font-semibold text-emerald-600">KES {(parseFloat(amount) - total).toFixed(2)}</span>
-                  </div>
-                )}
-              </>
-            )}
-          </div>
+                  );
+                })}
+              </div>
+            </div>
 
-          {selectedMethod !== "cash" && selectedMethod !== "insurance" && (
+            {/* Amount input */}
             <div className="space-y-1.5">
-              <label className="text-xs font-medium text-muted-foreground">Reference / Transaction Code</label>
-              <Input value={reference} onChange={(e) => setReference(e.target.value)} placeholder="e.g. SLK7A9B2C1" />
+              <label className="text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
+                Amount (KES)
+              </label>
+              <Input
+                ref={amountRef}
+                type="number"
+                inputMode="decimal"
+                value={amount}
+                onChange={(e) => setAmount(e.target.value)}
+                onFocus={() => touch && setKeypadOpen(true)}
+                className="text-2xl font-mono h-14 tabular-nums"
+                autoFocus
+                onKeyDown={(e) => e.key === "Enter" && (remaining - (parseFloat(amount) || 0) <= 0 ? handleComplete() : addPayment())}
+              />
+              {selectedMethod === "cash" && (
+                <>
+                  <div className="flex flex-wrap gap-1.5 pt-1">
+                    {[50, 100, 200, 500, 1000, 2000].map((denom) => (
+                      <button key={denom} type="button" onClick={() => { const current = parseFloat(amount) || 0; setAmount(String(current + denom)); }} className="h-9 px-3 text-xs font-mono rounded-md border border-border bg-background hover:bg-accent transition">
+                        +{denom}
+                      </button>
+                    ))}
+                    <button type="button" onClick={() => setAmount(String(Math.max(0, remaining).toFixed(2)))} className="h-9 px-3 text-xs rounded-md border border-primary text-primary bg-background hover:bg-primary/5 transition">Exact</button>
+                    <button type="button" onClick={() => setAmount("")} className="h-9 px-3 text-xs rounded-md border border-border bg-background hover:bg-accent transition text-muted-foreground">Clear</button>
+                  </div>
+                  {parseFloat(amount) > remaining && remaining > 0 && (
+                    <div className="text-sm pt-1">
+                      <span className="text-muted-foreground">Change: </span>
+                      <span className="font-mono font-semibold text-emerald-600">KES {(parseFloat(amount) - remaining).toFixed(2)}</span>
+                    </div>
+                  )}
+                </>
+              )}
             </div>
-          )}
 
-          {darajaActive && selectedMethod === "mpesa-manual" && (
-            <Button variant="outline" className="w-full border-green-500 text-green-600 hover:bg-green-50" onClick={() => setShowDarajaStk(true)}>
-              📱 Send STK Push via M-Pesa (Direct)
-            </Button>
-          )}
+            {/* Reference field for non-cash, non-insurance methods */}
+            {selectedMethod !== "cash" && selectedMethod !== "insurance" && (
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
+                  Reference / Transaction code
+                </label>
+                <Input value={reference} onChange={(e) => setReference(e.target.value)} placeholder="e.g. SLK7A9B2C1" className="h-11 font-mono" />
+              </div>
+            )}
 
-          {paystackActive && selectedMethod === "mpesa-manual" && (
-            <Button variant="outline" className="w-full" onClick={() => setShowStkPush(true)}>
-              📱 Send STK Push via Paystack
-            </Button>
-          )}
+            {/* STK push triggers */}
+            {darajaActive && selectedMethod === "mpesa-manual" && (
+              <Button variant="outline" className="w-full border-[#4FC52E] text-[#2E7D1B] hover:bg-[#4FC52E]/10" onClick={() => setShowDarajaStk(true)}>
+                Send STK push via M-Pesa
+              </Button>
+            )}
+            {paystackActive && selectedMethod === "mpesa-manual" && (
+              <Button variant="outline" className="w-full border-[#13B7F5] text-[#0A6F9E] hover:bg-[#13B7F5]/10" onClick={() => setShowStkPush(true)}>
+                Send STK push via Paystack
+              </Button>
+            )}
 
-          {payments.length > 0 && (
-            <div className="border border-border rounded-md p-2 space-y-1">
-              {payments.map((p, i) => (
-                <div key={i} className="flex justify-between text-sm">
-                  <span className="truncate">{p.method_name}</span>
-                  <span className="font-mono">{p.amount.toFixed(2)}</span>
+            {/* Splits paid so far */}
+            {payments.length > 0 && (
+              <div>
+                <p className="text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground mb-2">Paid so far</p>
+                <div className="space-y-1.5">
+                  {payments.map((p, i) => {
+                    const Icon = paymentBrandIcon(p.method_id + " " + p.method_name);
+                    return (
+                      <div key={i} className="flex items-center gap-2.5 rounded-lg border border-border/60 px-3 py-2">
+                        <Icon size={22} />
+                        <div className="flex-1 min-w-0">
+                          <div className="text-sm font-medium truncate">{p.method_name}</div>
+                          {p.reference && <div className="text-[11px] font-mono text-muted-foreground truncate">{p.reference}</div>}
+                        </div>
+                        <span className="font-mono tabular-nums text-sm font-semibold">{p.amount.toFixed(2)}</span>
+                        <button
+                          onClick={() => removePayment(i)}
+                          className="text-muted-foreground hover:text-destructive transition-colors text-lg leading-none px-1"
+                          aria-label={`Remove ${p.method_name}`}
+                        >×</button>
+                      </div>
+                    );
+                  })}
                 </div>
-              ))}
-            </div>
-          )}
-
-          <div className="flex gap-2">
-            {payments.length === 0 && remaining > 0 ? (
-              <>
-                <Button variant="secondary" className="flex-1" onClick={addPayment}>Split</Button>
-                <Button className="flex-1" onClick={handleComplete} disabled={processing}>{processing ? "..." : "Complete"}</Button>
-              </>
-            ) : remaining > 0 ? (
-              <Button className="w-full" onClick={addPayment}>Add Payment</Button>
-            ) : (
-              <Button className="w-full" onClick={handleComplete} disabled={processing}>{processing ? "Processing..." : "Complete Sale"}</Button>
+              </div>
             )}
           </div>
 
-          {parseFloat(amount) > remaining && remaining <= 0 && (
-            <div className="text-center text-sm">
-              <span className="text-muted-foreground">Change: </span>
-              <span className="font-mono font-medium text-green-600">{(parseFloat(amount) - total + paidSoFar).toFixed(2)}</span>
-            </div>
-          )}
+          {/* ── Sticky footer: single contextual CTA ──────────────── */}
+          <div className="flex-shrink-0 border-t border-border/60 pt-4">
+            {remaining - (parseFloat(amount) || 0) > 0.001 ? (
+              // The current amount won't cover the bill → it's a split chunk.
+              <Button className="w-full h-12 text-base" onClick={addPayment}>
+                Add payment · {(parseFloat(amount) || 0).toFixed(2)}
+              </Button>
+            ) : (
+              <Button className="w-full h-12 text-base" onClick={handleComplete} disabled={processing}>
+                {processing ? "Processing…" : "Complete sale"}
+              </Button>
+            )}
+            {/* Change line when the tendered amount exceeds what's left */}
+            {(parseFloat(amount) || 0) > remaining && remaining > 0 && selectedMethod === "cash" && (
+              <p className="text-center text-sm mt-2">
+                <span className="text-muted-foreground">Change due: </span>
+                <span className="font-mono font-semibold text-emerald-600">KES {((parseFloat(amount) || 0) - remaining).toFixed(2)}</span>
+              </p>
+            )}
+          </div>
         </div>
         )}
       </DialogContent>
