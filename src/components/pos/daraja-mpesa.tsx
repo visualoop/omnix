@@ -8,6 +8,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { initiateStkPush, queryStkStatus, getDarajaConfig } from "@/services/daraja";
+import { MpesaIcon } from "@/components/icons/payment-brands";
 
 interface Props {
   amount: number;
@@ -286,10 +287,16 @@ export function DarajaMpesaCharge({ amount, saleId, onSuccess, onCancel }: Props
       )}
 
       {status === "success" && (
-        <div className="text-center py-6 space-y-2">
-          <CheckCircle2 className="h-10 w-10 mx-auto text-green-600" />
-          <p className="text-sm font-semibold">M-Pesa payment received</p>
-          <p className="text-xs text-muted-foreground">Completing sale...</p>
+        <div className="text-center py-8 space-y-3">
+          <div className="relative mx-auto w-fit">
+            <span className="absolute inset-0 animate-ping rounded-2xl bg-[#4FC52E]/30" />
+            <MpesaIcon size={56} className="relative" />
+          </div>
+          <div className="flex items-center justify-center gap-1.5">
+            <CheckCircle2 className="h-5 w-5 text-[#2E7D1B]" weight="fill" />
+            <p className="text-sm font-semibold text-[#2E7D1B]">M-Pesa payment received</p>
+          </div>
+          <p className="text-xs text-muted-foreground">Completing sale…</p>
         </div>
       )}
 

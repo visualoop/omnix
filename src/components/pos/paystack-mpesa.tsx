@@ -8,6 +8,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { initiateMpesaCharge, verifyTransaction, submitChargeOtp, getPaystackConfig } from "@/services/paystack";
+import { PaystackIcon } from "@/components/icons/payment-brands";
 
 interface Props {
   amount: number;
@@ -195,10 +196,16 @@ export function PaystackMpesaCharge({ amount, email, saleId, onSuccess, onCancel
       )}
 
       {status === "success" && (
-        <div className="text-center py-6 space-y-2">
-          <CheckCircle2 className="h-10 w-10 mx-auto text-green-600" />
-          <p className="text-sm font-semibold">Payment received</p>
-          <p className="text-xs text-muted-foreground">Completing sale...</p>
+        <div className="text-center py-8 space-y-3">
+          <div className="relative mx-auto w-fit">
+            <span className="absolute inset-0 animate-ping rounded-2xl bg-[#13B7F5]/30" />
+            <PaystackIcon size={56} className="relative" />
+          </div>
+          <div className="flex items-center justify-center gap-1.5">
+            <CheckCircle2 className="h-5 w-5 text-[#0A6F9E]" weight="fill" />
+            <p className="text-sm font-semibold text-[#0A6F9E]">Payment received</p>
+          </div>
+          <p className="text-xs text-muted-foreground">Completing sale…</p>
         </div>
       )}
 
