@@ -51,6 +51,12 @@ const VARIANT_LABEL: Record<VariantId, string> = {
  * Empty by default — the standard summary is enough for most patches.
  */
 const VERSION_HIGHLIGHTS: Record<string, string[]> = {
+  '0.13.1': [
+    'Long-term speed: SQLite tuned for production (WAL, memory-mapped reads, bigger cache) so the till stays instant after years of sales',
+    'Daily sales rollup keeps all-time reports fast no matter how much history accumulates',
+    'Automatic background maintenance (planner stats, space reclaim, log pruning) runs quietly once a day',
+    'Marketing images now load everywhere (hero, modules, pricing, social cards)',
+  ],
   '0.13.0': [
     'Auto-update on close — non-major updates download quietly while you work and install when you close the app, like VSCode',
     'Machines now show every module activated on them (was showing only the last one)',

@@ -400,6 +400,12 @@ fn run_inner() {
             sql: include_str!("../migrations/048_manual_mpesa.sql"),
             kind: MigrationKind::Up,
         },
+        Migration {
+            version: 49,
+            description: "Sales daily rollup + churn-table timestamp indexes for long-term scale",
+            sql: include_str!("../migrations/049_sales_rollup.sql"),
+            kind: MigrationKind::Up,
+        },
     ];
 
     tauri::Builder::default()

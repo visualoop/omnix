@@ -164,6 +164,14 @@ function AppContent() {
         import("@/stores/density").then(({ useDensityStore }) => useDensityStore.getState().load().catch(() => {}));
         // Seed the RBAC permission catalog + system-role grants (idempotent).
         import("@/services/rbac").then(({ seedRbac }) => seedRbac().catch(() => {}));
+        // Run DB maintenance (sales rollup, churn prune, optimize) when
+        // due — deferred well past boot so it never competes with the
+        // first paint or the first sale. Throttled to ~once a day.
+        setTimeout(() => {
+          import("@/services/db-maintenance")
+            .then(({ runMaintenanceIfDue }) => runMaintenanceIfDue().catch(() => {}))
+            .catch(() => {});
+        }, 30000);
         // Restore effective-permission cache for a persisted session.
         if (useAuthStore.getState().user) {
           useAuthStore.getState().loadPermissions();
