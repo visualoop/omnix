@@ -388,6 +388,12 @@ fn run_inner() {
             sql: include_str!("../migrations/046_local_licenses.sql"),
             kind: MigrationKind::Up,
         },
+        Migration {
+            version: 47,
+            description: "Link prescriptions → customers (FK + index) so the Patients tab can show per-patient history",
+            sql: include_str!("../migrations/047_prescription_customer_link.sql"),
+            kind: MigrationKind::Up,
+        },
     ];
 
     tauri::Builder::default()

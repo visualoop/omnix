@@ -4,6 +4,7 @@ import type { CartItem } from "@/services/sales";
 export interface Prescription {
   id: string;
   rx_number: number;
+  customer_id: string | null;
   patient_name: string;
   patient_phone: string | null;
   patient_age: number | null;
@@ -70,6 +71,10 @@ export async function getNextRxNumber(): Promise<number> {
 }
 
 export interface CreatePrescriptionInput {
+  /** Optional FK to customers.id — set when the patient was picked from
+   *  the Patients tab (or auto-created via the dispense Combobox). Old
+   *  prescriptions created via free-text patient_name keep customer_id = null. */
+  customer_id?: string;
   patient_name: string;
   patient_phone?: string;
   patient_age?: number;
@@ -86,9 +91,9 @@ export async function createPrescription(input: CreatePrescriptionInput, userId:
   const rxNumber = await getNextRxNumber();
 
   await execute(
-    `INSERT INTO prescriptions (id, rx_number, patient_name, patient_phone, patient_age, doctor_name, doctor_license, hospital, diagnosis, notes, dispensed_by)
-     VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)`,
-    [id, rxNumber, input.patient_name, input.patient_phone || null, input.patient_age || null,
+    `INSERT INTO prescriptions (id, rx_number, customer_id, patient_name, patient_phone, patient_age, doctor_name, doctor_license, hospital, diagnosis, notes, dispensed_by)
+     VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12)`,
+    [id, rxNumber, input.customer_id || null, input.patient_name, input.patient_phone || null, input.patient_age || null,
      input.doctor_name || null, input.doctor_license || null, input.hospital || null,
      input.diagnosis || null, input.notes || null, userId]
   );

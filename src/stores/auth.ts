@@ -66,7 +66,9 @@ export const useAuthStore = create<AuthState>()(
           // cloud DB. Fire-and-forget; never blocks sign-in.
           import("@/services/local-licenses").then((m) =>
             Promise.all([
-              import("@tauri-apps/api/core").then(({ invoke }) => invoke<string>("fingerprint").catch(() => "")),
+              import("@/services/license").then(({ getMachineInfo }) =>
+                getMachineInfo().then((info) => info.fingerprint).catch(() => ""),
+              ),
               import("@/lib/db").then(({ query }) =>
                 query<{ value: string }>(
                   `SELECT value FROM settings WHERE key = 'licensing.owner_email'`,

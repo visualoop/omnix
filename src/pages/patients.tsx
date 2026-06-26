@@ -64,8 +64,14 @@ export function PatientsPage() {
            pp.date_of_birth,
            pp.gender,
            (SELECT COUNT(*) FROM patient_allergies WHERE customer_id = c.id) AS allergy_count,
-           (SELECT COUNT(*) FROM prescriptions WHERE customer_id = c.id) AS prescription_count,
-           (SELECT MAX(issued_at) FROM prescriptions WHERE customer_id = c.id) AS last_visit
+           (SELECT COUNT(*) FROM prescriptions
+             WHERE customer_id = c.id
+                OR (customer_id IS NULL AND patient_name = c.name)
+           ) AS prescription_count,
+           (SELECT MAX(created_at) FROM prescriptions
+             WHERE customer_id = c.id
+                OR (customer_id IS NULL AND patient_name = c.name)
+           ) AS last_visit
          FROM customers c
          INNER JOIN patient_profiles pp ON pp.customer_id = c.id
          ORDER BY c.name ASC`,

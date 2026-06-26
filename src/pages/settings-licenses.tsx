@@ -37,7 +37,7 @@ import {
   type LocalLicense,
 } from "@/services/local-licenses"
 import { query, execute } from "@/lib/db"
-import { invoke } from "@tauri-apps/api/core"
+import { getMachineInfo } from "@/services/license"
 
 const STATUS_LABEL: Record<string, string> = {
   verified: "Verified",
@@ -112,7 +112,7 @@ export function SettingsLicensesPage() {
     }
     setAdding(true)
     try {
-      const machineId = (await invoke<string>("fingerprint").catch(() => "")) || ""
+      const machineId = await getMachineInfo().then((i) => i.fingerprint).catch(() => "")
       const result = await activateLicense({
         licenseKey: draftKey.trim().toUpperCase(),
         email: email.trim().toLowerCase(),
@@ -139,7 +139,7 @@ export function SettingsLicensesPage() {
     }
     setSyncing(true)
     try {
-      const machineId = (await invoke<string>("fingerprint").catch(() => "")) || ""
+      const machineId = await getMachineInfo().then((i) => i.fingerprint).catch(() => "")
       const results = await syncLicenses(email.trim().toLowerCase(), machineId)
       const verified = results.filter((r) => r.status === "verified").length
       const trouble = results.length - verified

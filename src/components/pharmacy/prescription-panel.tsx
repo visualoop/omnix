@@ -87,6 +87,7 @@ export function PrescriptionPanel({ open, onClose, onSaved }: Props) {
     setSaving(true);
     try {
       await createPrescription({
+        customer_id: patient.customer_id || undefined,
         patient_name: patient.name,
         patient_phone: patient.phone || undefined,
         patient_age: patient.age ? parseInt(patient.age) : undefined,

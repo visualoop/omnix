@@ -138,8 +138,7 @@ export function CloudBackupPage() {
 
     setUploading(true);
     try {
-      const licenseKey = await invoke<string | null>("get_license_key").catch(() => null) ??
-        (await import("@/services/license").then((m) => m.getLicenseKey()));
+      const licenseKey = await import("@/services/license").then((m) => m.getLicenseKey())
       if (!licenseKey) {
         toast.error("Licence not activated — can't derive backup key.");
         setUploading(false);
