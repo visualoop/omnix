@@ -116,7 +116,9 @@ export function UpdateChecker() {
         </div>
       ) : (
         <p className="text-xs text-muted-foreground">
-          Check for new {APP_NAME} releases. Updates require an active maintenance subscription.
+          {APP_NAME} updates automatically. Non-major updates download quietly in the
+          background and install the next time you close the app — no action needed.
+          Use this button to check immediately or to apply a major upgrade.
         </p>
       )}
 

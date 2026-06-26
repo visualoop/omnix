@@ -5,6 +5,7 @@ import { ConfirmDialogHost } from "@/components/ui/confirm-dialog";
 import { TouchTextKeyboardProvider } from "@/components/ui/touch-text-keyboard-provider";
 import { useAuthStore } from "@/stores/auth";
 import { useF11Fullscreen } from "@/hooks/use-f11-fullscreen";
+import { useAutoUpdate } from "@/hooks/use-auto-update";
 import { AppShell } from "@/components/layout/app-shell";
 import { SettingsLayout } from "@/components/layout/settings-layout";
 import { LicenseGuard } from "@/components/license-guard";
@@ -144,6 +145,7 @@ function CustomerDisplayShell() {
 
 function AppContent() {
   useF11Fullscreen();
+  useAutoUpdate();
   const { user, isSetupComplete, setupChecked, refreshSetupState } = useAuthStore();
 
   useEffect(() => {
