@@ -6,6 +6,7 @@ import { auth } from '@/lib/auth'
 import { PageHeading } from '@/components/dashboard/status-utils'
 import { StartTrialWizard } from '@/components/dashboard/start-trial-wizard'
 import { SetupCtaBanner } from '@/components/dashboard/setup-cta-banner'
+import { WelcomeTour } from '@/components/dashboard/welcome-tour'
 
 export const metadata = { title: 'Dashboard' }
 export const dynamic = 'force-dynamic'
@@ -126,6 +127,7 @@ export default async function DashboardOverviewPage({
 
   return (
     <div className="space-y-8">
+      <WelcomeTour />
       <PageHeading
         title={`Welcome${hasNoLicences ? '' : ' back'}, ${firstName}`}
         subtitle={
@@ -167,7 +169,7 @@ export default async function DashboardOverviewPage({
       ) : (
         <>
           <SetupCtaBanner />
-          <section>
+          <section data-tour="licenses">
             <h2 className="font-display text-[18px] font-medium text-[var(--color-fg)] mb-3">
               Licences
             </h2>

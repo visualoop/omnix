@@ -48,6 +48,7 @@ export function SetupCtaBanner() {
           <Link
             key={s.href}
             href={s.href}
+            data-tour={s.href === '/docs/mpesa' ? 'setup-mpesa' : undefined}
             className="group rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4 transition-colors hover:border-[var(--color-accent)]"
           >
             <span
