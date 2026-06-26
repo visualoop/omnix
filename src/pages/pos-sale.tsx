@@ -1163,6 +1163,7 @@ function CartLine({ idx: _idx, item, onRemove, onQty, onSub, showSubstitute }: {
   const lineTotal = Math.max(0, item.unit_price * item.quantity - (item.discount ?? 0));
   const cc = categoryColor(item.category_id);
   const initial = (item.name || "?").trim().charAt(0).toUpperCase();
+  const [qtyEditOpen, setQtyEditOpen] = useState(false);
 
   return (
     <motion.div
@@ -1247,9 +1248,14 @@ function CartLine({ idx: _idx, item, onRemove, onQty, onSub, showSubstitute }: {
             >
               <Minus className="h-3.5 w-3.5" />
             </button>
-            <span className="px-2 min-w-[2.75rem] text-center font-mono text-[14px] font-semibold tabular-nums">
+            <button
+              onClick={() => setQtyEditOpen(true)}
+              className="px-2 min-w-[2.75rem] h-9 text-center font-mono text-[14px] font-semibold tabular-nums hover:bg-muted transition"
+              aria-label="Type quantity"
+              title="Tap to type quantity"
+            >
               {item.quantity}
-            </span>
+            </button>
             <button
               onClick={() => onQty(item.quantity + 1)}
               className="size-9 grid place-items-center text-muted-foreground hover:bg-muted hover:text-foreground transition active:scale-95"
@@ -1269,6 +1275,14 @@ function CartLine({ idx: _idx, item, onRemove, onQty, onSub, showSubstitute }: {
           </div>
         </div>
       </div>
+      <QtyMultiplierDialog
+        open={qtyEditOpen}
+        onClose={() => setQtyEditOpen(false)}
+        currentValue={item.quantity}
+        onSet={(n) => { onQty(n); setQtyEditOpen(false); }}
+        title="Edit quantity"
+        description="Set this line's quantity (1–99)."
+      />
     </motion.div>
   );
 }

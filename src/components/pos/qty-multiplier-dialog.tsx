@@ -29,9 +29,12 @@ interface Props {
   onClose: () => void
   currentValue: number
   onSet: (value: number) => void
+  /** Optional header copy. Defaults to the "next item added" multiplier wording. */
+  title?: string
+  description?: string
 }
 
-export function QtyMultiplierDialog({ open, onClose, currentValue, onSet }: Props) {
+export function QtyMultiplierDialog({ open, onClose, currentValue, onSet, title, description }: Props) {
   const [value, setValue] = useState(String(currentValue))
   const inputRef = useRef<HTMLInputElement>(null)
 
@@ -68,8 +71,8 @@ export function QtyMultiplierDialog({ open, onClose, currentValue, onSet }: Prop
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="sm:max-w-sm gap-0 p-0 overflow-hidden">
         <DialogHeader className="border-b border-border px-5 py-4">
-          <DialogTitle>Set quantity</DialogTitle>
-          <DialogDescription>The next item added will use this quantity (1–99).</DialogDescription>
+          <DialogTitle>{title ?? "Set quantity"}</DialogTitle>
+          <DialogDescription>{description ?? "The next item added will use this quantity (1–99)."}</DialogDescription>
         </DialogHeader>
 
         <div className="p-5 space-y-4">
