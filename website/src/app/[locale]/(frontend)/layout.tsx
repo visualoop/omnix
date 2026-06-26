@@ -134,6 +134,17 @@ export async function generateMetadata({
 }: { params: Promise<{ locale: string }> }): Promise<Metadata> {
   const { locale } = await params
   const c = copyFor(locale)
+  // OG image is admin-editable via the og.default media slot (falls back
+  // to the seeded R2 default). Resolved here so social cards update from
+  // /admin/media with no redeploy.
+  let ogImage = 'https://media.omnix.co.ke/marketing/og-default.jpg'
+  try {
+    const { getSlotImage } = await import('@/lib/media-slots')
+    const og = await getSlotImage('og.default')
+    if (og?.url) ogImage = og.url
+  } catch {
+    /* keep default */
+  }
   // Valid BCP-47 hreflang codes (en-KE, not bare 'ke') so Google accepts
   // the alternates. Each country route still resolves to its /xx URL.
   const HREFLANG: Record<string, string> = {
@@ -158,13 +169,13 @@ export async function generateMetadata({
       title: c.title,
       description: c.description,
       locale: c.ogLocale,
-      images: [{ url: 'https://media.omnix.co.ke/marketing/og-default.jpg', width: 1200, height: 630, alt: BRAND_NAME }],
+      images: [{ url: ogImage, width: 1200, height: 630, alt: BRAND_NAME }],
     },
     twitter: {
       card: 'summary_large_image',
       title: c.title,
       description: c.description,
-      images: ['https://media.omnix.co.ke/marketing/og-default.jpg'],
+      images: [ogImage],
     },
     icons: { icon: '/favicon.ico' },
     robots: { index: true, follow: true },

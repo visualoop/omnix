@@ -70,7 +70,7 @@ const ROWS: ModuleRow[] = [
   },
 ]
 
-export function ModulesRowsSection() {
+export function ModulesRowsSection({ images = {} }: { images?: Record<string, string> }) {
   return (
     <section className="section">
       <div className="container-wide">
@@ -89,7 +89,7 @@ export function ModulesRowsSection() {
         {/* Rows */}
         <div className="space-y-32 lg:space-y-44">
           {ROWS.map((row, i) => (
-            <Row key={row.slug} row={row} index={i} />
+            <Row key={row.slug} row={row} index={i} imageUrl={images[row.slug]} />
           ))}
         </div>
       </div>
@@ -97,7 +97,7 @@ export function ModulesRowsSection() {
   )
 }
 
-function Row({ row, index }: { row: ModuleRow; index: number }) {
+function Row({ row, index, imageUrl }: { row: ModuleRow; index: number; imageUrl?: string }) {
   const reversed = index % 2 === 1
 
   return (
@@ -116,7 +116,7 @@ function Row({ row, index }: { row: ModuleRow; index: number }) {
           reversed ? 'lg:order-2 lg:col-start-6' : 'lg:order-1 lg:col-start-1',
         )}
       >
-        <ModulePlaceholder name={row.name} slug={row.slug} size={row.size} status={row.status} />
+        <ModulePlaceholder name={row.name} slug={row.slug} size={row.size} status={row.status} imageUrl={imageUrl} />
       </div>
 
       <div
@@ -173,15 +173,18 @@ function ModulePlaceholder({
   slug,
   size,
   status,
+  imageUrl,
 }: {
   name: string
   slug: string
   size: string
   status: 'live' | 'planned'
+  imageUrl?: string
 }) {
-  // Seeded module-row screenshots live on R2. Show the real image; the
-  // striped placeholder below only shows through if the image 404s.
-  const imageUrl = `https://media.omnix.co.ke/marketing/module-row-${slug}.jpg`
+  // Admin-managed slot image (from /admin/media) wins; fall back to the
+  // seeded R2 default so it's never blank. Nothing here is hardcoded —
+  // every slug maps to an editable media slot (module-row.<slug>).
+  const src = imageUrl || `https://media.omnix.co.ke/marketing/module-row-${slug}.jpg`
   return (
     <div className="relative aspect-[16/10] overflow-hidden rounded-xl border border-[var(--color-border-strong)] bg-[var(--color-surface-2)]">
       {/* Warm diagonal stripes — fallback treatment behind the image */}
@@ -197,7 +200,7 @@ function ModulePlaceholder({
       {/* Real trade photo */}
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
-        src={imageUrl}
+        src={src}
         alt={`${name} — Omnix`}
         loading="lazy"
         className="absolute inset-0 h-full w-full object-cover"

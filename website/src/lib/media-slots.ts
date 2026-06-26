@@ -37,6 +37,11 @@ const SLOT_DEFAULTS: Record<string, string> = {
   'pricing.hero': 'https://media.omnix.co.ke/marketing/pricing-hero.jpg',
   'about.team_photo': 'https://media.omnix.co.ke/marketing/about-team_photo.jpg',
   'og.default': 'https://media.omnix.co.ke/marketing/og-default.jpg',
+  // Homepage "Four trades" rows.
+  'module-row.dawa-pharmacy': 'https://media.omnix.co.ke/marketing/module-row-dawa-pharmacy.jpg',
+  'module-row.soko-retail': 'https://media.omnix.co.ke/marketing/module-row-soko-retail.jpg',
+  'module-row.hardware': 'https://media.omnix.co.ke/marketing/module-row-hardware.jpg',
+  'module-row.hospitality': 'https://media.omnix.co.ke/marketing/module-row-hospitality.jpg',
 }
 
 export async function getSlotImage(slot: string): Promise<SlotImage | null> {
@@ -79,6 +84,10 @@ export const MEDIA_SLOTS = [
   { slot: 'pricing.hero', label: 'Pricing page — hero', section: 'Pricing', aspect: '16/9', searchQuery: 'small business owner Kenya shop using laptop' },
   { slot: 'about.team_photo', label: 'About page — team photo', section: 'About', aspect: '3/2', searchQuery: 'African software team office working' },
   { slot: 'og.default', label: 'Social card (Open Graph) — fallback', section: 'SEO', aspect: '1200/630', searchQuery: 'point of sale M-Pesa payment Kenya shop' },
+  { slot: 'module-row.dawa-pharmacy', label: 'Homepage row — Dawa Pharmacy', section: 'Homepage trades', aspect: '16/10', searchQuery: 'pharmacy counter pharmacist dispensing medicine' },
+  { slot: 'module-row.soko-retail', label: 'Homepage row — Soko Retail', section: 'Homepage trades', aspect: '16/10', searchQuery: 'minimart grocery shop shelves checkout' },
+  { slot: 'module-row.hardware', label: 'Homepage row — Hardware', section: 'Homepage trades', aspect: '16/10', searchQuery: 'hardware store tools building materials' },
+  { slot: 'module-row.hospitality', label: 'Homepage row — Hospitality', section: 'Homepage trades', aspect: '16/10', searchQuery: 'restaurant bar dining counter interior' },
 ] as const
 
 export type SlotId = (typeof MEDIA_SLOTS)[number]['slot']

@@ -102,6 +102,19 @@ export default async function HomePage({
   } catch {
     // DB cold or no releases yet — fall through.
   }
+  // Resolve the four "trades" row images through the slot system so they
+  // are editable from /admin/media (DB row wins; seeded R2 default else).
+  let moduleRowImages: Record<string, string> = {}
+  try {
+    const { getSlotImage } = await import('@/lib/media-slots')
+    const slugs = ['dawa-pharmacy', 'soko-retail', 'hardware', 'hospitality']
+    const pairs = await Promise.all(
+      slugs.map(async (s) => [s, (await getSlotImage(`module-row.${s}`))?.url ?? ''] as const),
+    )
+    moduleRowImages = Object.fromEntries(pairs.filter(([, url]) => url))
+  } catch {
+    // slot lookup failed — section falls back to its own default URLs.
+  }
 
   return (
     <>
@@ -113,7 +126,7 @@ export default async function HomePage({
       />
       <FounderNoteSection />
       <AiSection />
-      <ModulesRowsSection />
+      <ModulesRowsSection images={moduleRowImages} />
       <ReceiptProofSection />
       <PdfPackSection />
       <StudiosHandSection />
