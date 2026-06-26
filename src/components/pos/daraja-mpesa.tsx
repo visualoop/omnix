@@ -16,7 +16,7 @@ interface Props {
   onCancel: () => void;
 }
 
-type Status = "idle" | "initiating" | "polling" | "success" | "failed";
+type Status = "idle" | "initiating" | "polling" | "success" | "failed" | "manual";
 
 export function DarajaMpesaCharge({ amount, saleId, onSuccess, onCancel }: Props) {
   const [phone, setPhone] = useState("");
@@ -27,6 +27,7 @@ export function DarajaMpesaCharge({ amount, saleId, onSuccess, onCancel }: Props
   const [checking, setChecking] = useState(false);
   const [pollStartedAt, setPollStartedAt] = useState<number | null>(null);
   const [elapsedTick, setElapsedTick] = useState(0);
+  const [manualCode, setManualCode] = useState("");
   const pollRef = useRef<number | null>(null);
   const tickRef = useRef<number | null>(null);
 
@@ -227,6 +228,60 @@ export function DarajaMpesaCharge({ amount, saleId, onSuccess, onCancel }: Props
               Cancel
             </Button>
           </div>
+          {/* After ~90s of dead air (common in the Daraja sandbox, and
+              occasionally in production when the callback is slow), let
+              the cashier confirm manually from the customer's M-Pesa SMS
+              rather than blocking the till. */}
+          {elapsedSec >= 90 && (
+            <button
+              type="button"
+              onClick={() => {
+                if (pollRef.current) clearInterval(pollRef.current);
+                setStatus("manual");
+              }}
+              className="text-xs text-muted-foreground underline underline-offset-4 hover:text-foreground"
+            >
+              Taking too long? Mark as paid manually
+            </button>
+          )}
+        </div>
+      )}
+
+      {status === "manual" && (
+        <div className="space-y-3">
+          <div className="text-center">
+            <p className="text-sm font-medium">Confirm M-Pesa payment manually</p>
+            <p className="text-xs text-muted-foreground mt-1">
+              Ask the customer for the M-Pesa confirmation SMS and enter the transaction code.
+            </p>
+          </div>
+          <div className="space-y-1.5">
+            <label className="text-xs font-medium text-muted-foreground">M-Pesa transaction code</label>
+            <Input
+              placeholder="e.g. SLK7A9B2C1"
+              value={manualCode}
+              onChange={(e) => setManualCode(e.target.value.toUpperCase())}
+              className="font-mono"
+              autoFocus
+            />
+          </div>
+          {error && <p className="text-xs text-destructive">{error}</p>}
+          <div className="flex gap-2">
+            <Button variant="outline" className="flex-1" onClick={() => { setStatus("idle"); setManualCode(""); setError(""); }}>
+              Back
+            </Button>
+            <Button
+              className="flex-1 bg-green-600 hover:bg-green-700"
+              onClick={() => {
+                const code = manualCode.trim();
+                if (code.length < 6) { setError("Enter the full M-Pesa code"); return; }
+                setStatus("success");
+                setTimeout(() => onSuccess(code), 600);
+              }}
+            >
+              Confirm payment
+            </Button>
+          </div>
         </div>
       )}
 
@@ -251,6 +306,13 @@ export function DarajaMpesaCharge({ amount, saleId, onSuccess, onCancel }: Props
               Try again
             </Button>
           </div>
+          <button
+            type="button"
+            onClick={() => { setStatus("manual"); setError(""); }}
+            className="w-full text-center text-xs text-muted-foreground underline underline-offset-4 hover:text-foreground"
+          >
+            Customer already paid? Mark as paid manually
+          </button>
         </div>
       )}
     </div>
