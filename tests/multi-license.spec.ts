@@ -74,3 +74,50 @@ describe("describeOwnedVariants", () => {
     expect(result).toContain("Retail")
   })
 })
+
+/**
+ * Server-side gate 2.5 (variant_mismatch) — mirror of the rule from
+ * /api/licensing/activate. Catches "Hospitality key in the Retail
+ * installer" abuse. Pro is a wildcard.
+ */
+function isVariantMismatch(licenseVariant: string, requestedVariant: string | undefined): boolean {
+  if (!requestedVariant) return false
+  const VALID = ["pro", "dawa", "retail", "hardware", "hospitality"] as const
+  const r = requestedVariant.toLowerCase()
+  const o = licenseVariant.toLowerCase()
+  if (!(VALID as readonly string[]).includes(r)) return false
+  if (o === "pro") return false // Pro is a wildcard
+  return o !== r
+}
+
+describe("variant_mismatch gate", () => {
+  it("rejects Hospitality key in the Retail installer", () => {
+    expect(isVariantMismatch("hospitality", "retail")).toBe(true)
+    expect(isVariantMismatch("retail", "hospitality")).toBe(true)
+    expect(isVariantMismatch("dawa", "hardware")).toBe(true)
+  })
+
+  it("accepts matching variants", () => {
+    expect(isVariantMismatch("dawa", "dawa")).toBe(false)
+    expect(isVariantMismatch("retail", "retail")).toBe(false)
+  })
+
+  it("Pro is a wildcard — accepts any binary variant", () => {
+    expect(isVariantMismatch("pro", "dawa")).toBe(false)
+    expect(isVariantMismatch("pro", "retail")).toBe(false)
+    expect(isVariantMismatch("pro", "hospitality")).toBe(false)
+    expect(isVariantMismatch("pro", "hardware")).toBe(false)
+    expect(isVariantMismatch("pro", "pro")).toBe(false)
+  })
+
+  it("trade key in Pro installer is rejected (one-way wildcard)", () => {
+    // A Retail licence cannot activate the Pro binary — that would
+    // unlock modules the user never paid for.
+    expect(isVariantMismatch("retail", "pro")).toBe(true)
+    expect(isVariantMismatch("dawa", "pro")).toBe(true)
+  })
+
+  it("no requested variant → no enforcement (legacy callers)", () => {
+    expect(isVariantMismatch("retail", undefined)).toBe(false)
+  })
+})

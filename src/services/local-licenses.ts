@@ -20,6 +20,7 @@
  */
 import { query, execute } from "@/lib/db"
 import { fetch as tauriFetch } from "@tauri-apps/plugin-http"
+import { VARIANT } from "@/lib/variant"
 
 const SYNC_ENDPOINT = "https://omnix.co.ke/api/licensing/sync"
 const ACTIVATE_ENDPOINT = "https://omnix.co.ke/api/licensing/activate"
@@ -226,10 +227,16 @@ export async function activateLicense(input: {
   arch?: string
   currentVersion?: string
 }): Promise<{ ok: boolean; code?: string; error?: string; license?: LocalLicense }> {
+  // Default the variant to the binary's own. The server's gate 2.5
+  // (variant_mismatch) needs this to detect when someone tries to
+  // activate e.g. a Hospitality key on the Retail installer. Callers
+  // can override (e.g. tests) but the binary's value is the right
+  // default.
+  const payload = { ...input, variant: input.variant ?? VARIANT }
   const resp = await tauriFetch(ACTIVATE_ENDPOINT, {
     method: "POST",
     headers: { "content-type": "application/json" },
-    body: JSON.stringify(input),
+    body: JSON.stringify(payload),
   })
   const data = (await resp.json()) as {
     ok: boolean

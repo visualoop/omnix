@@ -5,13 +5,17 @@
  * licences (Dawa + Retail + Hospitality) as long as the variant-conflict
  * rules below are honoured.
  *
- * Seven gates run in order. The first to fail returns that gate's error
+ * Eight gates run in order. The first to fail returns that gate's error
  * code so the desktop knows exactly what to do next:
  *
  *   1. 404 unknown_key                  — key not in our DB
  *   2. 403 not_your_key                 — key exists but owned by a
  *                                         different account (email
  *                                         check; no session token)
+ *   2.5. 409 variant_mismatch           — licence variant ≠ binary
+ *                                         variant (e.g. Hospitality
+ *                                         key in the Retail installer).
+ *                                         Pro is a wildcard.
  *   3. 409 cross_user_conflict          — already activated under a
  *                                         different account on this PC
  *   4. 409 machine_owned_by_another     — this PC is claimed by a
@@ -53,6 +57,7 @@ type ResultCode =
   | 'cross_user_conflict'
   | 'machine_owned_by_another'
   | 'variant_conflict_on_machine'
+  | 'variant_mismatch'
   | 'seat_exhausted'
   | 'revoked'
   | 'suspended'
@@ -94,6 +99,36 @@ export async function POST(req: Request) {
         'not_your_key',
         403,
         'This licence belongs to a different account. Sign in to omnix.co.ke as the licence owner.',
+      )
+    }
+  }
+
+  // ── Gate 2.5: variant_mismatch ─────────────────────────────────
+  // The installer self-identifies its variant (body.variant). The
+  // licence has its own variant. Activation must reject when they
+  // disagree — otherwise a Hospitality trial key would activate the
+  // Retail binary, which is the same kind of cross-product abuse this
+  // gate prevents.
+  //
+  // Exception: a Pro licence is a wildcard. It can activate ANY trade
+  // binary (Dawa, Retail, Hardware, Hospitality) because Pro
+  // entitlements include every module. The reverse is NOT true —
+  // a trade licence (e.g. Retail) cannot activate the Pro binary, since
+  // that would unlock modules the user never paid for.
+  if (body.variant) {
+    const requested = body.variant.toLowerCase()
+    const owned = lic.variant.toLowerCase()
+    const VALID_VARIANTS = ['pro', 'dawa', 'retail', 'hardware', 'hospitality'] as const
+    const mismatch =
+      VALID_VARIANTS.includes(requested as (typeof VALID_VARIANTS)[number]) &&
+      owned !== requested &&
+      owned !== 'pro' // Pro is a wildcard
+    if (mismatch) {
+      return reject(
+        'variant_mismatch',
+        409,
+        `This licence is for Omnix ${owned.toUpperCase()}. The installer you're running is for Omnix ${requested.toUpperCase()}. ` +
+          `Download the ${owned.toUpperCase()} installer from /dashboard/downloads, or use a ${requested.toUpperCase()} key for this binary.`,
       )
     }
   }

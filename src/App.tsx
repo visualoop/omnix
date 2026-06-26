@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { Toaster } from "sonner";
 import { ConfirmDialogHost } from "@/components/ui/confirm-dialog";
 import { useAuthStore } from "@/stores/auth";
+import { useF11Fullscreen } from "@/hooks/use-f11-fullscreen";
 import { AppShell } from "@/components/layout/app-shell";
 import { SettingsLayout } from "@/components/layout/settings-layout";
 import { LicenseGuard } from "@/components/license-guard";
@@ -117,13 +118,7 @@ function App() {
   // Customer-facing display runs in a separate window with NO license/auth/setup
   // guards — it must never show the activation or setup wizard to a customer.
   if (window.location.pathname === "/customer-display") {
-    return (
-      <BrowserRouter>
-        <Routes>
-          <Route path="*" element={<CustomerDisplayPage />} />
-        </Routes>
-      </BrowserRouter>
-    );
+    return <CustomerDisplayShell />;
   }
   return (
     <LicenseGuard>
@@ -132,7 +127,22 @@ function App() {
   );
 }
 
+/** Customer-display window — separate Tauri window with its own root.
+ *  F11 toggles fullscreen on this window too, matching the operator's
+ *  expectation of a standard Windows app. */
+function CustomerDisplayShell() {
+  useF11Fullscreen();
+  return (
+    <BrowserRouter>
+      <Routes>
+        <Route path="*" element={<CustomerDisplayPage />} />
+      </Routes>
+    </BrowserRouter>
+  );
+}
+
 function AppContent() {
+  useF11Fullscreen();
   const { user, isSetupComplete, setupChecked, refreshSetupState } = useAuthStore();
 
   useEffect(() => {

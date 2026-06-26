@@ -598,28 +598,35 @@ function AddSlide({ onAdd }: { onAdd: (slide: PlaylistSlide) => void }) {
           Or paste a URL
         </span>
         <div className="flex items-center gap-2">
-          <Select value={type} onValueChange={(v) => setType(String(v) as PlaylistSlide["type"])}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>
-            <SelectItem value="image">Image URL</SelectItem>
-            <SelectItem value="video">Video URL (YouTube / Vimeo / direct .mp4)</SelectItem>
-            <SelectItem value="iframe">Iframe / web embed</SelectItem>
-          </SelectContent></Select>
-          <Input
-            type="url"
-            value={url}
-            onChange={(e) => setUrl(e.target.value)}
-            placeholder={
-              type === "video"
-                ? "Paste any YouTube watch URL — we'll convert"
-                : type === "image"
-                  ? "https://example.com/promo.jpg"
-                  : "https://example.com/menu"
-            }
-            className="flex-1 h-8 text-[12px]"
-          />
-          <Button size="sm" onClick={addFromUrl}>
+          <Select value={type} onValueChange={(v) => setType(String(v) as PlaylistSlide["type"])}>
+            <SelectTrigger className="w-[200px] sm:w-[240px] shrink-0">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="image">Image URL</SelectItem>
+              <SelectItem value="video">Video URL (YouTube / Vimeo / direct .mp4)</SelectItem>
+              <SelectItem value="iframe">Iframe / web embed</SelectItem>
+            </SelectContent>
+          </Select>
+          <Button size="sm" onClick={addFromUrl} className="ml-auto">
             Add
           </Button>
         </div>
+        {/* URL on its own full-width row so even long YouTube links fit
+            without truncating the visible text. */}
+        <Input
+          type="url"
+          value={url}
+          onChange={(e) => setUrl(e.target.value)}
+          placeholder={
+            type === "video"
+              ? "Paste any YouTube watch URL — we'll convert"
+              : type === "image"
+                ? "https://example.com/promo.jpg"
+                : "https://example.com/menu"
+          }
+          className="w-full font-mono text-[12px]"
+        />
         <p className="text-[11px] leading-[1.55] text-muted-foreground">
           YouTube videos: paste any URL (<span className="font-mono">/watch</span>,{" "}
           <span className="font-mono">youtu.be/…</span>, or <span className="font-mono">/embed/…</span>) — we convert to the embed

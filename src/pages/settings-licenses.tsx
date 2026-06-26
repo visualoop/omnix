@@ -38,6 +38,7 @@ import {
 } from "@/services/local-licenses"
 import { query, execute } from "@/lib/db"
 import { getMachineInfo } from "@/services/license"
+import { VARIANT } from "@/lib/variant"
 
 const STATUS_LABEL: Record<string, string> = {
   verified: "Verified",
@@ -117,6 +118,10 @@ export function SettingsLicensesPage() {
         licenseKey: draftKey.trim().toUpperCase(),
         email: email.trim().toLowerCase(),
         machineId,
+        // Tell the server which binary is asking. The new gate 2.5
+        // (variant_mismatch) rejects e.g. a Hospitality key on the
+        // Retail installer. Pro keys are wildcards.
+        variant: VARIANT,
       })
       if (!result.ok) {
         toast.error(result.error ?? "Activation failed")
