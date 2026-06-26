@@ -141,3 +141,70 @@ export function FAQJsonLd({ entries }: { entries: FAQEntry[] }) {
     />
   )
 }
+
+/**
+ * BreadcrumbList JSON-LD — helps Google render the breadcrumb trail in
+ * results. Pass the ordered crumbs (label + absolute url).
+ */
+export function BreadcrumbJsonLd({ items }: { items: Array<{ name: string; url: string }> }) {
+  const data = {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: items.map((it, i) => ({
+      '@type': 'ListItem',
+      position: i + 1,
+      name: it.name,
+      item: it.url,
+    })),
+  }
+  return (
+    <script
+      type="application/ld+json"
+      // eslint-disable-next-line react/no-danger
+      dangerouslySetInnerHTML={{ __html: JSON.stringify(data) }}
+    />
+  )
+}
+
+/**
+ * Article JSON-LD — for blog posts + docs. Improves rich-result
+ * eligibility and gives the article an author/publisher graph.
+ */
+export function ArticleJsonLd({
+  headline,
+  description,
+  url,
+  datePublished,
+  dateModified,
+  imageUrl,
+  brandUrl = 'https://omnix.co.ke',
+}: {
+  headline: string
+  description?: string
+  url: string
+  datePublished?: string
+  dateModified?: string
+  imageUrl?: string
+  brandUrl?: string
+}) {
+  const data = {
+    '@context': 'https://schema.org',
+    '@type': 'Article',
+    headline,
+    description,
+    url,
+    image: imageUrl,
+    datePublished,
+    dateModified: dateModified ?? datePublished,
+    mainEntityOfPage: { '@type': 'WebPage', '@id': url },
+    author: { '@id': `${brandUrl}/#org` },
+    publisher: { '@id': `${brandUrl}/#org` },
+  }
+  return (
+    <script
+      type="application/ld+json"
+      // eslint-disable-next-line react/no-danger
+      dangerouslySetInnerHTML={{ __html: JSON.stringify(data) }}
+    />
+  )
+}

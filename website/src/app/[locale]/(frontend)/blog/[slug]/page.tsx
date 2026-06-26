@@ -4,6 +4,7 @@ import { notFound } from 'next/navigation'
 import { ArrowLeft, ArrowRight } from '@/components/icons'
 import { Container } from '@/components/ui/section'
 import { POSTS_SEED, postBySlug, postSlugs, relatedPosts } from '@/lib/blog-seed'
+import { ArticleJsonLd } from '@/components/seo/jsonld'
 
 const CATEGORY_LABEL = {
   product: 'Product',
@@ -53,6 +54,12 @@ export default async function BlogPostPage({
 
   return (
     <>
+      <ArticleJsonLd
+        headline={post.title}
+        description={post.excerpt}
+        url={`https://omnix.co.ke/blog/${post.slug}`}
+        datePublished={post.publishedAt}
+      />
       <article className="pt-24 sm:pt-28">
         <Container width="default">
           <Link
