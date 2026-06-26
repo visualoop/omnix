@@ -12,6 +12,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { getPaystackConfig, savePaystackConfig, verifyPaystackKey, disablePaystack } from "@/services/paystack";
 import { getDarajaConfig, saveDarajaConfig, verifyDarajaKey, disableDaraja } from "@/services/daraja";
+import { getPaymentFees, savePaymentFees, type PaymentFees } from "@/services/payment-fees";
 import { toast } from "sonner";
 
 export function PaymentSettingsPage() {
@@ -36,6 +37,16 @@ export function PaymentSettingsPage() {
   const [darajaConnectedAt, setDarajaConnectedAt] = useState<string | null>(null);
   const [verifyingDaraja, setVerifyingDaraja] = useState(false);
 
+  // Per-provider merchant fees. Defaults reflect each provider's
+  // published rate, but every merchant negotiates their own tariff so
+  // the operator can override. Used by reports to compute net revenue.
+  const [fees, setFees] = useState<PaymentFees>({
+    paystack_mpesa_percent: 1.5,
+    paystack_card_percent: 2.9,
+    daraja_percent: 0,
+  });
+  const [savingFees, setSavingFees] = useState(false);
+
   const load = async () => {
     const config = await getPaystackConfig();
     if (config) {
@@ -55,6 +66,14 @@ export function PaymentSettingsPage() {
       setDarajaTestMode(dConfig.test_mode === 1);
       setDarajaConnected(dConfig.active === 1);
       setDarajaConnectedAt(dConfig.connected_at);
+    }
+    // Merchant fee overrides — falls back to the published defaults if
+    // the settings rows don't exist yet.
+    try {
+      const f = await getPaymentFees();
+      setFees(f);
+    } catch {
+      /* keep defaults */
     }
   };
 
@@ -308,6 +327,83 @@ export function PaymentSettingsPage() {
             Paystack is easier to set up. Daraja has lower fees but requires a Safaricom
             Developer account and a registered till/paybill.
           </p>
+        </div>
+      </div>
+
+      {/* Merchant fee overrides — reports use these to compute net revenue.
+          Defaults match each provider's published rate but every merchant
+          negotiates their own tariff so the operator can override. */}
+      <div className="space-y-4 rounded-md border border-foreground/10 bg-foreground/[0.02] p-5">
+        <div>
+          <h2 className="text-[16px] font-medium">Service charges</h2>
+          <p className="text-[12px] text-muted-foreground leading-relaxed mt-1">
+            How much the provider keeps per transaction. Defaults are the published rates
+            (Paystack: 1.5% on M-Pesa, 2.9% on local card · Safaricom: variable, often paid by
+            the customer not the merchant). Adjust to whatever your contract actually charges
+            — reports compute net revenue from these.
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="space-y-1.5">
+            <label className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+              Paystack · M-Pesa (%)
+            </label>
+            <Input
+              type="number"
+              step="0.1"
+              min={0}
+              value={fees.paystack_mpesa_percent}
+              onChange={(e) => setFees({ ...fees, paystack_mpesa_percent: parseFloat(e.target.value) || 0 })}
+              placeholder="1.5"
+            />
+          </div>
+          <div className="space-y-1.5">
+            <label className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+              Paystack · card (%)
+            </label>
+            <Input
+              type="number"
+              step="0.1"
+              min={0}
+              value={fees.paystack_card_percent}
+              onChange={(e) => setFees({ ...fees, paystack_card_percent: parseFloat(e.target.value) || 0 })}
+              placeholder="2.9"
+            />
+          </div>
+          <div className="space-y-1.5">
+            <label className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+              Safaricom Daraja (%)
+            </label>
+            <Input
+              type="number"
+              step="0.1"
+              min={0}
+              value={fees.daraja_percent}
+              onChange={(e) => setFees({ ...fees, daraja_percent: parseFloat(e.target.value) || 0 })}
+              placeholder="0"
+            />
+          </div>
+        </div>
+
+        <div className="flex items-center justify-end gap-2 pt-1">
+          <Button
+            size="sm"
+            disabled={savingFees}
+            onClick={async () => {
+              setSavingFees(true)
+              try {
+                await savePaymentFees(fees)
+                toast.success("Service charges saved")
+              } catch (e) {
+                toast.error(String(e))
+              } finally {
+                setSavingFees(false)
+              }
+            }}
+          >
+            {savingFees ? "Saving…" : "Save service charges"}
+          </Button>
         </div>
       </div>
     </div>

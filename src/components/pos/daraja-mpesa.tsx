@@ -24,14 +24,34 @@ export function DarajaMpesaCharge({ amount, saleId, onSuccess, onCancel }: Props
   const [checkoutRequestId, setCheckoutRequestId] = useState<string | null>(null);
   const [error, setError] = useState<string>("");
   const [configured, setConfigured] = useState(false);
+  const [checking, setChecking] = useState(false);
+  const [pollStartedAt, setPollStartedAt] = useState<number | null>(null);
+  const [elapsedTick, setElapsedTick] = useState(0);
   const pollRef = useRef<number | null>(null);
+  const tickRef = useRef<number | null>(null);
 
   useEffect(() => {
     getDarajaConfig().then((c) => setConfigured(!!c?.active));
     return () => {
       if (pollRef.current) clearInterval(pollRef.current);
+      if (tickRef.current) clearInterval(tickRef.current);
     };
   }, []);
+
+  // 1 Hz ticker so the polling UI shows elapsed seconds. Only runs
+  // while we're actively polling; cheaper than re-deriving on every
+  // render.
+  useEffect(() => {
+    if (status !== "polling" || !pollStartedAt) return;
+    tickRef.current = window.setInterval(() => setElapsedTick((n) => n + 1), 1000);
+    return () => {
+      if (tickRef.current) clearInterval(tickRef.current);
+    };
+  }, [status, pollStartedAt]);
+
+  const elapsedSec = pollStartedAt ? Math.floor((Date.now() - pollStartedAt) / 1000) : 0;
+  // (elapsedTick is read implicitly via re-render dependency)
+  void elapsedTick;
 
   const handleCharge = async () => {
     if (!phone.match(/^(254|0|7|1)\d{8,9}$/)) {
@@ -59,6 +79,7 @@ export function DarajaMpesaCharge({ amount, saleId, onSuccess, onCancel }: Props
   const startPolling = (checkoutId: string) => {
     let attempts = 0;
     const maxAttempts = 40; // 40 × 5s = ~3 minutes
+    setPollStartedAt(Date.now());
     pollRef.current = window.setInterval(async () => {
       attempts++;
       try {
@@ -80,6 +101,34 @@ export function DarajaMpesaCharge({ amount, saleId, onSuccess, onCancel }: Props
         // Network issue — keep polling silently
       }
     }, 5000);
+  };
+
+  /**
+   * Manual one-off status check — useful when polling is slow or the
+   * customer says they've already confirmed but the auto-poll hasn't
+   * caught up. Hits queryStkStatus immediately instead of waiting for
+   * the next 5-second tick.
+   */
+  const checkNow = async () => {
+    if (!checkoutRequestId || checking) return;
+    setChecking(true);
+    try {
+      const result = await queryStkStatus(checkoutRequestId);
+      if (result.status === "success") {
+        if (pollRef.current) clearInterval(pollRef.current);
+        setStatus("success");
+        setTimeout(() => onSuccess(checkoutRequestId), 600);
+      } else if (result.status === "failed") {
+        if (pollRef.current) clearInterval(pollRef.current);
+        setStatus("failed");
+        setError(result.message || "Transaction failed or was cancelled");
+      }
+      // pending → leave the polling loop running
+    } catch (e) {
+      setError("Status check failed: " + String(e));
+    } finally {
+      setChecking(false);
+    }
   };
 
   if (!configured) {
@@ -134,18 +183,50 @@ export function DarajaMpesaCharge({ amount, saleId, onSuccess, onCancel }: Props
             <p className="text-xs text-muted-foreground mt-1">
               The customer should see an M-Pesa prompt on {phone}. Ask them to enter their PIN.
             </p>
+            {status === "polling" && elapsedSec > 0 ? (
+              <p className="text-[11px] font-mono text-muted-foreground mt-1 tabular-nums">
+                {Math.floor(elapsedSec / 60)}m {String(elapsedSec % 60).padStart(2, "0")}s elapsed
+              </p>
+            ) : null}
           </div>
           {checkoutRequestId && (
             <p className="text-[10px] font-mono text-muted-foreground">
               Ref: {checkoutRequestId.slice(0, 12)}...
             </p>
           )}
-          <Button variant="ghost" size="sm" onClick={() => {
-            if (pollRef.current) clearInterval(pollRef.current);
-            onCancel();
-          }}>
-            Cancel
-          </Button>
+          {/* Cashier controls — auto-poll runs every 5 seconds in the
+              background, but sometimes the customer has already paid and
+              the polling response lags. Check now hits the status API
+              immediately. Resend re-fires the STK push (occasionally the
+              customer dismisses the prompt by accident). */}
+          <div className="flex flex-wrap items-center justify-center gap-2 pt-1">
+            <Button variant="outline" size="sm" onClick={checkNow} disabled={checking}>
+              {checking ? "Checking…" : "Check now"}
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                if (pollRef.current) clearInterval(pollRef.current);
+                setStatus("idle");
+                setError("");
+                setCheckoutRequestId(null);
+                setPollStartedAt(null);
+              }}
+            >
+              Resend STK
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                if (pollRef.current) clearInterval(pollRef.current);
+                onCancel();
+              }}
+            >
+              Cancel
+            </Button>
+          </div>
         </div>
       )}
 

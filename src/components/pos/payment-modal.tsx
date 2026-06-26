@@ -98,6 +98,12 @@ export function PaymentModal({ open, onClose }: Props) {
 
   const handleSelectMethod = (id: string) => {
     setSelectedMethod(id);
+    // Each split-payment chunk needs its own amount. Without this reset,
+    // typing 200 in Cash and switching to M-Pesa pre-fills M-Pesa with
+    // 200 too — the cashier ends up posting 200 by the wrong method.
+    // Reset to the still-unpaid remainder so a single-method payment
+    // is one keystroke ('Pay') while a split flow is fresh per tab.
+    setAmount(String(Math.max(0, remaining).toFixed(2)));
     if (id === "insurance" && !insurance) {
       setShowInsuranceVerify(true);
     }
