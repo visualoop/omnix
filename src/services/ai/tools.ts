@@ -125,7 +125,7 @@ export function buildAssistantTools(ctx: ToolContext) {
           credit_balance: number
         }>(
           `SELECT id, name, phone, email,
-                  COALESCE(credit_balance, 0) AS credit_balance
+                  COALESCE(balance, 0) AS credit_balance
              FROM customers
             WHERE active = 1
               AND (name LIKE ?1 OR phone LIKE ?1 OR email LIKE ?1)

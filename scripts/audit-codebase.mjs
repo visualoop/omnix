@@ -140,6 +140,251 @@ const RULES = [
   },
 ]
 
+/* ────────────────────────────────────────────────────────────────── *
+ * Cross-file rules — run once over the whole tree, not file-by-file.
+ *
+ *   tauri.invoke.unknown    — invoke("foo") where Rust has no handler
+ *                              registered. Catches silently-failing
+ *                              command typos (e.g. "fingerprint" instead
+ *                              of "get_machine_info").
+ *
+ *   sql.column.unknown      — explicit `table.column` references in JS
+ *                              SQL templates where `column` isn't in the
+ *                              schema map built from migrations. Catches
+ *                              the kind of typo that hit the Patients
+ *                              page (`prescriptions.issued_at` when the
+ *                              column is `created_at`).
+ * ────────────────────────────────────────────────────────────────── */
+
+/** Parse the Rust invoke_handler list from src-tauri/src/lib.rs. */
+function readRustCommands() {
+  const path = join(ROOT, 'src-tauri/src/lib.rs')
+  let text
+  try {
+    text = readFileSync(path, 'utf8')
+  } catch {
+    return new Set()
+  }
+  const set = new Set()
+  // Match every `commands::name,` entry inside generate_handler![…].
+  for (const m of text.matchAll(/commands::([a-z_][a-z0-9_]*)\s*,/g)) {
+    set.add(m[1])
+  }
+  return set
+}
+
+/** Build a map of `table -> Set(column)` from every SQL migration file. */
+function readSchemaMap() {
+  const dir = join(ROOT, 'src-tauri/migrations')
+  let entries
+  try {
+    entries = readdirSync(dir).sort()
+  } catch {
+    return new Map()
+  }
+  const tables = new Map()
+  for (const name of entries) {
+    if (!name.endsWith('.sql')) continue
+    let sql = readFileSync(join(dir, name), 'utf8')
+    // Strip line + block comments so we don't get column names like
+    // "-- comment\n   subtotal" when CREATE TABLE has inline notes.
+    sql = sql.replace(/--[^\n]*/g, '')
+    sql = sql.replace(/\/\*[\s\S]*?\*\//g, '')
+    // CREATE TABLE [IF NOT EXISTS] foo ( col1 …, col2 …, … )
+    for (const m of sql.matchAll(/CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?["`]?([a-z_][a-z0-9_]*)["`]?\s*\(([^;]*?)\)\s*(?:WITHOUT\s+ROWID)?\s*;/gis)) {
+      const table = m[1].toLowerCase()
+      const body = m[2]
+      const cols = tables.get(table) ?? new Set()
+      // Each top-level comma-separated column entry — best-effort split
+      // outside parentheses + skipping CHECK / FOREIGN / PRIMARY KEY rows.
+      let depth = 0
+      let buf = ''
+      const lines = []
+      for (const ch of body) {
+        if (ch === '(') depth += 1
+        else if (ch === ')') depth -= 1
+        if (ch === ',' && depth === 0) {
+          lines.push(buf.trim())
+          buf = ''
+        } else {
+          buf += ch
+        }
+      }
+      if (buf.trim()) lines.push(buf.trim())
+      for (const line of lines) {
+        if (/^(?:CONSTRAINT|FOREIGN\s+KEY|PRIMARY\s+KEY|UNIQUE|CHECK)\b/i.test(line)) continue
+        const cm = line.match(/^["`]?([a-z_][a-z0-9_]*)["`]?\s/i)
+        if (cm) cols.add(cm[1].toLowerCase())
+      }
+      tables.set(table, cols)
+    }
+    // ALTER TABLE foo ADD COLUMN [IF NOT EXISTS] col …
+    for (const m of sql.matchAll(/ALTER\s+TABLE\s+["`]?([a-z_][a-z0-9_]*)["`]?\s+ADD\s+(?:COLUMN\s+)?(?:IF\s+NOT\s+EXISTS\s+)?["`]?([a-z_][a-z0-9_]*)["`]?/gis)) {
+      const table = m[1].toLowerCase()
+      const col = m[2].toLowerCase()
+      const cols = tables.get(table) ?? new Set()
+      cols.add(col)
+      tables.set(table, cols)
+    }
+  }
+  return tables
+}
+
+function runCrossFileRules(files) {
+  const findings = []
+  const rustCommands = readRustCommands()
+  const schema = readSchemaMap()
+
+  // Tauri invoke validator — only check files that actually import
+  // Tauri's invoke (`from "@tauri-apps/api/core"` or `tauri/api/core`).
+  // The codebase also has a local AI-task dispatcher exported as
+  // `invoke` from `services/ai/router.ts`; we ignore that one entirely.
+  const invokeCalls = new Map() // command -> [{file, line, snippet}]
+  for (const file of files) {
+    if (!file.endsWith('.ts') && !file.endsWith('.tsx')) continue
+    const rel = relative(ROOT, file)
+    // Skip files in the website folder — those don't use Tauri.
+    if (rel.startsWith('website/')) continue
+    const text = readFileSync(file, 'utf8')
+    // Quickly bail if this file doesn't import Tauri's invoke.
+    if (!/@tauri-apps\/api\/core/.test(text)) continue
+    // Match `invoke<...>("name"`, `invoke("name"`, and the cast form
+    // `(invoke as …)("name"`.
+    const re = /invoke(?:\s*<[^>]+>)?\s*\(\s*['"]([a-z_][a-z0-9_]*)['"]/gi
+    for (const m of text.matchAll(re)) {
+      const cmd = m[1]
+      const line = text.slice(0, m.index).split('\n').length
+      const list = invokeCalls.get(cmd) ?? []
+      list.push({ file: rel, line, snippet: trim(m[0]) })
+      invokeCalls.set(cmd, list)
+    }
+    // Also catch the cast pattern `(invoke as …)("name", …)`.
+    const castRe = /\binvoke\s+as\b[\s\S]{0,200}?\)\s*\(\s*['"]([a-z_][a-z0-9_]*)['"]/gi
+    for (const m of text.matchAll(castRe)) {
+      const cmd = m[1]
+      const line = text.slice(0, m.index).split('\n').length
+      const list = invokeCalls.get(cmd) ?? []
+      list.push({ file: rel, line, snippet: trim(m[0]) })
+      invokeCalls.set(cmd, list)
+    }
+  }
+  for (const [cmd, callers] of invokeCalls) {
+    if (rustCommands.has(cmd)) continue
+    // Group by file for the report
+    const byFile = new Map()
+    for (const c of callers) {
+      const list = byFile.get(c.file) ?? []
+      list.push({ kind: 'invoke', snippet: c.snippet, line: c.line })
+      byFile.set(c.file, list)
+    }
+    for (const [file, hits] of byFile) {
+      findings.push({
+        file,
+        rule: 'tauri.invoke.unknown',
+        severity: 'error',
+        label: `invoke("${cmd}") — Rust has no handler registered in src-tauri/src/lib.rs`,
+        hits,
+      })
+    }
+  }
+
+  // SQL column validator — focused on `table.column` qualified references.
+  // We don't try to parse arbitrary SQL; we only flag the explicit qualified
+  // form (e.g. `prescriptions.issued_at`, `products.selling_price`) because
+  // that's where typos hide. Unqualified refs in CTEs / joins are too noisy
+  // to validate statically.
+  for (const file of files) {
+    if (!file.endsWith('.ts') && !file.endsWith('.tsx')) continue
+    const rel = relative(ROOT, file)
+    if (rel.startsWith('website/')) continue
+    const text = readFileSync(file, 'utf8')
+    // Only scan SQL template literals — and only ones that we can prove
+    // are SQL because they're passed to query() / execute() / db.run().
+    // Matching any backtick that happens to contain the word SELECT
+    // false-positives on `<SelectItem>` JSX and Combobox prose.
+    const sqlBlockRe = /\b(?:query|execute|run)\s*(?:<[^>]+>)?\s*\(\s*`([^`]*)`/gis
+    for (const blockMatch of text.matchAll(sqlBlockRe)) {
+      let block = blockMatch[1]
+      const blockStart = (blockMatch.index ?? 0) + blockMatch[0].indexOf('`') + 1
+      // Strip JS template interpolations like ${products.length} so we
+      // don't lint TS expression syntax as if it were SQL.
+      block = block.replace(/\$\{[^}]*\}/g, ' ')
+      // Strip single-quoted SQL string literals — those often contain
+      // dotted settings keys like 'business.kra_pin' or
+      // 'local_licenses.active_key' that look like qualified refs.
+      block = block.replace(/'(?:[^'\\]|\\.)*'/g, "''")
+      // Find every `table.column` qualified reference.
+      const qualRe = /\b([a-z_][a-z0-9_]*)\.([a-z_][a-z0-9_]*)\b/gi
+      for (const m of block.matchAll(qualRe)) {
+        const table = m[1].toLowerCase()
+        const col = m[2].toLowerCase()
+        // Skip CTE / aliased prefixes we won't know about (single-letter
+        // alias is the convention — e.g. `p.id`, `c.name`). Validating
+        // those would require parsing the FROM clause which we don't.
+        if (table.length === 1) continue
+        // Skip wildcards
+        if (col === '*') continue
+        const cols = schema.get(table)
+        if (!cols) continue // unknown table — quiet (could be a view / alias)
+        if (cols.has(col)) continue // valid column
+        // Tolerate the SQLite ROWID virtual column
+        if (col === 'rowid') continue
+        const idxInText = blockStart + (m.index ?? 0)
+        const line = text.slice(0, idxInText).split('\n').length
+        findings.push({
+          file: rel,
+          rule: 'sql.column.unknown',
+          severity: 'error',
+          label: `SQL references ${table}.${col} but that column isn't in the schema`,
+          hits: [{ kind: 'SQL', snippet: trim(`${table}.${col}`), line }],
+        })
+      }
+
+      // Bonus pass: if the query has an unambiguous single-table FROM
+      // (no JOINs, no aliases that aren't the table itself, no
+      // sub-selects), also validate UNqualified column references
+      // against that one table. Catches typos like MAX(issued_at)
+      // inside `FROM prescriptions WHERE …` even though `issued_at`
+      // has no table prefix.
+      const fromMatch = block.match(/\bFROM\s+([a-z_][a-z0-9_]*)\b/i)
+      const joinPresent = /\bJOIN\b/i.test(block)
+      const subSelectPresent = /\bSELECT\b[\s\S]*\bSELECT\b/i.test(block)
+      if (fromMatch && !joinPresent && !subSelectPresent) {
+        const fromTable = fromMatch[1].toLowerCase()
+        const cols = schema.get(fromTable)
+        if (cols) {
+          // Walk every `function(column)` or `WHERE column = …` ref.
+          // We look for bare lowercase identifiers in positions where a
+          // column is expected. Specifically: inside aggregate functions
+          // (SUM/MAX/MIN/COUNT/AVG) or right after WHERE / AND / OR /
+          // ORDER BY / GROUP BY.
+          const candRe = /\b(?:SUM|MAX|MIN|COUNT|AVG|UPPER|LOWER|TRIM|COALESCE|CAST|date|datetime|julianday)\s*\(\s*([a-z_][a-z0-9_]*)\s*[,)]/gi
+          for (const m of block.matchAll(candRe)) {
+            const col = m[1].toLowerCase()
+            if (col === 'rowid' || col === '*') continue
+            // SQL keywords that can appear as function args
+            if (['null', 'true', 'false', 'now'].includes(col)) continue
+            // Also skip if `col` looks like an identifier with no schema
+            // hit but might be a CTE alias or COALESCE'd value.
+            if (cols.has(col)) continue
+            const idxInText = blockStart + (m.index ?? 0)
+            const line = text.slice(0, idxInText).split('\n').length
+            findings.push({
+              file: rel,
+              rule: 'sql.column.unknown',
+              severity: 'error',
+              label: `SQL references column "${col}" (unqualified) but ${fromTable} has no such column`,
+              hits: [{ kind: 'SQL', snippet: trim(`${fromTable}.${col}`), line }],
+            })
+          }
+        }
+      }
+    }
+  }
+
+  return findings
+}
+
 function trim(s) {
   return s.replace(/\s+/g, ' ').slice(0, 160).trim()
 }
@@ -171,6 +416,9 @@ for (const file of files) {
     if (hits.length) findings.push({ file: rel, rule: rule.id, severity: rule.severity, label: rule.label, hits })
   }
 }
+
+// Cross-file rules — Tauri invoke validator + SQL column-ref checker.
+findings.push(...runCrossFileRules(files))
 
 const args = new Set(process.argv.slice(2))
 if (args.has('--json')) {

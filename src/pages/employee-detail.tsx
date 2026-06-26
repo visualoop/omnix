@@ -38,13 +38,20 @@ export function EmployeeDetailPage() {
     Promise.all([
       getEmployee(id),
       query<AttendanceSummary>(
-        `SELECT 
+        `SELECT
            SUM(CASE WHEN status = 'present' THEN 1 ELSE 0 END) as days_present,
            SUM(CASE WHEN status = 'absent' THEN 1 ELSE 0 END) as days_absent,
-           COALESCE(SUM(hours_worked), 0) as total_hours
+           COALESCE(SUM(
+             CASE
+               WHEN clock_in IS NOT NULL AND clock_out IS NOT NULL
+               THEN (julianday(clock_out) - julianday(clock_in)) * 24
+                    - (COALESCE(break_minutes, 0) / 60.0)
+               ELSE 0
+             END
+           ), 0) as total_hours
          FROM attendance
          WHERE employee_id = ?1
-           AND date >= date('now', '-30 days')`,
+           AND work_date >= date('now', '-30 days')`,
         [id],
       ),
     ])
