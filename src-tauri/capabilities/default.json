@@ -34,6 +34,8 @@
         { "url": "https://api.paystack.co/*" },
         { "url": "https://etims-api.kra.go.ke/*" },
         { "url": "https://etims-api-sbx.kra.go.ke/*" },
+        { "url": "https://sandbox.safaricom.co.ke/*" },
+        { "url": "https://api.safaricom.co.ke/*" },
         { "url": "https://omnix.co.ke/*" },
         { "url": "https://*.omnix.co.ke/*" },
         { "url": "http://localhost:3000/*" },

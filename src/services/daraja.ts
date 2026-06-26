@@ -88,10 +88,18 @@ async function getOAuthToken(config: DarajaConfig): Promise<string> {
   return body.access_token;
 }
 
-export async function verifyDarajaKey(consumerKey: string, consumerSecret: string): Promise<{ ok: boolean; error?: string }> {
+export async function verifyDarajaKey(
+  consumerKey: string,
+  consumerSecret: string,
+  testMode: boolean = true,
+): Promise<{ ok: boolean; error?: string }> {
   try {
     const auth = btoa(`${consumerKey}:${consumerSecret}`);
-    const res = await fetch(`${DARAJA_SANDBOX}/oauth/v1/generate?grant_type=client_credentials`, {
+    // Probe against whichever environment the cashier configured. Hardcoding
+    // sandbox here meant live keys always failed verify with a 400 because
+    // sandbox didn't know them.
+    const base = darajaBase(testMode);
+    const res = await fetch(`${base}/oauth/v1/generate?grant_type=client_credentials`, {
       method: "GET",
       headers: { Authorization: `Basic ${auth}` },
     });

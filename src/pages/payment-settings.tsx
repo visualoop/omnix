@@ -94,7 +94,7 @@ export function PaymentSettingsPage() {
       return;
     }
     setVerifyingDaraja(true);
-    const verify = await verifyDarajaKey(consumerKey, consumerSecret);
+    const verify = await verifyDarajaKey(consumerKey, consumerSecret, darajaTestMode);
     if (!verify.ok) {
       toast.error("Invalid credentials: " + (verify.error || "verification failed"));
       setVerifyingDaraja(false);

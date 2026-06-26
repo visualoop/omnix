@@ -46,6 +46,11 @@ export function CustomerDisplayPage() {
 
   useEffect(() => {
     useActiveModule.getState().load().catch(() => {});
+    // Same boot init the main window does — without this the money
+    // formatter falls back to '$' because useCountry.code is null.
+    import("@/stores/country")
+      .then(({ useCountry }) => useCountry.getState().load().catch(() => {}))
+      .catch(() => {});
     const t = setInterval(() => setNow(new Date()), 30_000);
     return () => clearInterval(t);
   }, []);

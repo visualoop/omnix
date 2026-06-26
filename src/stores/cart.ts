@@ -30,9 +30,15 @@ interface CartPayload {
   customerId: string | null;
   discount: number;
   discountType: "amount" | "percent";
+  /** Optional applied promo metadata — surfaces on customer display + receipt. */
+  promoId: string | null;
+  promoLabel: string | null;
   tip: number;
   tipEmployeeId: string | null;
   serviceChargeAmount: number;
+  /** Tax mode — propagates across windows so the customer display shows
+   *  the correct totals when the cashier flips inclusive / exclusive / off. */
+  taxMode: "off" | "inclusive" | "exclusive";
   sourceType: "hospitality_order" | "prescription" | "layby" | "special_order" | "folio" | "hardware_quote" | null;
   sourceId: string | null;
   sourceLabel: string | null;
@@ -50,9 +56,12 @@ function serializeCart(): CartPayload {
     customerId: s.customerId,
     discount: s.discount,
     discountType: s.discountType,
+    promoId: s.promoId,
+    promoLabel: s.promoLabel,
     tip: s.tip,
     tipEmployeeId: s.tipEmployeeId,
     serviceChargeAmount: s.serviceChargeAmount,
+    taxMode: s.taxMode,
     sourceType: s.sourceType,
     sourceId: s.sourceId,
     sourceLabel: s.sourceLabel,
@@ -404,9 +413,12 @@ if (typeof window !== "undefined") {
         customerId: incoming.customerId ?? null,
         discount: incoming.discount || 0,
         discountType: incoming.discountType || "amount",
+        promoId: incoming.promoId ?? null,
+        promoLabel: incoming.promoLabel ?? null,
         tip: incoming.tip || 0,
         tipEmployeeId: incoming.tipEmployeeId ?? null,
         serviceChargeAmount: incoming.serviceChargeAmount || 0,
+        taxMode: incoming.taxMode ?? "exclusive",
         sourceType: incoming.sourceType ?? null,
         sourceId: incoming.sourceId ?? null,
         sourceLabel: incoming.sourceLabel ?? null,
