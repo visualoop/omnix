@@ -38,7 +38,7 @@ export default defineConfig(async ({ mode }) => {
     define: {
       "import.meta.env.VITE_OMNIX_VARIANT": JSON.stringify(resolvedVariant),
       __OMNIX_VARIANT__: JSON.stringify(resolvedVariant),
-      __APP_VERSION__: JSON.stringify(process.env.npm_package_version ?? "0.11.2"),
+      __APP_VERSION__: JSON.stringify(process.env.npm_package_version ?? "0.11.3"),
     },
     envPrefix: ["VITE_"],
 
