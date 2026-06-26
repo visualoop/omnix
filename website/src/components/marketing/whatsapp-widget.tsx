@@ -39,7 +39,7 @@ export function WhatsAppWidget() {
   }
 
   return (
-    <div className="fixed bottom-5 right-5 z-50 print:hidden">
+    <div className="fixed bottom-5 right-5 z-50 flex flex-col items-end print:hidden">
       <AnimatePresence>
         {open && (
           <motion.div
@@ -94,13 +94,20 @@ export function WhatsAppWidget() {
         )}
       </AnimatePresence>
 
-      {/* FAB */}
+      {/* FAB — stays fixed bottom-right; becomes an X while the panel is open */}
       <button
         onClick={() => setOpen((o) => !o)}
         className="grid size-14 place-items-center rounded-full bg-[#25D366] text-white shadow-xl transition hover:scale-105 hover:bg-[#1FB855] active:scale-95"
-        aria-label="Chat with us on WhatsApp"
+        aria-label={open ? 'Close chat' : 'Chat with us on WhatsApp'}
+        aria-expanded={open}
       >
-        <WhatsAppGlyph className="size-8" />
+        {open ? (
+          <svg viewBox="0 0 24 24" className="size-7" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" aria-hidden>
+            <path d="M6 6l12 12M18 6L6 18" />
+          </svg>
+        ) : (
+          <WhatsAppGlyph className="size-8" />
+        )}
       </button>
     </div>
   )
