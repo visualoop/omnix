@@ -33,7 +33,7 @@ import { Input } from "@/components/ui/input"
 import { getProduct, updateProduct, type Product } from "@/services/inventory"
 import { listVariants, type ProductVariant } from "@/services/retail"
 import { useEntityHistory } from "@/hooks/use-entity-history"
-import { Pencil, PlusCircle, Stack as Layers, ImageSquare, Check, X as XIcon } from "@phosphor-icons/react"
+import { Pencil, PlusCircle, Stack as Layers, ImageSquare, Check, X as XIcon, Folder } from "@phosphor-icons/react"
 import { format, isAfter, isBefore, addDays } from "date-fns"
 import { execute, query } from "@/lib/db"
 import { ReceiveStockDialog } from "@/components/inventory/receive-stock-dialog"
@@ -614,6 +614,34 @@ function ImagesTab({ product, onSaved }: { product: Product; onSaved: () => void
     }
   }
 
+  // Local file picker — uses the same convertFileSrc trick the customer-
+  // display playlist uses. The Tauri asset:// scope in tauri.conf.json
+  // covers $HOME / $PICTURE / $DOWNLOAD etc., and the persisted-scope
+  // plugin holds on to files outside that range across app restarts.
+  const pickLocalImage = async () => {
+    try {
+      const [{ open: openFileDialog }, { convertFileSrc }] = await Promise.all([
+        import("@tauri-apps/plugin-dialog"),
+        import("@tauri-apps/api/core"),
+      ])
+      const picked = await openFileDialog({
+        multiple: false,
+        directory: false,
+        filters: [
+          {
+            name: "Image files",
+            extensions: ["jpg", "jpeg", "png", "webp", "gif", "bmp"],
+          },
+        ],
+      })
+      if (!picked || typeof picked !== "string") return
+      setDraftUrl(convertFileSrc(picked))
+      toast.success("Local image selected", { description: picked.split(/[\\/]/).pop() })
+    } catch (e) {
+      toast.error("Couldn't open file picker", { description: String(e) })
+    }
+  }
+
   return (
     <div className="grid grid-cols-1 gap-6 md:grid-cols-[280px_1fr]">
       <div className="flex flex-col gap-2">
@@ -641,19 +669,36 @@ function ImagesTab({ product, onSaved }: { product: Product; onSaved: () => void
         </p>
       </div>
       <div className="flex flex-col gap-3">
-        <label className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
-          Image URL
-        </label>
-        <Input
-          value={draftUrl}
-          onChange={(e) => setDraftUrl(e.target.value)}
-          placeholder="https://example.com/cement-50kg.jpg  or  file:///C:/Users/.../image.jpg"
-        />
-        <p className="text-[12px] text-muted-foreground leading-[1.55]">
-          Paste a web URL (https://…) or a local file path (file:///C:/…). Local paths
-          work because Omnix runs as a desktop app and has filesystem access. Use a hosted
-          URL if you sync across machines.
-        </p>
+        {/* Picker row — same layout pattern as customer-display so the
+            URL field below gets a full-width row of its own. */}
+        <div className="flex items-center gap-2">
+          <Button size="sm" variant="outline" onClick={pickLocalImage}>
+            <Folder className="h-3.5 w-3.5" />
+            Pick local image
+          </Button>
+          <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground ml-auto">
+            or paste a URL below
+          </span>
+        </div>
+
+        <div className="border-t border-foreground/5 pt-3 flex flex-col gap-2">
+          <label className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+            Image URL
+          </label>
+          <Input
+            value={draftUrl}
+            onChange={(e) => setDraftUrl(e.target.value)}
+            placeholder="https://example.com/cement-50kg.jpg"
+            className="w-full font-mono text-[12px]"
+          />
+          <p className="text-[11px] text-muted-foreground leading-[1.55]">
+            Paste a web URL (https://…) for an image hosted online — best when you sync
+            across machines. Or use <span className="font-medium">Pick local image</span>{" "}
+            above to load a file from this PC; the URL field auto-fills with an{" "}
+            <span className="font-mono">asset://</span> path the desktop window can render.
+          </p>
+        </div>
+
         <div className="flex items-center gap-2">
           <Button size="sm" onClick={saveImage} disabled={saving}>
             {saving ? "Saving…" : "Save image"}
