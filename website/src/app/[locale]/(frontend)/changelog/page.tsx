@@ -51,6 +51,13 @@ const VARIANT_LABEL: Record<VariantId, string> = {
  * Empty by default — the standard summary is enough for most patches.
  */
 const VERSION_HIGHLIGHTS: Record<string, string[]> = {
+  '0.13.0': [
+    'Auto-update on close — non-major updates download quietly while you work and install when you close the app, like VSCode',
+    'Machines now show every module activated on them (was showing only the last one)',
+    'Full provider-side setup guides — applying for a Daraja Paybill/Till, the Daraja portal flow, Paystack onboarding, and AI keys, step by step',
+    'WhatsApp chat widget polish + Lighthouse SEO/accessibility fixes (valid hreflang, contrast, link/button labels)',
+    'Branded STK push success screens (M-Pesa green pulse, Paystack blue)',
+  ],
   '0.12.0': [
     'Payment modal rebuilt — remaining always visible, brand-coloured method blocks, single contextual CTA, internal scroll',
     'Paystack Popup (hosted iframe) for card payments — no PCI scope, no fraud-flag penalty',
