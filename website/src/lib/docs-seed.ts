@@ -378,10 +378,120 @@ Each Omnix variant biases the assistant toward its trade. Omnix Dawa speaks chem
   {
     slug: 'mpesa',
     title: 'M-Pesa (Daraja & Paystack)',
-    excerpt: 'Accept M-Pesa via STK push, either with Safaricom Daraja directly or through Paystack.',
+    excerpt: 'Accept M-Pesa via STK push, Paybill/Till, or Paystack. Step-by-step on getting every key and entering it.',
     category: 'Integrations',
     icon: 'CreditCard',
-    body: scaffold('M-Pesa', 'Two ways to take M-Pesa in Omnix.', ['Daraja STK push setup', 'Paystack M-Pesa setup', 'Reconciling M-Pesa payments', 'Handling failed/timeout payments']),
+    body: `Omnix gives you three ways to take M-Pesa. Pick whichever matches how your business already collects money.
+
+## Which one do I need?
+
+- **Manual Paybill / Till** — easiest. You already have a Safaricom Paybill or Buy-Goods Till. The customer pays it directly, and the cashier records the M-Pesa confirmation code. No API keys, works today.
+- **Daraja STK push** — the customer gets a pop-up on their phone to enter their PIN; the sale closes automatically. Needs Safaricom Daraja API keys (free) and a registered Paybill/Till.
+- **Paystack** — takes M-Pesa *and* cards through one provider. Easiest keys to get; small per-transaction fee.
+
+## Option 1 — Manual Paybill / Till (no keys)
+
+1. In Omnix, open **Settings → Payments → Manual M-Pesa (Paybill / Till)**.
+2. Enter your **Paybill number** (and the account number convention you want customers to use), or your **Buy Goods Till number**.
+3. Save.
+
+At the till, when the cashier picks **M-Pesa**, Omnix shows the Paybill/Till in big numbers to read out to the customer. After the customer pays, the cashier types the M-Pesa confirmation code (from the customer's SMS) into the reference box and completes the sale.
+
+## Option 2 — Daraja STK push (get your keys)
+
+### Step 1 — Create a Safaricom Developer account
+Go to [developer.safaricom.co.ke](https://developer.safaricom.co.ke) and sign up. Verify your email.
+
+### Step 2 — Create an app
+On the dashboard, click **Add a new app**, give it a name, and tick **Lipa na M-Pesa Online**. You'll get a **Consumer Key** and **Consumer Secret**.
+
+### Step 3 — Have a Paybill or Till
+STK push pays into a registered shortcode. If you don't have one yet, apply through Safaricom. You'll typically need your **KRA PIN certificate**, **business registration**, **directors' IDs**, and a **bank letter / cancelled cheque**. Send the signed forms to M-PESABusiness@safaricom.co.ke. (For testing only, Safaricom's sandbox shortcode is **174379**.)
+
+### Step 4 — Get your passkey
+Once your shortcode is live, open the **M-Pesa Express (Lipa na M-Pesa Online)** product in the Daraja portal and copy the **Passkey** for your shortcode.
+
+### Step 5 — Enter the keys in Omnix
+**Settings → Payments → M-Pesa Daraja (Direct)**. Paste your Consumer Key, Consumer Secret, Passkey, and Shortcode. Leave **Test mode** on while you trial with the sandbox; switch it off when you go live. Click **Connect** — Omnix verifies the keys immediately.
+
+## Option 3 — Paystack
+
+See the [Paystack setup guide](/docs/paystack-keys) for getting your public + secret keys. Paystack takes both M-Pesa and cards.
+
+## Reconciling payments
+
+Every M-Pesa payment is stored against the sale with its transaction code, so you can match it to your M-Pesa statement. Daraja STK and Paystack record the code automatically; manual Paybill/Till uses whatever code the cashier entered.
+
+## When STK push hangs
+
+The Safaricom sandbox (and occasionally production) can leave a request "pending". After 90 seconds Omnix shows **Mark as paid manually** — the cashier reads the M-Pesa code off the customer's SMS and confirms, so the till is never blocked.`,
+  },
+  {
+    slug: 'paystack-keys',
+    title: 'Get your Paystack keys',
+    excerpt: 'Sign up for Paystack in Kenya, complete onboarding, and copy your API keys into Omnix.',
+    category: 'Integrations',
+    icon: 'CreditCard',
+    body: `Paystack lets Omnix take both M-Pesa and card payments through one provider. Setup takes about 15 minutes plus Paystack's review.
+
+## Step 1 — Create an account
+Go to [paystack.com/signup](https://paystack.com/signup). Paystack is live for Kenyan businesses. Use your business email.
+
+## Step 2 — Complete business onboarding
+Paystack needs to verify your business before you can accept live payments. Have ready:
+
+- Your **KRA PIN**
+- A **bank account** in the business name (this is where payouts land)
+- A **valid ID** for the business owner / director
+
+Submit these in **Settings → Compliance** on the Paystack dashboard. Approval is usually same-day to a couple of days.
+
+## Step 3 — Copy your API keys
+On the Paystack dashboard, go to **Settings → API Keys & Webhooks**. You'll see:
+
+- a **Public Key** (\`pk_…\`) — safe to ship in the app
+- a **Secret Key** (\`sk_…\`) — keep private; Omnix stores it encrypted
+
+While testing, use the **Test** keys (\`pk_test_…\` / \`sk_test_…\`). Switch to **Live** mode in the dashboard to get your live keys when you're ready.
+
+## Step 4 — Enter the keys in Omnix
+**Settings → Payments → Paystack**. Paste the Public and Secret keys, keep **Test mode** on while trialling, and click **Connect**. Omnix verifies the keys against Paystack immediately.
+
+## Card payments
+When a cashier picks **Card**, Omnix opens Paystack's secure hosted popup. Card details never touch Omnix — Paystack handles 3-D Secure and fraud checks — so you stay out of PCI scope.
+
+## Fees
+Paystack charges roughly **1.5% on M-Pesa** and **2.9% on local cards** (confirm your exact tariff with Paystack). You can record your negotiated rate in **Settings → Payments → Service charges** so reports show net revenue.`,
+  },
+  {
+    slug: 'ai-keys',
+    title: 'Get your AI key',
+    excerpt: 'Choose an AI provider, generate a key, and paste it into Omnix to switch on the in-app assistant.',
+    category: 'Integrations',
+    icon: 'Sparkle',
+    body: `The Omnix AI assistant works with several providers. You bring your own key, so you only pay the provider for what you use — Omnix adds no markup.
+
+## Which provider?
+
+- **Groq** — free tier, extremely fast. Best place to start. [console.groq.com](https://console.groq.com)
+- **OpenRouter** — one key, many models (pay-as-you-go). [openrouter.ai](https://openrouter.ai)
+- **Anthropic (Claude)** — highest answer quality, paid. [console.anthropic.com](https://console.anthropic.com)
+
+## Step 1 — Create an account
+Sign up with your chosen provider above.
+
+## Step 2 — Generate an API key
+- **Groq:** Console → **API Keys → Create API Key**. Copy it (starts with \`gsk_…\`).
+- **OpenRouter:** **Keys → Create Key**. Copy it (starts with \`sk-or-…\`).
+- **Anthropic:** **API Keys → Create Key**. Copy it (starts with \`sk-ant-…\`).
+
+Copy the key immediately — most providers only show it once.
+
+## Step 3 — Paste it into Omnix
+Open **Settings → AI**, pick your provider, paste the key, and save. Omnix stores it encrypted on your machine. Press **Ctrl+J** anywhere to open the assistant.
+
+## Cost control
+Set a spending limit in your provider's dashboard. The assistant is opt-in per query — it never calls the provider unless you ask it something.`,
   },
   {
     slug: 'licence-activation',
