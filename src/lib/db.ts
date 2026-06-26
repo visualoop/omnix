@@ -2,6 +2,78 @@ import Database from "@tauri-apps/plugin-sql";
 import { fetch } from "@tauri-apps/plugin-http";
 
 let db: Database | null = null;
+let tuned = false;
+
+/**
+ * Production SQLite tuning — applied once per connection, right after load.
+ *
+ * These PRAGMAs are what keep the till instant whether the shop has done
+ * 100 sales or 50 million. None of them risk the data; they trade a tiny
+ * amount of crash-durability nuance (synchronous=NORMAL) for a large
+ * throughput win, which is the correct call for a WAL database.
+ *
+ *   journal_mode=WAL    — readers never block the writer and vice-versa.
+ *                         The POS can keep ringing sales while a report
+ *                         runs. This is THE big lever for a busy till.
+ *   synchronous=NORMAL  — safe with WAL (no corruption on app crash; only
+ *                         the very last transaction can be lost on a full
+ *                         OS/power loss, which a sale re-print covers).
+ *                         ~10x faster commits than the FULL default.
+ *   busy_timeout=5000   — wait up to 5s for a lock instead of throwing
+ *                         "database is locked" under concurrent access
+ *                         (LAN clients, background backup, reports).
+ *   cache_size=-16384   — 16 MB page cache (negative = KiB). Hot tables
+ *                         (products, prices, today's sales) stay in RAM.
+ *   temp_store=MEMORY   — sorts/joins for reports build in RAM, not disk.
+ *   mmap_size=256MB     — memory-map the DB file so reads skip syscalls;
+ *                         huge for scanning large sales history.
+ *   foreign_keys=ON     — enforce referential integrity (off by default
+ *                         in SQLite). Cheap, prevents orphaned rows.
+ *
+ * Why this scales to "billions of rows": SQLite is a B-tree engine — an
+ * indexed lookup is O(log n), so finding one product among 10 or 10
+ * million is a handful of page reads either way. Performance degrades
+ * only on UN-indexed full scans; the schema already ships 150+ indexes
+ * on every WHERE/JOIN column, and the audit (scripts/audit-codebase.mjs)
+ * blocks queries that would scan. The remaining lever is keeping the
+ * working set in cache + not blocking on locks — exactly what these
+ * PRAGMAs do.
+ */
+async function tuneSqlite(conn: Database): Promise<void> {
+  if (tuned) return;
+  try {
+    // DURABLE pragmas — written into the database file header, so they
+    // persist across every connection + restart once set:
+    await conn.execute("PRAGMA journal_mode = WAL;");      // readers never block the writer
+    await conn.execute("PRAGMA auto_vacuum = INCREMENTAL;"); // reclaim space without full VACUUM locks
+
+    // PER-CONNECTION pragmas. tauri-plugin-sql uses an sqlx pool, so
+    // these strictly bind to the connection that ran them. In practice
+    // the SQLite pool is tiny and the same handle serves the hot path,
+    // so this still lifts the common case; WAL above is the change that
+    // unconditionally helps every connection.
+    await conn.execute("PRAGMA synchronous = NORMAL;");    // safe w/ WAL, ~10x faster commits
+    await conn.execute("PRAGMA busy_timeout = 5000;");     // wait for locks, don't throw
+    await conn.execute("PRAGMA cache_size = -16384;");     // 16 MB page cache
+    await conn.execute("PRAGMA temp_store = MEMORY;");     // report sorts/joins in RAM
+    await conn.execute("PRAGMA mmap_size = 268435456;");   // 256 MB memory-mapped reads
+    await conn.execute("PRAGMA foreign_keys = ON;");       // enforce integrity
+
+    // Refresh the query planner's table statistics so it keeps picking
+    // the right index as the shop's data grows. Cheap; once per launch.
+    await conn.execute("PRAGMA optimize;");
+    tuned = true;
+  } catch {
+    // Tuning is best-effort; a failure here must never block app boot.
+  }
+}
+
+/** Load the local SQLite database with production tuning applied once. */
+async function loadTuned(): Promise<Database> {
+  const conn = await Database.load("sqlite:omnix.db");
+  await tuneSqlite(conn);
+  return conn;
+}
 
 // Cached client-mode credentials (read once on startup)
 let clientMode: { url: string; token: string } | null = null;
@@ -14,7 +86,7 @@ let modeChecked = false;
 export async function initDb(): Promise<"local" | "remote"> {
   // Always ensure local DB is loaded (used for settings even in client mode for cached configs)
   if (!db) {
-    db = await Database.load("sqlite:omnix.db");
+    db = await loadTuned();
   }
 
   // Check mode from local settings table
@@ -53,7 +125,7 @@ export async function refreshDbMode(): Promise<"local" | "remote"> {
 
 async function getDb(): Promise<Database> {
   if (!db) {
-    db = await Database.load("sqlite:omnix.db");
+    db = await loadTuned();
   }
   return db;
 }
