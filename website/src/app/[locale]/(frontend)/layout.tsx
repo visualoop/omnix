@@ -9,6 +9,7 @@ import { BRAND, BRAND_NAME, BRAND_TAGLINE } from '@/lib/brand'
 import { SiteHeader } from '@/components/layout/site-header'
 import { SiteFooter } from '@/components/layout/site-footer'
 import { OrgJsonLd } from '@/components/seo/jsonld'
+import { WhatsAppWidget } from '@/components/marketing/whatsapp-widget'
 import { routing, COUNTRY_LOCALES } from '@/i18n/routing'
 
 /**
@@ -201,6 +202,7 @@ export default async function FrontendLayout({
       <SiteHeader isAuthed={isAuthed} />
       <main>{children}</main>
       <SiteFooter />
+      <WhatsAppWidget />
       {gaId && <GoogleAnalytics gaId={gaId} />}
       <OrgJsonLd />
     </NextIntlClientProvider>
