@@ -1,7 +1,7 @@
 import { headers } from 'next/headers'
 import { redirect, notFound } from 'next/navigation'
 import { and, eq, desc } from 'drizzle-orm'
-import { db, machines, licenses, telemetryEvents, cloudBackups } from '@/db'
+import { db, machines, licenses, telemetryEvents, cloudBackups, activations } from '@/db'
 import { auth } from '@/lib/auth'
 import { Breadcrumbs } from '@/components/layout/breadcrumbs'
 import { BackButton } from '@/components/layout/back-button'
@@ -32,6 +32,16 @@ export default async function MachineDetailPage({ params }: { params: Promise<{ 
     db.select().from(cloudBackups).where(eq(cloudBackups.machineId, id)).orderBy(desc(cloudBackups.takenAt)).limit(30),
   ])
 
+  // Every licence/module activated on THIS machine — a PC can hold
+  // several trade licences (Dawa + Retail + Hardware), so the single
+  // primary `license` above under-reports. List them all.
+  const activatedLicences = await db
+    .selectDistinct({ id: licenses.id, variant: licenses.variant, licenseKey: licenses.licenseKey, status: licenses.status })
+    .from(activations)
+    .innerJoin(licenses, eq(activations.licenseId, licenses.id))
+    .where(eq(activations.machineId, id))
+  const activatedVariants = activatedLicences.map((l) => l.variant)
+
   const status = m.status === 'active' && m.lastSeenAt && (Date.now() - new Date(m.lastSeenAt).getTime()) < 24 * 3600 * 1000 ? 'online' : m.status
 
   return (
@@ -50,7 +60,9 @@ export default async function MachineDetailPage({ params }: { params: Promise<{ 
         badges={[
           { label: status, variant: status === 'online' ? 'default' : status === 'revoked' ? 'destructive' : 'secondary' },
           { label: m.networkMode ?? 'standalone', variant: 'outline' },
-          ...(m.activeModule ? [{ label: m.activeModule, variant: 'outline' as const }] : []),
+          ...(activatedVariants.length
+            ? activatedVariants.map((v) => ({ label: v, variant: 'outline' as const }))
+            : m.activeModule ? [{ label: m.activeModule, variant: 'outline' as const }] : []),
         ]}
         actions={
           <div className="flex flex-wrap items-center gap-2">
@@ -89,12 +101,33 @@ export default async function MachineDetailPage({ params }: { params: Promise<{ 
                 <Field label="OS" value={`${m.os ?? 'windows'} ${m.osVersion ?? ''}`} />
                 <Field label="Architecture" value={m.arch} />
                 <Field label="App version" value={`v${m.currentVersion ?? '?'}`} />
-                <Field label="Active module" value={m.activeModule} />
+                <Field label="Modules activated" value={activatedVariants.length ? activatedVariants.join(' · ') : m.activeModule} />
                 <Field label="Branch" value={m.branchName} />
                 <Field label="Currency" value={m.currency} />
                 <Field label="Network mode" value={m.networkMode} />
                 <Field label="First seen" value={formatDate(m.firstSeenAt, true)} />
               </div>
+            ),
+          },
+          {
+            id: 'licences',
+            label: 'Licences',
+            count: activatedLicences.length,
+            content: (
+              <ol className="flex flex-col gap-2">
+                {activatedLicences.map((l) => (
+                  <li key={l.id} className="flex items-center justify-between gap-3 rounded-lg border border-foreground/10 px-4 py-3">
+                    <div className="flex flex-col gap-0.5 min-w-0">
+                      <span className="text-[13px] font-medium uppercase tracking-[0.08em]">{l.variant}</span>
+                      <Link href={`/dashboard/licenses/${l.id}`} className="font-mono text-[11px] text-muted-foreground underline-offset-4 hover:underline truncate">
+                        {l.licenseKey}
+                      </Link>
+                    </div>
+                    <span className="font-mono text-[10px] uppercase tracking-[0.16em] text-muted-foreground">{l.status}</span>
+                  </li>
+                ))}
+                {activatedLicences.length === 0 && <li className="text-sm text-muted-foreground">No licences activated on this machine.</li>}
+              </ol>
             ),
           },
           {

@@ -1,6 +1,6 @@
 import { notFound } from 'next/navigation'
 import { eq, desc } from 'drizzle-orm'
-import { db, machines, licenses, user, telemetryEvents, cloudBackups } from '@/db'
+import { db, machines, licenses, user, telemetryEvents, cloudBackups, activations } from '@/db'
 import { Breadcrumbs } from '@/components/layout/breadcrumbs'
 import { BackButton } from '@/components/layout/back-button'
 import { EntityHero } from '@/components/layout/entity-hero'
@@ -26,6 +26,15 @@ export default async function AdminMachineDetailPage({ params }: PageProps) {
     db.select().from(cloudBackups).where(eq(cloudBackups.machineId, id)).orderBy(desc(cloudBackups.takenAt)).limit(50),
   ])
 
+  // All licences/modules activated on this machine (a PC can hold
+  // several trade licences). machines.activeModule only holds the last.
+  const activatedLicences = await db
+    .selectDistinct({ id: licenses.id, variant: licenses.variant, licenseKey: licenses.licenseKey, status: licenses.status })
+    .from(activations)
+    .innerJoin(licenses, eq(activations.licenseId, licenses.id))
+    .where(eq(activations.machineId, id))
+  const activatedVariants = activatedLicences.map((l) => l.variant)
+
   const lastHeartbeat = m.lastSeenAt ? formatRelative(m.lastSeenAt) : 'never'
   const status = m.status === 'active' && m.lastSeenAt && (Date.now() - new Date(m.lastSeenAt).getTime()) < 24 * 3600 * 1000 ? 'online' : m.status
 
@@ -46,7 +55,9 @@ export default async function AdminMachineDetailPage({ params }: PageProps) {
         badges={[
           { label: status, variant: status === 'online' ? 'default' : status === 'revoked' ? 'destructive' : 'secondary' },
           { label: m.networkMode ?? 'standalone', variant: 'outline' },
-          ...(m.activeModule ? [{ label: m.activeModule, variant: 'outline' as const }] : []),
+          ...(activatedVariants.length
+            ? activatedVariants.map((v) => ({ label: v, variant: 'outline' as const }))
+            : m.activeModule ? [{ label: m.activeModule, variant: 'outline' as const }] : []),
         ]}
         stats={[
           { label: 'Version', value: m.currentVersion ?? '—' },
@@ -71,7 +82,7 @@ export default async function AdminMachineDetailPage({ params }: PageProps) {
                 <Field label="Architecture" value={m.arch} />
                 <Field label="App version" value={m.currentVersion} />
                 <Field label="Network mode" value={m.networkMode} />
-                <Field label="Active module" value={m.activeModule} />
+                <Field label="Modules activated" value={activatedVariants.length ? activatedVariants.join(' · ') : m.activeModule} />
                 <Field label="Currency" value={m.currency} />
                 <Field label="Last IP" value={m.lastIp} />
                 <Field label="First seen" value={m.firstSeenAt ? formatDate(m.firstSeenAt, true) : null} />

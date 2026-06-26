@@ -1,8 +1,8 @@
 import { headers } from 'next/headers'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
-import { and, count, desc, eq, ilike, or } from 'drizzle-orm'
-import { db, machines } from '@/db'
+import { and, count, desc, eq, ilike, or, inArray } from 'drizzle-orm'
+import { db, machines, activations, licenses } from '@/db'
 import { auth } from '@/lib/auth'
 import { PageHeading } from '@/components/dashboard/status-utils'
 import {
@@ -89,6 +89,27 @@ export default async function MachinesPage({
 
   const total = totalRow[0]?.n ?? 0
 
+  // Every variant activated on each machine. A single PC can hold
+  // several trade licences (Dawa + Retail + Hardware), so the lone
+  // machines.activeModule column (last-written) under-reports what's
+  // really installed. Join through the activations table to list them
+  // all per machine.
+  const machineIds = rows.map((m) => m.id)
+  const variantRows = machineIds.length
+    ? await db
+        .selectDistinct({ machineId: activations.machineId, variant: licenses.variant })
+        .from(activations)
+        .innerJoin(licenses, eq(activations.licenseId, licenses.id))
+        .where(inArray(activations.machineId, machineIds))
+    : []
+  const variantsByMachine = new Map<string, string[]>()
+  for (const r of variantRows) {
+    if (!r.machineId) continue
+    const list = variantsByMachine.get(r.machineId) ?? []
+    if (!list.includes(r.variant)) list.push(r.variant)
+    variantsByMachine.set(r.machineId, list)
+  }
+
   return (
     <div className="space-y-6">
       <PageHeading title="Machines" subtitle="Every desktop install activated against your licences." />
@@ -126,7 +147,10 @@ export default async function MachinesPage({
                     </Link>
                   </TableCell>
                   <TableCell className="font-mono text-[11px] uppercase tracking-[0.12em] text-[var(--color-fg-muted)]">
-                    {m.activeModule ?? 'core'}
+                    {(() => {
+                      const vs = variantsByMachine.get(m.id) ?? (m.activeModule ? [m.activeModule] : ['core'])
+                      return vs.join(' · ')
+                    })()}
                   </TableCell>
                   <TableCell className="font-mono text-[11px] tabular-nums text-[var(--color-fg-muted)]">
                     {m.os} · v{m.currentVersion ?? '?'}

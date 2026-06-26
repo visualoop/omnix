@@ -1,7 +1,7 @@
-import { and, count, desc, eq, ilike, or, sql } from 'drizzle-orm'
+import { and, count, desc, eq, ilike, or, sql, inArray } from 'drizzle-orm'
 import Link from 'next/link'
 import { Desktop } from '@phosphor-icons/react/dist/ssr'
-import { db, machines, user, licenses } from '@/db'
+import { db, machines, user, licenses, activations } from '@/db'
 import { EmptyState } from '@/components/admin/empty-state'
 import { PageHeader } from '@/components/layout/page-header'
 import {
@@ -163,6 +163,25 @@ export default async function AdminMachinesPage({
 
   const total = totalRow[0]?.n ?? 0
 
+  // All variants activated on each listed machine (a PC can hold
+  // several trade licences). machines.activeModule only stores the
+  // last-activated one, so we join through activations to list them.
+  const mIds = rows.map((m) => m.id)
+  const variantRows = mIds.length
+    ? await db
+        .selectDistinct({ machineId: activations.machineId, variant: licenses.variant })
+        .from(activations)
+        .innerJoin(licenses, eq(activations.licenseId, licenses.id))
+        .where(inArray(activations.machineId, mIds))
+    : []
+  const variantsByMachine = new Map<string, string[]>()
+  for (const r of variantRows) {
+    if (!r.machineId) continue
+    const list = variantsByMachine.get(r.machineId) ?? []
+    if (!list.includes(r.variant)) list.push(r.variant)
+    variantsByMachine.set(r.machineId, list)
+  }
+
   return (
     <div className="space-y-6">
       <PageHeader
@@ -231,7 +250,7 @@ export default async function AdminMachinesPage({
                     {m.licenseKey ?? '—'}
                   </TableCell>
                   <TableCell className="font-mono text-[11px] uppercase tracking-[0.12em]">
-                    {m.activeModule ?? 'core'}
+                    {(variantsByMachine.get(m.id) ?? (m.activeModule ? [m.activeModule] : ['core'])).join(' · ')}
                   </TableCell>
                   <TableCell className="font-mono text-[11px] tabular-nums text-[var(--color-fg-muted)]">
                     v{m.currentVersion ?? '?'}
