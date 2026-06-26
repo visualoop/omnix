@@ -158,8 +158,14 @@ export async function generateMetadata({
       title: c.title,
       description: c.description,
       locale: c.ogLocale,
+      images: [{ url: 'https://media.omnix.co.ke/marketing/og-default.jpg', width: 1200, height: 630, alt: BRAND_NAME }],
     },
-    twitter: { card: 'summary_large_image', title: c.title, description: c.description },
+    twitter: {
+      card: 'summary_large_image',
+      title: c.title,
+      description: c.description,
+      images: ['https://media.omnix.co.ke/marketing/og-default.jpg'],
+    },
     icons: { icon: '/favicon.ico' },
     robots: { index: true, follow: true },
     alternates: {

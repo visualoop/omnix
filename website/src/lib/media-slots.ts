@@ -21,20 +21,49 @@ export interface SlotImage {
   height?: number
 }
 
+/**
+ * Built-in default images, seeded to the omnix-media R2 bucket and
+ * served via https://media.omnix.co.ke. These render out of the box so
+ * the marketing site is never showing empty placeholders — the admin
+ * can override any slot from /admin/media and the DB row wins.
+ */
+const SLOT_DEFAULTS: Record<string, string> = {
+  'hero.background': 'https://media.omnix.co.ke/marketing/hero-background.jpg',
+  'hero.product_shot': 'https://media.omnix.co.ke/marketing/hero-product_shot.png',
+  'module.dawa.hero': 'https://media.omnix.co.ke/marketing/module-dawa-hero.jpg',
+  'module.retail.hero': 'https://media.omnix.co.ke/marketing/module-retail-hero.jpg',
+  'module.hardware.hero': 'https://media.omnix.co.ke/marketing/module-hardware-hero.jpg',
+  'module.hospitality.hero': 'https://media.omnix.co.ke/marketing/module-hospitality-hero.jpg',
+  'pricing.hero': 'https://media.omnix.co.ke/marketing/pricing-hero.jpg',
+  'about.team_photo': 'https://media.omnix.co.ke/marketing/about-team_photo.jpg',
+  'og.default': 'https://media.omnix.co.ke/marketing/og-default.jpg',
+}
+
 export async function getSlotImage(slot: string): Promise<SlotImage | null> {
-  const rows = await db
-    .select()
-    .from(platformMedia)
-    .where(eq(platformMedia.slot, slot))
-    .orderBy(desc(platformMedia.createdAt))
-    .limit(1)
-  const row = rows[0]
-  if (!row) return null
-  return {
-    url: row.url,
-    alt: row.alt,
-    filename: row.filename,
-    mimeType: row.mimeType,
+  // Admin-uploaded image wins. Fall back to the seeded default so the
+  // page never renders an empty placeholder.
+  const fallback = (): SlotImage | null =>
+    SLOT_DEFAULTS[slot]
+      ? { url: SLOT_DEFAULTS[slot], alt: null, filename: null, mimeType: 'image/jpeg' }
+      : null
+  try {
+    const rows = await db
+      .select()
+      .from(platformMedia)
+      .where(eq(platformMedia.slot, slot))
+      .orderBy(desc(platformMedia.createdAt))
+      .limit(1)
+    const row = rows[0]
+    if (!row) return fallback()
+    return {
+      url: row.url,
+      alt: row.alt,
+      filename: row.filename,
+      mimeType: row.mimeType,
+    }
+  } catch {
+    // DB unreachable during build/preview — still show the default.
+    return fallback()
   }
 }
 
