@@ -49,11 +49,15 @@ function SelectContent({
 }: React.ComponentProps<typeof SelectPrimitive.Popup>) {
   return (
     <SelectPrimitive.Portal>
-      <SelectPrimitive.Positioner sideOffset={4}>
+      <SelectPrimitive.Positioner sideOffset={4} className="z-[100]">
         <SelectPrimitive.Popup
           data-slot="select-content"
           className={cn(
-            "z-50 min-w-[8rem] overflow-hidden rounded-xl glass-thick py-1 text-popover-foreground",
+            // Must outrank Sheet/Dialog (z-50) so the dropdown appears
+            // ABOVE the modal it's nested inside. Without this, the
+            // Select trigger registers a click but the popup renders
+            // behind the modal and the user sees nothing.
+            "z-[100] min-w-[8rem] overflow-hidden rounded-xl glass-thick py-1 text-popover-foreground",
             "duration-100 data-open:animate-in data-open:fade-in-0 data-open:zoom-in-[0.98]",
             "data-closed:animate-out data-closed:fade-out-0",
             className,

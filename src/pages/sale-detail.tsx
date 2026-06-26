@@ -16,6 +16,8 @@ import { LazyTabs } from "@/components/ui/lazy-tabs"
 import { Button } from "@/components/ui/button"
 import { query } from "@/lib/db"
 import type { Sale } from "@/services/sales"
+import { buildReceiptData, printReceipt } from "@/services/receipt"
+import { toast } from "sonner"
 import { useEntityHistory } from "@/hooks/use-entity-history"
 import { Printer, ArrowUUpLeft } from "@phosphor-icons/react"
 import { format } from "date-fns"
@@ -120,7 +122,22 @@ export function SaleDetailPage() {
         ]}
         actions={
           <>
-            <Button size="sm" variant="outline" onClick={() => window.print()}>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={async () => {
+                try {
+                  const data = await buildReceiptData(sale.id)
+                  if (!data) {
+                    toast.error("Couldn't build receipt — sale data missing")
+                    return
+                  }
+                  await printReceipt(data)
+                } catch (e) {
+                  toast.error(String(e))
+                }
+              }}
+            >
               <Printer className="h-3.5 w-3.5" />
               Reprint
             </Button>
