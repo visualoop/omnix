@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { Toaster } from "sonner";
 import { ConfirmDialogHost } from "@/components/ui/confirm-dialog";
+import { TouchTextKeyboardProvider } from "@/components/ui/touch-text-keyboard-provider";
 import { useAuthStore } from "@/stores/auth";
 import { useF11Fullscreen } from "@/hooks/use-f11-fullscreen";
 import { AppShell } from "@/components/layout/app-shell";
@@ -335,6 +336,7 @@ function AppContent() {
       </Routes>
       <Toaster position="bottom-right" />
       <ConfirmDialogHost />
+      <TouchTextKeyboardProvider />
     </BrowserRouter>
   );
 }
