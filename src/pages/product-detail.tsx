@@ -30,12 +30,13 @@ import { LazyTabs } from "@/components/ui/lazy-tabs"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { Input } from "@/components/ui/input"
-import { getProduct, updateProduct, type Product } from "@/services/inventory"
+import { Combobox } from "@/components/ui/combobox"
+import { getProduct, updateProduct, getCategories, type Product, type Category } from "@/services/inventory"
+import { execute, query } from "@/lib/db"
 import { listVariants, type ProductVariant } from "@/services/retail"
 import { useEntityHistory } from "@/hooks/use-entity-history"
 import { Pencil, PlusCircle, Stack as Layers, ImageSquare, Check, X as XIcon, Folder } from "@phosphor-icons/react"
 import { format, isAfter, isBefore, addDays } from "date-fns"
-import { execute, query } from "@/lib/db"
 import { ReceiveStockDialog } from "@/components/inventory/receive-stock-dialog"
 import { VariantsDrawer } from "@/components/inventory/variants-drawer"
 import { toast } from "sonner"
@@ -231,8 +232,10 @@ function OverviewTab({ product, editing, onSaved }: { product: Product; editing:
     name: product.name,
     buying_price: product.buying_price,
     selling_price: product.selling_price,
+    category_id: product.category_id ?? "",
   })
   const [saving, setSaving] = useState(false)
+  const [categories, setCategories] = useState<Category[]>([])
 
   // Re-sync draft when product changes (e.g. after reload).
   useEffect(() => {
@@ -246,8 +249,15 @@ function OverviewTab({ product, editing, onSaved }: { product: Product; editing:
       name: product.name,
       buying_price: product.buying_price,
       selling_price: product.selling_price,
+      category_id: product.category_id ?? "",
     })
   }, [product])
+
+  // Load categories when entering edit mode.
+  useEffect(() => {
+    if (!editing) return
+    getCategories().then(setCategories).catch(() => {})
+  }, [editing])
 
   const save = async () => {
     setSaving(true)
@@ -262,6 +272,7 @@ function OverviewTab({ product, editing, onSaved }: { product: Product; editing:
         description: draft.description,
         buying_price: draft.buying_price,
         selling_price: draft.selling_price,
+        category_id: draft.category_id || undefined,
       })
       toast.success("Product updated")
       onSaved()
@@ -304,6 +315,30 @@ function OverviewTab({ product, editing, onSaved }: { product: Product; editing:
         <EditField label="SKU" value={draft.sku} onChange={(v) => setDraft({ ...draft, sku: v })} />
         <EditField label="Barcode" value={draft.barcode} onChange={(v) => setDraft({ ...draft, barcode: v })} />
         <EditField label="Unit" value={draft.unit} onChange={(v) => setDraft({ ...draft, unit: v })} placeholder="pcs / kg / pack" />
+        <div className="flex flex-col gap-1.5">
+          <label className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+            Category
+          </label>
+          <Combobox
+            value={draft.category_id}
+            onChange={(v) => setDraft({ ...draft, category_id: v })}
+            options={categories.map((c) => ({ value: c.id, label: c.name }))}
+            placeholder="Uncategorised"
+            searchPlaceholder="Search or create category…"
+            onCreate={async (name) => {
+              // Create the category inline so the user can keep typing
+              // without leaving the form.
+              const id = crypto.randomUUID()
+              await execute(
+                `INSERT INTO categories (id, name) VALUES (?1, ?2)`,
+                [id, name],
+              )
+              const next = { value: id, label: name }
+              setCategories((prev) => [...prev, { id, name, created_at: new Date().toISOString() } as Category])
+              return next
+            }}
+          />
+        </div>
         <EditField
           label="VAT rate (%)"
           type="number"

@@ -61,11 +61,13 @@ export async function getProducts(search?: string): Promise<Product[]> {
 
 export async function getProduct(id: string): Promise<Product | null> {
   const rows = await query<Product>(
-    `SELECT p.*, 
+    `SELECT p.*,
+      c.name as category_name,
       COALESCE(pp.buying_price, 0) as buying_price,
       COALESCE(pp.selling_price, 0) as selling_price,
       COALESCE((SELECT SUM(b.quantity) FROM batches b WHERE b.product_id = p.id), 0) as stock_qty
     FROM products p
+    LEFT JOIN categories c ON c.id = p.category_id
     LEFT JOIN product_prices pp ON pp.product_id = p.id AND pp.price_list_id = 'default'
     WHERE p.id = ?1`,
     [id]
