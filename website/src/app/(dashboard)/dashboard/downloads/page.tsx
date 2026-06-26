@@ -71,18 +71,18 @@ export default async function DashboardDownloadsPage() {
   // doesn't override their paid trades — if the trial expires, the
   // trades are what they actually keep.
   const ownsPro = ownedActive.has('pro')
-  const visibleVariants: VariantId[] = ownsPro
-    ? ['pro']
-    : (['pro', 'dawa', 'retail', 'hospitality', 'hardware'] as const).filter(
-        (v) => ownedSet.size === 0 || ownedSet.has(v),
-      )
-  // When the user owns nothing yet show all five; when they own one or
-  // more trades, show only those trades (clean the noise). They can
-  // still see every variant on /downloads if they want to.
-  const showAllRows = ownedSet.size === 0
-  const finalVariants = showAllRows
-    ? (['pro', 'dawa', 'retail', 'hospitality', 'hardware'] as const)
-    : (visibleVariants as readonly VariantId[])
+  // Visibility rule:
+  //   - Active Pro licence (paid): show only Pro, since Pro covers all
+  //     trades. No point asking them to "try Hardware" — they already
+  //     own it through Pro.
+  //   - Anything else (no licence, only trial Pro, owned trades): show
+  //     ALL five variants. The user might own Dawa + Hardware but want
+  //     to download Retail to try it. They get a "Start trial" CTA
+  //     on every variant they don't yet own.
+  const visibleVariants: readonly VariantId[] = ownsPro
+    ? (['pro'] as const)
+    : (['pro', 'dawa', 'retail', 'hospitality', 'hardware'] as const)
+  const finalVariants = visibleVariants
 
   const ownedList = [...ownedSet]
 
@@ -107,13 +107,13 @@ export default async function DashboardDownloadsPage() {
       <PageHeading
         title="Downloads"
         subtitle={
-          ownedList.length === 0
-            ? 'Pick the installer for your trade.'
-            : ownsPro
-              ? 'You own Omnix Pro — covers every trade. Download the Pro installer below.'
+          ownsPro
+            ? 'You own Omnix Pro — covers every trade. Download the Pro installer below.'
+            : ownedList.length === 0
+              ? 'Pick the installer for your trade. Each one comes with a 30-day trial — no card needed.'
               : ownedList.length === 1
-                ? `You own ${VARIANT_LABELS[ownedList[0]]}. Pick the matching installer below.`
-                : `You own ${ownedList.map((v) => VARIANT_LABELS[v]).join(' + ')}. Pick the installer for the variant you want to set up first — you'll add the others from Settings → Licences inside the app.`
+                ? `You own ${VARIANT_LABELS[ownedList[0]]}. Other trades are available below to try.`
+                : `You own ${ownedList.map((v) => VARIANT_LABELS[v]).join(' + ')}. Other trades are available below to try.`
         }
       />
 
@@ -139,13 +139,36 @@ export default async function DashboardDownloadsPage() {
                 const u = urlsFor(v)
                 const isOwned = ownedSet.has(v)
                 return (
-                  <li key={v} className="grid grid-cols-[1fr_auto_auto] items-center gap-3 px-4 py-3">
-                    <div>
+                  <li key={v} className="grid grid-cols-[1fr_auto_auto_auto] items-center gap-3 px-4 py-3">
+                    <div className="min-w-0">
                       <div className={`text-[14px] ${isOwned ? 'text-[var(--color-accent)] font-medium' : 'text-[var(--color-fg)]'}`}>
                         {VARIANT_LABELS[v]}
-                        {isOwned ? <span className="ml-2 font-mono text-[9px] uppercase tracking-[0.22em]">your licence</span> : null}
+                        {isOwned ? (
+                          <span className="ml-2 font-mono text-[9px] uppercase tracking-[0.22em]">your licence</span>
+                        ) : (
+                          <span className="ml-2 font-mono text-[9px] uppercase tracking-[0.22em] text-[var(--color-fg-subtle)]">
+                            not activated
+                          </span>
+                        )}
                       </div>
                     </div>
+                    {/* Start-trial CTA — only on variants the user doesn't
+                        own. We don't render it on Pro when the user is
+                        already mid-Pro-trial (or owns trade variants
+                        that Pro would cover anyway); the dashboard's
+                        StartTrialWizard handles that nuance, but the
+                        downloads page is for "I want to try this one
+                        right now". */}
+                    {!isOwned ? (
+                      <a
+                        href={`/signup?variant=${encodeURIComponent(v)}&trial=1`}
+                        className="rounded-md border border-[var(--color-accent)] bg-[var(--color-accent-soft)] px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--color-accent)] hover:bg-[var(--color-accent)] hover:text-white transition-colors"
+                      >
+                        Start trial
+                      </a>
+                    ) : (
+                      <span aria-hidden />
+                    )}
                     {u.exe ? (
                       <a
                         href={u.exe}

@@ -113,12 +113,8 @@ export default async function DashboardOverviewPage({
   // because if Pro trial expires unconverted, the trades are what they
   // keep. Only the paid Pro licence "Covers" trades.
   const ownsProActive = licList.some((l) => l.variant === 'pro' && l.status === 'active')
-  // Used to decide whether to hide the "Try another trade" wizard / show
-  // the Pro trial banner. We still suppress trial-wizard noise while a
-  // Pro trial is running.
-  const hasAnyPro = licList.some(
-    (l) => l.variant === 'pro' && (l.status === 'active' || l.status === 'trial'),
-  )
+  // Used by the trial banner (below) — a Pro trial banner outweighs any
+  // trade-trial banner.
   const proTrial = licList.find((l) => l.variant === 'pro' && l.status === 'trial')
   const otherTrials = licList.filter((l) => l.status === 'trial' && l.variant !== 'pro')
   // "Show the trial banner" rule: a Pro trial is the only banner that
@@ -215,11 +211,14 @@ export default async function DashboardOverviewPage({
                 often start with one trade and add more (e.g. Dawa pharmacy
                 + Retail mini-mart). The wizard skips variants the customer
                 already has so we don't issue duplicate trial keys. */}
-            {/* Hide the "try another trade" wizard while any Pro licence
-                is in play. Active Pro covers everything; Pro on trial
-                already gives the user a 30-day taste of every variant
-                so they don't need to start more trials in parallel. */}
-            {!hasAnyPro ? (
+            {/* Hide the "try another trade" wizard only when the user
+                has an ACTIVE (paid) Pro licence — that one truly covers
+                every trade. A Pro TRIAL doesn't, because if it expires
+                without conversion the user keeps only their paid trade
+                licences (or nothing). So Pro-trial users still see the
+                wizard to start trade-specific trials they might want to
+                keep separately. */}
+            {!ownsProActive ? (
               <div className="mt-4">
                 <StartTrialWizard
                   defaultVariant={pickFirstUntakenVariant(licList.map((l) => l.variant)) ?? defaultVariant}
