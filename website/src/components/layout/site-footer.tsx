@@ -10,10 +10,21 @@ const COLUMNS = [
   {
     title: 'Product',
     items: [
-      { label: 'Pricing', href: '/pricing' },
       { label: 'Modules', href: '/modules' },
+      { label: 'Omnix AI', href: '/ai' },
+      { label: 'Pricing', href: '/pricing' },
       { label: 'Downloads', href: '/downloads' },
       { label: 'Changelog', href: '/changelog' },
+    ],
+  },
+  {
+    title: 'Resources',
+    items: [
+      { label: 'Documentation', href: '/docs' },
+      { label: 'Migration', href: '/migration' },
+      { label: 'Security & reliability', href: '/security' },
+      { label: 'Roadmap', href: '/roadmap' },
+      { label: 'Support', href: '/support' },
     ],
   },
   {
@@ -41,7 +52,7 @@ export async function SiteFooter() {
   return (
     <footer className="border-t border-[var(--color-border)] bg-[var(--color-surface)]">
       <div className="mx-auto max-w-[1180px] px-6 sm:px-8 py-12">
-        <div className="grid grid-cols-2 gap-8 lg:grid-cols-5">
+        <div className="grid grid-cols-2 gap-8 lg:grid-cols-6">
           <div className="col-span-2 lg:col-span-2">
             <BrandWordmark className="text-[24px]" />
             <p className="mt-3 max-w-[280px] text-[13px] leading-[1.55] text-[var(--color-fg-muted)]">

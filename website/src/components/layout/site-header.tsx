@@ -41,8 +41,11 @@ const NAV: readonly NavItem[] = [
     children: [
       { label: 'Downloads', href: '/downloads', description: 'Get the app for Windows' },
       { label: 'Documentation', href: '/docs', description: 'Guides, setup, troubleshooting' },
+      { label: 'Migration', href: '/migration', description: 'Switch in an afternoon — AI does the mapping' },
+      { label: 'Security & reliability', href: '/security', description: 'How Omnix protects your business' },
       { label: 'M-Pesa', href: '/mpesa', description: 'Native payments, reconciled' },
       { label: 'KRA eTIMS', href: '/etims', description: 'Tax compliance, automated' },
+      { label: 'Roadmap', href: '/roadmap', description: "What we're building next" },
       { label: 'Changelog', href: '/changelog', description: "What's new in each release" },
       { label: 'Support', href: '/support', description: 'Help, onboarding, contact' },
       { label: 'About', href: '/about', description: 'Who builds Omnix' },

@@ -44,7 +44,7 @@ export function ClosingCtaSection({ whatsappUrl, prompt }: { whatsappUrl: string
             transition={{ duration: 0.7, ease: [0.21, 0.47, 0.32, 0.98] }}
             className="font-[family-name:var(--font-display)] text-balance text-[clamp(40px,5.5vw,76px)] italic font-light leading-[1.05] tracking-[-0.025em] text-[var(--color-fg)]"
           >
-            Run your duka <em className="not-italic text-[var(--color-accent)]">properly.</em>
+            Run the whole business <em className="not-italic text-[var(--color-accent)]">properly.</em>
           </motion.h2>
 
           <motion.div

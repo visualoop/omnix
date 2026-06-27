@@ -33,6 +33,31 @@ export default async function AboutPage() {
         </div>
       </section>
 
+      <section className="section-tight">
+        <div className="container-text grid grid-cols-1 gap-12 md:grid-cols-2 md:gap-16">
+          <div>
+            <span className="eyebrow">Why we exist</span>
+            <h2 className="headline-sub mt-5">The honest version.</h2>
+            <p className="mt-5 text-[16px] leading-[1.7] text-[var(--color-fg-muted)]">
+              Kenyan SMEs deserve software that doesn&rsquo;t rent itself back to
+              them every month. Software that works when the line drops, files
+              with KRA correctly the first time, and runs the whole business
+              from one app — not five spreadsheets and a paper book.
+            </p>
+          </div>
+          <div>
+            <span className="eyebrow">Where we&rsquo;re going</span>
+            <h2 className="headline-sub mt-5">The next decade.</h2>
+            <p className="mt-5 text-[16px] leading-[1.7] text-[var(--color-fg-muted)]">
+              One platform that grows with the business — from a single till in
+              Kisumu to a multi-branch operation with kitchen, pharmacy and
+              warehouse running side by side. An AI that earns its keep, not
+              one that demos well. Yours to own, forever.
+            </p>
+          </div>
+        </div>
+      </section>
+
       <section className="section-tight bg-[var(--color-surface)]/40">
         <div className="container-default">
           <div className="mb-12">

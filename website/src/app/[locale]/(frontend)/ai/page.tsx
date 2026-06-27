@@ -5,145 +5,149 @@ import { Button } from '@/components/ui/button'
 import { PageHero } from '@/components/marketing/page-hero'
 import { ClosingCtaSection } from '@/components/landing/closing-cta-section'
 import { getSiteSettings } from '@/lib/site-settings'
+import {
+  AiIllo, AnalyticsIllo, InventoryIllo, AccountingIllo, PurchasingIllo,
+  OfflineIllo, SecurityIllo,
+} from '@/components/marketing/illustrations'
 
 export const metadata: Metadata = {
-  title: 'AI in Omnix — your in-app concierge',
+  title: 'Omnix AI — an employee that knows your numbers',
   description:
-    'A built-in AI assistant that knows your business, KRA, M-Pesa, SHA — and can search, navigate, summarise. Bring your own model (Groq, OpenRouter, OpenAI, Anthropic). Free tier or paid, you choose.',
+    'Not a chatbot. A working assistant wired to your live ERP data. Asks answer from your books, flags what needs attention, and prepares actions for you to approve. Bring your own model — free tiers from Groq or OpenRouter are plenty.',
 }
 
-const FEATURES = [
+/* ── Capabilities (one section, two columns of grounded examples) ─────── */
+const ASK_YOUR_DATA = [
   {
-    title: 'Concierge that knows your trade',
-    body: 'Ask "How do I file VAT3?" or "What\'s my low-stock list?" and the assistant answers in your language — English with natural Swahili. Variant-aware: a chemist hears chemist vocabulary; a restaurant owner hears chef vocabulary.',
-    icon: 'Sparkles' as const,
+    q: 'What made the most profit this month?',
+    a: 'Returns the top products by profit (not just revenue), with margin %, computed from your live books — never guessed.',
   },
   {
-    title: 'Acts on the app, not just talks',
-    body: 'Tools that actually do things: navigate to any screen, look up today\'s sales, find a product, list low-stock items, open the docs. Tap a route chip in any reply and you\'re there.',
-    icon: 'Lightning' as const,
+    q: 'What should I reorder, and how much?',
+    a: 'Uses each product\'s own sales velocity, lead time, and stock to suggest order quantities, sorted by days of cover left.',
   },
   {
-    title: 'Explains your eTIMS errors',
-    body: 'When KRA bounces a receipt, the assistant translates the cryptic CU error code into plain English with a fix you can follow. Saves a phone call to your accountant.',
-    icon: 'Receipt' as const,
+    q: 'Why did revenue change this week?',
+    a: 'Compares this week against the previous equal period and names the products that drove the gap, gainers and losers.',
   },
   {
-    title: 'Auto-fills product details',
-    body: 'Type a name, hit ✨, get a description, category, tax rate, and HS code suggestion. Importing a 500-row Excel? AI maps the columns to the right fields automatically.',
-    icon: 'Box' as const,
+    q: 'Which customers have stopped buying?',
+    a: 'Segments your customers into VIP / loyal / at-risk / churned by recency, frequency, and spend — at-risk surfaces first.',
   },
   {
-    title: 'Bring your own model',
-    body: 'No subscription, no Omnix-branded LLM. Plug in your own API key — Groq (free, fast), OpenRouter (free models), DeepSeek, OpenAI, Anthropic, Google. Or run a local model on the same machine.',
-    icon: 'Code' as const,
+    q: 'Which supplier is most reliable?',
+    a: 'Scores every supplier on on-time delivery %, fill rate, and total spend across your purchase orders.',
   },
   {
-    title: 'Private by default',
-    body: 'API calls go direct from your machine to your chosen provider. Omnix never sees your data, your keys, or your prompts. Keys encrypted at rest with AES-256. Disable AI completely from Settings if you prefer.',
-    icon: 'Shield' as const,
+    q: 'What stock is expiring soon?',
+    a: 'Lists batches expiring within N days and the value at risk — pharmacist-grade for chemists, useful everywhere else.',
   },
-] as const
+]
+
+const CONFIRMED_ACTIONS = [
+  { title: 'Draft a purchase order', body: 'Generated from reorder suggestions with the right supplier, items and quantities. Nothing is sent — you review and approve.' },
+  { title: 'Categorise products', body: 'Tidy a messy catalogue: the assistant proposes a category for each product; you click Apply.' },
+  { title: 'Set reorder levels', body: 'Suggests sensible reorder thresholds from velocity. Your approval applies the change.' },
+  { title: 'Harmonise a messy import', body: 'Maps any supplier CSV / Excel into Omnix\'s fields — even with Swahili headers, weird casing, or missing columns.' },
+]
+
+const INTELLIGENCE = [
+  { Illo: InventoryIllo, name: 'Inventory intelligence', body: 'Dead stock by value, reorder suggestions with quantities, expiry risk, duplicate detection, margin issues, price anomalies.' },
+  { Illo: AnalyticsIllo, name: 'Sales & financial insights', body: 'Profit leaders, revenue change explained, cashier performance, payment-method mix, Z-report summary in plain English.' },
+  { Illo: AiIllo, name: 'Customer insights', body: 'VIPs, at-risk, churned, inactive — segmented by RFM. Know who needs a follow-up before they slip away.' },
+  { Illo: PurchasingIllo, name: 'Supplier intelligence', body: 'Score every supplier on on-time %, fill rate, and total spend. Find who actually delivers.' },
+  { Illo: AccountingIllo, name: 'Imports & spreadsheet harmonisation', body: 'Drop in any supplier file. The assistant detects structure, maps columns, normalises units, flags duplicates, previews before you commit.' },
+  { Illo: AiIllo, name: 'Anomaly narration', body: 'When something looks off — revenue dip, below-cost pricing, an unusual void — the assistant explains why it matters and what to do.' },
+]
 
 const PROVIDERS = [
   { name: 'Groq', tagline: 'Free, very fast', tier: 'Free tier' },
-  { name: 'OpenRouter', tagline: 'Free models + premium', tier: 'Free tier' },
-  { name: 'DeepSeek', tagline: 'Cheap & capable', tier: 'Pay per token' },
-  { name: 'OpenAI', tagline: 'GPT-4o, GPT-4 mini', tier: 'Pay per token' },
+  { name: 'OpenRouter', tagline: 'Aggregator with free models', tier: 'Free tier' },
+  { name: 'DeepSeek', tagline: 'Cheap, very capable', tier: 'Pay per token' },
+  { name: 'OpenAI', tagline: 'GPT-4o, GPT-4o-mini', tier: 'Pay per token' },
   { name: 'Anthropic', tagline: 'Claude Sonnet, Haiku', tier: 'Pay per token' },
-  { name: 'Google', tagline: 'Gemini Flash, Pro', tier: 'Free tier' },
-  { name: 'Custom', tagline: 'Any OpenAI-compatible URL', tier: 'You decide' },
-] as const
+  { name: 'Google AI', tagline: 'Gemini Flash, Pro', tier: 'Free tier' },
+  { name: 'Custom / Ollama', tagline: 'Any OpenAI-compatible URL', tier: 'Local or hosted' },
+]
 
-const TOOLS = [
-  { name: 'navigate', body: 'Opens any /screen in Omnix in one click — POS, customers, eTIMS queue, settings.' },
-  { name: 'getTodaySales', body: 'Today\'s revenue, sale count, payment-method breakdown — straight from your live SQLite.' },
-  { name: 'getInventoryAlerts', body: 'Products at or below reorder level, sorted by urgency. The assistant can summarise or list.' },
-  { name: 'searchProducts', body: 'Find products by name, SKU, or barcode. Top 10 returned with stock + price.' },
-  { name: 'searchCustomers', body: 'Find customers by name, phone, or email. Top 10 returned with credit balance.' },
-  { name: 'getRecentSales', body: 'Last N sales with totals, payment, cashier. Useful for "what did we sell at lunch?".' },
-  { name: 'openDocs', body: 'Opens the public docs to the right page so you can read the full procedure.' },
-] as const
+const ROADMAP = [
+  { title: 'Vision ingestion', body: 'Drop a photo of a supplier invoice; the assistant drafts the goods-received note for review.' },
+  { title: 'Demand forecasting', body: 'Ingredient & medicine shortage prediction, fast-mover forecasts — explained, never opaque.' },
+  { title: 'Local embeddings + RAG', body: 'Semantic search over your own data + the docs. Fully offline via a local Ollama model.' },
+  { title: 'Per-trade playbooks', body: 'Pharmacist, retailer, restaurateur and hardware modes with proactive insights tailored to the trade.' },
+]
 
 export default async function AiPage() {
   const settings = await getSiteSettings()
   return (
     <>
       <PageHero
-        eyebrow="AI in Omnix"
-        title={<>An assistant that <em>knows</em> your business</>}
-        description="A built-in AI concierge that knows the entire app, KRA filings, M-Pesa flows, SHA claims and your live data. Acts on the app, not just talks. Bring your own model."
+        eyebrow="Omnix AI"
+        title={<>An employee that <em>knows</em> your numbers.</>}
+        description="Not a chatbot. A working assistant wired to your live ERP data. It answers from your actual books, flags what needs attention before you ask, and prepares the work for you to approve."
       >
         <div className="mt-6 flex flex-col items-center gap-3 sm:flex-row">
           <Button asChild size="lg">
             <Link href="/signup">Start free trial</Link>
           </Button>
-          <Button asChild size="lg" variant="outline">
-            <Link href="/docs/ai">Read the AI guide</Link>
-          </Button>
+          <Link href="/pricing" className="font-[family-name:var(--font-ui)] inline-flex items-center gap-2 text-[14px] font-medium text-[var(--color-fg-muted)] hover:text-[var(--color-fg)]">
+            See pricing <Icon.ArrowRight className="size-3.5" weight="bold" />
+          </Link>
         </div>
       </PageHero>
 
-      {/* ── 6 feature cards ───────────────────────────────────── */}
+      {/* ── Ask your data ──────────────────────────────────────────────── */}
       <section className="section">
         <div className="container-wide">
-          <div className="mb-12 max-w-[36rem]">
-            <span className="eyebrow">What it does</span>
-            <h2 className="headline-section mt-5 text-balance">Six things <em>worth</em> showing up for.</h2>
+          <div className="max-w-[680px]">
+            <span className="eyebrow">Ask your data</span>
+            <h2 className="headline-section mt-5 text-balance">
+              Questions an owner actually asks. <em>Answered from your books.</em>
+            </h2>
+            <p className="lede mt-7 text-balance">
+              Every figure comes out of your live SQLite — never a guess. The model only
+              explains the numbers and tells you what to do about them.
+            </p>
           </div>
-          <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
-            {FEATURES.map((f) => {
-              const I = Icon[f.icon as keyof typeof Icon] as (typeof Icon)['Sparkles']
-              return (
-                <div
-                  key={f.title}
-                  className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-6"
-                >
-                  <I className="size-5 text-[var(--color-accent)]" weight="bold" />
-                  <h3 className="font-[family-name:var(--font-display)] mt-4 text-[20px] font-normal leading-tight text-[var(--color-fg)]">
-                    {f.title}
-                  </h3>
-                  <p className="mt-3 text-[14px] leading-[1.65] text-[var(--color-fg-muted)]">
-                    {f.body}
-                  </p>
-                </div>
-              )
-            })}
+
+          <div className="mt-16 grid gap-px overflow-hidden rounded-xl border border-[var(--color-border)] bg-[var(--color-border)] md:grid-cols-2">
+            {ASK_YOUR_DATA.map((row) => (
+              <div key={row.q} className="bg-[var(--color-bg)] p-7 lg:p-9">
+                <p className="font-[family-name:var(--font-display)] text-[20px] italic font-normal leading-snug text-[var(--color-fg)]">
+                  &ldquo;{row.q}&rdquo;
+                </p>
+                <p className="mt-3 text-[14px] leading-[1.6] text-[var(--color-fg-muted)]">{row.a}</p>
+              </div>
+            ))}
           </div>
         </div>
       </section>
 
-      {/* ── BYOK / providers ────────────────────────────────── */}
-      <section className="section-tight bg-[var(--color-surface)]/30 border-y border-[var(--color-border)]">
+      {/* ── Confirmed actions ──────────────────────────────────────────── */}
+      <section className="section bg-[var(--color-surface)]/40 border-y border-[var(--color-border)]">
         <div className="container-wide">
-          <div className="grid grid-cols-1 gap-12 lg:grid-cols-[1.2fr_2fr] lg:gap-16">
+          <div className="grid grid-cols-1 gap-12 lg:grid-cols-[1fr_1.1fr] lg:gap-20">
             <div>
-              <span className="eyebrow">Bring your own model</span>
-              <h2 className="headline-section mt-5 text-balance">Your keys. <em>Your call.</em></h2>
-              <p className="mt-5 text-[15px] leading-[1.65] text-[var(--color-fg-muted)] max-w-[40ch]">
-                Omnix doesn't sell you tokens. Plug in any provider's API key in Settings → AI and the in-app
-                assistant talks to it directly. Groq and OpenRouter offer truly free tiers that are plenty for a
-                busy till. Want GPT-4o? Add an OpenAI key and switch.
+              <span className="eyebrow">Acts, with permission</span>
+              <h2 className="headline-section mt-5 text-balance">
+                Prepares the work. <em>You approve.</em>
+              </h2>
+              <p className="mt-6 text-[16px] leading-[1.7] text-[var(--color-fg-muted)] max-w-[44ch]">
+                The assistant never mutates anything on its own. When it has work
+                ready, it shows you exactly what will change — counts, totals, who
+                it affects — and waits for one tap. Every action runs through
+                Omnix&rsquo;s permissions, just like a human user.
               </p>
-              <p className="mt-3 text-[15px] leading-[1.65] text-[var(--color-fg-muted)] max-w-[40ch]">
-                Switch providers any time. Keys are encrypted at rest with AES-256 and never leave your machine.
+              <p className="mt-4 text-[16px] leading-[1.7] text-[var(--color-fg-muted)] max-w-[44ch]">
+                Every proposal and outcome is logged to an action ledger you can
+                review in <code className="font-[family-name:var(--font-mono)] text-[14px] text-[var(--color-accent)]">/settings/ai</code>.
               </p>
             </div>
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              {PROVIDERS.map((p) => (
-                <div
-                  key={p.name}
-                  className="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] p-4"
-                >
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="font-[family-name:var(--font-display)] text-[18px] font-normal text-[var(--color-fg)]">
-                      {p.name}
-                    </span>
-                    <span className="font-[family-name:var(--font-mono)] text-[10px] uppercase tracking-[0.18em] text-[var(--color-fg-subtle)]">
-                      {p.tier}
-                    </span>
-                  </div>
-                  <p className="mt-1 text-[13px] text-[var(--color-fg-muted)]">{p.tagline}</p>
+            <div className="grid grid-cols-1 gap-px overflow-hidden rounded-xl border border-[var(--color-border)] bg-[var(--color-border)] sm:grid-cols-2">
+              {CONFIRMED_ACTIONS.map((a) => (
+                <div key={a.title} className="bg-[var(--color-bg)] p-6">
+                  <h3 className="font-[family-name:var(--font-ui)] text-[14px] font-semibold text-[var(--color-fg)]">{a.title}</h3>
+                  <p className="mt-2 text-[13px] leading-[1.55] text-[var(--color-fg-muted)]">{a.body}</p>
                 </div>
               ))}
             </div>
@@ -151,95 +155,120 @@ export default async function AiPage() {
         </div>
       </section>
 
-      {/* ── Tools ───────────────────────────────────────────── */}
+      {/* ── Six kinds of intelligence ─────────────────────────────────── */}
       <section className="section">
         <div className="container-wide">
-          <div className="mb-12 max-w-[36rem]">
-            <span className="eyebrow">It acts, doesn&rsquo;t just talk</span>
-            <h2 className="headline-section mt-5 text-balance">Seven tools. <em>Real work.</em></h2>
-            <p className="mt-4 text-[15px] leading-[1.65] text-[var(--color-fg-muted)] max-w-[44ch]">
-              The assistant has read-only access to your live data and a few app actions. No mutations yet — those
-              ship with a confirmation flow in v0.5.
-            </p>
+          <div className="max-w-[680px]">
+            <span className="eyebrow">What it knows</span>
+            <h2 className="headline-section mt-5 text-balance">
+              Six kinds of business intelligence, <em>built in.</em>
+            </h2>
           </div>
-          <ul className="divide-y divide-[var(--color-border)] border-y border-[var(--color-border)]">
-            {TOOLS.map((t) => (
-              <li key={t.name} className="grid grid-cols-1 gap-3 py-6 md:grid-cols-[14rem_1fr] md:gap-12">
-                <div className="font-[family-name:var(--font-mono)] text-[14px] tabular-nums text-[var(--color-accent)]">
-                  {t.name}()
+          <div className="mt-14 grid grid-cols-1 gap-12 md:grid-cols-2 lg:gap-x-16 lg:gap-y-14">
+            {INTELLIGENCE.map((row) => (
+              <div key={row.name} className="flex gap-5">
+                <span className="mt-1 shrink-0 text-[var(--color-accent)]"><row.Illo size={36} /></span>
+                <div>
+                  <h3 className="font-[family-name:var(--font-ui)] text-[15px] font-semibold text-[var(--color-fg)]">{row.name}</h3>
+                  <p className="mt-2 text-[14px] leading-[1.65] text-[var(--color-fg-muted)] max-w-[44ch]">{row.body}</p>
                 </div>
-                <p className="text-[15px] leading-[1.65] text-[var(--color-fg-muted)]">{t.body}</p>
-              </li>
+              </div>
             ))}
-          </ul>
+          </div>
         </div>
       </section>
 
-      {/* ── Privacy ─────────────────────────────────────────── */}
-      <section className="section-tight bg-[var(--color-surface)]/30 border-t border-[var(--color-border)]">
-        <div className="container-default">
-          <div className="grid grid-cols-1 gap-10 lg:grid-cols-2 lg:gap-16">
+      {/* ── Bring your own model ──────────────────────────────────────── */}
+      <section className="section bg-[var(--color-surface)]/40 border-y border-[var(--color-border)]">
+        <div className="container-wide">
+          <div className="grid gap-12 lg:grid-cols-[1fr_1fr] lg:gap-20">
             <div>
-              <span className="eyebrow">Privacy</span>
-              <h2 className="headline-section mt-5 text-balance">Your data <em>doesn&rsquo;t</em> route through us.</h2>
-              <p className="mt-5 text-[15px] leading-[1.65] text-[var(--color-fg-muted)] max-w-[44ch]">
-                When you ask the assistant a question, the request goes from your machine straight to the AI
-                provider you chose. Omnix isn't in the path. We never see your prompts, your responses, your keys,
-                your customers, or your sales.
+              <span className="eyebrow">Your model, your keys</span>
+              <h2 className="headline-section mt-5 text-balance">
+                The AI is yours, <em>not ours.</em>
+              </h2>
+              <p className="mt-6 text-[16px] leading-[1.7] text-[var(--color-fg-muted)] max-w-[46ch]">
+                We don&rsquo;t resell tokens. We don&rsquo;t mark up inference. Pick a provider,
+                paste your key, and your calls go direct from your machine to your
+                provider — Omnix never sees the prompt or the response.
+              </p>
+              <p className="mt-4 text-[16px] leading-[1.7] text-[var(--color-fg-muted)] max-w-[46ch]">
+                Free tiers from Groq and OpenRouter handle a busy day comfortably.
+                Paid tiers (OpenAI, Claude) plug in identically. Or point it at a
+                local Ollama model on the same PC and run AI <em className="not-italic font-[family-name:var(--font-display)] italic">fully offline</em>.
               </p>
             </div>
-            <div className="space-y-4">
-              <PrivacyRow
-                icon="Shield"
-                title="No middleman"
-                body="Direct browser → provider HTTPS calls. We can't see what you ask even if we wanted to."
-              />
-              <PrivacyRow
-                icon="Lock"
-                title="Keys encrypted"
-                body="API keys stored AES-256-encrypted in your local SQLite. Never leave the machine."
-              />
-              <PrivacyRow
-                icon="Settings"
-                title="Disable any time"
-                body="Settings → AI → Disable. The assistant button hides and no AI calls leave the app."
-              />
-              <PrivacyRow
-                icon="Cloud"
-                title="Offline-respectful"
-                body="The assistant detects offline state and tells you. Core POS, inventory, eTIMS — all keep working."
-              />
+            <div className="grid grid-cols-1 gap-px overflow-hidden rounded-xl border border-[var(--color-border)] bg-[var(--color-border)] sm:grid-cols-2">
+              {PROVIDERS.map((p) => (
+                <div key={p.name} className="bg-[var(--color-bg)] p-5">
+                  <div className="flex items-baseline justify-between gap-3">
+                    <h3 className="font-[family-name:var(--font-ui)] text-[14px] font-semibold text-[var(--color-fg)]">{p.name}</h3>
+                    <span className="caption-mono">{p.tier}</span>
+                  </div>
+                  <p className="mt-1.5 text-[13px] text-[var(--color-fg-muted)]">{p.tagline}</p>
+                </div>
+              ))}
             </div>
           </div>
+        </div>
+      </section>
+
+      {/* ── Privacy + offline ─────────────────────────────────────────── */}
+      <section className="section">
+        <div className="container-wide">
+          <div className="grid grid-cols-1 gap-12 md:grid-cols-2 lg:gap-x-20">
+            <div className="flex gap-5">
+              <span className="mt-1 shrink-0 text-[var(--color-accent)]"><SecurityIllo size={40} /></span>
+              <div>
+                <h3 className="headline-sub text-[22px]">Private by default</h3>
+                <p className="mt-3 text-[15px] leading-[1.65] text-[var(--color-fg-muted)] max-w-[46ch]">
+                  Every prompt is scrubbed for PII before it leaves the machine — phone
+                  numbers, KRA PINs, IDs, API keys. Keys are stored encrypted in your
+                  local SQLCipher database. Disable AI completely from settings if you
+                  prefer, and the rest of Omnix still works.
+                </p>
+              </div>
+            </div>
+            <div className="flex gap-5">
+              <span className="mt-1 shrink-0 text-[var(--color-accent)]"><OfflineIllo size={40} /></span>
+              <div>
+                <h3 className="headline-sub text-[22px]">Online when it helps, offline when it must</h3>
+                <p className="mt-3 text-[15px] leading-[1.65] text-[var(--color-fg-muted)] max-w-[46ch]">
+                  Insights, reorder suggestions, dead stock, customer churn — these
+                  are all computed by SQL on your machine and work with zero internet.
+                  The model only steps in to explain in plain language; without a
+                  provider configured, the numbers still come through.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ── Roadmap ───────────────────────────────────────────────────── */}
+      <section className="section bg-[var(--color-surface)]/40 border-y border-[var(--color-border)]">
+        <div className="container-wide">
+          <div className="max-w-[680px]">
+            <span className="eyebrow">What&rsquo;s next</span>
+            <h2 className="headline-section mt-5 text-balance">
+              Shipping <em>regularly.</em>
+            </h2>
+          </div>
+          <div className="mt-14 grid grid-cols-1 gap-px overflow-hidden rounded-xl border border-[var(--color-border)] bg-[var(--color-border)] md:grid-cols-2">
+            {ROADMAP.map((r) => (
+              <div key={r.title} className="bg-[var(--color-bg)] p-7">
+                <h3 className="font-[family-name:var(--font-ui)] text-[14px] font-semibold text-[var(--color-fg)]">{r.title}</h3>
+                <p className="mt-2 text-[13.5px] leading-[1.6] text-[var(--color-fg-muted)]">{r.body}</p>
+              </div>
+            ))}
+          </div>
+          <p className="caption-mono mt-8">
+            Roadmap is honest, no calendar dates · all shipped features in <Link href="/changelog" className="underline underline-offset-2 hover:text-[var(--color-fg)]">/changelog</Link>
+          </p>
         </div>
       </section>
 
       <ClosingCtaSection whatsappUrl={settings.whatsappUrl} />
     </>
-  )
-}
-
-function PrivacyRow({
-  icon,
-  title,
-  body,
-}: {
-  icon: string
-  title: string
-  body: string
-}) {
-  const I = (Icon[icon as keyof typeof Icon] ?? Icon.Check) as (typeof Icon)['Check']
-  return (
-    <div className="flex items-start gap-3">
-      <div className="mt-1 grid size-9 shrink-0 place-items-center rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-accent)]">
-        <I className="size-4" weight="bold" />
-      </div>
-      <div>
-        <div className="font-[family-name:var(--font-display)] text-[18px] font-normal leading-tight text-[var(--color-fg)]">
-          {title}
-        </div>
-        <p className="mt-1 text-[14px] leading-[1.6] text-[var(--color-fg-muted)] max-w-[42ch]">{body}</p>
-      </div>
-    </div>
   )
 }
