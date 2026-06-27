@@ -120,12 +120,51 @@ export default async function DownloadsPage() {
   const meta = (r?.metadata ?? {}) as { variants?: Partial<Record<VariantId, VariantUrls>> }
   const variants = meta.variants ?? {}
 
+  // Canonical asset naming convention used by the CI build matrix:
+  //   pro          → Omnix_<v>_x64-setup.exe  /  Omnix_<v>_x64_en-US.msi
+  //   dawa         → Omnix.Dawa_<v>_x64-setup.exe  / .msi
+  //   retail       → Omnix.Retail_<v>_x64-setup.exe / .msi
+  //   hospitality  → Omnix.Hospitality_<v>_x64-setup.exe / .msi
+  //   hardware     → Omnix.Hardware_<v>_x64-setup.exe / .msi
+  // GitHub release URLs follow the same pattern under
+  //   /releases/download/v<version>/<asset-name>
+  // We use this as a deterministic fallback so a single missing entry in
+  // metadata.variants (e.g. if one variant's CI notify failed silently)
+  // never silently serves the Pro installer for a non-Pro variant.
+  const PRODUCT_NAME: Record<VariantId, string> = {
+    pro: 'Omnix',
+    dawa: 'Omnix.Dawa',
+    retail: 'Omnix.Retail',
+    hospitality: 'Omnix.Hospitality',
+    hardware: 'Omnix.Hardware',
+  }
+
+  function githubAssetUrl(v: VariantId, kind: 'exe' | 'msi'): string | undefined {
+    if (!r) return undefined
+    const tag = `v${r.version}`
+    const file = kind === 'exe'
+      ? `${PRODUCT_NAME[v]}_${r.version}_x64-setup.exe`
+      : `${PRODUCT_NAME[v]}_${r.version}_x64_en-US.msi`
+    return `https://github.com/visualoop/omnix/releases/download/${tag}/${file}`
+  }
+
   function urlsFor(v: VariantId): VariantUrls {
     const stored = variants[v] ?? {}
-    if (stored.exe || stored.msi) return stored
-    // Fallback: every variant gets the canonical Pro installer until the next
-    // sync populates metadata.variants.
-    return { exe: r?.exeUrl ?? undefined, msi: r?.msiUrl ?? undefined }
+    // If the sync populated a real URL for this variant, prefer it.
+    // (Future-proofs against renamed assets / mirror URLs.)
+    if (stored.exe || stored.msi) {
+      return {
+        exe: stored.exe ?? githubAssetUrl(v, 'exe'),
+        msi: stored.msi ?? githubAssetUrl(v, 'msi'),
+      }
+    }
+    // Otherwise derive from the canonical asset naming — NEVER fall back to
+    // r.exeUrl/msiUrl for a non-Pro variant, because that would silently
+    // serve the Pro installer in place of the trade-specific build.
+    return {
+      exe: githubAssetUrl(v, 'exe'),
+      msi: githubAssetUrl(v, 'msi'),
+    }
   }
 
   const baseRow: ReleaseRow | null = r
@@ -325,7 +364,7 @@ function VariantCard({ variant, release }: { variant: VariantInfo; release: Rele
             download
             className="underline hover:text-[var(--color-accent)] cursor-pointer"
           >
-            MSI ({formatBytes(release?.windowsMsiSize)})
+            MSI{release?.windowsMsiSize ? ` (${formatBytes(release.windowsMsiSize)})` : ''}
           </a>
           .
         </div>
