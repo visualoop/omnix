@@ -24,6 +24,32 @@ import { query } from "@/lib/db";
 import { money as KES } from "@/lib/money";
 import { intlLocale } from "@/lib/intl";
 
+/**
+ * Live hospitality order context fetched once + polled while the cart is
+ * bound to a hospitality_order. Drives course grouping, per-line status
+ * chips, table number, server name on the customer display.
+ */
+type KotItemStatus = "new" | "sent" | "preparing" | "ready" | "served" | "voided";
+interface HospOrderItem {
+  id: string;
+  name: string;
+  quantity: number;
+  status: KotItemStatus;
+  category: string | null;       // course (Starters / Mains / …)
+  station_name: string | null;   // kitchen station that owns it
+  sent_at: string | null;
+  ready_at: string | null;
+  served_at: string | null;
+}
+interface HospitalityContext {
+  orderNumber: string;
+  tableCode: string | null;
+  tableName: string | null;
+  waiterName: string | null;
+  orderStatus: string;
+  items: HospOrderItem[];
+}
+
 
 export function CustomerDisplayPage() {
   const items = useCartStore((s) => s.items);
@@ -32,8 +58,11 @@ export function CustomerDisplayPage() {
   const promoLabel = useCartStore((s) => s.promoLabel);
   const taxTotal = useCartStore((s) => s.taxTotal());
   const customerId = useCartStore((s) => s.customerId);
+  const sourceType = useCartStore((s) => s.sourceType);
+  const sourceId = useCartStore((s) => s.sourceId);
   const [customerName, setCustomerName] = useState<string | null>(null);
   const [productImages, setProductImages] = useState<Record<string, string | null>>({});
+  const [hospContext, setHospContext] = useState<HospitalityContext | null>(null);
 
   // Resolve customer name when the cashier sets a customer on the sale.
   useEffect(() => {
@@ -84,6 +113,71 @@ export function CustomerDisplayPage() {
     // map itself (which would self-trigger).
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [items.map((i) => i.product_id).join("|")]);
+
+  // Hospitality enrichment: when the cart is bound to a hospitality_order
+  // pull the live order + items every 2s. Drives the table/waiter header,
+  // course grouping and per-line KOT status chips so the customer can see
+  // exactly where their food is in the kitchen. The polling tear-down is
+  // synchronous to avoid double-firing on fast source changes.
+  useEffect(() => {
+    if (sourceType !== "hospitality_order" || !sourceId) {
+      setHospContext(null);
+      return;
+    }
+    let cancelled = false;
+    let timer: number | undefined;
+    const fetchOnce = async () => {
+      try {
+        const orderRows = await query<{
+          order_number: string; table_id: string | null; waiter_id: string | null; status: string;
+        }>(
+          `SELECT order_number, table_id, waiter_id, status FROM hospitality_orders WHERE id = ?1 LIMIT 1`,
+          [sourceId],
+        );
+        if (!orderRows[0]) return;
+        const o = orderRows[0];
+        const [tableRow] = o.table_id
+          ? await query<{ table_code: string; name: string }>(
+              `SELECT table_code, name FROM dining_tables WHERE id = ?1 LIMIT 1`, [o.table_id])
+          : [];
+        const [waiterRow] = o.waiter_id
+          ? await query<{ full_name: string }>(
+              `SELECT full_name FROM employees WHERE id = ?1 LIMIT 1`, [o.waiter_id])
+          : [];
+        // Items + their menu category (course) + station name. LEFT JOINs
+        // because not every line is a menu item (manual additions exist).
+        const itemRows = await query<HospOrderItem & { menu_category: string | null; station_name: string | null }>(
+          `SELECT oi.id, oi.name, oi.quantity, oi.status,
+                  oi.sent_at, oi.ready_at, oi.served_at,
+                  mi.category AS menu_category,
+                  ks.name AS station_name
+             FROM hospitality_order_items oi
+             LEFT JOIN menu_items mi ON mi.id = oi.menu_item_id
+             LEFT JOIN kitchen_stations ks ON ks.id = oi.station_id
+            WHERE oi.order_id = ?1
+              AND oi.status != 'voided'
+            ORDER BY oi.sent_at NULLS LAST, oi.id ASC`,
+          [sourceId],
+        );
+        if (cancelled) return;
+        setHospContext({
+          orderNumber: o.order_number,
+          tableCode: tableRow?.table_code ?? null,
+          tableName: tableRow?.name ?? null,
+          waiterName: waiterRow?.full_name ?? null,
+          orderStatus: o.status,
+          items: itemRows.map((r) => ({
+            id: r.id, name: r.name, quantity: r.quantity, status: r.status as KotItemStatus,
+            category: r.menu_category, station_name: r.station_name,
+            sent_at: r.sent_at, ready_at: r.ready_at, served_at: r.served_at,
+          })),
+        });
+      } catch { /* table missing on cold boot — ignore */ }
+    };
+    fetchOnce();
+    timer = window.setInterval(fetchOnce, 2000);
+    return () => { cancelled = true; if (timer) window.clearInterval(timer); };
+  }, [sourceType, sourceId]);
   const grandTotal = useCartStore((s) => s.grandTotal());
   const tip = useCartStore((s) => s.tip);
   const sourceLabel = useCartStore((s) => s.sourceLabel);
@@ -298,6 +392,27 @@ export function CustomerDisplayPage() {
             </div>
           </div>
           <div className="flex items-center gap-6">
+            {hospContext?.tableCode && (
+              <div className="text-right leading-tight">
+                <div className="text-[10px] font-medium uppercase tracking-[0.2em] text-stone-500">
+                  Table
+                </div>
+                <div className="text-base font-medium text-stone-100">
+                  {hospContext.tableCode}
+                  {hospContext.tableName && hospContext.tableName !== hospContext.tableCode && (
+                    <span className="text-stone-500 ml-1.5 text-sm">· {hospContext.tableName}</span>
+                  )}
+                </div>
+              </div>
+            )}
+            {hospContext?.waiterName && (
+              <div className="text-right leading-tight">
+                <div className="text-[10px] font-medium uppercase tracking-[0.2em] text-stone-500">
+                  Server
+                </div>
+                <div className="text-base font-medium text-stone-100">{hospContext.waiterName}</div>
+              </div>
+            )}
             {customerName && (
               <div className="text-right leading-tight">
                 <div className="text-[10px] font-medium uppercase tracking-[0.2em] text-stone-500">
@@ -315,7 +430,16 @@ export function CustomerDisplayPage() {
       </div>
 
       <div className="flex-1 overflow-auto px-10 py-6">
-        <table className="w-full">
+        {hospContext ? (
+          <HospitalityItemList
+            cartItems={items}
+            kotItems={hospContext.items}
+            images={productImages}
+            accent={cfg.accentLine}
+            itemName={itemName}
+          />
+        ) : (
+          <table className="w-full">
           <thead>
             <tr className="border-b border-stone-800 text-sm font-semibold text-stone-500">
               <th className="text-left py-3">Item</th>
@@ -346,7 +470,8 @@ export function CustomerDisplayPage() {
               );
             })}
           </tbody>
-        </table>
+          </table>
+        )}
       </div>
 
       <div className="bg-stone-900 px-10 py-7 border-t border-stone-800 flex-shrink-0">
@@ -470,5 +595,114 @@ function LineThumb({ image, accent }: { image: string | null | undefined; accent
     <div className={`h-14 w-14 shrink-0 rounded-md grid place-items-center ring-1 ${ringClass} bg-stone-900/60`}>
       <Package className="size-7 text-stone-500" strokeWidth={1.25} />
     </div>
+  );
+}
+
+/**
+ * Course-grouped item list with live KOT status chips for hospitality.
+ * Items are merged with the cart line (which has price + quantity) by
+ * name match — KOT mirrors the order_items at send-time so names align.
+ * If a KOT line has no matching cart line (because the customer is
+ * viewing an open ticket before checkout) we still render the row.
+ */
+interface CartLineLike {
+  id: string;
+  product_id: string;
+  name: string;
+  quantity: number;
+  unit_price: number;
+}
+
+function HospitalityItemList({
+  cartItems, kotItems, images, accent, itemName,
+}: {
+  cartItems: CartLineLike[];
+  kotItems: HospOrderItem[];
+  images: Record<string, string | null>;
+  accent: string;
+  itemName: (n: string) => string;
+}) {
+  // Course buckets (fallback "Other") — insertion order preserved by Map.
+  const buckets = new Map<string, HospOrderItem[]>();
+  for (const k of kotItems) {
+    const key = k.category && k.category.trim() ? k.category : "Other";
+    if (!buckets.has(key)) buckets.set(key, []);
+    buckets.get(key)!.push(k);
+  }
+  return (
+    <div className="space-y-7">
+      {Array.from(buckets.entries()).map(([course, lines]) => (
+        <section key={course}>
+          <header className="flex items-baseline justify-between border-b border-stone-800 pb-2 mb-3">
+            <h3 className="text-[11px] font-semibold uppercase tracking-[0.22em] text-stone-400">{course}</h3>
+            <span className="text-[11px] font-mono tabular-nums text-stone-500">
+              {lines.length} item{lines.length !== 1 ? "s" : ""}
+            </span>
+          </header>
+          <ul className="divide-y divide-stone-800/60">
+            {lines.map((line) => {
+              const cartMatch = cartItems.find((c) => c.name === line.name);
+              const img = cartMatch ? images[cartMatch.product_id] : null;
+              const unit = cartMatch?.unit_price;
+              const total = cartMatch ? cartMatch.unit_price * cartMatch.quantity : null;
+              return (
+                <li key={line.id} className="py-3.5 flex items-center gap-4">
+                  <LineThumb image={img} accent={accent} />
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2.5">
+                      <span className="text-xl font-medium text-white truncate">{itemName(line.name)}</span>
+                      <KotStatusChip status={line.status} />
+                    </div>
+                    {line.station_name && (
+                      <div className="text-xs text-stone-500 mt-0.5">{line.station_name}</div>
+                    )}
+                  </div>
+                  <div className="text-right">
+                    <div className="text-xl font-mono tabular-nums text-stone-300">×{line.quantity}</div>
+                    {total != null && (
+                      <div className="text-sm font-mono tabular-nums text-stone-500">
+                        {unit?.toFixed(2)} · <span className="text-stone-300 font-semibold">{total.toFixed(2)}</span>
+                      </div>
+                    )}
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        </section>
+      ))}
+    </div>
+  );
+}
+
+/**
+ * Per-line KOT status chip — matches the colour language of make-line
+ * displays at QSR chains (amber while cooking, green when ready, dim
+ * once served so attention stays on what's still cooking).
+ */
+function KotStatusChip({ status }: { status: KotItemStatus }) {
+  const map: Record<KotItemStatus, { label: string; cls: string; pulse?: boolean }> = {
+    new:        { label: "Queued",    cls: "bg-stone-700/40 text-stone-300 ring-stone-600/60" },
+    sent:       { label: "In kitchen", cls: "bg-amber-500/15 text-amber-200 ring-amber-500/40" },
+    preparing:  { label: "Cooking",   cls: "bg-amber-500/20 text-amber-100 ring-amber-400/60", pulse: true },
+    ready:      { label: "Ready",     cls: "bg-emerald-500/25 text-emerald-100 ring-emerald-400/70", pulse: true },
+    served:     { label: "Served",    cls: "bg-stone-800/60 text-stone-500 ring-stone-700" },
+    voided:     { label: "Cancelled", cls: "bg-rose-500/15 text-rose-200 ring-rose-500/40" },
+  };
+  const v = map[status];
+  return (
+    <span
+      className={
+        "inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[10px] font-medium uppercase tracking-[0.14em] ring-1 " +
+        v.cls
+      }
+    >
+      <span
+        className={
+          "inline-block h-1.5 w-1.5 rounded-full bg-current " + (v.pulse ? "animate-pulse" : "")
+        }
+      />
+      {v.label}
+    </span>
   );
 }

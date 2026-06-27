@@ -51,6 +51,13 @@ const VARIANT_LABEL: Record<VariantId, string> = {
  * Empty by default — the standard summary is enough for most patches.
  */
 const VERSION_HIGHLIGHTS: Record<string, string[]> = {
+  '0.16.0': [
+    'Hospitality customer display redesigned — guests now see their order grouped by course (Starters / Mains / Desserts) with a live status chip on every line (Queued → In kitchen → Cooking → Ready → Served). Table number and server name show in the header so it\'s clear whose order is on screen.',
+    'New Order Board mode for hospitality — a wall-mounted screen showing every active order in two big columns: PREPARING and READY, in the style of fast-food make boards. A short chime plays when an order moves to READY so guests near the screen look up. Open it from Settings → Customer Display.',
+    'KOT polling on the customer display refreshes every two seconds, so the customer sees the same status the kitchen sees.',
+    'Strict proprietary licence (LICENSE) added — Omnix source is published for security review only; use, modification, redistribution, and reselling all require a signed agreement.',
+    'New /partners page on the website — resellers, integrators, OEMs and referral partners can submit an enquiry through a form that goes straight to the partnerships inbox via Resend (with an auto-acknowledgement back to the submitter).',
+  ],
   '0.15.4': [
     'Critical fix: split payments with M-Pesa + another method no longer fail with a foreign-key error after the M-Pesa charge has already been taken. The synthetic M-Pesa method ids the UI uses are now seeded + auto-upserted before the payment row is inserted, so the local sale always lands.',
     'Variant picker: the parent product card now shows a real SKU (the product\'s own SKU, or a stable synthesised one) instead of the literal "Parent SKU" placeholder.',

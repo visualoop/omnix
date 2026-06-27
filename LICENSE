@@ -1,0 +1,83 @@
+Omnix — Proprietary Source License
+Copyright (c) 2024–present Omnix. All Rights Reserved.
+
+================================================================================
+PROPRIETARY AND CONFIDENTIAL
+================================================================================
+
+This software, including its source code, documentation, designs, brand assets,
+build artefacts and any accompanying materials (collectively, the "Software"),
+is the proprietary and confidential property of Omnix and its licensors.
+
+The Software is published on GitHub for transparency, security review, and
+audit purposes ONLY. Public availability of the source DOES NOT constitute,
+imply, or grant any license, right, or permission of any kind.
+
+NO LICENSE OR RIGHTS ARE GRANTED.
+
+You are NOT permitted, without prior, signed, written authorisation from Omnix,
+to engage in any of the following with respect to the Software:
+
+  1. USE — for any commercial, personal, educational, evaluation, internal,
+     research, or any other purpose.
+  2. COPY — in whole or in part, including via cloning, mirroring, caching,
+     downloading, screenshotting, retyping, or any other means.
+  3. MODIFY — including translating, porting, decompiling, reverse-engineering,
+     refactoring, creating derivative works, training machine-learning models
+     on, or otherwise transforming the Software.
+  4. REDISTRIBUTE — including publishing, hosting, mirroring, forking,
+     sub-licensing, lending, selling, renting, or transferring the Software
+     or any portion of it to any third party.
+  5. RESELL — including offering the Software (or any product or service
+     substantially derived from or competitive with it) for sale, lease,
+     subscription, or any other form of consideration.
+  6. WHITE-LABEL — rebranding, re-skinning, repackaging, or otherwise
+     presenting the Software under a different name or identity.
+  7. REMOVE PROPRIETARY NOTICES — removing, obscuring, or altering any
+     copyright notice, brand mark, watermark, or attribution embedded in the
+     Software.
+
+The only lawful uses of the Software are:
+  (a) Reading the source code in-place on this repository for the purpose of
+      verifying the integrity and security of installations licensed directly
+      from Omnix.
+  (b) Operating an instance of the Software that has been activated by a
+      valid, current licence key issued by Omnix to the operator, strictly in
+      accordance with the operator's signed end-user agreement with Omnix.
+
+LICENCE & PARTNERSHIP ENQUIRIES.
+
+Any party interested in licensing, distributing, reselling, white-labelling,
+embedding, or otherwise commercially using the Software must obtain written
+permission from Omnix in advance. Submit enquiries through the partnership
+form at https://www.omnix.co.ke/partners or by email to partners@omnix.co.ke.
+
+NO WARRANTY.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE, NON-INFRINGEMENT, AND TITLE. IN NO EVENT
+SHALL OMNIX OR ITS LICENSORS BE LIABLE FOR ANY CLAIM, DAMAGES, OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT, OR OTHERWISE, ARISING
+FROM, OUT OF, OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+DEALINGS IN THE SOFTWARE.
+
+ENFORCEMENT.
+
+Omnix actively monitors public and private channels for unauthorised use of
+the Software. Violations will be pursued to the fullest extent permitted by
+law, which may include monetary damages, injunctive relief, attorney's fees,
+and the take-down of infringing services. Notice of suspected infringement
+may be sent to legal@omnix.co.ke.
+
+GOVERNING LAW.
+
+This licence and any disputes arising from or relating to the Software are
+governed by the laws of the Republic of Kenya, without regard to its
+conflict-of-laws principles. The courts of Nairobi, Kenya have exclusive
+jurisdiction.
+
+================================================================================
+Omnix — Operating-system software for retail, pharmacy, hardware and
+hospitality businesses across Kenya. https://www.omnix.co.ke
+================================================================================

@@ -27,6 +27,8 @@ import {
   SupportReplyEmail,
   DiagnosticEmail,
   TeamInviteEmail,
+  PartnershipInquiryEmail,
+  PartnershipAckEmail,
 } from '@/emails/templates'
 
 interface ResolvedConfig {
@@ -377,4 +379,93 @@ export async function sendTestEmail(to: string): Promise<{ ok: boolean; error?: 
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : String(e) }
   }
+}
+
+// ─── Partnership / reseller enquiry ────────────────────────────────
+
+interface PartnershipInput {
+  fullName: string;
+  organization: string;
+  email: string;
+  phone: string;
+  country: string;
+  interest: 'reseller' | 'referral' | 'oem' | 'integration' | 'other';
+  message: string;
+  /** Optional override of the internal inbox the notification goes to. */
+  to?: string;
+}
+
+/**
+ * Sends two emails when someone submits the /partners form:
+ *   1. A notification to the Omnix partnerships inbox (reply-to set to the
+ *      submitter, so the team can hit reply and respond directly).
+ *   2. An auto-acknowledgement back to the submitter so they know the
+ *      message landed and what response time to expect.
+ *
+ * Returns { ok: true } even when Resend isn't configured locally — the
+ * form should still succeed for the submitter while logs surface the
+ * missing key. Throws only when Resend actively errors out on send.
+ */
+export async function sendPartnershipInquiry(input: PartnershipInput): Promise<{ ok: true; warning?: string }> {
+  const { client, from, replyTo } = await getResend();
+  if (!client) {
+    console.warn(`[email] resend.api_key missing — partnership enquiry from ${input.email} captured but not delivered`);
+    return { ok: true, warning: 'email-not-configured' };
+  }
+
+  const brand = await emailBranding();
+  const internalTo = input.to ?? process.env.PARTNERSHIPS_EMAIL ?? 'partners@omnix.co.ke';
+
+  // 1) Notification to the team
+  const internalHtml = await render(
+    PartnershipInquiryEmail({
+      fullName: input.fullName,
+      organization: input.organization,
+      email: input.email,
+      phone: input.phone,
+      country: input.country,
+      interest: input.interest,
+      message: input.message,
+      brand,
+    }),
+  );
+  const r1 = await client.emails.send({
+    from,
+    to: internalTo,
+    replyTo: input.email,  // ops can hit reply and respond directly
+    subject: `Partnership · ${input.interest} · ${input.organization}`,
+    html: internalHtml,
+    text: [
+      `Partnership enquiry`,
+      `Name: ${input.fullName}`,
+      `Org: ${input.organization}`,
+      `Email: ${input.email}`,
+      `Phone: ${input.phone}`,
+      `Country: ${input.country}`,
+      `Interest: ${input.interest}`,
+      ``,
+      input.message,
+    ].join('\n'),
+  });
+  if (r1.error) throw new Error(`Partnership notify failed: ${r1.error.message ?? 'unknown'}`);
+
+  // 2) Acknowledgement to the submitter
+  const ackHtml = await render(
+    PartnershipAckEmail({ fullName: input.fullName, organization: input.organization, brand }),
+  );
+  const r2 = await client.emails.send({
+    from,
+    to: input.email,
+    replyTo,
+    subject: 'We received your Omnix partnership enquiry',
+    html: ackHtml,
+    text: `Asante ${input.fullName} — we received your partnership enquiry for ${input.organization}. The Omnix team will reply within two business days.`,
+  });
+  if (r2.error) {
+    // Acknowledgement failure is non-fatal; the internal team already has
+    // the lead. Log and move on.
+    console.warn(`[email] partnership ack to ${input.email} failed:`, r2.error.message);
+  }
+
+  return { ok: true };
 }

@@ -749,3 +749,97 @@ function formatKey(key: string): string {
   if (compact.length <= 4) return compact
   return compact.match(/.{1,4}/g)?.join('-') ?? compact
 }
+
+// ─── Partnership / reseller enquiry (notification to ops team) ────
+
+interface PartnershipNotifyProps {
+  /** Submitter's full name. */
+  fullName: string;
+  /** Business / organisation. */
+  organization: string;
+  /** Contact email reply-to. */
+  email: string;
+  /** Phone / WhatsApp number. */
+  phone: string;
+  /** Country or region. */
+  country: string;
+  /** Type of partnership — reseller / OEM / referral / other. */
+  interest: "reseller" | "referral" | "oem" | "integration" | "other";
+  /** Free-text message. */
+  message: string;
+  brand: BrandValues;
+}
+
+/**
+ * Internal notification sent to the partnerships inbox whenever someone
+ * submits the /partners form. Plain-letter format because the recipient
+ * is a human at Omnix, not a customer.
+ */
+export function PartnershipInquiryEmail({
+  fullName, organization, email, phone, country, interest, message, brand,
+}: PartnershipNotifyProps) {
+  return (
+    <Shell preview={`Partnership enquiry from ${organization}`} brand={brand}>
+      <Text style={eyebrowStyle}>Partnership enquiry</Text>
+      <Heading style={{ ...headingStyle, marginTop: 6 }}>
+        New {interest} enquiry from {organization}.
+      </Heading>
+      <Text style={ledeStyle}>
+        {fullName} ({country}) submitted the partners form on www.omnix.co.ke.
+      </Text>
+      <Hr style={{ borderColor: c.border, margin: '20px 0' }} />
+      <Text style={{ fontSize: 13, color: c.fg, margin: 0, lineHeight: 1.8 }}>
+        <strong>Name:</strong> {fullName}<br />
+        <strong>Organisation:</strong> {organization}<br />
+        <strong>Email:</strong> <Link href={`mailto:${email}`} style={{ color: c.fg }}>{email}</Link><br />
+        <strong>Phone:</strong> {phone}<br />
+        <strong>Country:</strong> {country}<br />
+        <strong>Interest:</strong> {interest}
+      </Text>
+      <Hr style={{ borderColor: c.border, margin: '20px 0' }} />
+      <Text style={{ fontSize: 13, color: c.fgMuted, margin: '0 0 6px' }}>Message</Text>
+      <Text style={{ fontSize: 14, color: c.fg, margin: 0, lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>
+        {message}
+      </Text>
+      <Hr style={{ borderColor: c.border, margin: '20px 0' }} />
+      <Text style={{ fontSize: 12, color: c.fgSubtle, margin: 0 }}>
+        Reply directly to this email to respond — the reply-to is set to the
+        submitter's address.
+      </Text>
+    </Shell>
+  );
+}
+
+/**
+ * Auto-acknowledgement returned to the submitter — confirms we received
+ * their enquiry and sets expectations for response time.
+ */
+interface PartnershipAckProps {
+  fullName: string;
+  organization: string;
+  brand: BrandValues;
+}
+export function PartnershipAckEmail({ fullName, organization, brand }: PartnershipAckProps) {
+  return (
+    <Shell preview="We received your partnership enquiry" brand={brand}>
+      <Text style={eyebrowStyle}>Confirmation</Text>
+      <Heading style={{ ...headingStyle, marginTop: 6 }}>
+        Asante, {fullName}.
+      </Heading>
+      <Text style={ledeStyle}>
+        We received your partnership enquiry for {organization}. Someone from
+        the Omnix team will reply within two business days, often sooner.
+      </Text>
+      <Text style={{ fontSize: 13, color: c.fgMuted, margin: '14px 0 0', lineHeight: 1.6 }}>
+        Omnix is private, commercial software — resellers, integrators and
+        regional distributors work with us under a written agreement. If you
+        included specific scope or volume in your message, the reply will
+        address it directly.
+      </Text>
+      <Hr style={{ borderColor: c.border, margin: '24px 0' }} />
+      <Text style={{ fontSize: 12, color: c.fgSubtle, margin: 0 }}>
+        Reply to this email if anything is urgent.
+      </Text>
+    </Shell>
+  );
+}

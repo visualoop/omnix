@@ -9,6 +9,7 @@
 import { WebviewWindow, getAllWebviewWindows } from "@tauri-apps/api/webviewWindow";
 
 const DISPLAY_LABEL = "customer-display";
+const QUEUE_LABEL = "customer-display-queue";
 
 export async function openCustomerDisplay(): Promise<void> {
   // Check if already open
@@ -39,6 +40,39 @@ export async function openCustomerDisplay(): Promise<void> {
     win.once("tauri://created", () => resolve());
     win.once("tauri://error", (e) => reject(e));
   });
+}
+
+/** Open the queue-board variant — for hospitality, this shows live KOT
+ *  status (PREPARING / READY columns) across all active orders, sized
+ *  for a wall-mounted screen. */
+export async function openCustomerDisplayQueue(): Promise<void> {
+  const existing = await getAllWebviewWindows();
+  const found = existing.find((w) => w.label === QUEUE_LABEL);
+  if (found) { await found.setFocus(); return; }
+  const win = new WebviewWindow(QUEUE_LABEL, {
+    url: "/customer-display/queue",
+    title: "Order board",
+    width: 1600,
+    height: 900,
+    minWidth: 1024,
+    minHeight: 720,
+    decorations: true,
+    resizable: true,
+    fullscreen: false,
+    center: false,
+    x: 240,
+    y: 140,
+  });
+  return new Promise((resolve, reject) => {
+    win.once("tauri://created", () => resolve());
+    win.once("tauri://error", (e) => reject(e));
+  });
+}
+
+export async function closeCustomerDisplayQueue(): Promise<void> {
+  const existing = await getAllWebviewWindows();
+  const found = existing.find((w) => w.label === QUEUE_LABEL);
+  if (found) await found.close();
 }
 
 export async function closeCustomerDisplay(): Promise<void> {

@@ -41,6 +41,8 @@ import {
   openCustomerDisplay,
   closeCustomerDisplay,
   isCustomerDisplayOpen,
+  openCustomerDisplayQueue,
+  closeCustomerDisplayQueue,
 } from "@/lib/customer-display"
 import { toast } from "sonner"
 import { open as openFileDialog } from "@tauri-apps/plugin-dialog"
@@ -59,6 +61,7 @@ export function CustomerDisplaySettingsPage() {
   const [showTax, setShowTax] = useState(true)
   const [showCustomer, setShowCustomer] = useState(true)
   const [displayOpen, setDisplayOpen] = useState(false)
+  const [queueOpen, setQueueOpen] = useState(false)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -112,6 +115,22 @@ export function CustomerDisplaySettingsPage() {
     }
   }
 
+  const toggleQueue = async () => {
+    try {
+      if (queueOpen) {
+        await closeCustomerDisplayQueue();
+        setQueueOpen(false);
+        toast.success("Order board closed");
+      } else {
+        await openCustomerDisplayQueue();
+        setQueueOpen(true);
+        toast.success("Order board opened");
+      }
+    } catch (e) {
+      toast.error(String(e));
+    }
+  };
+
   if (loading) {
     return <div className="p-6 text-sm text-muted-foreground">Loading…</div>
   }
@@ -123,10 +142,16 @@ export function CustomerDisplaySettingsPage() {
         title="Customer display"
         description="The second-monitor screen your customers face while you ring up sales. Set what they see and what stays private."
         actions={
-          <Button onClick={toggleDisplay} variant={displayOpen ? "outline" : "default"} size="sm">
-            <Monitor className="h-3.5 w-3.5" />
-            {displayOpen ? "Close display" : "Open display"}
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button onClick={toggleDisplay} variant={displayOpen ? "outline" : "default"} size="sm">
+              <Monitor className="h-3.5 w-3.5" />
+              {displayOpen ? "Close display" : "Open display"}
+            </Button>
+            <Button onClick={toggleQueue} variant={queueOpen ? "outline" : "secondary"} size="sm">
+              <Monitor className="h-3.5 w-3.5" />
+              {queueOpen ? "Close order board" : "Order board"}
+            </Button>
+          </div>
         }
       />
 

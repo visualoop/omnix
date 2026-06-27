@@ -46,6 +46,7 @@ import { NewDocumentPage } from "@/pages/invoice-new";
 import { DocumentDetailPage } from "@/pages/invoice-detail";
 import { RecurringInvoicesPage } from "@/pages/recurring-invoices";
 import { CustomerDisplayPage } from "@/pages/customer-display";
+import { CustomerDisplayQueuePage } from "@/pages/customer-display-queue";
 import { DailyOperationsPage } from "@/pages/daily-operations";
 import { CustomerDisplaySettingsPage } from "@/pages/settings-customer-display";
 import { AiSettingsPage } from "@/pages/settings-ai";
@@ -120,7 +121,7 @@ import { HospitalitySettingsPage } from "@/pages/settings-hospitality";
 function App() {
   // Customer-facing display runs in a separate window with NO license/auth/setup
   // guards — it must never show the activation or setup wizard to a customer.
-  if (window.location.pathname === "/customer-display") {
+  if (window.location.pathname.startsWith("/customer-display")) {
     return <CustomerDisplayShell />;
   }
   return (
@@ -138,6 +139,7 @@ function CustomerDisplayShell() {
   return (
     <BrowserRouter>
       <Routes>
+        <Route path="/customer-display/queue" element={<CustomerDisplayQueuePage />} />
         <Route path="*" element={<CustomerDisplayPage />} />
       </Routes>
     </BrowserRouter>
