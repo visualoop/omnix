@@ -51,6 +51,15 @@ const VARIANT_LABEL: Record<VariantId, string> = {
  * Empty by default — the standard summary is enough for most patches.
  */
 const VERSION_HIGHLIGHTS: Record<string, string[]> = {
+  '0.15.0': [
+    'Omnix AI grew from a help concierge into a business partner — ask it real questions about your shop and it answers from your live data',
+    'Ask things like "what made the most profit this month?", "what should I reorder and how much?", "which customers have stopped buying?", "why did revenue change?" — grounded in your actual numbers, never guessed',
+    'New "Needs attention" feed on the dashboard: stockouts about to happen, stock expiring soon, dead stock tying up cash, items priced below cost, and revenue dips — each with a one-tap "ask AI why"',
+    'The assistant can now prepare actions for you — draft a purchase order, categorise products, set reorder levels — and nothing changes until you review and approve it',
+    'New full-page Omnix AI workspace (sidebar → Omnix AI) for working with your data and recommendations in one place',
+    'End-of-day Z-report can now write you a plain-language shift summary to share with the team',
+    'M-Pesa sandbox testing no longer hangs — STK test payments auto-confirm so you can trial the till flow end to end (production payments are untouched)',
+  ],
   '0.14.0': [
     'Every sale, void, and refund is now all-or-nothing — a power cut or crash mid-transaction can no longer leave a half-written sale, orphaned stock, or money recorded twice',
     'Voiding a sale now reverses everything: stock returns, the payment is undone, the bank deposit is withdrawn back, and the KRA invoice is flagged for a credit note',
