@@ -187,6 +187,194 @@ export function buildAssistantTools(ctx: ToolContext) {
         return { ok: true, url }
       },
     }),
+
+    /* ═══════════════════════════════════════════════════════════════
+     * "Ask your data" — deterministic analytics tools. Every figure
+     * comes from SQL (services/insights.ts + reports.ts), never the
+     * model's head, so answers are always grounded in the live DB.
+     * All read-only.
+     * ═════════════════════════════════════════════════════════════ */
+
+    /* ─── What should I focus on? ─────────────────────────────────── */
+    getTopFindings: tool({
+      description:
+        "Get the most important things the owner should look at right now — the " +
+        "proactive business digest. Returns ranked findings (critical→info) about " +
+        "stockouts, expiring stock, dead stock, below-cost pricing, and revenue " +
+        "drops. Use for 'what should I focus on this week?', 'anything I should " +
+        "worry about?', 'how's the business doing?'.",
+      inputSchema: z.object({}),
+      execute: async () => {
+        const { topFindings } = await import("@/services/insights")
+        const findings = await topFindings()
+        return { count: findings.length, findings }
+      },
+    }),
+
+    /* ─── Reorder suggestions (with quantities) ───────────────────── */
+    getReorderSuggestions: tool({
+      description:
+        "Get products to reorder WITH suggested order quantities, based on each " +
+        "product's own sales velocity, lead time, and current stock. Returns days " +
+        "of cover remaining and the usual supplier. Use for 'what should I reorder?', " +
+        "'how much X should I buy?', 'what's about to run out?'.",
+      inputSchema: z.object({
+        limit: z.number().int().min(1).max(50).default(15),
+      }),
+      execute: async ({ limit }: { limit: number }) => {
+        const { reorderSuggestions } = await import("@/services/insights")
+        const items = await reorderSuggestions({ limit })
+        return { count: items.length, items }
+      },
+    }),
+
+    /* ─── Dead stock ──────────────────────────────────────────────── */
+    getDeadStock: tool({
+      description:
+        "Get slow/dead stock — items that haven't sold in 60+ days — with the " +
+        "capital tied up at cost. Use for 'what's not selling?', 'dead stock', " +
+        "'what's tying up my money?'.",
+      inputSchema: z.object({
+        idleDays: z.number().int().min(14).max(365).default(60),
+        limit: z.number().int().min(1).max(50).default(15),
+      }),
+      execute: async ({ idleDays, limit }: { idleDays: number; limit: number }) => {
+        const { deadStock } = await import("@/services/insights")
+        return await deadStock({ idleDays, limit })
+      },
+    }),
+
+    /* ─── Profit leaders ──────────────────────────────────────────── */
+    getProfitLeaders: tool({
+      description:
+        "Get the products that made the most PROFIT (not just revenue) over a " +
+        "period, with margin %. Use for 'what made the most profit this month?', " +
+        "'my best products', 'which lines are most profitable?'.",
+      inputSchema: z.object({
+        windowDays: z.number().int().min(1).max(365).default(30),
+        limit: z.number().int().min(1).max(25).default(10),
+      }),
+      execute: async ({ windowDays, limit }: { windowDays: number; limit: number }) => {
+        const { profitLeaders } = await import("@/services/insights")
+        const items = await profitLeaders({ windowDays, limit })
+        return { count: items.length, items }
+      },
+    }),
+
+    /* ─── Explain a revenue change ────────────────────────────────── */
+    explainRevenueChange: tool({
+      description:
+        "Compare revenue this period vs the previous equal period and return the " +
+        "products that drove the change (top gainers + losers). Use for 'why did " +
+        "revenue fall?', 'why are sales up?', 'what changed this week?'. You then " +
+        "explain the WHY from these facts.",
+      inputSchema: z.object({
+        windowDays: z.number().int().min(1).max(90).default(7),
+      }),
+      execute: async ({ windowDays }: { windowDays: number }) => {
+        const { revenueChange } = await import("@/services/insights")
+        return await revenueChange({ windowDays })
+      },
+    }),
+
+    /* ─── Margin issues ───────────────────────────────────────────── */
+    getMarginIssues: tool({
+      description:
+        "Find products with pricing problems: sold below cost (negative margin), " +
+        "zero margin, missing selling price, or very thin margins. Use for " +
+        "'am I losing money on anything?', 'pricing problems', 'check my margins'.",
+      inputSchema: z.object({
+        thinPct: z.number().min(0).max(50).default(5),
+        limit: z.number().int().min(1).max(50).default(20),
+      }),
+      execute: async ({ thinPct, limit }: { thinPct: number; limit: number }) => {
+        const { marginIssues } = await import("@/services/insights")
+        const items = await marginIssues({ thinPct, limit })
+        return { count: items.length, items }
+      },
+    }),
+
+    /* ─── Cashier performance ─────────────────────────────────────── */
+    getCashierPerformance: tool({
+      description:
+        "Rank staff by sales over a period: count, revenue, voids, average basket. " +
+        "Use for 'which cashier sold the most?', 'staff performance', 'who's " +
+        "voiding a lot?'.",
+      inputSchema: z.object({
+        windowDays: z.number().int().min(1).max(365).default(30),
+      }),
+      execute: async ({ windowDays }: { windowDays: number }) => {
+        const { cashierPerformance } = await import("@/services/insights")
+        const items = await cashierPerformance({ windowDays })
+        return { count: items.length, items }
+      },
+    }),
+
+    /* ─── Customer insights (churn / VIP) ─────────────────────────── */
+    getCustomerInsights: tool({
+      description:
+        "Segment customers by recency/frequency/spend: vip, loyal, at_risk, " +
+        "churned, new. Use for 'which customers stopped buying?', 'who are my VIPs?', " +
+        "'inactive customers', 'who should I follow up with?'.",
+      inputSchema: z.object({
+        segment: z.enum(["vip", "loyal", "at_risk", "churned", "new", "occasional"]).optional()
+          .describe("Optionally filter to one segment."),
+        limit: z.number().int().min(1).max(100).default(25),
+      }),
+      execute: async ({ segment, limit }: { segment?: string; limit: number }) => {
+        const { customerInsights } = await import("@/services/insights")
+        let items = await customerInsights({ limit: 200 })
+        if (segment) items = items.filter((c) => c.segment === segment)
+        return { count: items.length, items: items.slice(0, limit) }
+      },
+    }),
+
+    /* ─── Supplier scorecard ──────────────────────────────────────── */
+    getSupplierScorecard: tool({
+      description:
+        "Score suppliers on spend, on-time delivery %, and fill rate. Use for " +
+        "'which supplier is most reliable?', 'supplier performance', 'who delivers " +
+        "late?', 'best supplier'.",
+      inputSchema: z.object({
+        limit: z.number().int().min(1).max(50).default(15),
+      }),
+      execute: async ({ limit }: { limit: number }) => {
+        const { supplierScorecard } = await import("@/services/insights")
+        const items = await supplierScorecard({ limit })
+        return { count: items.length, items }
+      },
+    }),
+
+    /* ─── Duplicate products ──────────────────────────────────────── */
+    getDuplicateProducts: tool({
+      description:
+        "Find likely duplicate products (same barcode or same normalised name). " +
+        "Use for 'do I have duplicates?', 'clean up my catalogue', 'duplicate " +
+        "products'. Read-only — merging requires confirmation.",
+      inputSchema: z.object({
+        limit: z.number().int().min(1).max(50).default(25),
+      }),
+      execute: async ({ limit }: { limit: number }) => {
+        const { duplicateProducts } = await import("@/services/insights")
+        const groups = await duplicateProducts({ limit })
+        return { count: groups.length, groups }
+      },
+    }),
+
+    /* ─── Expiry risk ─────────────────────────────────────────────── */
+    getExpiryRisk: tool({
+      description:
+        "Get stock batches expiring within N days and the value at risk. Use for " +
+        "'what expires soon?', 'expiring stock', 'which medicines expire next month?'.",
+      inputSchema: z.object({
+        withinDays: z.number().int().min(1).max(365).default(90),
+        limit: z.number().int().min(1).max(100).default(30),
+      }),
+      execute: async ({ withinDays, limit }: { withinDays: number; limit: number }) => {
+        const { expiryRisk } = await import("@/services/insights")
+        return await expiryRisk({ withinDays, limit })
+      },
+    }),
   }
 }
 

@@ -47,11 +47,11 @@ interface UiMessage {
 }
 
 const STARTERS = [
-  "How do I run a Z-report?",
-  "Explain my last eTIMS error",
-  "What's the difference between modules?",
-  "How do trial users upgrade to paid?",
-  "How does cloud backup work?",
+  "What should I focus on this week?",
+  "What made the most profit this month?",
+  "What should I reorder, and how much?",
+  "Which customers have stopped buying?",
+  "Why did revenue change this week?",
 ]
 
 const HAS_OPENED_KEY = "omnix-assistant-has-opened"

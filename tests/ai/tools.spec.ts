@@ -153,13 +153,24 @@ describe('openDocs tool', () => {
 })
 
 describe('tool inventory', () => {
-  it('exposes 7 tools', () => {
+  it('exposes the full read + analytics tool set', () => {
     const t = tools()
     const names = Object.keys(t)
     expect(names.sort()).toEqual([
+      'explainRevenueChange',
+      'getCashierPerformance',
+      'getCustomerInsights',
+      'getDeadStock',
+      'getDuplicateProducts',
+      'getExpiryRisk',
       'getInventoryAlerts',
+      'getMarginIssues',
+      'getProfitLeaders',
       'getRecentSales',
+      'getReorderSuggestions',
+      'getSupplierScorecard',
       'getTodaySales',
+      'getTopFindings',
       'navigate',
       'openDocs',
       'searchCustomers',
