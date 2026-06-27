@@ -427,24 +427,42 @@ export function PaymentModal({ open, onClose }: Props) {
                   const Icon = paymentBrandIcon(m.id + " " + m.name);
                   const tint = paymentBrandTint(m.id + " " + m.name);
                   const selected = selectedMethod === m.id;
+                  // How much has already been added to splits under this
+                  // method. Shown INSIDE the card so the cashier sees
+                  // their running tally per-method without scrolling to
+                  // the "paid so far" list below.
+                  const methodTotal = payments
+                    .filter((p) => p.method_id === m.id)
+                    .reduce((s, p) => s + p.amount, 0);
+                  // Selected method also previews the current input.
+                  const inputAmt = parseFloat(amount) || 0;
+                  const previewing = selected && inputAmt > 0;
                   return (
                     <button
                       key={m.id}
                       onClick={() => handleSelectMethod(m.id)}
                       className={cn(
                         "flex items-center gap-2.5 px-3 py-2.5 rounded-xl border text-left transition-all cursor-pointer",
-                        // ring-inset so the highlight renders INSIDE the
-                        // card border, not outside (which clipped on the
-                        // outer edges of the dialog).
                         selected
                           ? `${tint.bg} ring-2 ring-inset ${tint.ring} border-transparent`
                           : "border-border hover:bg-accent/40",
                       )}
                     >
                       <Icon size={26} />
-                      <span className={`text-sm font-medium leading-tight ${selected ? tint.text : "text-foreground"}`}>
-                        {m.name}
-                      </span>
+                      <div className="flex-1 min-w-0">
+                        <div className={`text-sm font-medium leading-tight ${selected ? tint.text : "text-foreground"}`}>
+                          {m.name}
+                        </div>
+                        {(methodTotal > 0 || previewing) && (
+                          <div className={`mt-0.5 font-mono tabular-nums text-[11px] leading-tight ${selected ? tint.text : "text-muted-foreground"}`}>
+                            {methodTotal > 0 && previewing
+                              ? `KES ${methodTotal.toFixed(2)} + ${inputAmt.toFixed(2)}`
+                              : methodTotal > 0
+                                ? `KES ${methodTotal.toFixed(2)}`
+                                : `KES ${inputAmt.toFixed(2)}`}
+                          </div>
+                        )}
+                      </div>
                     </button>
                   );
                 })}

@@ -106,17 +106,18 @@ export async function deadStock(opts: { idleDays?: number; limit?: number } = {}
   const limit = opts.limit ?? 50;
 
   const rows = await query<{
-    product_id: string; name: string; stock_qty: number; value_at_cost: number; last_sale: string | null;
+    product_id: string; name: string; stock_qty: number; value_at_cost: number; last_sale: string | null; product_created_at: string | null;
   }>(
     `SELECT p.id AS product_id, p.name,
             COALESCE(SUM(b.quantity), 0) AS stock_qty,
             COALESCE(SUM(b.quantity * b.buying_price), 0) AS value_at_cost,
             (SELECT MAX(s.created_at) FROM sale_items si JOIN sales s ON s.id = si.sale_id
-              WHERE si.product_id = p.id AND s.status = 'completed') AS last_sale
+              WHERE si.product_id = p.id AND s.status = 'completed') AS last_sale,
+            p.created_at AS product_created_at
        FROM batches b
        JOIN products p ON p.id = b.product_id
       WHERE p.active = 1 AND b.quantity > 0
-      GROUP BY p.id, p.name
+      GROUP BY p.id, p.name, p.created_at
      HAVING stock_qty > 0`,
   );
 
@@ -125,7 +126,16 @@ export async function deadStock(opts: { idleDays?: number; limit?: number } = {}
   const now = Date.now();
   for (const r of rows) {
     const daysSince = r.last_sale ? Math.floor((now - new Date(r.last_sale).getTime()) / 86400000) : null;
-    // Dead = never sold, or last sold beyond the idle threshold.
+    // FLOOR by product age: a product that's only been in the catalogue
+    // for 2 days hasn't had a chance to "go dead" — we'd be calling every
+    // freshly-added SKU dead stock, which is wrong.
+    const ageDays = r.product_created_at
+      ? Math.floor((now - new Date(r.product_created_at).getTime()) / 86400000)
+      : null;
+    if (ageDays !== null && ageDays < idleDays) continue;
+
+    // Dead = either we have a last sale older than the idle threshold, or
+    // the product is older than the threshold AND has never sold.
     if (daysSince !== null && daysSince < idleDays) continue;
     items.push({
       product_id: r.product_id,

@@ -272,11 +272,38 @@ export async function queryStkStatus(checkoutRequestId: string): Promise<{
     }),
   });
 
-  const body = (await res.json()) as DarajaQueryResponse;
+  const text = await res.text();
 
+  // Daraja can return HTTP 500 with "still under processing" mid-flight —
+  // that's a transient pending state, NOT a real server error. Treat it
+  // as pending so the poller keeps going (pattern adopted from production
+  // Convex integrations that have been hardened against sandbox flakiness).
+  if (res.status === 500 && /still under processing/i.test(text)) {
+    return { status: "pending", message: "Still processing" };
+  }
+
+  let body: DarajaQueryResponse;
+  try {
+    body = JSON.parse(text) as DarajaQueryResponse;
+  } catch {
+    // Garbled body — treat as pending, the poller will try again.
+    return { status: "pending", message: "Unreadable response" };
+  }
+
+  // Result-code mapping. Both 1037 ("user cannot be reached") and 1032
+  // ("request cancelled by user") routinely fire spuriously in sandbox
+  // before the customer has had a chance to act — and even in production
+  // they sometimes precede a successful follow-up callback. We classify
+  // them as pending so the poll loop keeps running until either a real
+  // success or a real terminal code arrives.
   let status: "success" | "failed" | "pending" = "pending";
-  if (body.ResultCode === "0") status = "success";
-  else if (body.ResultCode !== "1037") status = "failed";
+  if (body.ResultCode === "0") {
+    status = "success";
+  } else if (body.ResultCode === "1037" || body.ResultCode === "1032") {
+    status = "pending";
+  } else if (body.ResultCode != null) {
+    status = "failed";
+  }
 
   await execute(
     `UPDATE payment_transactions

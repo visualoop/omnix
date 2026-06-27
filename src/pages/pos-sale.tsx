@@ -29,7 +29,6 @@ import {
   WarningCircle as AlertCircle,
   X,
 } from "@phosphor-icons/react";
-import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useCartStore } from "@/stores/cart";
@@ -495,28 +494,31 @@ export function POSSalePage() {
 
         {/* Center: Search + product grid */}
         <div className="flex-1 flex flex-col min-w-0 bg-background">
-          {/* Search bar — primary input, generous size, scanner-friendly */}
+          {/* Search bar — icon sits in its own left slot (not floating on
+              top of the input). Native flex layout: [icon | input | clear].
+              The wrapper owns the border + focus ring so the inner input
+              stays borderless and the icon never overlays text. */}
           <div className="px-4 py-3 border-b border-border bg-background flex items-center gap-3">
-            <div className="relative flex-1">
-              <Search className="absolute left-3.5 top-3 h-4 w-4 text-muted-foreground" />
-              <Input
+            <div className="group flex flex-1 items-center gap-2.5 h-10 rounded-md border border-input bg-background pl-3 pr-1.5 transition-colors focus-within:border-ring focus-within:ring-2 focus-within:ring-ring/30">
+              <Search className="h-4 w-4 text-muted-foreground shrink-0" />
+              <input
                 ref={searchRef}
                 placeholder="Search name, SKU, or scan barcode…"
-                className="pl-10 pr-10 h-10 text-[14px] font-medium"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
+                className="flex-1 min-w-0 bg-transparent outline-none text-[14px] font-medium placeholder:text-muted-foreground"
                 autoFocus
               />
               {search ? (
                 <button
                   onClick={() => { setSearch(""); searchRef.current?.focus(); }}
-                  className="absolute right-2.5 top-2.5 size-5 grid place-items-center rounded text-muted-foreground hover:bg-muted hover:text-foreground transition"
+                  className="size-7 grid place-items-center rounded text-muted-foreground hover:bg-muted hover:text-foreground transition shrink-0"
                   title="Clear search (Esc)"
                 >
                   <X className="h-3.5 w-3.5" />
                 </button>
               ) : (
-                <span className="absolute right-3 top-3 inline-flex items-center gap-1 text-[10px] text-muted-foreground select-none">
+                <span className="inline-flex items-center gap-1 px-1.5 text-[10px] text-muted-foreground select-none shrink-0">
                   <span className="size-1.5 rounded-full bg-emerald-500 animate-pulse" />
                   Scanner ready
                 </span>

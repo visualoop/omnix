@@ -12,6 +12,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Sparkle as Sparkles, ArrowUp, CircleNotch as Loader2, ArrowRight,
+  Plus, ClockCounterClockwise as History, Trash as Trash2,
 } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -27,6 +28,12 @@ import { AssistantMarkdown } from "@/components/ai/AssistantMarkdown";
 import { ToolCallBlock, type ToolEvent } from "@/components/ai/ToolCallBlock";
 import { AiActionDialog } from "@/components/ai/AiActionDialog";
 import type { ActionProposal } from "@/services/ai/actions";
+import {
+  appendMessage, createConversation, deleteConversation,
+  listConversations, loadMessages, setConversationTitle,
+  type Conversation,
+} from "@/services/ai/conversations";
+import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
 interface UiMessage {
@@ -60,6 +67,9 @@ export function AiWorkspacePage() {
   const [busy, setBusy] = useState(false);
   const [pendingAction, setPendingAction] = useState<ActionProposal | null>(null);
   const [findings, setFindings] = useState<Finding[] | null>(null);
+  const [conversationId, setConversationId] = useState<string | null>(null);
+  const [conversations, setConversations] = useState<Conversation[]>([]);
+  const [historyOpen, setHistoryOpen] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
@@ -70,14 +80,64 @@ export function AiWorkspacePage() {
 
   const tools = useMemo(() => buildAssistantTools({ navigate: (r: string) => navigate(r) }), [navigate]);
 
+  const refreshHistory = useCallback(() => {
+    listConversations(30).then(setConversations).catch(() => {});
+  }, []);
+
   useEffect(() => { topFindings().then(setFindings).catch(() => setFindings([])); }, []);
+  useEffect(() => { refreshHistory(); }, [refreshHistory]);
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
   }, [messages]);
 
+  const startNewChat = () => {
+    setConversationId(null);
+    setMessages([]);
+    setHistoryOpen(false);
+    setTimeout(() => inputRef.current?.focus(), 0);
+  };
+
+  const openConversation = async (id: string) => {
+    try {
+      const rows = await loadMessages(id);
+      setConversationId(id);
+      setMessages(
+        rows
+          .filter((r) => r.role === "user" || r.role === "assistant")
+          .map((r) => ({ id: r.id, role: r.role as UiMessage["role"], content: r.content })),
+      );
+      setHistoryOpen(false);
+      setTimeout(() => inputRef.current?.focus(), 0);
+    } catch (e) {
+      toast.error(String(e));
+    }
+  };
+
+  const removeConversation = async (id: string) => {
+    await deleteConversation(id);
+    if (conversationId === id) startNewChat();
+    refreshHistory();
+  };
+
   const send = useCallback(async (text: string) => {
     if (!text.trim() || busy) return;
-    const userMsg: UiMessage = { id: crypto.randomUUID(), role: "user", content: text };
+    // Lazy-create conversation on first send.
+    let convId = conversationId;
+    if (!convId) {
+      try {
+        convId = await createConversation(user?.id ?? null);
+        setConversationId(convId);
+        await setConversationTitle(convId, text.slice(0, 60));
+      } catch (e) {
+        console.warn("createConversation failed", e);
+      }
+    }
+    // Persist user message + use the returned id so the UI key matches DB.
+    let userUiId: string = crypto.randomUUID();
+    if (convId) {
+      try { userUiId = await appendMessage(convId, "user", text); } catch {}
+    }
+    const userMsg: UiMessage = { id: userUiId, role: "user", content: text };
     const assistantId = crypto.randomUUID();
     setMessages((m) => [...m, userMsg, { id: assistantId, role: "assistant", content: "", streaming: true }]);
     setDraft("");
@@ -91,15 +151,22 @@ export function AiWorkspacePage() {
       branchName: branch?.name ?? null,
       variant: VARIANT,
     });
+    // Compress context: cap historical messages at the last 20 turns.
+    // Each turn is ~200-400 tokens; 20 turns ≈ 8K tokens, leaving room
+    // for the system prompt + tool results + response within most free
+    // provider context windows. Older messages stay in the persisted
+    // conversation but aren't replayed to the model.
+    const trimmed = messages.slice(-20);
     const history: ChatMessage[] = [
       { role: "system", content: system },
-      ...messages.map((m) => ({ role: m.role, content: m.content }) as ChatMessage),
+      ...trimmed.map((m) => ({ role: m.role, content: m.content }) as ChatMessage),
       { role: "user", content: text },
     ];
 
     const toolEvents: ToolEvent[] = [];
+    let finalText = "";
     try {
-      for await (const progress of streamInvoke("assistant_chat", history, { tools, maxSteps: 6 })) {
+      for await (const progress of streamInvoke("assistant_chat", history, { tools, maxSteps: 8 })) {
         if (progress.toolCall) {
           toolEvents.push({ id: progress.toolCall.id, name: progress.toolCall.name, args: progress.toolCall.args });
           setMessages((m) => m.map((msg) => (msg.id === assistantId ? { ...msg, toolEvents: [...toolEvents] } : msg)));
@@ -113,10 +180,17 @@ export function AiWorkspacePage() {
           setMessages((m) => m.map((msg) => (msg.id === assistantId ? { ...msg, toolEvents: [...toolEvents] } : msg)));
           continue;
         }
+        finalText = progress.text;
         setMessages((m) =>
           m.map((msg) => (msg.id === assistantId ? { ...msg, content: progress.text, streaming: !progress.done } : msg)),
         );
       }
+      // Persist the assistant's final message.
+      if (convId && finalText) {
+        try { await appendMessage(convId, "assistant", finalText); } catch {}
+      }
+      // Refresh sidebar so the new conversation appears.
+      refreshHistory();
     } catch (e) {
       if (e instanceof AiError && e.status === "no_provider") {
         toast.error("AI not configured", {
@@ -131,21 +205,89 @@ export function AiWorkspacePage() {
       setBusy(false);
       setTimeout(() => inputRef.current?.focus(), 0);
     }
-  }, [messages, busy, user, activeModule, branch, tools, navigate]);
+  }, [messages, busy, user, activeModule, branch, tools, navigate, conversationId, refreshHistory]);
 
   const empty = messages.length === 0;
 
   return (
     <div className="flex h-[calc(100vh-48px)] -m-6">
+      {/* ── History rail (collapsible) ─────────────────────────── */}
+      <aside
+        className={cn(
+          "border-r border-border bg-card/30 flex flex-col shrink-0 transition-[width] duration-200",
+          historyOpen ? "w-72" : "w-0 overflow-hidden",
+        )}
+      >
+        <div className="h-14 px-3 flex items-center justify-between border-b border-border shrink-0">
+          <div className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">History</div>
+          <Button variant="ghost" size="sm" onClick={() => setHistoryOpen(false)} className="h-7 px-2 text-xs">
+            Hide
+          </Button>
+        </div>
+        <div className="p-2 border-b border-border">
+          <Button variant="outline" size="sm" onClick={startNewChat} className="w-full justify-start gap-2">
+            <Plus className="h-3.5 w-3.5" /> New chat
+          </Button>
+        </div>
+        <div className="flex-1 overflow-y-auto p-2 space-y-1">
+          {conversations.length === 0 ? (
+            <div className="text-[11px] text-muted-foreground px-2 py-3">No saved chats yet.</div>
+          ) : (
+            conversations.map((c) => (
+              <div
+                key={c.id}
+                className={cn(
+                  "group flex items-center justify-between gap-2 px-2 py-1.5 rounded-md hover:bg-accent/40 cursor-pointer text-xs",
+                  conversationId === c.id && "bg-accent/60",
+                )}
+                onClick={() => openConversation(c.id)}
+              >
+                <div className="flex-1 min-w-0">
+                  <div className="truncate font-medium">{c.title || "Untitled"}</div>
+                  <div className="text-[10px] text-muted-foreground">
+                    {new Date(c.updated_at).toLocaleString(undefined, { dateStyle: "short", timeStyle: "short" })}
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  className="opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive p-1 cursor-pointer"
+                  onClick={(e) => { e.stopPropagation(); removeConversation(c.id); }}
+                  aria-label="Delete chat"
+                >
+                  <Trash2 className="h-3 w-3" />
+                </button>
+              </div>
+            ))
+          )}
+        </div>
+      </aside>
+
       {/* ── Chat column ─────────────────────────────────────────── */}
       <div className="flex-1 flex flex-col min-w-0">
         <header className="px-6 h-14 flex items-center gap-2 border-b border-border shrink-0">
+          {!historyOpen && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setHistoryOpen(true)}
+              className="h-8 px-2 gap-1.5 text-xs"
+              title="Show history"
+            >
+              <History className="h-4 w-4" />
+              <span className="hidden md:inline">History</span>
+            </Button>
+          )}
           <div className="rounded-full bg-primary/10 p-1.5">
             <Sparkles className="h-4 w-4 text-primary" />
           </div>
           <div className="leading-tight">
             <div className="text-sm font-semibold">Omnix AI</div>
             <div className="text-[11px] text-muted-foreground">Ask your data · get recommendations · take confirmed actions</div>
+          </div>
+          <div className="ml-auto">
+            <Button variant="outline" size="sm" onClick={startNewChat} className="h-8 gap-1.5">
+              <Plus className="h-3.5 w-3.5" /> New chat
+            </Button>
           </div>
         </header>
 

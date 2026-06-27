@@ -107,9 +107,6 @@ importers:
       shadcn:
         specifier: ^4.8.0
         version: 4.8.2(@types/node@25.9.1)(typescript@5.8.3)
-      simple-keyboard:
-        specifier: ^3.8.155
-        version: 3.8.155
       sonner:
         specifier: ^2.0.7
         version: 2.0.7(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
@@ -4443,9 +4440,6 @@ packages:
   signal-exit@4.1.0:
     resolution: {integrity: sha512-bzyZ1e88w9O1iNJbKnOlvYTrWPDl46O1bG0D3XInv+9tkPrxrN8jUUTiFlDkkmKWgn1M6CfIA13SuGqOa9Korw==}
     engines: {node: '>=14'}
-
-  simple-keyboard@3.8.155:
-    resolution: {integrity: sha512-9oMBX9IUIsapK9ECFDCAii1vTuqM5WT+oEjafG8YILldPuMh6nxYAxOpBGqPBiJ+9Tvok4uyiMSnSNB3Aro+HA==}
 
   simple-xml-to-json@1.2.7:
     resolution: {integrity: sha512-mz9VXphOxQWX3eQ/uXCtm6upltoN0DLx8Zb5T4TFC4FHB7S9FDPGre8CfLWqPWQQH/GrQYd2AXhhVM5LDpYx6Q==}
@@ -9854,8 +9848,6 @@ snapshots:
   signal-exit@3.0.7: {}
 
   signal-exit@4.1.0: {}
-
-  simple-keyboard@3.8.155: {}
 
   simple-xml-to-json@1.2.7: {}
 

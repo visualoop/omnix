@@ -37,7 +37,7 @@ export function CustomerDisplayPage() {
   const cfg = getDisplayConfig(moduleId);
   // Module display label for the customer-facing branding (e.g. "Dawa
   // Pharmacy", "Retail", "Hardware", "Hospitality").
-  const moduleLabel = MODULE_DEFINITIONS[(moduleId as ModuleId)]?.name ?? "POS";
+  const moduleLabel = MODULE_DEFINITIONS[(moduleId as ModuleId)]?.shortName ?? "POS";
 
   const [businessName, setBusinessName] = useState("Omnix");
   const [privacyMode, setPrivacyMode] = useState(cfg.privacyMode);
@@ -320,7 +320,7 @@ export function CustomerDisplayPage() {
 }
 
 /** Our public domain, shown in the customer-facing Omnix branding. */
-const OMNIX_DOMAIN = "www.blyss.co.ke";
+const OMNIX_DOMAIN = "www.omnix.co.ke";
 
 /**
  * Omnix branding block for the customer display.

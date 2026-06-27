@@ -45,21 +45,28 @@ describe("reorderSuggestions", () => {
 });
 
 describe("deadStock", () => {
-  it("includes never-sold + long-idle, excludes recently sold, sums value", async () => {
+  it("includes long-idle + never-sold-but-old, excludes fresh + brand-new products", async () => {
     const longAgo = new Date(Date.now() - 200 * 86400000).toISOString();
     const recent = new Date(Date.now() - 5 * 86400000).toISOString();
+    const oldCreated = new Date(Date.now() - 200 * 86400000).toISOString();
+    const newCreated = new Date(Date.now() - 2 * 86400000).toISOString();
     mockedQuery.mockResolvedValueOnce([
-      { product_id: "a", name: "Old", stock_qty: 10, value_at_cost: 1000, last_sale: longAgo },
-      { product_id: "b", name: "Never", stock_qty: 3, value_at_cost: 300, last_sale: null },
-      { product_id: "c", name: "Fresh", stock_qty: 5, value_at_cost: 500, last_sale: recent },
+      // Sold a long time ago, product is old → DEAD
+      { product_id: "a", name: "Old", stock_qty: 10, value_at_cost: 1000, last_sale: longAgo, product_created_at: oldCreated },
+      // Never sold AND old product → DEAD
+      { product_id: "b", name: "NeverButOld", stock_qty: 3, value_at_cost: 300, last_sale: null, product_created_at: oldCreated },
+      // Sold recently → NOT DEAD
+      { product_id: "c", name: "Fresh", stock_qty: 5, value_at_cost: 500, last_sale: recent, product_created_at: oldCreated },
+      // Never sold BUT product just added today → NOT DEAD (regression guard)
+      { product_id: "d", name: "BrandNew", stock_qty: 4, value_at_cost: 2500, last_sale: null, product_created_at: newCreated },
     ] as never);
     const out = await deadStock({ idleDays: 60 });
     const names = out.items.map((i) => i.name);
     expect(names).toContain("Old");
-    expect(names).toContain("Never");
+    expect(names).toContain("NeverButOld");
     expect(names).not.toContain("Fresh");
-    expect(out.total_value).toBe(1300); // 1000 + 300
-    // Highest value first
+    expect(names).not.toContain("BrandNew");
+    expect(out.total_value).toBe(1300);
     expect(out.items[0].name).toBe("Old");
   });
 });

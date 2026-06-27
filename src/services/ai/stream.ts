@@ -152,7 +152,7 @@ export async function* streamInvoke(
         model: provider(route.model),
         messages: toModelMessages(safeMessages),
         temperature: 0.4,
-        ...(opts.tools ? { tools: opts.tools, stopWhen: stepCountIs(opts.maxSteps ?? 5) } : {}),
+        ...(opts.tools ? { tools: opts.tools, stopWhen: stepCountIs(opts.maxSteps ?? 8) } : {}),
       });
 
       // Reset runtime state — successful stream start
@@ -160,6 +160,8 @@ export async function* streamInvoke(
 
       const t0 = performance.now();
       let acc = "";
+      let toolCallCount = 0;
+      let streamError: Error | null = null;
       // Use fullStream so we can emit tool-call + tool-result deltas in
       // addition to plain text deltas. textStream alone hides tool events.
       for await (const part of result.fullStream) {
@@ -168,6 +170,7 @@ export async function* streamInvoke(
           acc += delta;
           yield { text: acc, delta, done: false, provider: route.provider.id, model: route.model };
         } else if (part.type === "tool-call") {
+          toolCallCount++;
           const tc = part as unknown as { toolCallId: string; toolName: string; input: Record<string, unknown> };
           yield {
             text: acc,
@@ -187,7 +190,32 @@ export async function* streamInvoke(
             model: route.model,
             toolResult: { id: tr.toolCallId, name: tr.toolName, result: tr.output },
           };
+        } else if (part.type === "error") {
+          // Mid-stream error — usually a rate-limit on the post-tool model
+          // call ("model invoked, got 429"). Stop consuming, record the
+          // error, and break out so the outer for-loop tries the next
+          // candidate provider. Without this the stream just ended silent
+          // and the assistant message stayed empty after the tool fired.
+          const err = (part as unknown as { error: unknown }).error;
+          streamError = err instanceof Error ? err : new Error(String(err));
+          break;
         }
+      }
+
+      // If the stream ended without an error AND at least one tool fired
+      // AND we have NO assistant text, it means the model finished the
+      // tool round but never produced narration (free-tier rate limits
+      // and some smaller models cause this). Treat as a soft failure so
+      // we try the next provider rather than show an empty bubble.
+      if (!streamError && acc === "" && toolCallCount > 0) {
+        streamError = new AiError(
+          "error",
+          "Model finished without generating a response after the tool call",
+          route.provider.id,
+        );
+      }
+      if (streamError) {
+        throw streamError;
       }
 
       // Final usage + audit

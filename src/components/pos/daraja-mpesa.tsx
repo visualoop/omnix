@@ -8,7 +8,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { initiateStkPush, queryStkStatus, getDarajaConfig, isDarajaSandbox, sandboxAutoConfirm } from "@/services/daraja";
-import { MpesaIcon } from "@/components/icons/payment-brands";
+import { MpesaIcon, MpesaLockup } from "@/components/icons/payment-brands";
 
 interface Props {
   amount: number;
@@ -26,6 +26,12 @@ export function DarajaMpesaCharge({ amount, saleId, onSuccess, onCancel }: Props
   const [error, setError] = useState<string>("");
   const [configured, setConfigured] = useState(false);
   const [sandbox, setSandbox] = useState(false);
+  // Keep an always-current ref of `sandbox` for use inside the polling
+  // interval — without this, the interval captures whatever value sandbox
+  // had at startPolling time, so a late-resolving config check meant
+  // auto-confirm silently never fired even though the UI badge said yes.
+  const sandboxRef = useRef(false);
+  useEffect(() => { sandboxRef.current = sandbox; }, [sandbox]);
   const [checking, setChecking] = useState(false);
   const [pollStartedAt, setPollStartedAt] = useState<number | null>(null);
   const [elapsedTick, setElapsedTick] = useState(0);
@@ -36,7 +42,12 @@ export function DarajaMpesaCharge({ amount, saleId, onSuccess, onCancel }: Props
 
   useEffect(() => {
     getDarajaConfig().then((c) => setConfigured(!!c?.active));
-    isDarajaSandbox().then(setSandbox);
+    // Resolve sandbox up front AND propagate to the ref so the very first
+    // poll tick can read it correctly even before React's re-render commits.
+    isDarajaSandbox().then((v) => {
+      sandboxRef.current = v;
+      setSandbox(v);
+    });
     return () => {
       if (pollRef.current) clearInterval(pollRef.current);
       if (tickRef.current) clearInterval(tickRef.current);
@@ -99,7 +110,7 @@ export function DarajaMpesaCharge({ amount, saleId, onSuccess, onCancel }: Props
       // callback, so after a short grace period we auto-confirm so the POS
       // flow can be tested end to end. HARD-GATED to sandbox in the service
       // layer — this can never fire against a live payment.
-      if (sandbox && !autoConfirmedRef.current && elapsed >= GRACE_MS) {
+      if (sandboxRef.current && !autoConfirmedRef.current && elapsed >= GRACE_MS) {
         autoConfirmedRef.current = true;
         await runSandboxAutoConfirm(checkoutId);
         return;
@@ -116,7 +127,7 @@ export function DarajaMpesaCharge({ amount, saleId, onSuccess, onCancel }: Props
           // poll even when no STK was ever delivered. Auto-confirm will
           // resolve the transaction at the GRACE_MS boundary. In live mode
           // (sandbox=false), 'failed' is always terminal.
-          if (sandbox && elapsed < GRACE_MS) {
+          if (sandboxRef.current && elapsed < GRACE_MS) {
             // keep polling silently — auto-confirm will handle it
           } else {
             if (pollRef.current) clearInterval(pollRef.current);
@@ -247,6 +258,9 @@ export function DarajaMpesaCharge({ amount, saleId, onSuccess, onCancel }: Props
 
       {(status === "initiating" || status === "polling") && (
         <div className="text-center py-2 space-y-3">
+          <div className="mx-auto inline-flex items-center justify-center">
+            <MpesaLockup height={44} />
+          </div>
           <Loader2 className="h-8 w-8 mx-auto text-[#1F8B3A] animate-spin" />
           <div>
             <p className="text-sm font-medium">

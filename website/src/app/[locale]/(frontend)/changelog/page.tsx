@@ -51,6 +51,19 @@ const VARIANT_LABEL: Record<VariantId, string> = {
  * Empty by default — the standard summary is enough for most patches.
  */
 const VERSION_HIGHLIGHTS: Record<string, string[]> = {
+  '0.15.3': [
+    'Native on-screen keyboard — the third-party library was the source of the blank-screen crashes when typing in touch mode. The new one is fully ours; it dismisses cleanly when a dialog closes and never leaves dangling overlays.',
+    'M-Pesa sandbox auto-confirm now actually fires — Daraja\'s sandbox routinely returns a "cancelled" code on the first poll even when nothing was cancelled; we now treat it as pending so the 15-second grace can resolve the test transaction. Production charges unchanged.',
+    'Payment modal shows the running tendered amount inside each method card (e.g. "Cash · KES 100") — no more scrolling to the "Paid so far" list to see how a split is going.',
+    'M-Pesa STK waiting screen shows the real M-Pesa wordmark; Paystack-via-M-Pesa shows both lockups so the customer knows who\'s charging the phone.',
+    'POS search bar redesigned — the magnifier sits in its own slot to the left of the input, not on top of it. Scanner-ready indicator now lives in the same row.',
+    'Variant picker now includes the parent SKU as a sellable option, scrolls when there are many variants, and matches the main POS product card visually with image-first cards.',
+    'Customer display second-screen now reads the right currency on first paint (was flashing $ instead of KES because each Tauri window has its own state tree). Footer URL fixed to omnix.co.ke and the "Omnix Omnix Retail" duplicate is gone.',
+    'Dead-stock insight no longer flags products that were just added — it now floors by product age so a SKU has to have been in the catalogue for the full idle window before being called dead.',
+    'AI assistant\'s tool flow is more resilient — when one provider rate-limits or stalls mid-stream (no narration after a tool result), the chat now falls over to the next configured provider instead of leaving an empty bubble.',
+    'AI workspace (/ai) now has conversation history, a New chat button, and persists chats between sessions — same behaviour as the side panel.',
+    'Assistant won\'t auto-navigate the app when you ask vague questions like "can you add a cashier?" — it answers in chat first; navigation only fires when you\'ve asked to be taken somewhere or accepted a suggestion.',
+  ],
   '0.15.2': [
     'Dashboard downloads page now derives the right installer URL for every variant — Pro no longer shows "no .exe / no .msi" when the GitHub release has the binary.',
     'Error boundary now also catches non-render errors (click-handler crashes, unhandled promise rejections, Tauri plugin failures) so blank screens always surface an error message instead of vanishing silently.',

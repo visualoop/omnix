@@ -234,3 +234,108 @@ export function paymentBrandIcon(idOrName: string): (props: IconProps) => React.
   if (k.includes("credit")) return CreditIcon;
   return CardIcon;
 }
+
+/* ─── Full brand lockups ──────────────────────────────────────────────
+ *
+ * Horizontal symbol + wordmark used in the LARGE moments (the spinner /
+ * waiting state of the Daraja and Paystack charge panels) where the
+ * user is staring at it for several seconds. These are deliberately
+ * brand-faithful renditions — not the small tile chips — built from
+ * the published brand cues (M-Pesa: phone silhouette + lowercase
+ * wordmark + red swoosh; Paystack: stacked rounded rects forming a P
+ * + lowercase wordmark in navy). Public-domain text logos; no
+ * copyrighted asset is shipped.
+ */
+interface LockupProps extends React.SVGProps<SVGSVGElement> {
+  /** px height. The intrinsic aspect ratio is preserved. */
+  height?: number;
+}
+
+export function MpesaLockup({ className, height = 56, ...props }: LockupProps) {
+  const w = height * (200 / 56);
+  const id = React.useId();
+  return (
+    <svg
+      width={w}
+      height={height}
+      viewBox="0 0 200 56"
+      className={className}
+      aria-label="M-Pesa"
+      role="img"
+      {...props}
+    >
+      <defs>
+        <linearGradient id={`${id}-phone`} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#5DD43A" />
+          <stop offset="1" stopColor="#3FA323" />
+        </linearGradient>
+      </defs>
+
+      {/* Phone silhouette — tall rounded rect with a screen + red swoosh */}
+      <rect x="6" y="4" width="38" height="48" rx="6" fill={`url(#${id}-phone)`} />
+      <rect x="11" y="9" width="28" height="38" rx="3" fill="#FFFFFF" />
+      {/* speaker tick */}
+      <rect x="22" y="48" width="6" height="1.4" rx="0.7" fill="#FFFFFF" opacity="0.85" />
+      {/* red swoosh on the screen (Safaricom red) */}
+      <path
+        d="M16 30 Q22 24 28 28 T38 26"
+        stroke="#E2231A"
+        strokeWidth="3.4"
+        strokeLinecap="round"
+        fill="none"
+      />
+      <circle cx="38" cy="26" r="2.2" fill="#E2231A" />
+
+      {/* Wordmark — lowercase 'mpesa' in Safaricom green, bold */}
+      <text
+        x="56"
+        y="38"
+        fontFamily="Inter, system-ui, sans-serif"
+        fontWeight="800"
+        fontSize="30"
+        letterSpacing="-0.8"
+        fill="#3FA323"
+      >
+        m-pesa
+      </text>
+    </svg>
+  );
+}
+
+export function PaystackLockup({ className, height = 56, ...props }: LockupProps) {
+  const w = height * (220 / 56);
+  return (
+    <svg
+      width={w}
+      height={height}
+      viewBox="0 0 220 56"
+      className={className}
+      aria-label="Paystack"
+      role="img"
+      {...props}
+    >
+      {/* The 'P' built from stacked rounded rectangles. The lower-left
+          tail is shorter than the upper bars — that's the Paystack
+          identity per their 2019 brand reveal. */}
+      <g fill="#011B33">
+        <rect x="6"  y="6"  width="40" height="9" rx="3" />
+        <rect x="6"  y="19" width="28" height="9" rx="3" />
+        <rect x="6"  y="32" width="40" height="9" rx="3" />
+        <rect x="6"  y="45" width="16" height="6" rx="3" opacity="0.85" />
+      </g>
+
+      {/* Wordmark — 'paystack' in navy */}
+      <text
+        x="58"
+        y="36"
+        fontFamily="Inter, system-ui, sans-serif"
+        fontWeight="700"
+        fontSize="26"
+        letterSpacing="-0.5"
+        fill="#011B33"
+      >
+        paystack
+      </text>
+    </svg>
+  );
+}

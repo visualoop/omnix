@@ -8,7 +8,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { initiateMpesaCharge, verifyTransaction, submitChargeOtp, getPaystackConfig } from "@/services/paystack";
-import { PaystackIcon } from "@/components/icons/payment-brands";
+import { PaystackIcon, PaystackLockup, MpesaLockup } from "@/components/icons/payment-brands";
 
 interface Props {
   amount: number;
@@ -191,6 +191,14 @@ export function PaystackMpesaCharge({ amount, email, saleId, onSuccess, onCancel
 
       {(status === "initiating" || status === "polling") && (
         <div className="text-center py-2 space-y-3">
+          {/* Paystack processes the M-Pesa STK on the cashier's behalf —
+              show both brand lockups so the customer/cashier understands
+              who's actually charging the phone. */}
+          <div className="flex items-center justify-center gap-3">
+            <PaystackLockup height={32} />
+            <span className="text-muted-foreground/60" aria-hidden>·</span>
+            <MpesaLockup height={32} />
+          </div>
           <Loader2 className="h-8 w-8 mx-auto text-[#0E84C7] animate-spin" />
           <div>
             <p className="text-sm font-medium">

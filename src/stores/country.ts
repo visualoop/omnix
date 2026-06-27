@@ -20,9 +20,24 @@ interface CountryState {
 }
 
 const SETTING_KEY = "country_code";
+const LS_KEY = "omnix.country_code";
+
+// Synchronous hydration from localStorage. Each Tauri window has its own
+// zustand store instance — without this, the customer-display second
+// screen renders with code=null on first paint and money() falls back to
+// "$" before the async DB load completes. We persist the code to
+// localStorage on every successful load/set so every window picks it up
+// at module-load time.
+function hydrateFromCache(): CountryCode | null {
+  try {
+    const v = (typeof window !== "undefined" ? window.localStorage.getItem(LS_KEY) : null) as CountryCode | null;
+    if (v) return v;
+  } catch { /* localStorage unavailable */ }
+  return null;
+}
 
 export const useCountry = create<CountryState>((set, get) => ({
-  code: null,
+  code: hydrateFromCache(),
   loaded: false,
 
   load: async () => {
@@ -33,14 +48,17 @@ export const useCountry = create<CountryState>((set, get) => ({
         [SETTING_KEY],
       );
       const code = (rows[0]?.value as CountryCode | undefined) ?? "KE";
+      try { window.localStorage.setItem(LS_KEY, code); } catch {}
       set({ code, loaded: true });
     } catch {
       // Settings table may not exist on cold boot — default to KE.
+      try { window.localStorage.setItem(LS_KEY, "KE"); } catch {}
       set({ code: "KE", loaded: true });
     }
   },
 
   set: async (code) => {
+    try { window.localStorage.setItem(LS_KEY, code); } catch {}
     set({ code, loaded: true });
     try {
       await execute(
