@@ -79,6 +79,15 @@ export function SiteHeader({ isAuthed = false }: { isAuthed?: boolean }) {
     setOpenMenu(null)
   }, [pathname])
 
+  // Lock body scroll while the mobile menu is open so the menu itself
+  // scrolls (not the page behind it), and so iOS doesn't bounce.
+  React.useEffect(() => {
+    if (!open) return
+    const prev = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => { document.body.style.overflow = prev }
+  }, [open])
+
   // Close any open dropdown on outside click.
   React.useEffect(() => {
     if (!openMenu) return
@@ -230,8 +239,8 @@ export function SiteHeader({ isAuthed = false }: { isAuthed?: boolean }) {
 
       {/* Mobile nav (flat — children expanded inline) */}
       {open ? (
-        <div className="fixed inset-x-0 top-[72px] z-40 border-b border-[var(--color-border)] bg-[var(--color-bg)] lg:hidden">
-          <div className="container-wide flex flex-col gap-1 py-6">
+        <div className="fixed inset-x-0 top-[72px] bottom-0 z-40 overflow-y-auto overscroll-contain border-b border-[var(--color-border)] bg-[var(--color-bg)] lg:hidden">
+          <div className="container-wide flex flex-col gap-1 py-6 pb-[max(2rem,env(safe-area-inset-bottom))]">
             {NAV.map((item) => (
               <React.Fragment key={item.href}>
                 {item.children ? (
