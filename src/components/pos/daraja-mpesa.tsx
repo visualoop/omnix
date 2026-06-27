@@ -206,36 +206,48 @@ export function DarajaMpesaCharge({ amount, saleId, onSuccess, onCancel }: Props
   }
 
   return (
-    <div className="space-y-4">
-      <div className="text-center py-2">
-        <p className="text-xs text-muted-foreground">Amount to charge via M-Pesa</p>
-        <p className="text-2xl font-bold font-mono">KES {amount.toFixed(2)}</p>
+    <div className="space-y-5">
+      {/* Masthead — matches the parent payment modal's hierarchy:
+          uppercase tracked eyebrow + big mono total in brand green. */}
+      <div className="text-center">
+        <p className="text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
+          Amount via M-Pesa
+        </p>
+        <p className="text-3xl font-bold font-mono tabular-nums leading-tight text-[#2E7D1B] dark:text-[#7BE35C] mt-1">
+          KES {amount.toFixed(2)}
+        </p>
       </div>
 
       {status === "idle" && (
         <>
           <div className="space-y-1.5">
-            <label className="text-xs font-medium text-muted-foreground">Customer's M-Pesa phone</label>
+            <label className="text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
+              Customer's M-Pesa phone
+            </label>
             <Input
               placeholder="0712345678"
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
+              className="h-11 font-mono"
               autoFocus
             />
           </div>
           {error && <p className="text-xs text-destructive">{error}</p>}
-          <div className="flex gap-2">
-            <Button variant="outline" className="flex-1" onClick={onCancel}>Cancel</Button>
-            <Button className="flex-1 bg-green-600 hover:bg-green-700" onClick={handleCharge}>
-              <Smartphone className="h-4 w-4 mr-1" /> Send STK Push (M-Pesa)
+          <div className="flex gap-2 pt-1">
+            <Button variant="outline" className="flex-1 h-11" onClick={onCancel}>Cancel</Button>
+            <Button
+              className="flex-1 h-11 bg-[#1F8B3A] hover:bg-[#16702D] text-white"
+              onClick={handleCharge}
+            >
+              <Smartphone className="h-4 w-4 mr-1.5" /> Send STK push
             </Button>
           </div>
         </>
       )}
 
       {(status === "initiating" || status === "polling") && (
-        <div className="text-center py-6 space-y-3">
-          <Loader2 className="h-8 w-8 mx-auto text-green-600 animate-spin" />
+        <div className="text-center py-2 space-y-3">
+          <Loader2 className="h-8 w-8 mx-auto text-[#1F8B3A] animate-spin" />
           <div>
             <p className="text-sm font-medium">
               {status === "initiating" ? "Sending STK push..." : "Waiting for customer PIN..."}

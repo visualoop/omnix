@@ -51,6 +51,13 @@ const VARIANT_LABEL: Record<VariantId, string> = {
  * Empty by default — the standard summary is enough for most patches.
  */
 const VERSION_HIGHLIGHTS: Record<string, string[]> = {
+  '0.15.1': [
+    'M-Pesa sandbox testing no longer falsely fails — Safaricom\'s sandbox returns a stray "cancelled" code on the first poll; we now ignore it during the 15-second grace so auto-confirm always lands. Production unchanged.',
+    'Payment modal redesigned — wider so cards don\'t clip, focus rings stay inside the dialog, one scroll axis instead of two, the "Complete sale" button is genuinely sticky.',
+    'The M-Pesa / Paystack / Insurance dialogs that open during checkout now share the same masthead + brand colours as the main payment modal (Safaricom green, Paystack cyan, insurance sky-blue) — checkout feels like one continuous flow, not five different screens.',
+    'Brand selector showed the brand id instead of the name when you picked one — fixed in the product panel and quick-add.',
+    'New route error boundary — when something crashes in a deep child the app no longer blanks out; you see the actual error message + stack you can paste in a bug report.',
+  ],
   '0.15.0': [
     'Omnix AI grew from a help concierge into a business partner — ask it real questions about your shop and it answers from your live data',
     'Ask things like "what made the most profit this month?", "what should I reorder and how much?", "which customers have stopped buying?", "why did revenue change?" — grounded in your actual numbers, never guessed',

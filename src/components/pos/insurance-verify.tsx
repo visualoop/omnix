@@ -88,19 +88,22 @@ export function InsuranceVerifyPanel({ grossAmount, onMemberSelected, onCancel }
     const { copay, claim } = calculateCopay(verified.member, grossAmount);
     return (
       <div className="space-y-4">
-        <div className="border border-green-500/50 bg-green-500/5 rounded-lg p-4">
+        {/* Verified-member banner — uses the insurance brand sky-blue
+            (matching the InsuranceIcon shield) for visual continuity with
+            the payment-method chip the cashier clicked to land here. */}
+        <div className="border border-[#0E84C7]/40 bg-[#0E84C7]/[0.06] rounded-lg p-4">
           <div className="flex items-start gap-3">
-            <CheckCircle2 className="h-5 w-5 text-green-600 shrink-0 mt-0.5" />
-            <div className="flex-1">
-              <p className="text-sm font-medium">{verified.member.full_name}</p>
+            <CheckCircle2 className="h-5 w-5 text-[#0E84C7] shrink-0 mt-0.5" weight="fill" />
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold truncate">{verified.member.full_name}</p>
               <p className="text-xs text-muted-foreground mt-0.5">
-                {verified.provider.name} • Member: <span className="font-mono">{verified.member.member_number}</span>
+                {verified.provider.name} · Member <span className="font-mono">{verified.member.member_number}</span>
               </p>
               {verified.member.scheme_name && (
                 <p className="text-xs text-muted-foreground">Scheme: {verified.member.scheme_name}</p>
               )}
               {verified.member.benefit_balance !== null && (
-                <p className="text-xs mt-1">
+                <p className="text-xs mt-1.5">
                   Balance: <span className="font-mono font-medium">KES {verified.member.benefit_balance.toFixed(0)}</span>
                 </p>
               )}
@@ -108,32 +111,37 @@ export function InsuranceVerifyPanel({ grossAmount, onMemberSelected, onCancel }
           </div>
         </div>
 
-        {/* Cost split */}
+        {/* Cost split — uppercase mono header matches the payment modal masthead */}
         <div className="border border-border rounded-lg overflow-hidden">
-          <div className="bg-muted/30 border-b border-border px-4 py-2">
-            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Cost Breakdown</p>
+          <div className="bg-muted/30 border-b border-border px-4 py-2.5">
+            <p className="text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground">Cost breakdown</p>
           </div>
           <div className="p-4 space-y-2">
-            <Row label="Total Bill" value={grossAmount} bold />
+            <Row label="Total bill" value={grossAmount} bold />
             {verified.member.copay_percentage > 0 && (
               <Row
-                label={`Member Copay (${verified.member.copay_percentage}%)`}
+                label={`Member copay (${verified.member.copay_percentage}%)`}
                 value={(grossAmount * verified.member.copay_percentage) / 100}
                 indent
               />
             )}
             {verified.member.copay_fixed > 0 && (
-              <Row label="Fixed Copay" value={verified.member.copay_fixed} indent />
+              <Row label="Fixed copay" value={verified.member.copay_fixed} indent />
             )}
             <div className="border-t border-border pt-2" />
-            <Row label="Member Pays" value={copay} bold highlight="amber" />
-            <Row label="Insurance Pays" value={claim} bold highlight="green" />
+            <Row label="Member pays" value={copay} bold highlight="amber" />
+            <Row label="Insurance pays" value={claim} bold highlight="green" />
           </div>
         </div>
 
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={() => setVerified(null)} className="flex-1">Change</Button>
-          <Button onClick={handleConfirm} className="flex-1">Confirm</Button>
+        <div className="flex gap-2 pt-1">
+          <Button variant="outline" onClick={() => setVerified(null)} className="flex-1 h-11">Change</Button>
+          <Button
+            onClick={handleConfirm}
+            className="flex-1 h-11 bg-[#0E84C7] hover:bg-[#0A6F9E] text-white"
+          >
+            Confirm
+          </Button>
         </div>
       </div>
     );

@@ -123,28 +123,41 @@ export function PaystackMpesaCharge({ amount, email, saleId, onSuccess, onCancel
   }
 
   return (
-    <div className="space-y-4">
-      <div className="text-center py-2">
-        <p className="text-xs text-muted-foreground">Amount to charge</p>
-        <p className="text-2xl font-bold font-mono">KES {amount.toFixed(2)}</p>
+    <div className="space-y-5">
+      {/* Masthead — matches the parent payment modal's hierarchy. Paystack
+          processes M-Pesa STK so the figure stays in Safaricom green for
+          continuity; the Paystack cyan colours the action chrome below. */}
+      <div className="text-center">
+        <p className="text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
+          Amount via Paystack
+        </p>
+        <p className="text-3xl font-bold font-mono tabular-nums leading-tight text-[#2E7D1B] dark:text-[#7BE35C] mt-1">
+          KES {amount.toFixed(2)}
+        </p>
       </div>
 
       {status === "idle" && (
         <>
           <div className="space-y-1.5">
-            <label className="text-xs font-medium text-muted-foreground">Customer's M-Pesa phone</label>
+            <label className="text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
+              Customer's M-Pesa phone
+            </label>
             <Input
               placeholder="0712345678"
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
+              className="h-11 font-mono"
               autoFocus
             />
           </div>
           {error && <p className="text-xs text-destructive">{error}</p>}
-          <div className="flex gap-2">
-            <Button variant="outline" className="flex-1" onClick={onCancel}>Cancel</Button>
-            <Button className="flex-1" onClick={handleCharge}>
-              <Smartphone className="h-4 w-4 mr-1" /> Send STK Push
+          <div className="flex gap-2 pt-1">
+            <Button variant="outline" className="flex-1 h-11" onClick={onCancel}>Cancel</Button>
+            <Button
+              className="flex-1 h-11 bg-[#0E84C7] hover:bg-[#0A6F9E] text-white"
+              onClick={handleCharge}
+            >
+              <Smartphone className="h-4 w-4 mr-1.5" /> Send STK push
             </Button>
           </div>
         </>
@@ -160,19 +173,25 @@ export function PaystackMpesaCharge({ amount, email, saleId, onSuccess, onCancel
             placeholder="Enter OTP code"
             value={otp}
             onChange={(e) => setOtp(e.target.value)}
+            className="h-11 font-mono text-center text-base tracking-[0.4em]"
             autoFocus
           />
           {error && <p className="text-xs text-destructive">{error}</p>}
           <div className="flex gap-2">
-            <Button variant="outline" className="flex-1" onClick={onCancel}>Cancel</Button>
-            <Button className="flex-1" onClick={handleSubmitOtp}>Submit OTP</Button>
+            <Button variant="outline" className="flex-1 h-11" onClick={onCancel}>Cancel</Button>
+            <Button
+              className="flex-1 h-11 bg-[#0E84C7] hover:bg-[#0A6F9E] text-white"
+              onClick={handleSubmitOtp}
+            >
+              Submit OTP
+            </Button>
           </div>
         </div>
       )}
 
       {(status === "initiating" || status === "polling") && (
-        <div className="text-center py-6 space-y-3">
-          <Loader2 className="h-8 w-8 mx-auto text-primary animate-spin" />
+        <div className="text-center py-2 space-y-3">
+          <Loader2 className="h-8 w-8 mx-auto text-[#0E84C7] animate-spin" />
           <div>
             <p className="text-sm font-medium">
               {status === "initiating" ? "Sending request to Paystack..." : "Waiting for customer PIN..."}
