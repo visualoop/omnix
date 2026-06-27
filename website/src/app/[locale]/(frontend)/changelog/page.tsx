@@ -51,6 +51,10 @@ const VARIANT_LABEL: Record<VariantId, string> = {
  * Empty by default — the standard summary is enough for most patches.
  */
 const VERSION_HIGHLIGHTS: Record<string, string[]> = {
+  '0.15.2': [
+    'Dashboard downloads page now derives the right installer URL for every variant — Pro no longer shows "no .exe / no .msi" when the GitHub release has the binary.',
+    'Error boundary now also catches non-render errors (click-handler crashes, unhandled promise rejections, Tauri plugin failures) so blank screens always surface an error message instead of vanishing silently.',
+  ],
   '0.15.1': [
     'M-Pesa sandbox testing no longer falsely fails — Safaricom\'s sandbox returns a stray "cancelled" code on the first poll; we now ignore it during the 15-second grace so auto-confirm always lands. Production unchanged.',
     'Payment modal redesigned — wider so cards don\'t clip, focus rings stay inside the dialog, one scroll axis instead of two, the "Complete sale" button is genuinely sticky.',

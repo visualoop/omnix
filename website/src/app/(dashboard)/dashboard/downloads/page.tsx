@@ -89,10 +89,40 @@ export default async function DashboardDownloadsPage() {
   const meta = (latestRow?.metadata ?? {}) as { variants?: Partial<Record<VariantId, VariantUrls>> }
   const variants = meta.variants ?? {}
 
+  // Canonical asset naming convention used by the CI build matrix. Mirrors
+  // the public /downloads page logic so a missing entry in metadata.variants
+  // (e.g. when one variant's CI notify silently failed) never falls back
+  // silently to the canonical Pro installer for a non-Pro variant — or, in
+  // this case for Pro itself, never shows "no .exe" when the asset exists.
+  const PRODUCT_NAME: Record<VariantId, string> = {
+    pro: 'Omnix',
+    dawa: 'Omnix.Dawa',
+    retail: 'Omnix.Retail',
+    hospitality: 'Omnix.Hospitality',
+    hardware: 'Omnix.Hardware',
+  }
+
+  function githubAssetUrl(v: VariantId, kind: 'exe' | 'msi'): string | undefined {
+    if (!latestRow) return undefined
+    const tag = `v${latestRow.version}`
+    const file = kind === 'exe'
+      ? `${PRODUCT_NAME[v]}_${latestRow.version}_x64-setup.exe`
+      : `${PRODUCT_NAME[v]}_${latestRow.version}_x64_en-US.msi`
+    return `https://github.com/visualoop/omnix/releases/download/${tag}/${file}`
+  }
+
   function urlsFor(v: VariantId): VariantUrls {
     const stored = variants[v] ?? {}
-    if (stored.exe || stored.msi) return stored
-    return { exe: latestRow?.exeUrl ?? undefined, msi: latestRow?.msiUrl ?? undefined }
+    if (stored.exe || stored.msi) {
+      return {
+        exe: stored.exe ?? githubAssetUrl(v, 'exe'),
+        msi: stored.msi ?? githubAssetUrl(v, 'msi'),
+      }
+    }
+    return {
+      exe: githubAssetUrl(v, 'exe'),
+      msi: githubAssetUrl(v, 'msi'),
+    }
   }
 
   const olderRows = await db
