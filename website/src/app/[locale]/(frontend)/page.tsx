@@ -7,30 +7,35 @@ import { HeroSection } from '@/components/landing/hero-section'
 import { ModulesRowsSection } from '@/components/landing/modules-rows-section'
 import { OnePriceSection } from '@/components/landing/one-price-section'
 import { ReceiptProofSection } from '@/components/landing/receipt-proof-section'
-import { PdfPackSection } from '@/components/landing/pdf-pack-section'
 import { RecentWorkSection } from '@/components/landing/recent-work-section'
-import { StudiosHandSection } from '@/components/landing/studios-hand-section'
 import { ThreeQuotesSection } from '@/components/landing/three-quotes-section'
 import { AiSection } from '@/components/landing/ai-section'
+import { TrustStripSection } from '@/components/landing/trust-strip-section'
+import { UnifiedPlatformSection } from '@/components/landing/unified-platform-section'
+import { WhySwitchSection } from '@/components/landing/why-switch-section'
+import { ReliabilitySection } from '@/components/landing/reliability-section'
 
 /**
- * Omnix homepage — long-scroll editorial.
+ * Omnix homepage — long-scroll editorial, reordered around the BUYER JOURNEY
+ * (attention → comprehension → belief → differentiation → proof →
+ * risk-reversal → action). Every section answers one buying question and uses
+ * only the existing warm-luxe design tokens/utilities. See
+ * docs/WEBSITE_REDESIGN_PLAN.md §3 for the per-section rationale.
  *
- * Section order per OMNIX-BRIEF.md §6.1.
- * Every section title is evocative (never literally "Features" / "Services").
- * Every section uses the editorial type utilities defined in globals.css.
- *
- *  1. Hero                — headline italic-word emphasis, single CTA, mono caption, PosPreview
- *  2. Founder note        — replaces stats row; signed letter (60ch italic Geist)
- *  3. What we make        — 4 alternating image/text rows, honest placeholders
- *  4. The receipt is the proof — eTIMS receipt + KRA filing side-by-side, hung quote
- *  5. The studio's hand   — 3 numbered steps in Fraunces 96px accent
- *  6. Recent work         — 1-2-1 layout of customer placeholders
- *  7. Compliance          — quiet 4-col grid, no icons
- *  8. Three quotes        — pull quotes hung off-grid, no avatars
- *  9. One price           — single huge KES 30,000, three text-link entry points
- * 10. FAQ                 — accordion, plus glyph rotates to ×
- * 11. Closing CTA         — full-bleed dark band, italic 64px, one CTA + WhatsApp
+ *  1. Hero            — platform thesis: "the platform your business grows with"
+ *  2. Trust strip     — instant credibility (offline · M-Pesa · eTIMS · data · updates)
+ *  3. Unified platform— "what does it replace?" — ERP + POS + AI in one
+ *  4. The product     — real screenshots; the app sells itself (#product anchor)
+ *  5. AI              — a business employee that knows your numbers + acts
+ *  6. Built for trade — 4 modules, self-select into a module page
+ *  7. Why switch      — overcome status-quo bias (before / Omnix)
+ *  8. Reliability     — data safety, offline, updates, scale — depend on it for years
+ *  9. M-Pesa + eTIMS  — local proof points (receipt → KRA filing)
+ * 10. Owners' words   — social proof
+ * 11. One price       — value-before-price, own forever, risk reversal
+ * 12. FAQ             — final objections
+ * 13. Founder note    — the human behind it, just before the ask
+ * 14. Closing CTA     — convert: trial / download / talk
  */
 import { cookies } from 'next/headers'
 import { CURRENCIES, formatPrice, tierPrice, type PricingTierShape, type SupportedCurrency } from '@/lib/currency'
@@ -124,17 +129,21 @@ export default async function HomePage({
         locale={locale}
         priceCaption={`${formatPrice(onePriceAmount, currency)} once`}
       />
-      <FounderNoteSection />
-      <AiSection />
+      <TrustStripSection />
+      <UnifiedPlatformSection />
+      <div id="product" className="scroll-mt-24">
+        <AiSection />
+      </div>
       <ModulesRowsSection images={moduleRowImages} />
+      <WhySwitchSection />
+      <ReliabilitySection />
       <ReceiptProofSection />
-      <PdfPackSection />
-      <StudiosHandSection />
       <RecentWorkSection />
       <ComplianceSection />
       <ThreeQuotesSection />
       <OnePriceSection price={onePrice} currency={oneCurrency} />
       <FaqSection />
+      <FounderNoteSection />
       <ClosingCtaSection whatsappUrl={settings.whatsappUrl} />
     </>
   )

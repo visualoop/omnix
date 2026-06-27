@@ -18,18 +18,24 @@ export function AiSection() {
           <div>
             <span className="caption-mono">AI inside</span>
             <h2 className="font-[family-name:var(--font-display)] mt-5 text-[clamp(40px,5vw,72px)] font-normal leading-[1.05] tracking-[-0.025em] text-[var(--color-fg)]">
-              An assistant that <em>knows</em> your business.
+              An employee that <em>knows</em> your numbers.
             </h2>
             <p className="mt-6 text-[16px] leading-[1.7] text-[var(--color-fg-muted)] max-w-[44ch]">
-              Built into every till. Knows the entire app, KRA filings, M-Pesa flows, SHA claims —
-              and your live data. Ask "how was lunch?" and it pulls today's sales. Ask "what's running
-              low?" and it lists the reorder queue. Ask "why did this eTIMS receipt fail?" and it
-              translates the cryptic CU error into plain English.
+              Not a chatbot — a working assistant wired into your live data. Ask
+              &ldquo;what made the most profit this month?&rdquo;, &ldquo;what should I reorder, and
+              how much?&rdquo;, or &ldquo;which customers have stopped buying?&rdquo; and it answers
+              from your actual books, not a guess.
             </p>
             <p className="mt-4 text-[16px] leading-[1.7] text-[var(--color-fg-muted)] max-w-[44ch]">
-              Bring your own model — Groq and OpenRouter offer free tiers that are plenty for daily
-              work. Want GPT-4o or Claude? Plug your key in. We never see your prompts; calls go
-              direct from your machine to your provider.
+              It flags what needs attention before you ask — stock about to run
+              out, items priced below cost, a quiet week — and can even prepare
+              the work: draft a purchase order, tidy your catalogue, harmonise a
+              messy import. Nothing changes until you approve it.
+            </p>
+            <p className="mt-4 text-[16px] leading-[1.7] text-[var(--color-fg-muted)] max-w-[44ch]">
+              Bring your own model — free tiers from Groq or OpenRouter handle
+              daily work; plug in GPT-4o or Claude if you prefer. We never see
+              your prompts; calls go direct from your machine to your provider.
             </p>
             <Link
               href="/ai"
@@ -60,7 +66,7 @@ export function AiSection() {
                     You
                   </div>
                   <p className="mt-1 text-[14px] text-[var(--color-fg)]">
-                    What did we sell today? And what's running low?
+                    What should I reorder this week, and how much?
                   </p>
                 </div>
                 <div className="rounded-lg border border-[var(--color-border)] bg-transparent px-4 py-3 mr-8">
@@ -68,15 +74,19 @@ export function AiSection() {
                     Omnix
                   </div>
                   <p className="mt-1 text-[14px] leading-[1.6] text-[var(--color-fg)]">
-                    Today: KES 47,300 across 89 sales — 62% M-Pesa, 31% cash, 7% card.
+                    Three items will run out within a week at your current pace:
                   </p>
                   <p className="mt-2 text-[14px] leading-[1.6] text-[var(--color-fg)]">
-                    3 items below reorder level: Panadol Extra (4 left), Cetrizine 10mg (2 left),
-                    Cataflam 50mg (3 left). Open <code className="font-[family-name:var(--font-mono)] rounded bg-[var(--color-surface-2)] px-1 py-0.5 text-[12px] text-[var(--color-accent)]">/inventory</code> to reorder.
+                    Amoxicillin (~3 days left, order 180), Panadol Extra (~5 days,
+                    order 120), Zinc 20mg (~6 days, order 90) — all from Dawa Ltd,
+                    your usual supplier.
+                  </p>
+                  <p className="mt-2 text-[14px] leading-[1.6] text-[var(--color-fg-muted)]">
+                    Want me to draft the purchase order?
                   </p>
                 </div>
                 <div className="flex flex-wrap gap-1.5 pt-1">
-                  {['/inventory', '/reports/zreport', 'Restock list'].map((chip) => (
+                  {['Draft the PO', 'Review first', 'Adjust quantities'].map((chip) => (
                     <span
                       key={chip}
                       className="font-[family-name:var(--font-mono)] rounded-full border border-[var(--color-border)] bg-[var(--color-surface-2)] px-2.5 py-1 text-[11px] text-[var(--color-fg-muted)]"
@@ -88,7 +98,7 @@ export function AiSection() {
               </div>
             </div>
             <div className="mt-3 px-1 font-[family-name:var(--font-mono)] text-[10px] uppercase tracking-[0.18em] text-[var(--color-fg-subtle)]">
-              Real conversation. Real data. Your model. Your keys.
+              Real data · real actions · your model · your keys
             </div>
           </div>
         </div>

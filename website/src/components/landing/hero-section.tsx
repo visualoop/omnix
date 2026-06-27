@@ -39,16 +39,18 @@ export function HeroSection({
   priceCaption?: string
 }) {
   const isKenya = (locale ?? 'ke').toLowerCase() === 'ke'
-  const cmsEyebrow = content?.eyebrow?.trim() || (isKenya ? 'Lipa na M-Pesa · eTIMS · offline-first' : 'Built offline-first. Pay once. Own forever.')
+  const cmsEyebrow = content?.eyebrow?.trim() || 'One platform · offline-first · pay once, own forever'
   const releaseEyebrow = latestRelease
     ? `NEW · v${latestRelease.version} — ${latestRelease.title || latestRelease.summary || 'Latest release'}`
     : null
   const eyebrow = releaseEyebrow || cmsEyebrow
   const headline = content?.headline?.trim()
-  // Subheadline — leads with M-Pesa + eTIMS, the terms Kenyan SMEs
-  // actually search for. "ERP" is a category nobody types into Google.
-  const defaultSubKenya = 'Omnix is the POS built for Kenyan businesses. Take Lipa na M-Pesa (STK push, Paybill & Till), print KRA eTIMS receipts, track stock, and run it all offline. One Windows app you download, own, and pay for once — no monthly fees.'
-  const defaultSubGlobal = 'Omnix is the offline-first POS + business platform for owner-operators. Mobile-money and card payments, inventory, banking, payroll, tax receipts — one Windows app you download, run offline, and own. Pay once, no subscription.'
+  // Subheadline — outcome-led. Names what the business actually does (sell,
+  // stock, bank, pay staff, file tax, ask its data) rather than listing specs.
+  // The differentiators (offline, M-Pesa, own-it) are implied through outcomes,
+  // not enumerated like a checklist.
+  const defaultSubKenya = 'Sell, manage stock, bank the takings, pay staff, file KRA receipts, and ask your own data what to do next — from one Windows app that runs offline, takes M-Pesa, and is yours to keep. No monthly fees. No lock-in.'
+  const defaultSubGlobal = 'Sell, manage stock, bank the takings, pay staff, handle tax, and ask your own data what to do next — from one desktop app that runs offline and is yours to own. Pay once. No subscription. No lock-in.'
   const subheadline = content?.subheadline?.trim() || (isKenya ? defaultSubKenya : defaultSubGlobal)
   const ctaLabel = content?.primaryCtaLabel?.trim() || 'Start free trial'
   const ctaHref = content?.primaryCtaHref?.trim() || '/signup'
@@ -102,15 +104,15 @@ export function HeroSection({
             headline
           ) : isKenya ? (
             <>
-              POS with M-Pesa.
+              The platform your
               <br />
-              <em>Built for Kenya.</em>
+              business <em>grows with.</em>
             </>
           ) : (
             <>
-              Run your business.
+              The platform your
               <br />
-              <em>Own the software.</em>
+              business <em>grows with.</em>
             </>
           )}
         </motion.h1>
@@ -131,7 +133,7 @@ export function HeroSection({
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.3 }}
-          className="mt-11 flex justify-center"
+          className="mt-11 flex flex-col items-center justify-center gap-4 sm:flex-row"
         >
           <Button asChild size="xl" className="ring-inset-soft">
             <Link href={ctaHref} className="gap-2">
@@ -139,6 +141,13 @@ export function HeroSection({
               <Icon.ArrowRight className="size-4" weight="bold" />
             </Link>
           </Button>
+          <Link
+            href="#product"
+            className="font-[family-name:var(--font-ui)] group inline-flex items-center gap-2 text-[14px] font-medium text-[var(--color-fg-muted)] transition-colors hover:text-[var(--color-fg)]"
+          >
+            See it in action
+            <Icon.ArrowDown className="size-3.5 transition-transform group-hover:translate-y-0.5" weight="bold" />
+          </Link>
         </motion.div>
 
         {/* Tech caption — mono 11px tracked uppercase. Only price reference above the fold. */}

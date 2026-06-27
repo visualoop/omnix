@@ -23,21 +23,31 @@ interface NavItem {
 
 const NAV: readonly NavItem[] = [
   {
-    labelKey: 'trades',
+    labelKey: 'products',
     href: '/modules',
     children: [
-      { label: 'Omnix Pro', href: '/pro', description: 'All four trades — multi-trade businesses' },
+      { label: 'Omnix Pro', href: '/pro', description: 'All trades in one — multi-trade businesses' },
       { label: 'Omnix Dawa', href: '/dawa', description: 'Pharmacy management' },
       { label: 'Omnix Retail', href: '/retail', description: 'Shops, mini-marts, dukas' },
       { label: 'Omnix Hospitality', href: '/hospitality', description: 'Restaurants, bars, lodges' },
       { label: 'Omnix Hardware', href: '/hardware', description: 'Hardware stores, contractors' },
     ],
   },
-  { labelKey: 'pricing', href: '/pricing' },
   { labelKey: 'ai', href: '/ai' },
-  { labelKey: 'downloads', href: '/downloads' },
-  { labelKey: 'changelog', href: '/changelog' },
-  { labelKey: 'docs', href: '/docs' },
+  { labelKey: 'pricing', href: '/pricing' },
+  {
+    labelKey: 'resources',
+    href: '/docs',
+    children: [
+      { label: 'Downloads', href: '/downloads', description: 'Get the app for Windows' },
+      { label: 'Documentation', href: '/docs', description: 'Guides, setup, troubleshooting' },
+      { label: 'M-Pesa', href: '/mpesa', description: 'Native payments, reconciled' },
+      { label: 'KRA eTIMS', href: '/etims', description: 'Tax compliance, automated' },
+      { label: 'Changelog', href: '/changelog', description: "What's new in each release" },
+      { label: 'Support', href: '/support', description: 'Help, onboarding, contact' },
+      { label: 'About', href: '/about', description: 'Who builds Omnix' },
+    ],
+  },
 ] as const
 
 /**
@@ -51,8 +61,8 @@ export function SiteHeader({ isAuthed = false }: { isAuthed?: boolean }) {
   const t = useTranslations('nav')
   const [scrolled, setScrolled] = React.useState(false)
   const [open, setOpen] = React.useState(false)
-  const [tradesOpen, setTradesOpen] = React.useState(false)
-  const tradesRef = React.useRef<HTMLDivElement | null>(null)
+  const [openMenu, setOpenMenu] = React.useState<string | null>(null)
+  const navRef = React.useRef<HTMLElement | null>(null)
 
   React.useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 60)
@@ -63,20 +73,20 @@ export function SiteHeader({ isAuthed = false }: { isAuthed?: boolean }) {
 
   React.useEffect(() => {
     setOpen(false)
-    setTradesOpen(false)
+    setOpenMenu(null)
   }, [pathname])
 
-  // Close trades dropdown on outside click.
+  // Close any open dropdown on outside click.
   React.useEffect(() => {
-    if (!tradesOpen) return
+    if (!openMenu) return
     const onClick = (e: MouseEvent) => {
-      if (tradesRef.current && !tradesRef.current.contains(e.target as Node)) {
-        setTradesOpen(false)
+      if (navRef.current && !navRef.current.contains(e.target as Node)) {
+        setOpenMenu(null)
       }
     }
     document.addEventListener('mousedown', onClick)
     return () => document.removeEventListener('mousedown', onClick)
-  }, [tradesOpen])
+  }, [openMenu])
 
   return (
     <header
@@ -98,21 +108,22 @@ export function SiteHeader({ isAuthed = false }: { isAuthed?: boolean }) {
         </Link>
 
         {/* Nav — truly centred */}
-        <nav className="hidden items-center gap-1 lg:flex">
+        <nav ref={navRef} className="hidden items-center gap-1 lg:flex">
           {NAV.map((item) => {
             const active = pathname === item.href || pathname.startsWith(`${item.href}/`)
             const childActive = item.children?.some(
               (c) => pathname === c.href || pathname.startsWith(`${c.href}/`),
             )
+            const isOpen = openMenu === item.href
 
             if (item.children) {
               return (
-                <div key={item.href} ref={tradesRef} className="relative">
+                <div key={item.href} className="relative">
                   <button
                     type="button"
-                    onClick={() => setTradesOpen((v) => !v)}
-                    onMouseEnter={() => setTradesOpen(true)}
-                    aria-expanded={tradesOpen}
+                    onClick={() => setOpenMenu((v) => (v === item.href ? null : item.href))}
+                    onMouseEnter={() => setOpenMenu(item.href)}
+                    aria-expanded={isOpen}
                     aria-haspopup="menu"
                     className={cn(
                       'font-[family-name:var(--font-ui)] inline-flex items-center gap-1 rounded-md px-3 py-1.5 text-[13px] font-medium transition-colors',
@@ -123,14 +134,14 @@ export function SiteHeader({ isAuthed = false }: { isAuthed?: boolean }) {
                   >
                     {t(item.labelKey)}
                     <Icon.ChevronDown
-                      className={cn('size-3 transition-transform', tradesOpen ? 'rotate-180' : '')}
+                      className={cn('size-3 transition-transform', isOpen ? 'rotate-180' : '')}
                       weight="bold"
                     />
                   </button>
-                  {tradesOpen ? (
+                  {isOpen ? (
                     <div
                       role="menu"
-                      onMouseLeave={() => setTradesOpen(false)}
+                      onMouseLeave={() => setOpenMenu(null)}
                       className="absolute left-1/2 top-full z-50 mt-2 w-[340px] -translate-x-1/2 rounded-lg border border-[var(--color-border)] bg-[var(--color-bg)] p-2 shadow-lg"
                     >
                       {item.children.map((c) => (
@@ -150,15 +161,6 @@ export function SiteHeader({ isAuthed = false }: { isAuthed?: boolean }) {
                           ) : null}
                         </Link>
                       ))}
-                      <div className="mt-1 border-t border-[var(--color-border)] pt-1">
-                        <Link
-                          href="/modules"
-                          role="menuitem"
-                          className="block rounded-md px-3 py-2 text-[12px] text-[var(--color-fg-subtle)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-fg)]"
-                        >
-                          Compare all modules →
-                        </Link>
-                      </div>
                     </div>
                   ) : null}
                 </div>

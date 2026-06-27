@@ -12,7 +12,9 @@
     "docs": "Documentation",
     "support": "Assistance",
     "signIn": "Connexion",
-    "startTrial": "Essai gratuit"
+    "startTrial": "Essai gratuit",
+    "products": "Produits",
+    "resources": "Ressources"
   },
   "footer": {
     "headings": {
