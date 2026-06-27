@@ -1,19 +1,12 @@
-/**
- * Hardware module pages (plan 10). Flat, data-dense, theme-token UI per the
- * Omnix design system. Gated by the `hardware` entitlement + hardware.* perms.
- */
 import { useEffect, useState } from "react";
 import {
-  ChartBar as BarChart3,
   CheckCircle as CheckCircle2,
-  CircleNotch as Loader2,
   Clock,
   FileText,
   Percent,
   Plus,
   Truck,
   Users,
-  Wrench,
 } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -28,24 +21,14 @@ import { query } from "@/lib/db";
 import { useNavigate } from "react-router-dom";
 import { useCartStore } from "@/stores/cart";
 import { money as KES } from "@/lib/money";
+import {
+  moduleAccent, ModuleMasthead, ModuleStat, ModuleTable, ModuleTHead,
+  ModuleEmpty, ModuleSpinner,
+} from "@/components/shared/module-kit";
 
-
-/** Hardware primary-action button colour (matches the orange dashboard/POS accent). */
-const BRAND_BTN = "bg-orange-700 hover:bg-orange-800 text-white";
-
-function PageHead({ icon: Icon, title, subtitle, action }: { icon: typeof Wrench; title: string; subtitle: string; action?: React.ReactNode }) {
-  return (
-    <div className="flex items-start justify-between mb-5">
-      <div>
-        <h1 className="text-xl font-semibold tracking-tight flex items-center gap-2">
-          <Icon className="h-5 w-5 text-orange-600" /> {title}
-        </h1>
-        <p className="text-sm text-muted-foreground mt-1">{subtitle}</p>
-      </div>
-      {action}
-    </div>
-  );
-}
+const ACCENT = moduleAccent("hardware");
+/** Hardware primary-action button colour. */
+const BRAND_BTN = `${ACCENT.solid} ${ACCENT.solidHover}`;
 
 const STATUS_STYLE: Record<string, string> = {
   draft: "bg-muted text-muted-foreground",
@@ -79,16 +62,16 @@ export function HardwareDashboardPage() {
 
   const openQuotes = quotes.filter((q) => !["converted", "cancelled", "expired"].includes(q.status)).length;
 
-  if (loading) return <div className="flex justify-center py-16"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>;
+  if (loading) return <ModuleSpinner />;
 
   return (
     <div>
-      <PageHead icon={Wrench} title="Hardware Dashboard" subtitle="Quotations, receivables, deliveries at a glance." />
+      <ModuleMasthead accent={ACCENT} title="Hardware Dashboard" subtitle="Quotations, receivables, and deliveries at a glance." />
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <Kpi label="Open quotations" value={String(openQuotes)} />
-        <Kpi label="Receivables" value={KES(aging?.total ?? 0)} />
-        <Kpi label="Overdue 90+" value={KES(aging?.d90_plus ?? 0)} tone={aging && aging.d90_plus > 0 ? "danger" : "default"} />
-        <Kpi label="Deliveries pending" value={String(pendingDeliveries)} />
+        <ModuleStat accent={ACCENT} label="Open quotations" value={openQuotes} icon={FileText} />
+        <ModuleStat accent={ACCENT} label="Receivables" value={KES(aging?.total ?? 0)} tone="accent" />
+        <ModuleStat accent={ACCENT} label="Overdue 90+" value={KES(aging?.d90_plus ?? 0)} tone={aging && aging.d90_plus > 0 ? "danger" : "default"} />
+        <ModuleStat accent={ACCENT} label="Deliveries pending" value={pendingDeliveries} icon={Truck} />
       </div>
 
       {aging && (
@@ -107,17 +90,6 @@ export function HardwareDashboardPage() {
         </Card>
       )}
     </div>
-  );
-}
-
-function Kpi({ label, value, tone = "default" }: { label: string; value: string; tone?: "default" | "danger" }) {
-  return (
-    <Card>
-      <CardContent className="p-4">
-        <div className="text-[11px] uppercase tracking-wide text-muted-foreground">{label}</div>
-        <div className={cn("text-2xl font-semibold mt-1 font-mono tabular-nums", tone === "danger" && "text-red-600")}>{value}</div>
-      </CardContent>
-    </Card>
   );
 }
 
@@ -155,56 +127,49 @@ export function HardwareQuotationsPage() {
 
   return (
     <div>
-      <PageHead
-        icon={FileText}
+      <ModuleMasthead
+        accent={ACCENT}
+        eyebrow="Hardware · Quotations"
         title="Quotations"
-        subtitle="Create quotes for contractors; convert accepted quotes to sales."
-        action={<Button size="sm" className={cn("cursor-pointer", BRAND_BTN)} onClick={() => toast.info("Use POS → Quote, or the contractor account page to build a quotation.")}><Plus className="h-3.5 w-3.5 mr-1.5" /> New quote</Button>}
+        subtitle="Quote contractors, then convert accepted quotes straight to a sale."
+        actions={<Button size="sm" className={cn("cursor-pointer", BRAND_BTN)} onClick={() => toast.info("Use POS → Quote, or the contractor account page to build a quotation.")}><Plus className="h-3.5 w-3.5 mr-1.5" /> New quote</Button>}
       />
-      {loading ? <CenterSpin /> : quotes.length === 0 ? (
-        <EmptyHint text="No quotations yet." />
+      {loading ? <ModuleSpinner /> : quotes.length === 0 ? (
+        <ModuleEmpty icon={FileText} title="No quotations yet" hint="Build a quote from the POS or a contractor account." />
       ) : (
-        <div className="border border-border rounded-lg overflow-hidden">
-          <table className="w-full text-[13px]">
-            <thead className="bg-muted/30 text-[11px] uppercase tracking-wide text-muted-foreground">
-              <tr>
-                <th className="text-left px-3 py-2">Quote #</th>
-                <th className="text-left px-3 py-2">Status</th>
-                <th className="text-right px-3 py-2">Total</th>
-                <th className="text-left px-3 py-2">Valid until</th>
-                <th className="text-right px-3 py-2 w-44">Action</th>
-              </tr>
-            </thead>
-            <tbody>
-              {quotes.map((q) => {
-                const canSend = q.status === "draft" || q.status === "sent" || q.status === "accepted";
-                return (
-                  <tr key={q.id} className="border-t border-border hover:bg-accent/30 transition-colors">
-                    <td className="px-3 py-2 font-mono">{q.quote_number}</td>
-                    <td className="px-3 py-2"><Badge variant="outline" className={cn("text-[10px]", STATUS_STYLE[q.status])}>{q.status}</Badge></td>
-                    <td className="px-3 py-2 text-right font-mono tabular-nums">{KES(q.total)}</td>
-                    <td className="px-3 py-2 text-muted-foreground">{q.valid_until ?? "—"}</td>
-                    <td className="px-3 py-2 text-right">
-                      {canSend ? (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          disabled={busy === q.id}
-                          onClick={() => sendToPos(q)}
-                          className="cursor-pointer"
-                        >
-                          {busy === q.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Send to POS"}
-                        </Button>
-                      ) : (
-                        <span className="text-[11px] text-muted-foreground">{q.status}</span>
-                      )}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+        <ModuleTable>
+          <ModuleTHead>
+            <tr>
+              <th className="text-left px-3 py-2">Quote #</th>
+              <th className="text-left px-3 py-2">Status</th>
+              <th className="text-right px-3 py-2">Total</th>
+              <th className="text-left px-3 py-2">Valid until</th>
+              <th className="text-right px-3 py-2 w-44">Action</th>
+            </tr>
+          </ModuleTHead>
+          <tbody>
+            {quotes.map((q) => {
+              const canSend = q.status === "draft" || q.status === "sent" || q.status === "accepted";
+              return (
+                <tr key={q.id} className="border-t border-border hover:bg-accent/30 transition-colors">
+                  <td className="px-3 py-2 font-mono">{q.quote_number}</td>
+                  <td className="px-3 py-2"><Badge variant="outline" className={cn("text-[10px]", STATUS_STYLE[q.status])}>{q.status}</Badge></td>
+                  <td className="px-3 py-2 text-right font-mono tabular-nums">{KES(q.total)}</td>
+                  <td className="px-3 py-2 text-muted-foreground">{q.valid_until ?? "—"}</td>
+                  <td className="px-3 py-2 text-right">
+                    {canSend ? (
+                      <Button size="sm" variant="outline" disabled={busy === q.id} onClick={() => sendToPos(q)} className="cursor-pointer">
+                        {busy === q.id ? "Loading…" : "Send to POS"}
+                      </Button>
+                    ) : (
+                      <span className="text-[11px] text-muted-foreground">{q.status}</span>
+                    )}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </ModuleTable>
       )}
     </div>
   );
@@ -235,36 +200,34 @@ export function HardwareDeliveryNotesPage() {
 
   return (
     <div>
-      <PageHead icon={Truck} title="Delivery Notes" subtitle="Track dispatch and delivery of materials." />
-      {loading ? <CenterSpin /> : notes.length === 0 ? (
-        <EmptyHint text="No delivery notes yet." />
+      <ModuleMasthead accent={ACCENT} eyebrow="Hardware · Logistics" title="Delivery Notes" subtitle="Track dispatch and delivery of materials to site." />
+      {loading ? <ModuleSpinner /> : notes.length === 0 ? (
+        <ModuleEmpty icon={Truck} title="No delivery notes yet" hint="Delivery notes are created when an order is dispatched." />
       ) : (
-        <div className="border border-border rounded-lg overflow-hidden">
-          <table className="w-full text-[13px]">
-            <thead className="bg-muted/30 text-[11px] uppercase tracking-wide text-muted-foreground">
-              <tr>
-                <th className="text-left px-3 py-2">Note #</th>
-                <th className="text-left px-3 py-2">Address</th>
-                <th className="text-left px-3 py-2">Status</th>
-                <th className="text-right px-3 py-2">Action</th>
+        <ModuleTable>
+          <ModuleTHead>
+            <tr>
+              <th className="text-left px-3 py-2">Note #</th>
+              <th className="text-left px-3 py-2">Address</th>
+              <th className="text-left px-3 py-2">Status</th>
+              <th className="text-right px-3 py-2">Action</th>
+            </tr>
+          </ModuleTHead>
+          <tbody>
+            {notes.map((n) => (
+              <tr key={n.id} className="border-t border-border hover:bg-accent/30 transition-colors">
+                <td className="px-3 py-2 font-mono">{n.note_number}</td>
+                <td className="px-3 py-2 text-muted-foreground truncate max-w-[240px]">{n.delivery_address ?? "—"}</td>
+                <td className="px-3 py-2"><Badge variant="outline" className={cn("text-[10px]", STATUS_STYLE[n.status])}>{n.status}</Badge></td>
+                <td className="px-3 py-2 text-right">
+                  {n.status === "pending" && <Button size="sm" variant="outline" className="cursor-pointer" onClick={() => advance(n)}><Truck className="h-3 w-3 mr-1" /> Dispatch</Button>}
+                  {n.status === "dispatched" && <Button size="sm" variant="outline" className="cursor-pointer" onClick={() => advance(n)}><CheckCircle2 className="h-3 w-3 mr-1" /> Delivered</Button>}
+                  {n.status === "delivered" && <span className="text-[11px] text-emerald-600">Delivered</span>}
+                </td>
               </tr>
-            </thead>
-            <tbody>
-              {notes.map((n) => (
-                <tr key={n.id} className="border-t border-border hover:bg-accent/30 transition-colors">
-                  <td className="px-3 py-2 font-mono">{n.note_number}</td>
-                  <td className="px-3 py-2 text-muted-foreground truncate max-w-[240px]">{n.delivery_address ?? "—"}</td>
-                  <td className="px-3 py-2"><Badge variant="outline" className={cn("text-[10px]", STATUS_STYLE[n.status])}>{n.status}</Badge></td>
-                  <td className="px-3 py-2 text-right">
-                    {n.status === "pending" && <Button size="sm" variant="outline" className="cursor-pointer" onClick={() => advance(n)}><Truck className="h-3 w-3 mr-1" /> Dispatch</Button>}
-                    {n.status === "dispatched" && <Button size="sm" variant="outline" className="cursor-pointer" onClick={() => advance(n)}><CheckCircle2 className="h-3 w-3 mr-1" /> Delivered</Button>}
-                    {n.status === "delivered" && <span className="text-[11px] text-emerald-600">Delivered</span>}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+            ))}
+          </tbody>
+        </ModuleTable>
       )}
     </div>
   );
@@ -288,34 +251,32 @@ export function HardwareAccountsPage() {
 
   return (
     <div>
-      <PageHead icon={Users} title="Contractor Accounts" subtitle="Credit limits, outstanding balances, and holds." />
-      {loading ? <CenterSpin /> : rows.length === 0 ? (
-        <EmptyHint text="No contractor accounts yet. Set a credit limit on a customer to create one." />
+      <ModuleMasthead accent={ACCENT} eyebrow="Hardware · Accounts" title="Contractor Accounts" subtitle="Credit limits, outstanding balances, and holds." />
+      {loading ? <ModuleSpinner /> : rows.length === 0 ? (
+        <ModuleEmpty icon={Users} title="No contractor accounts yet" hint="Set a credit limit on a customer to open an account." />
       ) : (
-        <div className="border border-border rounded-lg overflow-hidden">
-          <table className="w-full text-[13px]">
-            <thead className="bg-muted/30 text-[11px] uppercase tracking-wide text-muted-foreground">
-              <tr>
-                <th className="text-left px-3 py-2">Customer</th>
-                <th className="text-right px-3 py-2">Credit limit</th>
-                <th className="text-right px-3 py-2">Balance</th>
-                <th className="text-right px-3 py-2">Available</th>
-                <th className="text-left px-3 py-2">Status</th>
+        <ModuleTable>
+          <ModuleTHead>
+            <tr>
+              <th className="text-left px-3 py-2">Customer</th>
+              <th className="text-right px-3 py-2">Credit limit</th>
+              <th className="text-right px-3 py-2">Balance</th>
+              <th className="text-right px-3 py-2">Available</th>
+              <th className="text-left px-3 py-2">Status</th>
+            </tr>
+          </ModuleTHead>
+          <tbody>
+            {rows.map((r) => (
+              <tr key={r.customer_id} className="border-t border-border hover:bg-accent/30 transition-colors">
+                <td className="px-3 py-2 font-medium">{r.name}</td>
+                <td className="px-3 py-2 text-right font-mono tabular-nums">{KES(r.credit_limit)}</td>
+                <td className="px-3 py-2 text-right font-mono tabular-nums">{KES(r.balance)}</td>
+                <td className="px-3 py-2 text-right font-mono tabular-nums">{KES(Math.max(0, r.credit_limit - r.balance))}</td>
+                <td className="px-3 py-2">{r.on_hold ? <Badge variant="outline" className="text-[10px] bg-red-500/10 text-red-600">On hold</Badge> : <Badge variant="outline" className="text-[10px] bg-emerald-500/10 text-emerald-600">Active</Badge>}</td>
               </tr>
-            </thead>
-            <tbody>
-              {rows.map((r) => (
-                <tr key={r.customer_id} className="border-t border-border hover:bg-accent/30 transition-colors">
-                  <td className="px-3 py-2 font-medium">{r.name}</td>
-                  <td className="px-3 py-2 text-right font-mono tabular-nums">{KES(r.credit_limit)}</td>
-                  <td className="px-3 py-2 text-right font-mono tabular-nums">{KES(r.balance)}</td>
-                  <td className="px-3 py-2 text-right font-mono tabular-nums">{KES(Math.max(0, r.credit_limit - r.balance))}</td>
-                  <td className="px-3 py-2">{r.on_hold ? <Badge variant="outline" className="text-[10px] bg-red-500/10 text-red-600">On hold</Badge> : <Badge variant="outline" className="text-[10px] bg-emerald-500/10 text-emerald-600">Active</Badge>}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+            ))}
+          </tbody>
+        </ModuleTable>
       )}
     </div>
   );
@@ -339,30 +300,28 @@ export function HardwareCommissionsPage() {
 
   return (
     <div>
-      <PageHead icon={Percent} title="Commissions" subtitle="Salesperson commission accruals." />
-      {loading ? <CenterSpin /> : rows.length === 0 ? (
-        <EmptyHint text="No commissions accrued yet." />
+      <ModuleMasthead accent={ACCENT} eyebrow="Hardware · Sales" title="Commissions" subtitle="Salesperson commission accruals." />
+      {loading ? <ModuleSpinner /> : rows.length === 0 ? (
+        <ModuleEmpty icon={Percent} title="No commissions accrued yet" hint="Commission accrues as salespeople close sales." />
       ) : (
-        <div className="border border-border rounded-lg overflow-hidden">
-          <table className="w-full text-[13px]">
-            <thead className="bg-muted/30 text-[11px] uppercase tracking-wide text-muted-foreground">
-              <tr>
-                <th className="text-left px-3 py-2">Salesperson</th>
-                <th className="text-right px-3 py-2">Sales</th>
-                <th className="text-right px-3 py-2">Commission</th>
+        <ModuleTable>
+          <ModuleTHead>
+            <tr>
+              <th className="text-left px-3 py-2">Salesperson</th>
+              <th className="text-right px-3 py-2">Sales</th>
+              <th className="text-right px-3 py-2">Commission</th>
+            </tr>
+          </ModuleTHead>
+          <tbody>
+            {rows.map((r) => (
+              <tr key={r.employee} className="border-t border-border hover:bg-accent/30 transition-colors">
+                <td className="px-3 py-2 font-medium">{r.employee}</td>
+                <td className="px-3 py-2 text-right font-mono tabular-nums">{r.count}</td>
+                <td className="px-3 py-2 text-right font-mono tabular-nums">{KES(r.total)}</td>
               </tr>
-            </thead>
-            <tbody>
-              {rows.map((r) => (
-                <tr key={r.employee} className="border-t border-border hover:bg-accent/30 transition-colors">
-                  <td className="px-3 py-2 font-medium">{r.employee}</td>
-                  <td className="px-3 py-2 text-right font-mono tabular-nums">{r.count}</td>
-                  <td className="px-3 py-2 text-right font-mono tabular-nums">{KES(r.total)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+            ))}
+          </tbody>
+        </ModuleTable>
       )}
     </div>
   );
@@ -387,12 +346,12 @@ export function HardwareReportsPage() {
 
   return (
     <div>
-      <PageHead icon={BarChart3} title="Hardware Reports" subtitle="Receivables aging and quotation conversion." />
+      <ModuleMasthead accent={ACCENT} eyebrow="Hardware · Reports" title="Hardware Reports" subtitle="Receivables aging and quotation conversion." />
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
-        <Kpi label="Quotes" value={String(quoteStats.total)} />
-        <Kpi label="Converted" value={String(quoteStats.converted)} />
-        <Kpi label="Conversion rate" value={`${conversionRate}%`} />
-        <Kpi label="Receivables" value={KES(aging?.total ?? 0)} />
+        <ModuleStat accent={ACCENT} label="Quotes" value={quoteStats.total} />
+        <ModuleStat accent={ACCENT} label="Converted" value={quoteStats.converted} />
+        <ModuleStat accent={ACCENT} label="Conversion rate" value={`${conversionRate}%`} tone="accent" />
+        <ModuleStat accent={ACCENT} label="Receivables" value={KES(aging?.total ?? 0)} />
       </div>
       {aging && (
         <Card>
@@ -411,13 +370,4 @@ export function HardwareReportsPage() {
       )}
     </div>
   );
-}
-
-// ─── Shared bits ─────────────────────────────────────────────────────────────
-
-function CenterSpin() {
-  return <div className="flex justify-center py-16"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>;
-}
-function EmptyHint({ text }: { text: string }) {
-  return <div className="border border-dashed border-border rounded-lg py-12 text-center text-sm text-muted-foreground">{text}</div>;
 }

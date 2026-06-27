@@ -12,7 +12,6 @@ import {
   CaretRight as ChevronRight,
   ChartBar as BarChart3,
   ChefHat,
-  CircleNotch as Loader2,
   ClipboardText as ClipboardList,
   FileText,
   ForkKnife as UtensilsCrossed,
@@ -49,23 +48,19 @@ import { MenuItemDialog, type MenuItemFormValues } from "@/components/hospitalit
 import { CompactFormDialog } from "@/components/hospitality/compact-form-dialog";
 import { useNavigate } from "react-router-dom";
 import { money as KES } from "@/lib/money";
+import {
+  moduleAccent, ModuleMasthead, ModuleStat, ModuleSpinner,
+} from "@/components/shared/module-kit";
 
+const ACCENT = moduleAccent("hospitality");
+/** Hospitality primary-action button colour (matches the rose accent). */
+const BRAND_BTN = `${ACCENT.solid} ${ACCENT.solidHover}`;
 
-/** Hospitality primary-action button colour (matches the rose dashboard/POS accent). */
-const BRAND_BTN = "bg-rose-700 hover:bg-rose-800 text-white";
-
-function PageHead({ icon: Icon, title, subtitle, action }: { icon: typeof UtensilsCrossed; title: string; subtitle: string; action?: React.ReactNode }) {
-  return (
-    <div className="flex items-start justify-between mb-5">
-      <div>
-        <h1 className="text-xl font-semibold tracking-tight flex items-center gap-2">
-          <Icon className="h-5 w-5 text-rose-600 dark:text-rose-400" /> {title}
-        </h1>
-        <p className="text-sm text-muted-foreground mt-1">{subtitle}</p>
-      </div>
-      {action}
-    </div>
-  );
+/** Per-screen masthead — delegates to the shared module kit so every
+ *  hospitality sub-page carries the same rose identity rule + eyebrow. */
+function PageHead({ icon, title, subtitle, action }: { icon?: typeof UtensilsCrossed; title: string; subtitle: string; action?: React.ReactNode }) {
+  void icon; // the accent rule replaces the per-title icon
+  return <ModuleMasthead accent={ACCENT} title={title} subtitle={subtitle} actions={action} />;
 }
 
 const TABLE_STATUS: Record<string, string> = {
@@ -106,12 +101,7 @@ export function HospitalityDashboardPage() {
 }
 
 function Kpi({ label, value }: { label: string; value: string }) {
-  return (
-    <Card><CardContent className="p-4">
-      <div className="text-[11px] uppercase tracking-wide text-muted-foreground">{label}</div>
-      <div className="text-2xl font-semibold mt-1 font-mono tabular-nums">{value}</div>
-    </CardContent></Card>
-  );
+  return <ModuleStat accent={ACCENT} label={label} value={value} />;
 }
 
 // ─── Table board ─────────────────────────────────────────────────────────────
@@ -989,7 +979,7 @@ function RoomPickerDialog({ folios, onSelect, onClose }: { folios: Array<{ id: s
 }
 
 function CenterSpin() {
-  return <div className="flex justify-center py-16"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>;
+  return <ModuleSpinner />;
 }
 function EmptyHint({ text }: { text: string }) {
   return <div className="border border-dashed border-border rounded-lg py-12 text-center text-sm text-muted-foreground">{text}</div>;

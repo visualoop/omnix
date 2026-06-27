@@ -20,7 +20,9 @@ import {
 } from "@/services/retail-reports";
 import { useActiveBranch } from "@/stores/active-branch";
 import { money as KES } from "@/lib/money";
+import { moduleAccent, ModuleMasthead, ModuleStat } from "@/components/shared/module-kit";
 
+const ACCENT = moduleAccent("retail");
 
 export function RetailDashboardPage() {
   const navigate = useNavigate();
@@ -46,32 +48,29 @@ export function RetailDashboardPage() {
   }, [period, branchId]);
 
   return (
-    <div className="space-y-5">
-      <div className="flex items-start justify-between">
-        <div>
-          <h1 className="text-xl font-semibold tracking-tight flex items-center gap-2">
-            <ShoppingBag className="h-5 w-5 text-orange-600" /> Retail Dashboard
-          </h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Brand performance, category mix, shrinkage, laybys.
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Input type="date" value={period.start} onChange={(e) => setPeriod({ ...period, start: e.target.value })} className="h-8 w-36" />
-          <span className="text-xs text-muted-foreground">to</span>
-          <Input type="date" value={period.end} onChange={(e) => setPeriod({ ...period, end: e.target.value })} className="h-8 w-36" />
-        </div>
-      </div>
+    <div>
+      <ModuleMasthead
+        accent={ACCENT}
+        title="Retail Dashboard"
+        subtitle="Brand performance, category mix, shrinkage, and laybys for the period."
+        actions={
+          <div className="flex items-center gap-2">
+            <Input type="date" value={period.start} onChange={(e) => setPeriod({ ...period, start: e.target.value })} className="h-8 w-36" />
+            <span className="text-xs text-muted-foreground">to</span>
+            <Input type="date" value={period.end} onChange={(e) => setPeriod({ ...period, end: e.target.value })} className="h-8 w-36" />
+          </div>
+        }
+      />
 
       {/* KPI grid */}
-      <div className="grid grid-cols-4 gap-3">
-        <Stat label="Revenue" value={kpis ? KES(kpis.total_revenue) : "—"} icon={TrendingUp} highlight loading={loading} />
-        <Stat label="Orders" value={kpis ? String(kpis.total_orders) : "—"} icon={ShoppingBag} loading={loading} />
-        <Stat label="Avg Order" value={kpis ? KES(kpis.avg_order_value) : "—"} icon={Package} loading={loading} />
-        <Stat label="Units Sold" value={kpis ? String(kpis.total_units_sold) : "—"} icon={Package} loading={loading} />
+      <div className="grid grid-cols-4 gap-3 mb-3">
+        <ModuleStat accent={ACCENT} label="Revenue" value={kpis ? KES(kpis.total_revenue) : "—"} icon={TrendingUp} tone="accent" />
+        <ModuleStat accent={ACCENT} label="Orders" value={kpis ? String(kpis.total_orders) : "—"} icon={ShoppingBag} />
+        <ModuleStat accent={ACCENT} label="Avg order" value={kpis ? KES(kpis.avg_order_value) : "—"} icon={Package} />
+        <ModuleStat accent={ACCENT} label="Units sold" value={kpis ? String(kpis.total_units_sold) : "—"} icon={Package} />
       </div>
 
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-3 gap-3 mb-3">
         <Card className="cursor-pointer hover:bg-accent/30" onClick={() => navigate("/retail/shrinkage")}>
           <CardContent className="p-3">
             <div className="flex items-center justify-between">
@@ -166,7 +165,7 @@ export function RetailDashboardPage() {
                     </div>
                     <div className="h-1.5 bg-muted rounded-full overflow-hidden">
                       <div
-                        className="h-full bg-orange-500 rounded-full transition-all"
+                        className="h-full bg-amber-500 rounded-full transition-all"
                         style={{ width: `${c.percentage}%` }}
                       />
                     </div>
@@ -178,29 +177,5 @@ export function RetailDashboardPage() {
         </Card>
       </div>
     </div>
-  );
-}
-
-function Stat({ label, value, icon: Icon, highlight, loading }: {
-  label: string;
-  value: string;
-  icon: typeof TrendingUp;
-  highlight?: boolean;
-  loading?: boolean;
-}) {
-  return (
-    <Card className={highlight ? "border-primary" : ""}>
-      <CardContent className="p-3">
-        <div className="flex items-center justify-between">
-          <p className="text-[10px] uppercase tracking-wider text-muted-foreground">{label}</p>
-          <Icon className="h-3 w-3 text-muted-foreground" />
-        </div>
-        {loading ? (
-          <div className="h-7 bg-muted/30 rounded animate-pulse mt-1" />
-        ) : (
-          <p className={`text-xl font-semibold font-mono mt-1 ${highlight ? "text-orange-600" : ""}`}>{value}</p>
-        )}
-      </CardContent>
-    </Card>
   );
 }

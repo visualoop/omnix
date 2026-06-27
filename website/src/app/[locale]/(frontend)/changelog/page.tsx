@@ -51,6 +51,15 @@ const VARIANT_LABEL: Record<VariantId, string> = {
  * Empty by default — the standard summary is enough for most patches.
  */
 const VERSION_HIGHLIGHTS: Record<string, string[]> = {
+  '0.14.0': [
+    'Every sale, void, and refund is now all-or-nothing — a power cut or crash mid-transaction can no longer leave a half-written sale, orphaned stock, or money recorded twice',
+    'Voiding a sale now reverses everything: stock returns, the payment is undone, the bank deposit is withdrawn back, and the KRA invoice is flagged for a credit note',
+    'Money is counted in exact cents end to end — receipts, reports, tax back-out, and insurance copay splits always reconcile to the shilling',
+    'Insurance claims guarantee copay + claim equals the bill exactly, so claims stop bouncing on rounding mismatches',
+    'Restaurant stock stays honest: ingredients of a dish that was cooked then comped are written off instead of silently lingering in inventory',
+    'Refunds and layby cancellations now mirror back to the bank automatically, keeping reconciliation clean',
+    'Redesigned module screens — Pharmacy, Retail, Hardware, and Hospitality each get a distinct, disciplined identity (teal, amber, orange, rose) with clearer KPIs and tables',
+  ],
   '0.13.1': [
     'Long-term speed: SQLite tuned for production (WAL, memory-mapped reads, bigger cache) so the till stays instant after years of sales',
     'Daily sales rollup keeps all-time reports fast no matter how much history accumulates',
