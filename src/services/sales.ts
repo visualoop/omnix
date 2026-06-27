@@ -64,6 +64,20 @@ export async function getNextSaleNumber(): Promise<number> {
   return rows[0].value;
 }
 
+/** Map a method_id/name to a payment_methods.type code so the auto-upsert
+ *  in completeSale produces a sensible row when the seeded row is missing.
+ *  Values mirror the seed set in migration 003. */
+function inferMethodType(id: string, name: string): string {
+  const k = `${id} ${name}`.toLowerCase();
+  if (k.includes("cash")) return "cash";
+  if (k.includes("mpesa") || k.includes("m-pesa") || k.includes("lipa")) return "mpesa";
+  if (k.includes("paystack") || k.includes("card") || k.includes("visa") || k.includes("master")) return "card";
+  if (k.includes("bank") || k.includes("transfer")) return "manual";
+  if (k.includes("credit") || k.includes("on account")) return "credit";
+  if (k.includes("insur") || k.includes("sha") || k.includes("nhif")) return "insurance";
+  return "manual";
+}
+
 export async function completeSale(
   items: CartItem[],
   payments: PaymentEntry[],
@@ -234,6 +248,16 @@ export async function completeSale(
 
   // 3) Payments + bank mirror (pre-resolve accounts), in the same txn.
   for (const p of payments) {
+    // FK-safety: payments.method_id REFERENCES payment_methods(id). If the
+    // UI passes a synthetic id ("mpesa-daraja", "mpesa-paystack") that
+    // wasn't seeded in an older install, the FK fails AFTER Daraja has
+    // already taken the customer's money — catastrophic. Upsert the
+    // method row first using the name the UI provided.
+    stmts.push({
+      sql: `INSERT OR IGNORE INTO payment_methods (id, name, type, sort_order)
+            VALUES (?1, ?2, ?3, 99)`,
+      params: [p.method_id, p.method_name, inferMethodType(p.method_id, p.method_name)],
+    });
     stmts.push({
       sql: `INSERT INTO payments (id, sale_id, method_id, method_name, amount, reference)
        VALUES (?1, ?2, ?3, ?4, ?5, ?6)`,

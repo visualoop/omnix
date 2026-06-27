@@ -61,23 +61,24 @@ export function VariantPickerDialog({ product, onClose, onPick }: Props) {
         <DialogHeader className="px-5 pt-5 pb-3 border-b border-border/60">
           <DialogTitle>Pick variant — {product.name}</DialogTitle>
           <p className="text-[11px] text-muted-foreground mt-1">
-            Tap the parent SKU to sell it directly, or pick a specific variant.
+            Tap the standard SKU to sell the parent directly, or pick a variant.
           </p>
         </DialogHeader>
 
         <div className="px-5 py-4 max-h-[min(72vh,640px)] overflow-y-auto">
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-            {/* MOTHER PRODUCT — first card */}
+            {/* MOTHER PRODUCT — first card. Synthesises a SKU when the
+                product has none so the card reads like a real line item
+                rather than literal "Parent SKU" placeholder copy. */}
             <VariantCard
               key="__mother__"
               title={product.name}
-              subtitle="Parent SKU"
+              subtitle={parentSku(product)}
               meta={motherCategory ?? null}
               price={product.selling_price}
               stock={motherStock}
               imagePath={motherImage}
               accent={accent}
-              isParent
               onClick={() => { onPick(product, null); onClose(); }}
             />
 
@@ -130,11 +131,30 @@ interface CardProps {
   stock: number;
   imagePath?: string | null;
   accent: Accent;
-  isParent?: boolean;
   onClick: () => void;
 }
 
-function VariantCard({ title, subtitle, meta, price, stock, imagePath, accent, isParent, onClick }: CardProps) {
+/**
+ * Derive a SKU-shaped identifier for the parent option. Prefers the
+ * product's own SKU; falls back to NAME-XXXX where XXXX is a stable
+ * 4-char hash slice of the product id so the same parent always shows
+ * the same synthetic SKU. Reads like any other variant SKU on the card.
+ */
+function parentSku(p: { sku?: string | null; name: string; id: string }): string {
+  if (p.sku && p.sku.trim()) return p.sku;
+  // Stable 4-char tail derived from the product id (deterministic, no
+  // randomness so it doesn't churn on re-renders).
+  const tail = p.id.replace(/-/g, "").slice(0, 4).toUpperCase();
+  const base = p.name
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((w) => w.replace(/[^A-Za-z0-9]/g, "").slice(0, 4).toUpperCase())
+    .filter(Boolean)
+    .join("-");
+  return base ? `${base}-${tail}` : `SKU-${tail}`;
+}
+
+function VariantCard({ title, subtitle, meta, price, stock, imagePath, accent, onClick }: CardProps) {
   const oos = stock <= 0;
   return (
     <button
@@ -175,12 +195,6 @@ function VariantCard({ title, subtitle, meta, price, stock, imagePath, accent, i
         >
           <Package className="size-10 opacity-30" strokeWidth={1.25} style={{ color: accent.hex }} />
         </div>
-        {/* Parent badge — only on the mother product card */}
-        {isParent && (
-          <span className="absolute top-1.5 left-1.5 font-mono text-[9px] uppercase tracking-[0.18em] rounded bg-foreground/[0.10] px-1.5 py-0.5 backdrop-blur">
-            Parent
-          </span>
-        )}
         {/* Stock chip */}
         <span
           className={

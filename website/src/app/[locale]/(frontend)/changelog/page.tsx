@@ -51,6 +51,12 @@ const VARIANT_LABEL: Record<VariantId, string> = {
  * Empty by default — the standard summary is enough for most patches.
  */
 const VERSION_HIGHLIGHTS: Record<string, string[]> = {
+  '0.15.4': [
+    'Critical fix: split payments with M-Pesa + another method no longer fail with a foreign-key error after the M-Pesa charge has already been taken. The synthetic M-Pesa method ids the UI uses are now seeded + auto-upserted before the payment row is inserted, so the local sale always lands.',
+    'Variant picker: the parent product card now shows a real SKU (the product\'s own SKU, or a stable synthesised one) instead of the literal "Parent SKU" placeholder.',
+    'Customer display: each line item now shows the product\'s image (or a clean icon placeholder when no image is set). The thumbnail is themed to the active module accent.',
+    'Customer display: when the cashier sets a customer on the sale, their name appears at the top of the display so it\'s clear whose order is on screen.',
+  ],
   '0.15.3': [
     'Native on-screen keyboard — the third-party library was the source of the blank-screen crashes when typing in touch mode. The new one is fully ours; it dismisses cleanly when a dialog closes and never leaves dangling overlays.',
     'M-Pesa sandbox auto-confirm now actually fires — Daraja\'s sandbox routinely returns a "cancelled" code on the first poll even when nothing was cancelled; we now treat it as pending so the 15-second grace can resolve the test transaction. Production charges unchanged.',

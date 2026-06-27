@@ -13,6 +13,7 @@ import { useEffect, useRef, useState } from "react";
 import {
   CheckCircle as CheckCircle2,
   Heart,
+  Package,
 } from "@phosphor-icons/react";
 import { useCartStore } from "@/stores/cart";
 import { useActiveModule, MODULE_DEFINITIONS, type ModuleId } from "@/stores/active-module";
@@ -30,6 +31,59 @@ export function CustomerDisplayPage() {
   const discountAmount = useCartStore((s) => s.cartDiscountAmount());
   const promoLabel = useCartStore((s) => s.promoLabel);
   const taxTotal = useCartStore((s) => s.taxTotal());
+  const customerId = useCartStore((s) => s.customerId);
+  const [customerName, setCustomerName] = useState<string | null>(null);
+  const [productImages, setProductImages] = useState<Record<string, string | null>>({});
+
+  // Resolve customer name when the cashier sets a customer on the sale.
+  useEffect(() => {
+    if (!customerId) { setCustomerName(null); return; }
+    let cancelled = false;
+    (async () => {
+      try {
+        const { query } = await import("@/lib/db");
+        const rows = await query<{ name: string }>(
+          `SELECT name FROM customers WHERE id = ?1 LIMIT 1`,
+          [customerId],
+        );
+        if (!cancelled) setCustomerName(rows[0]?.name ?? null);
+      } catch { /* table may not exist on cold boot */ }
+    })();
+    return () => { cancelled = true; };
+  }, [customerId]);
+
+  // Resolve product images for the current cart so the customer sees a
+  // thumbnail next to each line. Re-queries when product ids change.
+  useEffect(() => {
+    const ids = Array.from(new Set(items.map((i) => i.product_id))).filter(Boolean);
+    if (ids.length === 0) { setProductImages({}); return; }
+    // Skip a refetch if all current ids already in the map.
+    const missing = ids.filter((id) => !(id in productImages));
+    if (missing.length === 0) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const { query } = await import("@/lib/db");
+        const placeholders = missing.map((_, i) => `?${i + 1}`).join(",");
+        const rows = await query<{ id: string; image_path: string | null }>(
+          `SELECT id, image_path FROM products WHERE id IN (${placeholders})`,
+          missing,
+        );
+        if (cancelled) return;
+        setProductImages((prev) => {
+          const next = { ...prev };
+          for (const r of rows) next[r.id] = r.image_path ?? null;
+          // Mark queried-but-missing as null so we don't loop.
+          for (const id of missing) if (!(id in next)) next[id] = null;
+          return next;
+        });
+      } catch { /* ignore */ }
+    })();
+    return () => { cancelled = true; };
+    // Intentionally depend on items.length + the joined id key, not the
+    // map itself (which would self-trigger).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [items.map((i) => i.product_id).join("|")]);
   const grandTotal = useCartStore((s) => s.grandTotal());
   const tip = useCartStore((s) => s.tip);
   const sourceLabel = useCartStore((s) => s.sourceLabel);
@@ -243,9 +297,19 @@ export function CustomerDisplayPage() {
               {sourceLabel && <span className="ml-2 text-stone-400">· {sourceLabel}</span>}
             </div>
           </div>
-          <div className="text-right">
-            <div className="text-sm text-stone-500">{items.length} item{items.length !== 1 ? "s" : ""}</div>
-            <div className="text-base font-mono tabular-nums text-stone-400">{clock}</div>
+          <div className="flex items-center gap-6">
+            {customerName && (
+              <div className="text-right leading-tight">
+                <div className="text-[10px] font-medium uppercase tracking-[0.2em] text-stone-500">
+                  Customer
+                </div>
+                <div className="text-base font-medium text-stone-100">{customerName}</div>
+              </div>
+            )}
+            <div className="text-right">
+              <div className="text-sm text-stone-500">{items.length} item{items.length !== 1 ? "s" : ""}</div>
+              <div className="text-base font-mono tabular-nums text-stone-400">{clock}</div>
+            </div>
           </div>
         </div>
       </div>
@@ -263,11 +327,17 @@ export function CustomerDisplayPage() {
           <tbody>
             {items.map((item, idx) => {
               const meta = cfg.lineMetadata?.(item);
+              const img = productImages[item.product_id];
               return (
                 <tr key={item.id} className={`border-b border-stone-800/50 ${idx === items.length - 1 ? "bg-stone-900/40" : ""}`}>
                   <td className="py-3.5">
-                    <div className="text-xl font-medium text-white">{itemName(item.name)}</div>
-                    {meta && <div className="text-sm text-stone-500">{meta}</div>}
+                    <div className="flex items-center gap-4">
+                      <LineThumb image={img} accent={cfg.accentLine} />
+                      <div className="min-w-0">
+                        <div className="text-xl font-medium text-white truncate">{itemName(item.name)}</div>
+                        {meta && <div className="text-sm text-stone-500">{meta}</div>}
+                      </div>
+                    </div>
                   </td>
                   <td className="py-3.5 text-right text-xl font-mono tabular-nums">{item.quantity}</td>
                   <td className="py-3.5 text-right text-xl font-mono tabular-nums text-stone-400">{item.unit_price.toFixed(2)}</td>
@@ -370,6 +440,35 @@ function BusinessNameBadge({ name }: { name: string }) {
         Welcome to
       </div>
       <div className="text-base font-semibold text-white">{name}</div>
+    </div>
+  );
+}
+
+/**
+ * Line-item thumbnail. Shows the product image when one is set, otherwise
+ * an accent-tinted package icon. 56×56 well so it reads cleanly at the
+ * 19-inch customer-facing display distance.
+ */
+function LineThumb({ image, accent }: { image: string | null | undefined; accent: string }) {
+  // accent is a tailwind class like "bg-emerald-500" — strip "bg-" so we
+  // can use it as a ring + glow source.
+  const ringClass = accent.replace(/^bg-/, "ring-").replace(/\/\d+$/, "/40");
+  if (image) {
+    return (
+      <div className={`h-14 w-14 shrink-0 rounded-md overflow-hidden ring-1 ${ringClass} bg-stone-900`}>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={image}
+          alt=""
+          className="h-full w-full object-cover"
+          onError={(e) => { e.currentTarget.style.display = "none"; }}
+        />
+      </div>
+    );
+  }
+  return (
+    <div className={`h-14 w-14 shrink-0 rounded-md grid place-items-center ring-1 ${ringClass} bg-stone-900/60`}>
+      <Package className="size-7 text-stone-500" strokeWidth={1.25} />
     </div>
   );
 }
