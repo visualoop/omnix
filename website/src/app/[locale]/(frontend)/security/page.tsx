@@ -9,6 +9,7 @@ import {
   OfflineIllo, SecurityIllo, UpdatesIllo, SyncIllo,
   AccountingIllo,
 } from '@/components/marketing/illustrations'
+import { SecurityScene } from '@/components/marketing/illustrations/scenes'
 
 export const metadata: Metadata = {
   title: 'Security & reliability — Omnix',
@@ -76,6 +77,14 @@ export default async function SecurityPage() {
           </Link>
         </div>
       </PageHero>
+
+      <section className="-mt-8 pb-8">
+        <div className="container-wide">
+          <div className="mx-auto max-w-[860px] rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-8 text-[var(--color-accent)] sm:p-12">
+            <SecurityScene className="block w-full h-auto" />
+          </div>
+        </div>
+      </section>
 
       <section className="section">
         <div className="container-wide">

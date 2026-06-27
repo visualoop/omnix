@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { Icon } from '@/components/icons'
 import { Button } from '@/components/ui/button'
 import { PageHero } from '@/components/marketing/page-hero'
+import { ReceiptToKraScene } from '@/components/marketing/illustrations/scenes'
 import { FAQJsonLd } from '@/components/seo/jsonld'
 
 export const metadata: Metadata = {
@@ -63,6 +64,14 @@ export default function ETIMSPage() {
           </Button>
         </div>
       </PageHero>
+
+      <section className="-mt-8 pb-8">
+        <div className="container-wide">
+          <div className="mx-auto max-w-[920px] rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-8 text-[var(--color-accent)] sm:p-12">
+            <ReceiptToKraScene className="block w-full h-auto" />
+          </div>
+        </div>
+      </section>
 
       {/* What we do natively */}
       <section className="section">

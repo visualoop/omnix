@@ -5,6 +5,7 @@ import {
   RetailIllo, InventoryIllo, AccountingIllo, PurchasingIllo,
   AnalyticsIllo, MpesaIllo, EtimsIllo, AiIllo,
 } from '@/components/marketing/illustrations'
+import { PlatformScene } from '@/components/marketing/illustrations/scenes'
 
 /**
  * Unified-platform comprehension section.
@@ -43,7 +44,12 @@ export function UnifiedPlatformSection() {
           </p>
         </div>
 
-        <div className="mt-16 grid grid-cols-2 gap-px overflow-hidden rounded-xl border border-[var(--color-border)] bg-[var(--color-border)] sm:grid-cols-3 lg:grid-cols-4">
+        {/* Scene — the visual thesis of "one core, many surfaces" */}
+        <div className="mx-auto mt-16 max-w-[900px] text-[var(--color-accent)]">
+          <PlatformScene className="block w-full h-auto" />
+        </div>
+
+        <div className="mt-12 grid grid-cols-2 gap-px overflow-hidden rounded-xl border border-[var(--color-border)] bg-[var(--color-border)] sm:grid-cols-3 lg:grid-cols-4">
           {CAPABILITIES.map((c, i) => (
             <motion.div
               key={c.name}

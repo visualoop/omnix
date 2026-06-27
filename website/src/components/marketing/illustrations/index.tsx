@@ -205,10 +205,182 @@ export function HospitalityIllo(p: IlloProps) {
     </svg>
   )
 }
+/* ── Hardware — wrench at an angle ── */
 export function HardwareIllo(p: IlloProps) {
   return (
     <svg {...base(p)}>
       <path d="M30 12a7 7 0 00-9.5 8.5L8 33l4 4 12.5-12.5A7 7 0 0033 15l-4 4-3-3z" />
+    </svg>
+  )
+}
+
+/* ── Extended marks — page-specific accents ──────────────────── */
+
+export function BackupIllo(p: IlloProps) {
+  return (
+    <svg {...base(p)}>
+      <path d="M12 28a7 7 0 010-14 8 8 0 0115-2 7 7 0 014 13" />
+      <path d="M24 22v14m0 0l-5-5m5 5l5-5" />
+    </svg>
+  )
+}
+
+export function MultiBranchIllo(p: IlloProps) {
+  return (
+    <svg {...base(p)}>
+      <path d="M6 18l5-6h7l5 6v18H6z" />
+      <path d="M23 22l5-5h7l5 5v14H23z" />
+      <path d="M11 36v-7h6v7M28 36v-5h6v5" opacity="0.55" />
+    </svg>
+  )
+}
+
+export function DrugLabelIllo(p: IlloProps) {
+  return (
+    <svg {...base(p)}>
+      <path d="M8 14l8-8h22a2 2 0 012 2v32a2 2 0 01-2 2H10a2 2 0 01-2-2z" />
+      <circle cx="13" cy="11" r="1.2" />
+      <path d="M16 18h18M16 24h18M16 30h12" opacity="0.55" />
+    </svg>
+  )
+}
+
+export function KitchenTicketIllo(p: IlloProps) {
+  return (
+    <svg {...base(p)}>
+      <path d="M11 6h26v32l-4 4-3-3-3 3-3-3-3 3-3-3-3 3-4-4z" />
+      <path d="M16 14h16M16 20h16M16 26h10" opacity="0.55" />
+      <circle cx="32" cy="28" r="3" />
+      <path d="M34.5 30L37 32" />
+    </svg>
+  )
+}
+
+export function QuotationIllo(p: IlloProps) {
+  return (
+    <svg {...base(p)}>
+      <path d="M11 6h20l8 8v28H11z" />
+      <path d="M31 6v8h8" opacity="0.55" />
+      <path d="M16 24h16M16 30h16M16 36h10" opacity="0.55" />
+      <path d="M19 18l-2 2 2 2m4-4l2 2-2 2" />
+    </svg>
+  )
+}
+
+export function LaybyIllo(p: IlloProps) {
+  return (
+    <svg {...base(p)}>
+      <rect x="7" y="11" width="34" height="30" rx="2" />
+      <path d="M7 18h34" opacity="0.55" />
+      <path d="M14 7v8M34 7v8" />
+      <circle cx="16" cy="26" r="2" />
+      <circle cx="24" cy="26" r="2" />
+      <circle cx="32" cy="26" r="2" opacity="0.6" />
+      <circle cx="16" cy="34" r="2" opacity="0.4" />
+      <circle cx="24" cy="34" r="2" opacity="0.4" />
+    </svg>
+  )
+}
+
+export function VipCustomerIllo(p: IlloProps) {
+  return (
+    <svg {...base(p)}>
+      <circle cx="24" cy="17" r="6" />
+      <path d="M10 40c0-7 6-12 14-12s14 5 14 12" />
+      <path d="M24 7l1.6 3.3L29 11l-2.5 2.4.6 3.4L24 15.2 20.9 16.8l.6-3.4L19 11l3.4-.7z" opacity="0.7" />
+    </svg>
+  )
+}
+
+export function SupportIllo(p: IlloProps) {
+  return (
+    <svg {...base(p)}>
+      <circle cx="24" cy="24" r="16" />
+      <circle cx="24" cy="24" r="7" />
+      <path d="M12.5 12.5l6.5 6.5M29 29l6.5 6.5M12.5 35.5l6.5-6.5M29 19l6.5-6.5" opacity="0.55" />
+    </svg>
+  )
+}
+
+export function LicenseKeyIllo(p: IlloProps) {
+  return (
+    <svg {...base(p)}>
+      <circle cx="14" cy="28" r="7" />
+      <path d="M20 28h22M34 28v6M40 28v4" />
+      <circle cx="14" cy="28" r="2" opacity="0.7" />
+    </svg>
+  )
+}
+
+export function CashDrawerIllo(p: IlloProps) {
+  return (
+    <svg {...base(p)}>
+      <path d="M6 20h36v18H6z" />
+      <path d="M14 14l-4 6M34 14l4 6M14 14h20" opacity="0.6" />
+      <rect x="13" y="26" width="6" height="6" />
+      <rect x="22" y="26" width="6" height="6" opacity="0.6" />
+      <rect x="31" y="26" width="6" height="6" opacity="0.4" />
+    </svg>
+  )
+}
+
+export function BarcodeIllo(p: IlloProps) {
+  return (
+    <svg {...base(p)}>
+      <path d="M6 12v24M10 12v24M14 12v24M18 12v18M22 12v24M26 12v18M30 12v24M34 12v18M38 12v24M42 12v24" />
+      <path d="M6 40h36" opacity="0.5" />
+    </svg>
+  )
+}
+
+export function RefundIllo(p: IlloProps) {
+  return (
+    <svg {...base(p)}>
+      <path d="M14 6h20v34l-4-3-3 3-3-3-3 3-3-3-4 3z" />
+      <path d="M19 16h10M19 22h6" opacity="0.55" />
+      <path d="M28 32a6 6 0 11-6-6" />
+      <path d="M22 22v4h4" />
+    </svg>
+  )
+}
+
+export function DashboardIllo(p: IlloProps) {
+  return (
+    <svg {...base(p)}>
+      <rect x="6" y="8" width="36" height="32" rx="2" />
+      <path d="M6 16h36" opacity="0.55" />
+      <rect x="11" y="21" width="10" height="14" opacity="0.6" />
+      <path d="M25 35V21l6 4 5-7" opacity="0.7" />
+    </svg>
+  )
+}
+
+export function SettingsIllo(p: IlloProps) {
+  return (
+    <svg {...base(p)}>
+      <circle cx="24" cy="24" r="5" />
+      <path d="M24 6v5M24 37v5M6 24h5M37 24h5M11 11l3.5 3.5M33.5 33.5L37 37M37 11l-3.5 3.5M14.5 33.5L11 37" />
+    </svg>
+  )
+}
+
+export function FileImportIllo(p: IlloProps) {
+  return (
+    <svg {...base(p)}>
+      <path d="M10 6h18l8 8v28H10z" />
+      <path d="M28 6v8h8" opacity="0.55" />
+      <path d="M23 20v12m0 0l-4-4m4 4l4-4" />
+    </svg>
+  )
+}
+
+export function ShaInsuranceIllo(p: IlloProps) {
+  return (
+    <svg {...base(p)}>
+      <rect x="6" y="12" width="36" height="24" rx="3" />
+      <path d="M6 19h36" opacity="0.55" />
+      <path d="M18 25v6M15 28h6" />
+      <path d="M27 27h9M27 31h6" opacity="0.55" />
     </svg>
   )
 }
@@ -231,6 +403,22 @@ export const ILLUSTRATIONS = {
   retail: RetailIllo,
   hospitality: HospitalityIllo,
   hardware: HardwareIllo,
+  backup: BackupIllo,
+  multibranch: MultiBranchIllo,
+  drugLabel: DrugLabelIllo,
+  kitchenTicket: KitchenTicketIllo,
+  quotation: QuotationIllo,
+  layby: LaybyIllo,
+  vip: VipCustomerIllo,
+  support: SupportIllo,
+  licenseKey: LicenseKeyIllo,
+  cashDrawer: CashDrawerIllo,
+  barcode: BarcodeIllo,
+  refund: RefundIllo,
+  dashboard: DashboardIllo,
+  settings: SettingsIllo,
+  fileImport: FileImportIllo,
+  shaInsurance: ShaInsuranceIllo,
 } satisfies Record<string, ComponentType<IlloProps>>
 
 export type IllustrationKey = keyof typeof ILLUSTRATIONS

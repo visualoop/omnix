@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button'
 import { PageHero } from '@/components/marketing/page-hero'
 import { ClosingCtaSection } from '@/components/landing/closing-cta-section'
 import { getSiteSettings } from '@/lib/site-settings'
+import { MigrationScene } from '@/components/marketing/illustrations/scenes'
 
 export const metadata: Metadata = {
   title: 'Switch to Omnix in a day — migration & onboarding',
@@ -70,6 +71,15 @@ export default async function MigrationPage() {
           </Link>
         </div>
       </PageHero>
+
+      {/* ── Scene ─────────────────────────────────────────────────────── */}
+      <section className="-mt-8 pb-8">
+        <div className="container-wide">
+          <div className="mx-auto max-w-[860px] rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-8 text-[var(--color-accent)] sm:p-12">
+            <MigrationScene className="block w-full h-auto" />
+          </div>
+        </div>
+      </section>
 
       {/* ── Steps ──────────────────────────────────────────────────────── */}
       <section className="section">

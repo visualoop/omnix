@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import { PageHero } from '@/components/marketing/page-hero'
 import { ClosingCtaSection } from '@/components/landing/closing-cta-section'
 import { getSiteSettings } from '@/lib/site-settings'
+import { UnifiedPlatformIllo, AnalyticsIllo } from '@/components/marketing/illustrations'
 
 export const metadata: Metadata = {
   title: 'About — who builds Omnix',
@@ -36,8 +37,9 @@ export default async function AboutPage() {
       <section className="section-tight">
         <div className="container-text grid grid-cols-1 gap-12 md:grid-cols-2 md:gap-16">
           <div>
-            <span className="eyebrow">Why we exist</span>
-            <h2 className="headline-sub mt-5">The honest version.</h2>
+            <span className="text-[var(--color-accent)]"><UnifiedPlatformIllo size={36} /></span>
+            <span className="eyebrow mt-5">Why we exist</span>
+            <h2 className="headline-sub mt-3">The honest version.</h2>
             <p className="mt-5 text-[16px] leading-[1.7] text-[var(--color-fg-muted)]">
               Kenyan SMEs deserve software that doesn&rsquo;t rent itself back to
               them every month. Software that works when the line drops, files
@@ -46,8 +48,9 @@ export default async function AboutPage() {
             </p>
           </div>
           <div>
-            <span className="eyebrow">Where we&rsquo;re going</span>
-            <h2 className="headline-sub mt-5">The next decade.</h2>
+            <span className="text-[var(--color-accent)]"><AnalyticsIllo size={36} /></span>
+            <span className="eyebrow mt-5">Where we&rsquo;re going</span>
+            <h2 className="headline-sub mt-3">The next decade.</h2>
             <p className="mt-5 text-[16px] leading-[1.7] text-[var(--color-fg-muted)]">
               One platform that grows with the business — from a single till in
               Kisumu to a multi-branch operation with kitchen, pharmacy and
