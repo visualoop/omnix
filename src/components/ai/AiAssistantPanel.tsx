@@ -36,6 +36,8 @@ import {
 } from "@/services/ai/conversations"
 import { AssistantMarkdown } from "./AssistantMarkdown"
 import { ToolCallBlock, type ToolEvent } from "./ToolCallBlock"
+import { AiActionDialog } from "./AiActionDialog"
+import type { ActionProposal } from "@/services/ai/actions"
 import { toast } from "sonner"
 
 interface UiMessage {
@@ -64,6 +66,7 @@ export function AiAssistantPanel() {
   const [messages, setMessages] = useState<UiMessage[]>([])
   const [draft, setDraft] = useState("")
   const [busy, setBusy] = useState(false)
+  const [pendingAction, setPendingAction] = useState<ActionProposal | null>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
 
@@ -212,6 +215,13 @@ export function AiAssistantPanel() {
           if (progress.toolResult) {
             const idx = toolEvents.findIndex((e) => e.id === progress.toolResult!.id)
             if (idx >= 0) toolEvents[idx] = { ...toolEvents[idx], result: progress.toolResult.result }
+            // A write-action proposer returns a { __actionProposal } marker —
+            // surface the human-in-the-loop confirmation dialog. The mutation
+            // only runs if the user clicks Apply.
+            const res = progress.toolResult.result as { __actionProposal?: ActionProposal } | null
+            if (res && typeof res === "object" && res.__actionProposal) {
+              setPendingAction(res.__actionProposal)
+            }
             setMessages((m) =>
               m.map((msg) => (msg.id === assistantId ? { ...msg, toolEvents: [...toolEvents] } : msg)),
             )
@@ -400,6 +410,12 @@ export function AiAssistantPanel() {
           )}
         </aside>
       )}
+
+      <AiActionDialog
+        proposal={pendingAction}
+        onClose={() => setPendingAction(null)}
+        onApplied={(route) => { if (route) { navigate(route); setOpen(false) } }}
+      />
     </>
   )
 }

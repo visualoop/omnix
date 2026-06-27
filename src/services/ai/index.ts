@@ -16,8 +16,10 @@ import { normalizeImport, type ImportMapping, type OmnixField } from "./tasks/no
 import { explainEtims, type EtimsExplanation } from "./tasks/explain-etims";
 import { docsQa, type DocsAnswer } from "./tasks/docs-qa";
 import { setupAssist, type SetupSuggestion } from "./tasks/setup-assist";
+import { summarizeZReport, type ZReportFacts } from "./tasks/zreport-summary";
+import { enrichDrug, type DrugEnrichResult } from "./tasks/drug-enrich";
 
-export type { EnrichProductResult, ImportMapping, OmnixField, EtimsExplanation, DocsAnswer, SetupSuggestion };
+export type { EnrichProductResult, ImportMapping, OmnixField, EtimsExplanation, DocsAnswer, SetupSuggestion, ZReportFacts, DrugEnrichResult };
 
 export const ai = {
   enrichProduct,
@@ -25,4 +27,6 @@ export const ai = {
   explainEtims,
   docsQa,
   setupAssist,
+  summarizeZReport,
+  enrichDrug,
 };

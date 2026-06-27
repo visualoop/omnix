@@ -10,14 +10,19 @@ import { Input } from "@/components/ui/input";
 import { getZReport, printZReport, type ZReport } from "@/services/z-report";
 import { toast } from "sonner";
 import { intlLocale } from "@/lib/intl";
+import { AiButton } from "@/components/ai/AiButton";
+import { ai } from "@/services/ai";
+import { Sparkle as Sparkles } from "@phosphor-icons/react";
 
 export function ZReportPage() {
   const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
   const [report, setReport] = useState<ZReport | null>(null);
   const [loading, setLoading] = useState(false);
+  const [aiSummary, setAiSummary] = useState<string>("");
 
   const load = async () => {
     setLoading(true);
+    setAiSummary("");
     try {
       setReport(await getZReport(date));
     } catch (e) {
@@ -27,6 +32,26 @@ export function ZReportPage() {
     }
   };
   useEffect(() => { load(); }, [date]);
+
+  const runAiSummary = async () => {
+    if (!report) return;
+    const cash = report.by_method.find((m) => /cash/i.test(m.method))?.total ?? 0;
+    const mpesa = report.by_method.find((m) => /mpesa|m-pesa/i.test(m.method))?.total ?? 0;
+    const card = report.by_method.find((m) => /card/i.test(m.method))?.total ?? 0;
+    const other = report.by_method
+      .filter((m) => !/cash|mpesa|m-pesa|card/i.test(m.method))
+      .reduce((s, m) => s + m.total, 0);
+    const summary = await ai.summarizeZReport({
+      date,
+      total_sales: report.net_sales,
+      transaction_count: report.sale_count,
+      cash, mpesa, card, other,
+      refunds: report.return_total,
+      expected_drawer: report.cash_net,
+      top_products: report.top_products.slice(0, 3).map((p) => ({ name: p.product_name, qty: p.qty })),
+    });
+    setAiSummary(summary);
+  };
 
   const handlePrint = async () => {
     try {
@@ -64,6 +89,26 @@ export function ZReportPage() {
           </Button>
         </div>
       </div>
+
+      {report && !loading && (
+        <div className="border border-border rounded-lg p-4 bg-primary/5">
+          <div className="flex items-center justify-between mb-1">
+            <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+              <Sparkles className="h-3.5 w-3.5 text-primary" /> Shift summary
+            </h3>
+            {!aiSummary && (
+              <AiButton label="Summarise day" onRun={runAiSummary} />
+            )}
+          </div>
+          {aiSummary ? (
+            <p className="text-sm leading-relaxed text-foreground/85">{aiSummary}</p>
+          ) : (
+            <p className="text-xs text-muted-foreground">
+              Get a plain-language end-of-day summary you can share with the team.
+            </p>
+          )}
+        </div>
+      )}
 
       {loading ? (
         <div className="flex items-center justify-center py-16 text-muted-foreground">

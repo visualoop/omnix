@@ -21,6 +21,7 @@ import {
   Bank as Landmark,
   Money as Banknote,
   UserGear as UserCog,
+  Sparkle,
 } from "@phosphor-icons/react";
 import { NavLink } from "react-router-dom";
 import { OmnixLogo } from "@/components/omnix-logo";
@@ -58,6 +59,7 @@ interface NavItem {
  */
 const CORE_NAV: NavItem[] = [
   { to: "/", icon: LayoutDashboard, label: "Dashboard", permissions: [] },
+  { to: "/ai", icon: Sparkle, label: "Omnix AI", permissions: [] },
   { to: "/pos", icon: ShoppingCart, label: "POS", permissions: ["pos.use"] },
   { to: "/sales", icon: Receipt, label: "Sales", permissions: ["sales.view"] },
   { to: "/inventory", icon: SquaresFour, label: "Inventory", permissions: ["inventory.view"] },

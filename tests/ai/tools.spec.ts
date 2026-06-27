@@ -173,6 +173,9 @@ describe('tool inventory', () => {
       'getTopFindings',
       'navigate',
       'openDocs',
+      'proposeDraftPurchaseOrder',
+      'proposeSetCategory',
+      'proposeSetReorderLevel',
       'searchCustomers',
       'searchProducts',
     ])

@@ -31,6 +31,7 @@ import {
   type DashboardKPIs, type SalesByDay, type TopProduct, type SalesByPaymentMethod,
 } from "@/services/reports";
 import { AreaChart, PieChart } from "@/components/charts";
+import { DashboardInsights } from "@/components/dashboard/dashboard-insights";
 import { useActiveBranch } from "@/stores/active-branch";
 import { useActiveModule, MODULE_DEFINITIONS } from "@/stores/active-module";
 import { useAuthStore } from "@/stores/auth";
@@ -188,6 +189,9 @@ export function DashboardPage() {
           ) : null}
         </div>
       </section>
+
+      {/* ─── Needs attention — proactive insights ──── */}
+      <DashboardInsights />
 
       {/* ─── Action menu — keyboard-led ────────────── */}
       <section className="px-8 md:px-14 pb-12">

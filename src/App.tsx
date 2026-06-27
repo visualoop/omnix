@@ -24,6 +24,7 @@ import { ColdChainPage } from "@/pages/cold-chain";
 import { AmrReportPage } from "@/pages/amr-report";
 import { ExpiryPage } from "@/pages/expiry";
 import { ReportsPage } from "@/pages/reports";
+import { AiWorkspacePage } from "@/pages/ai-workspace";
 import { ReportsIndexPage } from "@/pages/reports-index";
 import { InventoryReportsPage } from "@/pages/inventory-reports";
 import { ZReportPage } from "@/pages/zreport";
@@ -216,6 +217,7 @@ function AppContent() {
       <Routes>
         <Route element={<AppShell />}>
           <Route index element={<DashboardPage />} />
+          <Route path="/ai" element={<AiWorkspacePage />} />
           <Route path="/pos" element={<RequireRole permission="pos.use"><POSOverviewPage /></RequireRole>} />
           <Route path="/pos/sale" element={<RequireRole permission="pos.use"><POSSalePage /></RequireRole>} />
           <Route path="/inventory" element={<RequireRole permission="inventory.view"><InventoryHubPage /></RequireRole>} />

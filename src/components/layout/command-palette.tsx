@@ -30,8 +30,8 @@ import {
   CalendarPlus,
   Warning as AlertTriangle,
   TrendUp as TrendingUp,
-} from "@phosphor-icons/react";
-import { query } from "@/lib/db";
+  Sparkle as SparkleIcon,
+} from "@phosphor-icons/react";import { query } from "@/lib/db";
 import { useActiveModule } from "@/stores/active-module";
 import { filterByActiveModule, getFeatureModule } from "@/lib/module-features";
 import { isModuleEntitled } from "@/stores/entitlements";
@@ -70,6 +70,7 @@ interface ResultItem {
 
 const pages: PageItem[] = [
   { type: "page", name: "Dashboard", to: "/", icon: LayoutDashboard, keywords: "home overview" },
+  { type: "page", name: "Omnix AI", to: "/ai", icon: SparkleIcon, keywords: "ai assistant chat ask data insights workspace" },
   { type: "page", name: "POS", to: "/pos", icon: ShoppingCart, keywords: "till checkout sale", hint: "F2" },
   { type: "page", name: "Sales History", to: "/sales", icon: Receipt, keywords: "transactions receipts" },
   { type: "page", name: "Returns", to: "/returns", icon: RotateCcw, keywords: "refund" },

@@ -375,6 +375,87 @@ export function buildAssistantTools(ctx: ToolContext) {
         return await expiryRisk({ withinDays, limit })
       },
     }),
+
+    /* ═══════════════════════════════════════════════════════════════
+     * Write-action PROPOSERS. These NEVER mutate. They return a
+     * structured proposal that the chat UI renders in a confirmation
+     * dialog; the actual change runs only after the user clicks Apply
+     * (services/ai/actions.ts, permission-checked + audited). The marker
+     * key `__actionProposal` is how the panel detects a proposal.
+     * ═════════════════════════════════════════════════════════════ */
+
+    /* ─── Propose: set product category ───────────────────────────── */
+    proposeSetCategory: tool({
+      description:
+        "Propose categorising one or more products into a category. Does NOT " +
+        "apply — the user must confirm. Use when the user asks to categorise, " +
+        "organise, or tidy up products. First use searchProducts to get product " +
+        "ids and confirm the category exists.",
+      inputSchema: z.object({
+        product_ids: z.array(z.string()).min(1).describe("Product ids to categorise."),
+        category_id: z.string().describe("Target category id."),
+        category_name: z.string().describe("Target category name (for the preview)."),
+      }),
+      execute: async ({ product_ids, category_id, category_name }: { product_ids: string[]; category_id: string; category_name: string }) => {
+        return {
+          __actionProposal: {
+            id: "set_product_category",
+            summary: `Categorise ${product_ids.length} product(s) as "${category_name}"`,
+            payload: { id: "set_product_category", product_ids, category_id, category_name },
+          },
+        }
+      },
+    }),
+
+    /* ─── Propose: set reorder level ──────────────────────────────── */
+    proposeSetReorderLevel: tool({
+      description:
+        "Propose setting a product's reorder level. Does NOT apply — the user " +
+        "confirms first. Use after getReorderSuggestions or when the user asks " +
+        "to change when a product triggers a reorder alert.",
+      inputSchema: z.object({
+        product_id: z.string(),
+        product_name: z.string(),
+        reorder_level: z.number().int().min(0),
+      }),
+      execute: async ({ product_id, product_name, reorder_level }: { product_id: string; product_name: string; reorder_level: number }) => {
+        return {
+          __actionProposal: {
+            id: "set_reorder_level",
+            summary: `Set reorder level for ${product_name} to ${reorder_level}`,
+            payload: { id: "set_reorder_level", product_id, product_name, reorder_level },
+          },
+        }
+      },
+    }),
+
+    /* ─── Propose: draft a purchase order ─────────────────────────── */
+    proposeDraftPurchaseOrder: tool({
+      description:
+        "Propose drafting a purchase order for a supplier from a list of items. " +
+        "Does NOT apply — the user confirms first, and it's created as a DRAFT " +
+        "(never sent). Use after getReorderSuggestions when the user wants to " +
+        "reorder. Get supplier id via search... or from the suggestion's supplier.",
+      inputSchema: z.object({
+        supplier_id: z.string(),
+        supplier_name: z.string(),
+        items: z.array(z.object({
+          product_id: z.string(),
+          product_name: z.string(),
+          quantity: z.number().positive(),
+          unit_cost: z.number().min(0),
+        })).min(1),
+      }),
+      execute: async (args: { supplier_id: string; supplier_name: string; items: Array<{ product_id: string; product_name: string; quantity: number; unit_cost: number }> }) => {
+        return {
+          __actionProposal: {
+            id: "draft_purchase_order",
+            summary: `Draft a purchase order for ${args.supplier_name} (${args.items.length} items)`,
+            payload: { id: "draft_purchase_order", ...args },
+          },
+        }
+      },
+    }),
   }
 }
 

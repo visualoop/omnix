@@ -412,6 +412,12 @@ fn run_inner() {
             sql: include_str!("../migrations/050_void_support.sql"),
             kind: MigrationKind::Up,
         },
+        Migration {
+            version: 51,
+            description: "AI write-action ledger (ai_actions) + ask_data/action_proposer features",
+            sql: include_str!("../migrations/051_ai_actions.sql"),
+            kind: MigrationKind::Up,
+        },
     ];
 
     tauri::Builder::default()
