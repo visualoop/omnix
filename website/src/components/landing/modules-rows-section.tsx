@@ -19,6 +19,7 @@ import { cn } from '@/lib/cn'
 
 interface ModuleRow {
   slug: string
+  pageHref: string
   name: string
   tagline: string
   body: string
@@ -30,6 +31,7 @@ interface ModuleRow {
 const ROWS: ModuleRow[] = [
   {
     slug: 'dawa-pharmacy',
+    pageHref: '/dawa',
     name: 'Dawa Pharmacy',
     tagline: 'Calm and compliant.',
     body:
@@ -40,6 +42,7 @@ const ROWS: ModuleRow[] = [
   },
   {
     slug: 'soko-retail',
+    pageHref: '/retail',
     name: 'Soko Retail',
     tagline: 'Sell faster. Reorder smarter.',
     body:
@@ -50,6 +53,7 @@ const ROWS: ModuleRow[] = [
   },
   {
     slug: 'hardware',
+    pageHref: '/hardware',
     name: 'Hardware',
     tagline: 'Heavy stock. Heavier margins.',
     body:
@@ -60,6 +64,7 @@ const ROWS: ModuleRow[] = [
   },
   {
     slug: 'hospitality',
+    pageHref: '/hospitality',
     name: 'Hospitality',
     tagline: 'Tables to kitchen. Rooms to folio.',
     body:
@@ -146,7 +151,7 @@ function Row({ row, index, imageUrl }: { row: ModuleRow; index: number; imageUrl
 
         {row.status === 'live' ? (
           <Link
-            href={`/${row.slug}`}
+            href={row.pageHref}
             aria-label={`Read more about ${row.name}`}
             className="font-[family-name:var(--font-ui)] mt-9 inline-flex items-center gap-2 border-b border-[var(--color-border-strong)] pb-1 text-[13px] font-medium text-[var(--color-fg)] transition-colors hover:border-[var(--color-accent)] hover:text-[var(--color-accent)]"
           >
