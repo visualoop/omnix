@@ -324,13 +324,27 @@ export function calculateCopay(member: InsuranceMember, grossAmount: number): {
   copay: number;
   claim: number;
 } {
-  const pctCopay = (grossAmount * (member.copay_percentage || 0)) / 100;
-  const totalCopay = pctCopay + (member.copay_fixed || 0);
-  const claim = Math.max(0, grossAmount - totalCopay);
-  return { copay: Math.min(grossAmount, totalCopay), claim };
+  // Compute in integer cents so copay + claim ALWAYS equals gross exactly
+  // (a 1-cent mismatch gets insurance claims rejected). The claim is the
+  // remainder, guaranteeing the two halves reconstruct the gross.
+  const grossC = Math.round(grossAmount * 100);
+  const pctCopayC = Math.round((grossC * (member.copay_percentage || 0)) / 100);
+  const fixedC = Math.round((member.copay_fixed || 0) * 100);
+  const copayC = Math.min(grossC, pctCopayC + fixedC);
+  const claimC = grossC - copayC; // exact remainder
+  return { copay: copayC / 100, claim: claimC / 100 };
 }
 
 export async function createClaim(input: CreateClaimInput): Promise<string> {
+  // Invariant: the split must reconstruct the gross to the cent, or the
+  // claim will be rejected by the payer. Guard before persisting.
+  const sumC = Math.round(input.copay_amount * 100) + Math.round(input.claim_amount * 100);
+  const grossC = Math.round(input.gross_amount * 100);
+  if (sumC !== grossC) {
+    throw new Error(
+      `Insurance split mismatch: copay (${input.copay_amount}) + claim (${input.claim_amount}) != gross (${input.gross_amount})`,
+    );
+  }
   const claimId = crypto.randomUUID();
   await execute(
     `INSERT INTO insurance_claims 

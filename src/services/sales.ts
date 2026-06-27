@@ -153,109 +153,119 @@ export async function completeSale(
   const paymentStatus = paidAmount >= total ? "paid" : paidAmount > 0 ? "partial" : "unpaid";
   const saleItemIds: string[] = [];
 
-  // Insert sale
-  await execute(
-    `INSERT INTO sales (id, sale_number, customer_id, user_id, branch_id, subtotal, discount_amount, tax_amount, total, payment_status, tip_amount, tip_employee_id, service_charge_amount, source_type, source_id)
-     VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15)`,
-    [saleId, saleNumber, customerId, userId, getActiveBranchId(), subtotal, discountAmount, taxAmount, total, paymentStatus, tipAmount, tipEmployeeId, serviceChargeAmount, sourceType, sourceId]
-  );
+  // ── Build the full write plan BEFORE the transaction ────────────
+  // A transaction batch can't read back intermediate results, so we
+  // resolve every FIFO batch deduction, recipe explosion, and bank
+  // account up front, then emit all writes atomically.
+  const stmts: import("@/lib/db").TxStatement[] = [];
+  const round2 = (n: number) => Math.round(n * 100) / 100;
 
-  // Insert items + deduct stock
+  // 1) The sale row.
+  stmts.push({
+    sql: `INSERT INTO sales (id, sale_number, customer_id, user_id, branch_id, subtotal, discount_amount, tax_amount, total, payment_status, tip_amount, tip_employee_id, service_charge_amount, source_type, source_id)
+     VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15)`,
+    params: [saleId, saleNumber, customerId, userId, getActiveBranchId(), round2(subtotal), round2(discountAmount), round2(taxAmount), round2(total), paymentStatus, round2(tipAmount), tipEmployeeId, round2(serviceChargeAmount), sourceType, sourceId],
+  });
+
+  // 2) Items + stock deduction.
   for (const item of items) {
     const itemId = crypto.randomUUID();
     saleItemIds.push(itemId);
-    await execute(
-      `INSERT INTO sale_items (id, sale_id, product_id, product_name, quantity, unit_price, discount, tax_rate, total, menu_item_id)
+    stmts.push({
+      sql: `INSERT INTO sale_items (id, sale_id, product_id, product_name, quantity, unit_price, discount, tax_rate, total, menu_item_id)
        VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)`,
-      [itemId, saleId, item.product_id, item.name, item.quantity, item.unit_price, item.discount, item.tax_rate, item.total, item.menu_item_id ?? null]
-    );
+      params: [itemId, saleId, item.product_id, item.name, item.quantity, item.unit_price, item.discount, item.tax_rate, round2(item.total), item.menu_item_id ?? null],
+    });
 
     if (item.menu_item_id) {
-      // Hospitality menu line — don't batch-deduct (the menu product has no
-      // batches); consume the recipe ingredients instead.
+      // Hospitality menu line — consume recipe ingredients (FIFO) instead
+      // of batch-deducting the menu product (which has no batches). The
+      // plan is resolved here; the actual writes go into the transaction.
       try {
-        const { consumeRecipe } = await import("./hospitality");
-        const result = await consumeRecipe(item.menu_item_id, item.quantity, saleId);
-        if (result.missing.length > 0) {
-          console.warn(
-            `[sale ${saleNumber}] menu_item ${item.menu_item_id}: insufficient ingredients`,
-            result.missing,
-          );
+        const { planRecipeConsumption } = await import("./hospitality");
+        const plan = await planRecipeConsumption(item.menu_item_id, item.quantity, saleId);
+        for (const w of plan.writes) stmts.push(w);
+        if (plan.missing.length > 0) {
+          console.warn(`[sale ${saleNumber}] menu_item ${item.menu_item_id}: insufficient ingredients`, plan.missing);
         }
       } catch (e) {
-        console.error("Recipe consumption failed for menu item:", e);
+        console.error("Recipe planning failed for menu item:", e);
       }
       continue;
     }
 
-    // Variant line — deduct from product_variants.stock_qty atomically.
-    // The parent product_id is what we record on sale_items so reports
-    // attribute the sale to the parent. The line.name already includes
-    // the variant label (e.g. 'Ugali - Ndogo').
     if (item.variant_id) {
-      await execute(
-        `UPDATE product_variants SET stock_qty = MAX(0, stock_qty - ?2) WHERE id = ?1`,
-        [item.variant_id, item.quantity],
-      );
-      await execute(
-        `INSERT INTO stock_movements (id, product_id, type, quantity, reference_type, reference_id)
+      // Variant line — clamp at 0; record parent product on the movement.
+      stmts.push({
+        sql: `UPDATE product_variants SET stock_qty = MAX(0, stock_qty - ?2) WHERE id = ?1`,
+        params: [item.variant_id, item.quantity],
+      });
+      stmts.push({
+        sql: `INSERT INTO stock_movements (id, product_id, type, quantity, reference_type, reference_id)
          VALUES (?1, ?2, 'sale', ?3, 'sale', ?4)`,
-        [crypto.randomUUID(), item.product_id, -item.quantity, saleId],
-      );
+        params: [crypto.randomUUID(), item.product_id, -item.quantity, saleId],
+      });
       continue;
     }
 
-    // Physical product: deduct from oldest batch (FIFO)
+    // Physical product: pre-resolve the FIFO batch plan, then emit
+    // clamped deductions inside the transaction.
     let remaining = item.quantity;
     const batches = await query<{ id: string; quantity: number }>(
       "SELECT id, quantity FROM batches WHERE product_id = ?1 AND quantity > 0 ORDER BY received_at ASC",
-      [item.product_id]
+      [item.product_id],
     );
     for (const batch of batches) {
       if (remaining <= 0) break;
       const deduct = Math.min(remaining, batch.quantity);
-      await execute("UPDATE batches SET quantity = quantity - ?1 WHERE id = ?2", [deduct, batch.id]);
-      await execute(
-        `INSERT INTO stock_movements (id, product_id, batch_id, type, quantity, reference_type, reference_id)
+      stmts.push({
+        // Clamp inside the write so a concurrent sale can't drive it negative.
+        sql: `UPDATE batches SET quantity = MAX(0, quantity - ?1) WHERE id = ?2`,
+        params: [deduct, batch.id],
+      });
+      stmts.push({
+        sql: `INSERT INTO stock_movements (id, product_id, batch_id, type, quantity, reference_type, reference_id)
          VALUES (?1, ?2, ?3, 'sale', ?4, 'sale', ?5)`,
-        [crypto.randomUUID(), item.product_id, batch.id, -deduct, saleId]
-      );
+        params: [crypto.randomUUID(), item.product_id, batch.id, -deduct, saleId],
+      });
       remaining -= deduct;
     }
   }
 
-  // Insert payments
+  // 3) Payments + bank mirror (pre-resolve accounts), in the same txn.
   for (const p of payments) {
-    const paymentId = crypto.randomUUID();
-    await execute(
-      `INSERT INTO payments (id, sale_id, method_id, method_name, amount, reference)
+    stmts.push({
+      sql: `INSERT INTO payments (id, sale_id, method_id, method_name, amount, reference)
        VALUES (?1, ?2, ?3, ?4, ?5, ?6)`,
-      [paymentId, saleId, p.method_id, p.method_name, p.amount, p.reference || null]
-    );
-
-    // Mirror to bank_transactions for reconciliation
+      params: [crypto.randomUUID(), saleId, p.method_id, p.method_name, round2(p.amount), p.reference || null],
+    });
     try {
-      const { recordTransaction } = await import("./banking");
       const accountId = await pickBankAccountForMethod(p.method_name);
       if (accountId) {
-        await recordTransaction({
-          account_id: accountId,
-          transaction_type: "deposit",
-          amount: p.amount,
-          description: `Sale ${saleNumber}`,
-          counterparty_name: customerId ? undefined : "Walk-in customer",
-          payment_method: p.method_name.toLowerCase(),
-          reference: p.reference || undefined,
-          related_sale_id: saleId,
-          user_id: userId,
+        stmts.push({
+          sql: `INSERT INTO bank_transactions (id, account_id, transaction_date, transaction_type, amount, description, payment_method, reference, related_sale_id, user_id)
+           VALUES (?1, ?2, datetime('now'), 'deposit', ?3, ?4, ?5, ?6, ?7, ?8)`,
+          params: [crypto.randomUUID(), accountId, round2(p.amount), `Sale ${saleNumber}`, p.method_name.toLowerCase(), p.reference || null, saleId, userId],
+        });
+        stmts.push({
+          sql: `UPDATE bank_accounts SET current_balance = ROUND(COALESCE(current_balance,0) + ?2, 2) WHERE id = ?1`,
+          params: [accountId, round2(p.amount)],
         });
       }
     } catch (e) {
-      console.error("Bank txn mirror failed for sale", saleNumber, ":", e);
+      console.error("Bank account resolve failed for sale", saleNumber, ":", e);
     }
   }
 
-  // Auto-sign with KRA eTIMS if configured (non-blocking)
+  // 4) Commit everything atomically. If anything throws, NOTHING applies —
+  //    no half-written sale, no orphan stock deduction.
+  const { transaction } = await import("@/lib/db");
+  await transaction(stmts);
+
+  // ── Post-commit, non-financial side effects ─────────────────────
+  // eTIMS signing is enqueued + signed asynchronously; a failure here
+  // can never roll back a committed sale, and the queue guarantees the
+  // intent is never silently lost.
   signWithEtims(saleId, items, { subtotal, tax: taxAmount, total }).catch((e) => {
     console.error("eTIMS signing failed:", e);
   });
@@ -311,61 +321,86 @@ export async function voidSale(saleId: string): Promise<void> {
   if (existing.length === 0) throw new Error("Sale not found");
   if (existing[0].status === "voided") return;
 
-  const items = await query<{ product_id: string; quantity: number }>(
-    "SELECT product_id, quantity FROM sale_items WHERE sale_id = ?1",
+  // Only reverse PHYSICAL lines. Hospitality menu lines (menu_item_id set)
+  // consumed recipe ingredients, not the menu product's stock — restoring
+  // them as batch stock would invent inventory. Their ingredients are
+  // treated as wastage (already cooked), so we don't auto-restore them.
+  const items = await query<{ product_id: string; quantity: number; menu_item_id: string | null }>(
+    "SELECT product_id, quantity, menu_item_id FROM sale_items WHERE sale_id = ?1",
     [saleId],
   );
 
-  await execute("UPDATE sales SET status = 'voided' WHERE id = ?1", [saleId]);
+  const stmts: import("@/lib/db").TxStatement[] = [];
+  stmts.push({ sql: "UPDATE sales SET status = 'voided' WHERE id = ?1", params: [saleId] });
 
   for (const item of items) {
     if (!item.product_id || !item.quantity) continue;
+    if (item.menu_item_id) continue; // recipe ingredients = wastage, not restored
 
-    let remaining = item.quantity;
-    const batches = await query<{ id: string; quantity: number }>(
-      "SELECT id, quantity FROM batches WHERE product_id = ?1 ORDER BY received_at ASC",
+    // Restore to the most-recent batch (single target — clean provenance),
+    // or create a VOID-RESTORE batch if none exist.
+    const batches = await query<{ id: string }>(
+      "SELECT id FROM batches WHERE product_id = ?1 ORDER BY received_at DESC LIMIT 1",
       [item.product_id],
     );
-
-    if (batches.length === 0) {
-      await execute(
-        `INSERT INTO batches (id, product_id, quantity, received_at, batch_number)
-         VALUES (?1, ?2, ?3, strftime('%Y-%m-%dT%H:%M:%fZ','now'), 'VOID-RESTORE')`,
-        [crypto.randomUUID(), item.product_id, item.quantity],
-      );
-      await execute(
-        `INSERT INTO stock_movements (id, product_id, type, quantity, reference_type, reference_id)
-         VALUES (?1, ?2, 'return', ?3, 'sale_void', ?4)`,
-        [crypto.randomUUID(), item.product_id, item.quantity, saleId],
-      );
-      continue;
-    }
-
-    for (const batch of batches) {
-      if (remaining <= 0) break;
-      const restore = Math.min(remaining, remaining);
-      await execute("UPDATE batches SET quantity = quantity + ?1 WHERE id = ?2", [restore, batch.id]);
-      await execute(
-        `INSERT INTO stock_movements (id, product_id, batch_id, type, quantity, reference_type, reference_id)
+    if (batches[0]) {
+      stmts.push({
+        sql: "UPDATE batches SET quantity = quantity + ?1 WHERE id = ?2",
+        params: [item.quantity, batches[0].id],
+      });
+      stmts.push({
+        sql: `INSERT INTO stock_movements (id, product_id, batch_id, type, quantity, reference_type, reference_id)
          VALUES (?1, ?2, ?3, 'return', ?4, 'sale_void', ?5)`,
-        [crypto.randomUUID(), item.product_id, batch.id, restore, saleId],
-      );
-      remaining -= restore;
-    }
-
-    if (remaining > 0) {
-      await execute(
-        `INSERT INTO batches (id, product_id, quantity, received_at, batch_number)
+        params: [crypto.randomUUID(), item.product_id, batches[0].id, item.quantity, saleId],
+      });
+    } else {
+      stmts.push({
+        sql: `INSERT INTO batches (id, product_id, quantity, received_at, batch_number)
          VALUES (?1, ?2, ?3, strftime('%Y-%m-%dT%H:%M:%fZ','now'), 'VOID-RESTORE')`,
-        [crypto.randomUUID(), item.product_id, remaining],
-      );
-      await execute(
-        `INSERT INTO stock_movements (id, product_id, type, quantity, reference_type, reference_id)
+        params: [crypto.randomUUID(), item.product_id, item.quantity],
+      });
+      stmts.push({
+        sql: `INSERT INTO stock_movements (id, product_id, type, quantity, reference_type, reference_id)
          VALUES (?1, ?2, 'return', ?3, 'sale_void', ?4)`,
-        [crypto.randomUUID(), item.product_id, remaining, saleId],
-      );
+        params: [crypto.randomUUID(), item.product_id, item.quantity, saleId],
+      });
     }
   }
+
+  // Reverse the money: flag payments voided, reverse the bank deposits +
+  // account balance so a voided sale stops counting as banked revenue.
+  const pays = await query<{ id: string; amount: number; account_id: string | null }>(
+    `SELECT p.id, p.amount, bt.account_id
+     FROM payments p
+     LEFT JOIN bank_transactions bt ON bt.related_sale_id = p.sale_id AND bt.transaction_type = 'deposit'
+     WHERE p.sale_id = ?1 AND p.voided_at IS NULL`,
+    [saleId],
+  );
+  const round2 = (n: number) => Math.round(n * 100) / 100;
+  for (const p of pays) {
+    stmts.push({ sql: "UPDATE payments SET voided_at = datetime('now') WHERE id = ?1", params: [p.id] });
+    if (p.account_id) {
+      stmts.push({
+        sql: `INSERT INTO bank_transactions (id, account_id, transaction_date, transaction_type, amount, description, related_sale_id, user_id)
+         VALUES (?1, ?2, datetime('now'), 'withdrawal', ?3, ?4, ?5, (SELECT user_id FROM sales WHERE id = ?5))`,
+        params: [crypto.randomUUID(), p.account_id, round2(p.amount), `Void of sale ${saleId.slice(0, 8)}`, saleId],
+      });
+      stmts.push({
+        sql: `UPDATE bank_accounts SET current_balance = ROUND(COALESCE(current_balance,0) - ?2, 2) WHERE id = ?1`,
+        params: [p.account_id, round2(p.amount)],
+      });
+    }
+  }
+
+  // Flag any signed eTIMS invoice as voided (a credit note is the correct
+  // KRA reversal; the queue picks up voided invoices to issue one).
+  stmts.push({
+    sql: "UPDATE etims_invoices SET voided_at = datetime('now') WHERE sale_id = ?1 AND voided_at IS NULL",
+    params: [saleId],
+  });
+
+  const { transaction } = await import("@/lib/db");
+  await transaction(stmts);
 }
 
 
@@ -373,7 +408,7 @@ export async function voidSale(saleId: string): Promise<void> {
  * Pick the appropriate bank account to mirror a payment to.
  * Falls back to default account or the cash box.
  */
-async function pickBankAccountForMethod(methodName: string): Promise<string | null> {
+export async function pickBankAccountForMethod(methodName: string): Promise<string | null> {
   const lower = methodName.toLowerCase();
   // M-Pesa payments → M-Pesa till/paybill if exists
   if (lower.includes("mpesa") || lower.includes("m-pesa")) {

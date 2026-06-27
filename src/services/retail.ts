@@ -550,17 +550,39 @@ export async function recordLaybyPayment(input: {
 }
 
 export async function cancelLayby(id: string, refundAmount?: number, userId?: string): Promise<void> {
-  await execute(
-    `UPDATE laybys SET status = 'cancelled' WHERE id = ?1`,
-    [id],
-  );
+  const round2 = (n: number) => Math.round(n * 100) / 100;
+  const stmts: import("@/lib/db").TxStatement[] = [
+    { sql: `UPDATE laybys SET status = 'cancelled' WHERE id = ?1`, params: [id] },
+  ];
+
   if (refundAmount && refundAmount > 0 && userId) {
-    await execute(
-      `INSERT INTO layby_payments (id, layby_id, amount, method, reference, user_id)
+    stmts.push({
+      sql: `INSERT INTO layby_payments (id, layby_id, amount, method, reference, user_id)
        VALUES (?1, ?2, ?3, 'refund', 'cancellation refund', ?4)`,
-      [crypto.randomUUID(), id, -refundAmount, userId],
-    );
+      params: [crypto.randomUUID(), id, -round2(refundAmount), userId],
+    });
+    // Mirror the refund as money leaving the till so the bank reconciles.
+    try {
+      const { pickBankAccountForMethod } = await import("@/services/sales");
+      const accountId = await pickBankAccountForMethod("cash");
+      if (accountId) {
+        stmts.push({
+          sql: `INSERT INTO bank_transactions (id, account_id, transaction_date, transaction_type, amount, description, payment_method, user_id)
+           VALUES (?1, ?2, datetime('now'), 'withdrawal', ?3, ?4, 'cash', ?5)`,
+          params: [crypto.randomUUID(), accountId, round2(refundAmount), `Layby refund`, userId],
+        });
+        stmts.push({
+          sql: `UPDATE bank_accounts SET current_balance = ROUND(COALESCE(current_balance,0) - ?2, 2) WHERE id = ?1`,
+          params: [accountId, round2(refundAmount)],
+        });
+      }
+    } catch (e) {
+      console.error("Layby refund bank mirror failed:", e);
+    }
   }
+
+  const { transaction } = await import("@/lib/db");
+  await transaction(stmts);
 }
 
 export async function prepareLaybyForPosCheckout(laybyId: string): Promise<{

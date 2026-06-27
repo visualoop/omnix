@@ -406,6 +406,12 @@ fn run_inner() {
             sql: include_str!("../migrations/049_sales_rollup.sql"),
             kind: MigrationKind::Up,
         },
+        Migration {
+            version: 50,
+            description: "Void support: voided_at on payments + etims_invoices so voids reverse money + tax",
+            sql: include_str!("../migrations/050_void_support.sql"),
+            kind: MigrationKind::Up,
+        },
     ];
 
     tauri::Builder::default()

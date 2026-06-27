@@ -389,43 +389,81 @@ async function nextReturnNumber(): Promise<string> {
 export async function createSaleReturn(input: CreateReturnInput): Promise<string> {
   const id = crypto.randomUUID();
   const number = await nextReturnNumber();
+  const round2 = (n: number) => Math.round(n * 100) / 100;
 
-  await execute(
-    `INSERT INTO sale_returns (id, return_number, sale_id, customer_id, user_id, reason, refund_method, refund_amount, restock_to_inventory, notes, branch_id)
+  // Build the whole return as one atomic unit: the return header, each
+  // line + its restock, and the refund's bank withdrawal. A crash mid-way
+  // must not leave a refund recorded with stock un-restored (or vice
+  // versa). Reads (FIFO batch target, refund account) resolve up front.
+  const stmts: import("@/lib/db").TxStatement[] = [];
+
+  stmts.push({
+    sql: `INSERT INTO sale_returns (id, return_number, sale_id, customer_id, user_id, reason, refund_method, refund_amount, restock_to_inventory, notes, branch_id)
      VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)`,
-    [id, number, input.sale_id || null, input.customer_id || null, input.user_id,
-     input.reason, input.refund_method, input.refund_amount,
-     input.restock_to_inventory ? 1 : 0, input.notes || null, getActiveBranchId()]
-  );
+    params: [id, number, input.sale_id || null, input.customer_id || null, input.user_id,
+      input.reason, input.refund_method, round2(input.refund_amount),
+      input.restock_to_inventory ? 1 : 0, input.notes || null, getActiveBranchId()],
+  });
 
   for (const item of input.items) {
-    const lineTotal = item.unit_price * item.quantity;
-    await execute(
-      `INSERT INTO sale_return_items (id, return_id, sale_item_id, product_id, product_name, quantity, unit_price, line_total, reason)
+    const lineTotal = round2(item.unit_price * item.quantity);
+    stmts.push({
+      sql: `INSERT INTO sale_return_items (id, return_id, sale_item_id, product_id, product_name, quantity, unit_price, line_total, reason)
        VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)`,
-      [crypto.randomUUID(), id, item.sale_item_id || null, item.product_id, item.product_name,
-       item.quantity, item.unit_price, lineTotal, item.reason || null]
-    );
+      params: [crypto.randomUUID(), id, item.sale_item_id || null, item.product_id, item.product_name,
+        item.quantity, item.unit_price, lineTotal, item.reason || null],
+    });
 
     if (input.restock_to_inventory) {
-      // Add back to oldest batch (or create new one if none)
       const batches = await query<{ id: string }>(
         "SELECT id FROM batches WHERE product_id = ?1 ORDER BY received_at DESC LIMIT 1",
-        [item.product_id]
+        [item.product_id],
       );
       if (batches[0]) {
-        await execute(
-          "UPDATE batches SET quantity = quantity + ?1 WHERE id = ?2",
-          [item.quantity, batches[0].id]
-        );
+        stmts.push({
+          sql: "UPDATE batches SET quantity = quantity + ?1 WHERE id = ?2",
+          params: [item.quantity, batches[0].id],
+        });
+      } else {
+        stmts.push({
+          sql: `INSERT INTO batches (id, product_id, quantity, received_at, batch_number)
+           VALUES (?1, ?2, ?3, strftime('%Y-%m-%dT%H:%M:%fZ','now'), 'RETURN-RESTOCK')`,
+          params: [crypto.randomUUID(), item.product_id, item.quantity],
+        });
       }
-      await execute(
-        `INSERT INTO stock_movements (id, product_id, type, quantity, reference_type, reference_id, user_id)
+      stmts.push({
+        sql: `INSERT INTO stock_movements (id, product_id, type, quantity, reference_type, reference_id, user_id)
          VALUES (?1, ?2, 'return', ?3, 'sale_return', ?4, ?5)`,
-        [crypto.randomUUID(), item.product_id, item.quantity, number, input.user_id]
-      );
+        params: [crypto.randomUUID(), item.product_id, item.quantity, number, input.user_id],
+      });
     }
   }
+
+  // Mirror the refund as money LEAVING the till (a withdrawal), the exact
+  // inverse of the deposit completeSale recorded — so the bank reconciles.
+  if (input.refund_amount > 0) {
+    try {
+      const { pickBankAccountForMethod } = await import("@/services/sales");
+      const accountId = await pickBankAccountForMethod(input.refund_method || "cash");
+      if (accountId) {
+        stmts.push({
+          sql: `INSERT INTO bank_transactions (id, account_id, transaction_date, transaction_type, amount, description, payment_method, related_sale_id, user_id)
+           VALUES (?1, ?2, datetime('now'), 'withdrawal', ?3, ?4, ?5, ?6, ?7)`,
+          params: [crypto.randomUUID(), accountId, round2(input.refund_amount), `Refund ${number}`,
+            (input.refund_method || "cash").toLowerCase(), input.sale_id || null, input.user_id],
+        });
+        stmts.push({
+          sql: `UPDATE bank_accounts SET current_balance = ROUND(COALESCE(current_balance,0) - ?2, 2) WHERE id = ?1`,
+          params: [accountId, round2(input.refund_amount)],
+        });
+      }
+    } catch (e) {
+      console.error("Refund bank account resolve failed:", e);
+    }
+  }
+
+  const { transaction } = await import("@/lib/db");
+  await transaction(stmts);
 
   return id;
 }

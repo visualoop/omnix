@@ -17,6 +17,7 @@
  *   tax.label        Display label — VAT, GST, Sales Tax (default 'VAT')
  */
 import { query } from "@/lib/db";
+import { round2 } from "@/lib/money";
 
 export type TaxMode = "off" | "inclusive" | "exclusive";
 
@@ -83,13 +84,13 @@ export function computeTax(
   const cartDiscount = extras.cartDiscount ?? 0;
 
   // Line-level (unit_price * qty - line discount)
-  const lineGross = lines.reduce((s, l) => s + Math.max(0, l.unit_price * l.quantity - l.discount), 0);
+  const lineGross = round2(lines.reduce((s, l) => s + Math.max(0, l.unit_price * l.quantity - l.discount), 0));
 
   if (settings.mode === "off") {
     return {
       subtotal: lineGross,
       taxAmount: 0,
-      total: Math.max(0, lineGross - cartDiscount + tip + serviceCharge),
+      total: round2(Math.max(0, lineGross - cartDiscount + tip + serviceCharge)),
       mode: "off",
       label: settings.label,
     };
@@ -98,32 +99,32 @@ export function computeTax(
   if (settings.mode === "inclusive") {
     // Selling prices already contain tax. Back it out per-line so KRA
     // / reports can see the tax portion.
-    const taxAmount = lines.reduce((s, l) => {
+    const taxAmount = round2(lines.reduce((s, l) => {
       const lineNet = Math.max(0, l.unit_price * l.quantity - l.discount);
       const r = l.tax_rate;
       if (r <= 0) return s;
       return s + lineNet * (r / (100 + r));
-    }, 0);
+    }, 0));
     // Subtotal in inclusive mode = gross - tax (the pre-tax base)
-    const subtotal = Math.max(0, lineGross - taxAmount);
+    const subtotal = round2(Math.max(0, lineGross - taxAmount));
     return {
       subtotal,
       taxAmount,
-      total: Math.max(0, lineGross - cartDiscount + tip + serviceCharge),
+      total: round2(Math.max(0, lineGross - cartDiscount + tip + serviceCharge)),
       mode: "inclusive",
       label: settings.label,
     };
   }
 
   // exclusive (default)
-  const taxAmount = lines.reduce((s, l) => {
+  const taxAmount = round2(lines.reduce((s, l) => {
     const lineNet = Math.max(0, l.unit_price * l.quantity - l.discount);
     return s + lineNet * (l.tax_rate / 100);
-  }, 0);
+  }, 0));
   return {
     subtotal: lineGross,
     taxAmount,
-    total: Math.max(0, lineGross - cartDiscount + taxAmount + tip + serviceCharge),
+    total: round2(Math.max(0, lineGross - cartDiscount + taxAmount + tip + serviceCharge)),
     mode: "exclusive",
     label: settings.label,
   };

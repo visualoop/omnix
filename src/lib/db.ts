@@ -204,3 +204,74 @@ export async function execute(sql: string, bindValues?: unknown[]) {
 export function isClientMode(): boolean {
   return clientMode !== null;
 }
+
+/** A single statement in a transaction batch. */
+export interface TxStatement {
+  sql: string;
+  params?: unknown[];
+}
+
+/**
+ * Escape a JS value into a SQLite literal for safe inlining into a
+ * multi-statement transaction batch.
+ *
+ * WHY inline instead of bound params: a transaction must run as ONE
+ * connection-level batch (BEGIN IMMEDIATE … COMMIT). Both the local
+ * tauri-plugin-sql pool and the LAN master run bound-param statements
+ * one-at-a-time on pooled connections, so a multi-statement batch can't
+ * carry positional params across the pool reliably. Inlining the
+ * already-typed values (numbers, strings, null) into a single SQL string
+ * lets the whole unit commit or roll back atomically on one connection.
+ *
+ * Only primitives appear here (the callers pass numbers/strings/null);
+ * strings are single-quote escaped. This is NOT general user-input SQL —
+ * it's our own typed statement values.
+ */
+function sqlLiteral(v: unknown): string {
+  if (v === null || v === undefined) return "NULL";
+  if (typeof v === "number") return Number.isFinite(v) ? String(v) : "NULL";
+  if (typeof v === "boolean") return v ? "1" : "0";
+  // string (and anything else, stringified) — escape single quotes
+  return `'${String(v).replace(/'/g, "''")}'`;
+}
+
+/** Inline ?1 ?2 … placeholders in a statement with escaped literals.
+ *  Exported for unit testing the transaction batch builder. */
+export function inlineParams(sql: string, params: unknown[] = []): string {
+  return sql.replace(/\?(\d+)/g, (_m, n) => sqlLiteral(params[Number(n) - 1]));
+}
+
+/**
+ * Run a set of statements atomically. Either every statement commits or
+ * none do (BEGIN IMMEDIATE … COMMIT, ROLLBACK on any error). Works in
+ * both standalone and LAN-client mode because the whole batch is one
+ * execute() on a single connection.
+ *
+ * Use for any multi-write unit that must not half-apply: completing a
+ * sale, voiding a sale, stock transfers, payroll runs, returns.
+ *
+ * NOTE: statements run server-side as a batch, so they can't read back
+ * intermediate results in JS. Compute all IDs/values up front (e.g.
+ * crypto.randomUUID()) and pass them in.
+ */
+export async function transaction(statements: TxStatement[]): Promise<void> {
+  await ensureModeChecked();
+  if (statements.length === 0) return;
+
+  const body =
+    "BEGIN IMMEDIATE;\n" +
+    statements.map((s) => inlineParams(s.sql, s.params).trim().replace(/;?\s*$/, "") + ";").join("\n") +
+    "\nCOMMIT;";
+
+  try {
+    await execute(body);
+  } catch (e) {
+    // Best-effort rollback in case the failure left the txn open.
+    try {
+      await execute("ROLLBACK;");
+    } catch {
+      /* no active transaction — ignore */
+    }
+    throw e;
+  }
+}

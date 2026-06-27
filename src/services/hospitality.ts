@@ -235,6 +235,31 @@ export async function markServed(itemId: string): Promise<void> {
 
 export async function voidOrderItem(itemId: string, reason: string): Promise<void> {
   await requirePermission("hospitality.orders.void", { entityType: "hospitality_order_item", entityId: itemId, metadata: { reason } });
+
+  // If the item was already FIRED to the kitchen (sent/preparing/ready/
+  // served), the food was physically made — its ingredients left stock in
+  // the real world. Write them off as wastage so inventory + food-cost
+  // stay honest. (A still-'new' line was never cooked, so nothing leaves.)
+  const [it] = await query<{ status: string; menu_item_id: string | null; quantity: number }>(
+    `SELECT status, menu_item_id, quantity FROM hospitality_order_items WHERE id = ?1`,
+    [itemId],
+  );
+  const COOKED = ["sent", "preparing", "ready", "served"];
+  if (it && it.menu_item_id && COOKED.includes(it.status)) {
+    try {
+      // Deduct the recipe ingredients (they physically left the kitchen).
+      // The planRecipeConsumption writes record 'recipe_consume' stock
+      // movements per ingredient, so inventory + food-cost reflect the
+      // comp without needing a separate wastage header (which FK-references
+      // products, not menu items).
+      const saleRef = `void-item-${itemId}`;
+      const plan = await planRecipeConsumption(it.menu_item_id, it.quantity, saleRef);
+      for (const w of plan.writes) await execute(w.sql, w.params);
+    } catch (e) {
+      console.error("Wastage write-off failed for voided item:", e);
+    }
+  }
+
   await execute(`UPDATE hospitality_order_items SET status = 'voided', notes = ?2 WHERE id = ?1`, [itemId, reason]);
 }
 
@@ -562,6 +587,69 @@ export async function recipeCost(recipeId: string): Promise<number> {
  * Returns `{ consumed, missing }` — `missing` lists ingredient products that
  * had insufficient stock so the caller (sales.ts) can warn but not block.
  */
+/**
+ * PLAN the recipe ingredient consumption for a menu line WITHOUT writing.
+ *
+ * Returns the exact batch-deduction + stock-movement statements so the
+ * caller (completeSale) can include them in its atomic transaction, plus
+ * any ingredient shortfalls. This is the transaction-safe replacement for
+ * consumeRecipe — reads happen here, writes happen inside the sale txn.
+ */
+export async function planRecipeConsumption(
+  menuItemId: string,
+  servings: number,
+  saleId: string,
+): Promise<{
+  writes: import("@/lib/db").TxStatement[];
+  missing: Array<{ product_id: string; needed: number; available: number }>;
+}> {
+  const recipeRows = await query<{ id: string }>(
+    `SELECT id FROM recipes WHERE menu_item_id = ?1 AND active = 1 LIMIT 1`,
+    [menuItemId],
+  );
+  if (!recipeRows[0]) return { writes: [], missing: [] };
+  const recipeId = recipeRows[0].id;
+
+  const ingredients = await query<{ product_id: string; quantity: number; wastage_percent: number }>(
+    `SELECT product_id, quantity, wastage_percent FROM recipe_ingredients WHERE recipe_id = ?1`,
+    [recipeId],
+  );
+
+  const writes: import("@/lib/db").TxStatement[] = [];
+  const missing: Array<{ product_id: string; needed: number; available: number }> = [];
+
+  for (const ing of ingredients) {
+    const needed = ing.quantity * (1 + ing.wastage_percent / 100) * servings;
+    let remaining = needed;
+
+    const batches = await query<{ id: string; quantity: number }>(
+      `SELECT id, quantity FROM batches WHERE product_id = ?1 AND quantity > 0 ORDER BY received_at ASC`,
+      [ing.product_id],
+    );
+    const available = batches.reduce((s, b) => s + b.quantity, 0);
+    if (available + 1e-9 < needed) {
+      missing.push({ product_id: ing.product_id, needed, available });
+    }
+
+    for (const batch of batches) {
+      if (remaining <= 0) break;
+      const deduct = Math.min(remaining, batch.quantity);
+      writes.push({
+        sql: `UPDATE batches SET quantity = MAX(0, quantity - ?1) WHERE id = ?2`,
+        params: [deduct, batch.id],
+      });
+      writes.push({
+        sql: `INSERT INTO stock_movements (id, product_id, batch_id, type, quantity, reference_type, reference_id, notes)
+         VALUES (?1, ?2, ?3, 'recipe_consume', ?4, 'sale', ?5, ?6)`,
+        params: [uid(), ing.product_id, batch.id, -deduct, saleId, `recipe ${recipeId}`],
+      });
+      remaining -= deduct;
+    }
+  }
+
+  return { writes, missing };
+}
+
 export async function consumeRecipe(
   menuItemId: string,
   servings: number,
