@@ -3,6 +3,7 @@ import { Outlet, useLocation } from "react-router-dom";
 import { Sidebar } from "./sidebar";
 import { Topbar } from "./topbar";
 import { CommandPalette } from "@/components/layout/command-palette";
+import { RouteErrorBoundary } from "@/components/route-error-boundary";
 import { OnboardingTour } from "@/components/onboarding-tour";
 import { ShortcutsOverlay } from "@/components/shortcuts-overlay";
 import { IdleAutoLock } from "@/components/idle-auto-lock";
@@ -61,7 +62,9 @@ export function AppShell() {
         {!isFullscreen && <Topbar />}
         <main className={isFullscreen ? "flex-1 overflow-auto" : "flex-1 overflow-auto p-6 bg-[#FBFAF6] dark:bg-background"}>
           <div key={routeKey} className={transitionClass}>
-            <Outlet />
+            <RouteErrorBoundary resetKey={location.pathname}>
+              <Outlet />
+            </RouteErrorBoundary>
           </div>
         </main>
       </div>

@@ -86,13 +86,20 @@ export function DarajaMpesaCharge({ amount, saleId, onSuccess, onCancel }: Props
     const maxAttempts = 40; // 40 × 5s = ~3 minutes
     setPollStartedAt(Date.now());
     const startedAt = Date.now();
+    // Sandbox grace: Safaricom's sandbox often returns a spurious "failed"
+    // code (1032 cancelled, 1037 timeout) on the very first poll even
+    // though no STK ever reached a phone. We MUST give the auto-confirm
+    // window a chance to fire instead of bailing on the first poll. The
+    // grace is identical to the auto-confirm trigger (15s).
+    const GRACE_MS = 15000;
     pollRef.current = window.setInterval(async () => {
       attempts++;
+      const elapsed = Date.now() - startedAt;
       // Sandbox testing aid: the Daraja sandbox usually never delivers a
       // callback, so after a short grace period we auto-confirm so the POS
       // flow can be tested end to end. HARD-GATED to sandbox in the service
       // layer — this can never fire against a live payment.
-      if (sandbox && !autoConfirmedRef.current && Date.now() - startedAt >= 15000) {
+      if (sandbox && !autoConfirmedRef.current && elapsed >= GRACE_MS) {
         autoConfirmedRef.current = true;
         await runSandboxAutoConfirm(checkoutId);
         return;
@@ -104,9 +111,18 @@ export function DarajaMpesaCharge({ amount, saleId, onSuccess, onCancel }: Props
           setStatus("success");
           setTimeout(() => onSuccess(checkoutId), 800);
         } else if (result.status === "failed") {
-          if (pollRef.current) clearInterval(pollRef.current);
-          setStatus("failed");
-          setError(result.message || "Transaction failed or was cancelled");
+          // In sandbox, suppress 'failed' verdicts during the grace window —
+          // Safaricom's sandbox routinely returns 1032/1037 on the first
+          // poll even when no STK was ever delivered. Auto-confirm will
+          // resolve the transaction at the GRACE_MS boundary. In live mode
+          // (sandbox=false), 'failed' is always terminal.
+          if (sandbox && elapsed < GRACE_MS) {
+            // keep polling silently — auto-confirm will handle it
+          } else {
+            if (pollRef.current) clearInterval(pollRef.current);
+            setStatus("failed");
+            setError(result.message || "Transaction failed or was cancelled");
+          }
         } else if (attempts >= maxAttempts) {
           if (pollRef.current) clearInterval(pollRef.current);
           setStatus("failed");
@@ -154,9 +170,18 @@ export function DarajaMpesaCharge({ amount, saleId, onSuccess, onCancel }: Props
         setStatus("success");
         setTimeout(() => onSuccess(checkoutRequestId), 600);
       } else if (result.status === "failed") {
-        if (pollRef.current) clearInterval(pollRef.current);
-        setStatus("failed");
-        setError(result.message || "Transaction failed or was cancelled");
+        // In sandbox, don't surface a queryStkStatus 'failed' as terminal —
+        // the cashier still has the 'Auto-confirm (sandbox)' button and the
+        // poller can keep going. Switching to the failed view would hide
+        // both options. In production, 'failed' is always terminal.
+        if (sandbox) {
+          // surface a gentle hint without tearing down the UI
+          setError("Sandbox returned a failed code — use Auto-confirm to proceed.");
+        } else {
+          if (pollRef.current) clearInterval(pollRef.current);
+          setStatus("failed");
+          setError(result.message || "Transaction failed or was cancelled");
+        }
       }
       // pending → leave the polling loop running
     } catch (e) {

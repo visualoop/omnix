@@ -17,6 +17,7 @@ import { PaystackMpesaCharge } from "@/components/pos/paystack-mpesa";
 import { DarajaMpesaCharge } from "@/components/pos/daraja-mpesa";
 import { InsuranceVerifyPanel } from "@/components/pos/insurance-verify";
 import { paymentBrandIcon, paymentBrandTint } from "@/components/icons/payment-brands";
+import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
 interface Props {
@@ -327,52 +328,67 @@ export function PaymentModal({ open, onClose }: Props) {
 
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
-      <DialogContent className="sm:max-w-[440px]">
-        <DialogHeader>
+      <DialogContent
+        className={cn(
+          // Wider so the 2-col payment-method grid breathes and focus rings
+          // don't clip the card edges. Disable the outer scroll + max-h —
+          // the payment-modal renders its own sticky-header / scrollable-
+          // body / sticky-footer layout, and the outer scroll was creating
+          // a second scrollbar on the same axis.
+          "sm:max-w-[560px] overflow-visible max-h-none p-0 gap-0",
+        )}
+      >
+        <DialogHeader className="px-5 pt-5 pb-3">
           <DialogTitle>Payment</DialogTitle>
         </DialogHeader>
 
         {showDarajaStk ? (
-          <DarajaMpesaCharge
-            amount={remaining}
-            onSuccess={(ref) => {
-              setPayments([...payments, {
-                method_id: "mpesa-daraja",
-                method_name: "M-Pesa (Direct)",
-                amount: remaining,
-                reference: ref,
-              }]);
-              setShowDarajaStk(false);
-              setAmount("0");
-            }}
-            onCancel={() => setShowDarajaStk(false)}
-          />
+          <div className="px-5 pb-5 max-h-[min(86vh,720px)] overflow-y-auto">
+            <DarajaMpesaCharge
+              amount={remaining}
+              onSuccess={(ref) => {
+                setPayments([...payments, {
+                  method_id: "mpesa-daraja",
+                  method_name: "M-Pesa (Direct)",
+                  amount: remaining,
+                  reference: ref,
+                }]);
+                setShowDarajaStk(false);
+                setAmount("0");
+              }}
+              onCancel={() => setShowDarajaStk(false)}
+            />
+          </div>
         ) : showStkPush ? (
-          <PaystackMpesaCharge
-            amount={remaining}
-            email="customer@omnix.local"
-            onSuccess={(ref) => {
-              setPayments([...payments, {
-                method_id: "mpesa-paystack",
-                method_name: "M-Pesa (Paystack)",
-                amount: remaining,
-                reference: ref,
-              }]);
-              setShowStkPush(false);
-              setAmount("0");
-            }}
-            onCancel={() => setShowStkPush(false)}
-          />
+          <div className="px-5 pb-5 max-h-[min(86vh,720px)] overflow-y-auto">
+            <PaystackMpesaCharge
+              amount={remaining}
+              email="customer@omnix.local"
+              onSuccess={(ref) => {
+                setPayments([...payments, {
+                  method_id: "mpesa-paystack",
+                  method_name: "M-Pesa (Paystack)",
+                  amount: remaining,
+                  reference: ref,
+                }]);
+                setShowStkPush(false);
+                setAmount("0");
+              }}
+              onCancel={() => setShowStkPush(false)}
+            />
+          </div>
         ) : showInsuranceVerify ? (
-          <InsuranceVerifyPanel
-            grossAmount={total}
-            onMemberSelected={handleInsuranceConfirmed}
-            onCancel={() => { setShowInsuranceVerify(false); setSelectedMethod("cash"); }}
-          />
+          <div className="px-5 pb-5 max-h-[min(86vh,720px)] overflow-y-auto">
+            <InsuranceVerifyPanel
+              grossAmount={total}
+              onMemberSelected={handleInsuranceConfirmed}
+              onCancel={() => { setShowInsuranceVerify(false); setSelectedMethod("cash"); }}
+            />
+          </div>
         ) : (
-        <div className="flex flex-col max-h-[82vh]">
+        <div className="flex flex-col max-h-[min(86vh,720px)]">
           {/* ── Sticky header: total + remaining + progress ───────── */}
-          <div className="flex-shrink-0 border-b border-border/60 pb-4">
+          <div className="flex-shrink-0 border-b border-border/60 px-5 pb-4">
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <p className="text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground">Total due</p>
@@ -399,12 +415,14 @@ export function PaymentModal({ open, onClose }: Props) {
             )}
           </div>
 
-          {/* ── Scrollable body ───────────────────────────────────── */}
-          <div className="flex-1 overflow-y-auto py-4 space-y-4 min-h-0">
-            {/* Method picker — brand-coloured full-width blocks */}
+          {/* ── Scrollable body — single scroll axis ─────────────── */}
+          <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4 min-h-0">
+            {/* Method picker — brand-coloured cards. ring-inset prevents
+                the focus highlight from clipping at the card edges when
+                the dialog runs against its width. */}
             <div>
               <p className="text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground mb-2">Pay with</p>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-2 gap-2.5">
                 {methods.map((m) => {
                   const Icon = paymentBrandIcon(m.id + " " + m.name);
                   const tint = paymentBrandTint(m.id + " " + m.name);
@@ -413,11 +431,15 @@ export function PaymentModal({ open, onClose }: Props) {
                     <button
                       key={m.id}
                       onClick={() => handleSelectMethod(m.id)}
-                      className={`flex items-center gap-2.5 px-3 py-2.5 rounded-xl border text-left transition-all ${
+                      className={cn(
+                        "flex items-center gap-2.5 px-3 py-2.5 rounded-xl border text-left transition-all cursor-pointer",
+                        // ring-inset so the highlight renders INSIDE the
+                        // card border, not outside (which clipped on the
+                        // outer edges of the dialog).
                         selected
-                          ? `${tint.bg} ring-2 ${tint.ring} border-transparent`
-                          : "border-border hover:bg-accent/40"
-                      }`}
+                          ? `${tint.bg} ring-2 ring-inset ${tint.ring} border-transparent`
+                          : "border-border hover:bg-accent/40",
+                      )}
                     >
                       <Icon size={26} />
                       <span className={`text-sm font-medium leading-tight ${selected ? tint.text : "text-foreground"}`}>
@@ -557,7 +579,7 @@ export function PaymentModal({ open, onClose }: Props) {
           </div>
 
           {/* ── Sticky footer: single contextual CTA ──────────────── */}
-          <div className="flex-shrink-0 border-t border-border/60 pt-4">
+          <div className="flex-shrink-0 border-t border-border/60 px-5 py-4 bg-popover/95 backdrop-blur-sm">
             {remaining - (parseFloat(amount) || 0) > 0.001 ? (
               // The current amount won't cover the bill → it's a split chunk.
               <Button className="w-full h-12 text-base" onClick={addPayment}>

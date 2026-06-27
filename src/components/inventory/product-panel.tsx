@@ -373,10 +373,18 @@ export function ProductPanel({ open, onClose, productId, onSaved }: Props) {
             {activeModule === "retail" && (
               <TabsPanel value="retail" className="mt-3 space-y-3">
                 <Field label="Brand">
-                  <Select value={form.brand_id || ""} onValueChange={(v) => update("brand_id", String(v))}><SelectTrigger><SelectValue placeholder="No brand" /></SelectTrigger><SelectContent>
-                    
-                    {brands.map((b) => <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>)}
-                  </SelectContent></Select>
+                  <Select value={form.brand_id || ""} onValueChange={(v) => update("brand_id", String(v))}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="No brand">
+                        {form.brand_id
+                          ? (brands.find((b) => b.id === form.brand_id)?.name ?? "No brand")
+                          : "No brand"}
+                      </SelectValue>
+                    </SelectTrigger>
+                    <SelectContent>
+                      {brands.map((b) => <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
                 </Field>
                 <Field label="Short SKU (for keyboard entry)">
                   <Input value={form.sku_short} onChange={(e) => update("sku_short", e.target.value)} placeholder="e.g., 042 for cashier shortcut" className="font-mono" />

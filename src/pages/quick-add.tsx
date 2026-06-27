@@ -238,10 +238,16 @@ export function QuickAddProductsPage() {
                     </SelectContent></Select>
                   </td>
                   <td className="px-1 py-1">
-                    <Select value={r.brand_id} onValueChange={(v) => update(r.id, { brand_id: String(v) })} disabled={r.status === "saved"}><SelectTrigger><SelectValue placeholder="—" /></SelectTrigger><SelectContent>
-                      
-                      {brands.map((b) => <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>)}
-                    </SelectContent></Select>
+                    <Select value={r.brand_id} onValueChange={(v) => update(r.id, { brand_id: String(v) })} disabled={r.status === "saved"}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="—">
+                          {r.brand_id ? (brands.find((b) => b.id === r.brand_id)?.name ?? "—") : "—"}
+                        </SelectValue>
+                      </SelectTrigger>
+                      <SelectContent>
+                        {brands.map((b) => <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
                   </td>
                   <td className="px-1 py-1">
                     <div className="flex items-center gap-0.5">
