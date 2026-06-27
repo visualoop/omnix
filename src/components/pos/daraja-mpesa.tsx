@@ -7,7 +7,7 @@ import {
 } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { initiateStkPush, queryStkStatus, getDarajaConfig } from "@/services/daraja";
+import { initiateStkPush, queryStkStatus, getDarajaConfig, isDarajaSandbox, sandboxAutoConfirm } from "@/services/daraja";
 import { MpesaIcon } from "@/components/icons/payment-brands";
 
 interface Props {
@@ -25,15 +25,18 @@ export function DarajaMpesaCharge({ amount, saleId, onSuccess, onCancel }: Props
   const [checkoutRequestId, setCheckoutRequestId] = useState<string | null>(null);
   const [error, setError] = useState<string>("");
   const [configured, setConfigured] = useState(false);
+  const [sandbox, setSandbox] = useState(false);
   const [checking, setChecking] = useState(false);
   const [pollStartedAt, setPollStartedAt] = useState<number | null>(null);
   const [elapsedTick, setElapsedTick] = useState(0);
   const [manualCode, setManualCode] = useState("");
   const pollRef = useRef<number | null>(null);
   const tickRef = useRef<number | null>(null);
+  const autoConfirmedRef = useRef(false);
 
   useEffect(() => {
     getDarajaConfig().then((c) => setConfigured(!!c?.active));
+    isDarajaSandbox().then(setSandbox);
     return () => {
       if (pollRef.current) clearInterval(pollRef.current);
       if (tickRef.current) clearInterval(tickRef.current);
@@ -82,8 +85,18 @@ export function DarajaMpesaCharge({ amount, saleId, onSuccess, onCancel }: Props
     let attempts = 0;
     const maxAttempts = 40; // 40 × 5s = ~3 minutes
     setPollStartedAt(Date.now());
+    const startedAt = Date.now();
     pollRef.current = window.setInterval(async () => {
       attempts++;
+      // Sandbox testing aid: the Daraja sandbox usually never delivers a
+      // callback, so after a short grace period we auto-confirm so the POS
+      // flow can be tested end to end. HARD-GATED to sandbox in the service
+      // layer — this can never fire against a live payment.
+      if (sandbox && !autoConfirmedRef.current && Date.now() - startedAt >= 15000) {
+        autoConfirmedRef.current = true;
+        await runSandboxAutoConfirm(checkoutId);
+        return;
+      }
       try {
         const result = await queryStkStatus(checkoutId);
         if (result.status === "success") {
@@ -103,6 +116,26 @@ export function DarajaMpesaCharge({ amount, saleId, onSuccess, onCancel }: Props
         // Network issue — keep polling silently
       }
     }, 5000);
+  };
+
+  /**
+   * Sandbox-only: force the pending transaction to confirmed so testing can
+   * proceed when Safaricom's sandbox never returns a callback. The service
+   * refuses unless test_mode is on, so there's no way to misfire in prod.
+   */
+  const runSandboxAutoConfirm = async (checkoutId: string) => {
+    try {
+      const res = await sandboxAutoConfirm(checkoutId);
+      if (res.ok) {
+        if (pollRef.current) clearInterval(pollRef.current);
+        setStatus("success");
+        setTimeout(() => onSuccess(checkoutId), 600);
+      } else {
+        setError(res.reason || "Sandbox auto-confirm failed");
+      }
+    } catch (e) {
+      setError("Sandbox auto-confirm failed: " + String(e));
+    }
   };
 
   /**
@@ -190,6 +223,11 @@ export function DarajaMpesaCharge({ amount, saleId, onSuccess, onCancel }: Props
                 {Math.floor(elapsedSec / 60)}m {String(elapsedSec % 60).padStart(2, "0")}s elapsed
               </p>
             ) : null}
+            {sandbox && (
+              <p className="text-[11px] text-amber-700 dark:text-amber-400 mt-1.5">
+                Sandbox mode — payment auto-confirms after 15s for testing.
+              </p>
+            )}
           </div>
           {checkoutRequestId && (
             <p className="text-[10px] font-mono text-muted-foreground">
@@ -205,6 +243,16 @@ export function DarajaMpesaCharge({ amount, saleId, onSuccess, onCancel }: Props
             <Button variant="outline" size="sm" onClick={checkNow} disabled={checking}>
               {checking ? "Checking…" : "Check now"}
             </Button>
+            {sandbox && checkoutRequestId && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="border-amber-500/50 text-amber-700 dark:text-amber-400 hover:bg-amber-500/10"
+                onClick={() => runSandboxAutoConfirm(checkoutRequestId)}
+              >
+                Auto-confirm (sandbox)
+              </Button>
+            )}
             <Button
               variant="outline"
               size="sm"
@@ -214,6 +262,7 @@ export function DarajaMpesaCharge({ amount, saleId, onSuccess, onCancel }: Props
                 setError("");
                 setCheckoutRequestId(null);
                 setPollStartedAt(null);
+                autoConfirmedRef.current = false;
               }}
             >
               Resend STK

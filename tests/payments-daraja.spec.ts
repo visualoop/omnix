@@ -228,3 +228,60 @@ describe("daraja — STK push initiation", () => {
     expect(fetchSpy.mock.calls[1][0]).toContain("https://api.safaricom.co.ke")
   })
 })
+
+describe("daraja — sandbox auto-confirm (critical safety guard)", () => {
+  it("REFUSES in production mode (test_mode = 0) — never touches a live payment", async () => {
+    const db = await import("@/lib/db")
+    const querySpy = vi.mocked(db.query)
+    const execSpy = vi.mocked(db.execute)
+    execSpy.mockClear()
+    // getDarajaConfig() → a LIVE (production) provider.
+    querySpy.mockResolvedValueOnce([
+      { id: "daraja", test_mode: 0, active: 1, secret_key: "x", shortcode: "123", passkey: "p" },
+    ] as never)
+
+    const { sandboxAutoConfirm } = await import("@/services/daraja")
+    const res = await sandboxAutoConfirm("ws_CO_123456789")
+
+    expect(res.ok).toBe(false)
+    expect(res.reason).toMatch(/sandbox/i)
+    // The crucial assertion: no UPDATE was ever issued against a live txn.
+    expect(execSpy).not.toHaveBeenCalled()
+  })
+
+  it("confirms a pending transaction in sandbox mode (test_mode = 1)", async () => {
+    const db = await import("@/lib/db")
+    const querySpy = vi.mocked(db.query)
+    const execSpy = vi.mocked(db.execute)
+    execSpy.mockClear()
+    // 1st query: getDarajaConfig() → sandbox provider.
+    querySpy.mockResolvedValueOnce([
+      { id: "daraja", test_mode: 1, active: 1, secret_key: "x", shortcode: "123", passkey: "p" },
+    ] as never)
+    // 2nd query: post-update status read → success.
+    querySpy.mockResolvedValueOnce([{ status: "success" }] as never)
+
+    const { sandboxAutoConfirm } = await import("@/services/daraja")
+    const res = await sandboxAutoConfirm("ws_CO_123456789")
+
+    expect(res.ok).toBe(true)
+    // It issued exactly one guarded UPDATE.
+    expect(execSpy).toHaveBeenCalledTimes(1)
+    const sql = execSpy.mock.calls[0][0] as string
+    expect(sql).toMatch(/UPDATE payment_transactions/)
+    expect(sql).toMatch(/status IN \('pending', 'awaiting_confirmation'\)/)
+    expect(sql).toMatch(/provider = 'daraja'/)
+  })
+
+  it("isDarajaSandbox reflects the configured mode", async () => {
+    const db = await import("@/lib/db")
+    const querySpy = vi.mocked(db.query)
+    querySpy.mockResolvedValueOnce([{ id: "daraja", test_mode: 1, active: 1 }] as never)
+    const { isDarajaSandbox } = await import("@/services/daraja")
+    expect(await isDarajaSandbox()).toBe(true)
+
+    querySpy.mockResolvedValueOnce([{ id: "daraja", test_mode: 0, active: 1 }] as never)
+    const { isDarajaSandbox: again } = await import("@/services/daraja")
+    expect(await again()).toBe(false)
+  })
+})

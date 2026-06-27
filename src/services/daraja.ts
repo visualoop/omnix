@@ -289,6 +289,59 @@ export async function queryStkStatus(checkoutRequestId: string): Promise<{
   return { status, message: body.ResultDesc };
 }
 
+/**
+ * Sandbox-only auto-confirm.
+ *
+ * The Safaricom Daraja SANDBOX frequently never delivers an STK callback and
+ * its stkpushquery often keeps returning 1037 ("no response from user")
+ * forever — so a perfectly valid test sale hangs until the 3-minute client
+ * timeout, making the sandbox almost unusable for testing the POS flow.
+ *
+ * This lets the UI mark a *pending* sandbox transaction as confirmed so
+ * testing can proceed. It is hard-gated and can NEVER touch a real payment:
+ *   1. The provider must be in test_mode (sandbox).
+ *   2. The transaction must still be 'pending' / 'awaiting_confirmation'.
+ *   3. The transaction's provider must be 'daraja'.
+ * In production (test_mode = 0) it refuses — there is no code path that
+ * auto-confirms a live M-Pesa charge.
+ */
+export async function isDarajaSandbox(): Promise<boolean> {
+  const config = await getDarajaConfig();
+  return config?.test_mode === 1 && config.active === 1;
+}
+
+export async function sandboxAutoConfirm(checkoutRequestId: string): Promise<{ ok: boolean; reason?: string }> {
+  const config = await getDarajaConfig();
+  if (!config) return { ok: false, reason: "M-Pesa Daraja not configured" };
+  // HARD GUARD: refuse outright unless we're in sandbox/test mode.
+  if (config.test_mode !== 1) {
+    return { ok: false, reason: "Auto-confirm is only available in M-Pesa sandbox/test mode" };
+  }
+
+  // Only flip a transaction that is genuinely still waiting, and only a
+  // daraja one. A 'SANDBOX-' confirmation ref makes it obvious in the ledger
+  // that this was a simulated test, never a real M-Pesa receipt.
+  const simulatedRef = `SANDBOX-${checkoutRequestId.slice(0, 8)}`;
+  await execute(
+    `UPDATE payment_transactions
+        SET status = 'success',
+            confirmed_at = datetime('now'),
+            provider_ref = ?2,
+            error_message = NULL
+      WHERE paystack_reference = ?1
+        AND provider = 'daraja'
+        AND status IN ('pending', 'awaiting_confirmation')`,
+    [checkoutRequestId, simulatedRef],
+  );
+
+  const rows = await query<{ status: string }>(
+    `SELECT status FROM payment_transactions WHERE paystack_reference = ?1`,
+    [checkoutRequestId],
+  );
+  if (rows[0]?.status === "success") return { ok: true };
+  return { ok: false, reason: "Transaction was not in a pending state" };
+}
+
 function getTimestamp(): string {
   const now = new Date();
   const year = now.getFullYear();
