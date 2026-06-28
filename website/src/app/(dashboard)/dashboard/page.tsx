@@ -202,7 +202,7 @@ export default async function DashboardOverviewPage({
                       </span>
                     ) : isTrialOffer ? (
                       <a
-                        href={`/buy?variant=${encodeURIComponent(l.variant ?? 'pro')}`}
+                        href={`/buy?variant=${encodeURIComponent(l.variant ?? 'dawa')}`}
                         className="shrink-0 inline-flex items-center rounded-md border border-[var(--color-accent)] bg-[var(--color-accent)] px-2.5 py-1 font-mono text-[10px] uppercase tracking-[0.18em] text-white hover:bg-[var(--color-accent)]/90 transition-colors cursor-pointer"
                       >
                         Upgrade
@@ -258,8 +258,10 @@ export default async function DashboardOverviewPage({
                   // Per-machine Upgrade rule: only show Upgrade when this
                   // specific machine has a licence ON TRIAL bound to it.
                   // Default to the first trial bound here; if none, no CTA.
+                  // Pro trials are excluded — Pro isn't on sale publicly,
+                  // so /buy?variant=pro wouldn't resolve to anything useful.
                   const bound = boundLicencesByMachine.get(m.id) ?? []
-                  const trialBound = bound.find((l) => l.status === 'trial')
+                  const trialBound = bound.find((l) => l.status === 'trial' && l.variant !== 'pro')
                   // Visual cue: list the variants bound to this machine.
                   // Tells the user at a glance which licence(s) this PC runs.
                   const variantsLabel = bound.length
@@ -275,7 +277,7 @@ export default async function DashboardOverviewPage({
                       <span className="font-mono text-[10px] uppercase tracking-[0.18em] shrink-0">{m.status}</span>
                       {trialBound ? (
                         <a
-                          href={`/buy?variant=${encodeURIComponent(trialBound.variant ?? 'pro')}`}
+                          href={`/buy?variant=${encodeURIComponent(trialBound.variant ?? 'dawa')}`}
                           className="shrink-0 inline-flex items-center rounded-md border border-[var(--color-accent)] bg-[var(--color-accent)] px-2.5 py-1 font-mono text-[10px] uppercase tracking-[0.18em] text-white hover:bg-[var(--color-accent)]/90 transition-colors cursor-pointer"
                         >
                           Upgrade

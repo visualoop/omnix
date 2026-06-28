@@ -232,32 +232,36 @@ function TrialStartedSuccess({
 
       {/* Big Upgrade CTA — sits above "Next steps" so it's visible without
           scrolling. The variant is locked to the trial we just issued so
-          the user can't accidentally pay for the wrong module. */}
-      <div className="rounded-lg border border-[var(--color-accent)] bg-[var(--color-surface)] p-5 lg:p-6">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex flex-col gap-1">
-            <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-[var(--color-accent)]">
-              Skip the wait
-            </span>
-            <h3
-              style={{ fontFamily: 'var(--font-display)' }}
-              className="text-[18px] font-medium tracking-[-0.01em] text-[var(--color-fg)]"
+          the user can't accidentally pay for the wrong module.
+          Pro trials skip this entirely: Pro isn't on sale publicly right
+          now, so there's no purchase path to send the user down. */}
+      {license.variant !== 'pro' && (
+        <div className="rounded-lg border border-[var(--color-accent)] bg-[var(--color-surface)] p-5 lg:p-6">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex flex-col gap-1">
+              <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-[var(--color-accent)]">
+                Skip the wait
+              </span>
+              <h3
+                style={{ fontFamily: 'var(--font-display)' }}
+                className="text-[18px] font-medium tracking-[-0.01em] text-[var(--color-fg)]"
+              >
+                Already convinced? Upgrade to a perpetual licence.
+              </h3>
+              <p className="text-[12.5px] text-[var(--color-fg-muted)] leading-[1.55]">
+                KES 30,000 once · {variantOpt?.name}. Pay any time during your trial — your data carries over without re-installing.
+              </p>
+            </div>
+            <a
+              href={`/buy?variant=${encodeURIComponent(license.variant)}`}
+              className="shrink-0 inline-flex items-center justify-center gap-2 rounded-md bg-[var(--color-accent)] px-5 py-3 font-mono text-[12px] uppercase tracking-[0.18em] text-white hover:bg-[var(--color-accent)]/90 transition-colors cursor-pointer"
             >
-              Already convinced? Upgrade to a perpetual licence.
-            </h3>
-            <p className="text-[12.5px] text-[var(--color-fg-muted)] leading-[1.55]">
-              {license.variant === 'pro' ? 'KES 130,000 once · all four trades' : `KES 30,000 once · ${variantOpt?.name}`}. Pay any time during your trial — your data carries over without re-installing.
-            </p>
+              Upgrade · {variantOpt?.name ?? license.variant}
+              <ArrowRight weight="bold" className="size-3.5" />
+            </a>
           </div>
-          <a
-            href={`/buy?variant=${encodeURIComponent(license.variant)}`}
-            className="shrink-0 inline-flex items-center justify-center gap-2 rounded-md bg-[var(--color-accent)] px-5 py-3 font-mono text-[12px] uppercase tracking-[0.18em] text-white hover:bg-[var(--color-accent)]/90 transition-colors cursor-pointer"
-          >
-            Upgrade · {variantOpt?.name ?? license.variant}
-            <ArrowRight weight="bold" className="size-3.5" />
-          </a>
         </div>
-      </div>
+      )}
 
       <div className="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] p-5">
         <h3 className="font-mono text-[10px] uppercase tracking-[0.22em] text-[var(--color-fg-muted)] mb-3">
