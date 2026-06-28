@@ -8,7 +8,6 @@ import { OnboardingTour } from "@/components/onboarding-tour";
 import { ShortcutsOverlay } from "@/components/shortcuts-overlay";
 import { IdleAutoLock } from "@/components/idle-auto-lock";
 import { useAutoCloudBackup } from "@/hooks/use-auto-cloud-backup";
-import { AiAssistantPanel } from "@/components/ai/AiAssistantPanel";
 
 /** Return the top-level route prefix, e.g. "/settings/license" → "settings". */
 function sectionOf(pathname: string): string {
@@ -72,7 +71,6 @@ export function AppShell() {
       <OnboardingTour />
       <ShortcutsOverlay />
       <IdleAutoLock />
-      <AiAssistantPanel />
     </div>
   );
 }

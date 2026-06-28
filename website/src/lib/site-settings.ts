@@ -57,7 +57,7 @@ export async function getSiteSettings(): Promise<SiteSettings> {
     // Fallback if DB is unreachable on cold start.
     return {
       brandName: 'Omnix',
-      tagline: 'Offline-first ERP for Kenyan SMEs',
+      tagline: 'Offline-first POS + business software for Kenyan SMEs',
       kraPin: null,
       supportEmail: 'support@omnix.co.ke',
       salesEmail: null,

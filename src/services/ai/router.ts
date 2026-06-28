@@ -15,6 +15,9 @@ import { listProviders, getFeature, loadSettings, setProviderRuntimeState } from
 import { cacheKey, readCache, writeCache } from "./cache";
 import { recordCall } from "./audit";
 import { redactMessages } from "./redact";
+import { getPromptBudget } from "./context-windows";
+import { compressMessages } from "./compression";
+import { MAX_RETRY_AFTER_MS, MAX_SAME_ROUTE_RETRIES, parseRetryAfter, sleep } from "./retry";
 import { AiError, type ChatRequest, type ChatResponse, type AiProvider, type AiFeature, type InvokeOptions, type ProviderId, type TaskKind } from "./types";
 
 interface OpenAIChoice {
@@ -173,7 +176,12 @@ async function callProvider(
   const elapsed = Math.round(performance.now() - start);
 
   if (!res.ok) {
-    if (res.status === 429) throw new AiError("rate_limited", `${route.provider.id}: rate-limited (429)`, route.provider.id);
+    if (res.status === 429) {
+      const retryAfterMs = parseRetryAfter(res.headers as unknown as { get: (n: string) => string | null });
+      const err = new AiError("rate_limited", `${route.provider.id}: rate-limited (429)`, route.provider.id);
+      if (retryAfterMs !== null) err.retryAfterMs = retryAfterMs;
+      throw err;
+    }
     throw new AiError("error", `${route.provider.id}: HTTP ${res.status} — ${text.slice(0, 200)}`, route.provider.id);
   }
 
@@ -275,28 +283,61 @@ export async function invoke(featureId: string, request: ChatRequest, opts: Invo
   // Walk the chain
   let lastError: Error | null = null;
   for (const route of candidates) {
-    try {
-      const response = await callProvider(route, safe);
-      await setProviderRuntimeState(route.provider.id, { rateLimitedUntil: null, lastError: null });
-      if (settings.cache_enabled) {
-        const key = await cacheKey(route.model, safe);
-        await writeCache(key, featureId, response, settings.cache_ttl_days);
+    let routeAttempts = 0;
+    let nextSleepMs: number | null = null;
+    // Retry the same route up to MAX_SAME_ROUTE_RETRIES times when the
+    // provider returned 429 with a parseable, short Retry-After. Once
+    // we exceed the budget or hit a non-rate-limit error we fall through
+    // to the next candidate.
+    while (true) {
+      try {
+        if (nextSleepMs !== null && nextSleepMs > 0) {
+          await sleep(nextSleepMs);
+          nextSleepMs = null;
+        }
+        // Compress to fit this provider/model's context window. We do it
+        // per-candidate because different fallback models can have very
+        // different budgets (e.g. an 8k free model vs a 128k paid one).
+        const budget = getPromptBudget(route.provider.id, route.model, safe.maxTokens ?? 1024);
+        const compressed = compressMessages(safe.messages, { budget });
+        const compressedRequest: ChatRequest = compressed.compressed
+          ? { ...safe, messages: compressed.messages }
+          : safe;
+        const response = await callProvider(route, compressedRequest);
+        await setProviderRuntimeState(route.provider.id, { rateLimitedUntil: null, lastError: null });
+        if (settings.cache_enabled) {
+          const key = await cacheKey(route.model, safe);
+          await writeCache(key, featureId, response, settings.cache_ttl_days);
+        }
+        await recordCall({
+          featureId, providerId: route.provider.id, model: route.model, userId: null,
+          request: safe, response, privacyTier, status: "ok",
+        });
+        return response;
+      } catch (e) {
+        lastError = e as Error;
+        const isRateLimited = e instanceof AiError && e.status === "rate_limited";
+        if (isRateLimited) {
+          const retryAfterMs = (e as AiError).retryAfterMs;
+          // Same-route retry: honour short Retry-After only.
+          if (
+            retryAfterMs !== undefined &&
+            retryAfterMs > 0 &&
+            retryAfterMs <= MAX_RETRY_AFTER_MS &&
+            routeAttempts < MAX_SAME_ROUTE_RETRIES
+          ) {
+            routeAttempts += 1;
+            nextSleepMs = retryAfterMs;
+            continue;
+          }
+          const cooldownMs = Math.max(retryAfterMs ?? 60_000, 60_000);
+          const cooldown = new Date(Date.now() + cooldownMs).toISOString();
+          await setProviderRuntimeState(route.provider.id, { rateLimitedUntil: cooldown, lastError: lastError.message });
+        } else {
+          await setProviderRuntimeState(route.provider.id, { rateLimitedUntil: null, lastError: lastError.message });
+        }
+        break; // give up on this route — try the next candidate
       }
-      await recordCall({
-        featureId, providerId: route.provider.id, model: route.model, userId: null,
-        request: safe, response, privacyTier, status: "ok",
-      });
-      return response;
-    } catch (e) {
-      lastError = e as Error;
-      const isRateLimited = e instanceof AiError && e.status === "rate_limited";
-      if (isRateLimited) {
-        const cooldown = new Date(Date.now() + 60_000).toISOString();
-        await setProviderRuntimeState(route.provider.id, { rateLimitedUntil: cooldown, lastError: lastError.message });
-      } else {
-        await setProviderRuntimeState(route.provider.id, { rateLimitedUntil: null, lastError: lastError.message });
-      }
-      // Continue to next candidate
     }
   }
 

@@ -9,7 +9,7 @@
  */
 
 export const BRAND_NAME = 'Omnix' as const
-export const BRAND_TAGLINE = 'ERP for Kenyan SMEs' as const
+export const BRAND_TAGLINE = 'POS + business software for Kenyan SMEs' as const
 export const BRAND_DOMAIN = 'omnix.co.ke' as const
 
 // License key prefix — also tied to brand. Format: OMNIX-XXXX-XXXX-XXXX.

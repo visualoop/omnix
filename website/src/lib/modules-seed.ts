@@ -26,7 +26,7 @@ export const MODULES_SEED: ModuleSeed[] = [
   {
     slug: 'core',
     moduleId: 'core',
-    name: 'Core ERP',
+    name: 'Core',
     shortName: 'Core',
     tagline: 'The spine of every Omnix licence.',
     status: 'live',

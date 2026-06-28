@@ -598,16 +598,97 @@ export function PaymentModal({ open, onClose }: Props) {
 
           {/* ── Sticky footer: single contextual CTA ──────────────── */}
           <div className="flex-shrink-0 border-t border-border/60 px-5 py-4 bg-popover/95 backdrop-blur-sm">
-            {remaining - (parseFloat(amount) || 0) > 0.001 ? (
-              // The current amount won't cover the bill → it's a split chunk.
-              <Button className="w-full h-12 text-base" onClick={addPayment}>
-                Add payment · {(parseFloat(amount) || 0).toFixed(2)}
-              </Button>
-            ) : (
-              <Button className="w-full h-12 text-base" onClick={handleComplete} disabled={processing}>
-                {processing ? "Processing…" : "Complete sale"}
-              </Button>
-            )}
+            {(() => {
+              const inputAmt = parseFloat(amount) || 0
+              const wouldUnderpay = remaining - inputAmt > 0.001
+              const wouldOverpay = inputAmt > remaining + 0.001
+              // Which methods require an asynchronous upstream action
+              // (STK push / Paystack popup / manual code entry) before
+              // a chunk can legitimately be added or the sale completed.
+              //
+              // The pre-fix bug: when the cashier selected M-Pesa with a
+              // pending amount, the footer showed "Complete sale" purely
+              // because the math added up, even though the STK push had
+              // never fired. They could tap it and ship a sale with zero
+              // M-Pesa payment ever happening. Routing the footer button
+              // through the method's real action first makes that path
+              // impossible.
+              const mpesaWantsDaraja = selectedMethod === "mpesa-manual" && darajaActive
+              const mpesaWantsPaystack = selectedMethod === "mpesa-manual" && !darajaActive && paystackActive
+              const cardWantsPaystack = selectedMethod === "card" && paystackActive
+              const manualMpesaNeedsCode =
+                selectedMethod === "mpesa-manual" && !darajaActive && !paystackActive &&
+                (manualMpesa?.paybill_number || manualMpesa?.till_number) && reference.trim() === ""
+
+              // Async-action methods get their action button no matter
+              // what the math says — over-tendering doesn't apply to an
+              // STK push, and the cashier should NEVER bypass the action
+              // by typing an amount that happens to zero the remainder.
+              if (inputAmt > 0 && mpesaWantsDaraja) {
+                return (
+                  <Button
+                    className="w-full h-12 text-base bg-[#4FC52E] hover:bg-[#3DB31C] text-white"
+                    onClick={() => setShowDarajaStk(true)}
+                  >
+                    Send M-Pesa STK push · {inputAmt.toFixed(2)}
+                  </Button>
+                )
+              }
+              if (inputAmt > 0 && mpesaWantsPaystack) {
+                return (
+                  <Button
+                    className="w-full h-12 text-base bg-[#13B7F5] hover:bg-[#0EA0DA] text-white"
+                    onClick={() => setShowStkPush(true)}
+                  >
+                    Send M-Pesa STK push · {inputAmt.toFixed(2)}
+                  </Button>
+                )
+              }
+              if (inputAmt > 0 && cardWantsPaystack) {
+                return (
+                  <Button
+                    className="w-full h-12 text-base bg-[#13B7F5] hover:bg-[#0EA0DA] text-white"
+                    onClick={payViaPaystackPopup}
+                  >
+                    Open Paystack to charge card · {inputAmt.toFixed(2)}
+                  </Button>
+                )
+              }
+              if (inputAmt > 0 && manualMpesaNeedsCode) {
+                return (
+                  <Button
+                    className="w-full h-12 text-base"
+                    disabled
+                    title="Enter the M-Pesa confirmation code from the customer's SMS in the Reference field first"
+                  >
+                    Enter M-Pesa code above to confirm
+                  </Button>
+                )
+              }
+
+              if (wouldUnderpay) {
+                // Adding this chunk leaves a balance — split-payment path.
+                return (
+                  <Button className="w-full h-12 text-base" onClick={addPayment}>
+                    Add payment · {inputAmt.toFixed(2)}
+                  </Button>
+                )
+              }
+
+              // The math zeroes (or over-tenders for cash). Complete the sale.
+              return (
+                <Button
+                  className="w-full h-12 text-base"
+                  onClick={handleComplete}
+                  disabled={processing}
+                >
+                  {processing ? "Processing…" : "Complete sale"}
+                </Button>
+              )
+              // Suppress unused-warning — kept for clarity even if not
+              // currently checked outside the cash branch below.
+              void wouldOverpay
+            })()}
             {/* Change line when the tendered amount exceeds what's left */}
             {(parseFloat(amount) || 0) > remaining && remaining > 0 && selectedMethod === "cash" && (
               <p className="text-center text-sm mt-2">

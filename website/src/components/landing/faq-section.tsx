@@ -33,7 +33,7 @@ const FAQS: { q: string; a: string }[] = [
   },
   {
     q: 'What does the one-time payment actually cover?',
-    a: 'KES 30,000 buys a perpetual licence for any trade variant (Dawa, Retail, Hospitality, Hardware). KES 150,000 unlocks Pro (all four trades in one binary). Both are one-time, no annual fees, no subscription. Every minor + patch release within the same major version is free.',
+    a: 'KES 30,000 buys a perpetual licence for any trade variant — Dawa, Retail, Hospitality, or Hardware. One-time payment per device, no annual fees, no subscription. Every minor + patch release within the same major version is free. Running more than one trade in a single business? Get in touch — we have a multi-trade licence for those setups.',
   },
   {
     q: 'Do I need internet to run Omnix?',

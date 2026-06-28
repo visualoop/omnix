@@ -36,7 +36,7 @@ export const SETTING_DEFINITIONS = [
   { key: 'resend.reply_to',         category: 'email',     label: 'Reply-to address',        sensitive: false, envFallback: 'RESEND_REPLY_TO',         description: 'Where customers reach you when they reply to a transactional mail.' },
 
   // ── Email branding (visible in every email's footer) ─────
-  { key: 'email.brand_tagline',     category: 'email_branding', label: 'Footer tagline',          sensitive: false, envFallback: undefined, description: 'One sentence under the brand mark in every email. Default: "Offline-first ERP for Kenyan SMEs".' },
+  { key: 'email.brand_tagline',     category: 'email_branding', label: 'Footer tagline',          sensitive: false, envFallback: undefined, description: 'One sentence under the brand mark in every email. Default: "Offline-first POS + business software for Kenyan SMEs".' },
   { key: 'email.support_email',     category: 'email_branding', label: 'Support email',           sensitive: false, envFallback: undefined, description: 'Shown in every email footer + used as Reply-To if "resend.reply_to" is empty.' },
   { key: 'email.support_whatsapp',  category: 'email_branding', label: 'Support WhatsApp',        sensitive: false, envFallback: undefined, description: 'Optional. International format e.g. "+254 712 345 678". Shown as a footer link.' },
   { key: 'email.business_address',  category: 'email_branding', label: 'Business address',        sensitive: false, envFallback: undefined, description: 'Optional postal/legal address shown in the email footer for compliance.' },
@@ -45,7 +45,7 @@ export const SETTING_DEFINITIONS = [
   { key: 'email.unsubscribe_text',  category: 'email_branding', label: 'Unsubscribe text',        sensitive: false, envFallback: undefined, description: 'Default: "You\'re receiving this because you have an active Omnix account."' },
 
   // ── Site (public website footer + contact details) ───────
-  { key: 'site.tagline',            category: 'site',           label: 'Site tagline',           sensitive: false, envFallback: undefined, description: 'Shown under the wordmark in the marketing footer. Default: "Offline-first ERP for Kenyan SMEs".' },
+  { key: 'site.tagline',            category: 'site',           label: 'Site tagline',           sensitive: false, envFallback: undefined, description: 'Shown under the wordmark in the marketing footer. Default: "Offline-first POS + business software for Kenyan SMEs".' },
   { key: 'site.support_email',      category: 'site',           label: 'Support email',          sensitive: false, envFallback: 'NEXT_PUBLIC_SUPPORT_EMAIL', description: 'Footer link + structured-data contact point.' },
   { key: 'site.sales_email',        category: 'site',           label: 'Sales email',            sensitive: false, envFallback: undefined, description: 'For Custom-tier enquiries. Default falls back to support_email.' },
   { key: 'site.phone_kenya',        category: 'site',           label: 'Kenya phone',            sensitive: false, envFallback: undefined, description: 'International format, e.g. "+254 712 345 678". Shown on the /ke contact page.' },
@@ -282,7 +282,7 @@ export async function emailBranding(): Promise<{
   ])
   const year = new Date().getFullYear()
   return {
-    tagline: tagline ?? 'Offline-first ERP for Kenyan SMEs.',
+    tagline: tagline ?? 'Offline-first POS + business software for Kenyan SMEs.',
     supportEmail: supportEmail ?? 'support@omnix.co.ke',
     supportWhatsapp: whatsapp ?? null,
     businessAddress: address ?? null,
@@ -340,7 +340,7 @@ export async function siteBranding(): Promise<{
   const wa = whatsapp ?? null
   const waDigits = wa ? wa.replace(/\D/g, '') : null
   return {
-    tagline: tagline ?? 'Offline-first ERP for Kenyan SMEs',
+    tagline: tagline ?? 'Offline-first POS + business software for Kenyan SMEs',
     supportEmail: supportE,
     salesEmail: salesEmail ?? supportE,
     phoneKenya: phoneKE ?? null,

@@ -106,6 +106,10 @@ export interface InvokeOptions {
 }
 
 export class AiError extends Error {
+  /** Milliseconds to wait before retrying — set when status === "rate_limited"
+   * and the upstream sent a parseable `Retry-After` header. */
+  public retryAfterMs?: number;
+
   constructor(
     public readonly status: CallStatus,
     message: string,

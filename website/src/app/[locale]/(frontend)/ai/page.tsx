@@ -13,7 +13,7 @@ import {
 export const metadata: Metadata = {
   title: 'Omnix AI — an employee that knows your numbers',
   description:
-    'Not a chatbot. A working assistant wired to your live ERP data. Asks answer from your books, flags what needs attention, and prepares actions for you to approve. Bring your own model — free tiers from Groq or OpenRouter are plenty.',
+    'Not a chatbot. A working assistant wired to your live business data. Asks answer from your books, flags what needs attention, and prepares actions for you to approve. Bring your own model — free tiers from Groq or OpenRouter are plenty.',
 }
 
 /* ── Capabilities (one section, two columns of grounded examples) ─────── */
@@ -84,7 +84,7 @@ export default async function AiPage() {
       <PageHero
         eyebrow="Omnix AI"
         title={<>An employee that <em>knows</em> your numbers.</>}
-        description="Not a chatbot. A working assistant wired to your live ERP data. It answers from your actual books, flags what needs attention before you ask, and prepares the work for you to approve."
+        description="Not a chatbot. A working assistant wired to your live business data. It answers from your actual books, flags what needs attention before you ask, and prepares the work for you to approve."
       >
         <div className="mt-6 flex flex-col items-center gap-3 sm:flex-row">
           <Button asChild size="lg">

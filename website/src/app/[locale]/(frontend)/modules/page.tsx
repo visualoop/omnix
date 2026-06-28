@@ -8,7 +8,7 @@ import { MODULES_SEED } from '@/lib/modules-seed'
 import { cn } from '@/lib/cn'
 
 export const metadata: Metadata = {
-  title: 'Modules — trade-specific ERP',
+  title: 'Modules — software built for your trade',
   description: 'Four modules built for Kenyan trades. Pharmacy, retail, hardware, hospitality. One licence unlocks the trades you run.',
 }
 

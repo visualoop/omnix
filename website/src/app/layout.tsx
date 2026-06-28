@@ -19,6 +19,7 @@
 import type { Metadata } from 'next'
 import { Fraunces, Geist, JetBrains_Mono, Plus_Jakarta_Sans } from 'next/font/google'
 import './globals.css'
+import { ThemeProvider } from '@/components/theme/theme-provider'
 
 const fraunces = Fraunces({
   subsets: ['latin'],
@@ -62,7 +63,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" suppressHydrationWarning className={FONT_VARIABLES}>
       <body className="bg-[var(--color-bg)] font-sans text-[var(--color-fg)] antialiased">
-        {children}
+        <ThemeProvider>{children}</ThemeProvider>
       </body>
     </html>
   )

@@ -44,10 +44,10 @@ export async function OrgJsonLd({ brandUrl = 'https://omnix.co.ke' }: Partial<Or
     '@type': 'Organization',
     '@id': `${brandUrl}/#org`,
     name: b?.legalName ?? 'Omnix',
-    alternateName: 'Omnix ERP',
+    alternateName: 'Omnix POS',
     url: brandUrl,
     logo: `${brandUrl}/favicon.svg`,
-    description: b?.tagline ?? 'Offline-first ERP for Kenyan SMEs',
+    description: b?.tagline ?? 'Offline-first POS + business software for Kenyan SMEs',
     sameAs: same.length > 0 ? same : undefined,
     contactPoint: contactPoints,
   }

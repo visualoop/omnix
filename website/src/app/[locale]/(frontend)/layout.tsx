@@ -41,14 +41,15 @@ const KENYA_KEYWORDS = [
   'pharmacy software Kenya', 'NHIF SHA billing', 'POS software Nairobi',
 ]
 const GLOBAL_KEYWORDS = [
-  'ERP software', 'small business ERP', 'pharmacy ERP',
-  'retail ERP', 'hotel ERP', 'POS software',
-  'offline ERP', 'inventory management software', 'AI ERP',
+  'POS software', 'small business POS', 'pharmacy POS',
+  'retail POS', 'restaurant POS', 'bar POS', 'mini-mart POS',
+  'hardware store software', 'offline POS', 'inventory management software',
+  'AI for small business', 'point of sale system', 'duka software',
 ]
-const NIGERIA_KEYWORDS = ['ERP Nigeria', 'POS Nigeria', 'pharmacy software Nigeria', 'Lagos POS', 'FIRS compliance']
-const GHANA_KEYWORDS = ['ERP Ghana', 'POS Ghana', 'pharmacy software Ghana', 'Accra POS']
-const SOUTH_AFRICA_KEYWORDS = ['ERP South Africa', 'POS South Africa', 'SARS compliance', 'Johannesburg POS']
-const INDIA_KEYWORDS = ['ERP India', 'small business ERP India', 'GST software', 'pharmacy ERP India']
+const NIGERIA_KEYWORDS = ['POS Nigeria', 'pharmacy software Nigeria', 'restaurant POS Nigeria', 'Lagos POS', 'FIRS compliance']
+const GHANA_KEYWORDS = ['POS Ghana', 'pharmacy software Ghana', 'restaurant POS Ghana', 'Accra POS']
+const SOUTH_AFRICA_KEYWORDS = ['POS South Africa', 'pharmacy software South Africa', 'restaurant POS South Africa', 'SARS compliance', 'Johannesburg POS']
+const INDIA_KEYWORDS = ['POS India', 'small business POS India', 'pharmacy software India', 'GST POS software']
 
 const LOCALE_COPY: Record<string, LocaleCopy> = {
   ke: {
@@ -58,68 +59,68 @@ const LOCALE_COPY: Record<string, LocaleCopy> = {
     keywords: KENYA_KEYWORDS,
   },
   us: {
-    title: `${BRAND_NAME} — Offline ERP & POS for small business`,
-    description: 'Offline-first ERP for retail, pharmacy, hospitality and hardware stores. One-time licence, perpetual ownership, no subscription. Windows.',
+    title: `${BRAND_NAME} — Offline POS & business software for small business`,
+    description: 'Offline-first POS and business software for pharmacies, retail, restaurants, bars and hardware stores. One-time licence, perpetual ownership, no subscription. Windows.',
     ogLocale: 'en_US',
     keywords: GLOBAL_KEYWORDS,
   },
   gb: {
-    title: `${BRAND_NAME} — Offline ERP & POS for SMEs`,
-    description: 'Offline-first ERP for retail, pharmacy, hospitality and hardware. One-time licence, no monthly subscription. Runs on Windows.',
+    title: `${BRAND_NAME} — Offline POS & business software for SMEs`,
+    description: 'Offline-first POS and business software for pharmacies, retail, hospitality and hardware. One-time licence, no monthly subscription. Runs on Windows.',
     ogLocale: 'en_GB',
     keywords: GLOBAL_KEYWORDS,
   },
   ng: {
-    title: `${BRAND_NAME} — ERP for Nigerian SMEs`,
-    description: 'Offline-first ERP and POS for Nigerian businesses. Pharmacies, retail, hospitality, hardware. Pay once, use forever.',
+    title: `${BRAND_NAME} — POS & business software for Nigerian SMEs`,
+    description: 'Offline-first POS and business software for Nigerian pharmacies, retail shops, restaurants, bars and hardware stores. Pay once, use forever.',
     ogLocale: 'en_NG',
     keywords: [...NIGERIA_KEYWORDS, ...GLOBAL_KEYWORDS],
   },
   gh: {
-    title: `${BRAND_NAME} — ERP for Ghanaian SMEs`,
-    description: 'Offline-first ERP for Ghanaian retailers, pharmacies and restaurants. One-time licence, no recurring fees.',
+    title: `${BRAND_NAME} — POS & business software for Ghanaian SMEs`,
+    description: 'Offline-first POS and business software for Ghanaian retailers, pharmacies, restaurants and bars. One-time licence, no recurring fees.',
     ogLocale: 'en_GH',
     keywords: [...GHANA_KEYWORDS, ...GLOBAL_KEYWORDS],
   },
   za: {
-    title: `${BRAND_NAME} — ERP for South African SMEs`,
-    description: 'Offline-first ERP and POS for South African businesses. Retail, pharmacy, hospitality, hardware. Pay once, own forever.',
+    title: `${BRAND_NAME} — POS & business software for South African SMEs`,
+    description: 'Offline-first POS and business software for South African pharmacies, retail, restaurants, bars and hardware stores. Pay once, own forever.',
     ogLocale: 'en_ZA',
     keywords: [...SOUTH_AFRICA_KEYWORDS, ...GLOBAL_KEYWORDS],
   },
   in: {
-    title: `${BRAND_NAME} — Offline ERP for Indian SMEs`,
-    description: 'Offline-first ERP for Indian retailers, pharmacies and small businesses. One-time licence, no monthly fees.',
+    title: `${BRAND_NAME} — Offline POS & business software for Indian SMEs`,
+    description: 'Offline-first POS and business software for Indian retailers, pharmacies, restaurants and small businesses. One-time licence, no monthly fees.',
     ogLocale: 'en_IN',
     keywords: [...INDIA_KEYWORDS, ...GLOBAL_KEYWORDS],
   },
   rw: {
-    title: `${BRAND_NAME} — ERP for Rwandan SMEs`,
-    description: 'Offline-first ERP for Rwandan businesses. Pharmacies, retail, hospitality, hardware. Pay once, own forever.',
+    title: `${BRAND_NAME} — POS & business software for Rwandan SMEs`,
+    description: 'Offline-first POS and business software for Rwandan pharmacies, retail, restaurants, bars and hardware stores. Pay once, own forever.',
     ogLocale: 'en_RW',
     keywords: GLOBAL_KEYWORDS,
   },
   tz: {
-    title: `${BRAND_NAME} — ERP for Tanzanian SMEs`,
-    description: 'Offline-first ERP for Tanzanian businesses. Pharmacies, retail, hospitality, hardware. Pay once, own forever.',
+    title: `${BRAND_NAME} — POS & business software for Tanzanian SMEs`,
+    description: 'Offline-first POS and business software for Tanzanian pharmacies, retail, restaurants, bars and hardware stores. Pay once, own forever.',
     ogLocale: 'en_TZ',
     keywords: GLOBAL_KEYWORDS,
   },
   ug: {
-    title: `${BRAND_NAME} — ERP for Ugandan SMEs`,
-    description: 'Offline-first ERP for Ugandan businesses. Pharmacies, retail, hospitality, hardware. Pay once, own forever.',
+    title: `${BRAND_NAME} — POS & business software for Ugandan SMEs`,
+    description: 'Offline-first POS and business software for Ugandan pharmacies, retail, restaurants, bars and hardware stores. Pay once, own forever.',
     ogLocale: 'en_UG',
     keywords: GLOBAL_KEYWORDS,
   },
   eg: {
-    title: `${BRAND_NAME} — ERP for Egyptian SMEs`,
-    description: 'Offline-first ERP for Egyptian businesses. Pharmacies, retail, hospitality, hardware. Pay once, own forever.',
+    title: `${BRAND_NAME} — POS & business software for Egyptian SMEs`,
+    description: 'Offline-first POS and business software for Egyptian pharmacies, retail, restaurants, bars and hardware stores. Pay once, own forever.',
     ogLocale: 'en_EG',
     keywords: GLOBAL_KEYWORDS,
   },
   ae: {
-    title: `${BRAND_NAME} — Offline ERP for UAE SMEs`,
-    description: 'Offline-first ERP for UAE businesses. Pharmacies, retail, hospitality, hardware. Pay once, own forever.',
+    title: `${BRAND_NAME} — Offline POS & business software for UAE SMEs`,
+    description: 'Offline-first POS and business software for UAE pharmacies, retail, restaurants, bars and hardware stores. Pay once, own forever.',
     ogLocale: 'en_AE',
     keywords: GLOBAL_KEYWORDS,
   },

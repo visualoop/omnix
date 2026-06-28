@@ -10,7 +10,7 @@ export const runtime = 'edge'
  */
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url)
-  const title = (searchParams.get('title') || 'Omnix — ERP for Kenyan SMEs').slice(0, 120)
+  const title = (searchParams.get('title') || 'Omnix — POS + business software for Kenyan SMEs').slice(0, 120)
 
   return new ImageResponse(
     (

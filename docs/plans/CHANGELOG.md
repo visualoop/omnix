@@ -2,6 +2,33 @@
 
 This tracks work done LOCALLY without GitHub pushes. We only push when the user explicitly says so.
 
+## Release v0.16.1 — Website repositioning + AI reliability hardening + POS payment-CTA fix
+
+What ships in this build:
+
+### Website repositioning
+- **Light-mode default with theme toggle**: installed `next-themes`, restructured `globals.css` so the cream-on-espresso (light) palette is the @theme default and the dark espresso palette lives in `.dark`. New `<ThemeProvider>` wraps the root layout; new sun/moon `<ThemeToggle>` lives in the site-header (SSR-safe, focus-ring, 44px touch target).
+- **Killed "Omnix Pro" publicly**: `/pro` now redirects to `/modules`; Pro removed from the Products dropdown, public downloads grid, pricing table, FAQ, and sitemap. The internal Pro variant stays intact for existing licensees (dashboard, checkout, paystack, releases, db).
+- **Dropped "ERP" from every visible surface**: rewrote BRAND_TAGLINE, site + platform settings defaults, OG default title, all 12 per-country LOCALE_COPY titles + descriptions, the GLOBAL/NIGERIA/GHANA/SOUTH_AFRICA/INDIA keyword sets, modules page title, AI page hero, jsonld Organization schema, modules-seed (Core ERP → Core), blog-seed, docs-seed and variant-landing fallback. Lead with "POS + business software", "pharmacy POS", "restaurant POS", "bar POS", "mini-mart POS", "hardware store software".
+- **4 industry landing pages rebuilt**: variant-landing now ships a 5-step "How a day runs" workflow + a 6-question trade-specific FAQ (rendered as definition list + emitted as `FAQPage` JSON-LD) for Dawa, Retail, Hospitality, Hardware. New `/pharmacy` route aliases Dawa with its own Kenya-search-intent metadata.
+- **Homepage outcome pills**: 4-trade pill row (`Pharmacy POS`, `Retail & duka POS`, `Restaurant & bar POS`, `Hardware store POS`) under the hero CTA, routes directly to each industry landing.
+- **SEO pass**: rewrote `getVariantMetadata()` to emit a full Next.js `Metadata` per variant — title, description, canonical, keywords (Kenya search intent per trade), `/api/og?title=…` OG image, Twitter card. `SoftwareApplication` + `FAQPage` JSON-LD per variant.
+
+### AI reliability hardening
+- **Context-window registry** (`src/services/ai/context-windows.ts`): per-provider/model token budgets with family-prefix matching + `getPromptBudget` helper.
+- **Auto-compression** (`src/services/ai/compression.ts`): token estimator + deterministic head/tail summariser, threshold 75% of budget, keeps last 4 user+assistant turns + all system messages verbatim. Wired into both `invoke` (unary) and `streamInvoke` (streaming) per-candidate so each fallback model gets compressed to its own budget.
+- **Tool-result truncation** (`src/services/ai/tool-truncate.ts`): wraps each tool's `execute` so the model sees a head+tail-clipped preview while a `toolCallId`-keyed map keeps the full result for the UI (2000-char default).
+- **Retry-After + stream timeout** (`src/services/ai/retry.ts`): RFC 7231 `Retry-After` parser, `sleep`, `createIdleWatchdog`. `AiError.retryAfterMs` carries the wait. `invoke()` retries the same route up to 2× when retryAfterMs ≤ 10s before falling through. `streamInvoke` runs a 30-second idle watchdog via `streamText.abortSignal`; if no token arrives, abort + try the next provider.
+- **62 new unit tests** across 4 spec files; all 165/165 AI tests green.
+
+### POS payment-modal CTA fix
+- **Fixed the silent split-payment footgun**: when the cashier selected M-Pesa with a staged amount, the sticky footer used to read "Complete sale" purely on the math and ship the sale with zero STK ever firing. The footer CTA now routes through the selected method's real async action — `Send M-Pesa STK push · {amount}` (green for Daraja, blue for Paystack), `Open Paystack to charge card`, or a disabled `Enter M-Pesa code above to confirm` for manual paybill/till until the reference field is filled. Only methods that don't need an upstream action fall through to `Add payment` / `Complete sale`. Over-tendering cannot bypass the STK push.
+
+### Other
+- **Removed bottom-right floating AI widget**: dropped `<AiAssistantPanel />` mount from `AppShell` and deleted the dead `AiHelpFloating.tsx`. AI is reached via the sidebar "Omnix AI" entry, the command palette, and the dedicated `/ai` workspace.
+
+Version bumped 0.16.0 → **0.16.1** across `package.json`, `src-tauri/Cargo.toml`, `src-tauri/tauri.conf.json`, `Cargo.lock`. Desktop tsc clean, 438 tests green, vite build green. Website tsc clean, next build green (51 routes).
+
 ## Local fix — Hospitality orders route through POS checkout
 
 - Recovered the recent Kiro CLI session from `~/.kiro/sessions/cli`; the latest Omnix session stopped on website release-sync/backfill repair after prod DB schema repair, with release backfill/latest verification still pending.

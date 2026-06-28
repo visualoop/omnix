@@ -48,11 +48,9 @@ async function resolveCurrency(locale: string | undefined): Promise<SupportedCur
 }
 
 function buildVariants(currency: SupportedCurrency): ReadonlyArray<VariantTile> {
-  const proPrice = formatPrice(pricing.business.oneTimeFee[currency], currency)
   const tradePrice = formatPrice(pricing.starter.oneTimeFee[currency], currency)
   return [
-    { id: 'pro', name: 'Omnix Pro', tagline: 'All four trades — multi-trade businesses', href: '/pro', price: proPrice, badge: 'Recommended' },
-    { id: 'dawa', name: 'Omnix Dawa', tagline: 'Pharmacy management', price: tradePrice, href: '/dawa' },
+    { id: 'dawa', name: 'Omnix Dawa', tagline: 'Pharmacy management', price: tradePrice, href: '/dawa', badge: 'Most popular' },
     { id: 'retail', name: 'Omnix Retail', tagline: 'Shops, mini-marts, dukas', price: tradePrice, href: '/retail' },
     { id: 'hospitality', name: 'Omnix Hospitality', tagline: 'Restaurants, bars, lodges', price: tradePrice, href: '/hospitality' },
     { id: 'hardware', name: 'Omnix Hardware', tagline: 'Hardware stores, contractors', price: tradePrice, href: '/hardware' },
@@ -62,9 +60,7 @@ function buildVariants(currency: SupportedCurrency): ReadonlyArray<VariantTile> 
 function buildTiers(currency: SupportedCurrency) {
   const trialDays = 30
   const tradePriceNum = pricing.starter.oneTimeFee[currency]
-  const proPriceNum = pricing.business.oneTimeFee[currency]
   const tradePrice = formatPrice(tradePriceNum, currency)
-  const proPrice = formatPrice(proPriceNum, currency)
   return [
     {
       name: 'Free trial',
@@ -79,7 +75,7 @@ function buildTiers(currency: SupportedCurrency) {
       name: 'Omnix licence',
       cadence: 'one-time · perpetual',
       price: tradePrice,
-      body: `Per device. Trade variants (Dawa / Retail / Hospitality / Hardware) ${tradePrice} one-time. Pro (all four) ${proPrice} one-time. Perpetual licence — no annual fees.`,
+      body: `${tradePrice} per device for any trade variant — Dawa, Retail, Hospitality, or Hardware. Perpetual licence, no annual fees, no subscription.`,
       href: '/signup?intent=buy',
       cta: 'Buy a licence',
       primary: true,
@@ -88,7 +84,7 @@ function buildTiers(currency: SupportedCurrency) {
       name: 'Custom',
       cadence: 'chains · NGOs · on-prem',
       price: 'Talk to us',
-      body: '5+ branches, custom integrations, dedicated onboarding, signed SLA, on-prem deployment. We meet your CFO, build the install plan, and stand up the system.',
+      body: '5+ branches, multi-trade businesses, custom integrations, dedicated onboarding, signed SLA, on-prem deployment. We meet your CFO, build the install plan, and stand up the system.',
       href: '/contact?type=enterprise',
       cta: 'Book a call',
       primary: false,

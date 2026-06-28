@@ -27,15 +27,6 @@ interface VariantInfo {
 
 const VARIANTS: VariantInfo[] = [
   {
-    id: 'pro',
-    name: 'Omnix Pro',
-    tagline: 'Multi-trade — every module',
-    copy: 'For businesses that span more than one trade. Bundles Dawa, Retail, Hospitality and Hardware into one binary. Ideal for pharmacy + canteen, hotel + retail, hardware + canteen.',
-    ctaHref: '/buy?variant=pro',
-    accent: 'navy',
-    badge: 'Recommended',
-  },
-  {
     id: 'dawa',
     name: 'Omnix Dawa',
     tagline: 'Pharmacy management',
@@ -192,7 +183,7 @@ export default async function DownloadsPage() {
       <PageHero
         eyebrow="Downloads"
         title={<>Pick your <em>trade.</em></>}
-        description="Five Omnix variants — one purpose-built for each Kenyan SME trade, plus Pro for multi-trade businesses. Windows 10 / 11, 64-bit, ~30s install."
+        description="Four Omnix variants — one purpose-built for each Kenyan SME trade. Windows 10 / 11, 64-bit, ~30s install."
       />
 
       {/* What's new in v0.10 */}

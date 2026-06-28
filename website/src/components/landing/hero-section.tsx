@@ -180,6 +180,34 @@ export function HeroSection({
           <span>every M-Pesa payment + KRA receipt, built in</span>
         </motion.p>
 
+        {/* Industry pills — direct routes to each trade landing so the
+            visitor can self-select into their version of the product in
+            one click. Keeps the homepage useful for cold traffic that
+            already knows their trade. */}
+        <motion.nav
+          aria-label="Pick your trade"
+          initial={{ opacity: 0, y: 6 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.62 }}
+          className="mt-10 flex flex-wrap items-center justify-center gap-2.5 sm:gap-3"
+        >
+          {[
+            { href: '/pharmacy', label: 'Pharmacy POS' },
+            { href: '/retail', label: 'Retail & duka POS' },
+            { href: '/hospitality', label: 'Restaurant & bar POS' },
+            { href: '/hardware', label: 'Hardware store POS' },
+          ].map((p) => (
+            <Link
+              key={p.href}
+              href={p.href}
+              className="font-[family-name:var(--font-ui)] inline-flex items-center gap-2 rounded-full border border-[var(--color-border-strong)] bg-[var(--color-surface)]/60 px-4 py-1.5 text-[12px] font-medium text-[var(--color-fg-muted)] backdrop-blur-sm transition-colors hover:border-[var(--color-accent)] hover:text-[var(--color-fg)]"
+            >
+              {p.label}
+              <Icon.ArrowRight className="size-3 text-[var(--color-fg-subtle)] transition-colors group-hover:text-[var(--color-accent)]" weight="bold" />
+            </Link>
+          ))}
+        </motion.nav>
+
         {/* Product preview — only renders when a screenshot is uploaded in
             /admin → Landing Page → Hero → Screenshot. Until then the section
             stays empty so we don't ship a fake mock that misrepresents the app. */}

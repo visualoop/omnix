@@ -27,7 +27,7 @@ export const DOCS_SEED: DocSeed[] = [
     excerpt: 'Install Omnix, activate your licence or trial, complete the setup wizard, and ring your first sale.',
     category: 'Basics',
     icon: 'RocketLaunch',
-    body: `Welcome to Omnix — the offline-first ERP for Kenyan businesses. This guide takes you from download to your first sale in about ten minutes.
+    body: `Welcome to Omnix — the offline-first POS and business software for Kenyan businesses. This guide takes you from download to your first sale in about ten minutes.
 
 ## Download and install
 

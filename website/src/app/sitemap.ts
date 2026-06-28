@@ -26,7 +26,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     '/pricing',
     '/ai',
     '/modules',
-    '/pro',
+    '/pharmacy',
     '/dawa',
     '/retail',
     '/hospitality',

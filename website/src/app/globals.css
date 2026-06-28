@@ -32,33 +32,33 @@
  * ═══════════════════════════════════════════════════════════════════════ */
 
 @theme {
-  /* ── Surfaces (4 depths max — espresso → stone → elevated → hover) ── */
-  --color-bg: #0B0907;            /* espresso, near-black with warm undertone */
-  --color-surface: #15110D;       /* warm stone */
-  --color-surface-2: #1F1A14;     /* elevated card */
-  --color-surface-hover: #2A241B; /* hover state on surface */
+  /* ── Surfaces (4 depths max — cream → light stone → elevated → hover) ── */
+  --color-bg: #F7F2E8;            /* cream, warm off-white */
+  --color-surface: #EFE8D9;       /* light warm stone */
+  --color-surface-2: #E5DCC8;     /* elevated card */
+  --color-surface-hover: #DBD0B6; /* hover state on surface */
 
-  --color-border: #2C2620;
-  --color-border-strong: #443B30;
+  --color-border: #D8CDB8;
+  --color-border-strong: #B8A98E;
 
-  /* ── Foregrounds (warm creams instead of pure white) ── */
-  --color-fg: #F2EDE3;            /* primary text */
-  --color-fg-muted: #BEB29B;      /* secondary text, sand (AA on espresso bg) */
-  --color-fg-subtle: #9A8E78;     /* captions, taupe (AA 4.5:1 on espresso bg) */
+  /* ── Foregrounds (warm espresso instead of pure black) ── */
+  --color-fg: #1C1611;            /* primary text — deep espresso */
+  --color-fg-muted: #5C4F3E;      /* secondary text, walnut (AA on cream) */
+  --color-fg-subtle: #80735E;     /* captions, taupe (AA 4.5:1 on cream) */
 
   /* ── Single accent (deep terracotta-copper, distinctly Kenyan-earth) ── */
-  --color-accent: #C77B3F;
-  --color-accent-hover: #D89456;
-  --color-accent-foreground: #0B0907;
-  --color-accent-soft: rgba(199, 123, 63, 0.08);
-  --color-accent-line: rgba(199, 123, 63, 0.18);
-  --color-accent-glow: rgba(199, 123, 63, 0.22);
+  --color-accent: #B5682A;        /* slightly deeper for AA contrast on cream */
+  --color-accent-hover: #9F5821;
+  --color-accent-foreground: #F7F2E8;
+  --color-accent-soft: rgba(181, 104, 42, 0.10);
+  --color-accent-line: rgba(181, 104, 42, 0.22);
+  --color-accent-glow: rgba(181, 104, 42, 0.18);
 
   /* ── Semantic states (all warm — no green, no blue) ── */
-  --color-positive: #B5904A;      /* gilded amber for "active" */
-  --color-caution: #C77B3F;       /* matches accent */
-  --color-negative: #B0432F;      /* warm clay-red */
-  --color-neutral: #7A6F5C;       /* taupe */
+  --color-positive: #8F6E2E;      /* gilded amber for "active" */
+  --color-caution: #B5682A;       /* matches accent */
+  --color-negative: #9C3622;      /* warm clay-red, AA on cream */
+  --color-neutral: #80735E;       /* taupe */
 
   /* ── Type stack ── */
   --font-display: var(--font-fraunces), 'Fraunces', ui-serif, Georgia, serif;
@@ -85,6 +85,41 @@
   --space-section-tight: 96px;
   --space-section: 144px;
   --space-section-loose: 192px;
+}
+
+/* ─────────────────────────────────────────────────────────────────────
+ * Dark theme — opt-in via the `.dark` class on <html>, driven by
+ * next-themes. The light palette above is the default (matches our
+ * Kenyan SME audience: bright shops, daytime use, paper receipts).
+ *
+ * We keep the espresso/cream warm-luxe spirit on both sides; only the
+ * surfaces and foregrounds invert. The accent is identical so the
+ * brand stays consistent across both themes.
+ * ───────────────────────────────────────────────────────────────────── */
+.dark {
+  --color-bg: #0B0907;            /* espresso, near-black with warm undertone */
+  --color-surface: #15110D;       /* warm stone */
+  --color-surface-2: #1F1A14;     /* elevated card */
+  --color-surface-hover: #2A241B;
+
+  --color-border: #2C2620;
+  --color-border-strong: #443B30;
+
+  --color-fg: #F2EDE3;            /* cream */
+  --color-fg-muted: #BEB29B;
+  --color-fg-subtle: #9A8E78;
+
+  --color-accent: #C77B3F;        /* brighter accent works better on espresso */
+  --color-accent-hover: #D89456;
+  --color-accent-foreground: #0B0907;
+  --color-accent-soft: rgba(199, 123, 63, 0.08);
+  --color-accent-line: rgba(199, 123, 63, 0.18);
+  --color-accent-glow: rgba(199, 123, 63, 0.22);
+
+  --color-positive: #B5904A;
+  --color-caution: #C77B3F;
+  --color-negative: #B0432F;
+  --color-neutral: #7A6F5C;
 }
 
 @layer base {
@@ -121,11 +156,14 @@
   html {
     background: var(--color-bg);
     color: var(--color-fg);
-    color-scheme: dark;
+    color-scheme: light;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     text-rendering: optimizeLegibility;
     scrollbar-gutter: stable;
+  }
+  html.dark {
+    color-scheme: dark;
   }
 
   body {
@@ -134,10 +172,11 @@
     font-size: 16px;
     line-height: 1.6;
     background: var(--color-bg);
-    /* Subtle warm noise so the espresso bg never feels flat — single hue, low chroma */
+    /* Subtle warm noise so the bg never feels flat — single hue, low chroma.
+       Same gradient stops work for both themes thanks to the warm accent. */
     background-image:
-      radial-gradient(at 8% -8%, rgba(199, 123, 63, 0.05) 0%, transparent 55%),
-      radial-gradient(at 96% 6%, rgba(199, 123, 63, 0.035) 0%, transparent 50%);
+      radial-gradient(at 8% -8%, var(--color-accent-soft) 0%, transparent 55%),
+      radial-gradient(at 96% 6%, var(--color-accent-soft) 0%, transparent 50%);
   }
 
   ::selection {

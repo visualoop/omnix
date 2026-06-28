@@ -28,7 +28,7 @@ export const POSTS_SEED: BlogPostSeed[] = [
     featured: true,
     body: `We tried "SokoOS" for two years. It started life as a nickname between the founder and the first three customers. As we grew it stopped working: people couldn't pronounce it, it sounded vaguely techy in a way that put off the mama-running-three-branches who was supposed to feel at home, and it didn't capture what the product had become.
 
-Because we're no longer one thing. What began as pharmacy software now runs mini-marts, hardware shops, restaurants, and hotels — the same Core ERP underneath, with a trade-specific module on top. One platform, many verticals.
+Because we're no longer one thing. What began as pharmacy software now runs mini-marts, hardware shops, restaurants and bars — the same Omnix Core underneath, with a trade-specific module on top. One platform, many verticals.
 
 Omnix says exactly that. "Omni" — all of it, one system for every counter in the country. It's short, it's easy to say, and it doesn't box us into a single trade the way a pharmacy-flavoured name would.
 

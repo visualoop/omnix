@@ -15,6 +15,10 @@ import { streamText, stepCountIs, type ModelMessage, type ToolSet } from "ai";
 import { listProviders, getFeature, loadSettings, setProviderRuntimeState } from "./config";
 import { recordCall } from "./audit";
 import { redactMessages } from "./redact";
+import { getPromptBudget } from "./context-windows";
+import { compressMessages } from "./compression";
+import { withTruncatedToolResults } from "./tool-truncate";
+import { STREAM_IDLE_TIMEOUT_MS, createIdleWatchdog } from "./retry";
 import { AiError, type AiFeature, type AiProvider, type ChatMessage, type InvokeOptions, type TaskKind } from "./types";
 
 interface ResolvedRoute {
@@ -137,7 +141,24 @@ export async function* streamInvoke(
   for (const route of candidates) {
     const baseUrl = route.provider.base_url.replace(/\/$/, "");
     const apiKey = route.provider.api_key_encrypted ?? "";
+    // Idle watchdog — if no stream event for STREAM_IDLE_TIMEOUT_MS the
+    // signal aborts and the for-await loop throws. Cleared in finally
+    // so a successful stream doesn't leak a setInterval.
+    const watchdog = createIdleWatchdog();
     try {
+      // Compress to fit this provider/model's context window. We do it
+      // per-candidate because a fallback model may have a much smaller
+      // window than the primary (e.g. 8k free vs 128k paid).
+      const budget = getPromptBudget(route.provider.id, route.model);
+      const compressed = compressMessages(safeMessages, { budget });
+      const sendMessages = compressed.compressed ? compressed.messages : safeMessages;
+
+      // Wrap tools so each result is clipped for the model but the full
+      // payload is preserved in `fullResults` for the UI. Re-bundled
+      // per-candidate so a retry on a different provider starts with a
+      // fresh map (avoids leaking previous-route results).
+      const toolBundle = opts.tools ? withTruncatedToolResults(opts.tools) : undefined;
+
       const provider = createOpenAICompatible({
         name: route.provider.id,
         baseURL: baseUrl,
@@ -150,9 +171,10 @@ export async function* streamInvoke(
 
       const result = streamText({
         model: provider(route.model),
-        messages: toModelMessages(safeMessages),
+        messages: toModelMessages(sendMessages),
         temperature: 0.4,
-        ...(opts.tools ? { tools: opts.tools, stopWhen: stepCountIs(opts.maxSteps ?? 8) } : {}),
+        abortSignal: watchdog.signal,
+        ...(toolBundle ? { tools: toolBundle.tools, stopWhen: stepCountIs(opts.maxSteps ?? 8) } : {}),
       });
 
       // Reset runtime state — successful stream start
@@ -165,6 +187,7 @@ export async function* streamInvoke(
       // Use fullStream so we can emit tool-call + tool-result deltas in
       // addition to plain text deltas. textStream alone hides tool events.
       for await (const part of result.fullStream) {
+        watchdog.kick();
         if (part.type === "text-delta") {
           const delta = (part as unknown as { text: string }).text;
           acc += delta;
@@ -182,13 +205,17 @@ export async function* streamInvoke(
           };
         } else if (part.type === "tool-result") {
           const tr = part as unknown as { toolCallId: string; toolName: string; output: unknown };
+          // Prefer the full untruncated result for the UI; fall back to
+          // the model-facing output if we never recorded a full copy
+          // (tools without an `execute` skip wrapping).
+          const fullResult = toolBundle?.fullResults.get(tr.toolCallId) ?? tr.output;
           yield {
             text: acc,
             delta: "",
             done: false,
             provider: route.provider.id,
             model: route.model,
-            toolResult: { id: tr.toolCallId, name: tr.toolName, result: tr.output },
+            toolResult: { id: tr.toolCallId, name: tr.toolName, result: fullResult },
           };
         } else if (part.type === "error") {
           // Mid-stream error — usually a rate-limit on the post-tool model
@@ -254,7 +281,18 @@ export async function* streamInvoke(
       });
       return;
     } catch (e) {
-      lastError = e as Error;
+      // If the watchdog aborted, translate the AbortError into a clear,
+      // user-facing "provider stalled" error so the next candidate gets
+      // tried instead of bubbling a generic abort.
+      if (watchdog.timedOut()) {
+        lastError = new AiError(
+          "error",
+          `Provider ${route.provider.id} sent no token for ${STREAM_IDLE_TIMEOUT_MS / 1000}s — falling through to the next provider.`,
+          route.provider.id,
+        );
+      } else {
+        lastError = e as Error;
+      }
       const msg = lastError.message ?? "";
       const isRateLimit = msg.includes("429") || msg.toLowerCase().includes("rate");
       if (isRateLimit) {
@@ -263,6 +301,8 @@ export async function* streamInvoke(
       } else {
         await setProviderRuntimeState(route.provider.id, { rateLimitedUntil: null, lastError: msg });
       }
+    } finally {
+      watchdog.dispose();
     }
   }
 
