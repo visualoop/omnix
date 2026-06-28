@@ -2,6 +2,31 @@
 
 This tracks work done LOCALLY without GitHub pushes. We only push when the user explicitly says so.
 
+## Release v0.16.2 — Drop Pro from public surface + theme every chart for light/dark
+
+### CI
+- Removed `pro` from `.github/workflows/ci.yml` matrix so each release builds 4 trade installers (dawa/retail/hospitality/hardware) instead of 5. Cuts ~5 min of Windows CI per release. The legacy Pro variant is intentionally not built right now — existing licensees keep using the v0.16.0 installer; re-add `pro` to the matrix when it goes back on sale.
+- Cancelled the in-flight v0.16.1 release run via `gh run cancel` to stop the redundant Pro build mid-flight.
+
+### Dashboard + admin Pro hiding (preserved for existing Pro licensees)
+- `start-trial-wizard.tsx` — removed Pro from the variant picker; "Pick this if unsure" recommended flag moved to Dawa; default fallback variant `pro` → `dawa`.
+- `dashboard/page.tsx` — `?variant=` URL fallback `pro` → `dawa`; trial-banner Pro upsell copy rewritten so existing Pro-trial owners still see relevant info without selling Pro to others.
+- `dashboard/downloads/page.tsx` — `visibleVariants` for non-Pro owners reduced from `[pro, dawa, retail, hospitality, hardware]` to `[dawa, retail, hospitality, hardware]`. Existing Pro licensees still see their Pro licence in the licences list and still get the Pro-only download grid via `ownedActive.has('pro')`.
+- All comments mark the change as reversible (`Re-add Pro to this array when …`).
+
+### Licensing — fix "Retail isn't on your licence" gate firing for users who DO own retail
+- **Root cause**: licence rows created via older paths (admin promotions, hand-imported keys, pre-modules-column trial inserts) had `licenses.modules = []` even when `variant = 'retail'`. The `/api/licensing/activate` and `/validate` endpoints returned that empty array verbatim; the desktop fell back to `["core"]`, and the route gate (`RequireRole` + `getFeatureModule`) shut every trade route — including the "View all" jump from Retail Brand Performance to `/retail/brands`.
+- **Fix**: new `website/src/lib/license-modules.ts` exports `effectiveModules(lic)` — returns the stored array when populated, derives from `variant` otherwise (`pro` → all four trades, every trade unlocks itself). Wired into `/api/licensing/activate`, `/api/licensing/validate`, `/api/licensing/sync` so the desktop always receives a non-empty module list.
+- **Self-healing backfill**: on the first activation hit for any licence where `modules` is empty, the activate route writes the derived array back to the row so subsequent silent revalidations short-circuit without the fallback.
+
+### Chart theming (fixes "bars/lines invisible in dark mode")
+- **Root cause**: `src/components/charts/index.tsx` was wrapping shadcn variables as `hsl(var(--primary))`, but the app stores all colours as `oklch(...)`. The resulting `hsl(oklch(...))` is invalid CSS, so recharts SVG silently fell back to `currentColor` — black-on-black on dark mode.
+- **Fix layer 1** — `src/index.css`: added a full chart token set to both `:root` and `.dark`. Categorical palette `--chart-1` … `--chart-8` (blue / green / amber / red / violet / magenta / cyan / olive), semantic `--chart-positive` / `--chart-warning` / `--chart-destructive`, structural `--chart-axis` / `--chart-grid`, and `--chart-tooltip-bg` / `-fg` / `-border`. Dark-mode variants use lighter chroma so series read on the espresso background.
+- **Fix layer 2** — rewrote `src/components/charts/index.tsx` to consume `var(--chart-…)` directly. `LineChart`, `AreaChart`, `BarChart`, `PieChart`, `ComparisonBar` — axis ticks, grid lines, tooltip surface, line dots, area gradient stops, pie cell strokes, legend colours all flip with the theme now. No `hsl()` wrapping, no literal hex anywhere.
+- Audited every other page for inline SVG charts — none exist (the `pnl.tsx` comment mentions sparklines but the code has no SVG). Every chart in the app routes through `@/components/charts`, so the fix is universal.
+
+Version bumped 0.16.1 → **0.16.2** across `package.json`, `src-tauri/Cargo.toml`, `src-tauri/tauri.conf.json`, `Cargo.lock`.
+
 ## Release v0.16.1 — Website repositioning + AI reliability hardening + POS payment-CTA fix
 
 What ships in this build:

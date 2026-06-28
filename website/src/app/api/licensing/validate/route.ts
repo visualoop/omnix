@@ -1,5 +1,6 @@
 import { eq } from 'drizzle-orm'
 import { db, licenses, machines } from '@/db'
+import { effectiveModules } from '@/lib/license-modules'
 
 /**
  * /api/licensing/validate — desktop-compatible heartbeat.
@@ -53,7 +54,7 @@ export async function POST(req: Request) {
 
   return Response.json({
     status: lic.status === 'trial' ? 'trial' : 'active',
-    modules: lic.modules ?? [],
+    modules: effectiveModules(lic),
     maxMachines: lic.maxMachines,
     maintenanceUntil: lic.maintenanceUntil?.toISOString() ?? null,
   })

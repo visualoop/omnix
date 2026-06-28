@@ -31,6 +31,7 @@ import { and, eq, count, isNull, sql } from 'drizzle-orm'
 import crypto from 'node:crypto'
 import { db, licenses, machines, activations, user } from '@/db'
 import { createId } from '@/lib/ids'
+import { effectiveModules } from '@/lib/license-modules'
 
 export const dynamic = 'force-dynamic'
 
@@ -83,6 +84,19 @@ export async function POST(req: Request) {
   )[0]
   if (!lic) {
     return reject('unknown_key', 404, 'Licence not recognised. Check the key or contact support.')
+  }
+
+  // One-time backfill: older licence rows (created before the `modules`
+  // jsonb column was wired through every code path) ended up with an
+  // empty array, which made the desktop fall back to `["core"]` and
+  // gate every trade page as "Retail isn't on your licence". Repair on
+  // first activation so subsequent revalidations see the correct list.
+  if (Array.isArray(lic.modules) && lic.modules.length === 0) {
+    const derived = effectiveModules(lic)
+    if (derived.length > 0) {
+      lic.modules = derived
+      await db.update(licenses).set({ modules: derived, updatedAt: new Date() }).where(eq(licenses.id, lic.id))
+    }
   }
 
   // ── Gate 7 (short-circuit): status ──────────────────────────────
@@ -317,7 +331,7 @@ function camelOK({
     authToken,
     action,
     entitlements: {
-      modules: lic.modules ?? [],
+      modules: effectiveModules(lic),
       maxDevices: lic.maxMachines,
       maxBranches: lic.maxBranches,
       maintenanceUntil: lic.maintenanceUntil?.toISOString() ?? null,

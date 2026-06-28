@@ -76,12 +76,12 @@ export default async function DashboardDownloadsPage() {
   //     trades. No point asking them to "try Hardware" — they already
   //     own it through Pro.
   //   - Anything else (no licence, only trial Pro, owned trades): show
-  //     ALL five variants. The user might own Dawa + Hardware but want
-  //     to download Retail to try it. They get a "Start trial" CTA
-  //     on every variant they don't yet own.
+  //     the four trade variants. Pro is intentionally hidden from non-
+  //     owners now that we don't sell it publicly — re-add 'pro' to the
+  //     fallback array when it goes back on sale.
   const visibleVariants: readonly VariantId[] = ownsPro
     ? (['pro'] as const)
-    : (['pro', 'dawa', 'retail', 'hospitality', 'hardware'] as const)
+    : (['dawa', 'retail', 'hospitality', 'hardware'] as const)
   const finalVariants = visibleVariants
 
   const ownedList = [...ownedSet]

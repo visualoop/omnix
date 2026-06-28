@@ -28,6 +28,7 @@
 import { eq, count, and, inArray } from 'drizzle-orm'
 import { db, licenses, activations, licenseSyncLog, user } from '@/db'
 import { createId } from '@/lib/ids'
+import { effectiveModules } from '@/lib/license-modules'
 
 export const dynamic = 'force-dynamic'
 
@@ -180,7 +181,7 @@ function serialiseLicense(lic: typeof licenses.$inferSelect): SyncResult['licens
     variant: lic.variant,
     tier: lic.tier,
     status: lic.status,
-    modules: (lic.modules as string[]) ?? [],
+    modules: effectiveModules(lic),
     maxBranches: lic.maxBranches,
     maxMachines: lic.maxMachines,
     maintenanceUntil: lic.maintenanceUntil?.toISOString() ?? null,

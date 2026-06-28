@@ -44,7 +44,7 @@ export default async function DashboardOverviewPage({
   type Variant = (typeof VALID_VARIANTS)[number]
   const defaultVariant: Variant = (VALID_VARIANTS as readonly string[]).includes(requestedVariant ?? '')
     ? (requestedVariant as Variant)
-    : 'pro'
+    : 'dawa'
 
   const userId = session.user.id
 
@@ -119,11 +119,14 @@ export default async function DashboardOverviewPage({
   // trade-trial banner.
   const proTrial = licList.find((l) => l.variant === 'pro' && l.status === 'trial')
   const otherTrials = licList.filter((l) => l.status === 'trial' && l.variant !== 'pro')
-  // "Show the trial banner" rule: a Pro trial is the only banner that
-  // matters when Pro is in play (it covers everything). Otherwise show
-  // the first non-Pro trial.
-  const trialToBanner = proTrial ?? otherTrials[0]
+  // "Show the trial banner" rule: now that Pro isn't on sale publicly,
+  // ALWAYS prefer a trade trial — the user can actually convert that to
+  // a purchase. A standalone Pro trial gets no banner (there's no public
+  // Pro buy path; the trial expires gracefully + the trade licences they
+  // also own keep them running).
+  const trialToBanner = otherTrials[0] ?? null
   const hasTrialBanner = !!trialToBanner
+  void proTrial // intentionally unused — kept around for the "supersededByPro" check below
 
   return (
     <div className="space-y-8">
@@ -137,9 +140,11 @@ export default async function DashboardOverviewPage({
         }
       />
 
-      {/* Trial → buy banner. Shows when at least one licence is on trial.
-          Each visible licence below also gets its own Upgrade button — this
-          banner is the "see this everywhere" gentle prompt. */}
+      {/* Trial → buy banner. Shows when at least one TRADE licence is
+          on trial. A Pro trial alone deliberately gets no banner now
+          that we don't sell Pro publicly — the trial runs to expiry,
+          the user is unaffected, and any trade licences they also own
+          keep them working. */}
       {!hasNoLicences && hasTrialBanner ? (
         <div className="rounded-xl border border-[var(--color-accent)] bg-[var(--color-accent-soft)] p-4 lg:p-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex flex-col gap-0.5">
@@ -150,16 +155,14 @@ export default async function DashboardOverviewPage({
               Lock in your licence — pay once, use forever.
             </span>
             <span className="text-[13px] text-[var(--color-fg-muted)]">
-              {trialToBanner!.variant === 'pro'
-                ? 'Pro covers all four trades for KES 150,000 once. No subscription.'
-                : 'KES 30,000 one-time per trade. Pro covers all four trades for KES 150,000.'}
+              KES 30,000 one-time per trade. Perpetual licence, no subscription.
             </span>
           </div>
           <a
-            href={`/buy?variant=${encodeURIComponent(trialToBanner!.variant ?? 'pro')}`}
+            href={`/buy?variant=${encodeURIComponent(trialToBanner!.variant ?? 'dawa')}`}
             className="shrink-0 inline-flex items-center justify-center rounded-md bg-[var(--color-accent)] px-4 py-2 font-mono text-[12px] uppercase tracking-[0.16em] text-white transition-colors hover:bg-[var(--color-accent)]/90 cursor-pointer"
           >
-            Purchase {trialToBanner!.variant === 'pro' ? 'Pro' : 'licence'} →
+            Purchase licence →
           </a>
         </div>
       ) : null}
@@ -179,7 +182,12 @@ export default async function DashboardOverviewPage({
                 // also owns Pro — show a "Covered by Pro" pill instead of
                 // an Upgrade button so we don't push them to pay twice.
                 const supersededByPro = ownsProActive && l.variant !== 'pro'
-                const isTrialOffer = l.status === 'trial' && !supersededByPro
+                // Pro isn't on sale publicly right now — Pro trial owners
+                // shouldn't see an "Upgrade" button that routes to a
+                // non-functional /buy?variant=pro flow. They keep using
+                // their trial; the row drops to the neutral "Open" CTA.
+                const isPro = l.variant === 'pro'
+                const isTrialOffer = l.status === 'trial' && !supersededByPro && !isPro
                 return (
                   <li key={l.id} className="flex items-center justify-between gap-3 px-4 py-3 text-[13px]">
                     <code className="font-mono text-[12px] text-[var(--color-fg)] select-all flex-1 min-w-0 truncate">{l.licenseKey}</code>

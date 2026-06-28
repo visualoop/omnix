@@ -29,11 +29,16 @@ jobs:
     permissions:
       contents: write
 
-    # 5 binaries per release: pro = legacy multi-module, plus four trade variants
+    # 4 binaries per release — one per trade variant. The legacy `pro`
+    # multi-module variant is intentionally NOT built right now: it's not
+    # sold publicly and existing Pro licensees keep using the v0.16.0
+    # installer, so wasting ~5 min of CI on a bundle nobody downloads
+    # makes the release loop slower for everyone. Re-add `pro` to this
+    # matrix when we resume selling it.
     strategy:
       fail-fast: false
       matrix:
-        variant: [pro, dawa, retail, hospitality, hardware]
+        variant: [dawa, retail, hospitality, hardware]
 
     steps:
       - name: Checkout

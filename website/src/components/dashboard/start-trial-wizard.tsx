@@ -3,7 +3,7 @@
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import {
-  Pill, Storefront, ForkKnife, Hammer, Stack, ArrowRight, CheckCircle, Copy,
+  Pill, Storefront, ForkKnife, Hammer, ArrowRight, CheckCircle, Copy,
 } from '@phosphor-icons/react'
 
 type Variant = 'pro' | 'dawa' | 'retail' | 'hospitality' | 'hardware'
@@ -16,9 +16,14 @@ interface VariantOption {
   recommended?: boolean
 }
 
+// Pro is intentionally OFF the trial wizard for now — we're not selling
+// it publicly, so offering it as a trial pick would create dashboard
+// confusion (a user starts a Pro trial, can't buy it, can't downgrade).
+// Existing Pro licensees still see their licence via the licences list;
+// they don't need this wizard. Re-add { id: 'pro', ...recommended: true }
+// to this array when Pro goes back on sale.
 const VARIANTS: VariantOption[] = [
-  { id: 'pro',         name: 'Omnix Pro',         tagline: 'All four trades — multi-trade businesses', Icon: Stack, recommended: true },
-  { id: 'dawa',        name: 'Omnix Dawa',        tagline: 'Pharmacy management',                       Icon: Pill },
+  { id: 'dawa',        name: 'Omnix Dawa',        tagline: 'Pharmacy management',                       Icon: Pill,        recommended: true },
   { id: 'retail',      name: 'Omnix Retail',      tagline: 'Shops, mini-marts, dukas',                  Icon: Storefront },
   { id: 'hospitality', name: 'Omnix Hospitality', tagline: 'Restaurants, bars, lodges',                 Icon: ForkKnife },
   { id: 'hardware',    name: 'Omnix Hardware',    tagline: 'Hardware stores, contractors',              Icon: Hammer },
@@ -41,14 +46,14 @@ interface Props {
   compact?: boolean
 }
 
-export function StartTrialWizard({ defaultVariant = 'pro', ownedVariants = [], compact = false }: Props) {
+export function StartTrialWizard({ defaultVariant = 'dawa', ownedVariants = [], compact = false }: Props) {
   const router = useRouter()
   const owned = new Set(ownedVariants)
   const available = VARIANTS.filter((v) => !owned.has(v.id))
   // If everything is taken, render a soft "you have all variants" footnote
   // instead of a full wizard.
   const allTaken = available.length === 0
-  const initialPick: Variant = available.find((v) => v.id === defaultVariant)?.id ?? available[0]?.id ?? 'pro'
+  const initialPick: Variant = available.find((v) => v.id === defaultVariant)?.id ?? available[0]?.id ?? 'dawa'
   const [picked, setPicked] = useState<Variant>(initialPick)
   const [busy, startTransition] = useTransition()
   const [started, setStarted] = useState<StartedLicense | null>(null)
