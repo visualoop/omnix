@@ -349,7 +349,7 @@ export function PaymentModal({ open, onClose }: Props) {
               onSuccess={(ref) => {
                 setPayments([...payments, {
                   method_id: "mpesa-daraja",
-                  method_name: "M-Pesa (Direct)",
+                  method_name: "M-Pesa STK",
                   amount: remaining,
                   reference: ref,
                 }]);

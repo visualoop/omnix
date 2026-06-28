@@ -46,7 +46,27 @@ export default async function BuyEntryPage({
 
   const requestedVariant = variant && ['pro','dawa','retail','hospitality','hardware'].includes(variant)
     ? variant
-    : (mod === 'dawa' || mod === 'retail' || mod === 'hospitality' || mod === 'hardware' ? mod : 'pro')
+    : (mod === 'dawa' || mod === 'retail' || mod === 'hospitality' || mod === 'hardware' ? mod : 'dawa')
+
+  // Pro is no longer on sale publicly. If the caller asked for Pro and
+  // the user doesn't already have an existing Pro licence row, redirect
+  // them to the Dawa flow rather than issuing a fresh Pro trial that
+  // will eventually hit a dead-end checkout. Existing Pro owners
+  // (active or trial) flow normally so the /buy/[licenseId] short-
+  // circuit can render the "Pro is paused" notice for them.
+  let existingProLicenseId: string | null = null
+  if (requestedVariant === 'pro' && isCustomer && customerId) {
+    const rows = await db
+      .select({ id: licenses.id })
+      .from(licenses)
+      .where(and(eq(licenses.userId, customerId), eq(licenses.variant, 'pro')))
+      .orderBy(desc(licenses.createdAt))
+      .limit(1)
+    existingProLicenseId = rows[0]?.id ?? null
+    if (!existingProLicenseId) {
+      redirect('/buy?variant=dawa')
+    }
+  }
 
   let existingLicenseId: string | null = null
   if (isCustomer && customerId) {

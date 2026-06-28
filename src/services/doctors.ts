@@ -39,7 +39,8 @@ export async function listDoctors(searchTerm?: string, includeInactive = false):
        (SELECT MAX(created_at) FROM prescriptions WHERE doctor_id = d.id) AS last_prescription
      FROM doctors d
      WHERE ${where}
-     ORDER BY d.full_name`,
+     ORDER BY d.full_name
+     LIMIT 500`,
     params,
   );
 }

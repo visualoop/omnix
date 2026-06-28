@@ -31,6 +31,72 @@ export default async function CheckoutPage({
   const license = rows[0]
   if (!license) notFound()
 
+  // Pro short-circuit. The legacy Pro variant is no longer on sale
+  // publicly, but old Pro trial licences still exist on customer
+  // dashboards. Clicking through to checkout used to show
+  // "Upgrade · Omnix Pro · all four trades · KES 150,000" — that
+  // payment can't be honoured, so we render a clear "Pro is no longer
+  // available for new purchases" notice and point the user at the
+  // trade variants instead. Existing PAID Pro owners keep their
+  // licence; they don't pass through this page.
+  if (license.variant === 'pro' && license.status !== 'active') {
+    return (
+      <div className="min-h-screen bg-[var(--color-bg)] pt-12 pb-20">
+        <div className="mx-auto max-w-2xl px-6 sm:px-8">
+          <Link
+            href="/dashboard/licenses"
+            className="inline-flex items-center gap-2 rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-1.5 text-[13px] font-medium text-[var(--color-fg-muted)] transition-colors hover:border-[var(--color-border-strong)] hover:text-[var(--color-fg)]"
+          >
+            <ArrowLeft className="size-3.5" />
+            Back to dashboard
+          </Link>
+
+          <div className="mt-10 rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-8 lg:p-10">
+            <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-[var(--color-accent)]">
+              Omnix Pro
+            </span>
+            <h1 className="mt-3 font-display text-[clamp(24px,3vw,32px)] font-medium leading-tight text-[var(--color-fg)]">
+              Pro isn&rsquo;t available for new purchases right now.
+            </h1>
+            <p className="mt-4 text-[14px] leading-[1.65] text-[var(--color-fg-muted)]">
+              We&rsquo;ve paused public sales of the multi-trade Pro licence while we focus on the
+              four trade variants. Your current Pro trial keeps working until expiry, so you can
+              continue evaluating every module on this machine — but the trial cannot be converted
+              to a paid Pro licence today.
+            </p>
+            <p className="mt-3 text-[14px] leading-[1.65] text-[var(--color-fg-muted)]">
+              To keep using Omnix after the trial, pick the trade you actually run. Each trade
+              licence is KES 30,000 once — perpetual, no subscription.
+            </p>
+            <div className="mt-7 grid grid-cols-1 gap-3 sm:grid-cols-2">
+              {(['dawa', 'retail', 'hospitality', 'hardware'] as const).map((v) => (
+                <Link
+                  key={v}
+                  href={`/buy?variant=${v}`}
+                  className="inline-flex items-center justify-between rounded-md border border-[var(--color-border)] bg-transparent px-4 py-3 transition-colors hover:border-[var(--color-accent)] hover:bg-[var(--color-accent-soft)]"
+                >
+                  <span className="font-display text-[15px] font-medium text-[var(--color-fg)]">
+                    {variantDisplayName(v)}
+                  </span>
+                  <span className="font-mono text-[11px] uppercase tracking-[0.18em] text-[var(--color-fg-muted)]">
+                    Choose &rarr;
+                  </span>
+                </Link>
+              ))}
+            </div>
+            <p className="mt-7 text-[12px] text-[var(--color-fg-subtle)]">
+              Run more than one trade in your business? Get in touch via{' '}
+              <Link href="/contact" className="text-[var(--color-fg)] underline-offset-4 hover:underline">
+                /contact
+              </Link>{' '}
+              — we still issue Pro for genuine multi-trade operations on request.
+            </p>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   const purpose = type ?? 'license_fee'
   const p = pricingFor((license.currency as 'KES') ?? 'KES')
   const lines = computeLines({ purpose, variant: license.variant, p })

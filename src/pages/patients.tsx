@@ -74,7 +74,8 @@ export function PatientsPage() {
            ) AS last_visit
          FROM customers c
          INNER JOIN patient_profiles pp ON pp.customer_id = c.id
-         ORDER BY c.name ASC`,
+         ORDER BY c.name ASC
+         LIMIT 500`,
       );
       setRows(result);
     } catch (e) {

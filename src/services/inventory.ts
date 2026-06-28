@@ -42,9 +42,45 @@ export interface Category {
   product_count?: number;
 }
 
+/** Default cap on `getProducts` — stops the inventory page hanging on
+ *  multi-thousand-SKU databases. Cashiers + owners refine via the search
+ *  box (name / SKU / barcode) when they need a specific item. */
+export const PRODUCTS_PAGE_SIZE = 500
+
+export interface ProductsPage {
+  rows: Product[]
+  /** Total active physical products matching the filter (ignores limit). */
+  total: number
+  /** True if more rows exist beyond `rows.length`. */
+  hasMore: boolean
+}
+
 export async function getProducts(search?: string): Promise<Product[]> {
+  // Back-compat surface — kept so existing call sites that don't care
+  // about pagination still work. New code should prefer `getProductsPage`.
+  const page = await getProductsPage(search, PRODUCTS_PAGE_SIZE)
+  return page.rows
+}
+
+/**
+ * Paginated product listing. Returns at most `limit` rows plus the
+ * total count of matches so the UI can show "Showing 500 of 12,400 —
+ * refine your search to find a specific item."
+ */
+export async function getProductsPage(search?: string, limit: number = PRODUCTS_PAGE_SIZE): Promise<ProductsPage> {
+  const where = `WHERE p.active = 1 AND p.kind = 'physical'${
+    search ? " AND (p.name LIKE ?1 OR p.barcode LIKE ?1 OR p.sku LIKE ?1)" : ""
+  }`
+  const params = search ? [`%${search}%`] : []
+
+  const [totalRow] = await query<{ count: number }>(
+    `SELECT COUNT(*) AS count FROM products p ${where}`,
+    params,
+  )
+  const total = totalRow?.count ?? 0
+
   const sql = `
-    SELECT p.*, 
+    SELECT p.*,
       COALESCE(pp.buying_price, 0) as buying_price,
       COALESCE(pp.selling_price, 0) as selling_price,
       COALESCE((SELECT SUM(b.quantity) FROM batches b WHERE b.product_id = p.id), 0) as stock_qty,
@@ -52,11 +88,12 @@ export async function getProducts(search?: string): Promise<Product[]> {
     FROM products p
     LEFT JOIN product_prices pp ON pp.product_id = p.id AND pp.price_list_id = 'default'
     LEFT JOIN categories c ON c.id = p.category_id
-    WHERE p.active = 1 AND p.kind = 'physical'
-    ${search ? "AND (p.name LIKE ?1 OR p.barcode LIKE ?1 OR p.sku LIKE ?1)" : ""}
+    ${where}
     ORDER BY p.name ASC
-  `;
-  return query<Product>(sql, search ? [`%${search}%`] : []);
+    LIMIT ${Math.max(1, Math.floor(limit))}
+  `
+  const rows = await query<Product>(sql, params)
+  return { rows, total, hasMore: total > rows.length }
 }
 
 export async function getProduct(id: string): Promise<Product | null> {

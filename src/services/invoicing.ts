@@ -107,7 +107,7 @@ export async function listQuotations(opts?: {
   );
 
   return query<Quotation>(
-    `SELECT * FROM quotations ${where} ORDER BY issue_date DESC, created_at DESC`,
+    `SELECT * FROM quotations ${where} ORDER BY issue_date DESC, created_at DESC LIMIT 500`,
     params,
   );
 }
@@ -252,7 +252,7 @@ export async function listInvoices(opts?: {
   const where = conditions.length ? `WHERE ${conditions.join(" AND ")}` : "";
 
   return query<Invoice>(
-    `SELECT * FROM invoices ${where} ORDER BY issue_date DESC, created_at DESC`,
+    `SELECT * FROM invoices ${where} ORDER BY issue_date DESC, created_at DESC LIMIT 500`,
     params,
   );
 }

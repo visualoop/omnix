@@ -2,7 +2,32 @@
 
 This tracks work done LOCALLY without GitHub pushes. We only push when the user explicitly says so.
 
+## Release v0.16.3 — Pro checkout short-circuit · M-Pesa STK label · long-list defensive caps
+
+### Pro checkout short-circuit (fixes user-visible Pro upsell that v0.16.2 missed)
+- Clicking a Pro trial licence on `/dashboard` was still routing to `/buy/[licenseId]` which rendered the full "Upgrade · Omnix Pro · all four trades · KES 150,000 · Pay KES 150,000" checkout. The page now detects Pro variants and replaces the checkout body with a "Pro isn't available for new purchases right now" notice, four trade-pick buttons (Dawa / Retail / Hospitality / Hardware), and a contact link for genuine multi-trade businesses. Existing PAID Pro licensees (status=active) flow normally — they already own it.
+- `/buy?variant=pro` entry: fallback default changed from `'pro'` to `'dawa'`. When a caller asks for Pro and the user doesn't already have a Pro licence row, the page redirects to `/buy?variant=dawa` rather than issuing a fresh Pro trial that would end up at the dead-end checkout.
+
+### M-Pesa label
+- POS payment-modal renamed `method_name: "M-Pesa (Direct)"` → `"M-Pesa STK"` for Daraja STK Push payments. "Direct" was Safaricom's old marketing name for a now-deprecated product — confusing on receipts and reports. The `method_id` (`mpesa-daraja`) stays the same, so existing rows keep their canonical id.
+
+### Long-list defensive caps (fixes "app hangs on big tables")
+Inventory, expiry, invoices, quotations, doctors, patients, payroll, tip distributions were loading every row in one query. On a multi-thousand-SKU catalogue or a multi-year tip ledger that locks the UI thread while React renders. Hard caps added:
+- `src/services/inventory.ts` — `getProducts` becomes a thin wrapper over new `getProductsPage(search, limit=500)` which returns `{ rows, total, hasMore }`. Inventory page renders a "Showing first 500 of N — refine your search" banner when capped.
+- `src/services/invoicing.ts` — `listInvoices` and `listQuotations` LIMIT 500.
+- `src/services/pharmacy.ts` — `getExpiringItems` LIMIT 500.
+- `src/services/doctors.ts` — `listDoctors` LIMIT 500.
+- `src/services/payroll.ts` — payroll-runs list LIMIT 200.
+- `src/services/tips.ts` — `listTipDistributions` LIMIT 500.
+- `src/pages/patients.tsx` — pharmacy patients query LIMIT 500.
+
+### How expiry is set up (user question)
+- **Set per batch**: Inventory → click a product → product-detail → Batches section → add batch with `expiry_date`. Also wired into the global "Receive stock" dialog accessible from Inventory or a PO.
+- **Reported in pharmacy**: Pharmacy → Expiry tracker reads from all batches with non-null expiry within the configured window (`getExpiringItems`). Same underlying table, different read view.
+
 ## Release v0.16.2 — Drop Pro from public surface + theme every chart for light/dark
+
+
 
 ### CI
 - Removed `pro` from `.github/workflows/ci.yml` matrix so each release builds 4 trade installers (dawa/retail/hospitality/hardware) instead of 5. Cuts ~5 min of Windows CI per release. The legacy Pro variant is intentionally not built right now — existing licensees keep using the v0.16.0 installer; re-add `pro` to the matrix when it goes back on sale.

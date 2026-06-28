@@ -126,7 +126,7 @@ export async function listTipDistributions(opts?: {
   if (opts?.endDate) { conditions.push(`period_end <= ?${params.length + 1}`); params.push(opts.endDate); }
   const where = conditions.length ? `WHERE ${conditions.join(" AND ")}` : "";
   return query<TipDistribution>(
-    `SELECT * FROM tip_distributions ${where} ORDER BY created_at DESC`,
+    `SELECT * FROM tip_distributions ${where} ORDER BY created_at DESC LIMIT 500`,
     params,
   );
 }

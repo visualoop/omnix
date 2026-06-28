@@ -19,7 +19,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Combobox } from "@/components/ui/combobox";
-import { getProducts, getCategories, type Product, type Category } from "@/services/inventory";
+import { getProductsPage, getCategories, type Product, type Category, PRODUCTS_PAGE_SIZE } from "@/services/inventory";
 import { ProductPanel } from "@/components/inventory/product-panel";
 import { BulkEditDialog } from "@/components/inventory/bulk-edit-dialog";
 import { ReceiveStockDialog } from "@/components/inventory/receive-stock-dialog";
@@ -28,6 +28,8 @@ import { Can } from "@/components/require-role";
 
 export function InventoryPage() {
   const [products, setProducts] = useState<Product[]>([]);
+  const [totalProducts, setTotalProducts] = useState(0);
+  const [hasMore, setHasMore] = useState(false);
   const [categories, setCategories] = useState<Category[]>([]);
   const [search, setSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState<string>("");
@@ -39,11 +41,13 @@ export function InventoryPage() {
   const [selected, setSelected] = useState<Set<string>>(new Set());
 
   const load = useCallback(async () => {
-    const [data, cats] = await Promise.all([
-      getProducts(search || undefined),
+    const [page, cats] = await Promise.all([
+      getProductsPage(search || undefined),
       getCategories(),
     ]);
-    setProducts(data);
+    setProducts(page.rows);
+    setTotalProducts(page.total);
+    setHasMore(page.hasMore);
     setCategories(cats);
   }, [search]);
 
@@ -148,6 +152,23 @@ export function InventoryPage() {
           </button>
         )}
       </div>
+
+      {/* Truncation banner — the inventory query caps at PRODUCTS_PAGE_SIZE
+          so a 12k-SKU catalogue doesn't lock the page. Only renders when
+          the catalogue actually exceeds the cap; explains the cap +
+          points the user to refine via the search box above. */}
+      {hasMore && (
+        <div className="rounded-md border border-amber-500/30 bg-amber-500/8 px-3 py-2 text-[12px] text-amber-700 dark:text-amber-300 flex items-center justify-between gap-3">
+          <span>
+            Showing the first <strong>{products.length}</strong> of{" "}
+            <strong>{totalProducts.toLocaleString("en-US")}</strong> products.
+            Refine your search above (name, SKU, barcode) to find a specific item.
+          </span>
+          <span className="font-mono text-[10px] uppercase tracking-[0.18em] shrink-0 text-amber-700/80 dark:text-amber-300/80">
+            Cap · {PRODUCTS_PAGE_SIZE}
+          </span>
+        </div>
+      )}
 
       {/* Table */}
       {products.length === 0 ? (

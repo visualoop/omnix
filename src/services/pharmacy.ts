@@ -234,7 +234,8 @@ export async function getExpiringItems(daysWindow: number = 90): Promise<ExpiryI
      WHERE b.expiry_date IS NOT NULL 
        AND b.quantity > 0
        AND julianday(b.expiry_date) - julianday('now') <= ?1
-     ORDER BY b.expiry_date ASC`,
+     ORDER BY b.expiry_date ASC
+     LIMIT 500`,
     [daysWindow]
   );
 }

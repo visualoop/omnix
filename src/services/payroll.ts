@@ -246,7 +246,7 @@ export interface Payslip {
 
 export async function listPayrollRuns(): Promise<PayrollRun[]> {
   return query<PayrollRun>(
-    `SELECT * FROM payroll_runs ORDER BY period_year DESC, period_month DESC`,
+    `SELECT * FROM payroll_runs ORDER BY period_year DESC, period_month DESC LIMIT 200`,
   );
 }
 
