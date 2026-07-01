@@ -19,7 +19,7 @@
  * When there's no update available we return 204 No Content so the
  * updater plugin doesn't log an error to the client.
  */
-import { desc } from 'drizzle-orm'
+import { desc, eq } from 'drizzle-orm'
 import { db, releases } from '@/db'
 
 export const dynamic = 'force-dynamic'
@@ -97,8 +97,53 @@ export async function GET(req: Request) {
     null
 
   // Signature — variant-specific if the sync grabbed it, else Pro's,
-  // else the top-level signature column (set to Pro's sig by the sync).
-  const signature = va.signature ?? proAssets.signature ?? latest.signature ?? ''
+  // else the top-level signature column. If ALL are missing but we have
+  // a URL, lazy-fetch the sibling `.sig` file from R2 (CI uploads it
+  // alongside the installer) and persist it back to
+  // metadata.variants[variant].signature so subsequent reads skip the
+  // network hop. Fixes v0.16.4-v0.27.1 releases that shipped with an
+  // empty signature because /api/releases-sync only wrote signatures
+  // when variant='pro' (which we don't build).
+  let signature = va.signature ?? proAssets.signature ?? latest.signature ?? ''
+
+  if (!signature && url_) {
+    try {
+      // Encode the URL. CI stores paths like ".../Omnix Dawa_0.27.1_x64-setup.exe"
+      // with a raw space. Cloudflare R2 returns 400 without percent-encoding.
+      // encodeURI is safe here because it preserves the scheme + host structure.
+      const safeUrl = encodeURI(url_)
+      const sigUrl = `${safeUrl}.sig`
+      const res = await fetch(sigUrl, { cache: 'no-store' })
+      if (res.ok) {
+        signature = (await res.text()).trim()
+        // Write back so we don't refetch on every request. Best-effort —
+        // if the DB write fails, we still return the sig on this
+        // response so the caller isn't blocked by our self-heal.
+        try {
+          const nextVariants = {
+            ...variants,
+            [variant]: { ...va, signature },
+          }
+          await db
+            .update(releases)
+            .set({
+              metadata: {
+                ...((latest.metadata as Record<string, unknown> | null) ?? {}),
+                variants: nextVariants,
+                selfHealedAt: new Date().toISOString(),
+              },
+            })
+            .where(eq(releases.id, latest.id))
+        } catch (e) {
+          console.warn('[releases-latest] sig self-heal write failed:', e)
+        }
+      } else {
+        console.warn(`[releases-latest] sig fetch ${sigUrl} → HTTP ${res.status}`)
+      }
+    } catch (e) {
+      console.warn('[releases-latest] sig fetch threw:', e)
+    }
+  }
 
   if (!url_) {
     // Latest row exists but has no installer URL populated — treat as
@@ -107,24 +152,27 @@ export async function GET(req: Request) {
     return new Response(null, { status: 204 })
   }
 
-  // Tauri v2 updater expected JSON body.
+  // Tauri v2 updater expected JSON body. URL-encode paths so raw
+  // spaces in filenames (e.g. "Omnix Dawa_0.27.1_x64-setup.exe") don't
+  // break reqwest's download step on the client.
+  const safeInstallerUrl = encodeURI(url_)
   return Response.json({
     version: latest.version,
     notes: latest.notes ?? `Omnix ${latest.version}`,
     pub_date: latest.publishedAt.toISOString(),
     platforms: {
-      'windows-x86_64': { signature, url: url_ },
+      'windows-x86_64': { signature, url: safeInstallerUrl },
       // We only ship Windows installers today, but keeping macOS/Linux
       // keys here means when we add those the updater picks them up
       // without a code change — just populate the DB URL columns.
       ...(latest.dmgUrl
         ? {
-            'darwin-x86_64': { signature, url: latest.dmgUrl },
-            'darwin-aarch64': { signature, url: latest.dmgUrl },
+            'darwin-x86_64': { signature, url: encodeURI(latest.dmgUrl) },
+            'darwin-aarch64': { signature, url: encodeURI(latest.dmgUrl) },
           }
         : {}),
       ...(latest.appImageUrl
-        ? { 'linux-x86_64': { signature, url: latest.appImageUrl } }
+        ? { 'linux-x86_64': { signature, url: encodeURI(latest.appImageUrl) } }
         : {}),
     },
   })

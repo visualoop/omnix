@@ -148,7 +148,7 @@ export async function POST(req: Request) {
     .limit(1))[0]
 
   // Build the merged metadata.variants object.
-  type VariantUrls = { exe?: string; msi?: string }
+  type VariantUrls = { exe?: string; msi?: string; signature?: string }
   const existingMeta = (existing?.metadata ?? {}) as {
     variants?: Record<string, VariantUrls>
     sha256?: { exe?: string; msi?: string }
@@ -159,6 +159,12 @@ export async function POST(req: Request) {
     variantsMap[variant] = {
       exe: exeUrl ?? variantsMap[variant]?.exe,
       msi: msiUrl ?? variantsMap[variant]?.msi,
+      // v0.27.2 fix: persist the per-variant Tauri updater signature so
+      // /api/releases-latest can return it. Previously we only wrote
+      // the top-level `signature` column when variant='pro' — but Pro
+      // isn't in the CI matrix, so every release since v0.16.4 shipped
+      // with an empty signature and auto-updates silently didn't verify.
+      signature: signature ?? variantsMap[variant]?.signature,
     }
   }
 

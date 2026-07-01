@@ -2,6 +2,51 @@
 
 This tracks work done LOCALLY without GitHub pushes. We only push when the user explicitly says so.
 
+## Release v0.27.2 — Auto-update actually installs now
+
+**Symptom**: "Check for Updates" (or the silent background updater) returned `invalid encoding in minisign data`. Every attempted install failed at signature verification.
+
+**Root cause** (traced end-to-end):
+1. CI builds each variant → signs the installer → uploads the `.exe` AND `.exe.sig` to R2 → POSTs the sig content to `/api/releases-sync`. That part works.
+2. `/api/releases-sync` had a subtle branch: it only wrote the signature back to the DB when `variant === 'pro'`. But Pro isn't in the CI matrix anymore (dropped in v0.16.4 to shave 5 min off releases). So **every release since v0.16.4 stored an empty signature**.
+3. `/api/releases-latest` faithfully returned `"signature":""` to Tauri.
+4. Tauri's `minisign-verify` crate can't parse an empty base64 blob → `invalid encoding in minisign data` → install refused.
+
+Confirmed by hitting the endpoint directly:
+```
+curl https://omnix.co.ke/api/releases-latest?variant=dawa
+{"version":"0.27.1", …, "signature":"", "url":"https://media.omnix.co.ke/…"}
+```
+
+**Fixes**:
+
+1. **`releases-sync/route.ts`** — persists per-variant signature to `metadata.variants[variant].signature` on every CI notification. Fixes going forward.
+
+2. **`releases-latest/route.ts`** — **lazy self-heal for old releases**. When the persisted signature is empty but we have an installer URL, fetch the sibling `.sig` file from R2 (CI uploads it alongside the installer), return it in the response, AND write it back to the DB so subsequent reads skip the network hop. Older releases (v0.16.4 through v0.27.1) heal themselves on first request.
+
+3. **URL encoding** — installer filenames contain spaces (e.g. `Omnix Dawa_0.27.1_x64-setup.exe`). Both the `.sig` fetch inside the endpoint AND the URL returned to Tauri now go through `encodeURI()` so raw spaces don't break R2's URL parsing or Tauri's `reqwest` downloader.
+
+### Verification path for the user
+After this deploy, the auto-updater should work like this:
+
+- **8 seconds after every launch**: the app silently calls `/api/releases-latest?variant=<yours>&license=<current>` → downloads the update in the background if one exists → holds it in memory → installs it when you close the app.
+- **The "Check for Updates" button in Settings → Application → Software Updates**: triggers the same check on demand. If an update is available, you can install without closing.
+- **Signature verification**: now succeeds because the sig comes from R2 verbatim, `.trim()`ed, and matches the base pubkey embedded in every variant's binary.
+- **Major-version bumps** (e.g. 0.x → 1.x) are deliberately NOT auto-installed — they surface as a dismissible notice via the manual `UpdateChecker`. Paid upgrades only.
+
+### If you want to force the self-heal now
+Just hit the endpoint once for each variant:
+```
+curl https://omnix.co.ke/api/releases-latest?variant=dawa
+curl https://omnix.co.ke/api/releases-latest?variant=retail
+curl https://omnix.co.ke/api/releases-latest?variant=hospitality
+curl https://omnix.co.ke/api/releases-latest?variant=hardware
+```
+Each first hit fetches from R2 + writes back. Subsequent hits are free.
+
+### Verification (build)
+Website tsc + next build clean. Desktop untouched (no `--tauri` build needed for this fix).
+
 ## Release v0.27.1 — Header polish + editorial mobile sheet
 
 Three related fixes that fell out of user feedback on v0.26.0's header:
