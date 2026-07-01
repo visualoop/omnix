@@ -128,6 +128,16 @@ export default async function DashboardOverviewPage({
   const hasTrialBanner = !!trialToBanner
   void proTrial // intentionally unused — kept around for the "supersededByPro" check below
 
+  // Reseller check — banner links to /dashboard/reseller when the user is one.
+  let isReseller = false
+  try {
+    const { resellers: resellersTable } = await import('@/db')
+    const rows = await db.select({ id: resellersTable.id }).from(resellersTable).where(eq(resellersTable.userId, userId)).limit(1)
+    isReseller = rows.length > 0
+  } catch {
+    // resellers table cold — dashboard renders without the reseller pill.
+  }
+
   return (
     <div className="space-y-8">
       <WelcomeTour />
@@ -139,6 +149,17 @@ export default async function DashboardOverviewPage({
             : 'Your licences, machines, and support — all in one place.'
         }
       />
+
+      {isReseller ? (
+        <a
+          href="/dashboard/reseller"
+          className="inline-flex items-center gap-2 rounded-full border border-emerald-500/40 bg-emerald-500/5 px-3 py-1.5 text-xs font-medium text-emerald-700 dark:text-emerald-400 hover:bg-emerald-500/10"
+        >
+          <span className="size-1.5 rounded-full bg-emerald-500" />
+          Reseller channel · view your dashboard
+          <span aria-hidden>→</span>
+        </a>
+      ) : null}
 
       {/* Trial → buy banner. Shows when at least one TRADE licence is
           on trial. A Pro trial alone deliberately gets no banner now

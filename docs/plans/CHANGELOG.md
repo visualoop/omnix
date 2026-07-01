@@ -2,6 +2,31 @@
 
 This tracks work done LOCALLY without GitHub pushes. We only push when the user explicitly says so.
 
+## Release v0.22.0 — Reseller-facing dashboard
+
+Now that the schema + admin promotion shipped in v0.21.0, resellers can see their own state.
+
+### New `/dashboard/reseller` page
+Auth-gated by the dashboard layout, plus a resellers-row check. Non-resellers redirect to `/dashboard?notice=not_reseller`. Shows:
+
+- Status header — company name, discount %, active/suspended pill
+- Rolling totals cards — licences issued, revenue brought, commission earned, unpaid commission
+- Placeholder "Issue a new licence" panel — links to support ticket for now (wholesale Paystack checkout ships in v0.23)
+- Table: licences you've issued (most recent 50, joined with customer name + email)
+- Table: recent commission ledger entries (most recent 20 with status pill)
+
+### Discoverable
+Overview page (`/dashboard`) now shows a small emerald "Reseller channel → view your dashboard" pill when the user has a resellers row. Non-resellers see nothing — the pill only appears for people who are actually a reseller. Query wrapped in try/catch so the resellers table being cold on first boot doesn't break the overview.
+
+### Not yet
+- Wholesale Paystack checkout (v0.23) — reseller picks a variant + qty, gets a Paystack popup at (retail × (1 − discount %))
+- Commission credit on webhook success — after v0.23 there'll be reseller-issued licences to credit
+- Monthly payout via Paystack Transfers — schedule + fraud checks
+
+Version bumped 0.21.0 → **0.22.0** across `package.json`, `src-tauri/Cargo.toml`, `src-tauri/tauri.conf.json`, `Cargo.lock`.
+
+Verification: desktop tsc clean, vitest 440/440, website tsc clean.
+
 ## Release v0.21.0 — Reseller foundation
 
 Schema + admin-side promotion. **Reseller-facing dashboard + wholesale checkout ship in v0.22.0** — this release just lays the groundwork so the data model is settled before the customer-facing pipes are built.
