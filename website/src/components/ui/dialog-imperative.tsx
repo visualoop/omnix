@@ -4,6 +4,10 @@
  * Imperative dialog helpers — Radix Dialog-based replacements for
  * native window.confirm / window.alert / window.prompt.
  *
+ * Zero external state deps — plain module-level subscriber list +
+ * useSyncExternalStore on the host component. Keeps the marketing
+ * site bundle lean (no zustand needed on the website).
+ *
  * Usage:
  *   const ok = await confirm({ title: "Delete this?", variant: "destructive" })
  *   if (!ok) return
@@ -16,9 +20,8 @@
  * Mount once at app root (or in the root layout):
  *   <DialogHost />
  */
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useSyncExternalStore } from 'react'
 import * as Dialog from '@radix-ui/react-dialog'
-import { create } from 'zustand'
 import { X } from '@phosphor-icons/react/dist/ssr'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/cn'
@@ -47,60 +50,61 @@ interface PromptOptions {
   required?: boolean
 }
 
-type Dialog =
+type DialogState =
   | { kind: 'confirm'; opts: ConfirmOptions; resolve: (v: boolean) => void }
   | { kind: 'alert'; opts: AlertOptions; resolve: () => void }
   | { kind: 'prompt'; opts: PromptOptions; resolve: (v: string | null) => void }
 
-interface Store {
-  current: Dialog | null
-  push: (d: Dialog) => void
-  clear: () => void
+// ─── Minimal external store ───────────────────────────────────────
+// Module-scoped state + subscribers list. React reads through
+// useSyncExternalStore on the host component. Zero extra deps.
+
+let currentDialog: DialogState | null = null
+const listeners = new Set<() => void>()
+
+function setCurrentDialog(next: DialogState | null): void {
+  currentDialog = next
+  listeners.forEach((l) => l())
 }
 
-const useStore = create<Store>((set) => ({
-  current: null,
-  push: (d) => set({ current: d }),
-  clear: () => set({ current: null }),
-}))
+function getSnapshot(): DialogState | null {
+  return currentDialog
+}
+
+function getServerSnapshot(): DialogState | null {
+  // SSR: nothing to render. Prevents hydration mismatch.
+  return null
+}
+
+function subscribe(l: () => void): () => void {
+  listeners.add(l)
+  return () => listeners.delete(l)
+}
 
 // ─── Imperative API ────────────────────────────────────────────────
 
 export function confirm(opts: ConfirmOptions): Promise<boolean> {
   return new Promise((resolve) => {
-    useStore.getState().push({
-      kind: 'confirm',
-      opts,
-      resolve,
-    })
+    setCurrentDialog({ kind: 'confirm', opts, resolve })
   })
 }
 
 export function alert(opts: AlertOptions): Promise<void> {
   return new Promise((resolve) => {
-    useStore.getState().push({
-      kind: 'alert',
-      opts,
-      resolve,
-    })
+    setCurrentDialog({ kind: 'alert', opts, resolve })
   })
 }
 
 export function prompt(opts: PromptOptions): Promise<string | null> {
   return new Promise((resolve) => {
-    useStore.getState().push({
-      kind: 'prompt',
-      opts,
-      resolve,
-    })
+    setCurrentDialog({ kind: 'prompt', opts, resolve })
   })
 }
 
 // ─── The Host ─────────────────────────────────────────────────────
 
 export function DialogHost() {
-  const current = useStore((s) => s.current)
-  const clear = useStore((s) => s.clear)
+  const current = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot)
   const [promptValue, setPromptValue] = useState('')
 
   useEffect(() => {
@@ -111,7 +115,7 @@ export function DialogHost() {
 
   if (!current) return null
 
-  const handleConfirm = () => {
+  const handleConfirm = (): void => {
     if (current.kind === 'confirm') current.resolve(true)
     else if (current.kind === 'alert') current.resolve()
     else if (current.kind === 'prompt') {
@@ -119,21 +123,31 @@ export function DialogHost() {
       if (current.opts.required && !val) return
       current.resolve(val || null)
     }
-    clear()
+    setCurrentDialog(null)
   }
 
-  const handleCancel = () => {
+  const handleCancel = (): void => {
     if (current.kind === 'confirm') current.resolve(false)
     else if (current.kind === 'prompt') current.resolve(null)
     else current.resolve()
-    clear()
+    setCurrentDialog(null)
   }
 
   const isDestructive = current.kind === 'confirm' && current.opts.variant === 'destructive'
   const isWarning = current.kind === 'confirm' && current.opts.variant === 'warning'
 
+  const confirmLabel =
+    current.kind === 'confirm' ? (current.opts.confirmText ?? (isDestructive ? 'Delete' : 'OK')) :
+    current.kind === 'alert' ? (current.opts.buttonText ?? 'OK') :
+    (current.opts.confirmText ?? 'OK')
+
+  const cancelLabel =
+    current.kind === 'confirm' ? (current.opts.cancelText ?? 'Cancel') :
+    current.kind === 'prompt' ? (current.opts.cancelText ?? 'Cancel') :
+    ''
+
   return (
-    <Dialog.Root open onOpenChange={(open) => !open && handleCancel()}>
+    <Dialog.Root open onOpenChange={(open) => { if (!open) handleCancel() }}>
       <Dialog.Portal>
         <Dialog.Overlay
           className={cn(
@@ -195,7 +209,7 @@ export function DialogHost() {
           <div className="mt-5 flex justify-end gap-2">
             {current.kind !== 'alert' ? (
               <Button variant="ghost" size="sm" onClick={handleCancel} className="text-[13px]">
-                {(current.kind === 'confirm' ? current.opts.cancelText : current.opts.cancelText) ?? 'Cancel'}
+                {cancelLabel}
               </Button>
             ) : null}
             <Button
@@ -206,11 +220,9 @@ export function DialogHost() {
                 'text-[13px]',
                 isWarning && 'bg-amber-500 text-amber-950 hover:bg-amber-500/90',
               )}
-              disabled={current.kind === 'prompt' && current.opts.required && !promptValue.trim()}
+              disabled={current.kind === 'prompt' && current.opts.required === true && !promptValue.trim()}
             >
-              {(current.kind === 'confirm' ? current.opts.confirmText :
-                current.kind === 'alert' ? current.opts.buttonText :
-                current.opts.confirmText) ?? (isDestructive ? 'Delete' : 'OK')}
+              {confirmLabel}
             </Button>
           </div>
         </Dialog.Content>

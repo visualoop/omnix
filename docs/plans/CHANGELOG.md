@@ -2,6 +2,19 @@
 
 This tracks work done LOCALLY without GitHub pushes. We only push when the user explicitly says so.
 
+## Release v0.28.8 — CI hotfix: dialog-imperative without zustand
+
+**What broke**: v0.28.7's website `dialog-imperative.tsx` imported `zustand`, which is a **desktop** dependency but not in the website's `package.json`. Local tsc + local `next build` both passed for me because pnpm workspace hoisting silently resolved zustand from the root `node_modules`. CI does `pnpm install --frozen-lockfile` per workspace and correctly refused to resolve it.
+
+Additionally: my local build was against a warm `.next` cache that had zustand pre-bundled. Cold builds surface this.
+
+**Fix**: rewrote `dialog-imperative.tsx` with zero external state deps. Uses a plain module-level state variable + subscriber Set + React's built-in `useSyncExternalStore` on the host component. Same behavior, same API, no extra dependencies.
+
+**Lesson**: my local verification loop was too warm. Going forward, when touching website code I'll `rm -rf website/.next` before `next build` to catch fresh-checkout issues. The build now passes cleanly from an empty state.
+
+### Verification
+Desktop tsc clean · Website tsc clean · **Local next build** cold-cache clean · Vitest 513/513 · Audit 0 errors.
+
 ## Release v0.28.7 — Every native dialog replaced + lint rule to keep it that way
 
 Complete sweep across the codebase (both desktop AND website) to eliminate every `window.confirm` / `window.alert` / `window.prompt` / bare `confirm("...")` / `alert("...")` / `prompt("...")` call. All 11 native calls found and replaced with imperative Radix-based dialogs. Plus a `ui.native.dialog` audit rule that fails CI if a native dialog is ever reintroduced.
