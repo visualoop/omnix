@@ -116,19 +116,29 @@ export async function getCustomerStats(customerId: string): Promise<{
   last_purchase: string | null;
   outstanding_balance: number;
 }> {
+  // Purchase count + gross + refunds per customer. Net total = gross -
+  // refunds (won't go negative). Both aggregates in a single pass so a
+  // customer detail page doesn't need two round trips.
   const rows = await query<{
     total_purchases: number;
-    total_amount: number;
+    gross_amount: number;
+    refunds_amount: number;
     last_purchase: string | null;
   }>(
-    `SELECT COUNT(*) as total_purchases, COALESCE(SUM(total), 0) as total_amount,
+    `SELECT COUNT(*) as total_purchases,
+            COALESCE(SUM(total), 0) as gross_amount,
+            COALESCE(SUM(refunded_amount), 0) as refunds_amount,
             MAX(created_at) as last_purchase
      FROM sales WHERE customer_id = ?1 AND status = 'completed'`,
     [customerId]
   );
   const customer = await getCustomer(customerId);
+  const gross = rows[0]?.gross_amount ?? 0;
+  const refunds = rows[0]?.refunds_amount ?? 0;
   return {
-    ...rows[0],
+    total_purchases: rows[0]?.total_purchases ?? 0,
+    total_amount: Math.max(0, gross - refunds),
+    last_purchase: rows[0]?.last_purchase ?? null,
     outstanding_balance: customer?.balance || 0,
   };
 }
@@ -441,16 +451,34 @@ export async function createSaleReturn(input: CreateReturnInput): Promise<string
 
   // Mirror the refund as money LEAVING the till (a withdrawal), the exact
   // inverse of the deposit completeSale recorded — so the bank reconciles.
-  if (input.refund_amount > 0) {
+  //
+  // 'store_credit' + 'credit' refunds are the exception: no cash leaves
+  // the till. Instead we reduce the customer's outstanding_balance by
+  // the refund amount (they owe less). If the customer already paid in
+  // full, this bumps them into "positive credit" territory (customers.balance
+  // goes negative — a credit note the shop owes them, redeemable on a
+  // future purchase).
+  const refundMethod = (input.refund_method || "cash").toLowerCase();
+  const isStoreCredit = refundMethod === "store_credit" || refundMethod === "credit";
+
+  if (input.refund_amount > 0 && isStoreCredit && input.customer_id) {
+    stmts.push({
+      sql: `UPDATE customers
+              SET balance = ROUND(COALESCE(balance, 0) - ?2, 2),
+                  updated_at = datetime('now')
+            WHERE id = ?1`,
+      params: [input.customer_id, round2(input.refund_amount)],
+    });
+  } else if (input.refund_amount > 0) {
     try {
       const { pickBankAccountForMethod } = await import("@/services/sales");
-      const accountId = await pickBankAccountForMethod(input.refund_method || "cash");
+      const accountId = await pickBankAccountForMethod(refundMethod);
       if (accountId) {
         stmts.push({
           sql: `INSERT INTO bank_transactions (id, account_id, transaction_date, transaction_type, amount, description, payment_method, related_sale_id, user_id)
            VALUES (?1, ?2, datetime('now'), 'withdrawal', ?3, ?4, ?5, ?6, ?7)`,
           params: [crypto.randomUUID(), accountId, round2(input.refund_amount), `Refund ${number}`,
-            (input.refund_method || "cash").toLowerCase(), input.sale_id || null, input.user_id],
+            refundMethod, input.sale_id || null, input.user_id],
         });
         stmts.push({
           sql: `UPDATE bank_accounts SET current_balance = ROUND(COALESCE(current_balance,0) - ?2, 2) WHERE id = ?1`,

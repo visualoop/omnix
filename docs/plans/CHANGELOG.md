@@ -2,6 +2,56 @@
 
 This tracks work done LOCALLY without GitHub pushes. We only push when the user explicitly says so.
 
+## Release v0.28.2 — Returns end-to-end audit + fixes
+
+**Concern raised**: "make sure returns impact everything they're supposed to impact — dashboard, POS totals, customer stats — for all modules. I want to know it works like real life."
+
+**Audit findings**: partial pass, four real bugs.
+
+### What was already correct
+- Returns write to `sale_returns` + `sale_return_items` (audit trail) ✓
+- Restock: bumps latest batch quantity + writes `stock_movements` with type='return' ✓
+- Cash refund: writes a `bank_transactions` withdrawal + decrements bank account balance ✓
+- Reports (`services/reports.ts`) + Z-report subtracted returns from net_sales ✓
+
+### What was broken
+
+1. **Dashboard "today's revenue" hardcoded `refunds: 0`.**  
+   `getTodaySalesSummary()` in `services/pos-helpers.ts` had `SELECT ... 0 AS refunds` baked in. Shop makes 10k in sales, refunds 3k, dashboard still says 10k. **Fixed**: real aggregate over `sale_returns` for today's branch. Revenue field is now NET (gross − refunds), clamped at 0 for the yesterday's-return-refunded-today edge case.
+
+2. **Customer stats showed gross totals, not net.**  
+   `getCustomerStats()` in `services/erp.ts` returned `SUM(sales.total)` — didn't subtract that customer's returns. Customer bought 5k, returned 2k, page said "5k lifetime". **Fixed**: joins `sales.refunded_amount` in the aggregate, returns `max(0, gross - refunds)`.
+
+3. **Branch stats too**: both `pages/branch-detail.tsx` and `services/branches.ts` `SELECT SUM(total) FROM sales`. **Fixed**: `SUM(total - COALESCE(refunded_amount, 0))`.
+
+4. **Store-credit refunds wrote a bank withdrawal.**  
+   Original code: `pickBankAccountForMethod(refund_method || "cash")` — even when `refund_method === "store_credit"`, it tried to withdraw from a bank account. No cash physically leaves the till on a store-credit refund; the customer's balance should reduce (they owe less, or now have positive credit toward a future purchase). **Fixed**: 'store_credit' or 'credit' + a `customer_id` → `UPDATE customers SET balance = balance - refund_amount`. Other methods keep the bank-withdrawal path.
+
+### Schema addition — migration 053
+Added `sales.refunded_amount` + `sales.refunded_at` columns via `053_sale_returns_impact.sql`. Trigger `trg_sale_return_bumps_sale` fires `AFTER INSERT ON sale_returns` and increments the parent sale's `refunded_amount`. Idempotent backfill for existing returns runs once during migration.
+
+Why a column + trigger vs computing on every query: dashboard queries hit this on every refresh. A pre-aggregated column keeps the dashboard fast at scale, and the trigger guarantees the column can never drift from the source of truth.
+
+### What still remains (not shipped in v0.28.2)
+- **eTIMS credit note**: KRA expects credit notes filed against returns. Currently `sale_returns` is not submitted. Future release. Flagged in follow-up.
+- **COGS reversal**: when a restocked item goes back into inventory, the original sale's COGS should be reversed. `services/reports.ts` computes COGS via a join over sale_items → batches at query time, so this is likely already correct — but I didn't verify end-to-end. Follow-up.
+- **Sale.payment_status update**: if a sale was 'paid' and fully refunded, its status stays 'paid'. This is arguably correct (the sale DID complete; the refund is a separate event) but a UI decision worth revisiting.
+
+### Tests
+New `tests/returns.spec.ts` — **15 invariants** covering:
+- Dashboard aggregate: gross − refunds = net, clamped at 0
+- Customer stats: net-of-returns lifetime total
+- Refund method routing: cash/mpesa/card → bank withdrawal; store_credit/credit + customer_id → balance reduction; store_credit with no customer_id → fall back to bank withdrawal
+- Restock behaviour: restock=true adds to stock, restock=false (damaged) keeps stock the same but refund still fires
+- Edge cases: multiple partial refunds sum before subtraction, no negative totals
+
+**497 tests total** (up from 482, +15 new).
+
+### Modules touched
+This is a **core** fix, not module-specific. It applies to every module (Dawa / Retail / Hospitality / Hardware) because they all share the same `sales` + `sale_returns` tables and the same `getTodaySalesSummary` / `getCustomerStats` calls. A Dawa refund now correctly reduces today's till just as a Retail refund does.
+
+Verification: desktop tsc clean · vitest 497/497 · new migration is idempotent + reversible-safe (only ADD COLUMN + CREATE TRIGGER IF NOT EXISTS).
+
 ## Release v0.28.1 — Tax logic verified + locked with tests
 
 **Concern raised**: "did any of the recent changes break tax? Is inclusive / exclusive still wired through the POS end-to-end?"

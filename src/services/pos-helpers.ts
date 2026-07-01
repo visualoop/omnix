@@ -17,14 +17,31 @@ export interface TodaySalesSummary {
 
 export async function getTodaySalesSummary(): Promise<TodaySalesSummary> {
   const branchId = getActiveBranchId();
-  const [s] = await query<{ count: number; revenue: number; refunds: number }>(
-    `SELECT
-       COUNT(CASE WHEN status != 'voided' THEN 1 END) AS count,
-       COALESCE(SUM(CASE WHEN status NOT IN ('voided','held') THEN total ELSE 0 END), 0) AS revenue,
-       0 AS refunds
-     FROM sales WHERE date(created_at) = date('now') AND branch_id = ?1`,
-    [branchId],
-  );
+  // Two aggregates run in parallel:
+  //  1. sales for today (count + gross revenue, ignoring voided + held)
+  //  2. returns for today (refund total, so the dashboard shows NET revenue
+  //     not gross). Uses sale_returns.created_at as the return date so a
+  //     late refund of an older sale still counts toward today's till.
+  const [s, r] = await Promise.all([
+    query<{ count: number; revenue: number }>(
+      `SELECT
+         COUNT(CASE WHEN status != 'voided' THEN 1 END) AS count,
+         COALESCE(SUM(CASE WHEN status NOT IN ('voided','held') THEN total ELSE 0 END), 0) AS revenue
+       FROM sales WHERE date(created_at) = date('now') AND branch_id = ?1`,
+      [branchId],
+    ),
+    query<{ refunds: number }>(
+      `SELECT COALESCE(SUM(refund_amount), 0) AS refunds
+         FROM sale_returns
+        WHERE date(created_at) = date('now') AND branch_id = ?1`,
+      [branchId],
+    ),
+  ]);
+  const grossRevenue = s[0]?.revenue || 0;
+  const refunds = r[0]?.refunds || 0;
+  const revenue = Math.max(0, grossRevenue - refunds);
+  const count = s[0]?.count || 0;
+
   const methods = await query<{ method_name: string; total: number }>(
     `SELECT p.method_name, COALESCE(SUM(p.amount), 0) AS total
      FROM payments p
@@ -42,11 +59,14 @@ export async function getTodaySalesSummary(): Promise<TodaySalesSummary> {
     else other += m.total;
   }
   return {
-    count: s?.count || 0,
-    revenue: s?.revenue || 0,
+    count,
+    // `revenue` is now NET (gross - refunds) so the POS overview and
+    // dashboard show what the till actually retained today. Callers that
+    // want the gross figure can subtract `refunds` back.
+    revenue,
     cash, mpesa, card, other,
-    refunds: s?.refunds || 0,
-    avg_basket: s?.count ? s.revenue / s.count : 0,
+    refunds,
+    avg_basket: count ? grossRevenue / count : 0,
   };
 }
 

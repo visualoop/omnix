@@ -39,7 +39,7 @@ export async function listBranches(includeInactive = false): Promise<BranchWithS
        u.full_name AS manager_name,
        (SELECT COUNT(*) FROM user_branches WHERE branch_id = b.id) AS user_count,
        COALESCE((
-         SELECT SUM(total) FROM sales
+         SELECT SUM(total - COALESCE(refunded_amount, 0)) FROM sales
          WHERE branch_id = b.id AND date(created_at) = date('now') AND status = 'completed'
        ), 0) AS sales_today,
        COALESCE((
