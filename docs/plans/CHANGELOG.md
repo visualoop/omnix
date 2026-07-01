@@ -2,6 +2,47 @@
 
 This tracks work done LOCALLY without GitHub pushes. We only push when the user explicitly says so.
 
+## Release v0.29.2 — LAN server autostart + cloud backup guide (no more 404 shock)
+
+Two fixes for real customer pain from the same session.
+
+### 1. LAN server autostart after reboot
+
+**Bug**: on the master machine (the one running the server for the LAN), when Windows reboots (updates, power blip, or the owner just powers off overnight), Omnix relaunches via tauri-plugin-autostart but the LAN server stays offline. Every client device shows "server offline" until the owner remembers to click "Start server" manually. Bad for the owner, worse for the shop's staff who can't sell.
+
+**Fix**: new `useLanAutostart()` hook mounted in AppContent alongside `useAutoUpdate()`. On every boot:
+1. Wait 5s so DB migration + first paint complete
+2. Read the persisted `network.mode` setting
+3. If `mode === 'master'` and server isn't already running → call `startServer(port, businessName)`
+4. Retry up to 3× with 3s gaps (Windows LAN drivers sometimes need a few seconds after login before they'll accept a bind)
+5. Silent-succeed if port is already bound (idempotent, no crash)
+
+Now: PC boots → Windows starts Omnix → useLanAutostart sees master mode → server binds → clients reconnect automatically. Fully hands-off.
+
+### 2. Cloud backup: friendly guide instead of "HTTP error 404"
+
+**Bug**: Settings → Cloud Backup → refresh list → red toast `Could not list backups: HTTP error 404 Not Found`. The endpoint truly didn't exist server-side, so the desktop got a raw 404 and dumped it as a toast. Ugly. Also unhelpful — the user has no idea what to do.
+
+**Fix, two-part**:
+
+**a. Built the missing endpoint** — `GET /api/cloud-backup/list` now exists. It reads the machine's bearer token, checks the licence's `cloudBackupEnabled` flag:
+- **Not activated** → returns `200 { backups: [], enabled: false, activationUrl }`. No error.
+- **Enabled + expired** → returns `402` with `renewUrl` (paywall path we already handle).
+- **Enabled + valid** → returns the backup rows for this machine, newest first, up to 50.
+
+**b. Desktop shows an activation guide** — `pages/cloud-backup.tsx` detects `404 / not found` in the error string and switches to a friendly blue info card:
+- "Cloud backup isn't activated for this account yet"
+- Explains it's an add-on (not enabled by default)
+- Direct link to `omnix.co.ke/dashboard/billing`
+- Reminder that **local backups (Settings → Backup) work on every licence** so their data isn't at risk
+- "I've activated it — check again" retry button
+
+**Net effect for the customer**: red error toast disappears. They see a clear explanation + a clear next step. If they activate on the dashboard and hit "check again", the endpoint now returns their real backup list.
+
+### Verification
+- Desktop tsc clean · Website tsc clean · **Cold-cache `next build` clean**
+- Vitest 513/513 (one PDF-golden test is intermittently flaky under parallel load; unrelated, passes in isolation)
+
 ## Release v0.29.1 — X-Report (mid-shift snapshot)
 
 Added the missing counterpart to Z-report.

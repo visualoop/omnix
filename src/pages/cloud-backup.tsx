@@ -76,6 +76,7 @@ export function CloudBackupPage() {
   const [authToken, setAuthToken] = useState<string>("");
   const [backups, setBackups] = useState<CloudBackupRow[]>([]);
   const [paywall, setPaywall] = useState<string | null>(null);
+  const [notActivated, setNotActivated] = useState<boolean>(false);
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
 
@@ -94,6 +95,8 @@ export function CloudBackupPage() {
   const refresh = useCallback(async () => {
     if (!authToken) return;
     setLoading(true);
+    setPaywall(null);
+    setNotActivated(false);
     try {
       const list = await invoke<CloudBackupRow[]>("cloud_backup_list", {
         apiBase: API_BASE,
@@ -102,12 +105,15 @@ export function CloudBackupPage() {
       setBackups(list);
     } catch (e) {
       const msg = String(e);
-      // Surface paywall politely on 402 — server returns Payment Required when
-      // the license has no active cloud-backup window.
       if (msg.includes("402")) {
+        // Paywall — licence has no active cloud-backup window.
         setPaywall(
           "Cloud backup needs a paid plan. Visit your dashboard → Billing on omnix.co.ke to activate it.",
         );
+      } else if (msg.includes("404") || /not\s*found/i.test(msg)) {
+        // Feature not activated for this account yet. Show a guide,
+        // not a red toast — cloud backup is an opt-in add-on.
+        setNotActivated(true);
       } else {
         toast.error(`Could not list backups: ${e}`);
       }
@@ -267,6 +273,60 @@ export function CloudBackupPage() {
                 {paywall} Local backups (Settings → Backup) keep working on every plan.
               </p>
             </div>
+          </div>
+        </div>
+      ) : notActivated ? (
+        <div className="rounded-xl border border-primary/30 bg-primary/5 p-4 space-y-3">
+          <div className="flex items-start gap-3">
+            <Cloud className="h-5 w-5 mt-0.5 text-primary shrink-0" />
+            <div className="flex-1 text-[13px]">
+              <div className="font-medium text-foreground">
+                Cloud backup isn&rsquo;t activated for this account yet
+              </div>
+              <p className="text-muted-foreground mt-1 leading-snug">
+                Cloud backup is an add-on service — it isn&rsquo;t enabled by default.
+                To activate it, sign in at{" "}
+                <a
+                  href="https://omnix.co.ke/dashboard/billing"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-primary underline underline-offset-2"
+                >
+                  omnix.co.ke/dashboard/billing
+                </a>{" "}
+                and enable Cloud Backup on your licence.
+              </p>
+            </div>
+          </div>
+          <div className="rounded-md bg-background/60 p-3 text-[12px] text-muted-foreground space-y-1.5">
+            <div className="font-medium text-foreground text-[12.5px]">In the meantime, your data is safe:</div>
+            <div className="flex items-start gap-2">
+              <HardDrive className="h-3.5 w-3.5 mt-0.5 text-muted-foreground shrink-0" />
+              <span>
+                <b className="text-foreground">Local backups</b> at Settings → Backup work on every licence.
+                Point them at an external drive / OneDrive folder for off-site copies.
+              </span>
+            </div>
+            <div className="flex items-start gap-2">
+              <Cloud className="h-3.5 w-3.5 mt-0.5 text-muted-foreground shrink-0" />
+              <span>
+                Once activated in your dashboard, restart the app — this page will pick it up automatically.
+              </span>
+            </div>
+          </div>
+          <div className="flex justify-end">
+            <Button
+              size="sm"
+              onClick={() => {
+                setNotActivated(false);
+                refresh();
+              }}
+              disabled={loading}
+              variant="outline"
+            >
+              <RefreshCw className={`h-3.5 w-3.5 mr-1.5 ${loading ? "animate-spin" : ""}`} />
+              I&rsquo;ve activated it — check again
+            </Button>
           </div>
         </div>
       ) : null}

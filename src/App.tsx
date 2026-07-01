@@ -6,6 +6,7 @@ import { TouchTextKeyboardProvider } from "@/components/ui/touch-text-keyboard-p
 import { useAuthStore } from "@/stores/auth";
 import { useF11Fullscreen } from "@/hooks/use-f11-fullscreen";
 import { useAutoUpdate } from "@/hooks/use-auto-update";
+import { useLanAutostart } from "@/hooks/use-lan-autostart";
 import { AppShell } from "@/components/layout/app-shell";
 import { SettingsLayout } from "@/components/layout/settings-layout";
 import { LicenseGuard } from "@/components/license-guard";
@@ -157,6 +158,7 @@ function CustomerDisplayShell() {
 function AppContent() {
   useF11Fullscreen();
   useAutoUpdate();
+  useLanAutostart();
   const { user, isSetupComplete, setupChecked, refreshSetupState } = useAuthStore();
 
   useEffect(() => {
