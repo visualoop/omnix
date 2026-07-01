@@ -129,9 +129,9 @@ async function loadSales(
       id: string
       created_at: string
       total: number
-      receipt_number: string | null
+      sale_number: number | null
     }>(
-      `SELECT id, created_at, total, receipt_number
+      `SELECT id, created_at, total, sale_number
        FROM sales
        WHERE customer_id = ?1
        ORDER BY created_at DESC
@@ -142,7 +142,7 @@ async function loadSales(
       id: `sale-${r.id}`,
       type: "sale",
       at: r.created_at,
-      label: `Sale ${r.receipt_number ?? r.id.slice(0, 8)}`,
+      label: `Sale ${r.sale_number != null ? `#${r.sale_number}` : r.id.slice(0, 8)}`,
       route: `/sales/${r.id}`,
       amount: r.total,
       source: "sales",

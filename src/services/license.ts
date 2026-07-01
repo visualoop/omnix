@@ -437,7 +437,11 @@ export async function getLicenseStatus(): Promise<LicenseStatus> {
 function parseModules(active: ActiveLicense): string[] {
   try {
     const mods = JSON.parse(active.modules_json || "[]") as string[];
-    if (mods.length > 0) return mods;
+    // "core" alone is a placeholder we write when server activation returned
+    // no entitlements. It doesn't unlock any trade module, so it shouldn't
+    // count as real modules — fall through to the key-prefix heuristic below.
+    const realMods = mods.filter((m) => m !== "core");
+    if (realMods.length > 0) return realMods;
   } catch {
     /* fall through */
   }
@@ -448,7 +452,37 @@ function parseModules(active: ActiveLicense): string[] {
       return [];
     }
   })();
-  return licensePayloadModules({ feat });
+  const fromFeat = licensePayloadModules({ feat });
+  if (fromFeat.length > 0 && fromFeat[0] !== "dawa") return fromFeat;
+
+  // Last-resort fallback for compact keys like OMNIX-RETAIL-XXXX-XXXX-XXXX.
+  // If server activation didn't populate modules_json AND features_json is
+  // empty, we can still infer the variant from the key prefix — that's
+  // what the customer paid for, and it's what the app should honour until
+  // revalidateLicense() can talk to the server again.
+  const inferred = moduleFromKeyPrefix(active.license_key);
+  if (inferred) return [inferred];
+
+  return fromFeat;
+}
+
+/**
+ * Extract the module from a compact key prefix.
+ *   OMNIX-RETAIL-…    → "retail"
+ *   OMNIX-DAWA-…      → "dawa"
+ *   OMNIX-HOSP-…      → "hospitality"
+ *   OMNIX-HW-…        → "hardware"
+ *   OMNIX-PRO-…       → null (Pro unlocks any; caller decides)
+ */
+function moduleFromKeyPrefix(key: string): string | null {
+  const parts = key.replace(/\s+/g, "").toUpperCase().split("-");
+  if (parts[0] !== "OMNIX" || parts.length < 2) return null;
+  const tag = parts[1];
+  if (tag === "RETAIL") return "retail";
+  if (tag === "DAWA") return "dawa";
+  if (tag === "HOSP" || tag === "HOSPITALITY") return "hospitality";
+  if (tag === "HW" || tag === "HARDWARE") return "hardware";
+  return null;
 }
 
 /** Modules unlocked by the active license/trial. Empty when not activated. */

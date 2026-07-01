@@ -35,10 +35,23 @@ import {
   getActiveLicenseKey,
   setActiveLicenseKey,
   type LocalLicense,
+  type LicenseVariant,
 } from "@/services/local-licenses"
 import { query, execute } from "@/lib/db"
 import { getMachineInfo } from "@/services/license"
 import { VARIANT } from "@/lib/variant"
+
+/** Detect variant from a compact key prefix. Falls back to 'pro' when unclear. */
+function detectVariantFromKey(key: string): LicenseVariant {
+  const parts = key.replace(/\s+/g, "").toUpperCase().split("-")
+  if (parts[0] !== "OMNIX" || parts.length < 2) return "pro"
+  const tag = parts[1]
+  if (tag === "RETAIL") return "retail"
+  if (tag === "DAWA") return "dawa"
+  if (tag === "HOSP" || tag === "HOSPITALITY") return "hospitality"
+  if (tag === "HW" || tag === "HARDWARE") return "hardware"
+  return "pro"
+}
 
 const STATUS_LABEL: Record<string, string> = {
   verified: "Verified",
@@ -77,8 +90,64 @@ export function SettingsLicensesPage() {
         `SELECT value FROM settings WHERE key = 'licensing.owner_email'`,
       ).then((r) => r[0]?.value || ""),
     ])
-    setLicenses(rows)
-    setActive(active)
+
+    // Backfill: if local_licenses is empty but the singleton `license`
+    // row is populated (legacy setup wizard path pre-v0.27.3 didn't
+    // populate local_licenses), copy it in so the UI shows what's
+    // actually installed on this PC. Otherwise the user sees "no
+    // licences" even though the app is running fine on an active key.
+    let finalRows = rows
+    if (finalRows.length === 0) {
+      try {
+        const legacy = await query<{
+          license_key: string
+          license_kid: string | null
+          license_type: string | null
+          modules_json: string | null
+          max_devices: number | null
+          maintenance_expires_at: string | null
+          activated_at: string
+        }>(
+          `SELECT license_key, license_kid, license_type, modules_json,
+                  max_devices, maintenance_expires_at, activated_at
+           FROM license WHERE id = 'active'`,
+        )
+        if (legacy[0]) {
+          const l = legacy[0]
+          const variant = detectVariantFromKey(l.license_key)
+          await execute(
+            `INSERT OR IGNORE INTO local_licenses (
+              license_key, license_id, variant, tier, status,
+              signed_key, modules, max_machines, max_branches,
+              auth_token, auth_token_hash,
+              last_synced_at, sync_status, sync_message,
+              trial_ends_at, maintenance_until,
+              activated_at, last_verified_at
+            ) VALUES (?1, ?2, ?3, ?4, ?5, NULL, ?6, ?7, 1, NULL, NULL,
+                      NULL, 'verified', NULL, NULL, ?8, ?9, ?9)`,
+            [
+              l.license_key,
+              l.license_kid ?? l.license_key,
+              variant,
+              l.license_type === 'perpetual' ? 'paid' : 'trial',
+              'active',
+              l.modules_json ?? JSON.stringify([variant]),
+              l.max_devices ?? 1,
+              l.maintenance_expires_at,
+              l.activated_at,
+            ],
+          )
+          // Also point the active-key pointer at it so switch UI shows this row highlighted.
+          if (!active) await setActiveLicenseKey(l.license_key)
+          finalRows = await listLocalLicenses()
+        }
+      } catch (e) {
+        console.warn('[settings-licenses] backfill from singleton failed:', e)
+      }
+    }
+
+    setLicenses(finalRows)
+    setActive(await getActiveLicenseKey())
     setEmail(savedEmail)
     setEmailSaved(!!savedEmail)
     setLoading(false)
@@ -108,11 +177,17 @@ export function SettingsLicensesPage() {
       return
     }
     if (!email.trim()) {
-      toast.error("Save your account email first")
+      toast.error("Enter your account email first")
       return
     }
     setAdding(true)
     try {
+      // Auto-save the email if the user hasn't clicked "Save" yet — no
+      // reason to force two clicks. `saveEmail` guards against empty
+      // input already, and INSERT OR REPLACE is idempotent.
+      if (!emailSaved) {
+        await saveEmail()
+      }
       const machineId = await getMachineInfo().then((i) => i.fingerprint).catch(() => "")
       const result = await activateLicense({
         licenseKey: draftKey.trim().toUpperCase(),
@@ -184,7 +259,7 @@ export function SettingsLicensesPage() {
         title="Licences"
         description="Every licence active on this computer. Switch modules without re-installing. Add a key any time."
         actions={
-          <Button onClick={handleResync} variant="outline" size="sm" disabled={syncing || !emailSaved}>
+          <Button onClick={handleResync} variant="outline" size="sm" disabled={syncing || !email.trim()}>
             <ArrowsClockwise className={`h-3.5 w-3.5 ${syncing ? "animate-spin" : ""}`} />
             {syncing ? "Syncing…" : "Re-sync licences"}
           </Button>
@@ -320,7 +395,7 @@ export function SettingsLicensesPage() {
             placeholder="OMNIX-XXXX-XXXX-XXXX-XXXX"
             className="flex-1 font-mono"
           />
-          <Button onClick={handleAdd} disabled={adding || !emailSaved}>
+          <Button onClick={handleAdd} disabled={adding || !draftKey.trim() || !email.trim()}>
             {adding ? "Activating…" : "Activate"}
           </Button>
         </div>

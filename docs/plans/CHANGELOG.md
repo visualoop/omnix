@@ -2,6 +2,56 @@
 
 This tracks work done LOCALLY without GitHub pushes. We only push when the user explicitly says so.
 
+## Release v0.27.3 — Retail license actually unlocks Retail + settings sidebar reverted + customer-activity SQL fix
+
+### 1. Retail license now actually enables Retail routes
+**Symptom**: Clicking any card on Omnix Retail (a module the user paid for) showed "Omnix Retail isn't on your licence." The app opened fine — `LicenseGuard` passed — but every `/retail/*` route hit the module-entitlement gate.
+
+**Root cause chain**:
+- `/api/licensing/validate` and `/api/licensing/activate` were returning 500 `Failed query: select "id", "user_id"…` because v0.21.0 added `licenses.reseller_id` to the Drizzle schema but the migration only runs when someone visits `/admin` (via `ensureMigrated()` in `admin/layout.tsx`). Nobody had visited admin recently, so the DB was stuck on the v0.20.0 schema.
+- When the desktop's compact key path (`OMNIX-RETAIL-…`) got no server entitlements back, it fell through to writing `modules_json = ["core"]` — a placeholder that unlocks nothing.
+- On boot, `getLicenseStatus()` returned `modules: ["core"]` → `useEntitlements.modules = ["core"]` → every retail route triggered `!isModuleEntitled("retail")`.
+
+**Fixes**:
+- `POST /api/licensing/validate` and `POST /api/licensing/activate` now call `ensureMigrated()` at the top of the handler. Memoised per process, so the migration runs at most once per cold instance. Fixes the 500 that was silently breaking every desktop activation and revalidation.
+- `parseModules()` in `services/license.ts` now:
+  - Filters `"core"` out of `modules_json` before treating it as "real modules".
+  - When neither `modules_json` nor `features_json` has meaningful data, extracts the module from the compact key prefix (`OMNIX-RETAIL-…` → `retail`, `OMNIX-DAWA-…` → `dawa`, `OMNIX-HOSP-…` → `hospitality`, `OMNIX-HW-…` → `hardware`).
+- This is a last-resort inference — the key IS what the customer paid for — so the app honours it even when the licensing server was briefly unreachable at activation time.
+
+### 2. Settings sidebar reverted from horizontal tabs to vertical stacked groups
+v0.25.0's horizontal tab bar hid items — users had to click between tabs to find things. Reverted to the pre-v0.25.0 vertical layout **but kept the new 7-group information architecture** (Business / People / Money / Hardware Devices / Application / System + module-specific).
+
+Layout now:
+- Vertical scrollable sidebar
+- Monospace-uppercase group eyebrows above each block
+- Everything visible at once
+- Search box on top filters across ALL groups
+- Same editorial style (cream paper, Fraunces masthead, hairline borders, module-accent stripe on active row)
+
+Matches Linear / Notion / Slack settings patterns. The horizontal-tab design was a mistake — it hurt discovery on a page that specifically benefits from seeing everything.
+
+### 3. Licences page shows the licence + activate button no longer stuck disabled
+Two problems, both fixed:
+- The page reads from the `local_licenses` multi-license table, but the setup wizard writes to the singleton `license` table. Users who activated via the setup wizard saw an empty list. Fix: on page load, if `local_licenses` is empty but the singleton is populated, backfill a row into `local_licenses` from the singleton, inferring `variant` from the key prefix (`OMNIX-RETAIL-…` → retail, etc.).
+- The Activate button was gated by `!emailSaved` — user had to click Save on the email field first, then click Activate. Now Activate auto-saves the email if it's entered but not saved yet. Same treatment for the Sync button.
+
+### 4. Customer activity: `no such column: receipt_number`
+`src/hooks/use-entity-history.ts` queried `sales.receipt_number` but the `sales` table has `sale_number` (an integer counter) — there was never a `receipt_number` column. Fixed the query + the label rendering.
+
+### Trial-lockout audit (not a code change — informational)
+User asked: what actually locks after a trial elapses? Traced the code:
+- If a paid licence is active → trial doesn't matter, everything runs off the licence.
+- If **only** a trial is active and it expires → `LicenseGuard` sees `activated = false` and renders `LicenseActivationPage` for the whole app. Nothing else is reachable.
+- If both are absent → same activation page.
+
+So trial expiry today does hard-lock the entire app. The user's observation that "I can still make sales when Retail is inaccessible" was NOT about trial expiry — it was about the module gate: `/pos` and `/pos-sale` are registered as "core" in `module-features.ts`, so they work regardless of which module is licensed. The trade-specific routes (`/retail/*`, `/pharmacy/*`, etc.) are the ones gated by the entitlement check. This is intended: POS is universal, trade specifics are per-license.
+
+Follow-up policy question (not in this release): should trial expiry get a soft-lock (read-only) grace instead of a hard-lock? Filed as task 30.
+
+### Verification
+Desktop tsc clean · vitest 455/455 · website tsc clean.
+
 ## Release v0.27.2 — Auto-update actually installs now
 
 **Symptom**: "Check for Updates" (or the silent background updater) returned `invalid encoding in minisign data`. Every attempted install failed at signature verification.

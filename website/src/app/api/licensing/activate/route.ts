@@ -32,6 +32,7 @@ import crypto from 'node:crypto'
 import { db, licenses, machines, activations, user } from '@/db'
 import { createId } from '@/lib/ids'
 import { effectiveModules } from '@/lib/license-modules'
+import { ensureMigrated } from '@/lib/auto-migrate'
 
 export const dynamic = 'force-dynamic'
 
@@ -73,6 +74,8 @@ export function isVariantConflict(existing: string, incoming: string): boolean {
 }
 
 export async function POST(req: Request) {
+  await ensureMigrated().catch((e) => console.warn('[activate] ensureMigrated failed:', e))
+
   const body = (await req.json().catch(() => null)) as ActivateInput | null
   if (!body?.licenseKey || !body.machineId) {
     return Response.json({ ok: false, code: 'bad_request', error: 'licenseKey + machineId required' }, { status: 400 })

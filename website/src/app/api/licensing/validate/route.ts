@@ -1,6 +1,7 @@
 import { eq } from 'drizzle-orm'
 import { db, licenses, machines } from '@/db'
 import { effectiveModules } from '@/lib/license-modules'
+import { ensureMigrated } from '@/lib/auto-migrate'
 
 /**
  * /api/licensing/validate — desktop-compatible heartbeat.
@@ -24,6 +25,14 @@ interface ValidateInput {
 }
 
 export async function POST(req: Request) {
+  // Self-heal the schema on first request after a deploy. Memoised per
+  // process; only actually runs work on the first request into a cold
+  // instance. Prevents the "column doesn't exist" 500s that happened
+  // between v0.21.0 adding licenses.reseller_id to the Drizzle schema
+  // and any admin actually visiting /admin (which is the only other
+  // place that triggers the migration currently).
+  await ensureMigrated().catch((e) => console.warn('[validate] ensureMigrated failed:', e))
+
   const body = (await req.json().catch(() => null)) as ValidateInput | null
   if (!body?.licenseKey || !body.machineId) {
     return Response.json({ status: 'invalid', message: 'licenseKey + machineId required' }, { status: 400 })
