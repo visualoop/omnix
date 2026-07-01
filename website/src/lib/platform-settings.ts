@@ -91,6 +91,23 @@ export const SETTING_DEFINITIONS = [
   { key: 'landing.hero.subheadline',    category: 'landing_hero', label: 'Hero subheadline',       sensitive: false, envFallback: undefined, description: 'The paragraph under the headline. Empty = per-locale default (Kenya vs global copy).' },
   { key: 'landing.hero.cta_label',      category: 'landing_hero', label: 'Primary CTA label',      sensitive: false, envFallback: undefined, description: 'The big button below the subheadline. Empty = "Start free trial".' },
   { key: 'landing.hero.cta_href',       category: 'landing_hero', label: 'Primary CTA link',       sensitive: false, envFallback: undefined, description: 'Where the CTA points. Empty = "/signup". Use an absolute URL for external.' },
+
+  // ── Landing page — one-price section ─
+  { key: 'landing.one_price.eyebrow',           category: 'landing_one_price', label: 'One-price eyebrow',           sensitive: false, envFallback: undefined, description: 'Small caps label above the price. Empty = "Pricing".' },
+  { key: 'landing.one_price.commitment_lead',   category: 'landing_one_price', label: 'Commitment (lead)',           sensitive: false, envFallback: undefined, description: 'Muted italic that leads. Empty = "Once."' },
+  { key: 'landing.one_price.commitment_accent', category: 'landing_one_price', label: 'Commitment (accent)',         sensitive: false, envFallback: undefined, description: 'The stronger phrase that follows. Empty = "For the whole product."' },
+
+  // ── Landing page — founder note ─
+  { key: 'landing.founder.eyebrow',    category: 'landing_founder', label: 'Founder note eyebrow',   sensitive: false, envFallback: undefined, description: 'Empty = "A note from the studio".' },
+  { key: 'landing.founder.body',       category: 'landing_founder', label: 'Founder note body',      sensitive: false, envFallback: undefined, description: 'Multi-paragraph. Separate paragraphs with a blank line. Empty = shipped 3-paragraph default.' },
+  { key: 'landing.founder.signature',  category: 'landing_founder', label: 'Signature line',         sensitive: false, envFallback: undefined, description: 'Empty = "— Justin". Include the em dash if you want it.' },
+  { key: 'landing.founder.tagline',    category: 'landing_founder', label: 'Signature tagline',      sensitive: false, envFallback: undefined, description: 'Small caps mono under the signature. Empty = "Founder · Nairobi".' },
+
+  // ── Landing page — closing CTA ─
+  { key: 'landing.closing.headline',        category: 'landing_closing', label: 'Closing CTA headline',        sensitive: false, envFallback: undefined, description: 'The italic display line. The final accent word is a separate field.' },
+  { key: 'landing.closing.headline_accent', category: 'landing_closing', label: 'Closing CTA accent word',     sensitive: false, envFallback: undefined, description: 'The final coloured word/phrase in the headline. Empty = "properly."' },
+  { key: 'landing.closing.cta_label',       category: 'landing_closing', label: 'Closing CTA button label',    sensitive: false, envFallback: undefined, description: 'Empty = "Start free trial".' },
+  { key: 'landing.closing.whatsapp_prompt', category: 'landing_closing', label: 'WhatsApp link text',          sensitive: false, envFallback: undefined, description: 'Empty = "or talk to us on WhatsApp".' },
 ] as const
 
 export type SettingKey = (typeof SETTING_DEFINITIONS)[number]['key']

@@ -142,6 +142,63 @@ export default async function HomePage({
     // slot lookup failed — section falls back to its own default URLs.
   }
 
+  // CMS content for the closing CTA, one-price, and founder note sections.
+  // All fields empty = shipped defaults.
+  let closingContent:
+    | import('@/components/landing/closing-cta-section').ClosingCtaContent
+    | undefined = undefined
+  let onePriceContent:
+    | import('@/components/landing/one-price-section').OnePriceContent
+    | undefined = undefined
+  let founderContent:
+    | import('@/components/landing/founder-note-section').FounderNoteContent
+    | undefined = undefined
+  try {
+    const { getSetting } = await import('@/lib/platform-settings')
+    const [
+      closingHeadline, closingAccent, closingCtaLabel, closingWaPrompt,
+      opEyebrow, opLead, opAccent,
+      fEyebrow, fBody, fSignature, fTagline,
+    ] = await Promise.all([
+      getSetting('landing.closing.headline'),
+      getSetting('landing.closing.headline_accent'),
+      getSetting('landing.closing.cta_label'),
+      getSetting('landing.closing.whatsapp_prompt'),
+      getSetting('landing.one_price.eyebrow'),
+      getSetting('landing.one_price.commitment_lead'),
+      getSetting('landing.one_price.commitment_accent'),
+      getSetting('landing.founder.eyebrow'),
+      getSetting('landing.founder.body'),
+      getSetting('landing.founder.signature'),
+      getSetting('landing.founder.tagline'),
+    ])
+    if (closingHeadline || closingAccent || closingCtaLabel || closingWaPrompt) {
+      closingContent = {
+        headline: closingHeadline || null,
+        headlineAccent: closingAccent || null,
+        ctaLabel: closingCtaLabel || null,
+        whatsappPrompt: closingWaPrompt || null,
+      }
+    }
+    if (opEyebrow || opLead || opAccent) {
+      onePriceContent = {
+        eyebrow: opEyebrow || null,
+        commitmentLead: opLead || null,
+        commitmentAccent: opAccent || null,
+      }
+    }
+    if (fEyebrow || fBody || fSignature || fTagline) {
+      founderContent = {
+        eyebrow: fEyebrow || null,
+        body: fBody || null,
+        signature: fSignature || null,
+        tagline: fTagline || null,
+      }
+    }
+  } catch {
+    // platform_settings cold — fall through to defaults.
+  }
+
   return (
     <>
       <HeroSection
@@ -162,10 +219,10 @@ export default async function HomePage({
       <RecentWorkSection />
       <ComplianceSection />
       <ThreeQuotesSection />
-      <OnePriceSection price={onePrice} currency={oneCurrency} />
+      <OnePriceSection price={onePrice} currency={oneCurrency} content={onePriceContent} />
       <FaqSection />
-      <FounderNoteSection />
-      <ClosingCtaSection whatsappUrl={settings.whatsappUrl} />
+      <FounderNoteSection content={founderContent} />
+      <ClosingCtaSection whatsappUrl={settings.whatsappUrl} content={closingContent} />
     </>
   )
 }

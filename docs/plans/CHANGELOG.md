@@ -2,6 +2,39 @@
 
 This tracks work done LOCALLY without GitHub pushes. We only push when the user explicitly says so.
 
+## Release v0.20.0 — CMS covers 4 homepage sections
+
+Extends the /admin/settings CMS from v0.19.0 to cover three more homepage sections. All follow the same pattern: setting keys → component `content?` prop → shipped fallback constants render when unset.
+
+### One-price section (3 keys)
+- `landing.one_price.eyebrow` — small caps label above the price (default: "Pricing")
+- `landing.one_price.commitment_lead` — muted italic lead (default: "Once.")
+- `landing.one_price.commitment_accent` — stronger italic phrase after (default: "For the whole product.")
+
+### Founder note (4 keys)
+- `landing.founder.eyebrow` — default "A note from the studio"
+- `landing.founder.body` — multi-paragraph body (blank-line separated), rendered as an 8-row textarea in the admin editor
+- `landing.founder.signature` — default "— Justin"
+- `landing.founder.tagline` — default "Founder · Nairobi"
+
+### Closing CTA (4 keys)
+- `landing.closing.headline` — the italic display line (default: "Run the whole business")
+- `landing.closing.headline_accent` — the coloured word (default: "properly.")
+- `landing.closing.cta_label` — the button (default: "Start free trial")
+- `landing.closing.whatsapp_prompt` — the WhatsApp link text (default: "or talk to us on WhatsApp")
+
+### Admin experience
+- 3 new categories in `/admin/settings`: "Homepage · one-price", "Homepage · founder note", "Homepage · closing CTA" (in addition to "Homepage · hero" from v0.19.0)
+- Body field auto-renders as a textarea; single-line fields stay as inputs.
+- All fields optional. Unset → renders the shipped default. So the CMS is safe to leave empty for years.
+
+### Autonomy win
+After v0.20.0, four of the ten landing sections (hero, one-price, founder note, closing CTA) are fully editable in-admin. Everything money- or brand-touching now writes an `audit_log` row when changed (setting writes go through `setSetting` which logs the actor).
+
+Version bumped 0.19.0 → **0.20.0** across `package.json`, `src-tauri/Cargo.toml`, `src-tauri/tauri.conf.json`, `Cargo.lock`.
+
+Verification: desktop tsc clean, vitest 440/440, website tsc + next build clean.
+
 ## Release v0.19.0 — Homepage hero CMS
 
 ### Edit the homepage hero without a deploy

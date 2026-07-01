@@ -31,7 +31,7 @@ interface Props {
   initial: Setting[]
 }
 
-const CATEGORY_ORDER = ['paystack', 'email', 'email_branding', 'site', 'oauth', 'storage', 'system', 'feature_flags', 'analytics', 'landing_hero']
+const CATEGORY_ORDER = ['paystack', 'email', 'email_branding', 'site', 'oauth', 'storage', 'system', 'feature_flags', 'analytics', 'landing_hero', 'landing_one_price', 'landing_founder', 'landing_closing']
 
 const CATEGORY_LABELS: Record<string, string> = {
   paystack: 'Paystack',
@@ -43,7 +43,10 @@ const CATEGORY_LABELS: Record<string, string> = {
   system: 'System',
   feature_flags: 'Feature flags',
   analytics: 'Analytics',
-  landing_hero: 'Homepage hero',
+  landing_hero: 'Homepage · hero',
+  landing_one_price: 'Homepage · one-price',
+  landing_founder: 'Homepage · founder note',
+  landing_closing: 'Homepage · closing CTA',
 }
 
 const CATEGORY_DESCRIPTIONS: Record<string, string> = {
@@ -57,6 +60,9 @@ const CATEGORY_DESCRIPTIONS: Record<string, string> = {
   feature_flags: 'Quick toggles. No redeploy needed.',
   analytics: 'GA4 measurement tag.',
   landing_hero: 'Edit the homepage hero without a deploy. Leave any field blank to fall back to the shipped default. Cache TTL: ~5 minutes.',
+  landing_one_price: 'Edit the price section eyebrow + italic commitment line.',
+  landing_founder: 'Edit the founder note. Separate paragraphs with a blank line in the body field.',
+  landing_closing: 'Edit the final full-bleed call to action.',
 }
 
 export function SettingsClient({ initial }: Props) {
@@ -204,12 +210,12 @@ export function SettingsClient({ initial }: Props) {
                   <div className="col-span-6">
                     {isEditing ? (
                       <div className="space-y-2">
-                        {s.key === 'landing.hero.subheadline' ? (
+                        {(s.key === 'landing.hero.subheadline' || s.key === 'landing.founder.body') ? (
                           <textarea
                             value={draft}
                             onChange={(e) => setDraft(e.target.value)}
                             placeholder="New value"
-                            rows={4}
+                            rows={s.key === 'landing.founder.body' ? 8 : 4}
                             className="w-full rounded-md border border-foreground/20 bg-background px-3 py-2 text-[13px] leading-relaxed text-foreground outline-none focus:border-foreground/50"
                             autoFocus
                           />

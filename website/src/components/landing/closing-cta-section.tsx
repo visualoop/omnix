@@ -17,7 +17,26 @@ import { Button } from '@/components/ui/button'
  * Composition rule: this is the LAST thing the visitor reads. Strip everything
  * else. One sentence, one button, one link. No "Get in touch / Learn more / Book a demo" trio.
  */
-export function ClosingCtaSection({ whatsappUrl, prompt }: { whatsappUrl: string | null; prompt?: string }) {
+export interface ClosingCtaContent {
+  headline?: string | null
+  headlineAccent?: string | null
+  ctaLabel?: string | null
+  whatsappPrompt?: string | null
+}
+
+export function ClosingCtaSection({
+  whatsappUrl,
+  prompt,
+  content,
+}: {
+  whatsappUrl: string | null
+  prompt?: string
+  content?: ClosingCtaContent
+}) {
+  const headline = content?.headline?.trim() || 'Run the whole business'
+  const headlineAccent = content?.headlineAccent?.trim() || 'properly.'
+  const ctaLabel = content?.ctaLabel?.trim() || 'Start free trial'
+  const whatsappPrompt = content?.whatsappPrompt?.trim() || prompt || 'or talk to us on WhatsApp'
   return (
     <section className="relative overflow-hidden border-t border-[var(--color-border)] py-32 sm:py-44">
       {/* Background atmosphere */}
@@ -44,7 +63,7 @@ export function ClosingCtaSection({ whatsappUrl, prompt }: { whatsappUrl: string
             transition={{ duration: 0.7, ease: [0.21, 0.47, 0.32, 0.98] }}
             className="font-[family-name:var(--font-display)] text-balance text-[clamp(40px,5.5vw,76px)] italic font-light leading-[1.05] tracking-[-0.025em] text-[var(--color-fg)]"
           >
-            Run the whole business <em className="not-italic text-[var(--color-accent)]">properly.</em>
+            {headline} <em className="not-italic text-[var(--color-accent)]">{headlineAccent}</em>
           </motion.h2>
 
           <motion.div
@@ -56,7 +75,7 @@ export function ClosingCtaSection({ whatsappUrl, prompt }: { whatsappUrl: string
           >
             <Button asChild size="xl" className="ring-inset-soft">
               <Link href="/signup" className="gap-2">
-                Start free trial
+                {ctaLabel}
                 <Icon.ArrowRight className="size-4" weight="bold" />
               </Link>
             </Button>
@@ -68,7 +87,7 @@ export function ClosingCtaSection({ whatsappUrl, prompt }: { whatsappUrl: string
                 rel="noopener"
                 className="caption-mono inline-flex items-center gap-2 transition-colors hover:text-[var(--color-fg)]"
               >
-                {prompt ?? "or talk to us on WhatsApp"}
+                {whatsappPrompt}
               <Icon.ArrowRight className="size-3" weight="bold" />
             </Link>) : null}
           </motion.div>

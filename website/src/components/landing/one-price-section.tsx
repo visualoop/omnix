@@ -18,13 +18,24 @@ import { Icon } from '@/components/icons'
  * commitment line, then the three entry points. Three primary CTAs
  * compete; three text links of equal weight read as a directory.
  */
+export interface OnePriceContent {
+  eyebrow?: string | null
+  commitmentLead?: string | null
+  commitmentAccent?: string | null
+}
+
 export function OnePriceSection({
   price = '30,000',
   currency = 'KES',
+  content,
 }: {
   price?: string
   currency?: string
+  content?: OnePriceContent
 }) {
+  const eyebrow = content?.eyebrow?.trim() || 'Pricing'
+  const commitmentLead = content?.commitmentLead?.trim() || 'Once.'
+  const commitmentAccent = content?.commitmentAccent?.trim() || 'For the whole product.'
   return (
     <section className="section relative overflow-hidden">
       {/* Subtle accent pool centred behind the number */}
@@ -35,7 +46,7 @@ export function OnePriceSection({
 
       <div className="container-wide relative">
         <div className="mx-auto max-w-[920px] text-center">
-          <span className="eyebrow mx-auto w-fit">Pricing</span>
+          <span className="eyebrow mx-auto w-fit">{eyebrow}</span>
 
           {/* The number */}
           <motion.div
@@ -58,7 +69,7 @@ export function OnePriceSection({
             transition={{ duration: 0.6, delay: 0.15 }}
             className="font-[family-name:var(--font-display)] mt-8 text-[clamp(22px,2.2vw,30px)] italic font-light leading-snug tracking-[-0.018em] text-[var(--color-fg-muted)]"
           >
-            Once. <span className="text-[var(--color-fg)]">For the whole product.</span>
+            {commitmentLead} <span className="text-[var(--color-fg)]">{commitmentAccent}</span>
           </motion.p>
 
           {/* Three quiet text-link entry points, separated by mid-dot */}
