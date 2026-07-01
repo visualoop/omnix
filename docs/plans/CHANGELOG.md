@@ -2,6 +2,40 @@
 
 This tracks work done LOCALLY without GitHub pushes. We only push when the user explicitly says so.
 
+## Release v0.26.0 — Homepage surgery + sticky CTA + header responsive fix
+
+The old homepage was 15 full-width sections deep. Every section used the same eyebrow / serif headline / lede / cards pattern, which trained readers to skim past headers by section 6. The primary CTA also lived 14 scrolls away from the emotional peak (right after the hero). Full critique in `docs/plans/HOMEPAGE_CRITIQUE.md`.
+
+### Homepage: 15 sections → 7
+Now, in the order that answers the three questions the owner actually has:
+1. Hero (with existing secondary "See it in action" scroll)
+2. Trust strip
+3. AI section — the real differentiator
+4. Modules row
+5. One price
+6. FAQ
+7. Closing CTA
+
+Cut from the homepage (components still exist, just not mounted): Unified Platform, Reliability, Receipt Proof, Recent Work, Compliance, Why Switch, Three Quotes, Founder Note. Follow-ups will move some of these onto module pages / `/about`.
+
+### New: sticky mini-CTA (`sticky-buy-cta.tsx`)
+Bottom-right cream card that appears after scrolling past the hero, disappears when the closing CTA enters view. Reads "Ready when you are · KES 30,000 once · Start free trial →". Hidden on mobile below 640px (hamburger already covers the same need). Respects `prefers-reduced-motion`. Solves the "purchase button is 14 scrolls away" problem.
+
+### Header responsiveness fix
+Previous breakpoint was `lg` (1024px) — tablets (640-1024px) got a half-state with buttons but no nav.
+
+Now `md` (768px):
+- < 640px: wordmark + hamburger
+- 640-767px: wordmark + Start Trial button + hamburger
+- ≥ 768px: full desktop nav (was ≥ 1024px)
+
+Language switcher, theme toggle, and desktop nav all moved from `lg:` to `md:`. Mobile menu container + hamburger button also `md:` now.
+
+### Verification
+- Website tsc + next build clean.
+- Desktop tsc clean, vitest 455/455 (no desktop code touched).
+- No route changes — every URL still resolves.
+
 ## Release v0.25.0 — Settings redesign
 
 The old settings surface had 24 items across 8 groups, with **14 of them shoved into an "Operations" catch-all** — everything from AI keys to LAN mode to auto-print to audit log to legacy licence viewer all in one bucket. The user's complaint was accurate: "everything is everywhere". The main `/settings` page also had the Update Checker + Autostart toggle bolted onto the bottom of the Business Profile form, so those never got discovered.

@@ -109,7 +109,7 @@ export function SiteHeader({ isAuthed = false }: { isAuthed?: boolean }) {
           : 'bg-transparent',
       )}
     >
-      <div className="container-wide flex h-[72px] items-center justify-between gap-6 lg:grid lg:grid-cols-[1fr_auto_1fr]">
+      <div className="container-wide flex h-[72px] items-center justify-between gap-6 md:grid md:grid-cols-[1fr_auto_1fr]">
         {/* Wordmark */}
         <Link
           href="/"
@@ -120,7 +120,7 @@ export function SiteHeader({ isAuthed = false }: { isAuthed?: boolean }) {
         </Link>
 
         {/* Nav — truly centred */}
-        <nav ref={navRef} className="hidden items-center gap-1 lg:flex">
+        <nav ref={navRef} className="hidden items-center gap-1 md:flex">
           {NAV.map((item) => {
             const active = pathname === item.href || pathname.startsWith(`${item.href}/`)
             const childActive = item.children?.some(
@@ -198,7 +198,7 @@ export function SiteHeader({ isAuthed = false }: { isAuthed?: boolean }) {
 
         {/* Right column */}
         <div className="flex items-center justify-end gap-5">
-          <LanguageSwitcher className="hidden lg:inline-flex rounded-md border border-[var(--color-border)] bg-transparent py-1 pl-2 pr-7 font-[family-name:var(--font-ui)] text-[12px] text-[var(--color-fg-muted)] hover:border-[var(--color-fg-subtle)] hover:text-[var(--color-fg)] focus:outline-none focus:border-[var(--color-accent)] cursor-pointer" />
+          <LanguageSwitcher className="hidden md:inline-flex rounded-md border border-[var(--color-border)] bg-transparent py-1 pl-2 pr-7 font-[family-name:var(--font-ui)] text-[12px] text-[var(--color-fg-muted)] hover:border-[var(--color-fg-subtle)] hover:text-[var(--color-fg)] focus:outline-none focus:border-[var(--color-accent)] cursor-pointer" />
           <ThemeToggle className="hidden sm:inline-flex" />
           {isAuthed ? (
             <>
@@ -231,7 +231,7 @@ export function SiteHeader({ isAuthed = false }: { isAuthed?: boolean }) {
             onClick={() => setOpen((v) => !v)}
             aria-label={open ? 'Close menu' : 'Open menu'}
             aria-expanded={open}
-            className="inline-flex size-9 items-center justify-center rounded-md text-[var(--color-fg-muted)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-fg)] lg:hidden"
+            className="inline-flex size-9 items-center justify-center rounded-md text-[var(--color-fg-muted)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-fg)] md:hidden"
           >
             {open ? <Icon.Close className="size-5" /> : <Icon.ListBullets className="size-5" />}
           </button>
@@ -240,7 +240,7 @@ export function SiteHeader({ isAuthed = false }: { isAuthed?: boolean }) {
 
       {/* Mobile nav (flat — children expanded inline) */}
       {open ? (
-        <div className="fixed inset-x-0 top-[72px] bottom-0 z-40 overflow-y-auto overscroll-contain border-b border-[var(--color-border)] bg-[var(--color-bg)] lg:hidden">
+        <div className="fixed inset-x-0 top-[72px] bottom-0 z-40 overflow-y-auto overscroll-contain border-b border-[var(--color-border)] bg-[var(--color-bg)] md:hidden">
           <div className="container-wide flex flex-col gap-1 py-6 pb-[max(2rem,env(safe-area-inset-bottom))]">
             {NAV.map((item) => (
               <React.Fragment key={item.href}>

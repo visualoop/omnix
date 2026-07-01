@@ -38,7 +38,7 @@ export function ClosingCtaSection({
   const ctaLabel = content?.ctaLabel?.trim() || 'Start free trial'
   const whatsappPrompt = content?.whatsappPrompt?.trim() || prompt || 'or talk to us on WhatsApp'
   return (
-    <section className="relative overflow-hidden border-t border-[var(--color-border)] py-32 sm:py-44">
+    <section data-closing-cta className="relative overflow-hidden border-t border-[var(--color-border)] py-32 sm:py-44">
       {/* Background atmosphere */}
       <div
         aria-hidden
