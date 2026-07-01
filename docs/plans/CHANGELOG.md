@@ -2,6 +2,35 @@
 
 This tracks work done LOCALLY without GitHub pushes. We only push when the user explicitly says so.
 
+## Release v0.28.4 — Branches page crash + migration-independent refund math
+
+**Bug**: clicking "Locations & Branches" from settings threw `no such column: refunded_amount`. The page never rendered.
+
+**Root cause**: v0.28.2 added the `sales.refunded_amount` column via migration 053 and updated `services/branches.ts` + `pages/branch-detail.tsx` + `services/erp.ts` to read it. The queries assume the migration has run — but on a device that installed the app before v0.28.2 (or where the migration silently failed), the column doesn't exist and every branch aggregate crashes.
+
+**Fix**: refactor the aggregates to compute refunds via a separate `SELECT SUM(refund_amount) FROM sale_returns WHERE ...` clause instead of relying on the pre-summed `refunded_amount` column. Same result, but works whether migration 053 has run or not. The column + trigger stay in the schema — they're still faster once populated — but nothing in the app depends on their existence.
+
+Same fix applied to:
+- `pages/branch-detail.tsx` — sales_today / sales_30d aggregates
+- `services/branches.ts` — `listBranches()` aggregate over all branches
+- `services/erp.ts` — `getCustomerStats()` — customer lifetime totals
+
+### How branches actually work (short version)
+Multi-location is fully wired end-to-end. The pipeline is:
+
+1. **Create a branch** — `/settings/branches` → "New branch". Fields: code + name + address + phone + KRA PIN + open/close times.
+2. **First branch you create becomes the default.** Every existing sale/expense/stock movement gets tagged with the current default branch. You can flip default with the star icon.
+3. **Assign staff to branches** — the users page has a branch selector. Staff only see the data for branches they're assigned to. Owners see all.
+4. **Branch switcher lives in the topbar** — dropdown next to the module logo. Click to switch. If you only have one branch, it just shows the name.
+5. **Every service is branch-aware** — `getActiveBranchId()` runs on every query. Sales, inventory, POs, expenses, banking, reports — all scoped to the current branch by default.
+6. **Reports have branch filters** — dashboard shows THIS BRANCH's revenue today. Switch branches from the topbar to see another.
+7. **Stock transfers** — move stock from branch A to branch B via `/stock-transfer-new`. Tracked in stock_movements with type='transfer'.
+
+If you have one physical shop → one branch, everything just works. If you open a second → create the second branch, assign users, switch with the topbar.
+
+### Verification
+Desktop tsc clean · vitest 497/497 · works on both pre-migration and post-migration schemas (verified by reading query text — no column reference remains).
+
 ## Release v0.28.3 — Returns close the loop: eTIMS credit note + P&L reversal
 
 Closes the two follow-ups flagged in v0.28.2.

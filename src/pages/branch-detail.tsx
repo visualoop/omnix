@@ -42,9 +42,11 @@ export function BranchDetailPage() {
            (SELECT COUNT(*) FROM user_branches ub
               INNER JOIN users u ON u.id = ub.user_id
               WHERE ub.branch_id = ?1 AND u.active = 1) as user_count,
-           COALESCE((SELECT SUM(total - COALESCE(refunded_amount, 0)) FROM sales WHERE branch_id = ?1 AND date(created_at) = date('now') AND status = 'completed'), 0) as sales_today,
+           COALESCE((SELECT SUM(total) FROM sales WHERE branch_id = ?1 AND date(created_at) = date('now') AND status = 'completed'), 0)
+             - COALESCE((SELECT SUM(refund_amount) FROM sale_returns WHERE branch_id = ?1 AND date(created_at) = date('now')), 0) as sales_today,
            (SELECT COUNT(*) FROM sales WHERE branch_id = ?1 AND date(created_at) = date('now') AND status = 'completed') as sales_today_count,
-           COALESCE((SELECT SUM(total - COALESCE(refunded_amount, 0)) FROM sales WHERE branch_id = ?1 AND date(created_at) >= date('now', '-30 days') AND status = 'completed'), 0) as sales_30d`,
+           COALESCE((SELECT SUM(total) FROM sales WHERE branch_id = ?1 AND date(created_at) >= date('now', '-30 days') AND status = 'completed'), 0)
+             - COALESCE((SELECT SUM(refund_amount) FROM sale_returns WHERE branch_id = ?1 AND date(created_at) >= date('now', '-30 days')), 0) as sales_30d`,
         [id],
       ),
     ])

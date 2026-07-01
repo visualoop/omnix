@@ -117,24 +117,28 @@ export async function getCustomerStats(customerId: string): Promise<{
   outstanding_balance: number;
 }> {
   // Purchase count + gross + refunds per customer. Net total = gross -
-  // refunds (won't go negative). Both aggregates in a single pass so a
-  // customer detail page doesn't need two round trips.
+  // refunds (won't go negative). Uses a JOIN with sale_returns rather
+  // than the sales.refunded_amount column so the query works whether
+  // or not migration 053 has run on this installation.
   const rows = await query<{
     total_purchases: number;
     gross_amount: number;
-    refunds_amount: number;
     last_purchase: string | null;
   }>(
     `SELECT COUNT(*) as total_purchases,
             COALESCE(SUM(total), 0) as gross_amount,
-            COALESCE(SUM(refunded_amount), 0) as refunds_amount,
             MAX(created_at) as last_purchase
      FROM sales WHERE customer_id = ?1 AND status = 'completed'`,
     [customerId]
   );
+  const refundRows = await query<{ refunds_amount: number }>(
+    `SELECT COALESCE(SUM(refund_amount), 0) as refunds_amount
+     FROM sale_returns WHERE customer_id = ?1`,
+    [customerId]
+  );
   const customer = await getCustomer(customerId);
   const gross = rows[0]?.gross_amount ?? 0;
-  const refunds = rows[0]?.refunds_amount ?? 0;
+  const refunds = refundRows[0]?.refunds_amount ?? 0;
   return {
     total_purchases: rows[0]?.total_purchases ?? 0,
     total_amount: Math.max(0, gross - refunds),
