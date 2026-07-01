@@ -34,7 +34,20 @@ export function UpdateChecker() {
         setUpToDate(true);
       }
     } catch (e) {
-      toast.error("Update check failed: " + e);
+      // Common failure modes:
+      //   - Endpoint returned HTML/404 → "Failed to parse response" / "expected value"
+      //   - Signature verification failed → "signature error"
+      //   - Network offline → fetch error
+      const msg = String(e);
+      let friendly = "Update check failed";
+      if (/parse|json|expected value|unexpected/i.test(msg)) {
+        friendly = "Update server returned an unexpected response. This is a server issue — try again in a minute.";
+      } else if (/signature/i.test(msg)) {
+        friendly = "Update signature invalid. Contact support@omnix.co.ke rather than installing manually.";
+      } else if (/network|fetch|dns|timeout|failed to send/i.test(msg)) {
+        friendly = "Couldn't reach the update server. Check your internet connection.";
+      }
+      toast.error(friendly, { description: msg.length < 200 ? msg : msg.slice(0, 200) + "…" });
     } finally {
       setChecking(false);
     }

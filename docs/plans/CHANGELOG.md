@@ -2,6 +2,27 @@
 
 This tracks work done LOCALLY without GitHub pushes. We only push when the user explicitly says so.
 
+## Release v0.24.1 — Auto-update fix
+
+**Bug**: "Check for updates" in Settings → General returned "wrong JSON format".
+
+**Root cause**: Every `tauri.<variant>.conf.json` (and the base `tauri.conf.json`) has updater endpoints pointing at `https://omnix.co.ke/api/releases-latest`, but the actual Next.js route was at `/api/releases/latest` (with a slash, not a hyphen). Every installed app was hitting a 404, receiving the Next.js not-found HTML page, and Tauri's updater plugin then failed to parse it as JSON.
+
+**Fix**:
+- Created `/api/releases-latest/route.ts` at the URL the installed apps request.
+- Reads the `?variant=` query param and returns the correct per-variant installer URL from `releases.metadata.variants[variant]`, falling back to Pro's build (which is the canonical multi-trade binary), then to the top-level `msiUrl` / `exeUrl`.
+- Reads `?license=` (Tauri auto-fills current app version) and returns 204 No Content when the client is already up to date, instead of serving JSON that would trigger a needless signature check + download.
+- Prefers `.exe` NSIS setup over `.msi` (silent install support, smaller payload, and the sync route stores both).
+- Handles cold DB + missing installer URL by returning 204 rather than a JSON error, so the desktop "up to date" pill renders correctly on fresh deployments.
+- Cleaned up the desktop "Check for Updates" button error handling: parse failures now surface a human message ("Update server returned an unexpected response…") instead of the raw JSON parse error.
+- Added a smoke test for the semver-compare helper.
+
+Existing `/api/releases/latest` is left as-is — it's still valid for anything that happens to be calling it. Existing desktop installs on v0.24.0 and earlier will pick up this fix by clicking Check for Updates → they'll be told to install v0.24.1, and after v0.24.1 lands, subsequent checks work forever.
+
+Version bumped 0.24.0 → **0.24.1** across `package.json`, `src-tauri/Cargo.toml`, `src-tauri/tauri.conf.json`, `Cargo.lock`.
+
+Verification: desktop tsc clean, vitest 448/448 (+8 new), website tsc + next build clean.
+
 ## Release v0.24.0 — Affiliate program
 
 Referrers who bring paying customers earn 33% of first purchase. Capped at first purchase only — no compounding on renewals.
