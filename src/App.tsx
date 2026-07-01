@@ -67,6 +67,12 @@ import { ChartOfAccountsPage } from "@/pages/chart-of-accounts";
 import { ReservationsPage } from "@/pages/reservations";
 import { KitchenDisplayPage } from "@/pages/kitchen-display";
 import { PeripheralsPage } from "@/pages/peripherals";
+import { CashFlowStatementPage } from "@/pages/cash-flow-statement";
+import { PeriodClosePage } from "@/pages/period-close";
+import { ApprovalsPage } from "@/pages/approvals";
+import { DebitNotesPage } from "@/pages/debit-notes";
+import { BankReconciliationPage } from "@/pages/bank-reconciliation";
+import { RecallsPage } from "@/pages/recalls";
 import { TaxSettingsPage } from "@/pages/settings-taxes";
 import { CategoriesSettingsPage } from "@/pages/settings-categories";
 // Hub pages — flat sidebar with tabs inside each domain
@@ -262,6 +268,12 @@ function AppContent() {
           <Route path="/accounting/chart-of-accounts" element={<RequireRole permission="reports.pnl"><ChartOfAccountsPage /></RequireRole>} />
           <Route path="/accounting/trial-balance" element={<RequireRole permission="reports.pnl"><TrialBalancePage /></RequireRole>} />
           <Route path="/accounting/balance-sheet" element={<RequireRole permission="reports.pnl"><BalanceSheetPage /></RequireRole>} />
+          <Route path="/accounting/cash-flow" element={<RequireRole permission="reports.pnl"><CashFlowStatementPage /></RequireRole>} />
+          <Route path="/accounting/period-close" element={<RequireRole permission="reports.pnl"><PeriodClosePage /></RequireRole>} />
+          <Route path="/approvals" element={<ApprovalsPage />} />
+          <Route path="/procurement/debit-notes" element={<RequireRole permission="purchase_orders.view"><DebitNotesPage /></RequireRole>} />
+          <Route path="/banking/:id/reconcile" element={<RequireRole permission="banking.reconcile"><BankReconciliationPage /></RequireRole>} />
+          <Route path="/pharmacy/recalls" element={<RequireRole permission="pharmacy.dispense"><RecallsPage /></RequireRole>} />
           <Route path="/hospitality/reservations" element={<RequireRole permission="hospitality.bookings.manage"><ReservationsPage /></RequireRole>} />
           <Route path="/hospitality/kitchen" element={<RequireRole permission="hospitality.kitchen.bump"><KitchenDisplayPage /></RequireRole>} />
           <Route path="/settings/peripherals" element={<RequireRole permission="settings.business"><PeripheralsPage /></RequireRole>} />

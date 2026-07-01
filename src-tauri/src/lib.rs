@@ -478,6 +478,42 @@ fn run_inner() {
             sql: include_str!("../migrations/061_peripherals.sql"),
             kind: MigrationKind::Up,
         },
+        Migration {
+            version: 62,
+            description: "Financial years + accounting periods (period close)",
+            sql: include_str!("../migrations/062_period_close.sql"),
+            kind: MigrationKind::Up,
+        },
+        Migration {
+            version: 63,
+            description: "Debit notes + supplier returns + supplier return items",
+            sql: include_str!("../migrations/063_debit_notes_supplier_returns.sql"),
+            kind: MigrationKind::Up,
+        },
+        Migration {
+            version: 64,
+            description: "Approval workflows (rules + requests) for POs and expenses",
+            sql: include_str!("../migrations/064_approvals.sql"),
+            kind: MigrationKind::Up,
+        },
+        Migration {
+            version: 65,
+            description: "Inventory extensions: bundles, serials, cycle counts, damages, reorder suggestions",
+            sql: include_str!("../migrations/065_inventory_extensions.sql"),
+            kind: MigrationKind::Up,
+        },
+        Migration {
+            version: 66,
+            description: "Sales+pricing: customer groups, coupons, gift cards, discount rules, sales targets, commissions",
+            sql: include_str!("../migrations/066_sales_pricing_extensions.sql"),
+            kind: MigrationKind::Up,
+        },
+        Migration {
+            version: 67,
+            description: "Platform: customer comms, fixed assets, multi-currency, recalls, room status, change history, report builder, password policies+PIN",
+            sql: include_str!("../migrations/067_platform_extensions.sql"),
+            kind: MigrationKind::Up,
+        },
     ];
 
     tauri::Builder::default()

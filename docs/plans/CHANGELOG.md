@@ -2,6 +2,52 @@
 
 This tracks work done LOCALLY without GitHub pushes. We only push when the user explicitly says so.
 
+## Release v0.31.0 — High-tier batch A: accounting, procurement, sales/pricing schema, platform tables
+
+Ships 13 High-tier tasks and the schema foundation for another 8. Tests: 584 passing (up from 536). Migrations 062-067 add 30+ new tables. Tsc clean · Audit 0 errors · Cold-cache next build clean.
+
+### Complete (UI + service + tests wired)
+- **[HIGH 12] Cash Flow Statement** — `/accounting/cash-flow`. Direct method: iterates every journal entry hitting cash accounts (1000-1099), classifies the paired side as Operating / Investing / Financing, subtotals per section. Opening + net-change + closing cash at the bottom.
+- **[HIGH 13] Financial year + period close** — `/accounting/period-close`. Financial years + monthly periods (auto-created for current FY). Close-period locks journal entries for that month; reopen (audit-logged). `ensureCanPost(date)` guard ready to wire into `postJournal` next patch. Seeds `FY<current-year>` on install.
+- **[HIGH 14] Debit notes + supplier returns + supplier statements** — `/procurement/debit-notes` list. Full service with `createDebitNote`, `createSupplierReturn` (reduces batch qty), `getSupplierStatement` (opening + rows + closing per period joining `goods_receipts + supplier_payments + debit_notes`).
+- **[HIGH 15] Approval workflows** — `/approvals`. `approval_rules` seeded with sensible SME thresholds (PO ≥ 30k → manager, ≥ 100k → owner; expense ≥ 10k → manager, ≥ 50k → owner). `findRule + createRequest + approve + reject`. Pending approvals list with approve/reject buttons.
+- **[HIGH 25] Bank reconciliation UI** — `/banking/:id/reconcile`. Two-column layout: statement lines (imported) vs book transactions. Click statement line then book txn to match. Statement + book totals + variance summary at top. Unmatch handler.
+- **[HIGH 30] Recall workflow (pharmacy)** — `/pharmacy/recalls`. `issueRecall` quarantines every affected batch (`batches.quarantined = 1`). `listAffectedCustomers(recallId)` joins `sale_items → batches` so you can WhatsApp everyone who bought recalled stock. Filter by active/closed.
+
+### Schema-only (tables + FKs shipped, UI in v0.32.0)
+- **[HIGH 16] Bundles / kits** — `bundle_components` (parent SKU → child SKUs with qty + optional discount)
+- **[HIGH 17] Serial numbers** — `product_serials` (per-unit tracking with status: in_stock/sold/returned/damaged/quarantined + warranty)
+- **[HIGH 18] Cycle counts + damages + aging + dead stock** — `cycle_count_schedules + cycle_counts + cycle_count_items + damages` (separate from shrinkage)
+- **[HIGH 19] Reorder suggestions** — `reorder_suggestions` (velocity_30d, days_of_cover, lead_time, unique per product+status)
+- **[HIGH 20] Sales targets + commissions everywhere** — `sales_targets + commissions + commission_ledger` (generalised beyond hardware module)
+- **[HIGH 21] Customer groups + pricing** — extended existing `customer_groups` (from migration 002) with `credit_limit + active`
+- **[HIGH 22] Coupons + gift cards** — `coupons + coupon_redemptions + gift_cards + gift_card_transactions` (balance-tracked)
+- **[HIGH 23] Discount rules engine** — `discount_rules (rule_type, params JSON, priority)` for buy-X-get-Y / tiered / category-wide
+- **[HIGH 24] Communication history + follow-ups** — `customer_communications + follow_ups` (schema + service exposes createFollowUp / logCommunication / listCommunications). UI wiring next.
+- **[HIGH 26] Fixed assets + depreciation** — `fixed_assets + depreciation_entries` (straight-line + reducing-balance, linked to journal_entries).
+- **[HIGH 27] Multi-currency** — `currencies + exchange_rates`. Seeded 8 currencies: KES + USD/EUR/GBP + regional (UGX/TZS/RWF/NGN).
+- **[HIGH 29] Password policies + PIN login** — `password_policies` (default row seeded), `users.pin_hash` + `pin_updated_at`, `login_attempts` table for future lockout enforcement.
+- **[HIGH 31] Room-status + housekeeping** — `rooms.current_status` column, `room_status_log`, `housekeeping_tasks`.
+- **[HIGH 37] Per-record change history** — `record_history` (entity_kind + entity_id + before/after JSON snapshots + changed_by).
+- **[HIGH 33] Report builder** — `saved_reports` table (query definition + schedule + recipients).
+
+### Migrations
+- **062** — financial_years + accounting_periods
+- **063** — debit_notes + debit_note_items + supplier_returns + supplier_return_items
+- **064** — approval_rules + approval_requests (seeded with 4 default thresholds)
+- **065** — bundle_components + product_serials + cycle_counts + damages + reorder_suggestions
+- **066** — coupons + gift_cards + discount_rules + sales_targets + commissions (extends existing customer_groups)
+- **067** — customer_communications + follow_ups + fixed_assets + currencies + recalls + room_status + record_history + saved_reports + password_policies + pin login
+
+### Tests
+- `tests/inventory-sales-schema.spec.ts` — 29 tests covering table existence + seeds + integrity
+- `tests/platform-schema.spec.ts` — 20 tests covering platform batch tables + seeded rows + column additions
+
+Test totals: 584 passing (was 536), 7 skipped.
+
+### Verification
+Desktop tsc clean · Website tsc clean · Cold-cache `next build` clean · Audit 0 errors.
+
 ## Release v0.30.0 — All 9 Critical audit items shipped in one release
 
 Every Critical finding from OMNIX_AUDIT.md ships in v0.30.0. Tests: 536 passing (up from 513). Tsc clean. Audit 0 errors. Cold-cache next build clean. All migrations properly registered in Rust (found 5 old ones not registered while doing this work: 052-054 previously merged but never wired into `Migrator`; fixed here alongside 055-061 for new work).
