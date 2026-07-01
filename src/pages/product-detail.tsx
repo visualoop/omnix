@@ -47,6 +47,7 @@ import { format, isAfter, isBefore, addDays } from "date-fns"
 import { ReceiveStockDialog } from "@/components/inventory/receive-stock-dialog"
 import { VariantsDrawer } from "@/components/inventory/variants-drawer"
 import { toast } from "sonner"
+import { confirm } from "@/components/ui/confirm-dialog"
 
 const KES = (n: number) =>
   new Intl.NumberFormat("en-KE", { style: "currency", currency: "KES", maximumFractionDigits: 2 }).format(n)
@@ -678,7 +679,7 @@ function SubstitutesTab({ product }: { product: Product }) {
   }
 
   const remove = async (substituteId: string) => {
-    if (!confirm("Remove this substitute?")) return
+    if (!(await confirm({ title: "Remove this substitute?", variant: "destructive" }))) return
     try {
       await removeSubstitution(product.id, substituteId)
       toast.success("Substitute removed")

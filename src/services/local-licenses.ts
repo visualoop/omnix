@@ -218,7 +218,7 @@ export async function syncLicenses(email: string, machineId: string): Promise<Sy
  */
 export async function activateLicense(input: {
   licenseKey: string
-  email: string
+  email?: string
   machineId: string
   variant?: string
   hostname?: string

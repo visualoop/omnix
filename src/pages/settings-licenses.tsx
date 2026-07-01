@@ -40,6 +40,7 @@ import {
 import { query, execute } from "@/lib/db"
 import { getMachineInfo } from "@/services/license"
 import { VARIANT } from "@/lib/variant"
+import { confirm } from "@/components/ui/confirm-dialog"
 
 /** Detect variant from a compact key prefix. Falls back to 'pro' when unclear. */
 function detectVariantFromKey(key: string): LicenseVariant {
@@ -176,22 +177,17 @@ export function SettingsLicensesPage() {
       toast.error("Paste a licence key first")
       return
     }
-    if (!email.trim()) {
-      toast.error("Enter your account email first")
-      return
-    }
     setAdding(true)
     try {
-      // Auto-save the email if the user hasn't clicked "Save" yet — no
-      // reason to force two clicks. `saveEmail` guards against empty
-      // input already, and INSERT OR REPLACE is idempotent.
-      if (!emailSaved) {
+      // Auto-save email if entered but not yet saved (nice UX).
+      // If empty, we still activate — the server treats email as optional metadata.
+      if (email.trim() && !emailSaved) {
         await saveEmail()
       }
       const machineId = await getMachineInfo().then((i) => i.fingerprint).catch(() => "")
       const result = await activateLicense({
         licenseKey: draftKey.trim().toUpperCase(),
-        email: email.trim().toLowerCase(),
+        email: email.trim() ? email.trim().toLowerCase() : undefined,
         machineId,
         // Tell the server which binary is asking. The new gate 2.5
         // (variant_mismatch) rejects e.g. a Hospitality key on the
@@ -243,8 +239,13 @@ export function SettingsLicensesPage() {
   }
 
   const handleRemove = async (key: string) => {
-    if (!confirm(`Remove this licence from this PC?\n\n${key}\n\nThe key stays on your account; it just won't activate on this machine. Run "Re-sync licences" to bring it back.`))
-      return
+    const ok = await confirm({
+      title: "Remove this licence from this PC?",
+      description: `${key}\n\nThe key stays on your account. It just stops activating on this machine. Run "Re-sync licences" to bring it back.`,
+      confirmText: "Remove",
+      variant: "destructive",
+    })
+    if (!ok) return
     await removeLocalLicense(key)
     toast.success("Removed from this PC")
     await load()
@@ -395,7 +396,7 @@ export function SettingsLicensesPage() {
             placeholder="OMNIX-XXXX-XXXX-XXXX-XXXX"
             className="flex-1 font-mono"
           />
-          <Button onClick={handleAdd} disabled={adding || !draftKey.trim() || !email.trim()}>
+          <Button onClick={handleAdd} disabled={adding || !draftKey.trim()}>
             {adding ? "Activating…" : "Activate"}
           </Button>
         </div>

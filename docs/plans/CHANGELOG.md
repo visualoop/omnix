@@ -2,6 +2,36 @@
 
 This tracks work done LOCALLY without GitHub pushes. We only push when the user explicitly says so.
 
+## Release v0.28.5 — Licences page: delete works + Activate button no longer stuck
+
+Two bugs preventing a user from correcting a wrong-variant activation:
+
+### 1. Delete licence "not allowed by acl"
+`handleRemove()` in `settings-licenses.tsx` was calling native `window.confirm()`. Tauri v2 blocks native browser dialogs via ACL by default. When the user clicked the delete-licence trash icon, the confirm never showed and the operation aborted with an ACL error.
+
+**Fix**: replaced `window.confirm(...)` with the imperative `confirm(...)` from `@/components/ui/confirm-dialog` — a proper shadcn-styled modal that doesn't touch Tauri's dialog plugin. Nice-looking too. Also swept the codebase for other stragglers: `pages/product-detail.tsx` had the same pattern, fixed as well. All 38 confirmation dialogs across the app now go through the same imperative helper.
+
+**Belt-and-braces**: also added `dialog:allow-ask`, `dialog:allow-confirm`, and `dialog:allow-message` to the default capability so native `alert/confirm/prompt` calls (if any get re-introduced) work without ACL errors. New builds will have this by default.
+
+### 2. Activate button permanently disabled
+The "Add another licence" section required both a licence key AND a saved account email before enabling the Activate button. Users with a wrong-variant activation typically don't have an email typed (their previous flow may have skipped it), so the button stayed grey no matter what they pasted.
+
+**Fix**: email is now optional at activation. The server treats it as optional metadata anyway. The button enables the moment a licence key is pasted. If the user does enter an email, it still auto-saves as part of clicking Activate (nice UX). If they don't, activation proceeds and licensing succeeds — email is only needed later for account sync across multiple machines, and can be filled in at any time.
+
+Signature: `activateLicense({ licenseKey, email?, machineId, variant })` — `email` is now `string | undefined`.
+
+### For the user who activated Hospitality on Retail installer
+The variant mismatch you hit was a genuine cross-variant activation. The server-side gate 2.5 (variant_mismatch) rejects mismatches on new activations going forward, but any historical mismatch persists in your local `local_licenses` table.
+
+**Recovery path**:
+1. Open Omnix (Retail) → Settings → Application → Licences
+2. Trash-icon the wrong Hospitality key → confirm removal
+3. Paste your real Retail key → Activate (no email needed)
+4. Restart the app — every retail route unlocks
+
+### Verification
+Desktop tsc clean · vitest 497/497.
+
 ## Release v0.28.4 — Branches page crash + migration-independent refund math
 
 **Bug**: clicking "Locations & Branches" from settings threw `no such column: refunded_amount`. The page never rendered.
