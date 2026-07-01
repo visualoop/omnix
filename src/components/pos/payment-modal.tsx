@@ -19,6 +19,7 @@ import { InsuranceVerifyPanel } from "@/components/pos/insurance-verify";
 import { paymentBrandIcon, paymentBrandTint } from "@/components/icons/payment-brands";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { useTrialWriteGuard } from "@/components/trial-lifecycle";
 
 interface Props {
   open: boolean;
@@ -49,6 +50,7 @@ export function PaymentModal({ open, onClose }: Props) {
   const [selectedMethod, setSelectedMethod] = useState<string>("cash");
   const [amount, setAmount] = useState("");
   const touch = useIsTouch();
+  const trialGuard = useTrialWriteGuard();
   const amountRef = useRef<HTMLInputElement>(null);
   const [keypadOpen, setKeypadOpen] = useState(false);
   const [reference, setReference] = useState("");
@@ -180,6 +182,11 @@ export function PaymentModal({ open, onClose }: Props) {
   };
 
   const handleComplete = async () => {
+    if (!trialGuard.can) {
+      trialGuard.prompt();
+      return;
+    }
+
     const saleSnapshot = snapshot ?? (() => {
       const cart = useCartStore.getState();
       return {

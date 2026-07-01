@@ -2,6 +2,54 @@
 
 This tracks work done LOCALLY without GitHub pushes. We only push when the user explicitly says so.
 
+## Release v0.28.0 — Trial expiry becomes a graceful transition, not a hard cliff
+
+### The problem
+Before v0.28.0, trial expiry was a full-app hard-lock the moment day 31 arrived. If a shopkeeper's trial expired mid-shift (say at 2pm during peak trading), the till would suddenly lock, they'd be unable to complete the current sale, and they'd have to activate before even closing the shift. That's hostile — nobody should lose an afternoon of revenue because their software chose a bad moment to enforce billing.
+
+### The new model — 4-stage transition
+
+The **30-day trial** now has a **60-day expiry runway** instead of a cliff:
+
+| Stage | Days | What works | What the user sees |
+|---|---|---|---|
+| **Active** | 0-30 | Everything | Nothing (normal app) |
+| **Grace** | 30-37 | Everything still works | Amber banner top of app: "Trial ended — {N} days of full access left" + [Activate licence] button |
+| **Read-only** | 37-60 | View + close current shift + print past receipts. New sales / invoices / POs blocked with an "Activate" toast that jumps to `/settings/licenses`. | Red banner top of app: "Trial ended — read-only mode. {N} days until the app locks." |
+| **Expired** | 60+ | Nothing — LicenseGuard shows the activation page (previous v0.27.x behaviour, preserved as the floor) | Full-screen activation form |
+
+Why this shape:
+- **7-day grace of full functionality** = a shop can finish the week + weekend without disruption. Amber banner nudges but doesn't punish.
+- **23 days of read-only** = long enough that the owner can wrap up receivables, print outstanding invoices, and pay a licence at their own pace, but short enough it doesn't invite indefinite freeloading.
+- **Hard lock at day 60** = same failure floor as before, just 30 days later.
+
+The **paid licence holder is unaffected** — the entire flow only fires when there's no license, only a trial. If a paid license activates at any point, all of this vanishes.
+
+### Implementation
+
+- **`services/license.ts`**: extended `TrialState` with `stage: 'not_started' | 'active' | 'grace' | 'read_only' | 'expired'` + `stage_days_remaining`. `getTrialState()` now computes stage boundaries from `startedAt + GRACE_DAYS` and `+ READ_ONLY_DAYS` (7 + 23 = 30 total post-expiry).
+- **`getLicenseStatus()`**: returns `activated: true` during grace + read_only so `LicenseGuard` doesn't hard-block the app. Only `stage === 'expired'` falls through to `activated: false` → activation page.
+- **`components/trial-lifecycle.tsx`** (new):
+  - `TrialLifecycleBanner` — sticky top-of-app banner (amber for grace, red for read_only). Non-dismissible on purpose; it's the ONLY signal to the owner that their trial is over. Mounted in `AppShell` above the topbar.
+  - `useTrialWriteGuard()` hook — returns `{ can, stage, prompt }` for callers to short-circuit critical mutations. Blocks writes only in `read_only` stage. `prompt()` fires a toast with an "Activate" action that jumps to `/settings/licenses`.
+- **Gated writes**:
+  - `components/pos/payment-modal.tsx` → `handleComplete()` (POS checkout — the highest-value write)
+  - `pages/invoice-new.tsx` → `save()` (invoices + quotations)
+  - `pages/purchase-orders.tsx` → `save()` (new POs)
+- **`tests/trial-lifecycle.spec.ts`** (new): 12 boundary-condition tests covering day 0, 15, 29.9, 30, 31, 36.9, 37, 40, 59.9, 60, 90 to make sure the stage machine can't regress silently.
+
+### What was NOT gated in read-only
+Deliberately left writable so shopkeepers can wrap up mid-shift work:
+- Closing an existing sale / shift close-out
+- Printing past receipts + reports
+- Editing existing customer records (updating a phone, etc.)
+- Non-money mutations (settings changes, backup runs, module toggles)
+
+The philosophy: **read-only means no NEW commercial transactions**. Existing books are read-write; the till itself is read-only.
+
+### Verification
+Desktop tsc clean · vitest 467/467 (+12 new for the stage machine).
+
 ## Release v0.27.3 — Retail license actually unlocks Retail + settings sidebar reverted + customer-activity SQL fix
 
 ### 1. Retail license now actually enables Retail routes

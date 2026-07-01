@@ -360,6 +360,24 @@ export async function getLicenseStatus(): Promise<LicenseStatus> {
         trial,
       };
     }
+    // Grace + read_only stages keep the app open. The desktop UI checks
+    // `trial.stage` to render the amber/red banner and to gate writes.
+    // Only 'expired' (30+ days past trial end) hard-locks — that path
+    // falls through to the {activated: false} below.
+    if (trial.stage === 'grace' || trial.stage === 'read_only') {
+      return {
+        activated: true,
+        license: null,
+        features: ["etims", "insurance", "lan", "reports"],
+        modules: trial.modules ?? [],
+        max_devices: 1,
+        server_validated: false,
+        maintenance_active: trial.stage === 'grace', // grace still writes; read_only doesn't
+        maintenance_days_remaining: trial.stage_days_remaining,
+        machine,
+        trial,
+      };
+    }
     return {
       activated: false,
       license: null,
@@ -581,9 +599,31 @@ export interface TrialState {
   days_remaining: number;
   /** Single module the trial unlocks (v2). Populated by server-registered trials (Task 7). */
   modules?: string[];
+  /**
+   * Trial lifecycle stage — added in v0.28.0.
+   *
+   *   'not_started' — no trial row yet (fresh install, no key)
+   *   'active'      — inside the 30-day window, full functionality
+   *   'grace'       — 0-7 days past expiry, still fully functional, amber
+   *                   warning banner nudges the owner to activate
+   *   'read_only'   — 7-30 days past expiry, can view + close current
+   *                   shifts + print receipts, but every write mutation
+   *                   blocks with an "activate now" modal. Non-critical.
+   *   'expired'     — 30+ days past expiry, LicenseGuard renders the
+   *                   activation page (current v0.27.x behaviour). Hard
+   *                   lock preserved as a floor.
+   */
+  stage: 'not_started' | 'active' | 'grace' | 'read_only' | 'expired';
+  /** Days remaining in the current stage. For 'grace' it counts down to read_only. */
+  stage_days_remaining: number;
 }
 
+/** Full window (in days) from trial start to hard-lock. */
 const TRIAL_DURATION_DAYS = 30;
+/** Days of full functionality after trial expiry — amber warning banner. */
+const GRACE_DAYS = 7;
+/** Days of read-only mode after grace ends before hard-lock. */
+const READ_ONLY_DAYS = 23; // grace_days + read_only_days = 30-day post-expiry window
 
 /** Get the current trial state (or null if never started). */
 export async function getTrialState(): Promise<TrialState> {
@@ -605,6 +645,8 @@ export async function getTrialState(): Promise<TrialState> {
       duration_days: TRIAL_DURATION_DAYS,
       days_remaining: TRIAL_DURATION_DAYS,
       modules: [],
+      stage: 'not_started',
+      stage_days_remaining: TRIAL_DURATION_DAYS,
     };
   }
 
@@ -619,14 +661,35 @@ export async function getTrialState(): Promise<TrialState> {
       duration_days: row.duration_days,
       days_remaining: 0,
       modules: [],
+      // Fingerprint mismatch is treated as hard-lock — attempted trial farming.
+      stage: 'expired',
+      stage_days_remaining: 0,
     };
   }
 
   const startedMs = new Date(row.started_at).getTime();
   const expiresMs = startedMs + row.duration_days * 24 * 60 * 60 * 1000;
+  const graceUntilMs = expiresMs + GRACE_DAYS * 24 * 60 * 60 * 1000;
+  const readOnlyUntilMs = graceUntilMs + READ_ONLY_DAYS * 24 * 60 * 60 * 1000;
   const now = Date.now();
   const daysRemaining = Math.max(0, Math.ceil((expiresMs - now) / (24 * 60 * 60 * 1000)));
   const active = now < expiresMs;
+
+  let stage: TrialState['stage'];
+  let stageDaysRemaining: number;
+  if (now < expiresMs) {
+    stage = 'active';
+    stageDaysRemaining = daysRemaining;
+  } else if (now < graceUntilMs) {
+    stage = 'grace';
+    stageDaysRemaining = Math.max(0, Math.ceil((graceUntilMs - now) / (24 * 60 * 60 * 1000)));
+  } else if (now < readOnlyUntilMs) {
+    stage = 'read_only';
+    stageDaysRemaining = Math.max(0, Math.ceil((readOnlyUntilMs - now) / (24 * 60 * 60 * 1000)));
+  } else {
+    stage = 'expired';
+    stageDaysRemaining = 0;
+  }
 
   return {
     active,
@@ -636,7 +699,11 @@ export async function getTrialState(): Promise<TrialState> {
     duration_days: row.duration_days,
     days_remaining: daysRemaining,
     // A trial unlocks exactly one module (plus Core, which is never gated).
-    modules: active ? [row.module] : [],
+    // In grace + read_only stages the module STAYS unlocked so the shopkeeper
+    // can wrap up outstanding work. Only 'expired' revokes it.
+    modules: stage === 'expired' ? [] : [row.module],
+    stage,
+    stage_days_remaining: stageDaysRemaining,
   };
 }
 

@@ -2,6 +2,7 @@ import { useState, useCallback, useEffect, useRef } from "react";
 import { Outlet, useLocation } from "react-router-dom";
 import { Sidebar } from "./sidebar";
 import { Topbar } from "./topbar";
+import { TrialLifecycleBanner } from "@/components/trial-lifecycle";
 import { CommandPalette } from "@/components/layout/command-palette";
 import { RouteErrorBoundary } from "@/components/route-error-boundary";
 import { OnboardingTour } from "@/components/onboarding-tour";
@@ -58,6 +59,7 @@ export function AppShell() {
     <div className="flex h-screen w-screen overflow-hidden bg-background text-foreground">
       {!isSettingsRoute && !isFullscreen && <Sidebar onCommandOpen={openCmd} />}
       <div className="flex flex-col flex-1 overflow-hidden">
+        {!isFullscreen && <TrialLifecycleBanner />}
         {!isFullscreen && <Topbar />}
         <main className={isFullscreen ? "flex-1 overflow-auto" : "flex-1 overflow-auto p-6 bg-[#FBFAF6] dark:bg-background"}>
           <div key={routeKey} className={transitionClass}>

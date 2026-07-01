@@ -27,6 +27,7 @@ import {
 import { getProducts, type Product } from "@/services/inventory";
 import { useAuthStore } from "@/stores/auth";
 import { toast } from "sonner";
+import { useTrialWriteGuard } from "@/components/trial-lifecycle";
 import { money } from "@/lib/money";
 
 export function PurchaseOrdersPage() {
@@ -129,6 +130,7 @@ interface CartItem {
 }
 
 export function NewPurchaseOrderPage() {
+  const trialGuard = useTrialWriteGuard();
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [supplierId, setSupplierId] = useState("");
   const [expectedDate, setExpectedDate] = useState("");
@@ -175,6 +177,7 @@ export function NewPurchaseOrderPage() {
   const total = items.reduce((s, i) => s + i.quantity * i.unit_cost, 0);
 
   const save = async (status: "draft" | "sent") => {
+    if (!trialGuard.can) { trialGuard.prompt(); return; }
     if (!supplierId || items.length === 0) {
       toast.error("Select supplier and add at least one item");
       return;

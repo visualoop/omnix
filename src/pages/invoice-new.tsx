@@ -17,6 +17,7 @@ import { listCustomers } from "@/services/erp";
 import { createInvoice, createQuotation } from "@/services/invoicing";
 import { useAuthStore } from "@/stores/auth";
 import { toast } from "sonner";
+import { useTrialWriteGuard } from "@/components/trial-lifecycle";
 
 interface LineItem {
   product_id: string | null;
@@ -35,6 +36,7 @@ interface Props {
 export function NewDocumentPage({ type }: Props) {
   const navigate = useNavigate();
   const userId = useAuthStore((s) => s.user?.id);
+  const trialGuard = useTrialWriteGuard();
   const [customer, setCustomer] = useState({
     customer_id: "",
     customer_name: "",
@@ -108,6 +110,7 @@ export function NewDocumentPage({ type }: Props) {
   };
 
   const save = async () => {
+    if (!trialGuard.can) { trialGuard.prompt(); return; }
     if (!userId) return;
     if (!customer.customer_name) { toast.error("Customer name required"); return; }
     if (items.length === 0) { toast.error("Add at least one line item"); return; }
