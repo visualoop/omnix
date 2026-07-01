@@ -88,6 +88,11 @@ export function POSOverviewPage() {
       if (k === "s" && shift) navigate("/pos/sale");
       else if (k === "r" && shift) navigate("/returns");
       else if (k === "z") navigate("/reports/zreport");
+      else if (k === "x" && shift) {
+        // X-report is instant — no dialog, just print. Cashiers use it
+        // constantly mid-shift to spot-check their drawer against system.
+        import("@/services/x-report").then(({ printXReport }) => printXReport()).catch(() => {})
+      }
       else if (k === "o" && !shift) setOpenShiftDialog(true);
       else if (k === "c" && shift) setCloseShiftDialog(true);
       else if (k === "p" && shift) navigate("/petty-cash");
@@ -194,6 +199,15 @@ export function POSOverviewPage() {
               <ActionRow k="R" label="Returns" hint="Refund a sale" onClick={() => navigate("/returns")} />
               <ActionRow k="P" label="Petty cash" hint="In or out of the drawer" onClick={() => navigate("/petty-cash")} />
               <ActionRow k="Z" label="Z-Report" hint="End-of-day totals" onClick={() => navigate("/reports/zreport")} />
+              <ActionRow
+                k="X"
+                label="X-Report"
+                hint="Live shift snapshot (no reset)"
+                onClick={async () => {
+                  const { printXReport } = await import("@/services/x-report")
+                  await printXReport()
+                }}
+              />
               {heldCount > 0 ? (
                 <ActionRow
                   k="H"

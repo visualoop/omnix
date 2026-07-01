@@ -2,6 +2,30 @@
 
 This tracks work done LOCALLY without GitHub pushes. We only push when the user explicitly says so.
 
+## Release v0.29.1 — X-Report (mid-shift snapshot)
+
+Added the missing counterpart to Z-report.
+
+### What an X-Report is
+In retail POS terminology:
+- **Z-Report** = end-of-shift summary. The cashier prints this at close to hand over cash to the owner. Officially "closes" the day.
+- **X-Report** = mid-shift snapshot. The cashier can print this any time — noon, 3pm, whenever — to spot-check running totals against physical drawer. Doesn't close anything.
+
+Same numbers computed the same way. Difference is intent + label so an auditor / owner / cashier can tell what they're looking at.
+
+### What shipped
+- New `src/services/x-report.ts` — thin wrapper that reuses `getZReport()` for the SQL, then relabels the printout as "X-REPORT — SNAPSHOT".
+- POS overview page (`/pos`) now has an **X-Report** action row next to Z-Report. Keyboard shortcut is **X**. Cashier presses X, printer spits out current-shift snapshot in <1s.
+- `/reports/zreport` page renamed to "Shift Reports" with two print buttons side-by-side: **X-Report** (outline button — grab a snapshot) + **Z-Report** (primary button — end of day).
+- Header copy on that page now explains the difference so first-time users don't get confused.
+
+### Why this matters for Kenyan retail
+KRA doesn't strictly mandate the X vs Z terminology for software POS (that's from mechanical cash-register days) but every cashier who's worked in a shop knows the distinction. Owner walks in at 2pm asking "how are we doing today?" — cashier hits X, hands over the strip, owner nods. At close, Z. Same paper roll, different label.
+
+### Verification
+- Desktop tsc clean · Vitest 513/513
+- No new SQL — reuses proven Z-report queries
+
 ## Release v0.29.0 — License sync fix + staged auto-update (canary channel)
 
 Two related fixes, one shipped with the other.

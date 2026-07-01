@@ -8,6 +8,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { getZReport, printZReport, type ZReport } from "@/services/z-report";
+import { printXReport } from "@/services/x-report";
 import { toast } from "sonner";
 import { intlLocale } from "@/lib/intl";
 import { AiButton } from "@/components/ai/AiButton";
@@ -61,6 +62,14 @@ export function ZReportPage() {
     }
   };
 
+  const handlePrintX = async () => {
+    try {
+      await printXReport(date);
+    } catch (e) {
+      toast.error(String(e));
+    }
+  };
+
   const fmt = (n: number) => n.toLocaleString(intlLocale(), { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
   return (
@@ -68,10 +77,13 @@ export function ZReportPage() {
       <div className="flex items-start justify-between">
         <div>
           <h1 className="text-xl font-semibold tracking-tight flex items-center gap-2">
-            <FileText className="h-5 w-5 text-primary" /> Z-Report (End of Day)
+            <FileText className="h-5 w-5 text-primary" /> Shift Reports
           </h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Daily shift summary for cash reconciliation, sales totals by payment method, and cashier handover.
+            <span className="font-medium text-foreground">X-Report</span> = live snapshot (print anytime, doesn&rsquo;t close the shift).
+            {" "}<span className="font-medium text-foreground">Z-Report</span> = final end-of-day summary.
+            Same numbers, different intent — cashiers print X during the day to spot-check,
+            then Z at close to hand over to the owner.
           </p>
         </div>
         <div className="flex gap-2">
@@ -84,8 +96,11 @@ export function ZReportPage() {
               className="pl-8 w-[160px]"
             />
           </div>
+          <Button onClick={handlePrintX} variant="outline" disabled={!report || loading}>
+            <Printer className="h-4 w-4 mr-2" /> X-Report
+          </Button>
           <Button onClick={handlePrint} disabled={!report || loading}>
-            <Printer className="h-4 w-4 mr-2" /> Print
+            <Printer className="h-4 w-4 mr-2" /> Z-Report
           </Button>
         </div>
       </div>
