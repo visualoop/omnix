@@ -13,6 +13,12 @@ export interface HeroContent {
   primaryCtaLabel?: string | null
   primaryCtaHref?: string | null
   screenshot?: PayloadMedia | null
+  /** Direct URL to a short (10-25s) muted loop mp4/webm. Renders in
+   *  place of the screenshot when set. */
+  videoUrl?: string | null
+  /** Still frame shown before the video loads. Also the mobile fallback
+   *  when we can't autoplay. */
+  videoPoster?: string | null
 }
 
 export interface LatestRelease {
@@ -55,6 +61,8 @@ export function HeroSection({
   const ctaLabel = content?.primaryCtaLabel?.trim() || 'Start free trial'
   const ctaHref = content?.primaryCtaHref?.trim() || '/signup'
   const screenshot = content?.screenshot ?? null
+  const videoUrl = content?.videoUrl?.trim() || null
+  const videoPoster = content?.videoPoster?.trim() || null
 
   // Caption price — show local currency reference. Falls back to a per-
   // locale generic if no explicit caption was passed.
@@ -208,14 +216,33 @@ export function HeroSection({
           ))}
         </motion.nav>
 
-        {/* Product preview — only renders when a screenshot is uploaded in
-            /admin → Landing Page → Hero → Screenshot. Until then the section
-            stays empty so we don't ship a fake mock that misrepresents the app. */}
-        {screenshot?.url && (
+        {/* Product preview — video wins over screenshot when both are set.
+            Neither → the section stays empty (we don't ship a fake mock).
+            Video is muted + loops + autoplays inline; mobile browsers that
+            reject autoplay fall back to the poster still. Preload=metadata
+            keeps the initial page weight low. */}
+        {videoUrl ? (
+          <div className="mx-auto mt-24 max-w-[1080px]">
+            <div className="relative overflow-hidden rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-[0_20px_60px_-24px_rgba(0,0,0,0.35)]">
+              {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
+              <video
+                className="block h-auto w-full"
+                src={videoUrl}
+                poster={videoPoster ?? undefined}
+                autoPlay
+                loop
+                muted
+                playsInline
+                preload="metadata"
+                aria-label="Omnix — a short loop showing the product in action"
+              />
+            </div>
+          </div>
+        ) : screenshot?.url ? (
           <div className="mx-auto mt-24 max-w-[1080px]">
             <PayloadImage media={screenshot} url="omnix.co.ke/dashboard" />
           </div>
-        )}
+        ) : null}
       </div>
     </section>
   )

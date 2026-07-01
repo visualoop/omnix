@@ -388,7 +388,7 @@ function HeroTitle({
 
 export async function VariantLanding({ variant }: { variant: VariantId }) {
   const locale = await getLocale()
-  const [content, settings, price, slotImage] = await Promise.all([
+  const [content, settings, price, slotImage, variantVideo] = await Promise.all([
     getVariantContent(variant, locale),
     getSiteSettings(),
     getVariantPrice(variant),
@@ -400,6 +400,21 @@ export async function VariantLanding({ variant }: { variant: VariantId }) {
         return await getSlotImage(`module.${variant}.hero`)
       } catch {
         return null
+      }
+    })(),
+    // Admin-configured video loop for this variant (v0.27.0). Set at
+    // /admin/settings → Module page videos. Empty settings → nothing
+    // renders in the video slot below the hero.
+    (async () => {
+      try {
+        const { getSetting } = await import('@/lib/platform-settings')
+        const key = variant === 'pro' ? null : (`landing.${variant}.video_url` as const)
+        const posterKey = variant === 'pro' ? null : (`landing.${variant}.video_poster` as const)
+        if (!key || !posterKey) return { url: null, poster: null }
+        const [url, poster] = await Promise.all([getSetting(key), getSetting(posterKey)])
+        return { url: url ?? null, poster: poster ?? null }
+      } catch {
+        return { url: null, poster: null }
       }
     })(),
   ])
@@ -457,6 +472,33 @@ export async function VariantLanding({ variant }: { variant: VariantId }) {
           </Button>
         </div>
       </PageHero>
+
+      {/* ── Product-in-motion video (v0.27.0) ─────────────────────
+          Admin-configurable at /admin/settings → Module page videos.
+          Empty → nothing renders. Short (10-25s) muted loop showing
+          the product doing the thing — not a marketing video. */}
+      {variantVideo.url ? (
+        <section className="border-b border-[var(--color-border)]">
+          <div className="container-wide -mt-8 pb-16">
+            <div className="mx-auto max-w-[1080px]">
+              <div className="relative overflow-hidden rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-[0_20px_60px_-24px_rgba(0,0,0,0.35)]">
+                {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
+                <video
+                  className="block h-auto w-full"
+                  src={variantVideo.url}
+                  poster={variantVideo.poster ?? undefined}
+                  autoPlay
+                  loop
+                  muted
+                  playsInline
+                  preload="metadata"
+                  aria-label={`${productName} — a short loop showing the product`}
+                />
+              </div>
+            </div>
+          </div>
+        </section>
+      ) : null}
 
       {/* ── Who it's for ──────────────────────────────────────── */}
       <section className="border-b border-[var(--color-border)] bg-[var(--color-surface)]/30 py-14">

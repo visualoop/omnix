@@ -2,6 +2,51 @@
 
 This tracks work done LOCALLY without GitHub pushes. We only push when the user explicitly says so.
 
+## Release v0.27.0 — Video hero admin (homepage + per-module)
+
+Follow-up to v0.26.0's homepage cut. Adds admin-controlled video slots so we can drop in a 20-second loop of the product doing the thing — the single change that moves "I love this → purchase" hardest.
+
+### New CMS keys — homepage
+- `landing.hero.video_url` — mp4/webm loop for the homepage hero
+- `landing.hero.video_poster` — still frame shown before the video loads and on mobile fallback
+
+### New CMS keys — per module
+- `landing.dawa.video_url` + `landing.dawa.video_poster`
+- `landing.retail.video_url` + `landing.retail.video_poster`
+- `landing.hospitality.video_url` + `landing.hospitality.video_poster`
+- `landing.hardware.video_url` + `landing.hardware.video_poster`
+
+All fields optional. When set, a `<video autoplay loop muted playsinline preload=metadata>` renders in the hero slot on the corresponding page. Mobile browsers that block autoplay show the poster + tap-to-play. Rounded card + subtle shadow, no controls (silent loop is the whole point).
+
+### Admin UI
+New "Module page videos" category in `/admin/settings` with a category-header note: *"Short muted loops on module landing pages. Upload via /admin/media then paste the URL here. Keep videos under 3 MB — H.264 or AV1, 10-25 seconds, no audio needed."*
+
+### Hero component (`hero-section.tsx`)
+Rendering priority is now: `videoUrl` → `screenshot` → nothing. When neither is set, the hero stays empty rather than shipping a fake mock — same conservative default as v0.19.0.
+
+### Variant landing (`variant-landing.tsx`)
+Adds a new `<section>` immediately after `PageHero` that renders the variant video when set. Negative-margin (`-mt-8`) so it feels like an extension of the hero, not a separate strip. Falls back to nothing if the CMS key is empty — variant landing pages otherwise unchanged.
+
+### What's ready to ship the moment videos are uploaded
+- Upload the mp4/webm via `/admin/media` (existing R2 pipeline).
+- Copy the public URL into the appropriate setting key.
+- Take a still frame → upload → paste URL into the poster field.
+- No redeploy needed. Cache TTL is ~5 minutes.
+
+### Recommended shot list (5 videos, ~20s each)
+1. Homepage: someone rings up 3 items → M-Pesa STK push → receipt prints → eTIMS number stamped
+2. Dawa: dispense a prescription → batch expiry warning fires → controlled-substance log entry
+3. Retail: barcode scan burst → cart fills → cash pay → change calc
+4. Hospitality: order at table 4 → send to kitchen (KOT prints) → close bill with split payment
+5. Hardware: bulk pricing calc for a contractor → quote → convert to invoice
+
+Silent, no voiceover, no music, no cursor callouts. Show the product doing the thing.
+
+### Verification
+- Website tsc + next build clean.
+- Desktop untouched (vitest 455/455).
+- Backward compatible — every existing landing page renders identically until admin uploads a video.
+
 ## Release v0.26.0 — Homepage surgery + sticky CTA + header responsive fix
 
 The old homepage was 15 full-width sections deep. Every section used the same eyebrow / serif headline / lede / cards pattern, which trained readers to skim past headers by section 6. The primary CTA also lived 14 scrolls away from the emotional peak (right after the hero). Full critique in `docs/plans/HOMEPAGE_CRITIQUE.md`.

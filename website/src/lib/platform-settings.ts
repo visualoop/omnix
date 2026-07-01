@@ -91,6 +91,18 @@ export const SETTING_DEFINITIONS = [
   { key: 'landing.hero.subheadline',    category: 'landing_hero', label: 'Hero subheadline',       sensitive: false, envFallback: undefined, description: 'The paragraph under the headline. Empty = per-locale default (Kenya vs global copy).' },
   { key: 'landing.hero.cta_label',      category: 'landing_hero', label: 'Primary CTA label',      sensitive: false, envFallback: undefined, description: 'The big button below the subheadline. Empty = "Start free trial".' },
   { key: 'landing.hero.cta_href',       category: 'landing_hero', label: 'Primary CTA link',       sensitive: false, envFallback: undefined, description: 'Where the CTA points. Empty = "/signup". Use an absolute URL for external.' },
+  { key: 'landing.hero.video_url',      category: 'landing_hero', label: 'Hero video URL',         sensitive: false, envFallback: undefined, description: 'Direct URL to a short (10-25s) muted loop showing the product in motion. mp4/webm. Leave empty to render the current PosPreview illustration.' },
+  { key: 'landing.hero.video_poster',   category: 'landing_hero', label: 'Hero video poster',      sensitive: false, envFallback: undefined, description: 'URL to a still frame shown before the video loads (and on mobile until tap-to-play). Highly recommended if video_url is set.' },
+
+  // ── Landing page — per-variant video (module pages: /dawa, /retail, /hospitality, /hardware) ─
+  { key: 'landing.dawa.video_url',        category: 'landing_variant_video', label: 'Dawa video URL',           sensitive: false, envFallback: undefined, description: 'Short muted loop for the Dawa (pharmacy) landing page hero.' },
+  { key: 'landing.dawa.video_poster',     category: 'landing_variant_video', label: 'Dawa video poster',        sensitive: false, envFallback: undefined, description: 'Still frame for the Dawa hero video.' },
+  { key: 'landing.retail.video_url',      category: 'landing_variant_video', label: 'Retail video URL',         sensitive: false, envFallback: undefined, description: 'Short muted loop for the Retail landing page hero.' },
+  { key: 'landing.retail.video_poster',   category: 'landing_variant_video', label: 'Retail video poster',      sensitive: false, envFallback: undefined, description: 'Still frame for the Retail hero video.' },
+  { key: 'landing.hospitality.video_url', category: 'landing_variant_video', label: 'Hospitality video URL',    sensitive: false, envFallback: undefined, description: 'Short muted loop for the Hospitality landing page hero.' },
+  { key: 'landing.hospitality.video_poster', category: 'landing_variant_video', label: 'Hospitality video poster', sensitive: false, envFallback: undefined, description: 'Still frame for the Hospitality hero video.' },
+  { key: 'landing.hardware.video_url',    category: 'landing_variant_video', label: 'Hardware video URL',       sensitive: false, envFallback: undefined, description: 'Short muted loop for the Hardware Store landing page hero.' },
+  { key: 'landing.hardware.video_poster', category: 'landing_variant_video', label: 'Hardware video poster',    sensitive: false, envFallback: undefined, description: 'Still frame for the Hardware Store hero video.' },
 
   // ── Landing page — one-price section ─
   { key: 'landing.one_price.eyebrow',           category: 'landing_one_price', label: 'One-price eyebrow',           sensitive: false, envFallback: undefined, description: 'Small caps label above the price. Empty = "Pricing".' },

@@ -71,20 +71,24 @@ export default async function HomePage({
   let heroContent: Parameters<typeof HeroSection>[0]['content'] = undefined
   try {
     const { getSetting } = await import('@/lib/platform-settings')
-    const [eyebrow, headline, subheadline, ctaLabel, ctaHref] = await Promise.all([
+    const [eyebrow, headline, subheadline, ctaLabel, ctaHref, videoUrl, videoPoster] = await Promise.all([
       getSetting('landing.hero.eyebrow'),
       getSetting('landing.hero.headline'),
       getSetting('landing.hero.subheadline'),
       getSetting('landing.hero.cta_label'),
       getSetting('landing.hero.cta_href'),
+      getSetting('landing.hero.video_url'),
+      getSetting('landing.hero.video_poster'),
     ])
-    if (eyebrow || headline || subheadline || ctaLabel || ctaHref) {
+    if (eyebrow || headline || subheadline || ctaLabel || ctaHref || videoUrl || videoPoster) {
       heroContent = {
         eyebrow: eyebrow || null,
         headline: headline || null,
         subheadline: subheadline || null,
         primaryCtaLabel: ctaLabel || null,
         primaryCtaHref: ctaHref || null,
+        videoUrl: videoUrl || null,
+        videoPoster: videoPoster || null,
       }
     }
   } catch {
