@@ -148,7 +148,7 @@ export const useActiveModule = create<ModuleStore>((set, get) => ({
   setActive: async (id) => {
     // Variant gate: trade binaries refuse to switch outside their module list.
     if (!MODULES_ALLOWED.includes(id)) {
-      throw new Error(`This Omnix binary doesn't ship the ${id} module. Install Omnix Pro to use multiple modules.`);
+      throw new Error(`This Omnix binary doesn't ship the ${id} module. Each module is a separate app — install the one you need from omnix.co.ke/downloads.`);
     }
     // License gate: never switch into a module the licence doesn't include
     // (core is always allowed).

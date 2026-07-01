@@ -100,7 +100,7 @@ const CORE_SETTINGS: SettingsNavItem[] = [
   { to: "/settings/modules", label: "Active module", description: "Which trade is running", icon: Boxes, permission: "settings.modules", group: "Business" },
 
   // ── People ────────────────────────────────────────────────
-  { to: "/settings/users", label: "Users", description: "Accounts and branch access", icon: Users, permission: "users.view", group: "People" },
+  { to: "/settings/users", label: "Staff", description: "Staff accounts and branch access", icon: Users, permission: "users.view", group: "People" },
   { to: "/settings/roles", label: "Roles", description: "Build roles and permissions", icon: ShieldCheck, permission: "users.manage", group: "People" },
   { to: "/settings/groups", label: "Groups", description: "Bulk-assign roles to users", icon: UsersRound, permission: "users.manage", group: "People" },
   { to: "/settings/access-audit", label: "Access explorer", description: "Why a user can or can't", icon: KeyRound, permission: "users.manage", group: "People" },

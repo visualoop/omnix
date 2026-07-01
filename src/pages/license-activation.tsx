@@ -41,7 +41,7 @@ const FEATURES = [
   { icon: ETIMSIcon,     label: "eTIMS compliant",   text: "KRA invoicing built in. No third-party plugin" },
   { icon: InsuranceIcon, label: "Insurance claims",  text: "NHIF / SHA workflow with payer reconciliation" },
   { icon: LANIcon,       label: "LAN multi-device",  text: "Pair tablets and second tills offline" },
-  { icon: ReportsIcon,   label: "Pro reports",       text: "P&L, Z-report, inventory valuation, margins" },
+  { icon: ReportsIcon,   label: "Advanced reports",  text: "P&L, Z-report, inventory valuation, margins" },
 ];
 
 export function LicenseActivationPage({ onActivated }: Props) {

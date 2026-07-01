@@ -80,7 +80,7 @@ export function RequireRole({ permission, roles, children }: Props) {
           You're currently using the <b>{MODULE_DEFINITIONS[activeModule].name}</b> module.
           {IS_PRO
             ? `Switch modules from Settings to enable ${moduleDef.shortName} features.`
-            : `This Omnix variant doesn't include the ${moduleDef.shortName} module — install Omnix Pro from omnix.co.ke/pro to use multiple trades.`}
+            : `This Omnix variant doesn't include the ${moduleDef.shortName} module. Install the ${moduleDef.name} module separately from omnix.co.ke/downloads.`}
         </p>
         <div className="flex gap-2">
           <Button variant="outline" size="sm" onClick={() => navigate(-1)}>

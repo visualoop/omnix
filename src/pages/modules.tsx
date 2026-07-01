@@ -134,7 +134,7 @@ export function ModulesPage() {
           <p className="text-sm text-muted-foreground mt-1">
             {IS_PRO
               ? `${VARIANT_NAME} is a modular platform. Core ships in every install; verticals plug in on top.`
-              : `This is ${VARIANT_NAME} — built specifically for one trade. To run multiple trades from one app, install Omnix Pro.`}
+              : `This is ${VARIANT_NAME} — built specifically for your trade. Each Omnix module is a separate app; install the ones you need.`}
           </p>
         </div>
       </div>

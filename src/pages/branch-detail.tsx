@@ -99,7 +99,7 @@ export function BranchDetailPage() {
           { label: "Sales today", value: KES(stats?.sales_today ?? 0) },
           { label: "Receipts today", value: stats?.sales_today_count ?? 0 },
           { label: "Sales (30d)", value: KES(stats?.sales_30d ?? 0) },
-          { label: "Users", value: stats?.user_count ?? 0 },
+          { label: "Staff", value: stats?.user_count ?? 0 },
         ]}
       />
       <LazyTabs

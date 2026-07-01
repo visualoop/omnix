@@ -2,6 +2,65 @@
 
 This tracks work done LOCALLY without GitHub pushes. We only push when the user explicitly says so.
 
+## Release v0.28.6 — Staff renaming + no more Pro mentions + SQL smoke tests
+
+### 1. Users → Staff throughout the settings surface
+"Users" reads like tech-talk; a Kenyan pharmacy owner thinks "staff." Renamed:
+- Settings sidebar entry: "Users" → "Staff", description "Staff accounts and branch access"
+- `/settings/users` page heading: "Users" → "Staff"
+- "Deactivate User" section → "Deactivate staff member"
+- Branch-detail stat label: "Users" → "Staff"
+
+Routes stay at `/settings/users` (deep links unaffected).
+
+### 2. Pro-module references removed
+Pro isn't a public product anymore (dropped in v0.16.4 CI matrix). Anywhere the copy referenced it, the language now reflects reality: each Omnix module is a separate app.
+
+- `pages/license-activation.tsx` — "Pro reports" feature bullet → "Advanced reports"
+- `pages/modules.tsx` — "To run multiple trades from one app, install Omnix Pro." → "Each Omnix module is a separate app; install the ones you need."
+- `components/require-role.tsx` module gate — "install Omnix Pro from omnix.co.ke/pro" → "Install the [module] module separately from omnix.co.ke/downloads."
+- `stores/active-module.ts` error message — same treatment.
+
+Existing Pro licensees are unaffected — they still validate against the server; only the UI copy no longer sells a product we don't offer publicly.
+
+### 3. SQL smoke-test infrastructure (the real fix)
+This is the systemic answer to "why so much regression + why did tests miss it?"
+
+**Why prior tests missed it**: every test in the suite was pure-JS. Vitest ran math helpers and stage machines, but no test ever executed a SQL string against a real schema. The v0.28.2 refunded_amount regression shipped because no smoke test would have caught "SQL references a column that doesn't exist on installs that predate migration 053."
+
+**The new infrastructure**:
+
+- `tests/helpers/sql-harness.ts` — opens an in-memory SQLite (via `sql.js` WASM, added as dev dep) and applies every migration in `src-tauri/migrations/` in order. Provides `openTestDb()`, `selectAll()`, `exec()`. Identical dialect to production's `tauri-plugin-sql` (both are libsqlite3), so anything that runs here runs identically on the desktop.
+
+- `tests/sql-smoke.spec.ts` — 16 tests covering:
+  - Schema loads cleanly (every migration applies without error)
+  - All required tables exist
+  - Every critical service query executes successfully:
+    - `getTodaySalesSummary` (gross + refunds queries)
+    - `listBranches` (branch aggregate with today's net)
+    - `branch-detail` 30-day sales
+    - `listUserBranches` (the query that was flagged in the wild via Edit Staff)
+    - `getCustomerStats` (customer lifetime with returns)
+    - `use-entity-history::loadSales` (regression-locked to `sale_number`)
+    - `todayProfit` with COGS + return reversal
+    - Low-stock + expiring-batches dashboard tiles
+    - Payment methods breakdown
+  - **Old-install compatibility**: opens a DB with only pre-053 migrations, proves `refunded_amount` column doesn't exist there, and proves the fixed JOIN-based service query still executes cleanly. This is the invariant v0.28.4 shipped — locked in.
+
+**Rule going forward**: every new service SQL query gets a smoke test. Add it under a `describe("SQL smoke — <service>")` block. Cheap. Kills a whole class of bug.
+
+### Diagnostic: why so much regression this week
+Being honest: this session added 16 features and 5 bug fixes over 30+ releases. That's a lot of surface change without SQL testing. Concrete regressions I introduced + user caught:
+- v0.27.3 `receipt_number` → user reported → fixed
+- v0.28.2 `refunded_amount` on branch pages → user reported → fixed (v0.28.4)
+- v0.28.2 `refunded_amount` on edit-staff → user reported → fixed (v0.28.4, verified in v0.28.6)
+- v0.28.5 native `confirm()` ACL denial → user reported → fixed
+
+Each was a "reference a column/API that doesn't exist" bug. Each was invisible to pure-JS tests. The SQL smoke suite in this release closes that gap.
+
+### Verification
+Desktop tsc clean · vitest **513/513** (up from 497, +16 SQL smokes). Total test files: 48.
+
 ## Release v0.28.5 — Licences page: delete works + Activate button no longer stuck
 
 Two bugs preventing a user from correcting a wrong-variant activation:

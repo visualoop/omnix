@@ -52,7 +52,7 @@ export function UsersPage() {
     <div className="space-y-5">
       <div className="flex items-start justify-between">
         <div>
-          <h1 className="text-xl font-semibold tracking-tight">Users</h1>
+          <h1 className="text-xl font-semibold tracking-tight">Staff</h1>
           <p className="text-sm text-muted-foreground mt-1">
             Manage who can sign in to {APP_NAME}
           </p>
@@ -406,7 +406,7 @@ function EditUserForm({
         <div className="border-t border-border pt-4 space-y-3">
           <div className="flex items-center gap-2">
             <UserX className="h-4 w-4 text-red-600" />
-            <h3 className="text-sm font-medium text-red-700">Deactivate User</h3>
+            <h3 className="text-sm font-medium text-red-700">Deactivate staff member</h3>
           </div>
           <p className="text-xs text-muted-foreground">
             They will no longer be able to sign in. Their data is preserved.
