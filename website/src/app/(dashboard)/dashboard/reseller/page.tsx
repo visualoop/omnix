@@ -94,21 +94,32 @@ export default async function ResellerDashboardPage() {
         />
       </div>
 
-      {/* Issue-new CTA — placeholder for v0.22.x */}
-      <div className="rounded-lg border border-dashed border-border p-4 text-sm">
+      {/* Issue-new CTA */}
+      <div className={`rounded-lg border p-4 text-sm ${isSuspended ? 'border-dashed border-border opacity-60' : 'border-primary/40 bg-primary/5'}`}>
         <div className="flex items-center justify-between gap-4">
           <div>
             <div className="font-medium">Issue a new licence for a customer</div>
             <div className="mt-0.5 text-xs text-muted-foreground">
-              Wholesale checkout with your reseller discount. Coming with v0.22.
+              {isSuspended
+                ? 'Suspended — reactivate before issuing new licences.'
+                : `Wholesale checkout at ${reseller.discountPercent}% off retail. Reseller pays; customer gets the licence.`}
             </div>
           </div>
-          <Link
-            href="/dashboard/support?topic=reseller-checkout"
-            className="inline-flex h-9 items-center rounded-md border border-border px-3 text-xs hover:border-primary/40"
-          >
-            Talk to us
-          </Link>
+          {isSuspended ? (
+            <button
+              disabled
+              className="inline-flex h-9 items-center rounded-md border border-border px-3 text-xs text-muted-foreground"
+            >
+              Suspended
+            </button>
+          ) : (
+            <Link
+              href="/dashboard/reseller/new"
+              className="inline-flex h-9 items-center rounded-md bg-primary px-4 text-xs font-medium text-primary-foreground hover:opacity-90"
+            >
+              Issue licence →
+            </Link>
+          )}
         </div>
       </div>
 

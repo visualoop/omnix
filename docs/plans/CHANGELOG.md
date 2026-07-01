@@ -2,6 +2,37 @@
 
 This tracks work done LOCALLY without GitHub pushes. We only push when the user explicitly says so.
 
+## Release v0.23.0 — Reseller wholesale checkout + commission credit
+
+### Reseller issues licence for a customer
+- New `POST /api/reseller/issue-license`. Body: `customerName`, `variant`, plus optional `customerEmail`, `customerPhone`, `country`. Server:
+  1. Verifies caller has an active `resellers` row.
+  2. Creates or reuses a customer user (synthesizes `reseller+<hex>@omnix-customer.local` if no email).
+  3. Creates a licence row in `status='trial'` with `resellerId` set + a fresh key.
+  4. Initialises a Paystack transaction at `retail × (1 − discount%)` — the reseller pays wholesale using their own email.
+  5. Records the payment as pending with `metadata.source = reseller_wholesale`.
+  6. Writes `reseller.issue_license` audit-log row.
+  7. On Paystack init failure, rolls back the licence row (no orphans).
+- New page `/dashboard/reseller/new` — form with customer name / phone / email / country / module picker, live wholesale-vs-retail preview, and a Pay Now button that opens the Paystack checkout URL.
+- Reseller dashboard `/dashboard/reseller` now links to the new page (removed the placeholder from v0.22.0).
+
+### Commission crediting in Paystack webhook
+- `POST /api/paystack/webhook` now checks `postLicense.resellerId` on `license_fee` charge success. If present:
+  - Looks up the reseller.
+  - Calculates `commissionAmount = wholesale × discount / (1 − discount)` (i.e. the reseller's margin, which equals `retail − wholesale`).
+  - Inserts `reseller_commissions` row (paymentId is UNIQUE, so re-runs of the webhook are idempotent).
+  - Increments `resellers.totalLicensesIssued`, `totalRevenueBrought`, `totalCommissionEarned`, `unpaidCommission` via `sql\`\${...} + N\`` for concurrent safety.
+  - Writes `reseller.commission_credit` audit row.
+- Wrapped in try/catch so a reseller-crediting failure never fails the webhook (Paystack retries would otherwise never converge).
+
+### Not yet
+- Paystack Transfers payouts of unpaid commission — needs Kenya Transfers to be enabled on the merchant account. Once enabled, we add a monthly cron that iterates `resellers.unpaidCommission > threshold` and posts Transfer via the bank details on the reseller row (schema addition + API integration for v0.24).
+- Refund path reversing commission (`reseller.commission_reverse` action).
+
+Version bumped 0.22.0 → **0.23.0** across `package.json`, `src-tauri/Cargo.toml`, `src-tauri/tauri.conf.json`, `Cargo.lock`.
+
+Verification: desktop tsc clean, vitest 440/440, website tsc + next build clean.
+
 ## Release v0.22.0 — Reseller-facing dashboard
 
 Now that the schema + admin promotion shipped in v0.21.0, resellers can see their own state.

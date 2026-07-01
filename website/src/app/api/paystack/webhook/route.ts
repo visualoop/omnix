@@ -1,6 +1,6 @@
 import crypto from 'node:crypto'
-import { eq } from 'drizzle-orm'
-import { db, payments, licenses, auditLog, user } from '@/db'
+import { eq, sql } from 'drizzle-orm'
+import { db, payments, licenses, auditLog, user, resellers, resellerCommissions } from '@/db'
 import { verify } from '@/lib/paystack'
 import { createId } from '@/lib/ids'
 import { getSetting } from '@/lib/platform-settings'
@@ -122,6 +122,84 @@ export async function POST(req: Request) {
     resource: `payment:${p.id}`,
     metadata: { reference, amount: p.amount, currency: p.currency, purpose: p.purpose },
   })
+
+  // ── Reseller commission credit ─────
+  // If this licence was issued by a reseller, credit the reseller's
+  // ledger. We use the reseller's discountPercent as the commission
+  // rate: reseller collected retail from their customer, paid us
+  // wholesale = retail × (1 − discount%). The commissionAmount stored
+  // here is the value of the discount they earned (their margin), for
+  // volume-tracking + monthly payout reporting.
+  //
+  // Idempotent: reseller_commissions.paymentId is UNIQUE, so replaying
+  // this webhook won't double-credit.
+  if (postLicense?.resellerId && p.purpose === 'license_fee') {
+    try {
+      const [reseller] = await db.select().from(resellers).where(eq(resellers.id, postLicense.resellerId)).limit(1)
+      if (reseller) {
+        // Wholesale = amount collected. Retail = wholesale / (1 - discount).
+        // Commission = retail - wholesale = wholesale × (discount / (1 - discount)).
+        // But for simple tracking we store commissionAmount = discount × retail = amount × discount / (1 − discount).
+        // If discount is 0, commission = 0 (referrer with no cut, just credit for volume).
+        const d = reseller.discountPercent / 100
+        const commissionAmount = d > 0 && d < 1
+          ? Math.round(p.amount * (d / (1 - d)))
+          : 0
+
+        const existing = await db
+          .select({ id: resellerCommissions.id })
+          .from(resellerCommissions)
+          .where(eq(resellerCommissions.paymentId, p.id))
+          .limit(1)
+
+        if (!existing[0]) {
+          await db.insert(resellerCommissions).values({
+            id: createId(),
+            resellerId: reseller.id,
+            paymentId: p.id,
+            licenseId: postLicense.id,
+            grossAmount: p.amount,
+            commissionAmount,
+            currency: p.currency,
+            status: 'pending',
+            metadata: {
+              discountPercent: reseller.discountPercent,
+              reference,
+            },
+          })
+
+          await db
+            .update(resellers)
+            .set({
+              totalLicensesIssued: sql`${resellers.totalLicensesIssued} + 1`,
+              totalRevenueBrought: sql`${resellers.totalRevenueBrought} + ${p.amount}`,
+              totalCommissionEarned: sql`${resellers.totalCommissionEarned} + ${commissionAmount}`,
+              unpaidCommission: sql`${resellers.unpaidCommission} + ${commissionAmount}`,
+              updatedAt: new Date(),
+            })
+            .where(eq(resellers.id, reseller.id))
+
+          await db.insert(auditLog).values({
+            id: createId(),
+            actorId: reseller.userId,
+            action: 'reseller.commission_credit',
+            resource: `reseller:${reseller.id}`,
+            metadata: {
+              paymentId: p.id,
+              licenseId: postLicense.id,
+              gross: p.amount,
+              commission: commissionAmount,
+              currency: p.currency,
+            },
+          })
+        }
+      }
+    } catch (e) {
+      // Non-fatal — reseller crediting failure must not fail the webhook.
+      // Log for follow-up.
+      console.error('[webhook] reseller commission credit failed:', e)
+    }
+  }
 
   // ── Email side-effect — send the license key + receipt ─────
   // Always run after the DB has been updated. Failures are logged
