@@ -3,15 +3,11 @@ import {
   Building as Building2,
   CircleNotch as Loader2,
   FloppyDisk as Save,
-  Power,
 } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
-import { UpdateChecker } from "@/components/update-checker";
 import { query, execute } from "@/lib/db";
 import { toast } from "sonner";
-import { APP_NAME } from "@/lib/brand";
 
 interface Business {
   id: string;
@@ -71,11 +67,11 @@ export function SettingsPage() {
       <div className="border border-border rounded-lg p-5 space-y-4">
         <div className="flex items-center gap-2 mb-2">
           <Building2 className="h-4 w-4 text-primary" />
-          <h2 className="text-sm font-semibold">Business Profile</h2>
+          <h2 className="text-sm font-semibold">Business profile</h2>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          <Field label="Business Name *">
+          <Field label="Business name *">
             <Input value={form.name} onChange={(e) => update("name", e.target.value)} />
           </Field>
           <Field label="Phone">
@@ -94,63 +90,10 @@ export function SettingsPage() {
 
         <div className="flex justify-end">
           <Button onClick={handleSave} disabled={saving || !dirty || !form.name}>
-            {saving ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Saving...</> : <><Save className="h-4 w-4 mr-2" /> Save Changes</>}
+            {saving ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Saving...</> : <><Save className="h-4 w-4 mr-2" /> Save changes</>}
           </Button>
         </div>
       </div>
-
-      <UpdateChecker />
-      <AutostartToggle />
-    </div>
-  );
-}
-
-function AutostartToggle() {
-  const [enabled, setEnabled] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [updating, setUpdating] = useState(false);
-
-  useEffect(() => {
-    import("@/services/autostart").then(({ getAutostartEnabled }) =>
-      getAutostartEnabled().then((v) => {
-        setEnabled(v);
-        setLoading(false);
-      }),
-    );
-  }, []);
-
-  const toggle = async (next: boolean) => {
-    setUpdating(true);
-    try {
-      const { setAutostartEnabled } = await import("@/services/autostart");
-      await setAutostartEnabled(next);
-      setEnabled(next);
-      toast.success(next ? "Will start with Windows" : "Auto-start disabled");
-    } catch (e) {
-      toast.error("Failed to update auto-start: " + e);
-    } finally {
-      setUpdating(false);
-    }
-  };
-
-  return (
-    <div className="border border-border rounded-lg p-4">
-      <div className="flex items-center gap-2 mb-2">
-        <Power className="h-4 w-4 text-primary" />
-        <h3 className="text-sm font-medium">Start with Windows</h3>
-      </div>
-      <p className="text-xs text-muted-foreground mb-3">
-        Recommended for the master device. {APP_NAME} will launch automatically when this PC boots,
-        so the LAN server is always reachable from cashier stations.
-      </p>
-      {loading ? (
-        <p className="text-xs text-muted-foreground">Checking...</p>
-      ) : (
-        <label className="flex items-center justify-between text-sm cursor-pointer">
-          <span>{enabled ? "Enabled" : "Disabled"}</span>
-          <Checkbox checked={enabled} onCheckedChange={(v) => toggle(Boolean(v))} disabled={updating} />
-        </label>
-      )}
     </div>
   );
 }

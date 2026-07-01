@@ -54,6 +54,8 @@ import { AiSettingsPage } from "@/pages/settings-ai";
 import { ReceiptSettingsPage } from "@/pages/settings-receipt";
 import { PrintSettingsPage } from "@/pages/settings-print";
 import { ScannerSettingsPage } from "@/pages/settings-scanner";
+import { SettingsUpdatesPage } from "@/pages/settings-updates";
+import { SettingsAutostartPage } from "@/pages/settings-autostart";
 import { TaxSettingsPage } from "@/pages/settings-taxes";
 import { CategoriesSettingsPage } from "@/pages/settings-categories";
 // Hub pages — flat sidebar with tabs inside each domain
@@ -81,7 +83,10 @@ import { InsuranceSettingsPage } from "@/pages/insurance-settings";
 import { ClaimsPage } from "@/pages/claims";
 import { EtimsQueuePage } from "@/pages/etims-queue";
 import { VatReportPage } from "@/pages/vat-report";
-import { LicensePage } from "@/pages/license";
+// LicensePage import removed in v0.25.0 — /settings/license now redirects
+// to /settings/licenses at the route level, so the legacy single-licence
+// view is unreachable. If we ever need to resurrect it, re-import from
+// "@/pages/license".
 import { SettingsLicensesPage } from "@/pages/settings-licenses";
 import { SettingsDisplayPage } from "@/pages/settings-display";
 import { ImportProductsPage } from "@/pages/import-products";
@@ -306,10 +311,14 @@ function AppContent() {
             <Route path="receipt" element={<RequireRole permission="settings.business"><ReceiptSettingsPage /></RequireRole>} />
             <Route path="printing" element={<RequireRole permission="settings.business"><PrintSettingsPage /></RequireRole>} />
             <Route path="scanner" element={<RequireRole permission="settings.business"><ScannerSettingsPage /></RequireRole>} />
+            <Route path="updates" element={<RequireRole permission="settings.business"><SettingsUpdatesPage /></RequireRole>} />
+            <Route path="autostart" element={<RequireRole permission="settings.business"><SettingsAutostartPage /></RequireRole>} />
             <Route path="hardware/units" element={<RequireRole permission="hardware.accounts.manage"><HardwareSettingsPage /></RequireRole>} />
             <Route path="hospitality/service-charge" element={<RequireRole permission="hospitality.service_charge.manage"><HospitalitySettingsPage /></RequireRole>} />
             <Route path="audit" element={<RequireRole permission="audit.view"><AuditLogPage /></RequireRole>} />
-            <Route path="license" element={<RequireRole permission="license.view"><LicensePage /></RequireRole>} />
+            {/* Legacy path — kept as a redirect for one release cycle so old
+                bookmarks continue to resolve. New home is /settings/licenses. */}
+            <Route path="license" element={<Navigate to="/settings/licenses" replace />} />
             <Route path="licenses" element={<RequireRole permission="license.view"><SettingsLicensesPage /></RequireRole>} />
             <Route path="display" element={<RequireRole permission="settings.business"><SettingsDisplayPage /></RequireRole>} />
           </Route>

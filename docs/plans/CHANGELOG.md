@@ -2,6 +2,51 @@
 
 This tracks work done LOCALLY without GitHub pushes. We only push when the user explicitly says so.
 
+## Release v0.25.0 — Settings redesign
+
+The old settings surface had 24 items across 8 groups, with **14 of them shoved into an "Operations" catch-all** — everything from AI keys to LAN mode to auto-print to audit log to legacy licence viewer all in one bucket. The user's complaint was accurate: "everything is everywhere". The main `/settings` page also had the Update Checker + Autostart toggle bolted onto the bottom of the Business Profile form, so those never got discovered.
+
+### New information architecture — 7 job-oriented tabs
+
+Groups now match the question the owner is trying to answer, not how the code is organised:
+
+- **Business** — Business profile · Locations & branches · Active module
+- **People** — Users · Roles · Groups · Access explorer
+- **Money** — Payment methods · Tax & VAT · Price lists · Categories · KRA eTIMS *(Kenya)*
+- **Hardware** — Printing · Receipt template · Barcode scanner · Customer display
+- **Application** — Display & touch · AI integration · **Software updates** · **Start with Windows** · Licences
+- **System** — LAN multi-device · Backup & restore · Cloud backup · Audit log
+- **Module-specific** (only shown when active) — Insurance providers *(Dawa)* · Hardware units *(Hardware Store)* · Service charge *(Hospitality)*
+
+Notes:
+- "Categories" moved from Operations to Money — it drives pricing + tax more than stock organisation.
+- "Active module" (formerly "Modules") moved to Business — "which trade am I running" is identity, not infrastructure.
+- "Software updates" and "Start with Windows" are now first-class entries under Application, extracted from the Business Profile page where nobody thought to look for them.
+- Legacy `/settings/license` redirects to `/settings/licenses` — old bookmarks resolve.
+
+### New shell (`components/layout/settings-layout.tsx`)
+1. **Tab bar** across the top of the sidebar. Underline in module-accent colour on the active tab, monospace uppercase labels — reads as masthead rubric, not button UI. Horizontal-scrolls on narrow viewports so the tab bar never wraps.
+2. **Fuzzy search input** above the tabs. Matches label + description + route across ALL tabs. Selecting a result auto-switches to that item's tab and navigates.
+3. **Item rows drop their per-row descriptions** — since you're already inside a tab, the description belongs on the tab / masthead, not repeated per row. Rows show `icon + label` only.
+
+Style unchanged: cream paper `#FBFAF6`, Fraunces serif masthead, hairline `foreground/10` borders, 2 px module-accent strip on the active row.
+
+### Migration is non-breaking
+Every route path stayed at its existing URL:
+- `/settings/business` → still Business Profile
+- `/settings/scanner` → still Barcode scanner
+- `/settings/network` → still LAN multi-device
+- `/settings/license` → **new** — redirects to `/settings/licenses`
+- `/settings/updates` — **new** — mounts the existing `UpdateChecker` component
+- `/settings/autostart` — **new** — houses the `AutostartToggle`, extracted from `/settings`
+
+### Testing
+- New `tests/settings-registry.spec.ts` — 7 invariants: every entry has a valid group, unique route, non-empty label/description; every core group has entries; every path starts with `/settings`; hidden entries stay in the registry for route resolution. Catches the class of bug where a new settings page ships with a typo'd group and silently vanishes from the sidebar.
+
+Version bumped 0.24.1 → **0.25.0** across `package.json`, `src-tauri/Cargo.toml`, `src-tauri/tauri.conf.json`, `Cargo.lock`.
+
+Verification: desktop tsc clean, vitest 455/455 (+7 new from settings-registry spec), audit 0 errors / 3 warnings (pre-existing native form controls, non-blocking), website tsc clean.
+
 ## Release v0.24.1 — Auto-update fix
 
 **Bug**: "Check for updates" in Settings → General returned "wrong JSON format".
