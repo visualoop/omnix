@@ -84,6 +84,13 @@ export const SETTING_DEFINITIONS = [
 
   // ── Analytics ──────────────────────────────────
   { key: 'analytics.ga_id',         category: 'analytics', label: 'Google Analytics ID',         sensitive: false, envFallback: 'NEXT_PUBLIC_GA_ID',    description: 'GA4 measurement ID, e.g. "G-XXXXXXXX".' },
+
+  // ── Landing page — hero copy (leave blank to use built-in fallback) ─
+  { key: 'landing.hero.eyebrow',        category: 'landing_hero', label: 'Hero eyebrow',           sensitive: false, envFallback: undefined, description: 'The pill above the headline. Empty = "One platform · offline-first · pay once, own forever". Overridden by latest-release note when a release exists.' },
+  { key: 'landing.hero.headline',       category: 'landing_hero', label: 'Hero headline',          sensitive: false, envFallback: undefined, description: 'Main homepage headline. Empty = shipped default. Keep it under 65 chars for the landing look.' },
+  { key: 'landing.hero.subheadline',    category: 'landing_hero', label: 'Hero subheadline',       sensitive: false, envFallback: undefined, description: 'The paragraph under the headline. Empty = per-locale default (Kenya vs global copy).' },
+  { key: 'landing.hero.cta_label',      category: 'landing_hero', label: 'Primary CTA label',      sensitive: false, envFallback: undefined, description: 'The big button below the subheadline. Empty = "Start free trial".' },
+  { key: 'landing.hero.cta_href',       category: 'landing_hero', label: 'Primary CTA link',       sensitive: false, envFallback: undefined, description: 'Where the CTA points. Empty = "/signup". Use an absolute URL for external.' },
 ] as const
 
 export type SettingKey = (typeof SETTING_DEFINITIONS)[number]['key']

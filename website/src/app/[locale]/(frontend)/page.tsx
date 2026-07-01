@@ -65,10 +65,30 @@ export default async function HomePage({
   const oneCurrency = CURRENCIES[currency].symbol
 
   // Landing-page hero override + latest release pulled from Drizzle.
-  // Hero content stays default (FALLBACK in components) — landing-page
-  // global was a Payload concept; promote a static config later if we
-  // want CMS-style overrides.
+  // Hero content is CMS-editable at /admin/site-content. Empty settings
+  // fall back to the built-in defaults inside HeroSection.
   let heroContent: Parameters<typeof HeroSection>[0]['content'] = undefined
+  try {
+    const { getSetting } = await import('@/lib/platform-settings')
+    const [eyebrow, headline, subheadline, ctaLabel, ctaHref] = await Promise.all([
+      getSetting('landing.hero.eyebrow'),
+      getSetting('landing.hero.headline'),
+      getSetting('landing.hero.subheadline'),
+      getSetting('landing.hero.cta_label'),
+      getSetting('landing.hero.cta_href'),
+    ])
+    if (eyebrow || headline || subheadline || ctaLabel || ctaHref) {
+      heroContent = {
+        eyebrow: eyebrow || null,
+        headline: headline || null,
+        subheadline: subheadline || null,
+        primaryCtaLabel: ctaLabel || null,
+        primaryCtaHref: ctaHref || null,
+      }
+    }
+  } catch {
+    // platform_settings unavailable — fall through to built-in defaults.
+  }
   // Admin can upload a hero product-shot via /admin/media; we wire it in
   // here so the homepage swaps from PosPreview to the real screenshot
   // without a redeploy.
@@ -77,6 +97,7 @@ export default async function HomePage({
     const shot = await getSlotImage('hero.product_shot')
     if (shot) {
       heroContent = {
+        ...(heroContent ?? {}),
         screenshot: {
           url: shot.url,
           alt: shot.alt ?? 'Omnix product screenshot',

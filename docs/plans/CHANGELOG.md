@@ -2,6 +2,28 @@
 
 This tracks work done LOCALLY without GitHub pushes. We only push when the user explicitly says so.
 
+## Release v0.19.0 — Homepage hero CMS
+
+### Edit the homepage hero without a deploy
+Admins can now edit five fields of the homepage hero from `/admin/settings` → **Homepage hero** category:
+- `landing.hero.eyebrow` — the pill above the headline (empty → uses "One platform · offline-first · pay once, own forever" default; also gets overridden by the latest-release banner when present)
+- `landing.hero.headline` — main headline (empty → shipped default)
+- `landing.hero.subheadline` — paragraph under the headline (empty → per-locale default). Renders as a multi-line textarea in the editor.
+- `landing.hero.cta_label` — CTA button label (empty → "Start free trial")
+- `landing.hero.cta_href` — CTA link (empty → "/signup")
+
+Values persist in `platform_settings` (unencrypted — not sensitive) and read via `getSetting()` with a 5-minute cache. If the setting is unset, the built-in fallback constants in `HeroSection` render — so an empty CMS still ships polished defaults.
+
+### Deferred to v0.20.0+
+- Reseller channel with volume pricing
+- Affiliate program with Paystack Transfers + fraud guard
+- CMS for the rest of the landing sections (unified platform, why-switch, FAQ, closing CTA) — will land as `landing.<section>.*` keys in the same admin surface.
+- Media library rework
+
+Version bumped 0.18.0 → **0.19.0** across `package.json`, `src-tauri/Cargo.toml`, `src-tauri/tauri.conf.json`, `Cargo.lock`.
+
+Verification: desktop tsc clean, vitest 440/440, audit 0 errors, website tsc clean.
+
 ## Release v0.18.0 — Admin-create-accounts + manual-payment recording
 
 ### Admin creates customers without email

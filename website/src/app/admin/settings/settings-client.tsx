@@ -31,26 +31,32 @@ interface Props {
   initial: Setting[]
 }
 
-const CATEGORY_ORDER = ['paystack', 'email', 'oauth', 'storage', 'system', 'feature_flags', 'analytics']
+const CATEGORY_ORDER = ['paystack', 'email', 'email_branding', 'site', 'oauth', 'storage', 'system', 'feature_flags', 'analytics', 'landing_hero']
 
 const CATEGORY_LABELS: Record<string, string> = {
   paystack: 'Paystack',
   email: 'Email (Resend)',
+  email_branding: 'Email branding',
+  site: 'Site / footer',
   oauth: 'Google OAuth',
   storage: 'Cloud backup storage',
   system: 'System',
   feature_flags: 'Feature flags',
   analytics: 'Analytics',
+  landing_hero: 'Homepage hero',
 }
 
 const CATEGORY_DESCRIPTIONS: Record<string, string> = {
   paystack: 'Payment gateway for license fees, maintenance renewals, cloud-backup add-ons.',
   email: 'Magic-link sign-in, invitations, payment receipts, support replies.',
+  email_branding: 'Everything that renders in every email footer — tagline, support contacts, legal name.',
+  site: 'Marketing footer + structured-data contact points. Powers the WhatsApp float, the /contact page, and every locale footer.',
   oauth: 'Google sign-in for /login. Requires a redeploy after changing — Better Auth wires at startup.',
   storage: 'Encrypted desktop backups land in this S3-compatible bucket. R2 recommended.',
   system: 'Internal Bearer secrets for cron + bootstrap routes.',
   feature_flags: 'Quick toggles. No redeploy needed.',
   analytics: 'GA4 measurement tag.',
+  landing_hero: 'Edit the homepage hero without a deploy. Leave any field blank to fall back to the shipped default. Cache TTL: ~5 minutes.',
 }
 
 export function SettingsClient({ initial }: Props) {
@@ -198,14 +204,25 @@ export function SettingsClient({ initial }: Props) {
                   <div className="col-span-6">
                     {isEditing ? (
                       <div className="space-y-2">
-                        <input
-                          type={s.sensitive && !reveal ? 'password' : 'text'}
-                          value={draft}
-                          onChange={(e) => setDraft(e.target.value)}
-                          placeholder={s.sensitive ? 'Paste new value…' : 'New value'}
-                          className="w-full rounded-md border border-foreground/20 bg-background px-3 py-2 font-mono text-[13px] text-foreground outline-none focus:border-foreground/50"
-                          autoFocus
-                        />
+                        {s.key === 'landing.hero.subheadline' ? (
+                          <textarea
+                            value={draft}
+                            onChange={(e) => setDraft(e.target.value)}
+                            placeholder="New value"
+                            rows={4}
+                            className="w-full rounded-md border border-foreground/20 bg-background px-3 py-2 text-[13px] leading-relaxed text-foreground outline-none focus:border-foreground/50"
+                            autoFocus
+                          />
+                        ) : (
+                          <input
+                            type={s.sensitive && !reveal ? 'password' : 'text'}
+                            value={draft}
+                            onChange={(e) => setDraft(e.target.value)}
+                            placeholder={s.sensitive ? 'Paste new value…' : 'New value'}
+                            className="w-full rounded-md border border-foreground/20 bg-background px-3 py-2 font-mono text-[13px] text-foreground outline-none focus:border-foreground/50"
+                            autoFocus
+                          />
+                        )}
                         <div className="flex items-center gap-2">
                           <button
                             onClick={() => save(s.key)}
