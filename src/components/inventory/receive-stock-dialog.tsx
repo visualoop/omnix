@@ -190,10 +190,14 @@ export function ReceiveStockDialog({
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
       <DialogContent
-        className="max-w-3xl gap-0 p-0 overflow-hidden"
-        // The form inside is its own scroll container.
+        className="sm:max-w-4xl w-[calc(100vw-2rem)] gap-0 p-0 overflow-visible max-h-[calc(100vh-3rem)] flex flex-col"
+        // The dialog owns a flex column layout: sticky header + scrollable
+        // body (flex-1) + sticky footer. Previously the body had a fixed
+        // max-h-[70vh] which on laptops pushed the footer off the bottom
+        // of the viewport — the Save button vanished. Now the body flexes
+        // to fill the remaining height and the footer stays anchored.
       >
-        <DialogHeader className="border-b border-border px-5 py-4">
+        <DialogHeader className="border-b border-border px-5 py-4 flex-shrink-0">
           <DialogTitle className="flex items-center gap-2 text-[15px]">
             <Package className="size-4 text-primary" />
             Receive stock
@@ -204,7 +208,7 @@ export function ReceiveStockDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="max-h-[70vh] overflow-y-auto px-5 py-4 space-y-5">
+        <div className="flex-1 overflow-y-auto min-h-0 px-5 py-4 space-y-5">
           {/* Supplier + reference */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Field label="From (supplier)">
@@ -295,7 +299,7 @@ export function ReceiveStockDialog({
           </div>
         </div>
 
-        <DialogFooter className="border-t border-border px-5 py-4">
+        <DialogFooter className="border-t border-border px-5 py-4 flex-shrink-0">
           <Button
             variant="outline"
             size={touch ? "lg" : "sm"}

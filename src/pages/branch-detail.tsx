@@ -39,7 +39,9 @@ export function BranchDetailPage() {
       getBranch(id),
       query<BranchStats>(
         `SELECT
-           (SELECT COUNT(*) FROM users WHERE branch_id = ?1 AND active = 1) as user_count,
+           (SELECT COUNT(*) FROM user_branches ub
+              INNER JOIN users u ON u.id = ub.user_id
+              WHERE ub.branch_id = ?1 AND u.active = 1) as user_count,
            COALESCE((SELECT SUM(total) FROM sales WHERE branch_id = ?1 AND date(created_at) = date('now') AND status = 'completed'), 0) as sales_today,
            (SELECT COUNT(*) FROM sales WHERE branch_id = ?1 AND date(created_at) = date('now') AND status = 'completed') as sales_today_count,
            COALESCE((SELECT SUM(total) FROM sales WHERE branch_id = ?1 AND date(created_at) >= date('now', '-30 days') AND status = 'completed'), 0) as sales_30d`,

@@ -2,6 +2,28 @@
 
 This tracks work done LOCALLY without GitHub pushes. We only push when the user explicitly says so.
 
+## Release v0.16.4 — Autonomy pack: 8 bug fixes + polish for owner-not-always-watching operation
+
+### POS + inventory
+- **Scanner auto-add**: `pos-sale.tsx` — after the barcode search resolves, if a single product has an exact barcode match on the scan payload, auto-add via the variant picker and clear the search input. Regular tile-tap flow is unchanged; only scans skip the extra tap.
+- **ESC in POS search**: previously the global keydown skipped INPUT/TEXTAREA to avoid stealing typing, but that also blocked ESC-to-clear inside the search input. Added a local ESC handler on the search input itself.
+- **Cart row density**: `CartLine` padding trimmed from `py-3.5` to `py-2`, avatar from `size-9` to `size-7`, one-line title, tighter action buttons. 8+ items now visible on a standard laptop vs 3 before.
+- **Receive-stock dialog**: rebuilt as `flex flex-col` with sticky header, `flex-1` scrollable body, sticky footer, widened from `max-w-3xl` to `max-w-4xl`. The Save button no longer clips on laptop screens.
+
+### Multi-branch
+- **Branch detail "no such column: branch_id"**: `branch-detail.tsx` was querying `FROM users WHERE branch_id` but `users` doesn't have that column — the linkage lives on `user_branches`. Fixed the JOIN so opening a branch loads its stats.
+
+### Website
+- **Global max-width tightened**: container tokens `--w-default` 1180→1120, `--w-wide` 1320→1200, `--w-bleed` 1480→1280. Desktop padding-inline 2.5→3rem. Homepage + variant pages now feel less bleedy on 15" laptops.
+
+### Settings shell
+- **Print settings panel** (`/settings/printing`): auto-print toggles per doc type (receipt / kitchen ticket / delivery note / dispense label), prompt-before-print, cash-drawer kick on cash sale, preferred printer names per stream. Stored under `settings.printing.*`, read by every print surface via `getPrintSettings()`.
+- **Scanner test panel** (`/settings/scanner`): focus an input, scan a barcode, panel echoes the payload + times each keystroke to distinguish scanner (fast burst, <20ms/char) from typing. Auto-detects the terminator character (Enter / Tab). Persists auto-focus + terminator preferences.
+
+Registered both new settings pages in App.tsx routes + settings-registry so they show up in the Operations group of the settings sidebar.
+
+Verification: desktop tsc clean, vitest 438/438 (7 live-API skipped), audit 0 errors / 0 warnings, website tsc clean.
+
 ## Release v0.16.3 — Pro checkout short-circuit · M-Pesa STK label · long-list defensive caps
 
 ### Pro checkout short-circuit (fixes user-visible Pro upsell that v0.16.2 missed)

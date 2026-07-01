@@ -51,6 +51,8 @@ import { DailyOperationsPage } from "@/pages/daily-operations";
 import { CustomerDisplaySettingsPage } from "@/pages/settings-customer-display";
 import { AiSettingsPage } from "@/pages/settings-ai";
 import { ReceiptSettingsPage } from "@/pages/settings-receipt";
+import { PrintSettingsPage } from "@/pages/settings-print";
+import { ScannerSettingsPage } from "@/pages/settings-scanner";
 import { TaxSettingsPage } from "@/pages/settings-taxes";
 import { CategoriesSettingsPage } from "@/pages/settings-categories";
 // Hub pages — flat sidebar with tabs inside each domain
@@ -300,6 +302,8 @@ function AppContent() {
             <Route path="customer-display" element={<RequireRole permission="settings.business"><CustomerDisplaySettingsPage /></RequireRole>} />
             <Route path="ai" element={<RequireRole permission="settings.business"><AiSettingsPage /></RequireRole>} />
             <Route path="receipt" element={<RequireRole permission="settings.business"><ReceiptSettingsPage /></RequireRole>} />
+            <Route path="printing" element={<RequireRole permission="settings.business"><PrintSettingsPage /></RequireRole>} />
+            <Route path="scanner" element={<RequireRole permission="settings.business"><ScannerSettingsPage /></RequireRole>} />
             <Route path="hardware/units" element={<RequireRole permission="hardware.accounts.manage"><HardwareSettingsPage /></RequireRole>} />
             <Route path="hospitality/service-charge" element={<RequireRole permission="hospitality.service_charge.manage"><HospitalitySettingsPage /></RequireRole>} />
             <Route path="audit" element={<RequireRole permission="audit.view"><AuditLogPage /></RequireRole>} />

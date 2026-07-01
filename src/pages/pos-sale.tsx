@@ -292,7 +292,22 @@ export function POSSalePage() {
       // 2) Regular product search by name / SKU / barcode.
       try {
         const products = await getProducts(search);
-        if (!cancelled) setResults(products);
+        if (cancelled) return;
+        setResults(products);
+        // Barcode-scan auto-add: if the search term is an exact barcode
+        // match on a single product, treat it as a scan and add straight
+        // to the cart. This is what a cashier expects when they scan a
+        // regular product — no need to also tap the tile. We only fire
+        // this for exact-string matches so typing part of a name doesn't
+        // accidentally add the wrong SKU.
+        const exactMatch = products.find(
+          (p) => p.barcode && p.barcode === search,
+        );
+        if (exactMatch) {
+          setPendingVariantPick(exactMatch as Product);
+          setSearch("");
+          searchRef.current?.focus();
+        }
       } catch (e) {
         // Surface the failure so the cashier sees something instead of an
         // empty grid that looks like 'no products match'.
@@ -506,6 +521,16 @@ export function POSSalePage() {
                 placeholder="Search name, SKU, or scan barcode…"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
+                onKeyDown={(e) => {
+                  // ESC clears the search text (the global handler bails
+                  // on inputs to avoid stealing typing, so we handle it
+                  // locally here). Cashiers hit ESC after a mis-scan to
+                  // start fresh — must be instant, no dialog.
+                  if (e.key === "Escape") {
+                    e.preventDefault()
+                    setSearch("")
+                  }
+                }}
                 className="flex-1 min-w-0 bg-transparent outline-none text-[14px] font-medium placeholder:text-muted-foreground"
                 autoFocus
               />
@@ -1174,20 +1199,20 @@ function CartLine({ idx: _idx, item, onRemove, onQty, onSub, showSubstitute }: {
       animate={{ opacity: 1, x: 0 }}
       exit={{ opacity: 0, height: 0, marginTop: 0, marginBottom: 0 }}
       transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
-      className="group relative flex items-start gap-3 px-3 py-3.5 border-b border-border/40 transition-colors hover:bg-muted/30"
+      className="group relative flex items-start gap-2.5 px-3 py-2 border-b border-border/40 transition-colors hover:bg-muted/30"
     >
       {/* Category accent strip — 3px left edge */}
       <span
         aria-hidden
-        className={`absolute left-0 top-2 bottom-2 w-[3px] rounded-r-full ${cc.dot}`}
+        className={`absolute left-0 top-1.5 bottom-1.5 w-[3px] rounded-r-full ${cc.dot}`}
       />
 
       {/* Product avatar */}
       <div
-        className={`size-9 shrink-0 rounded-md ${cc.bg} ${cc.fg} grid place-items-center select-none`}
+        className={`size-7 shrink-0 rounded-md ${cc.bg} ${cc.fg} grid place-items-center select-none`}
         aria-hidden
       >
-        <span style={{ fontFamily: "var(--font-display)" }} className="text-[16px] font-medium leading-none">
+        <span style={{ fontFamily: "var(--font-display)" }} className="text-[13px] font-medium leading-none">
           {initial}
         </span>
       </div>
@@ -1196,14 +1221,14 @@ function CartLine({ idx: _idx, item, onRemove, onQty, onSub, showSubstitute }: {
       <div className="flex-1 min-w-0">
         {/* Name + remove */}
         <div className="flex items-start justify-between gap-2">
-          <div className="text-[14px] font-medium leading-[1.3] text-foreground line-clamp-2">
+          <div className="text-[13px] font-medium leading-[1.25] text-foreground line-clamp-1">
             {item.name}
           </div>
           <div className="flex items-center gap-0.5 shrink-0 -mr-1 -mt-0.5 opacity-40 group-hover:opacity-100 transition-opacity">
             {showSubstitute && (
               <button
                 onClick={onSub}
-                className="size-7 grid place-items-center rounded-md text-muted-foreground hover:bg-violet-500/10 hover:text-violet-600 transition active:scale-95"
+                className="size-6 grid place-items-center rounded-md text-muted-foreground hover:bg-violet-500/10 hover:text-violet-600 transition active:scale-95"
                 title="Find substitute"
               >
                 <Pill className="h-3.5 w-3.5" />
@@ -1211,7 +1236,7 @@ function CartLine({ idx: _idx, item, onRemove, onQty, onSub, showSubstitute }: {
             )}
             <button
               onClick={onRemove}
-              className="size-7 grid place-items-center rounded-md text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition active:scale-95"
+              className="size-6 grid place-items-center rounded-md text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition active:scale-95"
               title="Remove from cart"
             >
               <Trash2 className="h-3.5 w-3.5" />

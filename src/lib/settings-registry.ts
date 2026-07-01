@@ -85,6 +85,8 @@ const CORE_SETTINGS: SettingsNavItem[] = [
   { to: "/settings/display", label: "Display & Touch", description: "Density, touch mode, target sizes", icon: DeviceMobile, permission: "settings.business", group: "Operations" },
   { to: "/settings/ai", label: "AI Integration", description: "Provider keys, features, activity", icon: Sparkles, permission: "settings.business", group: "Operations" },
   { to: "/settings/receipt", label: "Receipt Template", description: "Footer message and branding", icon: Printer, permission: "settings.business", group: "Operations" },
+  { to: "/settings/printing", label: "Printing", description: "Auto-print, drawer kick, preferred printers", icon: Printer, permission: "settings.business", group: "Operations" },
+  { to: "/settings/scanner", label: "Barcode Scanner", description: "Test scanner + terminator + auto-focus", icon: Printer, permission: "settings.business", group: "Operations" },
   { to: "/settings/audit", label: "Audit Log", description: "Security and compliance history", icon: Activity, permission: "audit.view", group: "Operations" },
   { to: "/settings/licenses", label: "Licences", description: "Active modules, sync, add another licence", icon: Key, permission: "license.view", group: "Operations" },
   { to: "/settings/license", label: "License (legacy)", description: "Single-licence view (legacy)", icon: Key, permission: "license.view", group: "Operations" },

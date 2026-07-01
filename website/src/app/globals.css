@@ -75,11 +75,11 @@
   --radius-2xl: 20px;
 
   /* ── Container widths (NOT max-w-7xl) ── */
-  --w-narrow: 760px;
-  --w-text: 920px;
-  --w-default: 1180px;
-  --w-wide: 1320px;
-  --w-bleed: 1480px;
+  --w-narrow: 720px;
+  --w-text: 880px;
+  --w-default: 1120px;
+  --w-wide: 1200px;
+  --w-bleed: 1280px;
 
   /* ── Spacing scale (4px base, snaps every value) ── */
   --space-section-tight: 96px;
@@ -226,7 +226,7 @@
 
   @media (min-width: 768px) {
     .container-narrow, .container-text, .container-default, .container-wide, .container-bleed {
-      padding-inline: 2.5rem;
+      padding-inline: 3rem;
     }
   }
 
