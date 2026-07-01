@@ -2,6 +2,34 @@
 
 This tracks work done LOCALLY without GitHub pushes. We only push when the user explicitly says so.
 
+## Release v0.27.1 — Header polish + editorial mobile sheet
+
+Three related fixes that fell out of user feedback on v0.26.0's header:
+
+### 1. Theme toggle no longer squeezed into an oval
+Root cause: the toggle button used Tailwind `h-9 w-9 rounded-full` inside a flex row with `gap-5`. At tablet widths where the row ran out of space, `flex-shrink: 1` (the default) turned the circle into an ellipse.
+
+Fix: added `shrink-0` to every child of the right cluster **and** wrote explicit `style={{ width: 36, height: 36 }}` on the ThemeToggle itself — belt and braces because both were failing on 640-767px viewports. Right cluster also tightened from `gap-5` → `gap-3` so it doesn't wrap.
+
+### 2. Mobile sheet actually appears now
+Root cause: the old menu rendered as an inline `<div className="fixed inset-x-0 top-[72px] bottom-0 z-40 ...">` at z-40, while the sticky header sat at z-50. On some viewports the drawer was rendering behind the header.
+
+Fix: replaced with a proper `Sheet` component using Radix Dialog portaled to `<body>`. Slides in from the right at 85vw / max 24rem. Radix handles focus trap, body scroll lock, escape key, restore focus on close. Editorial pattern lifted from the zebra-trails-safari project — big display-font links, masthead bar with wordmark + close, foot with primary CTA + language + theme controls.
+
+### 3. Hamburger icon is finally a hamburger
+Was `Icon.ListBullets` (three lines with bullet dots — reads as "bulleted list" not "menu"). Now `Icon.List` — three plain horizontal lines, the universal `☰` glyph.
+
+### Files
+- `website/src/components/ui/sheet.tsx` — new Radix Dialog wrapper
+- `website/src/components/layout/site-header.tsx` — new right-cluster + Sheet mount
+- `website/src/components/theme/theme-toggle.tsx` — explicit sizing + shrink-0
+- `website/src/components/icons.tsx` — added `List` + `Menu` (proper hamburger)
+
+### Verification
+- Website tsc + next build clean.
+- Desktop untouched.
+- Radix Dialog + `tw-animate-css` were already installed — no new dependencies.
+
 ## Release v0.27.0 — Video hero admin (homepage + per-module)
 
 Follow-up to v0.26.0's homepage cut. Adds admin-controlled video slots so we can drop in a 20-second loop of the product doing the thing — the single change that moves "I love this → purchase" hardest.

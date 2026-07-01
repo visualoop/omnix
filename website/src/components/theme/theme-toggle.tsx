@@ -36,8 +36,9 @@ export function ThemeToggle({ className }: ThemeToggleProps) {
     return (
       <span
         aria-hidden="true"
+        style={{ width: 36, height: 36 }}
         className={cn(
-          'inline-flex h-9 w-9 items-center justify-center rounded-full',
+          'inline-flex shrink-0 items-center justify-center rounded-full',
           className,
         )}
       />
@@ -54,8 +55,13 @@ export function ThemeToggle({ className }: ThemeToggleProps) {
       onClick={() => setTheme(next)}
       aria-label={label}
       title={label}
+      // Explicit width/height defends against flex-shrink turning the
+      // circle into an oval when the header row runs out of room. The
+      // shrink-0 class does the same job via Tailwind — belt AND braces
+      // because both were failing in the field on 640-767px viewports.
+      style={{ width: 36, height: 36 }}
       className={cn(
-        'inline-flex h-9 w-9 items-center justify-center rounded-full',
+        'inline-flex shrink-0 items-center justify-center rounded-full',
         'text-[var(--color-fg-muted)] transition-colors',
         'hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-fg)]',
         'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2',

@@ -54,7 +54,8 @@ import {
   Key as PhKey,
   Lifebuoy as PhLifebuoy,
   Lightning as PhLightning,
-  ListBullets as PhList,
+  ListBullets as PhListBullets,
+  List as PhList,
   Lock as PhLock,
   MagnifyingGlass as PhSearch,
   MapPin as PhMapPin,
@@ -181,7 +182,8 @@ export const Landmark = PhBuildings
 export const LayoutDashboard = PhStack
 export const Lifebuoy = PhLifebuoy
 export const Lightning = PhLightning
-export const ListBullets = PhList
+export const ListBullets = PhListBullets
+export const List = PhList
 export const Lock = PhLock
 export const LogOut = PhArrowRight
 export const Mail = PhEnvelope
@@ -276,6 +278,8 @@ export const Icon = {
   CheckCircle2,
   ChevronDown,
   ClipboardList,
+  List,
+  Menu,
   ClipboardText,
   Clock,
   Close: X,
@@ -315,7 +319,6 @@ export const Icon = {
   Map,
   MapPin,
   Megaphone,
-  Menu,
   MessageCircle,
   Minus,
   Monitor,
