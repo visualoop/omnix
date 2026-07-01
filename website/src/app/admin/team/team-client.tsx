@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
+import { prompt } from '@/components/ui/dialog-imperative'
 import {
   ShieldStar, UserPlus, Prohibit, Check, ArrowsClockwise, X,
 } from '@phosphor-icons/react'
@@ -90,11 +91,11 @@ export function TeamClient({ initial }: { initial: Member[] }) {
     })
   }
 
-  function toggleBan(member: Member) {
+  async function toggleBan(member: Member) {
     const newState = !member.banned
     let reason: string | null = null
     if (newState) {
-      reason = prompt(`Why are you banning ${member.email}? (optional)`) || null
+      reason = await prompt({ title: `Ban ${member.email}?`, description: 'Ban reason (optional)', placeholder: 'Why are you banning this member?' })
     }
     startTransition(async () => {
       const res = await fetch(`/api/admin/team/${member.id}`, {

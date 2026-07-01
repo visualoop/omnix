@@ -20,6 +20,7 @@ import type { Metadata } from 'next'
 import { Fraunces, Geist, JetBrains_Mono, Plus_Jakarta_Sans } from 'next/font/google'
 import './globals.css'
 import { ThemeProvider } from '@/components/theme/theme-provider'
+import { DialogHost } from '@/components/ui/dialog-imperative'
 
 const fraunces = Fraunces({
   subsets: ['latin'],
@@ -64,6 +65,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en" suppressHydrationWarning className={FONT_VARIABLES}>
       <body className="bg-[var(--color-bg)] font-sans text-[var(--color-fg)] antialiased">
         <ThemeProvider>{children}</ThemeProvider>
+        <DialogHost />
       </body>
     </html>
   )

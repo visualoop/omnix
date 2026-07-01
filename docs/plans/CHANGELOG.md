@@ -2,6 +2,51 @@
 
 This tracks work done LOCALLY without GitHub pushes. We only push when the user explicitly says so.
 
+## Release v0.28.7 — Every native dialog replaced + lint rule to keep it that way
+
+Complete sweep across the codebase (both desktop AND website) to eliminate every `window.confirm` / `window.alert` / `window.prompt` / bare `confirm("...")` / `alert("...")` / `prompt("...")` call. All 11 native calls found and replaced with imperative Radix-based dialogs. Plus a `ui.native.dialog` audit rule that fails CI if a native dialog is ever reintroduced.
+
+### Desktop (1 site)
+- `pages/settings-categories.tsx` — `window.prompt()` for "Add subcategory under X" → imperative `prompt({...})` from the existing `@/components/ui/confirm-dialog`.
+
+### Website (10 sites)
+Created a website-side imperative helper `@/components/ui/dialog-imperative` mirroring the desktop one:
+- `confirm({ title, description?, variant?, confirmText?, cancelText? }): Promise<boolean>`
+- `alert({ title, description?, buttonText? }): Promise<void>`
+- `prompt({ title, description?, placeholder?, defaultValue?, required? }): Promise<string | null>`
+- `<DialogHost />` mounted once in `app/layout.tsx`
+
+Then replaced:
+- `admin/users/[id]/reseller-controls.tsx` — suspend reseller `confirm`
+- `admin/team/team-client.tsx` — ban member `prompt` for reason
+- `admin/team-members/team-members-client.tsx` — save `alert` + remove `confirm` + upload-error `alert`
+- `dashboard/invitations-panel.tsx` — cancel-invitation `confirm`
+- `dashboard/deactivate-machine-button.tsx` — deactivate `confirm`
+- `dashboard/release-seat-button.tsx` — release-seat `window.confirm`
+- `dashboard/release-trial-button.tsx` — release-trial `window.confirm`
+- `admin/media-library.tsx` — delete-image `confirm`
+- `admin/delete-license-button.tsx` — delete-licence `confirm`
+
+Every call now uses the Radix Dialog pattern: portal to body, focus trap, escape key, backdrop blur, animated in/out, respects `prefers-reduced-motion`, variant-aware styling (destructive = red confirm button).
+
+### The lint rule (the durability fix)
+Added `ui.native.dialog` to `scripts/audit-codebase.mjs` — flags:
+- `window.confirm(` / `window.alert(` / `window.prompt(`
+- Bare `confirm(` / `alert(` / `prompt(` with a string as first arg (not a config object)
+
+Runs at `error` severity — CI will refuse to build if any native dialog call is introduced. Comments and imports are skipped.
+
+### Audit state after this release
+Desktop: **0 native dialog calls** — every confirmation goes through the imperative helper.
+Website: **0 native dialog calls** — same.
+Audit: 0 errors, 3 pre-existing warnings (native form controls, non-blocking).
+
+### Why this matters for you
+The v0.28.5 licences bug (`not allowed by acl`) happened because a single `window.confirm()` slipped through in the desktop. It threw immediately on any Tauri build because Tauri v2 blocks native dialogs by default. Same class of bug could have shipped again anywhere else. This lint rule closes the door — the codebase can never accidentally reintroduce it.
+
+### Verification
+Desktop tsc clean · Website tsc clean · vitest 513/513 · audit 0 errors.
+
 ## Release v0.28.6 — Staff renaming + no more Pro mentions + SQL smoke tests
 
 ### 1. Users → Staff throughout the settings surface

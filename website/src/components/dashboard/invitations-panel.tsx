@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
+import { confirm } from '@/components/ui/dialog-imperative'
 import { formatDate } from '@/lib/format-date'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 
@@ -78,7 +79,7 @@ export function InvitationsPanel({
   }
 
   async function cancel(id: string, email: string) {
-    if (!confirm(`Cancel the invitation sent to ${email}? The link in their email will stop working.`)) return
+    if (!(await confirm({ title: `Cancel invitation to ${email}?`, description: 'The link in their email will stop working.', variant: 'destructive', confirmText: 'Cancel invitation' }))) return
     setError(null)
     setBusy(id)
     try {

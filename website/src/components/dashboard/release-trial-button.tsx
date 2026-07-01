@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
+import { confirm } from '@/components/ui/dialog-imperative'
 import { X as TrashIcon } from '@/components/icons'
 
 /**
@@ -23,10 +24,13 @@ export function ReleaseTrialButton({
   const [pending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
 
-  function release() {
-    const sure = window.confirm(
-      `Release this trial licence?\n\n${licenseKey}\n\nThe key will be permanently removed from your account. You can start a new trial of the same variant later from the dashboard.`,
-    )
+  async function release() {
+    const sure = await confirm({
+      title: 'Release this trial licence?',
+      description: `${licenseKey}\n\nThe key will be permanently removed from your account. You can start a new trial of the same variant later from the dashboard.`,
+      variant: 'destructive',
+      confirmText: 'Release trial',
+    })
     if (!sure) return
     setError(null)
     startTransition(async () => {

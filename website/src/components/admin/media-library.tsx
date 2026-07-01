@@ -2,6 +2,7 @@
 
 import { useState, useTransition, useRef } from 'react'
 import { useRouter } from 'next/navigation'
+import { confirm } from '@/components/ui/dialog-imperative'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 
 interface MediaItem {
@@ -93,7 +94,7 @@ export function MediaLibrary({
   }
 
   async function remove(id: string) {
-    if (!confirm('Delete this image? The file is removed from R2 and the URL stops working.')) return
+    if (!(await confirm({ title: 'Delete this image?', description: 'The file is removed from R2 and the URL stops working.', variant: 'destructive', confirmText: 'Delete' }))) return
     const res = await fetch(`/api/admin/media?id=${id}`, { method: 'DELETE' })
     const data = (await res.json()) as { ok?: boolean; error?: string }
     if (!data.ok) {

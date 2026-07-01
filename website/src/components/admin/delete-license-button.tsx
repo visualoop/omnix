@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
+import { confirm } from '@/components/ui/dialog-imperative'
 import { Trash } from '@phosphor-icons/react'
 
 interface Props {
@@ -19,8 +20,8 @@ export function DeleteLicenseButton({ licenseId, licenseKey }: Props) {
   const [busy, startTransition] = useTransition()
   const [err, setErr] = useState<string | null>(null)
 
-  function onClick() {
-    if (!confirm(`Delete licence ${licenseKey}? This also revokes every machine bound to it. Cannot be undone.`)) return
+  async function onClick() {
+    if (!(await confirm({ title: `Delete licence ${licenseKey}?`, description: 'This also revokes every machine bound to it. Cannot be undone.', variant: 'destructive', confirmText: 'Delete licence' }))) return
     setErr(null)
     startTransition(async () => {
       const res = await fetch(`/api/admin/licenses/${licenseId}`, { method: 'DELETE' })

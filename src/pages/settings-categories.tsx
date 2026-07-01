@@ -36,7 +36,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Combobox } from "@/components/ui/combobox";
-import { confirm } from "@/components/ui/confirm-dialog";
+import { confirm, prompt } from "@/components/ui/confirm-dialog";
 import { toast } from "sonner";
 import {
   getCategories,
@@ -158,7 +158,11 @@ export function CategoriesSettingsPage() {
   };
 
   const handleAddChild = async (parent: CategoryWithCount) => {
-    const name = window.prompt(`Add subcategory under "${parent.name}":`, "")?.trim();
+    const name = (await prompt({
+      title: `Add subcategory under "${parent.name}"`,
+      placeholder: "Subcategory name",
+      required: true,
+    }))?.trim();
     if (!name) return;
     setBusy(true);
     try {

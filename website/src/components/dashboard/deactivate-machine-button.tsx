@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { confirm } from '@/components/ui/dialog-imperative'
 
 /**
  * Deactivate a machine to free a licence seat (self-service rebind).
@@ -13,7 +14,7 @@ export function DeactivateMachineButton({ machineId }: { machineId: string }) {
   const [error, setError] = useState<string | null>(null)
 
   const onClick = async () => {
-    if (!confirm('Deactivate this machine? It frees a seat so another PC can activate. The app on that machine will need to re-activate.')) {
+    if (!(await confirm({ title: 'Deactivate this machine?', description: 'Frees a seat so another PC can activate. The app on that machine will need to re-activate.', variant: 'destructive', confirmText: 'Deactivate' }))) {
       return
     }
     setBusy(true)

@@ -160,6 +160,44 @@ const RULES = [
       return hits
     },
   },
+  {
+    // Rule shipped in v0.28.7 after a native window.confirm() slipped
+    // through in the licences page and Tauri v2 blocked it with an
+    // "not allowed by acl" error. Every dialog goes through the
+    // imperative confirm/prompt helpers in @/components/ui/confirm-dialog.
+    id: 'ui.native.dialog',
+    label: 'Native window.confirm / window.alert / window.prompt — use confirm({...}) / prompt({...}) from @/components/ui/confirm-dialog',
+    severity: 'error',
+    extensions: ['.ts', '.tsx'],
+    test(text) {
+      const hits = []
+      const isCommentOrImport = (m) => {
+        const lineStart = text.lastIndexOf('\n', m.index) + 1
+        const lineEnd = text.indexOf('\n', m.index)
+        const lineText = text.slice(lineStart, lineEnd === -1 ? undefined : lineEnd).trim()
+        return lineText.startsWith('*') || lineText.startsWith('//') || lineText.startsWith('import ')
+      }
+      // window.confirm(...), window.alert(...), window.prompt(...)
+      const explicitRe = /\bwindow\s*\.\s*(confirm|alert|prompt)\s*\(/g
+      for (const m of text.matchAll(explicitRe)) {
+        if (isCommentOrImport(m)) continue
+        const line = text.slice(0, m.index).split('\n').length
+        hits.push({ kind: `window.${m[1]}`, snippet: trim(m[0]), line })
+      }
+      // Bare confirm("text") / alert("text") / prompt("text") — the
+      // pattern that keeps sneaking in. Detected by:
+      //   - not preceded by a word char (excludes 'await confirm', 'run confirm',
+      //     'sandboxAutoConfirm', 'handleConfirm', function names, etc.)
+      //   - first arg starts with a string literal (not a config object)
+      const bareRe = /(?<![\w.])(?:confirm|alert|prompt)\s*\(\s*["'`]/g
+      for (const m of text.matchAll(bareRe)) {
+        if (isCommentOrImport(m)) continue
+        const line = text.slice(0, m.index).split('\n').length
+        hits.push({ kind: 'bare-dialog', snippet: trim(m[0]), line })
+      }
+      return hits
+    },
+  },
 ]
 
 /* ────────────────────────────────────────────────────────────────── *

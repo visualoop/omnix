@@ -9,6 +9,7 @@
  */
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { confirm, alert } from '@/components/ui/dialog-imperative'
 
 interface Member {
   id: string
@@ -36,7 +37,7 @@ export function TeamMembersClient({ initial }: { initial: Member[] }) {
   const startEdit = (m: Member) => { setEditing(m); setForm({ ...m, bio: m.bio ?? '', photoUrl: m.photoUrl ?? '', linkedinUrl: m.linkedinUrl ?? '' }) }
 
   const save = async () => {
-    if (!form.name.trim() || !form.role.trim()) { alert('Name and role are required'); return }
+    if (!form.name.trim() || !form.role.trim()) { await alert({ title: 'Name and role are required' }); return }
     setBusy(true)
     try {
       const url = editing ? `/api/admin/team-members?id=${editing.id}` : '/api/admin/team-members'
@@ -49,14 +50,14 @@ export function TeamMembersClient({ initial }: { initial: Member[] }) {
       setForm(BLANK); setEditing(null)
       router.refresh()
     } catch (e) {
-      alert(String((e as Error).message))
+      await alert({ title: 'Save failed', description: String((e as Error).message) })
     } finally {
       setBusy(false)
     }
   }
 
   const remove = async (m: Member) => {
-    if (!confirm(`Remove ${m.name}?`)) return
+    if (!(await confirm({ title: `Remove ${m.name}?`, variant: 'destructive', confirmText: 'Remove' }))) return
     await fetch(`/api/admin/team-members?id=${m.id}`, { method: 'DELETE' })
     router.refresh()
   }
@@ -72,7 +73,7 @@ export function TeamMembersClient({ initial }: { initial: Member[] }) {
       if (!res.ok) throw new Error(data.error || 'Upload failed')
       setForm((f) => ({ ...f, photoUrl: data.url }))
     } catch (e) {
-      alert(String((e as Error).message))
+      await alert({ title: 'Upload failed', description: String((e as Error).message) })
     } finally {
       setUploading(false)
     }

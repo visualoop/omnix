@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { confirm } from '@/components/ui/dialog-imperative'
 
 interface Reseller {
   id: string
@@ -46,8 +47,8 @@ export function ResellerControls({ userId, reseller }: { userId: string; reselle
 
   const promote = () => call('POST', { companyName: companyName.trim() || undefined, discountPercent: discount })
   const update = () => call('PATCH', { companyName: companyName.trim() || undefined, discountPercent: discount })
-  const suspend = () => {
-    if (!confirm('Suspend this reseller? They will not be able to issue new licences until reactivated.')) return
+  const suspend = async () => {
+    if (!(await confirm({ title: 'Suspend this reseller?', description: 'They will not be able to issue new licences until reactivated.', variant: 'destructive', confirmText: 'Suspend' }))) return
     call('DELETE')
   }
   const reactivate = () => call('POST', {}) // POST is idempotent — reactivates + updates

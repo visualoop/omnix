@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
+import { confirm } from '@/components/ui/dialog-imperative'
 
 /**
  * "Release seat" button — frees the seat consumed by a machine so the
@@ -24,10 +25,13 @@ export function ReleaseSeatButton({
   const [pending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
 
-  function release() {
-    const sure = window.confirm(
-      `Release the seat on ${hostname || 'this machine'}?\n\nThe Omnix install on this PC will stop signing in. You can install on a different PC after release. This does not refund the licence.`,
-    )
+  async function release() {
+    const sure = await confirm({
+      title: `Release the seat on ${hostname || 'this machine'}?`,
+      description: 'The Omnix install on this PC will stop signing in. You can install on a different PC after release. This does not refund the licence.',
+      variant: 'destructive',
+      confirmText: 'Release seat',
+    })
     if (!sure) return
     setError(null)
     startTransition(async () => {
