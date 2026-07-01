@@ -1,6 +1,6 @@
 import crypto from 'node:crypto'
 import { eq, sql } from 'drizzle-orm'
-import { db, payments, licenses, auditLog, user, resellers, resellerCommissions } from '@/db'
+import { db, payments, licenses, auditLog, user, resellers, resellerCommissions, affiliates, affiliateCredits } from '@/db'
 import { verify } from '@/lib/paystack'
 import { createId } from '@/lib/ids'
 import { getSetting } from '@/lib/platform-settings'
@@ -199,6 +199,94 @@ export async function POST(req: Request) {
       // Log for follow-up.
       console.error('[webhook] reseller commission credit failed:', e)
     }
+  }
+
+  // ── Affiliate credit (referral attribution) ─────
+  // If the pending payment's metadata carries a refCode, look up the
+  // affiliate, apply anti-fraud + first-purchase-only rules, and credit
+  // if all checks pass. Idempotent via affiliate_credits.paymentId UNIQUE.
+  //
+  // Only credits on `license_fee` — renewals, upgrades, and extras don't
+  // pay the affiliate again (cap at first-purchase-only per referred user).
+  try {
+    const refCode = (p.metadata as { refCode?: string } | null)?.refCode
+    if (refCode && p.purpose === 'license_fee' && p.userId) {
+      const [aff] = await db.select().from(affiliates).where(eq(affiliates.refCode, refCode.toUpperCase())).limit(1)
+      if (aff) {
+        const paying = (await db.select().from(user).where(eq(user.id, p.userId)).limit(1))[0]
+        const alreadyCredited = await db
+          .select({ id: affiliateCredits.id })
+          .from(affiliateCredits)
+          .where(eq(affiliateCredits.paymentId, p.id))
+          .limit(1)
+
+        let rejectionReason: string | null = null
+        if (aff.blocked) rejectionReason = 'affiliate_blocked'
+        else if (aff.userId === p.userId) rejectionReason = 'self_referral_user'
+        else if (paying && aff.contactEmail && paying.email && aff.contactEmail.toLowerCase() === paying.email.toLowerCase()) {
+          rejectionReason = 'self_referral_email'
+        } else if (paying && aff.contactPhone && paying.phoneNumber && aff.contactPhone.replace(/\D/g, '') === paying.phoneNumber.replace(/\D/g, '') && aff.contactPhone.replace(/\D/g, '').length >= 9) {
+          rejectionReason = 'self_referral_phone'
+        } else if ((aff.creditedUserIds ?? []).includes(p.userId)) {
+          rejectionReason = 'repeat_referral'
+        }
+
+        if (!alreadyCredited[0]) {
+          const commissionAmount = rejectionReason ? 0 : Math.round(p.amount * (aff.commissionPercent / 100))
+          await db.insert(affiliateCredits).values({
+            id: createId(),
+            affiliateId: aff.id,
+            paymentId: p.id,
+            licenseId: p.licenseId ?? null,
+            referredUserId: p.userId,
+            grossAmount: p.amount,
+            commissionAmount,
+            currency: p.currency,
+            status: rejectionReason
+              ? (rejectionReason === 'repeat_referral' ? 'rejected_repeat' : 'rejected_self_referral')
+              : 'pending',
+            metadata: {
+              refCode,
+              rejectionReason,
+              payingUserId: p.userId,
+              payingEmail: paying?.email ?? null,
+            },
+          })
+
+          if (!rejectionReason) {
+            // Update rolling totals + credited-users list.
+            const nextCreditedUserIds = [...(aff.creditedUserIds ?? []), p.userId].slice(-500)
+            await db
+              .update(affiliates)
+              .set({
+                totalReferralsCredited: sql`${affiliates.totalReferralsCredited} + 1`,
+                totalCommissionEarned: sql`${affiliates.totalCommissionEarned} + ${commissionAmount}`,
+                unpaidBalance: sql`${affiliates.unpaidBalance} + ${commissionAmount}`,
+                creditedUserIds: nextCreditedUserIds,
+                updatedAt: new Date(),
+              })
+              .where(eq(affiliates.id, aff.id))
+          }
+
+          await db.insert(auditLog).values({
+            id: createId(),
+            actorId: aff.userId,
+            action: rejectionReason ? 'affiliate.credit_rejected' : 'affiliate.credit',
+            resource: `affiliate:${aff.id}`,
+            metadata: {
+              paymentId: p.id,
+              referredUserId: p.userId,
+              gross: p.amount,
+              commission: commissionAmount,
+              currency: p.currency,
+              rejectionReason,
+            },
+          })
+        }
+      }
+    }
+  } catch (e) {
+    console.error('[webhook] affiliate credit failed:', e)
   }
 
   // ── Email side-effect — send the license key + receipt ─────

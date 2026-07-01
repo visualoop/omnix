@@ -2,6 +2,48 @@
 
 This tracks work done LOCALLY without GitHub pushes. We only push when the user explicitly says so.
 
+## Release v0.24.0 — Affiliate program
+
+Referrers who bring paying customers earn 33% of first purchase. Capped at first purchase only — no compounding on renewals.
+
+### Schema
+- `affiliates` — one row per affiliate. Fields: `userId` (unique), `refCode` (unique 8-char alphanum, unambiguous alphabet), `displayName`, `contactEmail/Phone`, `payoutMethod` + `payoutDetails` jsonb, `commissionPercent` (default 33), rolling totals (`totalReferralsCredited`, `totalCommissionEarned`, `unpaidBalance`), `commissionCurrency`, `blocked` + `blockedReason`, `creditedUserIds` (jsonb array, capped at 500 recent to prevent unbounded growth).
+- `affiliate_credits` — ledger, one row per attributed payment. `paymentId UNIQUE` for idempotency. Status: `pending`, `paid`, `reversed`, `rejected_self_referral`, `rejected_repeat`.
+
+### Signup flow
+- New `POST /api/affiliate` — idempotent, auto-approves. Body: `displayName`, `contactPhone`, `payoutMethod`, `payoutDetails`.
+- `GET /api/affiliate` — self-read; `PATCH /api/affiliate` — update payout info.
+- New `/dashboard/affiliate` page. Not-yet-signed-up state: sign-up form with payout method picker (M-Pesa number, Paystack Transfer). Signed-up state: shows ref link (copy button), rolling totals, and last 20 credit ledger entries with status pills.
+
+### Attribution
+- Middleware captures `?ref=CODE` into the `omnix_ref` cookie (30-day expiry, last-touch wins, ref code sanitized to `[A-Z0-9]{6,16}`).
+- `POST /api/paystack/init` reads the cookie and threads it into `payment.metadata.refCode` + Paystack init metadata.
+
+### Credit on webhook
+Paystack webhook (`charge.success`) now runs an affiliate-credit block after the reseller-credit block. For every `license_fee` payment with `metadata.refCode`:
+- Looks up affiliate by ref code.
+- Anti-fraud checks — all fail closed:
+  - `affiliate_blocked` — affiliate has `blocked=true`
+  - `self_referral_user` — paying user id equals affiliate user id
+  - `self_referral_email` — affiliate contact email equals paying user email
+  - `self_referral_phone` — normalized phone match (9+ digits) between affiliate contact and paying user
+  - `repeat_referral` — paying user already in `affiliates.creditedUserIds` (first-purchase-only cap enforced)
+- On success: inserts `affiliate_credits` row (`status='pending'`), bumps rolling totals via `sql\`\${...} + N\``, appends `paying user id` to `creditedUserIds`, writes `affiliate.credit` audit log.
+- On rejection: writes a rejected credit row with the reason + `commissionAmount=0` — full audit trail for disputes.
+- Wrapped in try/catch — an affiliate-credit failure never fails the webhook.
+
+### Discoverable
+"Affiliate" nav item added to the dashboard shell between Billing and Support.
+
+### Not yet
+- Actual payout via Paystack Transfers — needs Kenya Transfers enabled on the merchant account. Once available: monthly cron reading `affiliates.unpaidBalance > threshold`, initiates Transfer to the stored payout details, flips ledger rows to `paid`.
+- Admin affiliate management (block/unblock, force-payout, adjust commission percent) — coming in v0.25.
+- Refund reversal (`reseller.commission_reverse` + `affiliate.credit_reverse`) — future.
+
+Version bumped 0.23.0 → **0.24.0** across `package.json`, `src-tauri/Cargo.toml`, `src-tauri/tauri.conf.json`, `Cargo.lock`.
+
+Verification: desktop tsc clean, vitest 440/440, website tsc + next build clean.
+
 ## Release v0.23.0 — Reseller wholesale checkout + commission credit
 
 ### Reseller issues licence for a customer

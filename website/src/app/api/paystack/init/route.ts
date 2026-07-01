@@ -1,4 +1,4 @@
-import { headers } from 'next/headers'
+import { headers, cookies } from 'next/headers'
 import { and, eq } from 'drizzle-orm'
 import { auth } from '@/lib/auth'
 import { db, licenses, payments } from '@/db'
@@ -36,6 +36,9 @@ export async function POST(req: Request) {
   if (amount <= 0) return Response.json({ error: 'no amount due' }, { status: 400 })
 
   const reference = newReference('OMX')
+  // Attach affiliate ref code if the visitor's browser set one via ?ref=CODE.
+  const refCode = (await cookies()).get('omnix_ref')?.value ?? null
+
   const init = await initTransaction({
     email: session.user.email,
     amountSmallestUnit: amount * 100,
@@ -45,6 +48,7 @@ export async function POST(req: Request) {
       license_id: lic.id,
       user_id: session.user.id,
       purpose: body.purpose,
+      ...(refCode ? { ref_code: refCode } : {}),
     },
   })
 
@@ -59,6 +63,7 @@ export async function POST(req: Request) {
     amount,
     currency,
     status: 'pending',
+    metadata: refCode ? { refCode } : null,
   })
 
   const publicKey = (await getSetting('paystack.public_key')) ?? ''

@@ -169,6 +169,20 @@ export function middleware(request: NextRequest) {
     }
   }
 
+  // ── (4) Affiliate ref-code cookie ────────────────────────────
+  // Any request with ?ref=CODE sets omnix_ref for 30 days. We don't
+  // validate the code here (the webhook does the lookup) — this is
+  // just an attribution bookmark. Overwrites on re-visit so the most
+  // recent referrer wins ("last touch" attribution).
+  const refCode = request.nextUrl.searchParams.get('ref')
+  if (refCode && /^[A-Z0-9]{6,16}$/i.test(refCode)) {
+    response.cookies.set('omnix_ref', refCode.toUpperCase(), {
+      maxAge: COOKIE_MAX_AGE,   // 30 days — same as currency cookie
+      sameSite: 'lax',
+      path: '/',
+    })
+  }
+
   return response
 }
 

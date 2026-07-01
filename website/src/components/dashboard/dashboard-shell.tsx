@@ -16,6 +16,7 @@ import {
   Monitor,
   Receipt,
   Settings,
+  Share,
   X,
 } from '@/components/icons'
 import { BRAND_NAME } from '@/lib/brand'
@@ -28,6 +29,7 @@ const NAV_ITEMS = [
   { label: 'Machines', href: '/dashboard/machines', icon: Monitor },
   { label: 'Payments', href: '/dashboard/payments', icon: Receipt },
   { label: 'Billing', href: '/dashboard/billing', icon: CreditCard },
+  { label: 'Affiliate', href: '/dashboard/affiliate', icon: Share },
   { label: 'Support', href: '/dashboard/support', icon: HelpCircle },
   { label: 'Profile', href: '/dashboard/profile', icon: Settings },
 ] as const

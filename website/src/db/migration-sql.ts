@@ -451,6 +451,62 @@ ALTER TABLE "licenses" ADD COLUMN IF NOT EXISTS "reseller_id" text;
 --> statement-breakpoint
 CREATE INDEX IF NOT EXISTS "licenses_reseller_idx" ON "licenses" ("reseller_id");
 --> statement-breakpoint
+CREATE TABLE IF NOT EXISTS "affiliates" (
+  "id" text PRIMARY KEY NOT NULL,
+  "user_id" text NOT NULL UNIQUE,
+  "ref_code" text NOT NULL UNIQUE,
+  "display_name" text,
+  "contact_email" text,
+  "contact_phone" text,
+  "payout_method" text,
+  "payout_details" jsonb DEFAULT '{}'::jsonb NOT NULL,
+  "commission_percent" integer DEFAULT 33 NOT NULL,
+  "total_referrals_credited" integer DEFAULT 0 NOT NULL,
+  "total_commission_earned" double precision DEFAULT 0 NOT NULL,
+  "unpaid_balance" double precision DEFAULT 0 NOT NULL,
+  "commission_currency" text DEFAULT 'KES' NOT NULL,
+  "blocked" boolean DEFAULT false NOT NULL,
+  "blocked_reason" text,
+  "approved_at" timestamp,
+  "credited_user_ids" jsonb DEFAULT '[]'::jsonb NOT NULL,
+  "metadata" jsonb DEFAULT '{}'::jsonb NOT NULL,
+  "created_at" timestamp DEFAULT now() NOT NULL,
+  "updated_at" timestamp DEFAULT now() NOT NULL
+);
+--> statement-breakpoint
+DO $$ BEGIN
+ ALTER TABLE "affiliates" ADD CONSTRAINT "affiliates_user_id_user_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."user"("id") ON DELETE cascade ON UPDATE no action;
+EXCEPTION
+ WHEN duplicate_object THEN null;
+END $$;
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "affiliates_blocked_idx" ON "affiliates" ("blocked");
+--> statement-breakpoint
+CREATE TABLE IF NOT EXISTS "affiliate_credits" (
+  "id" text PRIMARY KEY NOT NULL,
+  "affiliate_id" text NOT NULL,
+  "payment_id" text NOT NULL UNIQUE,
+  "license_id" text,
+  "referred_user_id" text NOT NULL,
+  "gross_amount" double precision NOT NULL,
+  "commission_amount" double precision NOT NULL,
+  "currency" text NOT NULL,
+  "status" text DEFAULT 'pending' NOT NULL,
+  "paid_out_at" timestamp,
+  "metadata" jsonb,
+  "created_at" timestamp DEFAULT now() NOT NULL
+);
+--> statement-breakpoint
+DO $$ BEGIN
+ ALTER TABLE "affiliate_credits" ADD CONSTRAINT "affiliate_credits_affiliate_id_affiliates_id_fk" FOREIGN KEY ("affiliate_id") REFERENCES "public"."affiliates"("id") ON DELETE cascade ON UPDATE no action;
+EXCEPTION
+ WHEN duplicate_object THEN null;
+END $$;
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "affiliate_credits_affiliate_idx" ON "affiliate_credits" ("affiliate_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "affiliate_credits_status_idx" ON "affiliate_credits" ("status");
+--> statement-breakpoint
 `
 
 /** Split into individual statements (Drizzle generates with statement-breakpoints). */

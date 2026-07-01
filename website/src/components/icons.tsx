@@ -80,6 +80,7 @@ import {
   Sparkle as PhSparkle,
   Stack as PhStack,
   Storefront as PhStorefront,
+  ShareNetwork as PhShare,
   TrayArrowDown as PhTray,
   TrendUp as PhTrendUp,
   Truck as PhTruck,
@@ -225,6 +226,8 @@ export const Sparkle = PhSparkle
 export const Sparkles = PhSparkle
 export const Split = PhArrowsLeftRight
 export const Stack = PhStack
+export const Share = PhShare
+export const Share2 = PhShare
 export const Stethoscope = PhHeart
 export const Store = PhStorefront
 export const Storefront = PhStorefront
