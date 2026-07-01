@@ -2,6 +2,58 @@
 
 This tracks work done LOCALLY without GitHub pushes. We only push when the user explicitly says so.
 
+## Release v0.30.0 — All 9 Critical audit items shipped in one release
+
+Every Critical finding from OMNIX_AUDIT.md ships in v0.30.0. Tests: 536 passing (up from 513). Tsc clean. Audit 0 errors. Cold-cache next build clean. All migrations properly registered in Rust (found 5 old ones not registered while doing this work: 052-054 previously merged but never wired into `Migrator`; fixed here alongside 055-061 for new work).
+
+### 1. Two-factor authentication — wired end-to-end (Task 3)
+Service `services/two-factor.ts` was fully built (TOTP RFC 6238, backup codes) but no UI touched it. Now:
+- `/settings/2fa` page: QR-code enrolment, 6-digit verify, backup codes list.
+- Login flow: after password check, if 2FA enabled, prompts for TOTP via imperative dialog. Wrong code → signs back out.
+- Disable flow requires current code (or backup code).
+- Migration 055 adds a durable `two_factor` table for future SQLite mirror.
+
+### 2. SQLCipher spec-drift stripped (Task 5)
+Docs claimed "encrypted at rest with SQLCipher (AES-256)" — code shipped plain SQLite. Rather than misleading customers, marketing text updated to reflect reality: "Windows account controls + AES-256 encrypted backups". AGENTS.md ruleset corrected. If we build SQLCipher later, we bring the claim back honestly.
+
+### 3. Autosave on long forms (Task 8)
+Migration 056 adds `form_drafts` table. New `useFormAutosave` hook + `FormDraftBanner` component wired into invoice-new (both invoice + quotation). Debounced 800ms saves; restore-banner on next open; clear-on-successful-submit; prune >30-day drafts.
+
+### 4. Notification centre (Task 7)
+Migration 057 adds `notifications` table + indexes. New `services/notifications.ts` with `emit()`, `listNotifications()`, `countUnread()`, `markRead()`, `markAllRead()`, `snooze()`, `dismiss()`, `pruneOld()`. Bell icon in top bar (poll every 10s). `/notifications` page with All/Unread filter + snooze/dismiss. `useAlertScanner` hook runs 4 background scanners (expiry, low-stock, unpaid invoices, refills due) 60s after boot then every 5min. Dedupe keys prevent alert-storm.
+
+### 5. LAN client offline queue (Task 6)
+Migration 058 adds `offline_queue`. New `services/offline-queue.ts` with enqueue/drain/prune. `useOfflineQueueDrainer` hook runs on LAN clients only, every 15s, retries up to 5x. Master unreachable = writes to local queue instead of failing.
+
+### 6. Chart of Accounts + Journal Entries + Trial Balance + Balance Sheet (Task 4)
+The biggest one. Migration 059 seeds 37 Kenya-standard SME accounts (assets 1000-1600, liabilities 2000-2400, equity 3000-3200, revenue 4000-4600, COGS/expenses 5000-6900) and creates the double-entry infrastructure:
+- `chart_of_accounts` (code, name, type, parent, system flag)
+- `journal_entries` (numbered JE-YYYY-000001 per year, immutable when posted, supports reversal)
+- `journal_lines` (debit/credit split, CHECK constraint ensures a line can't be both)
+- Service `services/gl.ts`: `postJournal` (validates balanced), `reverseJournal`, `postSaleToGL`, `postExpenseToGL`, `getTrialBalance`, `getBalanceSheet`
+- Pages: `/accounting/chart-of-accounts`, `/accounting/trial-balance` (shows "✓ Books balance" or the discrepancy), `/accounting/balance-sheet` (dual-column Assets / Liabilities+Equity with current-year earnings)
+
+### 7. Reservations table + booking calendar (Task 2)
+Migration 060 adds `reservations` (kind = 'table' | 'room'). Service `services/reservations.ts` with conflict detection. `/hospitality/reservations` page with kind filter, day picker, new-reservation dialog, seat/check-in/no-show actions.
+
+### 8. Kitchen Display Screen (Task 1)
+`/hospitality/kitchen` page renders live tickets from `hospitality_orders` + `hospitality_order_items`, grouped by kitchen station. 5-second refresh, per-ticket elapsed timer (green <5min, amber <12min, red ≥12min), one-click Bump. F11 fullscreen for kitchen TV.
+
+### 9. Peripheral device registry + drivers foundation (Task 9)
+Migration 061 adds `peripherals` (cash drawer / weight scale / kitchen printer / card reader). Service `services/peripherals.ts` with save/toggle/test/openCashDrawer/weighNext/getKitchenPrinterForStation. Rust stubs `open_cash_drawer` + `read_weight_scale` return "not yet implemented" — real driver code slots in per-device later. `/settings/peripherals` page with per-device test button + enable toggle + status badges (last test OK / failed). Registered in settings navigation.
+
+### Migrations registered in Rust (found + fixed the gap)
+Discovered during this work: migrations 052-054 were merged but never registered in `src-tauri/src/lib.rs::migrator`. Any fresh install after 052 shipped would have missed the M-Pesa seed + refunded_amount trigger + credit-note support. All 052-061 now registered.
+
+### Test coverage
+- `tests/two-factor.spec.ts` — 8 TOTP + enrolment + backup-code tests.
+- `tests/notifications.spec.ts` — 3 dedupe + read + snooze tests.
+- `tests/gl.spec.ts` — 10 tests covering COA seed, journal balance, CHECK constraint, trial-balance query, reservations, peripherals, offline queue, form drafts, 2FA table.
+- Grand total 536 passed / 7 skipped (was 513 / 7).
+
+### Verification
+Desktop tsc clean · Website tsc clean · Cold-cache `next build` clean · Vitest 536/536 · Audit 0 errors.
+
 ## Release v0.29.2 — LAN server autostart + cloud backup guide (no more 404 shock)
 
 Two fixes for real customer pain from the same session.

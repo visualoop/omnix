@@ -18,6 +18,8 @@ import { createInvoice, createQuotation } from "@/services/invoicing";
 import { useAuthStore } from "@/stores/auth";
 import { toast } from "sonner";
 import { useTrialWriteGuard } from "@/components/trial-lifecycle";
+import { useFormAutosave } from "@/hooks/use-form-autosave";
+import { FormDraftBanner } from "@/components/form-draft-banner";
 
 interface LineItem {
   product_id: string | null;
@@ -63,6 +65,40 @@ export function NewDocumentPage({ type }: Props) {
   const [products, setProducts] = useState<Product[]>([]);
   const [customerSuggestions, setCustomerSuggestions] = useState<any[]>([]);
   const [submitting, setSubmitting] = useState(false);
+
+  // ── Autosave (v0.30.0) ────────────────────────────────────────
+  // Guards against data loss on crash / accidental navigation.
+  const { draft, saveDraft, clearDraft } = useFormAutosave<{
+    customer: typeof customer;
+    items: LineItem[];
+    headerDiscount: number;
+    notes: string;
+    terms: string;
+    dueDate: string;
+  }>(`invoice-new-${type}`, null);
+
+  useEffect(() => {
+    if (!customer.customer_name && items.length === 0 && !notes) return; // nothing to save yet
+    saveDraft({ customer, items, headerDiscount, notes, terms, dueDate });
+  }, [customer, items, headerDiscount, notes, terms, dueDate, saveDraft]);
+
+  const restoreDraft = (payload: {
+    customer: typeof customer;
+    items: LineItem[];
+    headerDiscount: number;
+    notes: string;
+    terms: string;
+    dueDate: string;
+  }) => {
+    setCustomer(payload.customer);
+    setItems(payload.items);
+    setHeaderDiscount(payload.headerDiscount);
+    setNotes(payload.notes);
+    setTerms(payload.terms);
+    setDueDate(payload.dueDate);
+    clearDraft();
+  };
+  // ──────────────────────────────────────────────────────────────
 
   useEffect(() => {
     if (productSearch) getProducts(productSearch).then(setProducts);
@@ -149,6 +185,7 @@ export function NewDocumentPage({ type }: Props) {
           due_date: dueDate,
         });
         toast.success("Invoice created");
+        await clearDraft();
         navigate(`/invoicing/invoice/${id}`);
       } else {
         id = await createQuotation({
@@ -156,6 +193,7 @@ export function NewDocumentPage({ type }: Props) {
           valid_until: dueDate,
         });
         toast.success("Quotation created");
+        await clearDraft();
         navigate(`/invoicing/quotation/${id}`);
       }
     } catch (e) {
@@ -176,6 +214,8 @@ export function NewDocumentPage({ type }: Props) {
           New {type === "invoice" ? "Invoice" : "Quotation"}
         </h1>
       </div>
+
+      <FormDraftBanner draft={draft} onRestore={restoreDraft} onDiscard={clearDraft} />
 
       <Card>
         <CardContent className="p-4 space-y-3">

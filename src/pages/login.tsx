@@ -86,6 +86,33 @@ export function LoginPage() {
     setSubmitting(true);
     try {
       await signIn(username.trim().toLowerCase(), password);
+      // Post-sign-in: if the user has 2FA enabled, prompt now. If they can't
+      // verify, sign them straight back out. We do this AFTER signIn so we
+      // can look up their user id + apply the check locally.
+      const user = useAuthStore.getState().user;
+      if (user) {
+        const { is2FAEnabled } = await import("@/services/two-factor");
+        if (is2FAEnabled(user.id)) {
+          const { prompt } = await import("@/components/ui/confirm-dialog");
+          const code = await prompt({
+            title: "Two-factor authentication",
+            description: "Enter the 6-digit code from your authenticator app (or a backup code).",
+            placeholder: "000000",
+          });
+          if (!code) {
+            await useAuthStore.getState().signOut();
+            setError("2FA required — sign-in cancelled.");
+            return;
+          }
+          const { verify2FACode } = await import("@/services/two-factor");
+          const ok = await verify2FACode(user.id, code.replace(/\s/g, ""));
+          if (!ok) {
+            await useAuthStore.getState().signOut();
+            setError("Code didn't match. Try again.");
+            return;
+          }
+        }
+      }
     } catch (e) {
       setError(String(e).replace(/^Error:\s*/, ""));
     } finally {

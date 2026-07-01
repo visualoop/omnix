@@ -4,6 +4,7 @@ import { useThemeStore } from "@/stores/theme";
 import { Button } from "@/components/ui/button";
 import { NetworkIndicator } from "@/components/layout/network-indicator";
 import { BranchSwitcher } from "@/components/layout/branch-switcher";
+import { NotificationBell } from "@/components/notification-bell";
 import { ROLE_INFO, type Role } from "@/lib/permissions";
 
 export function Topbar() {
@@ -19,6 +20,9 @@ export function Topbar() {
 
         {/* Network indicator (only visible in master/client mode) */}
         <NetworkIndicator />
+
+        {/* Notifications bell */}
+        <NotificationBell />
 
         {/* Theme toggle */}
         <Button

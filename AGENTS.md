@@ -33,7 +33,7 @@ Every AI agent working on this project must follow these rules without exception
 | Validation | Zod | latest |
 | Backend | Rust | stable |
 | Database | SQLite via sqlx | latest |
-| Encryption | SQLCipher | latest |
+| Encryption | AES-256 for backups (`age`); SQLite database itself relies on Windows account controls |
 
 ### Marketing/Subscription Site (Separate Repo)
 | Layer | Technology |
@@ -208,7 +208,7 @@ omnix/
 ## 8. Security Rules
 
 - Never store passwords in plaintext (use Argon2)
-- Database encrypted with SQLCipher
+- Database backups encrypted with AES-256 via age; SQLite itself relies on OS-level protection
 - License file RSA-signed, validated on startup
 - Tauri CSP: no inline scripts, no external loads
 - API keys encrypted at rest (AES-256)

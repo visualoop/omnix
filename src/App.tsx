@@ -7,6 +7,8 @@ import { useAuthStore } from "@/stores/auth";
 import { useF11Fullscreen } from "@/hooks/use-f11-fullscreen";
 import { useAutoUpdate } from "@/hooks/use-auto-update";
 import { useLanAutostart } from "@/hooks/use-lan-autostart";
+import { useAlertScanner } from "@/hooks/use-alert-scanner";
+import { useOfflineQueueDrainer } from "@/hooks/use-offline-queue-drainer";
 import { AppShell } from "@/components/layout/app-shell";
 import { SettingsLayout } from "@/components/layout/settings-layout";
 import { LicenseGuard } from "@/components/license-guard";
@@ -57,6 +59,14 @@ import { PrintSettingsPage } from "@/pages/settings-print";
 import { ScannerSettingsPage } from "@/pages/settings-scanner";
 import { SettingsUpdatesPage } from "@/pages/settings-updates";
 import { SettingsAutostartPage } from "@/pages/settings-autostart";
+import { Settings2FAPage } from "@/pages/settings-2fa";
+import { NotificationsPage } from "@/pages/notifications";
+import { TrialBalancePage } from "@/pages/trial-balance";
+import { BalanceSheetPage } from "@/pages/balance-sheet";
+import { ChartOfAccountsPage } from "@/pages/chart-of-accounts";
+import { ReservationsPage } from "@/pages/reservations";
+import { KitchenDisplayPage } from "@/pages/kitchen-display";
+import { PeripheralsPage } from "@/pages/peripherals";
 import { TaxSettingsPage } from "@/pages/settings-taxes";
 import { CategoriesSettingsPage } from "@/pages/settings-categories";
 // Hub pages — flat sidebar with tabs inside each domain
@@ -159,6 +169,8 @@ function AppContent() {
   useF11Fullscreen();
   useAutoUpdate();
   useLanAutostart();
+  useAlertScanner();
+  useOfflineQueueDrainer();
   const { user, isSetupComplete, setupChecked, refreshSetupState } = useAuthStore();
 
   useEffect(() => {
@@ -246,6 +258,13 @@ function AppContent() {
           <Route path="/pharmacy/dispense" element={<RequireRole permission="pharmacy.dispense"><PharmacyPage /></RequireRole>} />
           <Route path="/pharmacy/expiry" element={<RequireRole permission="inventory.view"><ExpiryPage /></RequireRole>} />
           <Route path="/reports" element={<RequireRole permission={["reports.view", "reports.zreport"]}><ReportsIndexPage /></RequireRole>} />
+          <Route path="/notifications" element={<NotificationsPage />} />
+          <Route path="/accounting/chart-of-accounts" element={<RequireRole permission="reports.pnl"><ChartOfAccountsPage /></RequireRole>} />
+          <Route path="/accounting/trial-balance" element={<RequireRole permission="reports.pnl"><TrialBalancePage /></RequireRole>} />
+          <Route path="/accounting/balance-sheet" element={<RequireRole permission="reports.pnl"><BalanceSheetPage /></RequireRole>} />
+          <Route path="/hospitality/reservations" element={<RequireRole permission="hospitality.bookings.manage"><ReservationsPage /></RequireRole>} />
+          <Route path="/hospitality/kitchen" element={<RequireRole permission="hospitality.kitchen.bump"><KitchenDisplayPage /></RequireRole>} />
+          <Route path="/settings/peripherals" element={<RequireRole permission="settings.business"><PeripheralsPage /></RequireRole>} />
           <Route path="/reports/sales" element={<RequireRole permission="reports.view"><ReportsPage /></RequireRole>} />
           <Route path="/reports/inventory" element={<RequireRole permission="reports.view"><InventoryReportsPage /></RequireRole>} />
           <Route path="/reports/wastage" element={<RequireRole permission="reports.view"><WastageReportPage /></RequireRole>} />
@@ -315,6 +334,7 @@ function AppContent() {
             <Route path="scanner" element={<RequireRole permission="settings.business"><ScannerSettingsPage /></RequireRole>} />
             <Route path="updates" element={<RequireRole permission="settings.business"><SettingsUpdatesPage /></RequireRole>} />
             <Route path="autostart" element={<RequireRole permission="settings.business"><SettingsAutostartPage /></RequireRole>} />
+            <Route path="2fa" element={<Settings2FAPage />} />
             <Route path="hardware/units" element={<RequireRole permission="hardware.accounts.manage"><HardwareSettingsPage /></RequireRole>} />
             <Route path="hospitality/service-charge" element={<RequireRole permission="hospitality.service_charge.manage"><HospitalitySettingsPage /></RequireRole>} />
             <Route path="audit" element={<RequireRole permission="audit.view"><AuditLogPage /></RequireRole>} />

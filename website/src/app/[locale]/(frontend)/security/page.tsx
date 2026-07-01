@@ -14,7 +14,7 @@ import { SecurityScene } from '@/components/marketing/illustrations/scenes'
 export const metadata: Metadata = {
   title: 'Security & reliability — Omnix',
   description:
-    'Offline-first by design, encrypted on your own machine, signed automatic updates, multi-device LAN sync. The architectural reasons Omnix is safe to trust with a decade of business.',
+    'Offline-first by design, on your own machine and under your Windows account controls, signed automatic updates, encrypted backups, multi-device LAN sync. The architectural reasons Omnix is safe to trust with a decade of business.',
 }
 
 const PILLARS = [
@@ -25,8 +25,8 @@ const PILLARS = [
   },
   {
     Illo: SecurityIllo,
-    title: 'Your data, encrypted, on your machine',
-    body: 'The database lives on your own PC, encrypted at rest with SQLCipher (AES-256). It is never on someone else\'s server. We cannot see your books, suppliers, customers, or staff. Stop paying for support and the software keeps working — you do not lose access to your own data.',
+    title: 'Your data lives on your machine',
+    body: 'The database lives on your own PC, protected by your Windows account. It is never on someone else\'s server. We cannot see your books, suppliers, customers, or staff. Stop paying for support and the software keeps working — you do not lose access to your own data. Every backup Omnix takes (both local and cloud) is encrypted with a key only you hold.',
   },
   {
     Illo: AccountingIllo,
@@ -51,7 +51,7 @@ const PILLARS = [
 ]
 
 const FACTS = [
-  { label: 'Encryption at rest', value: 'SQLCipher · AES-256' },
+  { label: 'Backup encryption', value: 'AES-256 (local + cloud)' },
   { label: 'Password hashing', value: 'Argon2id' },
   { label: 'Update signature', value: 'Minisign · verified pre-install' },
   { label: 'Licensing', value: 'RSA-signed, device-bound' },

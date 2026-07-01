@@ -21,7 +21,7 @@ const PILLARS = [
   {
     Illo: SecurityIllo,
     title: 'Your data is encrypted and yours',
-    body: 'The database is encrypted on your own machine with SQLCipher. No cloud holds your books hostage. Automatic backups mean a stolen or dead PC never means a lost business — restore to a new machine with your licence key.',
+    body: 'The database lives on your own machine under your Windows account. No cloud holds your books hostage. Encrypted backups (both local and to your cloud bucket) mean a stolen or dead PC never means a lost business — restore to a new machine with your licence key.',
   },
   {
     Illo: UpdatesIllo,

@@ -418,6 +418,66 @@ fn run_inner() {
             sql: include_str!("../migrations/051_ai_actions.sql"),
             kind: MigrationKind::Up,
         },
+        Migration {
+            version: 52,
+            description: "Seed M-Pesa payment methods",
+            sql: include_str!("../migrations/052_seed_mpesa_methods.sql"),
+            kind: MigrationKind::Up,
+        },
+        Migration {
+            version: 53,
+            description: "Sale returns impact — refunded_amount + trigger",
+            sql: include_str!("../migrations/053_sale_returns_impact.sql"),
+            kind: MigrationKind::Up,
+        },
+        Migration {
+            version: 54,
+            description: "eTIMS credit note support",
+            sql: include_str!("../migrations/054_etims_credit_note.sql"),
+            kind: MigrationKind::Up,
+        },
+        Migration {
+            version: 55,
+            description: "Two-factor authentication table",
+            sql: include_str!("../migrations/055_two_factor.sql"),
+            kind: MigrationKind::Up,
+        },
+        Migration {
+            version: 56,
+            description: "Form drafts (autosave) — invoice-new, PO, stock-take",
+            sql: include_str!("../migrations/056_form_drafts.sql"),
+            kind: MigrationKind::Up,
+        },
+        Migration {
+            version: 57,
+            description: "Notifications table (expiry, low stock, unpaid invoices, refills)",
+            sql: include_str!("../migrations/057_notifications.sql"),
+            kind: MigrationKind::Up,
+        },
+        Migration {
+            version: 58,
+            description: "Offline queue for LAN clients when master unreachable",
+            sql: include_str!("../migrations/058_offline_queue.sql"),
+            kind: MigrationKind::Up,
+        },
+        Migration {
+            version: 59,
+            description: "General Ledger — chart of accounts + journal entries + lines",
+            sql: include_str!("../migrations/059_general_ledger.sql"),
+            kind: MigrationKind::Up,
+        },
+        Migration {
+            version: 60,
+            description: "Reservations (tables + rooms)",
+            sql: include_str!("../migrations/060_reservations.sql"),
+            kind: MigrationKind::Up,
+        },
+        Migration {
+            version: 61,
+            description: "Peripherals registry (cash drawer, scale, kitchen printer, card reader)",
+            sql: include_str!("../migrations/061_peripherals.sql"),
+            kind: MigrationKind::Up,
+        },
     ];
 
     tauri::Builder::default()
@@ -476,6 +536,8 @@ fn run_inner() {
             commands::list_paired_devices,
             commands::revoke_paired_device,
             commands::discover_lan_servers,
+            commands::open_cash_drawer,
+            commands::read_weight_scale,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

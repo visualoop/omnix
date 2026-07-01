@@ -224,7 +224,7 @@ export default async function AiPage() {
                 <p className="mt-3 text-[15px] leading-[1.65] text-[var(--color-fg-muted)] max-w-[46ch]">
                   Every prompt is scrubbed for PII before it leaves the machine — phone
                   numbers, KRA PINs, IDs, API keys. Keys are stored encrypted in your
-                  local SQLCipher database. Disable AI completely from settings if you
+                  local SQLite database. Disable AI completely from settings if you
                   prefer, and the rest of Omnix still works.
                 </p>
               </div>
