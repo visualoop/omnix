@@ -1,12 +1,13 @@
 import { notFound } from 'next/navigation'
 import { eq, desc, count } from 'drizzle-orm'
-import { db, user, licenses, machines, payments, supportTickets, member, organization, auditLog } from '@/db'
+import { db, user, licenses, machines, payments, supportTickets, member, organization, auditLog, resellers } from '@/db'
 import { Breadcrumbs } from '@/components/layout/breadcrumbs'
 import { BackButton } from '@/components/layout/back-button'
 import { EntityHero } from '@/components/layout/entity-hero'
 import { LazyTabs } from '@/components/layout/lazy-tabs'
 import { formatDate, formatDateShort, formatDateLong } from '@/lib/format-date'
 import Link from 'next/link'
+import { ResellerControls } from './reseller-controls'
 
 export const dynamic = 'force-dynamic'
 
@@ -21,13 +22,14 @@ export default async function AdminUserDetailPage({ params }: PageProps) {
   const userRow = await db.query.user.findFirst({ where: eq(user.id, id) })
   if (!userRow) notFound()
 
-  const [userLicenses, userMachines, userPayments, userTickets, userMemberships, userAudit] = await Promise.all([
+  const [userLicenses, userMachines, userPayments, userTickets, userMemberships, userAudit, resellerRow] = await Promise.all([
     db.select().from(licenses).where(eq(licenses.userId, id)).orderBy(desc(licenses.createdAt)).limit(50),
     db.select().from(machines).where(eq(machines.userId, id)).orderBy(desc(machines.lastSeenAt)).limit(50),
     db.select().from(payments).where(eq(payments.userId, id)).orderBy(desc(payments.createdAt)).limit(50),
     db.select().from(supportTickets).where(eq(supportTickets.userId, id)).orderBy(desc(supportTickets.createdAt)).limit(50),
     db.select({ org: organization }).from(member).innerJoin(organization, eq(member.organizationId, organization.id)).where(eq(member.userId, id)),
     db.select().from(auditLog).where(eq(auditLog.actorId, id)).orderBy(desc(auditLog.createdAt)).limit(100),
+    db.select().from(resellers).where(eq(resellers.userId, id)).limit(1).catch(() => []),
   ])
 
   const totalSpent = userPayments.filter((p) => p.status === 'success').reduce((s, p) => s + (p.amount || 0), 0)
@@ -54,6 +56,26 @@ export default async function AdminUserDetailPage({ params }: PageProps) {
           { label: 'Machines', value: userMachines.length },
           { label: 'Lifetime spend', value: KES(totalSpent) },
         ]}
+      />
+
+      <ResellerControls
+        userId={userRow.id}
+        reseller={
+          resellerRow[0]
+            ? {
+                id: resellerRow[0].id,
+                companyName: resellerRow[0].companyName,
+                discountPercent: resellerRow[0].discountPercent,
+                status: resellerRow[0].status,
+                totalLicensesIssued: resellerRow[0].totalLicensesIssued,
+                totalRevenueBrought: resellerRow[0].totalRevenueBrought,
+                totalCommissionEarned: resellerRow[0].totalCommissionEarned,
+                unpaidCommission: resellerRow[0].unpaidCommission,
+                commissionCurrency: resellerRow[0].commissionCurrency,
+                approvedAt: resellerRow[0].approvedAt?.toISOString() ?? null,
+              }
+            : null
+        }
       />
 
       <LazyTabs

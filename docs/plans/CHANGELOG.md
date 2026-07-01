@@ -2,6 +2,43 @@
 
 This tracks work done LOCALLY without GitHub pushes. We only push when the user explicitly says so.
 
+## Release v0.21.0 — Reseller foundation
+
+Schema + admin-side promotion. **Reseller-facing dashboard + wholesale checkout ship in v0.22.0** — this release just lays the groundwork so the data model is settled before the customer-facing pipes are built.
+
+### Schema
+Two new tables + one column on licences:
+
+- `resellers` — one row per external partner. Fields: `userId` (unique FK to `user`), `companyName`, `contactPhone`, `contactEmail`, `discountPercent` (0-60, default 15), `status` (`active` / `suspended`), rolling totals (`totalLicensesIssued`, `totalRevenueBrought`, `totalCommissionEarned`, `unpaidCommission`), `commissionCurrency`, `approvedBy` / `approvedAt`, `metadata`.
+- `reseller_commissions` — commission ledger, one row per successful payment on a reseller-issued licence. Prevents double-crediting on refunds via `paymentId UNIQUE`.
+- `licenses.reseller_id` (nullable text) — set on licences issued through the reseller flow. Direct customer purchases leave it NULL. Indexed.
+
+Migration lives in `db/migration-sql.ts` and applies via the existing `/api/migrate-db` + auto-migrate on cold boot. All statements use `IF NOT EXISTS` + `DO $$ BEGIN ... EXCEPTION WHEN duplicate_object` blocks so re-running is safe.
+
+### Admin surface
+On `/admin/users/[id]` there's a new panel above the tabs. Two states:
+
+- **Not a reseller yet**: form with company name + discount % (defaults to account business-name + 15%). "Promote to reseller" button creates the row.
+- **Already a reseller**: shows status, rolling totals (licences / revenue / earned / unpaid), Edit + Suspend/Reactivate buttons.
+
+Every action writes to `audit_log` (`reseller.promote`, `reseller.update`, `reseller.suspend`, `reseller.reactivate`) with the actor and full diff in metadata. Discount clamps at 0-60% server-side — anything higher warrants a manual conversation.
+
+### API
+- `POST /api/admin/users/[id]/reseller` — promote (idempotent — reactivates + refreshes if already exists)
+- `PATCH /api/admin/users/[id]/reseller` — update discount / company name / contact
+- `DELETE /api/admin/users/[id]/reseller` — suspend (soft — keeps commission history intact)
+
+### Not yet
+- Reseller-facing `/reseller` dashboard
+- Reseller checkout flow at wholesale price
+- Commission credit on webhook success (needs the checkout flow first — no reseller-issued licences yet to credit against)
+
+Those all land in v0.22.0 now that the schema is stable.
+
+Version bumped 0.20.0 → **0.21.0** across `package.json`, `src-tauri/Cargo.toml`, `src-tauri/tauri.conf.json`, `Cargo.lock`.
+
+Verification: desktop tsc clean, vitest 440/440, website tsc clean.
+
 ## Release v0.20.0 — CMS covers 4 homepage sections
 
 Extends the /admin/settings CMS from v0.19.0 to cover three more homepage sections. All follow the same pattern: setting keys → component `content?` prop → shipped fallback constants render when unset.

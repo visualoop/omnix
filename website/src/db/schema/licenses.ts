@@ -14,6 +14,11 @@ export const licenses = pgTable(
     userId: text('user_id').notNull().references(() => user.id, { onDelete: 'cascade' }),
     organizationId: text('organization_id').references(() => organization.id, { onDelete: 'set null' }),
 
+    // Reseller who issued this licence, if any. Nullable — direct
+    // purchases (customer → Paystack → us) leave this NULL. Set by the
+    // reseller-issue flow and by the admin "assign reseller" action.
+    resellerId: text('reseller_id'),
+
     licenseKey: text('license_key').notNull().unique(),
     variant: text('variant').notNull(),                    // pro | dawa | retail | hospitality | hardware
     tier: text('tier').notNull().default('starter'),       // trial | starter | business
@@ -58,5 +63,6 @@ export const licenses = pgTable(
     userIdx: index('licenses_user_idx').on(t.userId),
     orgIdx: index('licenses_org_idx').on(t.organizationId),
     statusIdx: index('licenses_status_idx').on(t.status),
+    resellerIdx: index('licenses_reseller_idx').on(t.resellerId),
   }),
 )

@@ -389,6 +389,68 @@ CREATE INDEX IF NOT EXISTS "team_members_active_idx" ON "team_members" ("active"
 --> statement-breakpoint
 CREATE INDEX IF NOT EXISTS "team_members_sort_idx" ON "team_members" ("sort_order");
 --> statement-breakpoint
+CREATE TABLE IF NOT EXISTS "resellers" (
+  "id" text PRIMARY KEY NOT NULL,
+  "user_id" text NOT NULL UNIQUE,
+  "company_name" text NOT NULL,
+  "contact_phone" text,
+  "contact_email" text,
+  "discount_percent" integer DEFAULT 15 NOT NULL,
+  "status" text DEFAULT 'active' NOT NULL,
+  "total_licenses_issued" integer DEFAULT 0 NOT NULL,
+  "total_revenue_brought" double precision DEFAULT 0 NOT NULL,
+  "total_commission_earned" double precision DEFAULT 0 NOT NULL,
+  "unpaid_commission" double precision DEFAULT 0 NOT NULL,
+  "commission_currency" text DEFAULT 'KES' NOT NULL,
+  "approved_by" text,
+  "approved_at" timestamp,
+  "metadata" jsonb DEFAULT '{}'::jsonb NOT NULL,
+  "created_at" timestamp DEFAULT now() NOT NULL,
+  "updated_at" timestamp DEFAULT now() NOT NULL
+);
+--> statement-breakpoint
+DO $$ BEGIN
+ ALTER TABLE "resellers" ADD CONSTRAINT "resellers_user_id_user_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."user"("id") ON DELETE cascade ON UPDATE no action;
+EXCEPTION
+ WHEN duplicate_object THEN null;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+ ALTER TABLE "resellers" ADD CONSTRAINT "resellers_approved_by_user_id_fk" FOREIGN KEY ("approved_by") REFERENCES "public"."user"("id") ON DELETE set null ON UPDATE no action;
+EXCEPTION
+ WHEN duplicate_object THEN null;
+END $$;
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "resellers_status_idx" ON "resellers" ("status");
+--> statement-breakpoint
+CREATE TABLE IF NOT EXISTS "reseller_commissions" (
+  "id" text PRIMARY KEY NOT NULL,
+  "reseller_id" text NOT NULL,
+  "payment_id" text NOT NULL UNIQUE,
+  "license_id" text NOT NULL,
+  "gross_amount" double precision NOT NULL,
+  "commission_amount" double precision NOT NULL,
+  "currency" text NOT NULL,
+  "status" text DEFAULT 'pending' NOT NULL,
+  "paid_out_at" timestamp,
+  "metadata" jsonb,
+  "created_at" timestamp DEFAULT now() NOT NULL
+);
+--> statement-breakpoint
+DO $$ BEGIN
+ ALTER TABLE "reseller_commissions" ADD CONSTRAINT "reseller_commissions_reseller_id_resellers_id_fk" FOREIGN KEY ("reseller_id") REFERENCES "public"."resellers"("id") ON DELETE cascade ON UPDATE no action;
+EXCEPTION
+ WHEN duplicate_object THEN null;
+END $$;
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "reseller_commissions_reseller_idx" ON "reseller_commissions" ("reseller_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "reseller_commissions_status_idx" ON "reseller_commissions" ("status");
+--> statement-breakpoint
+ALTER TABLE "licenses" ADD COLUMN IF NOT EXISTS "reseller_id" text;
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "licenses_reseller_idx" ON "licenses" ("reseller_id");
+--> statement-breakpoint
 `
 
 /** Split into individual statements (Drizzle generates with statement-breakpoints). */
