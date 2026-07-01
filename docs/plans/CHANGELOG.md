@@ -2,6 +2,31 @@
 
 This tracks work done LOCALLY without GitHub pushes. We only push when the user explicitly says so.
 
+## Release v0.28.1 — Tax logic verified + locked with tests
+
+**Concern raised**: "did any of the recent changes break tax? Is inclusive / exclusive still wired through the POS end-to-end?"
+
+**Verified — nothing broken**. Git log confirms zero tax file changes since v0.5.0 (pre-v0.16.4). The end-to-end flow is intact:
+
+1. `settings` table holds `tax.mode` (off / inclusive / exclusive), `tax.default_rate`, `tax.label`
+2. `services/tax.ts` — `getTaxSettings()` reads them with a 30s cache; `computeTax(lines, settings, extras)` does the math
+3. `pages/pos-sale.tsx` line 208 hydrates cart on mount: `useCartStore.setTaxMode(taxSettings.mode)`
+4. `stores/cart.ts` `grandTotal()` — three-mode branch, unchanged since v0.5.0
+5. `services/sales.ts` `recordSale()` — calls `getTaxSettings() + computeTax()` before every write; correct `subtotal + tax_amount + total` written to `sales` row
+
+**Added `tests/tax.spec.ts` — 15 invariants** so this critical money-math surface can never silently regress:
+
+- **Off mode**: no tax, subtotal = total (minus discount), tip + service charge tax-free
+- **Inclusive mode**: 16% VAT correctly backed out of KES 116 gross → 16 tax / 100 base. Line discount reduces base before back-out. Zero-rate + standard-rate lines mix correctly.
+- **Exclusive mode** (KE default): 16% added on top. Multiple lines with mixed rates handled. Line discount reduces the taxable line net. Tip + service charge remain tax-free. Cart-level "10% off the whole bill" discounts reduce total without rebasing tax (matches shop reality).
+- **Clamping**: no negative totals even when a discount exceeds gross.
+
+**What this means for you**: your existing tax setting (whatever it is — off, inclusive, or exclusive) is exactly what shipped. Every sale, receipt, VAT report, and eTIMS submission reads from the same `computeTax()` function that's now protected by 15 pinned tests. If a future change ever breaks one of them, CI will refuse to build.
+
+467 → **482 tests total** (+15 new).
+
+Verification: desktop tsc clean · vitest 482/482.
+
 ## Release v0.28.0 — Trial expiry becomes a graceful transition, not a hard cliff
 
 ### The problem
