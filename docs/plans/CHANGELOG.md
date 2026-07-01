@@ -2,6 +2,29 @@
 
 This tracks work done LOCALLY without GitHub pushes. We only push when the user explicitly says so.
 
+## Release v0.18.0 — Admin-create-accounts + manual-payment recording
+
+### Admin creates customers without email
+- New `POST /api/admin/customers` — admin creates a new customer with just org name + optional email/phone/country. When no email is provided, we synthesize `admin+<hex>@omnix-customer.local` so Better Auth's NOT NULL email constraint is satisfied; the customer can replace the placeholder from `/dashboard/profile`. Generates a 10-char alphanumeric password (no ambiguous chars — easy to dictate over phone).
+- Optional trial variant field — admin can issue a 30-day trial in the same step (Dawa / Retail / Hospitality / Hardware). Uses the same shape as `/api/dashboard/trial` so the licence flows through the existing activate + validate + billing pipes.
+- New `/admin/customers/new` page — form + on-success view that shows the login credentials with copy buttons for the admin to pass over WhatsApp/phone.
+- Discoverable via a "+ New customer" button on `/admin/users`.
+- Every admin-created account writes an `audit_log` row (`customer.admin_create`) with the actor id + whether a real email was captured.
+
+### Admin records manual M-Pesa/cash payments
+- New `POST /api/admin/licenses/[id]/mark-paid` — admin captures the M-Pesa transaction code (or notes cash) against a licence. Creates a `payments` row with `paystackReference = manual:<ref>:<id>`, `status = success`, `metadata.source = admin_manual` so downstream reports treat it identically to Paystack payments.
+- Auto-updates licence: trial + `license_fee` → active + paid, with a 12-month maintenance window; renewal/upgrade extends maintenance by 12 months from current expiry (or now, whichever is later).
+- Writes an audit_log row (`payment.manual_record`) with the M-Pesa code + notes for reconciliation.
+
+### Deferred to future releases
+- Reseller channel with volume pricing → v0.19.0
+- Affiliate program with Paystack Transfers → v0.20.0
+- Small in-admin CMS for homepage/module/FAQ content → v0.21.0
+
+Version bumped 0.17.0 → **0.18.0** across `package.json`, `src-tauri/Cargo.toml`, `src-tauri/tauri.conf.json`, `Cargo.lock`.
+
+Verification: desktop tsc clean, vitest 440/440 (7 live-API skipped), website tsc clean.
+
 ## Release v0.17.0 — Autonomy: expiry write-off flow · pagination sweep · AI intra-provider fallback · Groq refresh
 
 ### Expired-batch write-off

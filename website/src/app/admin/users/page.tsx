@@ -96,6 +96,14 @@ export default async function AdminUsersPage({
         eyebrow="Platform"
         title="Users"
         description="Every account — customers, support agents, sales reps, platform admins."
+        actions={
+          <Link
+            href="/admin/customers/new"
+            className="inline-flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:opacity-90"
+          >
+            + New customer
+          </Link>
+        }
       />
 
       <div className="grid grid-cols-3 gap-3">
