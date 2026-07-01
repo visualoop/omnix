@@ -174,8 +174,12 @@ describe('invoke() — provider fallback chain', () => {
     mockedQuery.mockResolvedValueOnce([PROVIDER_GROQ, PROVIDER_OR])
     mockedQuery.mockResolvedValueOnce([])
 
-    // Groq fails on all 3 fallback models, OpenRouter primary succeeds.
+    // Groq chain is now 5 models deep (llama-3.3-70b + gpt-oss-120b +
+    // gpt-oss-20b + llama-3.1-8b + groq/compound). We simulate all 5
+    // hitting rate limits, then OpenRouter's primary succeeding.
     mockFetch
+      .mockResolvedValueOnce(jsonResponse({ error: 'rate' }, 429))
+      .mockResolvedValueOnce(jsonResponse({ error: 'rate' }, 429))
       .mockResolvedValueOnce(jsonResponse({ error: 'rate' }, 429))
       .mockResolvedValueOnce(jsonResponse({ error: 'rate' }, 429))
       .mockResolvedValueOnce(jsonResponse({ error: 'rate' }, 429))
@@ -191,8 +195,10 @@ describe('invoke() — provider fallback chain', () => {
     mockedQuery.mockResolvedValueOnce([PROVIDER_GROQ])
     mockedQuery.mockResolvedValueOnce([])
 
-    // Groq's entire chain (3 models) fails
+    // Groq's entire 5-model chain fails
     mockFetch
+      .mockResolvedValueOnce(jsonResponse({ error: 'rate' }, 429))
+      .mockResolvedValueOnce(jsonResponse({ error: 'rate' }, 429))
       .mockResolvedValueOnce(jsonResponse({ error: 'rate' }, 429))
       .mockResolvedValueOnce(jsonResponse({ error: 'rate' }, 429))
       .mockResolvedValueOnce(jsonResponse({ error: 'server' }, 500))
@@ -292,5 +298,57 @@ describe('invoke() — OpenRouter custom headers', () => {
     const headers = (fetchCall[1] as { headers: Record<string, string> }).headers
     expect(headers['HTTP-Referer']).toBe('https://omnix.co.ke')
     expect(headers['X-Title']).toBe('Omnix')
+  })
+})
+
+describe('invoke() — model_gone (intra-provider fallback)', () => {
+  it('walks to the next Groq model when the first is decommissioned', async () => {
+    mockedQuery.mockResolvedValueOnce([FEATURE_LOW])
+    mockedQuery.mockResolvedValueOnce(SETTINGS_DEFAULT)
+    mockedQuery.mockResolvedValueOnce([PROVIDER_GROQ, PROVIDER_OR])
+    mockedQuery.mockResolvedValueOnce([])
+
+    // Primary Groq model returns "model_decommissioned" — router should
+    // continue to the next Groq fallback model (still Groq, not OR).
+    mockFetch
+      .mockResolvedValueOnce(
+        jsonResponse({ error: { code: 'model_decommissioned', message: 'llama-3.3-70b is no longer supported' } }, 400),
+      )
+      .mockResolvedValueOnce(jsonResponse(OPENAI_OK_REPLY))
+
+    const r = await invoke('enrich_product', { messages: [{ role: 'user', content: 'hi' }] })
+    expect(r.provider).toBe('groq')
+  })
+})
+
+describe('invoke() — quota_exceeded (long cooldown)', () => {
+  it('parses Groq quota-exceeded 429 into a quota_exceeded AiError', async () => {
+    mockedQuery.mockResolvedValueOnce([FEATURE_LOW])
+    mockedQuery.mockResolvedValueOnce(SETTINGS_DEFAULT)
+    mockedQuery.mockResolvedValueOnce([PROVIDER_GROQ])
+    mockedQuery.mockResolvedValueOnce([])
+
+    // Groq daily token quota exhausted — a 429 that mentions "quota".
+    // Router should mark this differently from a transient 429: the
+    // provider stays cooled down for 24h, no same-route retry.
+    mockFetch.mockResolvedValueOnce(
+      jsonResponse({ error: { message: 'Rate limit reached — daily quota exceeded' } }, 429),
+    )
+    mockFetch.mockResolvedValueOnce(
+      jsonResponse({ error: { message: 'Rate limit reached — daily quota exceeded' } }, 429),
+    )
+    mockFetch.mockResolvedValueOnce(
+      jsonResponse({ error: { message: 'Rate limit reached — daily quota exceeded' } }, 429),
+    )
+    mockFetch.mockResolvedValueOnce(
+      jsonResponse({ error: { message: 'Rate limit reached — daily quota exceeded' } }, 429),
+    )
+    mockFetch.mockResolvedValueOnce(
+      jsonResponse({ error: { message: 'Rate limit reached — daily quota exceeded' } }, 429),
+    )
+
+    await expect(
+      invoke('enrich_product', { messages: [{ role: 'user', content: 'hi' }] }),
+    ).rejects.toBeInstanceOf(AiError)
   })
 })

@@ -43,7 +43,8 @@ export async function listAttendance(opts?: {
      FROM attendance a
      JOIN employees e ON e.id = a.employee_id
      ${where}
-     ORDER BY a.work_date DESC, e.full_name`,
+     ORDER BY a.work_date DESC, e.full_name
+     LIMIT 500`,
     params,
   );
 }

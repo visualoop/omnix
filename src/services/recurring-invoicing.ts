@@ -252,7 +252,7 @@ async function nextCreditNoteNumber(): Promise<string> {
 
 export async function listCreditNotes(invoiceId?: string): Promise<CreditNote[]> {
   return query<CreditNote>(
-    `SELECT * FROM credit_notes ${invoiceId ? "WHERE invoice_id = ?1" : ""} ORDER BY created_at DESC`,
+    `SELECT * FROM credit_notes ${invoiceId ? "WHERE invoice_id = ?1" : ""} ORDER BY created_at DESC LIMIT 500`,
     invoiceId ? [invoiceId] : [],
   );
 }

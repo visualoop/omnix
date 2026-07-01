@@ -452,7 +452,8 @@ export async function listStatementImports(accountId?: string): Promise<Statemen
   return query<StatementImport>(
     `SELECT * FROM bank_statement_imports
      ${accountId ? "WHERE account_id = ?1" : ""}
-     ORDER BY created_at DESC`,
+     ORDER BY created_at DESC
+     LIMIT 200`,
     accountId ? [accountId] : [],
   );
 }

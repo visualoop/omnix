@@ -19,7 +19,20 @@ export type ProviderId =
 
 export type PrivacyTier = "low" | "medium" | "high";
 export type TaskKind = "text" | "vision" | "reasoning";
-export type CallStatus = "ok" | "rate_limited" | "error" | "blocked_privacy" | "no_provider";
+export type CallStatus =
+  | "ok"
+  | "rate_limited"
+  | "error"
+  | "blocked_privacy"
+  | "no_provider"
+  /** Model has been retired by the provider — try the next model on the
+   *  SAME provider, don't blackball the provider entirely. Groq returns
+   *  400 with `code: "model_decommissioned"` for this case. */
+  | "model_gone"
+  /** Daily/monthly quota exhausted on this provider — treat as a longer
+   *  cooldown than a normal rate-limit and skip this provider until the
+   *  quota resets (typically 24h). */
+  | "quota_exceeded";
 
 export interface AiProvider {
   id: ProviderId;

@@ -23,6 +23,7 @@ import { ControlledRegisterPage } from "@/pages/controlled-register";
 import { ColdChainPage } from "@/pages/cold-chain";
 import { AmrReportPage } from "@/pages/amr-report";
 import { ExpiryPage } from "@/pages/expiry";
+import { WastageReportPage } from "@/pages/wastage-report";
 import { ReportsPage } from "@/pages/reports";
 import { AiWorkspacePage } from "@/pages/ai-workspace";
 import { ReportsIndexPage } from "@/pages/reports-index";
@@ -240,6 +241,7 @@ function AppContent() {
           <Route path="/reports" element={<RequireRole permission={["reports.view", "reports.zreport"]}><ReportsIndexPage /></RequireRole>} />
           <Route path="/reports/sales" element={<RequireRole permission="reports.view"><ReportsPage /></RequireRole>} />
           <Route path="/reports/inventory" element={<RequireRole permission="reports.view"><InventoryReportsPage /></RequireRole>} />
+          <Route path="/reports/wastage" element={<RequireRole permission="reports.view"><WastageReportPage /></RequireRole>} />
           <Route path="/reports/zreport" element={<RequireRole permission="reports.zreport"><ZReportPage /></RequireRole>} />
           <Route path="/reports/tips" element={<RequireRole permission="reports.view"><TipsReportPage /></RequireRole>} />
           <Route path="/reports/daily-operations" element={<RequireRole permission={["reports.view", "reports.zreport"]}><DailyOperationsPage /></RequireRole>} />

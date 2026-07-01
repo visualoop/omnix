@@ -320,7 +320,8 @@ export async function listShrinkage(opts?: {
      LEFT JOIN product_variants v ON v.id = s.variant_id
      JOIN users u ON u.id = s.user_id
      ${where}
-     ORDER BY s.incident_date DESC, s.created_at DESC`,
+     ORDER BY s.incident_date DESC, s.created_at DESC
+     LIMIT 500`,
     params,
   );
 }
@@ -451,7 +452,7 @@ export async function listLaybys(opts?: { status?: Layby["status"] }): Promise<L
   );
   const where = opts?.status ? `WHERE status = ?1` : "";
   return query<Layby>(
-    `SELECT * FROM laybys ${where} ORDER BY created_at DESC`,
+    `SELECT * FROM laybys ${where} ORDER BY created_at DESC LIMIT 500`,
     opts?.status ? [opts.status] : [],
   );
 }

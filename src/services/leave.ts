@@ -60,7 +60,8 @@ export async function listLeaveRequests(opts?: {
      JOIN leave_types lt ON lt.id = r.leave_type_id
      LEFT JOIN users u ON u.id = r.approved_by
      ${where}
-     ORDER BY r.created_at DESC`,
+     ORDER BY r.created_at DESC
+     LIMIT 500`,
     params,
   );
 }

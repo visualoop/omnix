@@ -77,6 +77,12 @@ const MODEL_WINDOWS: Record<string, number> = {
   "mixtral-8x7b-32768": 32_768,
   "qwen-qwq-32b": 32_768,
   "deepseek-r1-distill-llama-70b": 128_000,
+  // Groq-hosted open-weight OpenAI models — 128k context per Groq docs.
+  "openai/gpt-oss-120b": 128_000,
+  "openai/gpt-oss-20b": 128_000,
+  // Groq Compound — agentic system that uses tools. Groq caps at 128k.
+  "groq/compound": 128_000,
+  "groq/compound-mini": 128_000,
 
   // ── OpenRouter (free-tier slugs used by the router fallback chain) ─
   "openai/gpt-oss-20b:free": 8192,

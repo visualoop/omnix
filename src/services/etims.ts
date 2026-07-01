@@ -236,7 +236,7 @@ export async function signInvoice(saleId: string, items: SaleItemForEtims[], tot
 // Get pending/queued invoices
 export async function getPendingInvoices(): Promise<EtimsInvoice[]> {
   return query<EtimsInvoice>(
-    "SELECT * FROM etims_invoices WHERE status IN ('pending','queued','failed') ORDER BY created_at ASC"
+    "SELECT * FROM etims_invoices WHERE status IN ('pending','queued','failed') ORDER BY created_at ASC LIMIT 500"
   );
 }
 

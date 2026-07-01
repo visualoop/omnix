@@ -55,6 +55,17 @@ export function PharmacyPage() {
         source: { type: "prescription", id: rx.id, label: `Rx #${rx.rx_number} — ${rx.patient_name}` },
       });
       toast.success(`Prescription #${rx.rx_number} loaded into POS cart`);
+      // Amber non-blocking warning if any dispensed product has an active
+      // batch < 30 days from expiry. The pharmacist can override — this
+      // is FEFO awareness, not a hard block.
+      if (checkout.expiringSoon.length > 0) {
+        const soonest = checkout.expiringSoon[0];
+        const others = checkout.expiringSoon.length - 1;
+        const msg = others > 0
+          ? `${soonest.product_name} expires in ${soonest.days_to_expiry}d (+${others} more nearing expiry)`
+          : `${soonest.product_name} expires in ${soonest.days_to_expiry}d — pick the oldest batch first`;
+        toast.warning(msg, { duration: 8000 });
+      }
       navigate("/pos/sale");
     } catch (e) {
       toast.error(String(e));

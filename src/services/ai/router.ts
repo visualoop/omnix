@@ -63,9 +63,24 @@ const FALLBACK_MODELS: Record<string, Partial<Record<TaskKind, string[]>>> = {
     ],
   },
   groq: {
-    text: ["llama-3.3-70b-versatile", "llama-3.1-8b-instant", "mixtral-8x7b-32768"],
+    // Groq lineup as of 2026. mixtral-8x7b-32768 was decommissioned by
+    // Groq (returned "model_decommissioned" 400 errors) — replaced with
+    // openai/gpt-oss-120b (Groq-hosted) and groq/compound as fallbacks.
+    // Order: primary → cheaper GPT-OSS → smaller instant model → compound.
+    text: [
+      "llama-3.3-70b-versatile",
+      "openai/gpt-oss-120b",
+      "openai/gpt-oss-20b",
+      "llama-3.1-8b-instant",
+      "groq/compound",
+    ],
     vision: ["llama-3.2-90b-vision-preview", "llama-3.2-11b-vision-preview"],
-    reasoning: ["qwen-qwq-32b", "deepseek-r1-distill-llama-70b"],
+    reasoning: [
+      "openai/gpt-oss-120b",
+      "qwen-qwq-32b",
+      "deepseek-r1-distill-llama-70b",
+      "groq/compound",
+    ],
   },
 };
 
@@ -178,9 +193,32 @@ async function callProvider(
   if (!res.ok) {
     if (res.status === 429) {
       const retryAfterMs = parseRetryAfter(res.headers as unknown as { get: (n: string) => string | null });
-      const err = new AiError("rate_limited", `${route.provider.id}: rate-limited (429)`, route.provider.id);
+      // Distinguish quota (daily/monthly cap hit — long cooldown needed)
+      // from a transient rate limit. Groq puts "rate_limit_exceeded" in
+      // its 429 error.type and OpenAI-compat providers echo that shape.
+      const lowered = text.toLowerCase();
+      const isQuota = /quota|daily limit|monthly.*limit|exhaust/.test(lowered);
+      const err = new AiError(
+        isQuota ? "quota_exceeded" : "rate_limited",
+        `${route.provider.id}: ${isQuota ? "quota exceeded" : "rate-limited (429)"}`,
+        route.provider.id,
+      );
       if (retryAfterMs !== null) err.retryAfterMs = retryAfterMs;
       throw err;
+    }
+    // 4xx that means "this specific model is gone" — trigger intra-
+    // provider walk to the next model in the same fallback chain.
+    if (res.status === 400 || res.status === 404) {
+      const lowered = text.toLowerCase();
+      if (
+        /model[_ ]decommission|deprecated|no longer supported|model[_ ]not[_ ]found|does not exist/.test(lowered)
+      ) {
+        throw new AiError(
+          "model_gone",
+          `${route.provider.id}: model ${route.model} is retired (${res.status}) — trying next model`,
+          route.provider.id,
+        );
+      }
     }
     throw new AiError("error", `${route.provider.id}: HTTP ${res.status} — ${text.slice(0, 200)}`, route.provider.id);
   }
@@ -316,7 +354,33 @@ export async function invoke(featureId: string, request: ChatRequest, opts: Invo
         return response;
       } catch (e) {
         lastError = e as Error;
-        const isRateLimited = e instanceof AiError && e.status === "rate_limited";
+        const status = e instanceof AiError ? e.status : "error";
+
+        if (status === "model_gone") {
+          // Model retired by the provider — keep the provider warm and
+          // walk to the next candidate route (which is either the next
+          // model on the same provider, or a fallback provider). We
+          // deliberately don't touch rateLimitedUntil.
+          await setProviderRuntimeState(route.provider.id, {
+            rateLimitedUntil: null,
+            lastError: `Model ${route.model} retired — falling through`,
+          });
+          break;
+        }
+
+        if (status === "quota_exceeded") {
+          // 24-hour cooldown for daily/monthly quota exhaustion. Groq's
+          // free tier hits this. The router auto-recovers when the quota
+          // window resets (typically midnight UTC).
+          const cooldown = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+          await setProviderRuntimeState(route.provider.id, {
+            rateLimitedUntil: cooldown,
+            lastError: lastError.message,
+          });
+          break;
+        }
+
+        const isRateLimited = status === "rate_limited";
         if (isRateLimited) {
           const retryAfterMs = (e as AiError).retryAfterMs;
           // Same-route retry: honour short Retry-After only.

@@ -2,6 +2,35 @@
 
 This tracks work done LOCALLY without GitHub pushes. We only push when the user explicitly says so.
 
+## Release v0.17.0 — Autonomy: expiry write-off flow · pagination sweep · AI intra-provider fallback · Groq refresh
+
+### Expired-batch write-off
+- New `writeOffBatch({ batchId, reason, notes, userId })` in `src/services/wastage.ts` — records a negative `stock_movements` row of type='damage' with a reason-tagged note ("Expired:", "Damaged:", "Return-to-supplier:", "Other:"), zeroes the batch quantity, is idempotent on repeat calls.
+- Expiry Alerts page (`/pharmacy/expiry`) gains a per-row "Write off" action + confirmation dialog with reason picker + notes field. Zeroing the batch removes it from FEFO picks + the expiry tracker.
+- New Wastage report page at `/reports/wastage` — total cost, units, per-reason breakdown, full write-off ledger with 500-row cap.
+- **Dispense-time expiry warning**: `preparePrescriptionForPosCheckout` now returns `expiringSoon[]` (products with any active batch ≤30 days from expiry). Pharmacy page toasts an amber warning when a prescription is loaded into POS — pharmacist can still dispense but is prompted to pick the oldest batch (FEFO).
+
+### AI reliability
+- **Groq fallback chain refreshed**: dropped decommissioned `mixtral-8x7b-32768` (the "Mistral no longer working" complaint). New chain: `llama-3.3-70b-versatile → openai/gpt-oss-120b → openai/gpt-oss-20b → llama-3.1-8b-instant → groq/compound`. Same for the streaming router.
+- **Groq Compound + GPT-OSS-120B** added to the router and to the context-window registry (both 128k).
+- **Intra-provider fallback**: extended `CallStatus` with `model_gone` + `quota_exceeded`. `callProvider` now parses the response body for `model_decommissioned` / `model_not_found` / `deprecated` on 400/404 and throws `model_gone`, so the invoke loop walks to the next model on the same provider instead of blackballing the provider. `quota|daily limit|monthly limit` in a 429 body triggers `quota_exceeded` + 24h cooldown on the provider instead of the usual 60-sec.
+- Two new unit tests cover both paths (model_gone → next-Groq-model, quota_exceeded → rejects).
+
+### Pagination sweep (defensive caps everywhere)
+Added `LIMIT 500` (or 200 where appropriate) to every remaining unbounded multi-row query so no list can lock the UI on a growing dataset:
+- Retail: `listShrinkage`, `listLaybys`.
+- Invoicing: `listCreditNotes`.
+- Insurance: `listInsuranceBatches`.
+- Banking: `listStatementImports` (200).
+- eTIMS: pending queue (500).
+- HR: `listLeaveRequests`, `listAttendance`.
+
+Combined with the earlier caps (v0.16.3 inventory/invoices/quotations/expiry/doctors/payroll/tips/patients), every list in the app now has an upper bound.
+
+Version bumped 0.16.4 → **0.17.0** across `package.json`, `src-tauri/Cargo.toml`, `src-tauri/tauri.conf.json`, `Cargo.lock`.
+
+Verification: desktop tsc clean, vitest 440/440 (7 live-API skipped), audit 0 errors / 0 warnings, website tsc clean.
+
 ## Release v0.16.4 — Autonomy pack: 8 bug fixes + polish for owner-not-always-watching operation
 
 ### POS + inventory

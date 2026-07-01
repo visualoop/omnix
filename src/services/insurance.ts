@@ -519,7 +519,8 @@ export async function listBatches(providerId?: string): Promise<InsuranceBatch[]
      FROM insurance_batches b 
      JOIN insurance_providers p ON p.id = b.provider_id
      ${where} 
-     ORDER BY b.created_at DESC`,
+     ORDER BY b.created_at DESC
+     LIMIT 500`,
     params
   );
 }

@@ -123,7 +123,17 @@ export async function dispensePrescription(prescriptionId: string, saleId: strin
 
 export async function preparePrescriptionForPosCheckout(
   prescriptionId: string
-): Promise<{ items: CartItem[]; prescriptionNumber: number; patientName: string } | null> {
+): Promise<{
+  items: CartItem[];
+  prescriptionNumber: number;
+  patientName: string;
+  expiringSoon: Array<{
+    product_id: string;
+    product_name: string;
+    days_to_expiry: number;
+    batch_number: string | null;
+  }>;
+} | null> {
   const rxs = await query<Prescription>("SELECT * FROM prescriptions WHERE id = ?1", [prescriptionId]);
   if (rxs.length === 0) return null;
   const rx = rxs[0];
@@ -171,10 +181,35 @@ export async function preparePrescriptionForPosCheckout(
     item.total = item.unit_price * item.quantity - item.discount;
   }
 
+  // Amber warning: for any product whose oldest available batch is < 30
+  // days from expiry, surface it so the pharmacist consciously dispenses
+  // the older stock (FEFO) and doesn't accidentally hand out a batch
+  // that's about to expire in the customer's hands.
+  const expiringSoon = await query<{
+    product_id: string;
+    product_name: string;
+    days_to_expiry: number;
+    batch_number: string | null;
+  }>(
+    `SELECT p.id AS product_id,
+            p.name AS product_name,
+            CAST(julianday(b.expiry_date) - julianday('now') AS INTEGER) AS days_to_expiry,
+            b.batch_number
+       FROM batches b
+       JOIN products p ON p.id = b.product_id
+      WHERE b.product_id IN (${placeholders})
+        AND b.quantity > 0
+        AND b.expiry_date IS NOT NULL
+        AND julianday(b.expiry_date) - julianday('now') <= 30
+      ORDER BY b.expiry_date ASC`,
+    productIds,
+  );
+
   return {
     items: cartItems,
     prescriptionNumber: rx.rx_number,
     patientName: rx.patient_name,
+    expiringSoon,
   };
 }
 

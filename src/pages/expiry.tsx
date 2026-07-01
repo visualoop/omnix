@@ -2,17 +2,25 @@ import { useState, useEffect } from "react";
 import {
   Calendar,
   Warning as AlertTriangle,
+  Trash as Trash2,
 } from "@phosphor-icons/react";
 import { getExpiringItems, type ExpiryItem } from "@/services/pharmacy";
+import { writeOffBatch, type WriteOffReason } from "@/services/wastage";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { useAuthStore } from "@/stores/auth";
+import { toast } from "sonner";
 
 export function ExpiryPage() {
   const [items, setItems] = useState<ExpiryItem[]>([]);
   const [window, setWindow] = useState(90);
+  const [target, setTarget] = useState<ExpiryItem | null>(null);
+  const userId = useAuthStore((s) => s.user?.id ?? null);
 
-  useEffect(() => {
-    getExpiringItems(window).then(setItems);
-  }, [window]);
+  const load = () => getExpiringItems(window).then(setItems);
+  useEffect(() => { load(); }, [window]);
 
   const expired = items.filter((i) => i.days_to_expiry < 0);
   const critical = items.filter((i) => i.days_to_expiry >= 0 && i.days_to_expiry <= 30);
@@ -21,7 +29,13 @@ export function ExpiryPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold tracking-tight">Expiry Alerts</h1>
+        <div>
+          <h1 className="text-xl font-semibold tracking-tight">Expiry Alerts</h1>
+          <p className="text-xs text-muted-foreground mt-1">
+            Batches with an expiry date within the selected window. Write off expired batches
+            to zero the stock and record the loss in the Wastage report.
+          </p>
+        </div>
         <div className="flex gap-1 border border-border rounded-md p-0.5">
           {[30, 60, 90, 180].map((d) => (
             <button
@@ -58,6 +72,7 @@ export function ExpiryPage() {
                 <th className="text-right px-4 py-2.5 font-medium">Qty</th>
                 <th className="text-left px-4 py-2.5 font-medium">Expiry Date</th>
                 <th className="text-right px-4 py-2.5 font-medium">Status</th>
+                <th className="text-right px-4 py-2.5 font-medium w-24">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -76,13 +91,133 @@ export function ExpiryPage() {
                       <Badge variant="secondary" className="text-xs">{item.days_to_expiry}d</Badge>
                     )}
                   </td>
+                  <td className="px-4 py-2.5 text-right">
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="h-7 text-[11px] text-muted-foreground hover:text-destructive"
+                      onClick={() => setTarget(item)}
+                    >
+                      <Trash2 className="h-3 w-3 mr-1" /> Write off
+                    </Button>
+                  </td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
       )}
+
+      <WriteOffDialog
+        item={target}
+        onClose={() => setTarget(null)}
+        onSaved={() => { setTarget(null); load(); }}
+        userId={userId}
+      />
     </div>
+  );
+}
+
+function WriteOffDialog({
+  item,
+  onClose,
+  onSaved,
+  userId,
+}: {
+  item: ExpiryItem | null;
+  onClose: () => void;
+  onSaved: () => void;
+  userId: string | null;
+}) {
+  const [reason, setReason] = useState<WriteOffReason>("expired");
+  const [notes, setNotes] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (item) {
+      setReason(item.days_to_expiry < 0 ? "expired" : "damaged");
+      setNotes("");
+    }
+  }, [item]);
+
+  if (!item) return null;
+
+  const submit = async () => {
+    if (!userId) {
+      toast.error("Not signed in");
+      return;
+    }
+    setSubmitting(true);
+    try {
+      await writeOffBatch({ batchId: item.batch_id, reason, notes, userId });
+      toast.success(`Wrote off ${item.quantity} of ${item.product_name}`);
+      onSaved();
+    } catch (e) {
+      toast.error(String(e));
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <Dialog open={!!item} onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Write off batch</DialogTitle>
+          <DialogDescription>
+            Zeroes {item.quantity} unit{item.quantity === 1 ? "" : "s"} of{" "}
+            <strong>{item.product_name}</strong> (batch {item.batch_number}) and records the loss.
+            This cannot be reversed from here — restore via a manual stock adjustment.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-3 py-2">
+          <div>
+            <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+              Reason
+            </label>
+            <div className="mt-2 grid grid-cols-2 gap-2">
+              {(["expired", "damaged", "returned_to_supplier", "other"] as WriteOffReason[]).map((r) => (
+                <button
+                  key={r}
+                  onClick={() => setReason(r)}
+                  className={`px-3 py-2 rounded-md border text-xs font-medium text-left transition ${
+                    reason === r
+                      ? "border-primary bg-primary/10 text-primary"
+                      : "border-border text-muted-foreground hover:border-primary/40"
+                  }`}
+                >
+                  {r === "expired" ? "Expired"
+                    : r === "damaged" ? "Damaged"
+                    : r === "returned_to_supplier" ? "Return to supplier"
+                    : "Other"}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div>
+            <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+              Notes (optional)
+            </label>
+            <Input
+              className="mt-1"
+              placeholder="e.g. Damaged in transit, supplier accepted return"
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+            />
+          </div>
+        </div>
+
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose} disabled={submitting}>
+            Cancel
+          </Button>
+          <Button variant="destructive" onClick={submit} disabled={submitting}>
+            {submitting ? "Writing off…" : "Write off"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 

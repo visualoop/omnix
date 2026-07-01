@@ -39,9 +39,18 @@ const FALLBACK_MODELS: Record<string, Partial<Record<TaskKind, string[]>>> = {
     reasoning: ["z-ai/glm-4.5-air:free", "openai/gpt-oss-120b:free"],
   },
   groq: {
-    text: ["llama-3.3-70b-versatile", "llama-3.1-8b-instant", "mixtral-8x7b-32768"],
+    // mixtral-8x7b-32768 removed — Groq decommissioned it. New fallback
+    // chain: gpt-oss-120b (Groq-hosted OpenAI open-weight), then smaller
+    // instant model, then Groq Compound with tool-use.
+    text: [
+      "llama-3.3-70b-versatile",
+      "openai/gpt-oss-120b",
+      "openai/gpt-oss-20b",
+      "llama-3.1-8b-instant",
+      "groq/compound",
+    ],
     vision: ["llama-3.2-90b-vision-preview"],
-    reasoning: ["qwen-qwq-32b"],
+    reasoning: ["openai/gpt-oss-120b", "qwen-qwq-32b", "groq/compound"],
   },
 };
 
