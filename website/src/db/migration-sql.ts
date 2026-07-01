@@ -507,6 +507,12 @@ CREATE INDEX IF NOT EXISTS "affiliate_credits_affiliate_idx" ON "affiliate_credi
 --> statement-breakpoint
 CREATE INDEX IF NOT EXISTS "affiliate_credits_status_idx" ON "affiliate_credits" ("status");
 --> statement-breakpoint
+ALTER TABLE "machines" ADD COLUMN IF NOT EXISTS "update_channel" text NOT NULL DEFAULT 'stable';
+--> statement-breakpoint
+ALTER TABLE "machines" ADD COLUMN IF NOT EXISTS "auto_update_enabled" text NOT NULL DEFAULT 'true';
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "machines_update_channel_idx" ON "machines" ("update_channel");
+--> statement-breakpoint
 `
 
 /** Split into individual statements (Drizzle generates with statement-breakpoints). */

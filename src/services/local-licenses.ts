@@ -100,12 +100,67 @@ export async function setActiveLicenseKey(key: string): Promise<void> {
   // common starting point), trade licences default to their own module.
   // The user can still drill into other modules via the sidebar after
   // load; this just decides what they land in after a switch.
-  const rows = await query<{ variant: string; modules: string | null }>(
-    `SELECT variant, modules FROM local_licenses WHERE license_key = ?1 LIMIT 1`,
+  const rows = await query<{
+    variant: string
+    modules: string | null
+    max_machines: number
+    max_branches: number
+    tier: string
+    status: string
+    trial_ends_at: string | null
+    maintenance_until: string | null
+    auth_token: string | null
+  }>(
+    `SELECT variant, modules, max_machines, max_branches, tier, status,
+            trial_ends_at, maintenance_until, auth_token
+     FROM local_licenses WHERE license_key = ?1 LIMIT 1`,
     [key],
   )
   const row = rows[0]
   if (!row) return
+
+  // ── Sync the singleton `license` row (v0.28.9 fix) ─────────────
+  // getLicenseStatus() reads FROM `license` — it's the source of truth
+  // for LicenseGuard + useEntitlements. Without this sync, activating a
+  // new key updated `local_licenses` but the app kept enforcing the
+  // OLD singleton row (stale modules → "Omnix Retail isn't on your
+  // licence" even after activating a Retail key).
+  //
+  // Every setActiveLicenseKey call now overwrites the singleton so both
+  // tables converge. Callers include activateLicense (new key), the
+  // "Switch to this" button, and the settings-licenses backfill.
+  try {
+    const { getMachineInfo } = await import("@/services/license")
+    const machine = await getMachineInfo()
+    const modulesJson = row.modules ?? JSON.stringify([row.variant])
+    await execute(
+      `INSERT OR REPLACE INTO license
+        (id, license_key, license_kid, customer_name, customer_email, issued_at,
+         maintenance_expires_at, license_type, features_json, modules_json, max_devices,
+         activation_token, server_validated, last_server_check_at,
+         machine_fingerprint, activated_at, last_verified_at)
+       VALUES ('active', ?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, datetime('now'), datetime('now'))`,
+      [
+        key,
+        key, // kid = key for compact-format
+        "",  // customer_name — filled by sync later
+        "",  // customer_email
+        new Date().toISOString(),
+        row.maintenance_until ?? row.trial_ends_at ?? new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+        row.tier === "trial" ? "trial" : "perpetual",
+        JSON.stringify([]),
+        modulesJson,
+        row.max_machines || 1,
+        row.auth_token ?? null,
+        1, // server_validated
+        new Date().toISOString(),
+        machine.fingerprint,
+      ],
+    )
+  } catch (e) {
+    console.warn("[setActiveLicenseKey] singleton sync failed:", e)
+  }
+
   const defaultModule =
     row.variant === "pro"
       ? "dawa"

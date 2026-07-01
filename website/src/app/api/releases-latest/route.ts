@@ -51,6 +51,12 @@ export async function GET(req: Request) {
   const variant = (ALLOWED_VARIANTS.includes(rawVariant as VariantId) ? rawVariant : 'pro') as VariantId
   const currentVersion = url.searchParams.get('license') ?? ''
 
+  // Channel selection — 'beta' or 'nightly' opt-in via ?channel=X, else 'stable'.
+  // Canary machines pass channel=beta so they get pre-release versions first.
+  // See /api/updater/gate for who decides which channel a machine is on.
+  const rawChannel = url.searchParams.get('channel')?.toLowerCase() ?? 'stable'
+  const channel = ['stable', 'beta', 'nightly'].includes(rawChannel) ? rawChannel : 'stable'
+
   // Pick the newest stable release. If none exists we return 204 so the
   // updater treats it as "no update" instead of surfacing a JSON error.
   let latest
@@ -59,10 +65,15 @@ export async function GET(req: Request) {
       .select()
       .from(releases)
       .orderBy(desc(releases.publishedAt))
-      .limit(10)
-    // Prefer stable channel; fall back to any released row so pre-release
-    // builds still get an answer.
-    latest = rows.find((r) => r.channel === 'stable') ?? rows[0]
+      .limit(20)
+    // Channel selection: canary machines pass ?channel=beta and receive
+    // the latest beta release (which becomes the pre-flight test build).
+    // Everyone else defaults to stable. If nothing on the requested
+    // channel, fall back to stable so no machine ever gets stranded.
+    latest =
+      rows.find((r) => r.channel === channel) ??
+      rows.find((r) => r.channel === 'stable') ??
+      rows[0]
   } catch (e) {
     // DB cold or table missing — treat as no-update.
     console.error('[releases-latest] db read failed:', e)

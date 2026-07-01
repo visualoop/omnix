@@ -41,6 +41,13 @@ export const machines = pgTable(
 
     // Health
     status: text('status').notNull().default('active'),    // active | revoked | rebinding
+
+    // Auto-update staging (v0.29.0)
+    // channel: 'stable' (default — gets releases marked stable), 'canary' (gets releases marked beta first)
+    // autoUpdateEnabled: false = machine skips auto-update entirely (manual only)
+    updateChannel: text('update_channel').notNull().default('stable'),
+    autoUpdateEnabled: text('auto_update_enabled').notNull().default('true'),
+
     lastSyncAt: timestamp('last_sync_at'),
     firstSeenAt: timestamp('first_seen_at'),
     lastSeenAt: timestamp('last_seen_at'),

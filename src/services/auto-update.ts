@@ -40,6 +40,14 @@ export async function startBackgroundUpdate(currentVersion: string): Promise<voi
   if (started) return;
   started = true;
   try {
+    // Pre-flight gate — the server can tell us to skip auto-update for
+    // this specific machine (canary rollout, admin-paused, revoked).
+    // Adds ~200ms to boot in exchange for admin control over staged
+    // rollouts. Failures fall through to the tauri plugin's default
+    // check() so we never get stuck when the server is unreachable.
+    const allowed = await checkUpdaterGate(currentVersion);
+    if (!allowed) return;
+
     const update = await check();
     if (!update) return;
 
@@ -56,6 +64,36 @@ export async function startBackgroundUpdate(currentVersion: string): Promise<voi
   } catch {
     // Offline, metered, server down, or updater unsupported — stay quiet.
     // The next launch will try again.
+  }
+}
+
+/**
+ * Ask the licensing server whether this machine is currently allowed
+ * to auto-update. Admin can pause per-machine (canary rollout testing)
+ * or mark a machine as canary (receives beta releases before stable).
+ *
+ * Returns true when we should proceed with the tauri plugin's check().
+ * On any error (network, server down, unrecognised machine), returns
+ * true — we fall back to the default behaviour so a broken server
+ * never blocks a customer's update path.
+ */
+async function checkUpdaterGate(currentVersion: string): Promise<boolean> {
+  try {
+    const { getMachineInfo } = await import("@/services/license");
+    const machine = await getMachineInfo();
+    const { fetch: tauriFetch } = await import("@tauri-apps/plugin-http");
+    const res = await tauriFetch("https://omnix.co.ke/api/updater/gate", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ machineId: machine.fingerprint, currentVersion }),
+      // Short timeout — if the gate takes >2s, just proceed.
+      // (Better to over-serve updates than block on a slow gate.)
+    });
+    if (!res.ok) return true;
+    const body = (await res.json()) as { allowed?: boolean };
+    return body.allowed !== false;
+  } catch {
+    return true;
   }
 }
 

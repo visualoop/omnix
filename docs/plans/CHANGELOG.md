@@ -2,6 +2,54 @@
 
 This tracks work done LOCALLY without GitHub pushes. We only push when the user explicitly says so.
 
+## Release v0.29.0 — License sync fix + staged auto-update (canary channel)
+
+Two related fixes, one shipped with the other.
+
+### 1. "Retail isn't on your licence" after activating a Retail key
+
+**Root cause**: `local-licenses.ts::activateLicense()` wrote the new key + modules into the `local_licenses` table but never updated the singleton `license` table that `getLicenseStatus()` reads. So `LicenseGuard` kept enforcing the old key's modules. Users who activated over a wrong-variant licence (Hospitality key on Retail installer, for example) saw the module-gate error persist even after switching to the correct key.
+
+**Fix**: `setActiveLicenseKey()` now upserts the singleton `license` row from the corresponding `local_licenses` row on every switch. Callers include `activateLicense` (new key), "Switch to this" button on the Licences page, and the settings-licenses backfill. Both tables now converge — activating a new key immediately reflects in `useEntitlements`.
+
+Restart the app once after activating (or wait for the 5-minute background revalidation) and the correct module unlocks.
+
+### 2. Staged auto-update — canary rollout system
+
+New capability: admin can flag specific machines as "canary" and release updates to them first. If they pass QA, admin promotes the release to stable and everyone else picks it up.
+
+**Schema (website)**:
+- `machines.update_channel` — 'stable' (default) or 'canary'. Canary machines pull beta-channel releases.
+- `machines.auto_update_enabled` — 'true' (default) or 'false'. When false, machine skips auto-update entirely (owner can still click "Check for Updates" in settings).
+- Migration lives in the auto-migrate SQL — applies on first admin-page hit.
+
+**New endpoints**:
+- `POST /api/updater/gate` — pre-flight check the desktop calls before running the tauri updater plugin. Reads the machine's `update_channel` + `auto_update_enabled` and returns `{ allowed, channel, reason? }`. Machines that don't exist yet (fresh installs) get `{ allowed: true, channel: 'stable' }`.
+- `PATCH /api/admin/machines/[id]/update-policy` — admin toggles channel + enabled per machine. Writes an audit-log entry.
+- `GET /api/releases-latest?channel=beta` — returns the latest release on the requested channel. Falls back to stable if the requested channel has no release.
+
+**Desktop side (`src/services/auto-update.ts`)**:
+- `startBackgroundUpdate()` now calls `checkUpdaterGate()` before Tauri's `check()`. If gate says `allowed: false`, we skip. If server is unreachable, we fall through to normal check (never block a customer's updates on a broken gate).
+
+**Admin UI**:
+- New "Update policy" panel on `/admin/machines/[id]` — two toggles side by side: **Release channel** (Stable / Canary) + **Auto-update** (Enabled / Paused). Explanatory helper text below each. Save button becomes enabled only when there's a change.
+
+### The staged-rollout workflow
+
+Now that this exists, releasing changes looks like:
+
+1. **Flag 2-3 canary machines** — go to `/admin/machines/[id]` → set channel to Canary. These are typically machines belonging to you, a friend, or an early paying customer who's OK receiving pre-release builds.
+2. **Publish a release on the beta channel** — either tag it with `-beta` suffix (CI auto-detects) OR flip the row's `channel` in the `releases` table.
+3. **Wait 24 hours**. Canary machines pull the beta on their next boot (or when they hit auto-update). Watch telemetry, WhatsApp, support tickets for problems.
+4. **Promote to stable** — flip the release row's `channel` to 'stable'. All non-canary machines pull it on next check. Canary machines were already on it.
+
+Any release that crashes canaries: don't promote. Fix the bug, ship a new beta build, canaries pick that up, repeat.
+
+### Verification
+- Desktop tsc clean · Website tsc clean · **Cold-cache `next build` clean** (learned from v0.28.8)
+- Vitest 513/513
+- Audit 0 errors
+
 ## Release v0.28.8 — CI hotfix: dialog-imperative without zustand
 
 **What broke**: v0.28.7's website `dialog-imperative.tsx` imported `zustand`, which is a **desktop** dependency but not in the website's `package.json`. Local tsc + local `next build` both passed for me because pnpm workspace hoisting silently resolved zustand from the root `node_modules`. CI does `pnpm install --frozen-lockfile` per workspace and correctly refused to resolve it.

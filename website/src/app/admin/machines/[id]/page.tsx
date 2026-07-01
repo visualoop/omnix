@@ -4,6 +4,7 @@ import { db, machines, licenses, user, telemetryEvents, cloudBackups, activation
 import { Breadcrumbs } from '@/components/layout/breadcrumbs'
 import { BackButton } from '@/components/layout/back-button'
 import { EntityHero } from '@/components/layout/entity-hero'
+import { UpdatePolicyPanel } from './update-policy-panel'
 import { LazyTabs } from '@/components/layout/lazy-tabs'
 import { formatDate, formatDateShort, formatDateLong, formatRelative } from '@/lib/format-date'
 import Link from 'next/link'
@@ -67,6 +68,13 @@ export default async function AdminMachineDetailPage({ params }: PageProps) {
           { label: 'Sales (30d)', value: m.salesCountLast30d ?? 0 },
           { label: 'Products', value: m.productCount ?? 0 },
         ]}
+      />
+
+      <UpdatePolicyPanel
+        machineRowId={m.id}
+        hostname={m.hostname}
+        currentChannel={m.updateChannel ?? 'stable'}
+        currentAutoUpdate={m.autoUpdateEnabled ?? 'true'}
       />
 
       <LazyTabs
