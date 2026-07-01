@@ -52,10 +52,26 @@ export async function getDashboardKPIs(): Promise<DashboardKPIs> {
   );
 
   const todayProfit = await query<{ profit: number }>(
-    `SELECT COALESCE(SUM(si.unit_price * si.quantity - ${cogsExpr("si")} * si.quantity), 0) as profit
-     FROM sale_items si
-     JOIN sales s ON s.id = si.sale_id
-     WHERE date(s.created_at) = ?1 AND s.status = 'completed' AND s.branch_id = ?2`,
+    `SELECT (
+       -- Gross profit on today's sales: revenue - COGS per line
+       COALESCE((
+         SELECT SUM(si.unit_price * si.quantity - ${cogsExpr("si")} * si.quantity)
+         FROM sale_items si
+         JOIN sales s ON s.id = si.sale_id
+         WHERE date(s.created_at) = ?1 AND s.status = 'completed' AND s.branch_id = ?2
+       ), 0)
+       -
+       -- Profit reversed by today's returns: refund - (original line's cost × qty)
+       -- Uses the ORIGINAL sale_items row (via sale_return_items.sale_item_id) so
+       -- the batch cost matches what was booked at the sale, not today's cost.
+       COALESCE((
+         SELECT SUM(sri.line_total - ${cogsExpr("si2")} * sri.quantity)
+         FROM sale_return_items sri
+         JOIN sale_returns sr ON sr.id = sri.return_id
+         LEFT JOIN sale_items si2 ON si2.id = sri.sale_item_id
+         WHERE date(sr.created_at) = ?1 AND sr.branch_id = ?2
+       ), 0)
+     ) as profit`,
     [today, branchId]
   );
 

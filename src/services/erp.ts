@@ -491,6 +491,36 @@ export async function createSaleReturn(input: CreateReturnInput): Promise<string
   }
 
   const { transaction } = await import("@/lib/db");
+
+  // Queue an eTIMS credit note if configured. Non-blocking on failure:
+  // if the helper throws or returns null (eTIMS off / no original invoice
+  // yet), we still commit the return. KRA credit-note filing is a
+  // downstream compliance action, not a blocker for the shop.
+  try {
+    const { queueCreditNoteFor } = await import("@/services/etims");
+    const cnStmt = await queueCreditNoteFor({
+      returnId: id,
+      saleId: input.sale_id ?? null,
+      refundAmount: input.refund_amount,
+      // Cheap tax estimate — proportional to the refund. The worker
+      // can refine using the original sale's tax when it fetches the
+      // full payload. Keeps this call sync + non-blocking.
+      taxAmount: input.refund_amount > 0
+        ? Math.round((input.refund_amount * 16) / (100 + 16) * 100) / 100
+        : 0,
+      items: input.items.map((it) => ({
+        product_id: it.product_id,
+        product_name: it.product_name,
+        quantity: it.quantity,
+        unit_price: it.unit_price,
+      })),
+      customerId: input.customer_id ?? null,
+    });
+    if (cnStmt) stmts.push(cnStmt);
+  } catch (e) {
+    console.warn("[createSaleReturn] credit note queue failed (non-fatal):", e);
+  }
+
   await transaction(stmts);
 
   return id;

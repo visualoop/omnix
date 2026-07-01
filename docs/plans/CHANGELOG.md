@@ -2,6 +2,35 @@
 
 This tracks work done LOCALLY without GitHub pushes. We only push when the user explicitly says so.
 
+## Release v0.28.3 — Returns close the loop: eTIMS credit note + P&L reversal
+
+Closes the two follow-ups flagged in v0.28.2.
+
+### eTIMS credit note (KRA compliance)
+KRA requires a credit note filed against every refund that references an original signed invoice. Before this release, returns wrote to `sale_returns` but never notified KRA — a compliance gap.
+
+**Fix**: `services/etims.ts::queueCreditNoteFor()` — inserts an `etims_invoices` row with `invoice_type='credit_note'`, `status='pending'`, and `original_invoice_number` pointing at the sale's original signed invoice. Called transactionally from `createSaleReturn` so the return + credit note commit as a single unit.
+
+Non-blocking + offline-resilient:
+- If eTIMS is not configured, we skip silently (no credit note needed).
+- If the original invoice isn't signed yet, the credit note still queues — the existing `signInvoice` worker retries once the original lands.
+- Any throw inside `queueCreditNoteFor` is caught + logged; the return itself still commits.
+
+Migration 054 adds `etims_invoices.sale_return_id` + `original_invoice_number` columns + index.
+
+### P&L now reflects returns
+`getDashboardStats().today_profit` used to compute gross profit purely from `sale_items`. Returns were counted against revenue (from v0.28.2) but NOT against COGS — profit stayed inflated after a refund.
+
+**Fix**: `today_profit` now subtracts `(refund - cost)` per returned line, where cost joins the ORIGINAL `sale_items.id` (via `sale_return_items.sale_item_id`) so the batch cost matches what was booked at sale time.
+
+Example: shop sold 10 units at 100 each (cost 50) → revenue 1000, cost 500, profit 500. Customer returns 3 → refund 300, cost 150 reversed → new profit = 500 − (300 − 150) = 350. That's the correct net gross profit.
+
+### Modules touched
+Core plumbing. All four modules (Dawa / Retail / Hospitality / Hardware) inherit both fixes automatically — they all share `createSaleReturn` and `getDashboardStats`.
+
+### Verification
+Desktop tsc clean · vitest 497/497 unchanged (existing invariant tests still cover the aggregate math).
+
 ## Release v0.28.2 — Returns end-to-end audit + fixes
 
 **Concern raised**: "make sure returns impact everything they're supposed to impact — dashboard, POS totals, customer stats — for all modules. I want to know it works like real life."

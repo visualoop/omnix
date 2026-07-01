@@ -303,3 +303,77 @@ export async function getVatReport(startDate: string, endDate: string): Promise<
     exempt_sales: r.total_sales - r.taxable_sales,
   };
 }
+
+/**
+ * Queue a credit note for a sale return (v0.28.3).
+ *
+ * Called from createSaleReturn inside the same transaction batch (via
+ * a returned TxStatement) so it commits atomically with the return.
+ * The worker (the existing signInvoice-style flow above) picks it up
+ * later and submits. Offline-safe: rows are marked 'pending' until the
+ * worker can talk to KRA.
+ *
+ * Returns:
+ *   - a TxStatement to be included in createSaleReturn's stmts array
+ *   - null if eTIMS isn't configured (skip silently — no credit note needed)
+ */
+import type { TxStatement } from "@/lib/db";
+
+export async function queueCreditNoteFor(input: {
+  returnId: string;
+  saleId: string | null;
+  refundAmount: number;
+  taxAmount: number;
+  items: Array<{ product_id: string; product_name: string; quantity: number; unit_price: number }>;
+  customerId?: string | null;
+  customerName?: string | null;
+  customerPin?: string | null;
+}): Promise<TxStatement | null> {
+  const config = await getEtimsConfig();
+  if (!config?.active || !config.kra_pin) return null;
+  if (!input.saleId) return null; // walk-in refund; skip
+
+  // Look up the original invoice to reference in orgInvcNo.
+  const originalInv = await query<{ invoice_number: string }>(
+    "SELECT invoice_number FROM etims_invoices WHERE sale_id = ?1 AND invoice_type = 'normal' AND status = 'signed' LIMIT 1",
+    [input.saleId],
+  );
+  const originalInvoiceNumber = originalInv[0]?.invoice_number ?? null;
+  if (!originalInvoiceNumber) {
+    // The original wasn't signed (yet). Still queue the credit note —
+    // when the worker runs it can retry until the original signs.
+  }
+
+  const invoiceId = crypto.randomUUID();
+  const invoiceNumber = `CRN-${Date.now()}`;
+  // Credit note tax + subtotal derive from the return items; the total
+  // is the refund_amount signed negative in KRA's schema — but our stored
+  // total keeps the absolute value so reporting queries still SUM cleanly.
+  const subtotal = Math.max(0, Math.round((input.refundAmount - input.taxAmount) * 100) / 100);
+
+  return {
+    sql: `INSERT INTO etims_invoices
+       (id, sale_id, sale_return_id, invoice_number, invoice_type,
+        original_invoice_number, seller_pin, buyer_pin, buyer_name,
+        subtotal, tax_amount, total, status, payload_json)
+       VALUES (?1, ?2, ?3, ?4, 'credit_note', ?5, ?6, ?7, ?8, ?9, ?10, ?11, 'pending', ?12)`,
+    params: [
+      invoiceId,
+      input.saleId,
+      input.returnId,
+      invoiceNumber,
+      originalInvoiceNumber,
+      config.kra_pin,
+      input.customerPin ?? null,
+      input.customerName ?? null,
+      subtotal,
+      input.taxAmount,
+      input.refundAmount,
+      JSON.stringify({
+        items: input.items,
+        totals: { subtotal, tax: input.taxAmount, total: input.refundAmount },
+        credit_note: { returnId: input.returnId, originalInvoiceNumber },
+      }),
+    ],
+  };
+}
