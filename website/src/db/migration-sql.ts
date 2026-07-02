@@ -513,6 +513,21 @@ ALTER TABLE "machines" ADD COLUMN IF NOT EXISTS "auto_update_enabled" text NOT N
 --> statement-breakpoint
 CREATE INDEX IF NOT EXISTS "machines_update_channel_idx" ON "machines" ("update_channel");
 --> statement-breakpoint
+CREATE TABLE IF NOT EXISTS "api_tokens" (
+  "id" text PRIMARY KEY NOT NULL,
+  "user_id" text REFERENCES "user"("id") ON DELETE cascade,
+  "name" text NOT NULL,
+  "token_hash" text NOT NULL UNIQUE,
+  "scopes" text,
+  "created_at" timestamp DEFAULT now() NOT NULL,
+  "last_used_at" timestamp,
+  "revoked_at" timestamp
+);
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "api_tokens_user_idx" ON "api_tokens" ("user_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "api_tokens_hash_idx" ON "api_tokens" ("token_hash");
+--> statement-breakpoint
 `
 
 /** Split into individual statements (Drizzle generates with statement-breakpoints). */

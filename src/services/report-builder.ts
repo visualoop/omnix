@@ -179,7 +179,7 @@ async function runInventoryReport(q: ReportQuery): Promise<ReportRow[]> {
         p.name,
         p.sku,
         COALESCE(SUM(b.quantity), 0) AS on_hand,
-        COALESCE(SUM(b.quantity * b.cost), 0) AS value_at_cost
+        COALESCE(SUM(b.quantity * b.buying_price), 0) AS value_at_cost
      FROM products p
      LEFT JOIN batches b ON b.product_id = p.id
      WHERE p.deleted_at IS NULL

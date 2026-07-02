@@ -34,7 +34,7 @@ export async function getBundleComponents(bundleProductId: string): Promise<Bund
         bc.quantity,
         bc.discount_pct,
         COALESCE(
-          (SELECT AVG(b.cost) FROM batches b WHERE b.product_id = p.id AND b.quantity > 0),
+          (SELECT AVG(b.buying_price) FROM batches b WHERE b.product_id = p.id AND b.quantity > 0),
           0
         ) AS unit_cost,
         COALESCE(

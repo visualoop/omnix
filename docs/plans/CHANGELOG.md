@@ -2,6 +2,38 @@
 
 This tracks work done LOCALLY without GitHub pushes. We only push when the user explicitly says so.
 
+## Release v0.33.0 — All 28 High-tier tasks complete
+
+Every remaining High-tier item from the audit ships. Tests 611 passing (up from 604). Tsc clean · Audit 0 errors · Cold-cache next build clean.
+
+### Complete in this release
+- **[HIGH 18] Cycle counts + damages + stock aging + dead stock** — `services/inventory-quality.ts` with startCycleCount/recordCount/completeCycleCount, recordDamage (auto batch deduction), stockAging, deadStock (configurable days threshold). Pages `/reports/stock-aging` + `/reports/dead-stock` show aging batches (colour-coded 90+/30+/current) and dead SKUs with total cost tied up.
+- **[HIGH 24] Communication history + follow-ups** — `services/follow-ups.ts` + `/crm/follow-ups` page. Overdue rows highlighted red. New-followup dialog with title + notes + due-datetime. `logCommunication + listCommunications` service exposed for wiring into customer-detail page later.
+- **[HIGH 29] Password policies + PIN login** — `services/password-policy.ts` with getPolicy/updatePolicy/validatePassword/recordLoginAttempt/isLockedOut/setPin/clearPin/verifyPinAcrossUsers. SHA-256 salted PIN hashing (userId as salt). PIN validation: 4-6 digits. Lockout after N failed attempts in 15min window.
+- **[HIGH 31] Room-status board + housekeeping** — `/hospitality/rooms` shows every room in a grid, colour-coded by status. One-click cycle: clean → occupied → dirty → inspected → clean. Every transition writes to room_status_log. Summary badges at top show status counts.
+- **[HIGH 32] Kitchen printer per station** — `services/kitchen-printing.ts` with `printKitchenTickets(orderId)`. Groups items by station, looks up the peripheral registered for each station, renders one 80mm thermal ticket per station with human-readable printer label + notes flagged.
+- **[HIGH 34] Analytics dashboards** — `/reports/analytics` page. 4 tabs (Sales / Inventory / Purchases / Finance), each with 1-3 pre-configured queries powered by the report-builder engine. Uses last-30-day range by default.
+- **[HIGH 38] Public REST API v1** —
+  - `POST /api/public/v1/health` — smoke check
+  - `GET /api/public/v1/machines` — list machines (scope: read:machines)
+  - `GET /api/public/v1/licenses` — list licenses (scope: read:licenses)
+  - New `api_tokens` website table + `requireApiKey()` helper with SHA-256 hashed tokens, comma-separated scopes, in-memory rate limit (100/min per key).
+  - Public docs page at `/developers` with curl example, authentication instructions, endpoint table, scope list, versioning policy.
+
+### Fixes discovered while wiring
+- Multiple services (inventory-quality, bundles, report-builder) referenced `batches.cost` — the real column is `batches.buying_price`. All fixed.
+
+### Files added
+Services: inventory-quality, follow-ups (extended), password-policy, kitchen-printing.
+Pages: stock-aging (StockAgingPage + DeadStockPage), follow-ups, room-status, analytics.
+Website: `db/schema/api_tokens.ts` + migration SQL, `lib/public-api-auth.ts`, 3 public API routes, developers docs page.
+
+### Tests
+- `tests/v33-services.spec.ts` — 7 tests covering cycle-count/damage/dead-stock/follow-up/room-status/lockout/password-policy queries.
+
+### Verification
+Desktop tsc clean · Website tsc clean · Cold-cache `next build` clean · Vitest 611/611 · Audit 0 errors.
+
 ## Release v0.32.0 — High-tier batch B: inventory + sales services + platform framework
 
 Ships the service layer + key pages for the remaining High-tier work. 604 tests passing. Migration 068 adds product lead_time_days. Tsc clean · Audit 0 errors · Cold-cache next build clean.

@@ -77,6 +77,10 @@ import { ReorderSuggestionsPage } from "@/pages/reorder-suggestions";
 import { SalesTargetsPage } from "@/pages/sales-targets";
 import { FixedAssetsPage } from "@/pages/fixed-assets";
 import { CurrenciesPage } from "@/pages/currencies";
+import { FollowUpsPage } from "@/pages/follow-ups";
+import { RoomStatusPage } from "@/pages/room-status";
+import { AnalyticsPage } from "@/pages/analytics";
+import { StockAgingPage, DeadStockPage } from "@/pages/stock-aging";
 import { TaxSettingsPage } from "@/pages/settings-taxes";
 import { CategoriesSettingsPage } from "@/pages/settings-categories";
 // Hub pages — flat sidebar with tabs inside each domain
@@ -289,6 +293,11 @@ function AppContent() {
           <Route path="/people/sales-targets" element={<RequireRole permission="reports.view"><SalesTargetsPage /></RequireRole>} />
           <Route path="/accounting/fixed-assets" element={<RequireRole permission="reports.pnl"><FixedAssetsPage /></RequireRole>} />
           <Route path="/settings/currencies" element={<RequireRole permission="settings.business"><CurrenciesPage /></RequireRole>} />
+          <Route path="/crm/follow-ups" element={<RequireRole permission="customers.view"><FollowUpsPage /></RequireRole>} />
+          <Route path="/hospitality/rooms" element={<RequireRole permission="hospitality.housekeeping.manage"><RoomStatusPage /></RequireRole>} />
+          <Route path="/reports/analytics" element={<RequireRole permission="reports.view"><AnalyticsPage /></RequireRole>} />
+          <Route path="/reports/stock-aging" element={<RequireRole permission="reports.view"><StockAgingPage /></RequireRole>} />
+          <Route path="/reports/dead-stock" element={<RequireRole permission="reports.view"><DeadStockPage /></RequireRole>} />
           <Route path="/hospitality/reservations" element={<RequireRole permission="hospitality.bookings.manage"><ReservationsPage /></RequireRole>} />
           <Route path="/hospitality/kitchen" element={<RequireRole permission="hospitality.kitchen.bump"><KitchenDisplayPage /></RequireRole>} />
           <Route path="/settings/peripherals" element={<RequireRole permission="settings.business"><PeripheralsPage /></RequireRole>} />
