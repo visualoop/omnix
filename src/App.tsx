@@ -81,6 +81,8 @@ import { FollowUpsPage } from "@/pages/follow-ups";
 import { RoomStatusPage } from "@/pages/room-status";
 import { AnalyticsPage } from "@/pages/analytics";
 import { StockAgingPage, DeadStockPage } from "@/pages/stock-aging";
+import { DataQualityPage, CostCentresPage, DeliveriesPage, AnomaliesPage } from "@/pages/platform-pages";
+import { GlobalSearchDialog } from "@/components/global-search";
 import { TaxSettingsPage } from "@/pages/settings-taxes";
 import { CategoriesSettingsPage } from "@/pages/settings-categories";
 // Hub pages — flat sidebar with tabs inside each domain
@@ -298,6 +300,10 @@ function AppContent() {
           <Route path="/reports/analytics" element={<RequireRole permission="reports.view"><AnalyticsPage /></RequireRole>} />
           <Route path="/reports/stock-aging" element={<RequireRole permission="reports.view"><StockAgingPage /></RequireRole>} />
           <Route path="/reports/dead-stock" element={<RequireRole permission="reports.view"><DeadStockPage /></RequireRole>} />
+          <Route path="/data-quality" element={<RequireRole permission="audit.view"><DataQualityPage /></RequireRole>} />
+          <Route path="/accounting/cost-centres" element={<RequireRole permission="reports.pnl"><CostCentresPage /></RequireRole>} />
+          <Route path="/deliveries" element={<RequireRole permission="sales.view"><DeliveriesPage /></RequireRole>} />
+          <Route path="/anomalies" element={<RequireRole permission="reports.view"><AnomaliesPage /></RequireRole>} />
           <Route path="/hospitality/reservations" element={<RequireRole permission="hospitality.bookings.manage"><ReservationsPage /></RequireRole>} />
           <Route path="/hospitality/kitchen" element={<RequireRole permission="hospitality.kitchen.bump"><KitchenDisplayPage /></RequireRole>} />
           <Route path="/settings/peripherals" element={<RequireRole permission="settings.business"><PeripheralsPage /></RequireRole>} />
@@ -424,6 +430,7 @@ function AppContent() {
       <Toaster position="bottom-right" />
       <ConfirmDialogHost />
       <TouchTextKeyboardProvider />
+      <GlobalSearchDialog />
     </BrowserRouter>
   );
 }

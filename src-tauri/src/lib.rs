@@ -520,6 +520,30 @@ fn run_inner() {
             sql: include_str!("../migrations/068_product_lead_time.sql"),
             kind: MigrationKind::Up,
         },
+        Migration {
+            version: 69,
+            description: "Medium batch A: cost centres, landed cost, recurring expenses, multi-warehouse bins, assembly BOM",
+            sql: include_str!("../migrations/069_medium_batch_a.sql"),
+            kind: MigrationKind::Up,
+        },
+        Migration {
+            version: 70,
+            description: "Medium batch B: portion control, bar inventory, waiter stations, split/merge, group bookings, compounded scripts, delivery, contractor holds",
+            sql: include_str!("../migrations/070_medium_batch_b.sql"),
+            kind: MigrationKind::Up,
+        },
+        Migration {
+            version: 71,
+            description: "Medium batch C: anomaly log, report scheduling, custom fields, data quality flags",
+            sql: include_str!("../migrations/071_medium_batch_c.sql"),
+            kind: MigrationKind::Up,
+        },
+        Migration {
+            version: 72,
+            description: "Low tier: rental, loyalty tiers, signed audit chain, plugin registry, OTA channels, self-checkout, NFC readers",
+            sql: include_str!("../migrations/072_low_tier.sql"),
+            kind: MigrationKind::Up,
+        },
     ];
 
     tauri::Builder::default()
