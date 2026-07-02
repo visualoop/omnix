@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState, useCallback } from "react";
 import { confirm } from "@/components/ui/confirm-dialog";
 import {
   Calendar,
@@ -15,9 +15,12 @@ import { PageHeader } from "@/components/layout/page-header";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import {
-  listPromotions, createPromotion, updatePromotion, togglePromotion, deletePromotion,
+  createPromotion, updatePromotion, togglePromotion, deletePromotion,
   type Promotion, type PromotionType, type PromotionTarget,
 } from "@/services/promotions";
+import { pagePromotions } from "@/services/paged";
+import { useListData } from "@/hooks/use-list-data";
+import { PaginationBar } from "@/components/pagination-bar";
 import { EmptyState } from "@/components/ui/empty-state";
 import { TableRowSkeleton } from "@/components/ui/skeletons";
 import { toast } from "sonner";
@@ -25,26 +28,22 @@ import { intlLocale } from "@/lib/intl";
 import { money } from "@/lib/money";
 
 export function PromotionsPage() {
-  const [items, setItems] = useState<Promotion[]>([]);
-  const [search, setSearch] = useState("");
   const [showExpired, setShowExpired] = useState(false);
   const [editing, setEditing] = useState<Promotion | null>(null);
   const [creating, setCreating] = useState(false);
-  const [loading, setLoading] = useState(true);
 
-  const load = async () => {
-    setLoading(true);
-    try {
-      setItems(await listPromotions(showExpired));
-    } finally { setLoading(false); }
-  };
-  useEffect(() => { load(); }, [showExpired]);
-
-  const filtered = items.filter((p) =>
-    !search.trim() ||
-    p.name.toLowerCase().includes(search.toLowerCase()) ||
-    p.code?.toLowerCase().includes(search.toLowerCase()),
+  const fetcher = useCallback(
+    (q: { search?: string; page?: number; pageSize?: number }) =>
+      pagePromotions({ ...q, active: showExpired ? undefined : true }),
+    [showExpired],
   );
+  const list = useListData(fetcher, { pageSize: 50 });
+
+  const load = list.refresh;
+  const search = list.search;
+  const setSearch = list.setSearch;
+  const loading = list.loading;
+  const filtered = list.rows as unknown as Promotion[];
 
   return (
     <div className="space-y-5">
@@ -164,6 +163,8 @@ export function PromotionsPage() {
           onSaved={() => { setCreating(false); setEditing(null); load(); }}
         />
       )}
+
+      <PaginationBar list={list} />
     </div>
   );
 }

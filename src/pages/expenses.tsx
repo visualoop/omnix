@@ -3,6 +3,7 @@ import {
   Plus,
   Receipt,
   Trash as Trash2,
+  MagnifyingGlass as Search,
 } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -10,30 +11,43 @@ import { PageHeader } from "@/components/layout/page-header";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
-import { getExpenses, getExpenseCategories, createExpense, deleteExpense, type Expense, type ExpenseCategory } from "@/services/accounting";
+import { getExpenseCategories, createExpense, deleteExpense, type Expense, type ExpenseCategory } from "@/services/accounting";
+import { pageExpenses } from "@/services/paged";
+import { useListData } from "@/hooks/use-list-data";
+import { PaginationBar } from "@/components/pagination-bar";
 import { useAuthStore } from "@/stores/auth";
 import { toast } from "sonner";
 
 export function ExpensesPage() {
-  const [expenses, setExpenses] = useState<Expense[]>([]);
   const [categories, setCategories] = useState<ExpenseCategory[]>([]);
   const [panelOpen, setPanelOpen] = useState(false);
   const [period, setPeriod] = useState(30);
+  const [total, setTotal] = useState(0);
 
-  const load = useCallback(async () => {
+  const fetcher = useCallback(
+    (q: { search?: string; page?: number; pageSize?: number }) => {
+      const startDate = new Date(Date.now() - period * 86400000).toISOString().slice(0, 10);
+      const endDate = new Date().toISOString().slice(0, 10);
+      return pageExpenses({ ...q, from: startDate, to: endDate });
+    },
+    [period],
+  );
+  const list = useListData(fetcher, { pageSize: 50 });
+  const expenses = list.rows as unknown as Expense[];
+
+  const loadCats = useCallback(async () => {
+    const cats = await getExpenseCategories();
+    setCategories(cats);
+    // aggregate total independent of pagination
     const startDate = new Date(Date.now() - period * 86400000).toISOString().slice(0, 10);
     const endDate = new Date().toISOString().slice(0, 10);
-    const [exps, cats] = await Promise.all([
-      getExpenses(startDate, endDate),
-      getExpenseCategories(),
-    ]);
-    setExpenses(exps);
-    setCategories(cats);
+    const { getExpenses } = await import("@/services/accounting");
+    const all = await getExpenses(startDate, endDate);
+    setTotal(all.reduce((s, e) => s + e.amount, 0));
   }, [period]);
+  useEffect(() => { loadCats(); }, [loadCats]);
 
-  useEffect(() => { load(); }, [load]);
-
-  const total = expenses.reduce((s, e) => s + e.amount, 0);
+  const load = () => { list.refresh(); loadCats(); };
 
   const handleDelete = async (id: string) => {
     await deleteExpense(id);
@@ -69,6 +83,18 @@ export function ExpensesPage() {
           </div>
         }
       />
+
+      <div className="flex items-center gap-2">
+        <div className="relative flex-1 max-w-sm">
+          <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
+          <Input
+            placeholder="Search description or vendor..."
+            value={list.search}
+            onChange={(e) => list.setSearch(e.target.value)}
+            className="pl-9"
+          />
+        </div>
+      </div>
 
       <div className="border border-border rounded-lg p-4">
         <span className="text-xs text-muted-foreground">Total Expenses</span>
@@ -128,6 +154,8 @@ export function ExpensesPage() {
         categories={categories}
         onSaved={load}
       />
+
+      <PaginationBar list={list} />
     </div>
   );
 }
