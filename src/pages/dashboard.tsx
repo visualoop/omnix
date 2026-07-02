@@ -37,7 +37,7 @@ import { useActiveModule, MODULE_DEFINITIONS } from "@/stores/active-module";
 import { useAuthStore } from "@/stores/auth";
 import { useCountry } from "@/stores/country";
 import { pharmacyTerm } from "@/lib/locale";
-import { money } from "@/lib/money";
+import { money, moneyHero } from "@/lib/money";
 import { StatStrip } from "@/components/dashboard/stat-strip";
 import { DashboardHeroArt } from "@/components/dashboard/hero-art";
 
@@ -75,7 +75,7 @@ export function DashboardPage() {
 
   // Animated count-up for the hero figure.
   const mv = useMotionValue(0);
-  const display = useTransform(mv, (n) => Math.round(n).toLocaleString());
+  const display = useTransform(mv, (n) => moneyHero(Math.round(n)));
   const target = kpis?.today_sales_total ?? 0;
   useEffect(() => {
     const c = animate(mv, target, { duration: 0.6, ease: [0.22, 1, 0.36, 1] });

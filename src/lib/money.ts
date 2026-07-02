@@ -39,6 +39,67 @@ export function currencySymbol(): string {
   return formatMoney(0, code).split(" ")[0];
 }
 
+/**
+ * Compact notation for glanceable KPIs. Turns big numbers into readable
+ * K/M/B/T without a currency symbol.
+ *
+ *   moneyCompact(999)        → "999"
+ *   moneyCompact(1_234)      → "1.2K"
+ *   moneyCompact(12_340)     → "12.3K"
+ *   moneyCompact(123_400)    → "123K"
+ *   moneyCompact(1_234_567)  → "1.23M"
+ *   moneyCompact(12_345_678) → "12.3M"
+ *   moneyCompact(1_200_000_000) → "1.2B"
+ *
+ * Below 1 000 we show full precision (a shop rarely rings KES 8.5 as "8.5" —
+ * they want to see "850"). At ≥ 1M we drop to 2 dp; at ≥ 10M drop to 1 dp;
+ * at ≥ 100M drop to 0 dp. Never lies about magnitude.
+ */
+export function moneyCompact(n: number): string {
+  const abs = Math.abs(n);
+  const sign = n < 0 ? "-" : "";
+  if (abs < 1_000) {
+    // Below 1 000 — full precision, no decimals for whole numbers.
+    const rounded = Math.round(abs);
+    return `${sign}${rounded.toLocaleString()}`;
+  }
+  if (abs < 1_000_000) {
+    // Thousands — 1 dp when <10K, integer when ≥10K
+    const scaled = abs / 1_000;
+    const digits = scaled < 10 ? 1 : 0;
+    return `${sign}${scaled.toFixed(digits)}K`;
+  }
+  if (abs < 1_000_000_000) {
+    // Millions — 2 dp <10M, 1 dp <100M, integer at ≥100M
+    const scaled = abs / 1_000_000;
+    const digits = scaled < 10 ? 2 : scaled < 100 ? 1 : 0;
+    return `${sign}${scaled.toFixed(digits)}M`;
+  }
+  if (abs < 1_000_000_000_000) {
+    const scaled = abs / 1_000_000_000;
+    const digits = scaled < 10 ? 2 : 1;
+    return `${sign}${scaled.toFixed(digits)}B`;
+  }
+  const scaled = abs / 1_000_000_000_000;
+  return `${sign}${scaled.toFixed(1)}T`;
+}
+
+/**
+ * Hero-size KES rendering:
+ *   - Under 1M → full precision with thousand separators ("245,340")
+ *   - 1M+     → compact notation ("1.23M") so the layout never overflows
+ *
+ * Never includes the currency symbol — pair with the small "KSh" prefix
+ * the dashboard + POS heroes already render alongside.
+ */
+export function moneyHero(n: number): string {
+  const abs = Math.abs(n);
+  if (abs < 1_000_000) {
+    return Math.round(n).toLocaleString();
+  }
+  return moneyCompact(n);
+}
+
 /* ─── Money arithmetic — use at EVERY persist/compare boundary ──────── *
  *
  * Money is stored as REAL (float). Float sums drift over millions of

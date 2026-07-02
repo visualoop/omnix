@@ -39,7 +39,7 @@ import { countHeldSales } from "@/services/held-sales";
 import { OpenShiftDialog, CloseShiftDialog } from "@/components/pos/cash-dialogs";
 import { useCountry } from "@/stores/country";
 import { pharmacyTerm } from "@/lib/locale";
-import { money } from "@/lib/money";
+import { money, moneyHero } from "@/lib/money";
 import { StatStrip } from "@/components/dashboard/stat-strip";
 import { PosHeroArt } from "@/components/dashboard/hero-art";
 
@@ -151,9 +151,7 @@ export function POSOverviewPage() {
                   style={{ fontFamily: "var(--font-display)" }}
                   className="text-[clamp(64px,11vw,140px)] leading-[0.95] tracking-[-0.02em] font-medium tabular-nums"
                 >
-                  {(todayStats?.revenue ?? 0).toLocaleString(undefined, {
-                    maximumFractionDigits: 0,
-                  })}
+                  {moneyHero(todayStats?.revenue ?? 0)}
                 </span>
               </motion.div>
             ) : (
