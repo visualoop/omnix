@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { CurrencyCircleDollar as Cash } from "@phosphor-icons/react";
-import { Input } from "@/components/ui/input";
+import { DateRangePicker } from "@/components/date-range-picker";
 import { getCashFlow, type CashFlowStatement, type CashFlowSection } from "@/services/cash-flow-statement";
 import { intlLocale } from "@/lib/intl";
 
@@ -35,11 +35,10 @@ export function CashFlowStatementPage() {
             Where cash came from and where it went. Split into Operating, Investing, and Financing activities.
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          <Input type="date" value={from} onChange={(e) => setFrom(e.target.value)} className="w-[160px]" />
-          <span className="text-muted-foreground text-sm">to</span>
-          <Input type="date" value={to} onChange={(e) => setTo(e.target.value)} className="w-[160px]" />
-        </div>
+        <DateRangePicker
+          value={{ start: from, end: to }}
+          onChange={(r) => { setFrom(r.start); setTo(r.end); }}
+        />
       </header>
 
       {loading || !cf ? (

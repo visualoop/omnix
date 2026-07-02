@@ -4,7 +4,7 @@ import {
   Microscope,
   Warning as AlertTriangle,
 } from "@phosphor-icons/react";
-import { Input } from "@/components/ui/input";
+import { DateRangePicker } from "@/components/date-range-picker";
 import { Card, CardContent } from "@/components/ui/card";
 import { TableRowSkeleton } from "@/components/ui/skeletons";
 import {
@@ -68,12 +68,7 @@ export function AmrReportPage() {
         </p>
       </div>
 
-      <div className="flex items-center gap-2">
-        <span className="text-xs text-muted-foreground">Period:</span>
-        <Input type="date" value={period.start} onChange={(e) => setPeriod({ ...period, start: e.target.value })} className="h-8 w-36" />
-        <span className="text-xs text-muted-foreground">to</span>
-        <Input type="date" value={period.end} onChange={(e) => setPeriod({ ...period, end: e.target.value })} className="h-8 w-36" />
-      </div>
+      <DateRangePicker value={period} onChange={setPeriod} />
 
       <div className="grid grid-cols-3 gap-3">
         <Stat label="Total Units Dispensed" value={summary ? String(summary.total_antibiotic_units) : "—"} loading={loading} />

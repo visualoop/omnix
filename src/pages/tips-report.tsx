@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import {
-  Calendar,
   CreditCard as CreditCard,
   DeviceMobile as Smartphone,
   Heart,
@@ -8,6 +7,7 @@ import {
   Users,
 } from "@phosphor-icons/react";
 import { Input } from "@/components/ui/input";
+import { DateRangePicker } from "@/components/date-range-picker";
 import { Card, CardContent } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { TableRowSkeleton } from "@/components/ui/skeletons";
@@ -131,12 +131,7 @@ export function TipsReportPage() {
         </CardContent>
       </Card>
 
-      <div className="flex items-center gap-2">
-        <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
-        <Input type="date" value={period.start} onChange={(e) => setPeriod({ ...period, start: e.target.value })} className="h-8 w-36" />
-        <span className="text-xs text-muted-foreground">to</span>
-        <Input type="date" value={period.end} onChange={(e) => setPeriod({ ...period, end: e.target.value })} className="h-8 w-36" />
-      </div>
+      <DateRangePicker value={period} onChange={setPeriod} />
 
       <div className="grid grid-cols-4 gap-3">
         <Stat label="Total Tips" value={summary ? KES(summary.total_tips) : "—"} icon={Heart} highlight loading={loading} />

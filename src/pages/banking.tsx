@@ -14,6 +14,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { PageHeader } from "@/components/layout/page-header";
+import { DateRangePicker } from "@/components/date-range-picker";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter } from "@/components/ui/sheet";
@@ -445,12 +446,7 @@ function CashflowView() {
 
   return (
     <div className="space-y-3">
-      <div className="flex gap-2 items-center">
-        <span className="text-xs text-muted-foreground">Period:</span>
-        <input type="date" value={period.start} onChange={(e) => setPeriod({ ...period, start: e.target.value })} className="h-7 w-36 rounded-md border border-input bg-background px-2 text-xs" />
-        <span className="text-xs text-muted-foreground">to</span>
-        <input type="date" value={period.end} onChange={(e) => setPeriod({ ...period, end: e.target.value })} className="h-7 w-36 rounded-md border border-input bg-background px-2 text-xs" />
-      </div>
+      <DateRangePicker value={period} onChange={setPeriod} compact />
 
       <div className="grid grid-cols-3 gap-3">
         <Card>

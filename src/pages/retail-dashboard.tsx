@@ -11,7 +11,7 @@ import {
   Warning as AlertTriangle,
 } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { DateRangePicker } from "@/components/date-range-picker";
 import { Card, CardContent } from "@/components/ui/card";
 import { TableRowSkeleton } from "@/components/ui/skeletons";
 import {
@@ -53,13 +53,7 @@ export function RetailDashboardPage() {
         accent={ACCENT}
         title="Retail Dashboard"
         subtitle="Brand performance, category mix, shrinkage, and laybys for the period."
-        actions={
-          <div className="flex items-center gap-2">
-            <Input type="date" value={period.start} onChange={(e) => setPeriod({ ...period, start: e.target.value })} className="h-8 w-36" />
-            <span className="text-xs text-muted-foreground">to</span>
-            <Input type="date" value={period.end} onChange={(e) => setPeriod({ ...period, end: e.target.value })} className="h-8 w-36" />
-          </div>
-        }
+        actions={<DateRangePicker value={period} onChange={setPeriod} compact />}
       />
 
       {/* KPI grid */}

@@ -8,6 +8,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
+import { DateRangePicker } from "@/components/date-range-picker";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -106,11 +107,8 @@ export function ShrinkagePage() {
         <Stat label="Incidents" value={String(totalIncidents)} />
       </div>
 
-      <div className="flex gap-2 items-center">
-        <span className="text-xs text-muted-foreground">Period:</span>
-        <Input type="date" value={period.start} onChange={(e) => setPeriod({ ...period, start: e.target.value })} className="h-7 w-36" />
-        <span className="text-xs text-muted-foreground">to</span>
-        <Input type="date" value={period.end} onChange={(e) => setPeriod({ ...period, end: e.target.value })} className="h-7 w-36" />
+      <div className="flex gap-2 items-center flex-wrap">
+        <DateRangePicker value={period} onChange={setPeriod} compact />
         <Select value={reasonFilter} onValueChange={(v) => setReasonFilter(String(v) as ShrinkageReason | "")}><SelectTrigger><SelectValue placeholder="All reasons" /></SelectTrigger><SelectContent>
           
           {Object.entries(REASON_LABELS).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}

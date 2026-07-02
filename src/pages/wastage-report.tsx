@@ -5,12 +5,11 @@
  */
 import { useEffect, useState } from "react"
 import {
-  Calendar,
   Trash as Trash2,
   Warning as AlertTriangle,
 } from "@phosphor-icons/react"
-import { Input } from "@/components/ui/input"
 import { BackButton } from "@/components/ui/back-button"
+import { DateRangePicker } from "@/components/date-range-picker"
 import { getWastageReport, getWastageSummary, type WastageRow, type WastageSummary } from "@/services/wastage"
 import { money as KES } from "@/lib/money"
 
@@ -49,22 +48,10 @@ export function WastageReportPage() {
         </p>
       </div>
 
-      <div className="flex items-center gap-2">
-        <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
-        <Input
-          type="date"
-          value={period.start}
-          onChange={(e) => setPeriod({ ...period, start: e.target.value })}
-          className="h-8 w-36"
-        />
-        <span className="text-xs text-muted-foreground">to</span>
-        <Input
-          type="date"
-          value={period.end}
-          onChange={(e) => setPeriod({ ...period, end: e.target.value })}
-          className="h-8 w-36"
-        />
-      </div>
+      <DateRangePicker
+        value={period}
+        onChange={setPeriod}
+      />
 
       <div className="grid grid-cols-3 gap-3">
         <StatCard

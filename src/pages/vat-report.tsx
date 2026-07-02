@@ -5,7 +5,7 @@ import {
   Warning as AlertTriangle,
 } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { DateRangePicker } from "@/components/date-range-picker";
 import { getVatReport } from "@/services/etims";
 import { exportToCSV } from "@/lib/export";
 import { renderVat3Pdf } from "@/services/reports-pdf";
@@ -96,15 +96,11 @@ export function VatReportPage() {
       </div>
 
       {/* Period selector */}
-      <div className="flex items-end gap-3 border border-border rounded-lg p-4">
-        <div className="space-y-1.5">
-          <label className="text-xs font-medium text-muted-foreground">From</label>
-          <Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="w-40" />
-        </div>
-        <div className="space-y-1.5">
-          <label className="text-xs font-medium text-muted-foreground">To</label>
-          <Input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="w-40" />
-        </div>
+      <div className="flex items-center gap-3 border border-border rounded-lg p-3">
+        <DateRangePicker
+          value={{ start: startDate, end: endDate }}
+          onChange={(r) => { setStartDate(r.start); setEndDate(r.end); }}
+        />
         <div className="flex gap-1.5 ml-auto">
           <Button variant="outline" size="sm" onClick={() => setMonth(0)}>This Month</Button>
           <Button variant="outline" size="sm" onClick={() => setMonth(-1)}>Last Month</Button>
