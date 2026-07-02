@@ -172,7 +172,7 @@ export function PaymentSettingsPage() {
   return (
     <div className="space-y-6 max-w-2xl">
       <div>
-        <BackButton fallback="/" />
+        <BackButton fallback="/settings" />
         <h1 className="text-xl font-semibold tracking-tight">Payment Settings</h1>
         <p className="text-sm text-muted-foreground mt-1">Configure payment providers for automated processing.</p>
       </div>

@@ -88,7 +88,7 @@ export function NetworkSettingsPage() {
   return (
     <div className="space-y-5 max-w-3xl">
       <div>
-        <BackButton fallback="/" />
+        <BackButton fallback="/settings" />
         <h1 className="text-xl font-semibold tracking-tight">Network</h1>
         <p className="text-sm text-muted-foreground mt-1">
           Configure how this device works on your local network

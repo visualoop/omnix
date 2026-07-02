@@ -294,19 +294,17 @@ function AppContent() {
           <Route path="/inventory/reorder" element={<RequireRole permission="inventory.view"><ReorderSuggestionsPage /></RequireRole>} />
           <Route path="/people/sales-targets" element={<RequireRole permission="reports.view"><SalesTargetsPage /></RequireRole>} />
           <Route path="/accounting/fixed-assets" element={<RequireRole permission="reports.pnl"><FixedAssetsPage /></RequireRole>} />
-          <Route path="/settings/currencies" element={<RequireRole permission="settings.business"><CurrenciesPage /></RequireRole>} />
+          <Route path="/reports/dead-stock" element={<RequireRole permission="reports.view"><DeadStockPage /></RequireRole>} />
           <Route path="/crm/follow-ups" element={<RequireRole permission="customers.view"><FollowUpsPage /></RequireRole>} />
           <Route path="/hospitality/rooms" element={<RequireRole permission="hospitality.housekeeping.manage"><RoomStatusPage /></RequireRole>} />
           <Route path="/reports/analytics" element={<RequireRole permission="reports.view"><AnalyticsPage /></RequireRole>} />
           <Route path="/reports/stock-aging" element={<RequireRole permission="reports.view"><StockAgingPage /></RequireRole>} />
-          <Route path="/reports/dead-stock" element={<RequireRole permission="reports.view"><DeadStockPage /></RequireRole>} />
           <Route path="/data-quality" element={<RequireRole permission="audit.view"><DataQualityPage /></RequireRole>} />
           <Route path="/accounting/cost-centres" element={<RequireRole permission="reports.pnl"><CostCentresPage /></RequireRole>} />
           <Route path="/deliveries" element={<RequireRole permission="sales.view"><DeliveriesPage /></RequireRole>} />
           <Route path="/anomalies" element={<RequireRole permission="reports.view"><AnomaliesPage /></RequireRole>} />
           <Route path="/hospitality/reservations" element={<RequireRole permission="hospitality.bookings.manage"><ReservationsPage /></RequireRole>} />
           <Route path="/hospitality/kitchen" element={<RequireRole permission="hospitality.kitchen.bump"><KitchenDisplayPage /></RequireRole>} />
-          <Route path="/settings/peripherals" element={<RequireRole permission="settings.business"><PeripheralsPage /></RequireRole>} />
           <Route path="/reports/sales" element={<RequireRole permission="reports.view"><ReportsPage /></RequireRole>} />
           <Route path="/reports/inventory" element={<RequireRole permission="reports.view"><InventoryReportsPage /></RequireRole>} />
           <Route path="/reports/wastage" element={<RequireRole permission="reports.view"><WastageReportPage /></RequireRole>} />
@@ -377,6 +375,8 @@ function AppContent() {
             <Route path="updates" element={<RequireRole permission="settings.business"><SettingsUpdatesPage /></RequireRole>} />
             <Route path="autostart" element={<RequireRole permission="settings.business"><SettingsAutostartPage /></RequireRole>} />
             <Route path="2fa" element={<Settings2FAPage />} />
+            <Route path="currencies" element={<RequireRole permission="settings.business"><CurrenciesPage /></RequireRole>} />
+            <Route path="peripherals" element={<RequireRole permission="settings.business"><PeripheralsPage /></RequireRole>} />
             <Route path="hardware/units" element={<RequireRole permission="hardware.accounts.manage"><HardwareSettingsPage /></RequireRole>} />
             <Route path="hospitality/service-charge" element={<RequireRole permission="hospitality.service_charge.manage"><HospitalitySettingsPage /></RequireRole>} />
             <Route path="audit" element={<RequireRole permission="audit.view"><AuditLogPage /></RequireRole>} />

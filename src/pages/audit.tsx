@@ -123,7 +123,7 @@ export function AuditLogPage() {
   return (
     <div className="space-y-5">
       <div>
-        <BackButton fallback="/" />
+        <BackButton fallback="/settings" />
         <h1 className="text-xl font-semibold tracking-tight">Audit Log</h1>
         <p className="text-sm text-muted-foreground mt-1">
           Activity history for compliance and security review

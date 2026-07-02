@@ -87,7 +87,7 @@ export function LicensePage() {
     <div className="space-y-5 max-w-3xl">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <BackButton fallback="/" />
+          <BackButton fallback="/settings" />
           <h1 className="text-xl font-semibold tracking-tight">License</h1>
           <p className="text-sm text-muted-foreground mt-1">
             Your {APP_NAME} license details and machine binding

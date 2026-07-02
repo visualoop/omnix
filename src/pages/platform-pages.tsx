@@ -108,6 +108,7 @@ export function CostCentresPage() {
   return (
     <div className="max-w-3xl space-y-4">
       <header>
+        <BackButton fallback="/reports" />
         <h1 className="text-xl font-semibold flex items-center gap-2">
           <Money className="h-5 w-5 text-primary" /> Cost centres
         </h1>
@@ -181,6 +182,7 @@ export function DeliveriesPage() {
   return (
     <div className="max-w-4xl space-y-4">
       <header>
+        <BackButton fallback="/sales-history" />
         <h1 className="text-xl font-semibold flex items-center gap-2">
           <Truck className="h-5 w-5 text-primary" /> Deliveries
         </h1>
@@ -260,6 +262,7 @@ export function AnomaliesPage() {
 
   return (
     <div className="max-w-3xl space-y-4">
+      <BackButton fallback="/reports" />
       <header className="flex items-start justify-between">
         <div>
           <h1 className="text-xl font-semibold flex items-center gap-2">
