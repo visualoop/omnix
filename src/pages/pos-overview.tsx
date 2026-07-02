@@ -40,6 +40,8 @@ import { OpenShiftDialog, CloseShiftDialog } from "@/components/pos/cash-dialogs
 import { useCountry } from "@/stores/country";
 import { pharmacyTerm } from "@/lib/locale";
 import { money } from "@/lib/money";
+import { StatStrip } from "@/components/dashboard/stat-strip";
+import { PosHeroArt } from "@/components/dashboard/hero-art";
 
 export function POSOverviewPage() {
   const navigate = useNavigate();
@@ -128,62 +130,82 @@ export function POSOverviewPage() {
       </header>
 
       {/* ─── Hero — today's revenue as the headline ───── */}
-      <section className="px-8 md:px-14 pt-12 pb-16 md:pt-16 md:pb-20">
-        <div className="max-w-[1100px]">
-          <div className="font-mono text-[10px] uppercase tracking-[0.28em] text-foreground/60">
-            {shift ? "Today's take" : "Drawer closed"}
-          </div>
-          {shift ? (
-            <motion.div
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
-              className="mt-3 flex items-start gap-3"
-            >
-              <span className="font-mono text-[18px] mt-4 text-foreground/55 tabular-nums">
-                {money(0).replace(/[\d.,\s]/g, "").trim() || "KSh"}
-              </span>
-              <span
-                style={{ fontFamily: "var(--font-display)" }}
-                className="text-[clamp(64px,11vw,140px)] leading-[0.95] tracking-[-0.02em] font-medium tabular-nums"
+      <section className="relative px-8 md:px-14 pt-12 pb-16 md:pt-16 md:pb-20">
+        <div className="max-w-[1240px] grid gap-8 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] lg:items-start">
+          {/* Left — the untouched giant KES headline (or the italic empty state) */}
+          <div>
+            <div className="font-mono text-[10px] uppercase tracking-[0.28em] text-foreground/60">
+              {shift ? "Today's take" : "Drawer closed"}
+            </div>
+            {shift ? (
+              <motion.div
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
+                className="mt-3 flex items-start gap-3"
               >
-                {(todayStats?.revenue ?? 0).toLocaleString(undefined, {
-                  maximumFractionDigits: 0,
-                })}
-              </span>
-            </motion.div>
-          ) : (
-            <motion.h1
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
-              style={{ fontFamily: "var(--font-display)" }}
-              className="mt-3 text-[clamp(48px,8vw,100px)] leading-[0.95] tracking-[-0.02em] font-medium italic"
-            >
-              Open the drawer.
-            </motion.h1>
-          )}
+                <span className="font-mono text-[18px] mt-4 text-foreground/55 tabular-nums">
+                  {money(0).replace(/[\d.,\s]/g, "").trim() || "KSh"}
+                </span>
+                <span
+                  style={{ fontFamily: "var(--font-display)" }}
+                  className="text-[clamp(64px,11vw,140px)] leading-[0.95] tracking-[-0.02em] font-medium tabular-nums"
+                >
+                  {(todayStats?.revenue ?? 0).toLocaleString(undefined, {
+                    maximumFractionDigits: 0,
+                  })}
+                </span>
+              </motion.div>
+            ) : (
+              <>
+                <motion.h1
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
+                  style={{ fontFamily: "var(--font-display)" }}
+                  className="mt-3 text-[clamp(48px,8vw,100px)] leading-[0.95] tracking-[-0.02em] font-medium italic"
+                >
+                  Open the drawer.
+                </motion.h1>
+                <p className="mt-5 max-w-[42ch] text-[14px] leading-[1.55] text-foreground/70">
+                  Punch in the opening float below. That&rsquo;s what you&rsquo;ll reconcile against at close.
+                </p>
+              </>
+            )}
+          </div>
 
-          {/* Sub-stats — comma-joined newspaper deck */}
-          {shift && todayStats ? (
-            <p className="mt-6 max-w-[55ch] text-[14px] leading-[1.6] text-foreground/75">
-              <Num n={todayStats.count} unit={todayStats.count === 1 ? "sale" : "sales"} /> rung,{" "}
-              <Money v={todayStats.cash} /> in cash,{" "}
-              <Money v={todayStats.mpesa} /> on mobile money.
-              {heldCount > 0 ? (
-                <> <Num n={heldCount} unit={heldCount === 1 ? "ticket" : "tickets"} /> on hold.</>
-              ) : null}
-              {" "}Shift opened {new Date(shift.opened_at).toLocaleTimeString(undefined, {
-                hour: "2-digit", minute: "2-digit", hour12: false,
-              })} with <Money v={shift.opening_balance} />.
-            </p>
-          ) : (
-            <p className="mt-6 max-w-[55ch] text-[14px] leading-[1.6] text-foreground/75">
-              The drawer is shut. Open a shift to start ringing up sales.
-              The opening float you punch in below is the figure you'll
-              reconcile against at the end of the day.
-            </p>
-          )}
+          {/* Right — stat strip on top of receipt+drawer art */}
+          <div className="relative min-h-[220px] lg:min-h-[280px]">
+            <PosHeroArt />
+            {shift && todayStats ? (
+              <div className="relative">
+                <StatStrip
+                  cells={[
+                    { label: "Sales", value: todayStats.count.toLocaleString() },
+                    { label: "Cash", value: <Money v={todayStats.cash} /> },
+                    { label: "M-Pesa", value: <Money v={todayStats.mpesa} /> },
+                    ...(heldCount > 0
+                      ? [{ label: "On hold", value: String(heldCount), tone: "critical" as const }]
+                      : []),
+                    {
+                      label: "Opened at",
+                      value: new Date(shift.opened_at).toLocaleTimeString(undefined, {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                        hour12: false,
+                      }),
+                      tone: "muted",
+                    },
+                    {
+                      label: "Float",
+                      value: <Money v={shift.opening_balance} />,
+                      tone: "muted",
+                    },
+                  ]}
+                />
+              </div>
+            ) : null}
+          </div>
         </div>
       </section>
 
@@ -247,13 +269,6 @@ export function POSOverviewPage() {
   );
 }
 
-function Num({ n, unit }: { n: number; unit: string }) {
-  return (
-    <span className="text-foreground font-medium tabular-nums">
-      {n.toLocaleString()} {unit}
-    </span>
-  );
-}
 function Money({ v }: { v: number }) {
   return <span className="text-foreground font-medium tabular-nums">{money(v)}</span>;
 }

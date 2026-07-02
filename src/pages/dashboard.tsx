@@ -38,6 +38,8 @@ import { useAuthStore } from "@/stores/auth";
 import { useCountry } from "@/stores/country";
 import { pharmacyTerm } from "@/lib/locale";
 import { money } from "@/lib/money";
+import { StatStrip } from "@/components/dashboard/stat-strip";
+import { DashboardHeroArt } from "@/components/dashboard/hero-art";
 
 export function DashboardPage() {
   const navigate = useNavigate();
@@ -128,64 +130,74 @@ export function DashboardPage() {
       </header>
 
       {/* ─── Hero — today's revenue ───────────────── */}
-      <section className="px-8 md:px-14 pt-10 pb-12 md:pt-14 md:pb-16">
-        <div className="max-w-[1100px]">
-          <div className="font-mono text-[10px] uppercase tracking-[0.28em] text-foreground/60">
-            {todayCount > 0 ? "Today's take" : "Open the day"}
-          </div>
-          {todayCount > 0 ? (
-            <motion.div
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
-              className="mt-3 flex items-start gap-3"
-            >
-              <span className="font-mono text-[18px] mt-4 text-foreground/55 tabular-nums">
-                {money(0).replace(/[\d.,\s]/g, "").trim() || "KSh"}
-              </span>
-              <span
-                style={{ fontFamily: "var(--font-display, serif)" }}
-                className="text-[clamp(64px,11vw,140px)] leading-[0.95] tracking-[-0.02em] font-medium tabular-nums"
+      <section className="relative px-8 md:px-14 pt-10 pb-12 md:pt-14 md:pb-16">
+        <div className="max-w-[1240px] grid gap-8 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] lg:items-start">
+          {/* Left — the untouched giant KES headline */}
+          <div>
+            <div className="font-mono text-[10px] uppercase tracking-[0.28em] text-foreground/60">
+              {todayCount > 0 ? "Today's take" : "Open the day"}
+            </div>
+            {todayCount > 0 ? (
+              <motion.div
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
+                className="mt-3 flex items-start gap-3"
               >
-                <motion.span>{display}</motion.span>
-              </span>
-            </motion.div>
-          ) : (
-            <motion.h1
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
-              style={{ fontFamily: "var(--font-display, serif)" }}
-              className="mt-3 text-[clamp(48px,8vw,100px)] leading-[0.95] tracking-[-0.02em] font-medium italic"
-            >
-              No sales yet today.
-            </motion.h1>
-          )}
+                <span className="font-mono text-[18px] mt-4 text-foreground/55 tabular-nums">
+                  {money(0).replace(/[\d.,\s]/g, "").trim() || "KSh"}
+                </span>
+                <span
+                  style={{ fontFamily: "var(--font-display, serif)" }}
+                  className="text-[clamp(64px,11vw,140px)] leading-[0.95] tracking-[-0.02em] font-medium tabular-nums"
+                >
+                  <motion.span>{display}</motion.span>
+                </span>
+              </motion.div>
+            ) : (
+              <motion.h1
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
+                style={{ fontFamily: "var(--font-display, serif)" }}
+                className="mt-3 text-[clamp(48px,8vw,100px)] leading-[0.95] tracking-[-0.02em] font-medium italic"
+              >
+                No sales yet today.
+              </motion.h1>
+            )}
+          </div>
 
-          {/* Sub-deck — newspaper paragraph */}
+          {/* Right — stat strip laid on top of ghost analytics art */}
           {kpis ? (
-            <p className="mt-6 max-w-[60ch] text-[14px] leading-[1.6] text-foreground/75">
-              {todayCount > 0 ? (
-                <>
-                  <Num n={todayCount} unit={todayCount === 1 ? "sale" : "sales"} /> rung,{" "}
-                  <Money v={kpis.today_profit} /> in profit.{" "}
-                  <Money v={cashOnHand} /> cash in the drawer.
-                  {lowStock > 0 ? (
-                    <> <Num n={lowStock} unit="items" /> low on stock.</>
-                  ) : null}
-                  {expiringSoon > 0 ? (
-                    <> <Num n={expiringSoon} unit="lots" /> expiring soon.</>
-                  ) : null}
-                </>
-              ) : (
-                <>
-                  Drawer holds <Money v={cashOnHand} />.{" "}
-                  <Num n={kpis.total_products ?? 0} unit="products" /> on shelf,{" "}
-                  <Num n={kpis.total_customers ?? 0} unit="customers" /> on file.
-                  {lowStock > 0 ? <> <Num n={lowStock} unit="low" /> on stock.</> : null}
-                </>
-              )}
-            </p>
+            <div className="relative min-h-[220px] lg:min-h-[280px]">
+              <DashboardHeroArt />
+              <div className="relative">
+                <StatStrip
+                  cells={
+                    todayCount > 0
+                      ? [
+                          { label: "Sales", value: todayCount.toLocaleString() },
+                          { label: "Profit", value: <Money v={kpis.today_profit} /> },
+                          { label: "In drawer", value: <Money v={cashOnHand} /> },
+                          ...(lowStock > 0
+                            ? [{ label: "Low stock", value: String(lowStock), tone: "critical" as const }]
+                            : []),
+                          ...(expiringSoon > 0
+                            ? [{ label: "Expiring", value: String(expiringSoon), tone: "critical" as const }]
+                            : []),
+                        ]
+                      : [
+                          { label: "In drawer", value: <Money v={cashOnHand} /> },
+                          { label: "Products", value: (kpis.total_products ?? 0).toLocaleString() },
+                          { label: "Customers", value: (kpis.total_customers ?? 0).toLocaleString() },
+                          ...(lowStock > 0
+                            ? [{ label: "Low stock", value: String(lowStock), tone: "critical" as const }]
+                            : []),
+                        ]
+                  }
+                />
+              </div>
+            </div>
           ) : null}
         </div>
       </section>
@@ -264,13 +276,6 @@ export function DashboardPage() {
   );
 }
 
-function Num({ n, unit }: { n: number; unit: string }) {
-  return (
-    <span className="text-foreground font-medium tabular-nums">
-      {n.toLocaleString()} {unit}
-    </span>
-  );
-}
 function Money({ v }: { v: number }) {
   return <span className="text-foreground font-medium tabular-nums">{money(v)}</span>;
 }
