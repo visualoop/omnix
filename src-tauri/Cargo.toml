@@ -1,6 +1,6 @@
 [package]
 name = "omnix"
-version = "0.35.4"
+version = "0.36.0"
 description = "Omnix — The desktop ERP for Kenyan businesses"
 authors = ["Omnix"]
 edition = "2021"
@@ -64,3 +64,15 @@ mdns-sd = "0.13"
 local-ip-address = "0.6"
 parking_lot = "0.12"
 
+
+# Windows-only: register omnix as a real Windows service so the LAN
+# server survives user logout / accidental app-quit / power-blip reboots.
+# The dedicated `omnix-lan-service` binary (bin/omnix-lan-service.rs) runs
+# as the service; the Tauri app just wires the install/uninstall UX.
+[target.'cfg(windows)'.dependencies]
+windows-service = "0.7"
+
+# Additional binary: the LAN-server-only service worker.
+[[bin]]
+name = "omnix-lan-service"
+path = "src/bin/omnix-lan-service.rs"

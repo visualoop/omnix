@@ -1,7 +1,7 @@
 mod commands;
 mod db;
 mod license;
-mod network;
+pub mod network;
 // mod telemetry; // Phase 10 — activate when website/telemetry endpoint is live
 
 use tauri_plugin_sql::{Migration, MigrationKind};
@@ -669,6 +669,9 @@ fn run_inner() {
             commands::discover_lan_servers,
             commands::open_cash_drawer,
             commands::read_weight_scale,
+            commands::install_windows_service,
+            commands::uninstall_windows_service,
+            commands::windows_service_status,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

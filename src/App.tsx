@@ -80,6 +80,7 @@ import { CurrenciesPage } from "@/pages/currencies";
 import { FollowUpsPage } from "@/pages/follow-ups";
 import { RoomStatusPage } from "@/pages/room-status";
 import { AnalyticsPage } from "@/pages/analytics";
+import { LanServicePage } from "@/pages/lan-service";
 import { StockAgingPage, DeadStockPage } from "@/pages/stock-aging";
 import { DataQualityPage, CostCentresPage, DeliveriesPage, AnomaliesPage } from "@/pages/platform-pages";
 import { GlobalSearchDialog } from "@/components/global-search";
@@ -375,6 +376,7 @@ function AppContent() {
             <Route path="updates" element={<RequireRole permission="settings.business"><SettingsUpdatesPage /></RequireRole>} />
             <Route path="autostart" element={<RequireRole permission="settings.business"><SettingsAutostartPage /></RequireRole>} />
             <Route path="2fa" element={<Settings2FAPage />} />
+            <Route path="lan-service" element={<RequireRole permission="settings.network"><LanServicePage /></RequireRole>} />
             <Route path="currencies" element={<RequireRole permission="settings.business"><CurrenciesPage /></RequireRole>} />
             <Route path="peripherals" element={<RequireRole permission="settings.business"><PeripheralsPage /></RequireRole>} />
             <Route path="hardware/units" element={<RequireRole permission="hardware.accounts.manage"><HardwareSettingsPage /></RequireRole>} />

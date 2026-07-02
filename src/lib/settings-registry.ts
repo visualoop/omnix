@@ -130,6 +130,7 @@ const CORE_SETTINGS: SettingsNavItem[] = [
 
   // ── System ────────────────────────────────────────────────
   { to: "/settings/network", label: "LAN multi-device", description: "Master / client mode", icon: Network, permission: "settings.network", group: "System" },
+  { to: "/settings/lan-service", label: "LAN Windows service", description: "Run LAN server as a real Windows service — survives reboots + logout", icon: Network, permission: "settings.network", group: "System" },
   { to: "/settings/backup", label: "Backup & restore", description: "Protect business data", icon: Database, permission: "settings.backup", group: "System" },
   { to: "/settings/cloud-backup", label: "Cloud backup", description: "Encrypted offsite copies", icon: Cloud, permission: "settings.backup", group: "System" },
   { to: "/settings/audit", label: "Audit log", description: "Security and compliance history", icon: Activity, permission: "audit.view", group: "System" },
