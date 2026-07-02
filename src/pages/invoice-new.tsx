@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
-  ArrowLeft,
   CircleNotch as Loader2,
   FileText,
   MagnifyingGlass as Search,
@@ -207,9 +206,6 @@ export function NewDocumentPage({ type }: Props) {
   return (
     <div className="space-y-5 max-w-4xl">
       <div>
-        <Button variant="ghost" size="sm" onClick={() => navigate("/invoicing")} className="mb-2 -ml-2">
-          <ArrowLeft className="h-3.5 w-3.5 mr-1" /> Back
-        </Button>
         <BackButton fallback="/invoicing" />
         <h1 className="text-xl font-semibold tracking-tight flex items-center gap-2">
           <FileText className="h-5 w-5 text-primary" />

@@ -1,8 +1,7 @@
 import { useEffect, useRef, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams } from "react-router-dom";
 import {
   ArrowDownLeft,
-  ArrowLeft,
   ArrowUpRight,
   ArrowsClockwise as RefreshCw,
   Check,
@@ -40,7 +39,6 @@ import { intlLocale } from "@/lib/intl";
 import { BackButton } from "@/components/ui/back-button";
 export function BankAccountDetailPage() {
   const { id } = useParams<{ id: string }>();
-  const navigate = useNavigate();
   const userId = useAuthStore((s) => s.user?.id);
   const [account, setAccount] = useState<BankAccount | null>(null);
   const [transactions, setTransactions] = useState<BankTransactionWithAccount[]>([]);
@@ -84,9 +82,6 @@ export function BankAccountDetailPage() {
   return (
     <div className="space-y-5">
       <div>
-        <Button variant="ghost" size="sm" onClick={() => navigate("/banking")} className="mb-2 -ml-2">
-          <ArrowLeft className="h-3.5 w-3.5 mr-1" /> Back to Banking
-        </Button>
         <div className="flex items-start justify-between">
           <div>
             <BackButton fallback="/banking" />

@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 import { confirm } from "@/components/ui/confirm-dialog";
 import { useNavigate, useParams } from "react-router-dom";
 import {
-  ArrowLeft,
   ArrowsClockwise as RefreshCw,
   Check,
   CircleNotch as Loader2,
@@ -113,9 +112,6 @@ export function DocumentDetailPage({ type }: Props) {
   return (
     <div className="space-y-5 max-w-4xl">
       <div>
-        <Button variant="ghost" size="sm" onClick={() => navigate("/invoicing")} className="mb-2 -ml-2">
-          <ArrowLeft className="h-3.5 w-3.5 mr-1" /> Back to Invoicing
-        </Button>
         <div className="flex items-start justify-between">
           <div>
             <BackButton fallback="/invoicing" />

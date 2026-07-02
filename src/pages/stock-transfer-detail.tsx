@@ -1,8 +1,7 @@
 import { useEffect, useState } from "react";
 import { confirm } from "@/components/ui/confirm-dialog";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams } from "react-router-dom";
 import {
-  ArrowLeft,
   ArrowsLeftRight as ArrowRightLeft,
   Check,
   CircleNotch as Loader2,
@@ -29,7 +28,6 @@ interface TransferData {
 
 export function StockTransferDetailPage() {
   const { id } = useParams<{ id: string }>();
-  const navigate = useNavigate();
   const userId = useAuthStore((s) => s.user?.id);
   const [data, setData] = useState<TransferData | null>(null);
   const [working, setWorking] = useState(false);
@@ -92,9 +90,6 @@ export function StockTransferDetailPage() {
   return (
     <div className="space-y-5">
       <div>
-        <Button variant="ghost" size="sm" onClick={() => navigate("/stock-transfers")} className="mb-2 -ml-2">
-          <ArrowLeft className="h-3.5 w-3.5 mr-1" /> Back to Transfers
-        </Button>
         <div className="flex items-start justify-between">
           <div>
             <BackButton fallback="/stock-transfers" />
