@@ -573,6 +573,71 @@ fn run_inner() {
                     tauri_plugin_autostart::MacosLauncher::LaunchAgent,
                     None,
                 ))?;
+
+                // ── System tray (v0.35.4) ────────────────────────────
+                // The LAN server lives in this process. If the shop owner
+                // closes the window, the tray keeps the process alive so
+                // clients keep hitting the master.
+                use tauri::menu::{Menu, MenuItem};
+                use tauri::tray::TrayIconBuilder;
+                use tauri::Manager;
+
+                let show_i = MenuItem::with_id(app, "show", "Open Omnix", true, None::<&str>)?;
+                let quit_i = MenuItem::with_id(app, "quit", "Quit (stop LAN server)", true, None::<&str>)?;
+                let menu = Menu::with_items(app, &[&show_i, &quit_i])?;
+
+                let _tray = TrayIconBuilder::with_id("main-tray")
+                    .tooltip("Omnix — LAN server running")
+                    .icon(app.default_window_icon().unwrap().clone())
+                    .menu(&menu)
+                    .show_menu_on_left_click(false)
+                    .on_menu_event(|app, event| match event.id.as_ref() {
+                        "show" => {
+                            if let Some(win) = app.get_webview_window("main") {
+                                let _ = win.show();
+                                let _ = win.unminimize();
+                                let _ = win.set_focus();
+                            }
+                        }
+                        "quit" => {
+                            app.exit(0);
+                        }
+                        _ => {}
+                    })
+                    .on_tray_icon_event(|tray, event| {
+                        // Left-click restores the window
+                        if let tauri::tray::TrayIconEvent::Click {
+                            button: tauri::tray::MouseButton::Left,
+                            button_state: tauri::tray::MouseButtonState::Up,
+                            ..
+                        } = event
+                        {
+                            let app = tray.app_handle();
+                            if let Some(win) = app.get_webview_window("main") {
+                                let _ = win.show();
+                                let _ = win.unminimize();
+                                let _ = win.set_focus();
+                            }
+                        }
+                    })
+                    .build(app)?;
+
+                // ── Close-to-tray: intercept the X and hide instead of quit ─
+                let main_window = app.get_webview_window("main").expect("main window");
+                let handle = app.handle().clone();
+                let win_for_close = main_window.clone();
+                main_window.on_window_event(move |event| {
+                    if let tauri::WindowEvent::CloseRequested { api, .. } = event {
+                        // Only intercept if LAN server is actually running.
+                        // Standalone installs (no LAN) close normally.
+                        let state = handle.state::<std::sync::Arc<commands::NetworkState>>();
+                        let running = state.server.lock().is_some();
+                        if running {
+                            let _ = win_for_close.hide();
+                            api.prevent_close();
+                        }
+                    }
+                });
             }
             Ok(())
         })
