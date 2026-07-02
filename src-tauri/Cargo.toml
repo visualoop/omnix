@@ -1,9 +1,10 @@
 [package]
 name = "omnix"
-version = "0.36.0"
+version = "0.36.1"
 description = "Omnix — The desktop ERP for Kenyan businesses"
 authors = ["Omnix"]
 edition = "2021"
+default-run = "omnix"
 
 [lib]
 name = "omnix_lib"

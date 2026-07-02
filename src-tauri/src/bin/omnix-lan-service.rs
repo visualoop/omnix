@@ -164,7 +164,6 @@ mod windows_impl {
         .await
         .map_err(|e| format!("query business: {}", e))?
         .unwrap_or_else(|| "Omnix".to_string());
-
         if mode != "master" {
             eprintln!(
                 "[omnix-lan-service] mode is '{}', not 'master' — idling. Change to master in the app to start serving.",
