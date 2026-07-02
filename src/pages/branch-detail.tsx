@@ -72,7 +72,9 @@ export function BranchDetailPage() {
   }
 
   return (
-    <div className="flex flex-col gap-5 p-6 max-w-[1280px] mx-auto">
+    <div className="p-6">
+      <BackButton fallback="/settings/branches" label="Back to branches" />
+      <div className="flex flex-col gap-5 max-w-[1280px] w-full mx-auto mt-3">
       <Breadcrumbs
         items={[
           { label: "Settings", to: "/settings" },
@@ -80,7 +82,6 @@ export function BranchDetailPage() {
           { label: branch.name },
         ]}
       />
-      <BackButton fallback="/settings/branches" label="Back to branches" />
       <EntityHero
         eyebrow="Branch"
         title={branch.name}
@@ -109,6 +110,7 @@ export function BranchDetailPage() {
           { id: "compliance", label: "Compliance", render: () => <ComplianceTab branch={branch} /> },
         ]}
       />
+      </div>
     </div>
   )
 }

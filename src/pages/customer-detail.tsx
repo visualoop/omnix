@@ -64,14 +64,15 @@ export function CustomerDetailPage() {
   }
 
   return (
-    <div className="flex flex-col gap-5 p-6 max-w-[1280px] mx-auto">
+    <div className="p-6">
+      <BackButton fallback="/customers" label="Back to customers" />
+      <div className="flex flex-col gap-5 max-w-[1280px] w-full mx-auto mt-3">
       <Breadcrumbs
         items={[
           { label: "Customers", to: "/customers" },
           { label: customer.name },
         ]}
       />
-      <BackButton fallback="/customers" label="Back to customers" />
       <EntityHero
         eyebrow="Customer"
         title={customer.name}
@@ -116,6 +117,7 @@ export function CustomerDetailPage() {
           { id: "activity", label: "Activity", render: () => <ActivityTab id={customer.id} /> },
         ]}
       />
+      </div>
     </div>
   )
 }

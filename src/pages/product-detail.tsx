@@ -150,7 +150,9 @@ export function ProductDetailPage() {
   ).length
 
   return (
-    <div className="flex flex-col gap-5 p-6 max-w-[1280px] mx-auto">
+    <div className="p-6">
+      <BackButton fallback="/inventory/products" label="Back to products" />
+      <div className="flex flex-col gap-5 max-w-[1280px] w-full mx-auto mt-3">
       <Breadcrumbs
         items={[
           { label: "Inventory", to: "/inventory" },
@@ -158,7 +160,6 @@ export function ProductDetailPage() {
           { label: product.name },
         ]}
       />
-      <BackButton fallback="/inventory/products" label="Back to products" />
       <EntityHero
         eyebrow="Product"
         title={product.name}
@@ -226,6 +227,7 @@ export function ProductDetailPage() {
           if (!o) reload()
         }}
       />
+      </div>
     </div>
   )
 }

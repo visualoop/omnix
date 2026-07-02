@@ -87,9 +87,10 @@ export function SupplierDetailPage() {
   const totalReceived = pos.filter((p) => p.status === "received").length
 
   return (
-    <div className="flex flex-col gap-5 p-6 max-w-[1280px] mx-auto">
-      <Breadcrumbs items={[{ label: "Suppliers", to: "/suppliers" }, { label: supplier.name }]} />
+    <div className="p-6">
       <BackButton fallback="/suppliers" label="Back to suppliers" />
+      <div className="flex flex-col gap-5 max-w-[1280px] w-full mx-auto mt-3">
+      <Breadcrumbs items={[{ label: "Suppliers", to: "/suppliers" }, { label: supplier.name }]} />
       <EntityHero
         eyebrow="Supplier"
         title={supplier.name}
@@ -127,6 +128,7 @@ export function SupplierDetailPage() {
           { id: "products", label: "Products supplied", count: products.length, render: () => <ProductsTab products={products} /> },
         ]}
       />
+      </div>
     </div>
   )
 }

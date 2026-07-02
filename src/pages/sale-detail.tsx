@@ -100,14 +100,15 @@ export function SaleDetailPage() {
   }
 
   return (
-    <div className="flex flex-col gap-5 p-6 max-w-[1100px] mx-auto">
+    <div className="p-6">
+      <BackButton fallback="/sales/history" label="Back to sales" />
+      <div className="flex flex-col gap-5 max-w-[1100px] w-full mx-auto mt-3">
       <Breadcrumbs
         items={[
           { label: "Sales", to: "/sales/history" },
           { label: `Receipt #${sale.sale_number}` },
         ]}
       />
-      <BackButton fallback="/sales/history" label="Back to sales" />
       <EntityHero
         eyebrow={`Sale · ${sale.payment_status}`}
         title={`Receipt #${sale.sale_number}`}
@@ -162,6 +163,7 @@ export function SaleDetailPage() {
           { id: "audit", label: "Audit", render: () => <AuditTab id={sale.id} /> },
         ]}
       />
+      </div>
     </div>
   )
 }

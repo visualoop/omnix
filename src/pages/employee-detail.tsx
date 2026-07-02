@@ -79,9 +79,10 @@ export function EmployeeDetailPage() {
   const tenure = differenceInYears(new Date(), new Date(employee.hire_date))
 
   return (
-    <div className="flex flex-col gap-5 p-6 max-w-[1280px] mx-auto">
-      <Breadcrumbs items={[{ label: "Team", to: "/hr/employees" }, { label: employee.full_name }]} />
+    <div className="p-6">
       <BackButton fallback="/hr/employees" label="Back to team" />
+      <div className="flex flex-col gap-5 max-w-[1280px] w-full mx-auto mt-3">
+      <Breadcrumbs items={[{ label: "Team", to: "/hr/employees" }, { label: employee.full_name }]} />
       <EntityHero
         eyebrow="Employee"
         title={employee.full_name}
@@ -114,6 +115,7 @@ export function EmployeeDetailPage() {
           { id: "documents", label: "Documents", render: () => <DocumentsTab employee={employee} /> },
         ]}
       />
+      </div>
     </div>
   )
 }

@@ -235,6 +235,31 @@ const RULES = [
       return hits
     },
   },
+  {
+    // Rule: BackButton nested inside a `mx-auto` container with max-width causes
+    // the button to visually center on wide screens. It should hug the viewport
+    // left edge. See scripts/fix-centered-back.mjs.
+    id: 'ui.page.back_button_centered',
+    label: 'BackButton nested inside a max-w mx-auto centered container',
+    severity: 'warn',
+    extensions: ['.tsx'],
+    test(text, filePath) {
+      if (!filePath.replace(/\\/g, '/').includes('/src/pages/')) return []
+      const hits = []
+      const lines = text.split('\n')
+      for (let i = 0; i < lines.length; i++) {
+        if (/mx-auto/.test(lines[i]) && /max-w-\[/.test(lines[i]) && /<div/.test(lines[i])) {
+          for (let j = i + 1; j < Math.min(i + 12, lines.length); j++) {
+            if (/<BackButton\s/.test(lines[j])) {
+              hits.push({ kind: 'centered-back', snippet: lines[i].trim().slice(0, 60), line: i + 1 })
+              break
+            }
+          }
+        }
+      }
+      return hits
+    },
+  },
 ]
 
 /* ────────────────────────────────────────────────────────────────── *
