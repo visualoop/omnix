@@ -514,6 +514,12 @@ fn run_inner() {
             sql: include_str!("../migrations/067_platform_extensions.sql"),
             kind: MigrationKind::Up,
         },
+        Migration {
+            version: 68,
+            description: "Product lead_time_days + last_ordered_at columns",
+            sql: include_str!("../migrations/068_product_lead_time.sql"),
+            kind: MigrationKind::Up,
+        },
     ];
 
     tauri::Builder::default()

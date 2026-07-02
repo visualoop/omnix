@@ -73,6 +73,10 @@ import { ApprovalsPage } from "@/pages/approvals";
 import { DebitNotesPage } from "@/pages/debit-notes";
 import { BankReconciliationPage } from "@/pages/bank-reconciliation";
 import { RecallsPage } from "@/pages/recalls";
+import { ReorderSuggestionsPage } from "@/pages/reorder-suggestions";
+import { SalesTargetsPage } from "@/pages/sales-targets";
+import { FixedAssetsPage } from "@/pages/fixed-assets";
+import { CurrenciesPage } from "@/pages/currencies";
 import { TaxSettingsPage } from "@/pages/settings-taxes";
 import { CategoriesSettingsPage } from "@/pages/settings-categories";
 // Hub pages — flat sidebar with tabs inside each domain
@@ -177,6 +181,13 @@ function AppContent() {
   useLanAutostart();
   useAlertScanner();
   useOfflineQueueDrainer();
+
+  // Install crash telemetry handlers once on boot.
+  useEffect(() => {
+    import("@/services/telemetry").then(({ installGlobalHandlers }) => installGlobalHandlers());
+    // Load persisted i18n locale.
+    import("@/lib/i18n").then(({ loadPersistedLocale }) => loadPersistedLocale());
+  }, []);
   const { user, isSetupComplete, setupChecked, refreshSetupState } = useAuthStore();
 
   useEffect(() => {
@@ -274,6 +285,10 @@ function AppContent() {
           <Route path="/procurement/debit-notes" element={<RequireRole permission="purchase_orders.view"><DebitNotesPage /></RequireRole>} />
           <Route path="/banking/:id/reconcile" element={<RequireRole permission="banking.reconcile"><BankReconciliationPage /></RequireRole>} />
           <Route path="/pharmacy/recalls" element={<RequireRole permission="pharmacy.dispense"><RecallsPage /></RequireRole>} />
+          <Route path="/inventory/reorder" element={<RequireRole permission="inventory.view"><ReorderSuggestionsPage /></RequireRole>} />
+          <Route path="/people/sales-targets" element={<RequireRole permission="reports.view"><SalesTargetsPage /></RequireRole>} />
+          <Route path="/accounting/fixed-assets" element={<RequireRole permission="reports.pnl"><FixedAssetsPage /></RequireRole>} />
+          <Route path="/settings/currencies" element={<RequireRole permission="settings.business"><CurrenciesPage /></RequireRole>} />
           <Route path="/hospitality/reservations" element={<RequireRole permission="hospitality.bookings.manage"><ReservationsPage /></RequireRole>} />
           <Route path="/hospitality/kitchen" element={<RequireRole permission="hospitality.kitchen.bump"><KitchenDisplayPage /></RequireRole>} />
           <Route path="/settings/peripherals" element={<RequireRole permission="settings.business"><PeripheralsPage /></RequireRole>} />

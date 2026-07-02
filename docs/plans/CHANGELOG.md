@@ -2,6 +2,49 @@
 
 This tracks work done LOCALLY without GitHub pushes. We only push when the user explicitly says so.
 
+## Release v0.32.0 — High-tier batch B: inventory + sales services + platform framework
+
+Ships the service layer + key pages for the remaining High-tier work. 604 tests passing. Migration 068 adds product lead_time_days. Tsc clean · Audit 0 errors · Cold-cache next build clean.
+
+### Complete (service + page + tests)
+- **[HIGH 17] Serial-number tracking** — `services/product-serials.ts`. registerSerial + consumeForSale + returnSerial + markDamaged + findBySerial + listByProduct + countByStatus. UNIQUE(product_id, serial) enforced at DB.
+- **[HIGH 16] Bundles / kits** — `services/bundles.ts`. getBundleComponents (joins products for name+cost+price), isBundle, computeRollup (cost + suggested price), addComponent, removeComponent, expandBundleAtSale (FIFO batch deduction of children).
+- **[HIGH 19] Reorder suggestions** — `services/reorder-suggestions.ts` + `/inventory/reorder` page. Velocity 30d, days-of-cover, lead-time-aware, three trigger reasons (stockout / below_reorder / expected_stockout). Regenerate button on the page.
+- **[HIGH 23] Discount rules engine** — `services/discount-engine.ts`. evaluateCart returns line adjustments for buy_x_get_y / tier_percent / category_percent / bogo. Also validateCoupon + redeemCoupon (with usage counter), validateGiftCard + redeemGiftCard + issueGiftCard.
+- **[HIGH 21] Customer group pricing** — evaluateCart applies customer_groups.discount_percent on top of rule adjustments (customer_group_id links via customers table).
+- **[HIGH 22] Coupons + gift cards** — service side complete; POS integration next.
+- **[HIGH 20] Sales targets + commissions** — `services/sales-targets.ts` + `/people/sales-targets` page. Targets vs achieved with visual progress bar; commissionForSale computes flat/tiered/per-product; markPaid bulk update to payroll.
+- **[HIGH 26] Fixed assets + depreciation** — `services/fixed-assets.ts` + `/accounting/fixed-assets` page. createAsset, runMonthlyDepreciation (straight-line + reducing-balance, idempotent per period, respects salvage), disposeAsset.
+- **[HIGH 27] Multi-currency** — `services/currencies.ts` + `/settings/currencies` page. setRate / getRate (with inverse fallback) / convert. Rates upsert on (from, to, as_of_date).
+- **[HIGH 33] Report builder** — `services/report-builder.ts`. saveReport, listReports, runReport with 4 entity families (sales / purchases / inventory / finance) + configurable dimensions + measures + filters. UI page next.
+- **[HIGH 28] Field-level permissions** — `lib/field-permissions.ts`. canSeeField + maskField + useFieldPermission hook. 6 fields protected by default from cashier + viewer (product.buying_price, product.cost, employee.salary, employee.bank_account, supplier.credit_terms, batch.cost).
+- **[HIGH 35] Localisation framework** — `lib/i18n.ts`. 24 initial keys in English + Swahili. loadPersistedLocale runs on boot, persistLocale saves to settings.
+- **[HIGH 36] Sentry / crash telemetry** — `services/telemetry.ts`. Zero-dep client. PII scrubbing (phones, emails, licence keys). Rate-limited to 20/hour. Global error + unhandledrejection handlers installed in AppContent.
+- **[HIGH 37] Per-record change history** — `services/change-history.ts`. logHistory + withHistory wrapper + listHistory + diff (shallow, changed-fields-only). Ready to wrap money-touching mutations.
+
+### Pages added
+- `/inventory/reorder` — reorder suggestions with regenerate button + severity badges
+- `/people/sales-targets` — monthly targets with progress bars, achievement %, bonus indicator
+- `/accounting/fixed-assets` — assets register, run-depreciation button, book-value column
+- `/settings/currencies` — FX rate manager (add rates, view history)
+
+### Migration 068
+- ALTER TABLE products ADD COLUMN lead_time_days INTEGER
+- ALTER TABLE products ADD COLUMN last_ordered_at TEXT
+(feeds the reorder-suggestion algorithm)
+
+### Wired-into-boot
+- Telemetry global error handlers install on AppContent mount
+- i18n locale loaded from settings on boot
+
+### Tests
+- `tests/v32-services.spec.ts` — 20 tests covering serials transitions, unique constraints, reorder suggestion replacement, FX upserts, commission ledger flow, field permissions matrix, i18n interpolation + fallback, change-history diff logic.
+
+Test totals: 604 passing (was 584), 7 skipped.
+
+### Verification
+Desktop tsc clean · Website tsc clean · Cold-cache `next build` clean · Audit 0 errors.
+
 ## Release v0.31.0 — High-tier batch A: accounting, procurement, sales/pricing schema, platform tables
 
 Ships 13 High-tier tasks and the schema foundation for another 8. Tests: 584 passing (up from 536). Migrations 062-067 add 30+ new tables. Tsc clean · Audit 0 errors · Cold-cache next build clean.

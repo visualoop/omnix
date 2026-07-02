@@ -125,6 +125,7 @@ const CORE_SETTINGS: SettingsNavItem[] = [
   { to: "/settings/autostart", label: "Start with Windows", description: "Launch automatically on boot", icon: Power, permission: "settings.business", group: "Application" },
   { to: "/settings/2fa", label: "Two-factor authentication", description: "Require a phone code on sign-in", icon: ShieldCheck, permission: "settings.business", group: "Application" },
   { to: "/settings/peripherals", label: "Peripherals", description: "Cash drawer, weight scale, kitchen printer, card reader", icon: Boxes, permission: "settings.business", group: "Hardware Devices" },
+  { to: "/settings/currencies", label: "Currencies &amp; FX", description: "Add exchange rates for USD, EUR, UGX, etc.", icon: Calculator, permission: "settings.business", group: "Money" },
   { to: "/settings/licenses", label: "Licences", description: "Active modules, sync, add another", icon: Key, permission: "license.view", group: "Application" },
 
   // ── System ────────────────────────────────────────────────
