@@ -130,7 +130,7 @@ export function DashboardPage() {
       </header>
 
       {/* ─── Hero — today's revenue ───────────────── */}
-      <section className="relative px-8 md:px-14 pt-10 pb-12 md:pt-14 md:pb-16">
+      <section className="relative px-8 md:px-14 pt-10 pb-6 md:pt-14 md:pb-8">
         <div className="max-w-[1240px] grid gap-8 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] lg:items-start">
           {/* Left — the untouched giant KES headline */}
           <div>

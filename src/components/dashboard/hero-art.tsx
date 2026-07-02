@@ -16,6 +16,14 @@ const BASE: CSSProperties = {
   color: "currentColor",
   opacity: 0.06,
   pointerEvents: "none",
+  // Fade the LEFT half of the art to transparent so it never sits behind
+  // the stat strip (which lives in the left ~40% of the right column).
+  // Right side stays fully opaque, giving us domain art in the empty corner
+  // without any lines crossing readable text.
+  WebkitMaskImage:
+    "linear-gradient(to right, transparent 0%, transparent 22%, rgba(0,0,0,0.4) 40%, black 60%)",
+  maskImage:
+    "linear-gradient(to right, transparent 0%, transparent 22%, rgba(0,0,0,0.4) 40%, black 60%)",
 };
 
 /** Analytics feel: rising line chart + a few tiny bar sparks below. */

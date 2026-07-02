@@ -130,7 +130,7 @@ export function POSOverviewPage() {
       </header>
 
       {/* ─── Hero — today's revenue as the headline ───── */}
-      <section className="relative px-8 md:px-14 pt-12 pb-16 md:pt-16 md:pb-20">
+      <section className="relative px-8 md:px-14 pt-12 pb-8 md:pt-16 md:pb-10">
         <div className="max-w-[1240px] grid gap-8 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] lg:items-start">
           {/* Left — the untouched giant KES headline (or the italic empty state) */}
           <div>
