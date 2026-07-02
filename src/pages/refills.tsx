@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { confirm } from "@/components/ui/confirm-dialog";
 import { useNavigate } from "react-router-dom";
 import {
@@ -9,7 +9,10 @@ import {
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { getRefillablePrescriptions, refillPrescription, type RefillablePrescription } from "@/services/pharmacy-extras";
+import { refillPrescription, type RefillablePrescription } from "@/services/pharmacy-extras";
+import { pageRefills } from "@/services/paged";
+import { useListData } from "@/hooks/use-list-data";
+import { PaginationBar } from "@/components/pagination-bar";
 import { useAuthStore } from "@/stores/auth";
 import { EmptyState } from "@/components/ui/empty-state";
 import { TableRowSkeleton } from "@/components/ui/skeletons";
@@ -18,20 +21,13 @@ import { intlLocale } from "@/lib/intl";
 
 import { BackButton } from "@/components/ui/back-button";
 export function RefillsPage() {
-  const [items, setItems] = useState<RefillablePrescription[]>([]);
-  const [search, setSearch] = useState("");
-  const [loading, setLoading] = useState(true);
   const [refilling, setRefilling] = useState<string | null>(null);
   const userId = useAuthStore((s) => s.user?.id);
   const navigate = useNavigate();
 
-  const load = async () => {
-    setLoading(true);
-    try {
-      setItems(await getRefillablePrescriptions(search));
-    } finally { setLoading(false); }
-  };
-  useEffect(() => { load(); }, [search]);
+  const list = useListData(pageRefills, { pageSize: 50 });
+  const items = list.rows as unknown as RefillablePrescription[];
+  const loading = list.loading;
 
   const handleRefill = async (rxId: string, patientName: string) => {
     if (!userId) return;
@@ -65,8 +61,8 @@ export function RefillsPage() {
         <Input
           placeholder="Search patient name, phone, or Rx#..."
           className="pl-9"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
+          value={list.search}
+          onChange={(e) => list.setSearch(e.target.value)}
         />
       </div>
 
@@ -128,6 +124,8 @@ export function RefillsPage() {
           </tbody>
         </table>
       </div>
+
+      <PaginationBar list={list} />
     </div>
   );
 }

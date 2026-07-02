@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Calendar,
@@ -14,6 +14,9 @@ import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Badge } from "@/components/ui/badge";
 import { query } from "@/lib/db";
+import { pageSales } from "@/services/paged";
+import { useListData } from "@/hooks/use-list-data";
+import { PaginationBar } from "@/components/pagination-bar";
 import { buildReceiptData, printReceipt } from "@/services/receipt";
 import { useActiveBranch } from "@/stores/active-branch";
 import { toast } from "sonner";
@@ -29,6 +32,7 @@ interface SaleRow {
   status: string;
   cashier: string | null;
   customer: string | null;
+  customer_name?: string | null;
   item_count: number;
 }
 
@@ -41,42 +45,27 @@ interface SaleDetail extends SaleRow {
 }
 
 export function SalesHistoryPage() {
-  const [sales, setSales] = useState<SaleRow[]>([]);
   const navigate = useNavigate();
-  const [search, setSearch] = useState("");
   const [period, setPeriod] = useState<"today" | "week" | "month" | "all">("today");
   const [activeSale, setActiveSale] = useState<SaleDetail | null>(null);
-  const [loading, setLoading] = useState(true);
   const branchId = useActiveBranch((s) => s.active?.id || "default-branch");
 
-  const load = async () => {
-    setLoading(true);
-    let dateFilter = "";
-    if (period === "today") dateFilter = "AND date(s.created_at) = date('now')";
-    else if (period === "week") dateFilter = "AND s.created_at >= datetime('now', '-7 days')";
-    else if (period === "month") dateFilter = "AND s.created_at >= datetime('now', '-30 days')";
-
-    const searchFilter = search.trim()
-      ? `AND (s.sale_number LIKE ?1 OR c.name LIKE ?1 OR u.full_name LIKE ?1)`
-      : "";
-
-    const rows = await query<SaleRow>(
-      `SELECT s.id, s.sale_number, s.created_at, s.total, s.payment_status, s.status,
-              u.full_name as cashier,
-              c.name as customer,
-              (SELECT COUNT(*) FROM sale_items WHERE sale_id = s.id) as item_count
-       FROM sales s
-       LEFT JOIN users u ON u.id = s.user_id
-       LEFT JOIN customers c ON c.id = s.customer_id
-       WHERE s.status != 'held' AND s.branch_id = ?${search.trim() ? 2 : 1} ${dateFilter} ${searchFilter}
-       ORDER BY s.created_at DESC LIMIT 200`,
-      search.trim() ? [`%${search.trim()}%`, branchId] : [branchId]
-    );
-    setSales(rows);
-    setLoading(false);
-  };
-
-  useEffect(() => { load(); }, [period, search, branchId]);
+  const fetcher = useCallback(
+    (q: { search?: string; page?: number; pageSize?: number }) => {
+      let from: string | undefined;
+      if (period === "today") from = new Date(Date.now() - 0).toISOString().slice(0, 10) + " 00:00:00";
+      else if (period === "week") from = new Date(Date.now() - 7 * 86400000).toISOString();
+      else if (period === "month") from = new Date(Date.now() - 30 * 86400000).toISOString();
+      return pageSales({ ...q, from, branch_id: branchId, exclude_held: true });
+    },
+    [period, branchId],
+  );
+  const list = useListData(fetcher, { pageSize: 50 });
+  const sales = (list.rows as unknown as SaleRow[]).map((s) => ({
+    ...s,
+    customer: (s as any).customer_name ?? null,
+  }));
+  const loading = list.loading;
 
   const openDetail = async (id: string) => {
     const sale = (await query<SaleDetail>(
@@ -142,8 +131,8 @@ export function SalesHistoryPage() {
         <div className="flex-1 relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
           <Input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            value={list.search}
+            onChange={(e) => list.setSearch(e.target.value)}
             placeholder="Search by receipt #, customer, cashier..."
             className="pl-9"
           />
@@ -219,6 +208,8 @@ export function SalesHistoryPage() {
           {activeSale && <SaleDetailView sale={activeSale} onReprint={() => handleReprint(activeSale.id)} />}
         </SheetContent>
       </Sheet>
+
+      <PaginationBar list={list} />
     </div>
   );
 }

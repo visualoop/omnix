@@ -16,16 +16,16 @@ import type { ListPage, ListQuery } from "@/lib/list-types";
 export interface InvoiceRow {
   id: string;
   invoice_number: string;
-  customer_name: string | null;
+  customer_name: string;
   issue_date: string;
   due_date: string;
-  total_amount: number;
-  paid_amount: number;
+  total: number;
+  amount_paid: number;
   status: string;
 }
 
 export async function pageInvoices(
-  q: ListQuery & { status?: string; type?: "invoice" | "quotation" },
+  q: ListQuery & { status?: string; type?: "invoice" | "quotation"; branchId?: string },
 ): Promise<ListPage<InvoiceRow>> {
   const extraWhere: string[] = [];
   const extraParams: unknown[] = [];
@@ -37,6 +37,10 @@ export async function pageInvoices(
   if (q.type) {
     extraWhere.push(`type = ?${++i}`);
     extraParams.push(q.type);
+  }
+  if (q.branchId) {
+    extraWhere.push(`branch_id = ?${++i}`);
+    extraParams.push(q.branchId);
   }
   return pagedQuery<InvoiceRow>(
     {
@@ -90,21 +94,25 @@ export interface SaleRow {
   created_at: string;
 }
 
-export async function pageSales(q: ListQuery & { from?: string; to?: string; status?: string }): Promise<ListPage<SaleRow>> {
+export async function pageSales(q: ListQuery & { from?: string; to?: string; status?: string; branch_id?: string; exclude_held?: boolean }): Promise<ListPage<SaleRow>> {
   const extraWhere: string[] = [];
   const extraParams: unknown[] = [];
   let i = 0;
   if (q.from) { extraWhere.push(`s.created_at >= ?${++i}`); extraParams.push(q.from); }
   if (q.to) { extraWhere.push(`s.created_at <= ?${++i}`); extraParams.push(q.to); }
   if (q.status) { extraWhere.push(`s.status = ?${++i}`); extraParams.push(q.status); }
+  if (q.branch_id) { extraWhere.push(`s.branch_id = ?${++i}`); extraParams.push(q.branch_id); }
+  if (q.exclude_held) { extraWhere.push(`s.status != 'held'`); }
   return pagedQuery<SaleRow>(
     {
       baseSql:
         `SELECT s.id, s.sale_number, s.customer_id, c.name AS customer_name,
-                s.total, s.tax_amount, s.status, s.created_at
-         FROM sales s LEFT JOIN customers c ON c.id = s.customer_id`,
-      countSql: `SELECT COUNT(*) AS n FROM sales s LEFT JOIN customers c ON c.id = s.customer_id`,
-      searchColumns: ["s.sale_number", "c.name"],
+                s.total, s.tax_amount, s.status, s.payment_status, s.created_at,
+                u.full_name AS cashier,
+                (SELECT COUNT(*) FROM sale_items WHERE sale_id = s.id) AS item_count
+         FROM sales s LEFT JOIN customers c ON c.id = s.customer_id LEFT JOIN users u ON u.id = s.user_id`,
+      countSql: `SELECT COUNT(*) AS n FROM sales s LEFT JOIN customers c ON c.id = s.customer_id LEFT JOIN users u ON u.id = s.user_id`,
+      searchColumns: ["s.sale_number", "c.name", "u.full_name"],
       orderBy: "s.created_at DESC",
       extraWhere,
       extraParams,
@@ -292,12 +300,11 @@ export async function pageClaims(q: ListQuery & { status?: string; provider_id?:
   return pagedQuery<ClaimRow>(
     {
       baseSql:
-        `SELECT cl.id, cl.claim_number, cl.provider_id, p.name AS provider_name,
-                cl.patient_name, cl.status, cl.total_amount, cl.created_at
+        `SELECT cl.*, p.name AS provider_name
          FROM insurance_claims cl LEFT JOIN insurance_providers p ON p.id = cl.provider_id`,
       countSql:
         `SELECT COUNT(*) AS n FROM insurance_claims cl LEFT JOIN insurance_providers p ON p.id = cl.provider_id`,
-      searchColumns: ["cl.claim_number", "cl.patient_name", "p.name"],
+      searchColumns: ["cl.claim_number", "cl.member_name", "p.name"],
       orderBy: "cl.created_at DESC",
       extraWhere,
       extraParams,
@@ -336,29 +343,36 @@ export async function pageEtimsQueue(q: ListQuery & { status?: string }): Promis
   );
 }
 
-// ─── Refills ───────────────────────────────────────────────────
+// ─── Refills — active refillable prescriptions ─────────────────
 export interface RefillRow {
   id: string;
-  patient_name: string | null;
-  drug_name: string;
-  refill_date: string;
-  status: string;
+  rx_number: number;
+  patient_name: string;
+  patient_phone: string | null;
+  doctor_name: string | null;
+  refills_authorized: number;
+  refills_used: number;
+  refills_remaining: number;
+  last_dispensed: string;
+  item_count: number;
 }
 
-export async function pageRefills(q: ListQuery & { status?: string }): Promise<ListPage<RefillRow>> {
-  const extraWhere: string[] = [];
-  const extraParams: unknown[] = [];
-  if (q.status) {
-    extraWhere.push(`status = ?${extraParams.length + 1}`);
-    extraParams.push(q.status);
-  }
+export async function pageRefills(q: ListQuery): Promise<ListPage<RefillRow>> {
   return pagedQuery<RefillRow>(
     {
-      table: "refills",
-      searchColumns: ["patient_name", "drug_name"],
-      orderBy: "refill_date ASC",
-      extraWhere,
-      extraParams,
+      baseSql:
+        `SELECT
+           p.id, p.rx_number, p.patient_name, p.patient_phone, p.doctor_name,
+           p.refills_authorized, p.refills_used,
+           (p.refills_authorized - p.refills_used) AS refills_remaining,
+           p.created_at AS last_dispensed,
+           (SELECT COUNT(*) FROM prescription_items WHERE prescription_id = p.id) AS item_count
+         FROM prescriptions p`,
+      countSql: `SELECT COUNT(*) AS n FROM prescriptions p`,
+      searchColumns: ["p.patient_name", "p.patient_phone", "CAST(p.rx_number AS TEXT)"],
+      orderBy: "p.created_at DESC",
+      extraWhere: ["p.refills_authorized > p.refills_used", "p.parent_prescription_id IS NULL"],
+      extraParams: [],
     },
     q,
   );

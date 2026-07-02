@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   CurrencyDollar as DollarSign,
@@ -22,6 +22,9 @@ import {
   type Invoice, type Quotation, type InvoiceStatus, type QuotationStatus,
   type AgedReceivable,
 } from "@/services/invoicing";
+import { pageInvoices } from "@/services/paged";
+import { useListData } from "@/hooks/use-list-data";
+import { PaginationBar } from "@/components/pagination-bar";
 import { useActiveBranch } from "@/stores/active-branch";
 import { money as KES } from "@/lib/money";
 import { intlLocale } from "@/lib/intl";
@@ -79,34 +82,34 @@ export function InvoicingPage() {
 
 function InvoiceList({ branchId }: { branchId?: string }) {
   const navigate = useNavigate();
-  const [invoices, setInvoices] = useState<Invoice[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<InvoiceStatus | "">("");
 
-  const load = async () => {
-    setLoading(true);
-    try {
-      setInvoices(await listInvoices({ status: statusFilter || undefined, branchId }));
-    } finally { setLoading(false); }
-  };
-  useEffect(() => { load(); }, [statusFilter, branchId]);
-
-  const filtered = invoices.filter((i) =>
-    !search ||
-    i.invoice_number.toLowerCase().includes(search.toLowerCase()) ||
-    i.customer_name.toLowerCase().includes(search.toLowerCase()),
+  const fetcher = useCallback(
+    (q: { search?: string; page?: number; pageSize?: number }) =>
+      pageInvoices({ ...q, status: statusFilter || undefined, branchId }),
+    [statusFilter, branchId],
   );
+  const list = useListData(fetcher, { pageSize: 50 });
+  const invoices = list.rows as unknown as Invoice[];
+  const filtered = invoices;
+  const loading = list.loading;
 
-  const totalUnpaid = invoices.filter((i) => i.status !== "paid" && i.status !== "cancelled")
-    .reduce((s, i) => s + (i.total - i.amount_paid), 0);
-  const totalPaid = invoices.filter((i) => i.status === "paid")
-    .reduce((s, i) => s + i.amount_paid, 0);
+  const [totals, setTotals] = useState<{ invoiced: number; unpaid: number; paid: number }>({ invoiced: 0, unpaid: 0, paid: 0 });
+  useEffect(() => {
+    listInvoices({ branchId }).then((all) => {
+      const invoiced = all.reduce((s, i) => s + i.total, 0);
+      const unpaid = all.filter((i) => i.status !== "paid" && i.status !== "cancelled").reduce((s, i) => s + (i.total - i.amount_paid), 0);
+      const paid = all.filter((i) => i.status === "paid").reduce((s, i) => s + i.amount_paid, 0);
+      setTotals({ invoiced, unpaid, paid });
+    });
+  }, [branchId, list.total]);
+  const totalUnpaid = totals.unpaid;
+  const totalPaid = totals.paid;
 
   return (
     <div className="space-y-3">
       <div className="grid grid-cols-3 gap-3">
-        <Stat label="Total invoiced" value={KES(invoices.reduce((s, i) => s + i.total, 0))} />
+        <Stat label="Total invoiced" value={KES(totals.invoiced)} />
         <Stat label="Outstanding" value={KES(totalUnpaid)} color="text-amber-600" />
         <Stat label="Collected" value={KES(totalPaid)} color="text-emerald-600" />
       </div>
@@ -114,7 +117,7 @@ function InvoiceList({ branchId }: { branchId?: string }) {
       <div className="flex gap-2">
         <div className="relative flex-1 max-w-sm">
           <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
-          <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search invoice or customer..." className="pl-8" />
+          <Input value={list.search} onChange={(e) => list.setSearch(e.target.value)} placeholder="Search invoice or customer..." className="pl-8" />
         </div>
         <Select value={statusFilter} onValueChange={(v) => setStatusFilter(String(v) as InvoiceStatus | "")}><SelectTrigger><SelectValue placeholder="All statuses" /></SelectTrigger><SelectContent>
           
@@ -177,6 +180,8 @@ function InvoiceList({ branchId }: { branchId?: string }) {
           </tbody>
         </table>
       </div>
+
+      <PaginationBar list={list} />
     </div>
   );
 }

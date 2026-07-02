@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   CheckCircle as CheckCircle2,
   Clock,
@@ -9,6 +9,7 @@ import {
   Shield,
   WarningCircle as AlertCircle,
   XCircle,
+  MagnifyingGlass as Search,
 } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,7 +17,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Badge } from "@/components/ui/badge";
 import {
-  listClaims,
   getClaim,
   getClaimItems,
   updateClaimStatus,
@@ -30,6 +30,9 @@ import {
   type InsuranceProvider,
   type InsuranceBatch,
 } from "@/services/insurance";
+import { pageClaims } from "@/services/paged";
+import { useListData } from "@/hooks/use-list-data";
+import { PaginationBar } from "@/components/pagination-bar";
 import { exportToCSV } from "@/lib/export";
 import { renderClaimsPdf } from "@/services/reports-pdf";
 import { loadBrandHeader, downloadBytes } from "@/services/pdf-brand";
@@ -41,7 +44,6 @@ import { money } from "@/lib/money";
 import { BackButton } from "@/components/ui/back-button";
 export function ClaimsPage() {
   const [tab, setTab] = useState<"claims" | "batches">("claims");
-  const [claims, setClaims] = useState<InsuranceClaim[]>([]);
   const [batches, setBatches] = useState<InsuranceBatch[]>([]);
   const [stats, setStats] = useState<{
     total_outstanding: number;
@@ -56,17 +58,30 @@ export function ClaimsPage() {
   const [activeClaim, setActiveClaim] = useState<InsuranceClaim | null>(null);
   const [showBatchDialog, setShowBatchDialog] = useState(false);
 
-  const load = async () => {
+  const fetcher = useCallback(
+    (q: { search?: string; page?: number; pageSize?: number }) =>
+      pageClaims({
+        ...q,
+        status: statusFilter === "all" ? undefined : statusFilter,
+        provider_id: providerFilter === "all" ? undefined : providerFilter,
+      }),
+    [statusFilter, providerFilter],
+  );
+  const list = useListData(fetcher, { pageSize: 50 });
+  const claims = list.rows as unknown as InsuranceClaim[];
+
+  const load = useCallback(async () => {
+    list.refresh();
     setStats(await getInsuranceStats());
     setProviders(await getProviders(false));
-    const filter: { status?: string; provider_id?: string } = {};
-    if (statusFilter !== "all") filter.status = statusFilter;
-    if (providerFilter !== "all") filter.provider_id = providerFilter;
-    setClaims(await listClaims(filter));
     setBatches(await listBatches());
-  };
+  }, [list]);
 
-  useEffect(() => { load(); }, [statusFilter, providerFilter]);
+  useEffect(() => {
+    getInsuranceStats().then(setStats);
+    getProviders(false).then(setProviders);
+    listBatches().then(setBatches);
+  }, []);
 
   return (
     <div className="space-y-5">
@@ -155,6 +170,15 @@ export function ClaimsPage() {
         <>
           {/* Filters */}
           <div className="flex gap-2">
+            <div className="relative flex-1 max-w-sm">
+              <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
+              <Input
+                value={list.search}
+                onChange={(e) => list.setSearch(e.target.value)}
+                placeholder="Search claim number, member, patient..."
+                className="pl-9 h-9"
+              />
+            </div>
             <Select value={statusFilter} onValueChange={(v) => setStatusFilter(String(v))}>
               <SelectTrigger className="h-9 w-44">
                 <SelectValue />
@@ -231,6 +255,7 @@ export function ClaimsPage() {
               </table>
             </div>
           )}
+          <PaginationBar list={list} />
         </>
       )}
 
