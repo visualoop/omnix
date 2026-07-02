@@ -51,6 +51,7 @@ export function SuppliersPage() {
   return (
     <div className="space-y-5">
       <PageHeader
+        back={{ fallback: "/" }}
         eyebrow="Operations"
         title="Suppliers"
         description="Vendors and the money you owe them."

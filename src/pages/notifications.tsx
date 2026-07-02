@@ -13,6 +13,7 @@ import {
 import { intlLocale } from "@/lib/intl";
 import { toast } from "sonner";
 
+import { BackButton } from "@/components/ui/back-button";
 export function NotificationsPage() {
   const [items, setItems] = useState<Notification[]>([]);
   const [filter, setFilter] = useState<"all" | "unread">("all");
@@ -52,6 +53,7 @@ export function NotificationsPage() {
     <div className="max-w-3xl space-y-4">
       <header className="flex items-center justify-between">
         <div>
+          <BackButton fallback="/" />
           <h1 className="text-xl font-semibold flex items-center gap-2">
             <Bell className="h-5 w-5 text-primary" /> Notifications
           </h1>

@@ -53,6 +53,7 @@ export function PayrollPage() {
   return (
     <div className="space-y-5">
       <PageHeader
+        back={{ fallback: "/people" }}
         eyebrow="HR"
         title="Payroll"
         description="Monthly payroll with PAYE, NSSF (Year 4), SHIF, and Housing Levy per Kenya 2026 rates."

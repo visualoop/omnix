@@ -21,6 +21,7 @@ import { toast } from "sonner";
 import { APP_NAME } from "@/lib/brand";
 import { intlLocale } from "@/lib/intl";
 
+import { BackButton } from "@/components/ui/back-button";
 interface BackupInfo {
   filename: string;
   path: string;
@@ -174,6 +175,7 @@ export function BackupPage() {
   return (
     <div className="space-y-5 max-w-4xl">
       <div>
+        <BackButton fallback="/" />
         <h1 className="text-xl font-semibold tracking-tight">Backup & Restore</h1>
         <p className="text-sm text-muted-foreground mt-1">
           Protect your data. Backups are stored locally on this device.

@@ -21,6 +21,7 @@ import { useTrialWriteGuard } from "@/components/trial-lifecycle";
 import { useFormAutosave } from "@/hooks/use-form-autosave";
 import { FormDraftBanner } from "@/components/form-draft-banner";
 
+import { BackButton } from "@/components/ui/back-button";
 interface LineItem {
   product_id: string | null;
   description: string;
@@ -209,6 +210,7 @@ export function NewDocumentPage({ type }: Props) {
         <Button variant="ghost" size="sm" onClick={() => navigate("/invoicing")} className="mb-2 -ml-2">
           <ArrowLeft className="h-3.5 w-3.5 mr-1" /> Back
         </Button>
+        <BackButton fallback="/invoicing" />
         <h1 className="text-xl font-semibold tracking-tight flex items-center gap-2">
           <FileText className="h-5 w-5 text-primary" />
           New {type === "invoice" ? "Invoice" : "Quotation"}

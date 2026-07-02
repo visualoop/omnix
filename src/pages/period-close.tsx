@@ -16,6 +16,7 @@ import { useAuthStore } from "@/stores/auth";
 import { confirm } from "@/components/ui/confirm-dialog";
 import { intlLocale } from "@/lib/intl";
 
+import { BackButton } from "@/components/ui/back-button";
 export function PeriodClosePage() {
   const user = useAuthStore((s) => s.user);
   const [years, setYears] = useState<FinancialYear[]>([]);
@@ -88,6 +89,7 @@ export function PeriodClosePage() {
   return (
     <div className="max-w-3xl space-y-5">
       <header>
+        <BackButton fallback="/reports" />
         <h1 className="text-xl font-semibold flex items-center gap-2">
           <Calendar className="h-5 w-5 text-primary" /> Financial year &amp; period close
         </h1>

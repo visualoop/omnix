@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { toast } from "sonner";
 
+import { BackButton } from "@/components/ui/back-button";
 export function StockPage() {
   const [movements, setMovements] = useState<Array<{
     id: string; product_name: string; type: string; quantity: number; notes: string | null; created_at: string;
@@ -19,6 +20,7 @@ export function StockPage() {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
+        <BackButton fallback="/inventory" />
         <h1 className="text-xl font-semibold tracking-tight">Stock Movements</h1>
         <Button size="sm" onClick={() => setAdjustOpen(true)}>Adjust Stock</Button>
       </div>

@@ -43,6 +43,7 @@ export function PettyCashPage() {
   return (
     <div className="space-y-5">
       <PageHeader
+        back={{ fallback: "/banking" }}
         eyebrow="Finance"
         title="Petty cash"
         description="Small float separate from the main till — tea, fuel, paper, etc."

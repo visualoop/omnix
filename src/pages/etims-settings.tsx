@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { getEtimsConfig, saveEtimsConfig, verifyEtimsConnection, disableEtims } from "@/services/etims";
 import { toast } from "sonner";
 
+import { BackButton } from "@/components/ui/back-button";
 export function EtimsSettingsPage() {
   const [form, setForm] = useState({
     kra_pin: "",
@@ -77,6 +78,7 @@ export function EtimsSettingsPage() {
   return (
     <div className="space-y-6 max-w-2xl">
       <div>
+        <BackButton fallback="/reports" />
         <h1 className="text-xl font-semibold tracking-tight">KRA eTIMS</h1>
         <p className="text-sm text-muted-foreground mt-1">
           Configure tax invoice signing via KRA's Virtual Sales Control Unit (VSCU).

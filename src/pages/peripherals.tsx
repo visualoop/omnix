@@ -12,6 +12,7 @@ import {
 } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { PageHeader } from "@/components/layout/page-header";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from "@/components/ui/dialog";
@@ -32,6 +33,7 @@ import {
   type PeripheralKind,
   type PeripheralDriver,
 } from "@/services/peripherals";
+import { intlLocale } from "@/lib/intl";
 
 const KIND_LABEL: Record<PeripheralKind, string> = {
   cash_drawer: "Cash drawer",
@@ -98,79 +100,100 @@ export function PeripheralsPage() {
     load();
   };
 
+  // Group items by kind for clearer visual hierarchy.
+  const grouped: Record<PeripheralKind, Peripheral[]> = {
+    cash_drawer: [], weight_scale: [], kitchen_printer: [], card_reader: [],
+  };
+  for (const p of items) {
+    grouped[p.kind]?.push(p);
+  }
+
   return (
-    <div className="max-w-3xl space-y-5">
-      <header className="flex items-start justify-between">
-        <div>
-          <h1 className="text-xl font-semibold flex items-center gap-2">
-            <Plug className="h-5 w-5 text-primary" /> Hardware peripherals
-          </h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Explicit device registry for cash drawer, weight scale, kitchen printers and card readers.
-            Barcode scanner + receipt printer + customer display are configured on their own pages.
-          </p>
+    <div className="max-w-4xl space-y-6">
+      <PageHeader
+        eyebrow="Hardware"
+        title="Peripherals"
+        description="Register cash drawers, weight scales, kitchen printers and card readers. Test each one after wiring."
+        back={{ fallback: "/settings" }}
+      />
+
+      {/* Add-a-device row — its own section, not fighting with the title. */}
+      <section>
+        <div className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold mb-2">
+          Add a device
         </div>
-        <div className="flex gap-1.5">
-          {Object.entries(KIND_LABEL).map(([k, label]) => {
-            const Icon = KIND_ICON[k as PeripheralKind];
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+          {(Object.keys(KIND_LABEL) as PeripheralKind[]).map((k) => {
+            const Icon = KIND_ICON[k];
             return (
-              <Button key={k} variant="outline" size="sm" onClick={() => setCreating(k as PeripheralKind)}>
-                <Plus className="h-3.5 w-3.5 mr-1" />
-                <Icon className="h-3.5 w-3.5 mr-1" />
-                {label}
-              </Button>
+              <button
+                key={k}
+                onClick={() => setCreating(k)}
+                className="flex items-center gap-2 rounded-md border border-border p-3 hover:border-primary/50 hover:bg-accent text-left text-[13px]"
+              >
+                <Icon className="h-4 w-4 text-primary shrink-0" />
+                <span className="flex-1">{KIND_LABEL[k]}</span>
+                <Plus className="h-3.5 w-3.5 text-muted-foreground" />
+              </button>
             );
           })}
         </div>
-      </header>
+      </section>
 
+      {/* Devices — grouped by kind. */}
       {loading ? (
         <div className="py-12 text-center text-sm text-muted-foreground">Loading…</div>
       ) : items.length === 0 ? (
-        <div className="py-12 text-center">
+        <div className="rounded-lg border border-dashed border-border p-10 text-center">
           <Plug className="h-8 w-8 mx-auto mb-3 opacity-30" />
           <div className="text-sm text-muted-foreground">
-            No peripherals registered yet. Click a button above to add one.
+            No peripherals registered yet. Add one using the buttons above.
           </div>
         </div>
       ) : (
-        <div className="space-y-2">
-          {items.map((p) => {
-            const Icon = KIND_ICON[p.kind];
+        <div className="space-y-6">
+          {(Object.keys(grouped) as PeripheralKind[]).map((kind) => {
+            const list = grouped[kind];
+            if (list.length === 0) return null;
+            const Icon = KIND_ICON[kind];
             return (
-              <div key={p.id} className="rounded-md border border-border p-3 flex items-center gap-3">
-                <Icon className="h-5 w-5 text-primary shrink-0" />
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 text-[13.5px] font-medium">
-                    {p.name}
-                    <span className="text-[10.5px] uppercase tracking-wider text-muted-foreground">
-                      {p.kind.replace(/_/g, " ")}
-                    </span>
-                  </div>
-                  <div className="text-[12px] text-muted-foreground mt-0.5">
-                    Driver: <span className="font-mono">{p.driver}</span>
-                    {p.connection_string && (
-                      <> · <span className="font-mono">{p.connection_string}</span></>
-                    )}
-                  </div>
-                  {p.last_test_at && (
-                    <div className="text-[11px] text-muted-foreground mt-0.5 flex items-center gap-1">
-                      {p.last_test_ok ? (
-                        <><CheckCircle className="h-3 w-3 text-emerald-600" /> Last test OK</>
-                      ) : (
-                        <><Warning className="h-3 w-3 text-red-600" /> Last test failed</>
-                      )}
-                      {" · "}{new Date(p.last_test_at + "Z").toLocaleString()}
-                    </div>
-                  )}
+              <section key={kind}>
+                <div className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold mb-2 flex items-center gap-1.5">
+                  <Icon className="h-3.5 w-3.5" />
+                  {KIND_LABEL[kind]} <span className="text-muted-foreground/60">({list.length})</span>
                 </div>
-                <Switch checked={!!p.enabled} onCheckedChange={(e) => handleToggle(p, e)} />
-                <Button variant="outline" size="sm" onClick={() => handleTest(p)}>Test</Button>
-                <Button variant="ghost" size="sm" onClick={() => setEditing(p)}>Edit</Button>
-                <Button variant="ghost" size="sm" onClick={() => handleDelete(p)}>
-                  <Trash className="h-3.5 w-3.5" />
-                </Button>
-              </div>
+                <div className="space-y-2">
+                  {list.map((p) => (
+                    <div key={p.id} className="rounded-md border border-border p-3 flex items-center gap-3">
+                      <div className="flex-1 min-w-0">
+                        <div className="text-[13.5px] font-medium truncate">{p.name}</div>
+                        <div className="text-[11.5px] text-muted-foreground mt-0.5">
+                          Driver: <span className="font-mono">{p.driver}</span>
+                          {p.connection_string && (
+                            <> · <span className="font-mono">{p.connection_string}</span></>
+                          )}
+                        </div>
+                        {p.last_test_at && (
+                          <div className="text-[11px] text-muted-foreground mt-0.5 flex items-center gap-1">
+                            {p.last_test_ok ? (
+                              <><CheckCircle className="h-3 w-3 text-emerald-600" /> Last test OK</>
+                            ) : (
+                              <><Warning className="h-3 w-3 text-red-600" /> Last test failed</>
+                            )}
+                            <span>· {new Date(p.last_test_at + "Z").toLocaleString(intlLocale())}</span>
+                          </div>
+                        )}
+                      </div>
+                      <Switch checked={!!p.enabled} onCheckedChange={(e) => handleToggle(p, e)} />
+                      <Button variant="outline" size="sm" onClick={() => handleTest(p)}>Test</Button>
+                      <Button variant="ghost" size="sm" onClick={() => setEditing(p)}>Edit</Button>
+                      <Button variant="ghost" size="sm" onClick={() => handleDelete(p)}>
+                        <Trash className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              </section>
             );
           })}
         </div>
@@ -245,7 +268,7 @@ function PeripheralDialog({
         <div className="space-y-3">
           <div>
             <label className="text-[12px] text-muted-foreground">Name</label>
-            <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Cash drawer at till 1" />
+            <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Cash drawer at till 1" autoFocus />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>

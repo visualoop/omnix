@@ -16,6 +16,7 @@ import { renderControlledRegisterPdf } from "@/services/reports-pdf";
 import { loadBrandHeader, downloadBytes } from "@/services/pdf-brand";
 import { intlLocale } from "@/lib/intl";
 
+import { BackButton } from "@/components/ui/back-button";
 interface ControlledEntry {
   id: string;
   product_id: string;
@@ -92,6 +93,7 @@ export function ControlledRegisterPage() {
     <div className="space-y-5" ref={printRef}>
       <div className="flex items-start justify-between">
         <div>
+          <BackButton fallback="/pharmacy" />
           <h1 className="text-xl font-semibold tracking-tight flex items-center gap-2">
             <ShieldAlert className="h-5 w-5 text-amber-600" /> Controlled Substances Register
           </h1>

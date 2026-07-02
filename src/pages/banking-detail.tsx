@@ -37,6 +37,7 @@ import { money as KES } from "@/lib/money";
 import { intlLocale } from "@/lib/intl";
 
 
+import { BackButton } from "@/components/ui/back-button";
 export function BankAccountDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -88,6 +89,7 @@ export function BankAccountDetailPage() {
         </Button>
         <div className="flex items-start justify-between">
           <div>
+            <BackButton fallback="/banking" />
             <h1 className="text-xl font-semibold tracking-tight flex items-center gap-2">
               <Banknote className="h-5 w-5 text-primary" /> {account.name}
             </h1>

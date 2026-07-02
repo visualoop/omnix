@@ -16,6 +16,7 @@ import { ai, type EtimsExplanation } from "@/services/ai";
 import { toast } from "sonner";
 import { intlLocale } from "@/lib/intl";
 
+import { BackButton } from "@/components/ui/back-button";
 export function EtimsQueuePage() {
   const [invoices, setInvoices] = useState<EtimsInvoice[]>([]);
   const [filter, setFilter] = useState<"all" | "signed" | "queued" | "failed" | "pending">("all");
@@ -58,6 +59,7 @@ export function EtimsQueuePage() {
     <div className="space-y-5">
       <div className="flex items-start justify-between">
         <div>
+          <BackButton fallback="/reports" />
           <h1 className="text-xl font-semibold tracking-tight">eTIMS Submissions</h1>
           <p className="text-sm text-muted-foreground mt-1">
             All tax invoices submitted to KRA

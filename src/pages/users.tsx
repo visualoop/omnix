@@ -30,6 +30,7 @@ import { APP_NAME } from "@/lib/brand";
 import { Can } from "@/components/require-role";
 import { getPermissionsForRole, ROLE_INFO } from "@/lib/permissions";
 
+import { BackButton } from "@/components/ui/back-button";
 const ROLE_LABELS: Record<User["role"], { label: string; description: string; color: string }> = {
   owner: { label: "Owner", description: "Full access, cannot be removed", color: "bg-violet-500/10 text-violet-700 border-violet-500/30" },
   manager: { label: "Manager", description: "Inventory, reports, no settings", color: "bg-blue-500/10 text-blue-700 border-blue-500/30" },
@@ -52,6 +53,7 @@ export function UsersPage() {
     <div className="space-y-5">
       <div className="flex items-start justify-between">
         <div>
+          <BackButton fallback="/" />
           <h1 className="text-xl font-semibold tracking-tight">Staff</h1>
           <p className="text-sm text-muted-foreground mt-1">
             Manage who can sign in to {APP_NAME}

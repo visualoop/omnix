@@ -5,6 +5,7 @@ import { listRecalls, closeRecall, type Recall } from "@/services/recalls";
 import { intlLocale } from "@/lib/intl";
 import { toast } from "sonner";
 
+import { BackButton } from "@/components/ui/back-button";
 const SEVERITY_COLOR: Record<string, string> = {
   low: "bg-blue-500/10 text-blue-700",
   medium: "bg-amber-500/10 text-amber-700",
@@ -38,6 +39,7 @@ export function RecallsPage() {
     <div className="max-w-4xl space-y-4">
       <header className="flex items-start justify-between">
         <div>
+          <BackButton fallback="/pharmacy" />
           <h1 className="text-xl font-semibold flex items-center gap-2">
             <Warning className="h-5 w-5 text-primary" /> Medicine recalls
           </h1>

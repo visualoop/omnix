@@ -17,6 +17,7 @@ import { AiButton } from "@/components/ai/AiButton";
 import { ai } from "@/services/ai";
 import { mapHeaders, projectRow } from "@/services/csv-automap";
 
+import { BackButton } from "@/components/ui/back-button";
 interface ParsedRow {
   rowIndex: number;
   data: CreateProductInput;
@@ -146,6 +147,7 @@ export function ImportProductsPage() {
     <div className="space-y-5 max-w-5xl">
       <div className="flex items-start justify-between">
         <div>
+          <BackButton fallback="/inventory" />
           <h1 className="text-xl font-semibold tracking-tight">Import Products</h1>
           <p className="text-sm text-muted-foreground mt-1">
             Bulk import products from a CSV file

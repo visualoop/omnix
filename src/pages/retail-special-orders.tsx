@@ -28,6 +28,7 @@ import { toast } from "sonner";
 import { intlLocale } from "@/lib/intl";
 import { money } from "@/lib/money";
 
+import { BackButton } from "@/components/ui/back-button";
 const STATUS_LABELS: Record<SpecialOrder["status"], string> = {
   pending: "Pending",
   ordered: "Ordered",
@@ -60,6 +61,7 @@ export function SpecialOrdersPage() {
     <div className="space-y-5">
       <div className="flex items-start justify-between">
         <div>
+          <BackButton fallback="/retail" />
           <h1 className="text-xl font-semibold tracking-tight flex items-center gap-2">
             <CalendarPlus className="h-5 w-5 text-primary" /> Special Orders
           </h1>

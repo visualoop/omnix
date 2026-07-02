@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { getCategories, createCategory, type Category } from "@/services/inventory";
 import { toast } from "sonner";
 
+import { BackButton } from "@/components/ui/back-button";
 export function CategoriesPage() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [newName, setNewName] = useState("");
@@ -25,6 +26,7 @@ export function CategoriesPage() {
 
   return (
     <div className="space-y-4">
+      <BackButton fallback="/inventory" />
       <h1 className="text-xl font-semibold tracking-tight">Categories</h1>
 
       {/* Add form */}

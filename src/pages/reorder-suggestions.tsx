@@ -11,6 +11,7 @@ import {
 } from "@/services/reorder-suggestions";
 import { intlLocale } from "@/lib/intl";
 
+import { BackButton } from "@/components/ui/back-button";
 const REASON_LABEL: Record<string, string> = {
   stockout: "Stockout",
   below_reorder: "Below reorder level",
@@ -52,6 +53,7 @@ export function ReorderSuggestionsPage() {
     <div className="max-w-4xl space-y-4">
       <header className="flex items-start justify-between">
         <div>
+          <BackButton fallback="/inventory" />
           <h1 className="text-xl font-semibold flex items-center gap-2">
             <ReorderIcon className="h-5 w-5 text-primary" /> Reorder suggestions
           </h1>

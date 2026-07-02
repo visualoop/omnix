@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { ListNumbers } from "@phosphor-icons/react";
 import { listAccounts, type Account, type AccountType } from "@/services/gl";
 
+import { BackButton } from "@/components/ui/back-button";
 const TYPE_LABEL: Record<AccountType, string> = {
   asset: "Assets",
   liability: "Liabilities",
@@ -24,6 +25,7 @@ export function ChartOfAccountsPage() {
   return (
     <div className="max-w-3xl space-y-5">
       <header>
+        <BackButton fallback="/reports" />
         <h1 className="text-xl font-semibold flex items-center gap-2">
           <ListNumbers className="h-5 w-5 text-primary" /> Chart of accounts
         </h1>

@@ -25,6 +25,7 @@ import { useAuthStore } from "@/stores/auth";
 import { toast } from "sonner";
 import { intlLocale } from "@/lib/intl";
 
+import { BackButton } from "@/components/ui/back-button";
 export function ColdChainPage() {
   const userId = useAuthStore((s) => s.user?.id);
   const [units, setUnits] = useState<ColdChainUnit[]>([]);
@@ -56,6 +57,7 @@ export function ColdChainPage() {
     <div className="space-y-5">
       <div className="flex items-start justify-between">
         <div>
+          <BackButton fallback="/pharmacy" />
           <h1 className="text-xl font-semibold tracking-tight flex items-center gap-2">
             <Snowflake className="h-5 w-5 text-cyan-600" /> Cold Chain Monitoring
           </h1>

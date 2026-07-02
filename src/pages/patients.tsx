@@ -103,6 +103,7 @@ export function PatientsPage() {
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
+        back={{ fallback: "/" }}
         eyebrow="Pharmacy"
         title="Patients"
         description="Customers with a clinical record — allergies, chronic conditions, prescription history."

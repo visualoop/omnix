@@ -62,6 +62,7 @@ export function CashRegisterPage() {
   return (
     <div className="space-y-6">
       <PageHeader
+        back={{ fallback: "/" }}
         eyebrow="Finance"
         title="Cash register"
         description="Open and close shifts. Reconcile drawer cash at end of day."

@@ -32,6 +32,7 @@ import {
 } from "@/services/two-factor";
 import { confirm, prompt } from "@/components/ui/confirm-dialog";
 
+import { BackButton } from "@/components/ui/back-button";
 export function Settings2FAPage() {
   const { user } = useAuthStore();
   const [enabled, setEnabled] = useState(false);
@@ -116,6 +117,7 @@ export function Settings2FAPage() {
   return (
     <div className="max-w-2xl space-y-6">
       <header>
+        <BackButton fallback="/settings" />
         <h1 className="text-xl font-semibold flex items-center gap-2">
           <ShieldCheckIcon className="h-5 w-5 text-primary" /> Two-factor authentication
         </h1>

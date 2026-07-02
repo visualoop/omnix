@@ -256,6 +256,7 @@ export function SettingsLicensesPage() {
   return (
     <div className="flex flex-col gap-8 max-w-3xl">
       <PageHeader
+        back={{ fallback: "/settings" }}
         eyebrow="Settings"
         title="Licences"
         description="Every licence active on this computer. Switch modules without re-installing. Add a key any time."

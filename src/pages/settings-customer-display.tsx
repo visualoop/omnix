@@ -138,6 +138,7 @@ export function CustomerDisplaySettingsPage() {
   return (
     <div className="flex flex-col gap-10 max-w-3xl">
       <PageHeader
+        back={{ fallback: "/settings" }}
         eyebrow="Settings"
         title="Customer display"
         description="The second-monitor screen your customers face while you ring up sales. Set what they see and what stays private."

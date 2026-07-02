@@ -20,6 +20,7 @@ import {
 } from "@/services/retail";
 import { toast } from "sonner";
 
+import { BackButton } from "@/components/ui/back-button";
 export function BrandsPage() {
   const [brands, setBrands] = useState<BrandWithStats[]>([]);
   const [loading, setLoading] = useState(true);
@@ -42,6 +43,7 @@ export function BrandsPage() {
     <div className="space-y-5">
       <div className="flex items-start justify-between">
         <div>
+          <BackButton fallback="/retail" />
           <h1 className="text-xl font-semibold tracking-tight flex items-center gap-2">
             <Tag className="h-5 w-5 text-primary" /> Brands
           </h1>

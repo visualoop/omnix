@@ -27,6 +27,7 @@ import { loadBrandHeader, downloadBytes } from "@/services/pdf-brand";
 import { money as KES } from "@/lib/money";
 
 
+import { BackButton } from "@/components/ui/back-button";
 interface ProductItem {
   product_name: string;
   qty_sold: number;
@@ -207,6 +208,7 @@ export function DailyOperationsPage() {
       {/* Header */}
       <div className="flex items-start justify-between print-hide">
         <div>
+          <BackButton fallback="/" />
           <h1 className="text-xl font-semibold tracking-tight">Daily Operations</h1>
           <p className="text-sm text-muted-foreground mt-1">End-of-day summary: everything sold, payments, returns, and cash movement.</p>
         </div>

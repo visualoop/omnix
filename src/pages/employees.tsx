@@ -69,6 +69,7 @@ export function EmployeesPage() {
   return (
     <div className="space-y-5">
       <PageHeader
+        back={{ fallback: "/" }}
         eyebrow="HR"
         title="Employees"
         description="Staff records, payroll, attendance, leave. Separate from system user accounts — an employee can exist without a login."

@@ -82,6 +82,7 @@ export function BankingPage() {
   return (
     <div className="space-y-5">
       <PageHeader
+        back={{ fallback: "/" }}
         eyebrow="Finance"
         title="Banking"
         description="Bank accounts, M-Pesa tills, cash. Track movements and reconcile against statements."

@@ -11,6 +11,7 @@ import { AreaChart, PieChart, BarChart } from "@/components/charts";
 import { ComparisonPanel } from "@/components/shared/comparison-panel";
 import { money } from "@/lib/money";
 
+import { BackButton } from "@/components/ui/back-button";
 export function ReportsPage() {
   const [period, setPeriod] = useState(30);
   const [salesByDay, setSalesByDay] = useState<SalesByDay[]>([]);
@@ -37,6 +38,7 @@ export function ReportsPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
+          <BackButton fallback="/" />
           <h1 className="text-xl font-semibold tracking-tight">Sales Reports</h1>
           <p className="text-sm text-muted-foreground mt-1">Last {period} days</p>
         </div>

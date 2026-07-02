@@ -12,6 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { getProviders, updateProvider, type InsuranceProvider } from "@/services/insurance";
 import { toast } from "sonner";
 
+import { BackButton } from "@/components/ui/back-button";
 export function InsuranceSettingsPage() {
   const [providers, setProviders] = useState<InsuranceProvider[]>([]);
   const [editing, setEditing] = useState<InsuranceProvider | null>(null);
@@ -24,6 +25,7 @@ export function InsuranceSettingsPage() {
   return (
     <div className="space-y-5">
       <div>
+        <BackButton fallback="/settings" />
         <h1 className="text-xl font-semibold tracking-tight">Insurance Providers</h1>
         <p className="text-sm text-muted-foreground mt-1">
           Configure SHA and private insurers for member verification and claims

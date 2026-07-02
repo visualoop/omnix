@@ -18,6 +18,7 @@ import { useActiveBranch } from "@/stores/active-branch";
 import { useAuthStore } from "@/stores/auth";
 import { toast } from "sonner";
 
+import { BackButton } from "@/components/ui/back-button";
 interface TransferLine {
   product_id: string;
   product_name: string;
@@ -113,6 +114,7 @@ export function NewStockTransferPage() {
   return (
     <div className="space-y-5">
       <div>
+        <BackButton fallback="/stock-transfers" />
         <h1 className="text-xl font-semibold tracking-tight flex items-center gap-2">
           <ArrowRightLeft className="h-5 w-5 text-primary" /> New Stock Transfer
         </h1>

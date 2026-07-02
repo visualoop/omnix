@@ -10,6 +10,7 @@ import {
   Warning as AlertTriangle,
 } from "@phosphor-icons/react"
 import { Input } from "@/components/ui/input"
+import { BackButton } from "@/components/ui/back-button"
 import { getWastageReport, getWastageSummary, type WastageRow, type WastageSummary } from "@/services/wastage"
 import { money as KES } from "@/lib/money"
 
@@ -38,6 +39,7 @@ export function WastageReportPage() {
   return (
     <div className="space-y-5">
       <div>
+        <BackButton fallback="/reports" />
         <h1 className="text-xl font-semibold tracking-tight flex items-center gap-2">
           <Trash2 className="h-5 w-5 text-destructive" />
           Wastage

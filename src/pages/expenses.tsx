@@ -44,6 +44,7 @@ export function ExpensesPage() {
   return (
     <div className="space-y-4">
       <PageHeader
+        back={{ fallback: "/banking" }}
         eyebrow="Finance"
         title="Expenses"
         description={`Last ${period} days.`}

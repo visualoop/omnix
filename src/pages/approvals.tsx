@@ -11,6 +11,7 @@ import {
 import { useAuthStore } from "@/stores/auth";
 import { intlLocale } from "@/lib/intl";
 
+import { BackButton } from "@/components/ui/back-button";
 const KIND_LABEL: Record<string, string> = {
   purchase_order: "Purchase order",
   expense: "Expense",
@@ -48,6 +49,7 @@ export function ApprovalsPage() {
   return (
     <div className="max-w-3xl space-y-5">
       <header>
+        <BackButton fallback="/" />
         <h1 className="text-xl font-semibold flex items-center gap-2">
           <CheckCircle className="h-5 w-5 text-primary" /> Approvals
         </h1>

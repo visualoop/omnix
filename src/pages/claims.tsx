@@ -38,6 +38,7 @@ import { prompt } from "@/components/ui/confirm-dialog";
 import { intlLocale } from "@/lib/intl";
 import { money } from "@/lib/money";
 
+import { BackButton } from "@/components/ui/back-button";
 export function ClaimsPage() {
   const [tab, setTab] = useState<"claims" | "batches">("claims");
   const [claims, setClaims] = useState<InsuranceClaim[]>([]);
@@ -71,6 +72,7 @@ export function ClaimsPage() {
     <div className="space-y-5">
       <div className="flex items-start justify-between">
         <div>
+          <BackButton fallback="/pharmacy" />
           <h1 className="text-xl font-semibold tracking-tight">Insurance Claims</h1>
           <p className="text-sm text-muted-foreground mt-1">
             Manage claims and submission batches

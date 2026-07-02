@@ -55,6 +55,7 @@ export function ReturnsPage() {
   return (
     <div className="space-y-5">
       <PageHeader
+        back={{ fallback: "/sales-history" }}
         eyebrow="Commerce"
         title="Returns"
         description="Process customer returns and issue refunds."

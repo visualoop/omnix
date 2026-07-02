@@ -33,6 +33,7 @@ import {
 } from "@/services/erp";
 import { toast } from "sonner";
 
+import { BackButton } from "@/components/ui/back-button";
 export function PatientProfilePage() {
   const { id } = useParams<{ id: string }>();
   const [customer, setCustomer] = useState<Customer | null>(null);
@@ -106,6 +107,7 @@ export function PatientProfilePage() {
             <ArrowLeft className="h-4 w-4" />
           </Button>
           <div>
+            <BackButton fallback="/patients" />
             <h1 className="text-xl font-semibold tracking-tight">{customer.name}</h1>
             <p className="text-sm text-muted-foreground flex items-center gap-2">
               <Pill className="h-3 w-3" /> Patient Profile

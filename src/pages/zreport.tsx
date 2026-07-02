@@ -15,6 +15,7 @@ import { AiButton } from "@/components/ai/AiButton";
 import { ai } from "@/services/ai";
 import { Sparkle as Sparkles } from "@phosphor-icons/react";
 
+import { BackButton } from "@/components/ui/back-button";
 export function ZReportPage() {
   const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
   const [report, setReport] = useState<ZReport | null>(null);
@@ -76,6 +77,7 @@ export function ZReportPage() {
     <div className="space-y-5">
       <div className="flex items-start justify-between">
         <div>
+          <BackButton fallback="/reports" />
           <h1 className="text-xl font-semibold tracking-tight flex items-center gap-2">
             <FileText className="h-5 w-5 text-primary" /> Shift Reports
           </h1>

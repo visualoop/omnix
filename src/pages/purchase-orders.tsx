@@ -47,6 +47,7 @@ export function PurchaseOrdersPage() {
   return (
     <div className="space-y-5">
       <PageHeader
+        back={{ fallback: "/suppliers" }}
         eyebrow="Operations"
         title="Purchase orders"
         description="Order stock from suppliers and receive goods."

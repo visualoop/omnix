@@ -25,6 +25,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { TableRowSkeleton } from "@/components/ui/skeletons";
 import { toast } from "sonner";
 
+import { BackButton } from "@/components/ui/back-button";
 export function DoctorsPage() {
   const [doctors, setDoctors] = useState<DoctorWithStats[]>([]);
   const [search, setSearch] = useState("");
@@ -44,6 +45,7 @@ export function DoctorsPage() {
     <div className="space-y-5">
       <div className="flex items-start justify-between">
         <div>
+          <BackButton fallback="/pharmacy" />
           <h1 className="text-xl font-semibold tracking-tight flex items-center gap-2">
             <Stethoscope className="h-5 w-5 text-primary" /> Prescribers
           </h1>

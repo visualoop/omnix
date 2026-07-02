@@ -12,6 +12,7 @@ import {
 import { intlLocale } from "@/lib/intl";
 import { useAuthStore } from "@/stores/auth";
 
+import { BackButton } from "@/components/ui/back-button";
 export function FollowUpsPage() {
   const user = useAuthStore((s) => s.user);
   const [items, setItems] = useState<FollowUp[]>([]);
@@ -39,6 +40,7 @@ export function FollowUpsPage() {
     <div className="max-w-3xl space-y-4">
       <header className="flex items-start justify-between">
         <div>
+          <BackButton fallback="/customers" />
           <h1 className="text-xl font-semibold flex items-center gap-2">
             <ClipboardText className="h-5 w-5 text-primary" /> Follow-ups
           </h1>

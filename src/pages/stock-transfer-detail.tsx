@@ -21,6 +21,7 @@ import { useAuthStore } from "@/stores/auth";
 import { toast } from "sonner";
 import { intlLocale } from "@/lib/intl";
 
+import { BackButton } from "@/components/ui/back-button";
 interface TransferData {
   transfer: StockTransferWithDetails;
   items: StockTransferItem[];
@@ -96,6 +97,7 @@ export function StockTransferDetailPage() {
         </Button>
         <div className="flex items-start justify-between">
           <div>
+            <BackButton fallback="/stock-transfers" />
             <h1 className="text-xl font-semibold tracking-tight flex items-center gap-2">
               <ArrowRightLeft className="h-5 w-5 text-primary" /> {transfer.transfer_number}
             </h1>

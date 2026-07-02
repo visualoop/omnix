@@ -14,6 +14,7 @@ import { getPaymentFees, savePaymentFees, type PaymentFees } from "@/services/pa
 import { MpesaIcon, PaystackIcon } from "@/components/icons/payment-brands";
 import { toast } from "sonner";
 
+import { BackButton } from "@/components/ui/back-button";
 export function PaymentSettingsPage() {
   // Paystack
   const [publicKey, setPublicKey] = useState("");
@@ -171,6 +172,7 @@ export function PaymentSettingsPage() {
   return (
     <div className="space-y-6 max-w-2xl">
       <div>
+        <BackButton fallback="/" />
         <h1 className="text-xl font-semibold tracking-tight">Payment Settings</h1>
         <p className="text-sm text-muted-foreground mt-1">Configure payment providers for automated processing.</p>
       </div>

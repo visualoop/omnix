@@ -13,6 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import { query } from "@/lib/db";
 import { intlLocale } from "@/lib/intl";
 
+import { BackButton } from "@/components/ui/back-button";
 interface AuditEntry {
   id: string;
   type: "license" | "sale" | "void" | "permission";
@@ -122,6 +123,7 @@ export function AuditLogPage() {
   return (
     <div className="space-y-5">
       <div>
+        <BackButton fallback="/" />
         <h1 className="text-xl font-semibold tracking-tight">Audit Log</h1>
         <p className="text-sm text-muted-foreground mt-1">
           Activity history for compliance and security review

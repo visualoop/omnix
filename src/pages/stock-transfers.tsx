@@ -32,6 +32,7 @@ export function StockTransfersPage() {
   return (
     <div className="space-y-5">
       <PageHeader
+        back={{ fallback: "/stock-transfers" }}
         eyebrow="Operations"
         title="Stock transfers"
         description="Move stock between branches. Source decrements when dispatched; destination increments when received."

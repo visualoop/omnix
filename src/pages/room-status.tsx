@@ -11,6 +11,7 @@ import { execute, query } from "@/lib/db";
 import { toast } from "sonner";
 import { useAuthStore } from "@/stores/auth";
 
+import { BackButton } from "@/components/ui/back-button";
 type RoomStatus = "clean" | "dirty" | "inspected" | "out_of_order" | "occupied";
 
 interface Room {
@@ -88,6 +89,7 @@ export function RoomStatusPage() {
   return (
     <div className="max-w-5xl space-y-4">
       <header>
+        <BackButton fallback="/hospitality" />
         <h1 className="text-xl font-semibold flex items-center gap-2">
           <Bed className="h-5 w-5 text-primary" /> Room status
         </h1>

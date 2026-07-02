@@ -4,6 +4,7 @@ import { Input } from "@/components/ui/input";
 import { getBalanceSheet, type BalanceSheet } from "@/services/gl";
 import { intlLocale } from "@/lib/intl";
 
+import { BackButton } from "@/components/ui/back-button";
 export function BalanceSheetPage() {
   const [asOf, setAsOf] = useState(new Date().toISOString().slice(0, 10));
   const [bs, setBs] = useState<BalanceSheet | null>(null);
@@ -22,6 +23,7 @@ export function BalanceSheetPage() {
     <div className="max-w-5xl space-y-5">
       <header className="flex items-start justify-between">
         <div>
+          <BackButton fallback="/reports" />
           <h1 className="text-xl font-semibold flex items-center gap-2">
             <Scales className="h-5 w-5 text-primary" /> Balance Sheet
           </h1>

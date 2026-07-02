@@ -77,6 +77,7 @@ export function LeavePage() {
   return (
     <div className="space-y-5">
       <PageHeader
+        back={{ fallback: "/people" }}
         eyebrow="HR"
         title="Leave"
         description="Leave requests, approvals, annual balances per employee."

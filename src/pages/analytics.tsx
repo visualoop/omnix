@@ -9,6 +9,7 @@ import { ChartLine, Package, ShoppingCart, Calculator } from "@phosphor-icons/re
 import { runReport, type ReportQuery, type ReportRow } from "@/services/report-builder";
 import { intlLocale } from "@/lib/intl";
 
+import { BackButton } from "@/components/ui/back-button";
 type TabId = "sales" | "inventory" | "purchases" | "finance";
 
 const TABS: Array<{ id: TabId; label: string; icon: typeof ChartLine }> = [
@@ -67,6 +68,7 @@ export function AnalyticsPage() {
   return (
     <div className="max-w-5xl space-y-4">
       <header>
+        <BackButton fallback="/reports" />
         <h1 className="text-xl font-semibold flex items-center gap-2">
           <ChartLine className="h-5 w-5 text-primary" /> Analytics
         </h1>

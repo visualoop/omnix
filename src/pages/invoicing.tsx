@@ -35,6 +35,7 @@ export function InvoicingPage() {
   return (
     <div className="space-y-5">
       <PageHeader
+        back={{ fallback: "/" }}
         eyebrow="Commerce"
         title="Invoicing"
         description="Quotations, B2B invoices, and aged receivables."

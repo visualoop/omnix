@@ -198,6 +198,43 @@ const RULES = [
       return hits
     },
   },
+  {
+    // Deep-navigable pages must offer a back button so users can return
+    // to the previous list / hub. Applied to every .tsx file under
+    // src/pages/ that isn't a landing / hub / kiosk page.
+    //
+    // Rule: a page in src/pages/ that renders <h1> OR <PageHeader ...>
+    // WITHOUT either (a) a <BackButton> or (b) a `back={...}` prop on
+    // PageHeader is flagged. See scripts/add-back-buttons.mjs for the
+    // auto-patcher — that same list of SKIP file names lives here.
+    id: 'ui.page.back_button',
+    label: 'Page missing a back button — deep-navigable pages must render <BackButton /> or <PageHeader back={...} />',
+    severity: 'warn',
+    extensions: ['.tsx'],
+    test(text, filePath) {
+      // Only under src/pages/
+      if (!filePath.replace(/\\/g, '/').includes('/src/pages/')) return []
+      // Skip landing / hub / kiosk pages — mirror scripts/add-back-buttons.mjs
+      const name = filePath.split(/[\\/]/).pop() ?? ''
+      const SKIP = new Set([
+        'dashboard.tsx', 'login.tsx', 'customer-display.tsx', 'customer-display-queue.tsx',
+        'setup.tsx', 'pos-overview.tsx', 'pos-sale.tsx', 'retail-dashboard.tsx',
+        'hub-analytics.tsx', 'hub-banking.tsx', 'hub-inventory.tsx', 'hub-modules.tsx',
+        'hub-people.tsx', 'hub-sales.tsx', 'reports-index.tsx', 'modules.tsx',
+        'ai-workspace.tsx', 'license-activation.tsx', 'quick-add.tsx',
+        'pharmacy.tsx', 'hospitality.tsx', 'hardware.tsx',
+      ])
+      if (SKIP.has(name)) return []
+      const hits = []
+      const hasBack = /<BackButton[\s/>]/.test(text) || /<PageHeader\b[\s\S]*?\bback=\{/.test(text)
+      if (hasBack) return []
+      // Only flag if the page actually renders an <h1> or <PageHeader>.
+      const hasH1 = /^\s*<h1[\s>]/m.test(text) || /<PageHeader\b/.test(text)
+      if (!hasH1) return []
+      hits.push({ kind: 'no-back-button', snippet: name, line: 1 })
+      return hits
+    },
+  },
 ]
 
 /* ────────────────────────────────────────────────────────────────── *
@@ -472,7 +509,7 @@ for (const file of files) {
   const text = readFileSync(file, 'utf8')
   for (const rule of RULES) {
     if (!rule.extensions.some((e) => file.endsWith(e))) continue
-    const hits = rule.test(text)
+    const hits = rule.test(text, file)
     if (hits.length) findings.push({ file: rel, rule: rule.id, severity: rule.severity, label: rule.label, hits })
   }
 }

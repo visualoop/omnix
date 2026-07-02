@@ -16,6 +16,7 @@ import { TableRowSkeleton } from "@/components/ui/skeletons";
 import { toast } from "sonner";
 import { intlLocale } from "@/lib/intl";
 
+import { BackButton } from "@/components/ui/back-button";
 export function RefillsPage() {
   const [items, setItems] = useState<RefillablePrescription[]>([]);
   const [search, setSearch] = useState("");
@@ -50,6 +51,7 @@ export function RefillsPage() {
   return (
     <div className="space-y-5">
       <div>
+        <BackButton fallback="/pharmacy" />
         <h1 className="text-xl font-semibold tracking-tight flex items-center gap-2">
           <RotateCcw className="h-5 w-5 text-primary" /> Prescription Refills
         </h1>

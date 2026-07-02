@@ -30,6 +30,7 @@ import { money as KES } from "@/lib/money";
 import { intlLocale } from "@/lib/intl";
 
 
+import { BackButton } from "@/components/ui/back-button";
 const FREQ_LABELS: Record<RecurringFrequency, string> = {
   weekly: "Weekly",
   biweekly: "Bi-weekly",
@@ -94,6 +95,7 @@ export function RecurringInvoicesPage() {
     <div className="space-y-5">
       <div className="flex items-start justify-between">
         <div>
+          <BackButton fallback="/invoicing" />
           <h1 className="text-xl font-semibold tracking-tight flex items-center gap-2">
             <Repeat className="h-5 w-5 text-primary" /> Recurring Invoices
           </h1>

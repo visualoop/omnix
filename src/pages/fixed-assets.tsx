@@ -5,6 +5,7 @@ import { listAssets, runMonthlyDepreciation, type FixedAsset } from "@/services/
 import { toast } from "sonner";
 import { intlLocale } from "@/lib/intl";
 
+import { BackButton } from "@/components/ui/back-button";
 function currentPeriod(): string {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
@@ -39,6 +40,7 @@ export function FixedAssetsPage() {
     <div className="max-w-4xl space-y-4">
       <header className="flex items-start justify-between">
         <div>
+          <BackButton fallback="/reports" />
           <h1 className="text-xl font-semibold flex items-center gap-2">
             <Buildings className="h-5 w-5 text-primary" /> Fixed assets
           </h1>

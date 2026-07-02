@@ -12,6 +12,7 @@ import {
 } from "@/services/currencies";
 import { intlLocale } from "@/lib/intl";
 
+import { BackButton } from "@/components/ui/back-button";
 export function CurrenciesPage() {
   const [currencies, setCurrencies] = useState<Currency[]>([]);
   const [rates, setRates] = useState<ExchangeRate[]>([]);
@@ -46,6 +47,7 @@ export function CurrenciesPage() {
   return (
     <div className="max-w-4xl space-y-4">
       <header>
+        <BackButton fallback="/" />
         <h1 className="text-xl font-semibold flex items-center gap-2">
           <CurrencyDollar className="h-5 w-5 text-primary" /> Currencies &amp; FX rates
         </h1>

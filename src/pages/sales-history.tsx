@@ -111,6 +111,7 @@ export function SalesHistoryPage() {
   return (
     <div className="space-y-5">
       <PageHeader
+        back={{ fallback: "/" }}
         eyebrow="Commerce"
         title="Sales"
         description="Browse, view detail, and reprint past receipts."

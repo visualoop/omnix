@@ -3,6 +3,7 @@ import { Clock, Package as PackageX } from "@phosphor-icons/react";
 import { stockAging, deadStock, type AgingBatch, type DeadStockItem } from "@/services/inventory-quality";
 import { intlLocale } from "@/lib/intl";
 
+import { BackButton } from "@/components/ui/back-button";
 export function StockAgingPage() {
   const [items, setItems] = useState<AgingBatch[]>([]);
   const [loading, setLoading] = useState(true);
@@ -19,6 +20,7 @@ export function StockAgingPage() {
   return (
     <div className="max-w-4xl space-y-4">
       <header>
+        <BackButton fallback="/reports" />
         <h1 className="text-xl font-semibold flex items-center gap-2">
           <Clock className="h-5 w-5 text-primary" /> Stock aging
         </h1>

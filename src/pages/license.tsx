@@ -29,6 +29,7 @@ import { LICENSE_PREFIX } from "@/lib/variant";
 import { toast } from "sonner";
 import { intlLocale } from "@/lib/intl";
 
+import { BackButton } from "@/components/ui/back-button";
 export function LicensePage() {
   const [status, setStatus] = useState<LicenseStatus | null>(null);
   const [copied, setCopied] = useState(false);
@@ -86,6 +87,7 @@ export function LicensePage() {
     <div className="space-y-5 max-w-3xl">
       <div className="flex items-start justify-between gap-3">
         <div>
+          <BackButton fallback="/" />
           <h1 className="text-xl font-semibold tracking-tight">License</h1>
           <p className="text-sm text-muted-foreground mt-1">
             Your {APP_NAME} license details and machine binding

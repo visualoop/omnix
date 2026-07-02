@@ -79,6 +79,7 @@ export function SettingsDisplayPage() {
   return (
     <div className="flex flex-col gap-8 max-w-2xl">
       <PageHeader
+        back={{ fallback: "/settings" }}
         eyebrow="Settings"
         title="Display & Touch"
         description={

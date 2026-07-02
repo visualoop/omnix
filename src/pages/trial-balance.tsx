@@ -4,6 +4,7 @@ import { Input } from "@/components/ui/input";
 import { getTrialBalance, type TrialBalanceRow, type AccountType } from "@/services/gl";
 import { intlLocale } from "@/lib/intl";
 
+import { BackButton } from "@/components/ui/back-button";
 const TYPE_ORDER: AccountType[] = ["asset", "liability", "equity", "revenue", "expense"];
 const TYPE_LABEL: Record<AccountType, string> = {
   asset: "Assets",
@@ -40,6 +41,7 @@ export function TrialBalancePage() {
     <div className="max-w-4xl space-y-5">
       <header className="flex items-start justify-between">
         <div>
+          <BackButton fallback="/reports" />
           <h1 className="text-xl font-semibold flex items-center gap-2">
             <Calculator className="h-5 w-5 text-primary" /> Trial Balance
           </h1>

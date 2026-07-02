@@ -2,6 +2,41 @@
 
 This tracks work done LOCALLY without GitHub pushes. We only push when the user explicitly says so.
 
+## Release v0.35.0 — Back-button sweep + Peripherals redesign
+
+Non-feature release. Fixes real navigation regression across the app.
+
+### Back buttons on every deep page
+Reality check: 82 pages had a top-level heading but no back-button affordance. Clicking through Analytics → a report → drilling in left the user stuck with no way home except the sidebar. Fixed once and for all:
+
+- New script `scripts/add-back-buttons.mjs`:
+  - Audits every page under `src/pages/`
+  - Skips landing / hub / kiosk pages (dashboard, POS, hubs, ai-workspace, customer-display, setup, login)
+  - Detects two patterns:
+    - Pages with `<PageHeader>` and no `back` prop → injects `back={{ fallback: "<parent>" }}`
+    - Pages with a raw `<h1>` and no `<BackButton />` → inserts `<BackButton fallback="..." />` above the heading
+  - Fallback URL derived from the page filename via a route-parent map
+  - Run with `--apply` to patch
+
+Ran once. Patched 82 pages: 65 with `<h1>` + 17 with `<PageHeader>`. All 82 pages now render a back button at the top-left of the header, aligned with the editorial rhythm.
+
+### New audit rule: `ui.page.back_button`
+- Warn severity
+- Fires on any file under `src/pages/` that has an `<h1>` or `<PageHeader>` without a back-button
+- Skips the same landing / hub set as the auto-patcher
+- Prevents future regressions
+
+### Peripherals page redesign
+Previous version crammed the title, description, and four add-buttons on one row — visually cramped, no obvious hierarchy. Rewrote using the app's `<PageHeader>` masthead pattern:
+- Editorial serif title with "Hardware" eyebrow above
+- Description below title, back button above
+- Add-a-device section in its own row with a proper 2×2 grid (4 device types)
+- Devices grouped by kind with section headers (Cash drawer, Weight scale, Kitchen printer, Card reader)
+- Each device card stays compact but breathes properly
+
+### Verification
+Desktop tsc clean · Website tsc clean · Cold-cache `next build` clean · Vitest 647/647 · Audit 0 errors.
+
 ## Release v0.34.0 — Every remaining audit finding (Medium + Low tier)
 
 All 26 Medium-tier + all 6 Low-tier tasks ship in this release. 647 tests passing (up from 611). Migrations 069-072 add 30+ new tables.

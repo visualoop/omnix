@@ -15,6 +15,7 @@ import { useActiveBranch } from "@/stores/active-branch";
 import { money as KES } from "@/lib/money";
 
 
+import { BackButton } from "@/components/ui/back-button";
 const CLASS_COLORS: Record<string, string> = {
   "Penicillins": "bg-blue-500",
   "Cephalosporins": "bg-purple-500",
@@ -58,6 +59,7 @@ export function AmrReportPage() {
   return (
     <div className="space-y-5">
       <div>
+        <BackButton fallback="/reports" />
         <h1 className="text-xl font-semibold tracking-tight flex items-center gap-2">
           <Microscope className="h-5 w-5 text-purple-600" /> AMR Surveillance
         </h1>

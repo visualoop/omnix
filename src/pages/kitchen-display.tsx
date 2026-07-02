@@ -11,6 +11,7 @@ import { query, execute } from "@/lib/db";
 import { intlLocale } from "@/lib/intl";
 import { useF11Fullscreen } from "@/hooks/use-f11-fullscreen";
 
+import { BackButton } from "@/components/ui/back-button";
 const REFRESH_MS = 5_000;
 
 interface TicketRow {
@@ -150,6 +151,7 @@ export function KitchenDisplayPage() {
       <header className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <CookingPot className="h-5 w-5 text-primary" />
+          <BackButton fallback="/hospitality" />
           <h1 className="text-lg font-semibold">Kitchen Display</h1>
           <span className="text-[12px] text-muted-foreground">
             Live · {new Date().toLocaleTimeString(intlLocale())}

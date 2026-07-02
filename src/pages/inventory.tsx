@@ -26,6 +26,7 @@ import { ReceiveStockDialog } from "@/components/inventory/receive-stock-dialog"
 import { VariantsDrawer } from "@/components/inventory/variants-drawer";
 import { Can } from "@/components/require-role";
 
+import { BackButton } from "@/components/ui/back-button";
 export function InventoryPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [totalProducts, setTotalProducts] = useState(0);
@@ -79,6 +80,7 @@ export function InventoryPage() {
     <div className="space-y-4">
       {/* Header */}
       <div className="flex items-center justify-between">
+        <BackButton fallback="/" />
         <h1 className="text-xl font-semibold tracking-tight">Inventory</h1>
         <div className="flex gap-2">
           {selected.size > 0 && (

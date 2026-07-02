@@ -14,6 +14,7 @@ import {
 } from "@/services/bank-reconciliation";
 import { intlLocale } from "@/lib/intl";
 
+import { BackButton } from "@/components/ui/back-button";
 export function BankReconciliationPage() {
   const { id: bankAccountId } = useParams<{ id: string }>();
   const [lines, setLines] = useState<StatementLine[]>([]);
@@ -52,6 +53,7 @@ export function BankReconciliationPage() {
   return (
     <div className="max-w-6xl space-y-4">
       <header>
+        <BackButton fallback="/banking" />
         <h1 className="text-xl font-semibold flex items-center gap-2">
           <Bank className="h-5 w-5 text-primary" /> Bank reconciliation
         </h1>

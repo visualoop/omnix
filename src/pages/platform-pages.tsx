@@ -11,6 +11,7 @@ import { runAnomalyDetection } from "@/services/platform-extensions";
 import { query } from "@/lib/db";
 import { intlLocale } from "@/lib/intl";
 
+import { BackButton } from "@/components/ui/back-button";
 export function DataQualityPage() {
   const [issues, setIssues] = useState<Array<{ id: string; issue_kind: string; entity_kind: string; entity_id: string; details: string; severity: string; detected_at: string }>>([]);
   const [scanning, setScanning] = useState(false);
@@ -36,6 +37,7 @@ export function DataQualityPage() {
     <div className="max-w-4xl space-y-4">
       <header className="flex items-start justify-between">
         <div>
+          <BackButton fallback="/" />
           <h1 className="text-xl font-semibold flex items-center gap-2">
             <Warning className="h-5 w-5 text-primary" /> Data quality
           </h1>

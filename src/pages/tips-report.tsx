@@ -22,6 +22,7 @@ import { toast } from "sonner";
 import { money as KES } from "@/lib/money";
 
 
+import { BackButton } from "@/components/ui/back-button";
 export function TipsReportPage() {
   const branchId = useActiveBranch((s) => s.active?.id);
   const [period, setPeriod] = useState({
@@ -84,6 +85,7 @@ export function TipsReportPage() {
   return (
     <div className="space-y-5">
       <div>
+        <BackButton fallback="/reports" />
         <h1 className="text-xl font-semibold tracking-tight flex items-center gap-2">
           <Heart className="h-5 w-5 text-rose-500" /> Tips & Gratuities
         </h1>

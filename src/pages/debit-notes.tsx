@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { listDebitNotes, type DebitNote } from "@/services/debit-notes";
 import { intlLocale } from "@/lib/intl";
 
+import { BackButton } from "@/components/ui/back-button";
 export function DebitNotesPage() {
   const [items, setItems] = useState<DebitNote[]>([]);
   const [loading, setLoading] = useState(true);
@@ -21,6 +22,7 @@ export function DebitNotesPage() {
     <div className="max-w-4xl space-y-5">
       <header className="flex items-start justify-between">
         <div>
+          <BackButton fallback="/suppliers" />
           <h1 className="text-xl font-semibold flex items-center gap-2">
             <Receipt className="h-5 w-5 text-primary" /> Debit notes
           </h1>

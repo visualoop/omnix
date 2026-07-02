@@ -10,6 +10,7 @@ import { renderReorderListPdf, renderDeadStockPdf } from "@/services/reports-pdf
 import { loadBrandHeader, downloadBytes } from "@/services/pdf-brand";
 import { ComparisonBar } from "@/components/charts";
 
+import { BackButton } from "@/components/ui/back-button";
 export function InventoryReportsPage() {
   const [valuation, setValuation] = useState<{ at_cost: number; at_retail: number; total_items: number } | null>(null);
   const [reorder, setReorder] = useState<Array<{ id: string; name: string; current_stock: number; reorder_level: number; deficit: number }>>([]);
@@ -33,6 +34,7 @@ export function InventoryReportsPage() {
 
   return (
     <div className="space-y-6">
+      <BackButton fallback="/reports" />
       <h1 className="text-xl font-semibold tracking-tight">Inventory Reports</h1>
 
       {/* Tabs */}

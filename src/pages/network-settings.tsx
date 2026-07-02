@@ -48,6 +48,7 @@ import { toast } from "sonner";
 import { APP_NAME } from "@/lib/brand";
 import { intlLocale } from "@/lib/intl";
 
+import { BackButton } from "@/components/ui/back-button";
 export function NetworkSettingsPage() {
   const [mode, setModeState] = useState<NetworkMode>("standalone");
   const [businessName, setBusinessName] = useState("");
@@ -87,6 +88,7 @@ export function NetworkSettingsPage() {
   return (
     <div className="space-y-5 max-w-3xl">
       <div>
+        <BackButton fallback="/" />
         <h1 className="text-xl font-semibold tracking-tight">Network</h1>
         <p className="text-sm text-muted-foreground mt-1">
           Configure how this device works on your local network

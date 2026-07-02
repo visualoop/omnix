@@ -49,6 +49,7 @@ export function PromotionsPage() {
   return (
     <div className="space-y-5">
       <PageHeader
+        back={{ fallback: "/" }}
         eyebrow="Commerce"
         title="Promotions"
         description="Time-limited discounts and offers — automatic or with promo codes."

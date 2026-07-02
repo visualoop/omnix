@@ -50,6 +50,7 @@ export function BranchesPage() {
   return (
     <div className="space-y-5">
       <PageHeader
+        back={{ fallback: "/" }}
         eyebrow="Configuration"
         title="Branches"
         description="Your shop locations. Every sale, expense, and stock entry is tagged with the branch where it happened."

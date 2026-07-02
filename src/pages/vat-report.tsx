@@ -12,6 +12,7 @@ import { renderVat3Pdf } from "@/services/reports-pdf";
 import { loadBrandHeader, downloadBytes } from "@/services/pdf-brand";
 import { money } from "@/lib/money";
 
+import { BackButton } from "@/components/ui/back-button";
 export function VatReportPage() {
   // Default to current month
   const today = new Date();
@@ -62,6 +63,7 @@ export function VatReportPage() {
     <div className="space-y-5 max-w-4xl">
       <div className="flex items-start justify-between">
         <div>
+          <BackButton fallback="/reports" />
           <h1 className="text-xl font-semibold tracking-tight">VAT Return</h1>
           <p className="text-sm text-muted-foreground mt-1">
             Output VAT summary for KRA monthly filing (VAT3 form)

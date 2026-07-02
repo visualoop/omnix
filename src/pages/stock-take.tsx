@@ -49,6 +49,7 @@ export function StockTakesPage() {
   return (
     <div className="space-y-5">
       <PageHeader
+        back={{ fallback: "/inventory" }}
         eyebrow="Operations"
         title="Stock take"
         description="Physical inventory count and reconciliation."

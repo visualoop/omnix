@@ -18,6 +18,7 @@ import {
 } from "@/services/reservations";
 import { intlLocale } from "@/lib/intl";
 
+import { BackButton } from "@/components/ui/back-button";
 const STATUS_LABEL: Record<ReservationStatus, string> = {
   confirmed: "Confirmed",
   seated: "Seated",
@@ -71,6 +72,7 @@ export function ReservationsPage() {
     <div className="max-w-5xl space-y-4">
       <header className="flex items-start justify-between">
         <div>
+          <BackButton fallback="/hospitality" />
           <h1 className="text-xl font-semibold flex items-center gap-2">
             <Calendar className="h-5 w-5 text-primary" /> Reservations
           </h1>

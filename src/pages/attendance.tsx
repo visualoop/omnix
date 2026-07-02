@@ -70,6 +70,7 @@ export function AttendancePage() {
   return (
     <div className="space-y-5">
       <PageHeader
+        back={{ fallback: "/people" }}
         eyebrow="HR"
         title="Attendance"
         description="Daily attendance tracking. Click a status badge to mark each employee."

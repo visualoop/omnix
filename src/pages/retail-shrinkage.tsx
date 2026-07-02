@@ -25,6 +25,7 @@ import { money as KES } from "@/lib/money";
 import { intlLocale } from "@/lib/intl";
 
 
+import { BackButton } from "@/components/ui/back-button";
 const REASON_LABELS: Record<ShrinkageReason, string> = {
   damaged: "Damaged",
   expired: "Expired",
@@ -82,6 +83,7 @@ export function ShrinkagePage() {
     <div className="space-y-5">
       <div className="flex items-start justify-between">
         <div>
+          <BackButton fallback="/retail" />
           <h1 className="text-xl font-semibold tracking-tight flex items-center gap-2">
             <AlertTriangle className="h-5 w-5 text-amber-600" /> Shrinkage
           </h1>

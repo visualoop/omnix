@@ -13,6 +13,7 @@ import { Input } from "@/components/ui/input";
 import { useAuthStore } from "@/stores/auth";
 import { toast } from "sonner";
 
+import { BackButton } from "@/components/ui/back-button";
 export function ExpiryPage() {
   const [items, setItems] = useState<ExpiryItem[]>([]);
   const [window, setWindow] = useState(90);
@@ -30,6 +31,7 @@ export function ExpiryPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
+          <BackButton fallback="/inventory" />
           <h1 className="text-xl font-semibold tracking-tight">Expiry Alerts</h1>
           <p className="text-xs text-muted-foreground mt-1">
             Batches with an expiry date within the selected window. Write off expired batches

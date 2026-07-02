@@ -47,6 +47,7 @@ export function CustomersPage() {
   return (
     <div className="space-y-5">
       <PageHeader
+        back={{ fallback: "/" }}
         eyebrow="Directory"
         title="Customers"
         description="Manage customer accounts, credit, and patient profiles."

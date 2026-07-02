@@ -32,6 +32,7 @@ import { toast } from "sonner";
 import { money as KES } from "@/lib/money";
 import { intlLocale } from "@/lib/intl";
 
+import { BackButton } from "@/components/ui/back-button";
 const formatDate = (s: string) => new Date(s).toLocaleDateString(intlLocale(), { day: "2-digit", month: "long", year: "numeric" });
 
 interface Props { type: "invoice" | "quotation" }
@@ -117,6 +118,7 @@ export function DocumentDetailPage({ type }: Props) {
         </Button>
         <div className="flex items-start justify-between">
           <div>
+            <BackButton fallback="/invoicing" />
             <h1 className="text-xl font-semibold tracking-tight flex items-center gap-2">
               <FileText className="h-5 w-5 text-primary" /> {number}
             </h1>
