@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import {
   CalendarDots as CalendarClock,
   CircleNotch as Loader2,
@@ -7,6 +7,7 @@ import {
   ShoppingCart,
   Trash as Trash2,
   X,
+  MagnifyingGlass as Search,
 } from "@phosphor-icons/react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -21,10 +22,13 @@ import { TableRowSkeleton } from "@/components/ui/skeletons";
 import { EmptyState } from "@/components/ui/empty-state";
 import { confirm } from "@/components/ui/confirm-dialog";
 import {
-  listLaybys, getLayby, createLayby, recordLaybyPayment, cancelLayby,
+  getLayby, createLayby, recordLaybyPayment, cancelLayby,
   prepareLaybyForPosCheckout,
   type Layby, type LaybyItem, type LaybyPayment,
 } from "@/services/retail";
+import { pageLaybys } from "@/services/paged";
+import { useListData } from "@/hooks/use-list-data";
+import { PaginationBar } from "@/components/pagination-bar";
 import { listCustomers } from "@/services/erp";
 import { getProducts, type Product } from "@/services/inventory";
 import { useAuthStore } from "@/stores/auth";
@@ -37,17 +41,18 @@ import { intlLocale } from "@/lib/intl";
 import { BackButton } from "@/components/ui/back-button";
 export function LaybysPage() {
   const [tab, setTab] = useState<"active" | "completed" | "cancelled" | "expired">("active");
-  const [laybys, setLaybys] = useState<Layby[]>([]);
-  const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
   const [viewing, setViewing] = useState<string | null>(null);
 
-  const load = async () => {
-    setLoading(true);
-    try { setLaybys(await listLaybys({ status: tab })); }
-    finally { setLoading(false); }
-  };
-  useEffect(() => { load(); }, [tab]);
+  const fetcher = useCallback(
+    (q: { search?: string; page?: number; pageSize?: number }) =>
+      pageLaybys({ ...q, status: tab }),
+    [tab],
+  );
+  const list = useListData(fetcher, { pageSize: 50 });
+  const laybys = list.rows as unknown as Layby[];
+  const loading = list.loading;
+  const load = list.refresh;
 
   const totalActiveBalance = laybys.filter((l) => l.status === "active")
     .reduce((s, l) => s + l.balance_due, 0);
@@ -78,6 +83,18 @@ export function LaybysPage() {
           </CardContent>
         </Card>
       )}
+
+      <div className="flex items-center gap-2">
+        <div className="relative flex-1 max-w-sm">
+          <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
+          <Input
+            value={list.search}
+            onChange={(e) => list.setSearch(e.target.value)}
+            placeholder="Search layby number or customer..."
+            className="pl-9"
+          />
+        </div>
+      </div>
 
       <Tabs value={tab} onValueChange={(v) => setTab(v as any)}>
         <TabsList>
@@ -161,6 +178,8 @@ export function LaybysPage() {
         onClose={() => setViewing(null)}
         onChange={load}
       />
+
+      <PaginationBar list={list} />
     </div>
   );
 }

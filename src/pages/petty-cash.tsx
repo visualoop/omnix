@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import {
   ArrowCircleDown as ArrowDownCircle,
   ArrowCircleUp as ArrowUpCircle,
@@ -6,14 +6,18 @@ import {
   Plus,
   Wallet,
   X,
+  MagnifyingGlass as Search,
 } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/layout/page-header";
 import { Input } from "@/components/ui/input";
 import {
-  recordPettyCash, listPettyCash, getPettyCashSummary,
+  recordPettyCash, getPettyCashSummary,
   type PettyCashEntry, type PettyCashSummary,
 } from "@/services/petty-cash";
+import { pagePettyCash } from "@/services/paged";
+import { useListData } from "@/hooks/use-list-data";
+import { PaginationBar } from "@/components/pagination-bar";
 import { useAuthStore } from "@/stores/auth";
 import { EmptyState } from "@/components/ui/empty-state";
 import { TableRowSkeleton } from "@/components/ui/skeletons";
@@ -22,23 +26,22 @@ import { intlLocale } from "@/lib/intl";
 import { money } from "@/lib/money";
 
 export function PettyCashPage() {
-  const [entries, setEntries] = useState<PettyCashEntry[]>([]);
   const [summary, setSummary] = useState<PettyCashSummary | null>(null);
-  const [loading, setLoading] = useState(true);
   const [dialogType, setDialogType] = useState<"topup" | "expense" | null>(null);
   const userId = useAuthStore((s) => s.user?.id);
 
-  const load = async () => {
-    setLoading(true);
-    try {
-      const [list, sum] = await Promise.all([listPettyCash(50), getPettyCashSummary()]);
-      setEntries(list);
-      setSummary(sum);
-    } finally {
-      setLoading(false);
-    }
-  };
-  useEffect(() => { load(); }, []);
+  const list = useListData(pagePettyCash, { pageSize: 50 });
+  const entries = list.rows as unknown as PettyCashEntry[];
+  const loading = list.loading;
+
+  const load = useCallback(async () => {
+    list.refresh();
+    setSummary(await getPettyCashSummary());
+  }, [list]);
+
+  useEffect(() => {
+    getPettyCashSummary().then(setSummary);
+  }, []);
 
   return (
     <div className="space-y-5">
@@ -58,6 +61,18 @@ export function PettyCashPage() {
           </div>
         }
       />
+
+      <div className="flex items-center gap-2">
+        <div className="relative flex-1 max-w-sm">
+          <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
+          <Input
+            value={list.search}
+            onChange={(e) => list.setSearch(e.target.value)}
+            placeholder="Search description, category, staff..."
+            className="pl-9"
+          />
+        </div>
+      </div>
 
       <div className="grid grid-cols-3 gap-3">
         <StatCard
@@ -140,6 +155,8 @@ export function PettyCashPage() {
           userId={userId!}
         />
       )}
+
+      <PaginationBar list={list} />
     </div>
   );
 }

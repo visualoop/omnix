@@ -258,9 +258,12 @@ export async function pagePettyCash(q: ListQuery & { direction?: "in" | "out" })
   }
   return pagedQuery<PettyCashRow>(
     {
-      table: "petty_cash_entries",
-      searchColumns: ["description", "category"],
-      orderBy: "entry_date DESC",
+      baseSql:
+        `SELECT p.*, COALESCE(u.full_name, u.username) AS user_name
+         FROM petty_cash p LEFT JOIN users u ON u.id = p.user_id`,
+      countSql: `SELECT COUNT(*) AS n FROM petty_cash p LEFT JOIN users u ON u.id = p.user_id`,
+      searchColumns: ["p.description", "p.category", "u.full_name"],
+      orderBy: "p.created_at DESC",
       extraWhere,
       extraParams,
     },

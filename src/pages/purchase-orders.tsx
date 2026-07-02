@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import {
   ArrowLeft,
@@ -20,10 +20,13 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import {
-  listPurchaseOrders, getPurchaseOrder, createPurchaseOrder, updatePOStatus,
+  getPurchaseOrder, createPurchaseOrder, updatePOStatus,
   createGoodsReceipt, listSuppliers,
   type PurchaseOrder, type Supplier,
 } from "@/services/erp";
+import { pagePurchaseOrders } from "@/services/paged";
+import { useListData } from "@/hooks/use-list-data";
+import { PaginationBar } from "@/components/pagination-bar";
 import { getProducts, type Product } from "@/services/inventory";
 import { useAuthStore } from "@/stores/auth";
 import { toast } from "sonner";
@@ -31,18 +34,16 @@ import { useTrialWriteGuard } from "@/components/trial-lifecycle";
 import { money } from "@/lib/money";
 
 export function PurchaseOrdersPage() {
-  const [pos, setPos] = useState<PurchaseOrder[]>([]);
   const [filter, setFilter] = useState<"all" | "draft" | "sent" | "partial" | "received">("all");
   const navigate = useNavigate();
 
-  const load = async () => {
-    const result = filter === "all"
-      ? await listPurchaseOrders()
-      : await listPurchaseOrders({ status: filter });
-    setPos(result);
-  };
-
-  useEffect(() => { load(); }, [filter]);
+  const fetcher = useCallback(
+    (q: { search?: string; page?: number; pageSize?: number }) =>
+      pagePurchaseOrders({ ...q, status: filter === "all" ? undefined : filter }),
+    [filter],
+  );
+  const list = useListData(fetcher, { pageSize: 50 });
+  const pos = list.rows as unknown as PurchaseOrder[];
 
   return (
     <div className="space-y-5">
@@ -57,6 +58,18 @@ export function PurchaseOrdersPage() {
           </Button>
         }
       />
+
+      <div className="flex items-center gap-2">
+        <div className="relative flex-1 max-w-sm">
+          <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
+          <Input
+            value={list.search}
+            onChange={(e) => list.setSearch(e.target.value)}
+            placeholder="Search PO number or supplier..."
+            className="pl-9"
+          />
+        </div>
+      </div>
 
       <div className="flex gap-1 border-b border-border">
         {(["all", "draft", "sent", "partial", "received"] as const).map((s) => (
@@ -111,6 +124,8 @@ export function PurchaseOrdersPage() {
           </table>
         </div>
       )}
+
+      <PaginationBar list={list} />
     </div>
   );
 }

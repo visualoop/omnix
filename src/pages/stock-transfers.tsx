@@ -1,33 +1,32 @@
-import { useEffect, useState } from "react";
 import {
   ArrowsLeftRight as ArrowRightLeft,
   Check,
   Plus,
   Truck,
+  MagnifyingGlass as Search,
 } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/layout/page-header";
+import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
 import { TableRowSkeleton } from "@/components/ui/skeletons";
-import { listTransfers, type StockTransferWithDetails } from "@/services/stock-transfers";
+import { type StockTransferWithDetails } from "@/services/stock-transfers";
+import { pageStockTransfers } from "@/services/paged";
+import { useListData } from "@/hooks/use-list-data";
+import { PaginationBar } from "@/components/pagination-bar";
 import { useActiveBranch } from "@/stores/active-branch";
 import { useNavigate } from "react-router-dom";
 import { intlLocale } from "@/lib/intl";
 
 export function StockTransfersPage() {
-  const [transfers, setTransfers] = useState<StockTransferWithDetails[]>([]);
-  const [loading, setLoading] = useState(true);
   const branchId = useActiveBranch((s) => s.active?.id);
   const navigate = useNavigate();
 
-  const load = async () => {
-    setLoading(true);
-    try {
-      setTransfers(await listTransfers(branchId));
-    } finally { setLoading(false); }
-  };
-  useEffect(() => { load(); }, [branchId]);
+  const list = useListData(pageStockTransfers, { pageSize: 50 });
+  const transfers = list.rows as unknown as StockTransferWithDetails[];
+  const loading = list.loading;
+  void branchId;
 
   return (
     <div className="space-y-5">
@@ -42,6 +41,18 @@ export function StockTransfersPage() {
           </Button>
         }
       />
+
+      <div className="flex items-center gap-2">
+        <div className="relative flex-1 max-w-sm">
+          <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
+          <Input
+            value={list.search}
+            onChange={(e) => list.setSearch(e.target.value)}
+            placeholder="Search transfer number or branch..."
+            className="pl-9"
+          />
+        </div>
+      </div>
 
       <div className="border border-border rounded-md overflow-hidden">
         <table className="w-full text-sm">
@@ -99,6 +110,8 @@ export function StockTransfersPage() {
           </tbody>
         </table>
       </div>
+
+      <PaginationBar list={list} />
     </div>
   );
 }

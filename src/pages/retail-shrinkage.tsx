@@ -1,8 +1,9 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import {
   FileText as FileBarChart,
   Plus,
   Warning as AlertTriangle,
+  MagnifyingGlass as Search,
 } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -15,9 +16,12 @@ import { Tabs, TabsList, TabsTrigger, TabsPanel } from "@/components/ui/tabs";
 import { TableRowSkeleton } from "@/components/ui/skeletons";
 import { EmptyState } from "@/components/ui/empty-state";
 import {
-  listShrinkage, recordShrinkage, getShrinkageSummary,
+  recordShrinkage, getShrinkageSummary,
   type ShrinkageWithDetails, type ShrinkageReason,
 } from "@/services/retail";
+import { pageShrinkage } from "@/services/paged";
+import { useListData } from "@/hooks/use-list-data";
+import { PaginationBar } from "@/components/pagination-bar";
 import { getProducts, type Product } from "@/services/inventory";
 import { useAuthStore } from "@/stores/auth";
 import { toast } from "sonner";
@@ -47,7 +51,6 @@ const REASON_COLORS: Record<ShrinkageReason, string> = {
 };
 
 export function ShrinkagePage() {
-  const [records, setRecords] = useState<ShrinkageWithDetails[]>([]);
   const [summary, setSummary] = useState<Awaited<ReturnType<typeof getShrinkageSummary>>>([]);
   const [tab, setTab] = useState<"records" | "summary">("records");
   const [recording, setRecording] = useState(false);
@@ -56,24 +59,25 @@ export function ShrinkagePage() {
     start: new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10),
     end: new Date().toISOString().slice(0, 10),
   });
-  const [loading, setLoading] = useState(true);
 
-  const load = async () => {
-    setLoading(true);
-    try {
-      const [recs, sum] = await Promise.all([
-        listShrinkage({
-          startDate: period.start,
-          endDate: period.end,
-          reason: reasonFilter || undefined,
-        }),
-        getShrinkageSummary({ startDate: period.start, endDate: period.end }),
-      ]);
-      setRecords(recs);
-      setSummary(sum);
-    } finally { setLoading(false); }
-  };
-  useEffect(() => { load(); }, [period, reasonFilter]);
+  const fetcher = useCallback(
+    (q: { search?: string; page?: number; pageSize?: number }) =>
+      pageShrinkage({ ...q, from: period.start, to: period.end }),
+    [period],
+  );
+  const list = useListData(fetcher, { pageSize: 50 });
+  const records = list.rows as unknown as ShrinkageWithDetails[];
+  const loading = list.loading;
+
+  const load = useCallback(async () => {
+    list.refresh();
+    const sum = await getShrinkageSummary({ startDate: period.start, endDate: period.end });
+    setSummary(sum);
+  }, [period, list]);
+
+  useEffect(() => {
+    getShrinkageSummary({ startDate: period.start, endDate: period.end }).then(setSummary);
+  }, [period]);
 
   const totalCost = summary.reduce((s, r) => s + r.total_cost, 0);
   const totalQty = summary.reduce((s, r) => s + r.total_qty, 0);
@@ -111,6 +115,18 @@ export function ShrinkagePage() {
           
           {Object.entries(REASON_LABELS).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}
         </SelectContent></Select>
+      </div>
+
+      <div className="flex items-center gap-2">
+        <div className="relative flex-1 max-w-sm">
+          <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
+          <Input
+            value={list.search}
+            onChange={(e) => list.setSearch(e.target.value)}
+            placeholder="Search product or reason..."
+            className="pl-9"
+          />
+        </div>
       </div>
 
       <Tabs value={tab} onValueChange={(v) => setTab(v as any)}>
@@ -230,6 +246,8 @@ export function ShrinkagePage() {
         onClose={() => setRecording(false)}
         onSaved={() => { setRecording(false); load(); }}
       />
+
+      <PaginationBar list={list} />
     </div>
   );
 }

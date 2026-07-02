@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import {
   CalendarPlus,
   Check,
@@ -7,6 +7,7 @@ import {
   Plus,
   ShoppingCart,
   X,
+  MagnifyingGlass as Search,
 } from "@phosphor-icons/react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -17,10 +18,13 @@ import { Tabs, TabsList, TabsTrigger, TabsPanel } from "@/components/ui/tabs";
 import { TableRowSkeleton } from "@/components/ui/skeletons";
 import { EmptyState } from "@/components/ui/empty-state";
 import {
-  listSpecialOrders, createSpecialOrder, updateSpecialOrderStatus, parseSpecialOrderItems,
+  createSpecialOrder, updateSpecialOrderStatus, parseSpecialOrderItems,
   prepareSpecialOrderForPosCheckout,
   type SpecialOrder, type SpecialOrderItem,
 } from "@/services/retail";
+import { pageSpecialOrders } from "@/services/paged";
+import { useListData } from "@/hooks/use-list-data";
+import { PaginationBar } from "@/components/pagination-bar";
 import { listCustomers } from "@/services/erp";
 import { useAuthStore } from "@/stores/auth";
 import { useCartStore } from "@/stores/cart";
@@ -39,17 +43,18 @@ const STATUS_LABELS: Record<SpecialOrder["status"], string> = {
 
 export function SpecialOrdersPage() {
   const [tab, setTab] = useState<SpecialOrder["status"]>("pending");
-  const [orders, setOrders] = useState<SpecialOrder[]>([]);
-  const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
   const navigate = useNavigate();
 
-  const load = async () => {
-    setLoading(true);
-    try { setOrders(await listSpecialOrders({ status: tab })); }
-    finally { setLoading(false); }
-  };
-  useEffect(() => { load(); }, [tab]);
+  const fetcher = useCallback(
+    (q: { search?: string; page?: number; pageSize?: number }) =>
+      pageSpecialOrders({ ...q, status: tab }),
+    [tab],
+  );
+  const list = useListData(fetcher, { pageSize: 50 });
+  const orders = list.rows as unknown as SpecialOrder[];
+  const loading = list.loading;
+  const load = list.refresh;
 
   const advance = async (id: string, next: SpecialOrder["status"]) => {
     await updateSpecialOrderStatus(id, next);
@@ -72,6 +77,18 @@ export function SpecialOrdersPage() {
         <Button onClick={() => setCreating(true)}>
           <Plus className="h-4 w-4 mr-1.5" /> New Special Order
         </Button>
+      </div>
+
+      <div className="flex items-center gap-2">
+        <div className="relative flex-1 max-w-sm">
+          <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
+          <Input
+            value={list.search}
+            onChange={(e) => list.setSearch(e.target.value)}
+            placeholder="Search order number or customer..."
+            className="pl-9"
+          />
+        </div>
       </div>
 
       <Tabs value={tab} onValueChange={(v) => setTab(v as SpecialOrder["status"])}>
@@ -188,6 +205,8 @@ export function SpecialOrdersPage() {
         onClose={() => setCreating(false)}
         onSaved={() => { setCreating(false); load(); }}
       />
+
+      <PaginationBar list={list} />
     </div>
   );
 }

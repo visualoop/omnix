@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   ArrowsClockwise as RefreshCw,
   CheckCircle as CheckCircle2,
@@ -6,9 +6,14 @@ import {
   FileText as FileCheck,
   Warning as AlertTriangle,
   XCircle,
+  MagnifyingGlass as Search,
 } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { getRecentInvoices, retryQueuedInvoices, type EtimsInvoice } from "@/services/etims";
+import { pageEtimsQueue } from "@/services/paged";
+import { useListData } from "@/hooks/use-list-data";
+import { PaginationBar } from "@/components/pagination-bar";
 import { Badge } from "@/components/ui/badge";
 import { AiButton } from "@/components/ai/AiButton";
 import { AiSuggestionDialog } from "@/components/ai/AiSuggestionDialog";
@@ -18,20 +23,29 @@ import { intlLocale } from "@/lib/intl";
 
 import { BackButton } from "@/components/ui/back-button";
 export function EtimsQueuePage() {
-  const [invoices, setInvoices] = useState<EtimsInvoice[]>([]);
   const [filter, setFilter] = useState<"all" | "signed" | "queued" | "failed" | "pending">("all");
+  const [statsData, setStatsData] = useState<EtimsInvoice[]>([]);
   const [explanation, setExplanation] = useState<{ invoice: string; result: EtimsExplanation } | null>(null);
   const [retrying, setRetrying] = useState(false);
-  const [loading, setLoading] = useState(true);
 
-  const load = async () => {
-    setLoading(true);
-    const data = await getRecentInvoices(200);
-    setInvoices(data);
-    setLoading(false);
-  };
+  const fetcher = useCallback(
+    (q: { search?: string; page?: number; pageSize?: number }) =>
+      pageEtimsQueue({ ...q, status: filter === "all" ? undefined : filter }),
+    [filter],
+  );
+  const list = useListData(fetcher, { pageSize: 50 });
+  const filtered = list.rows as unknown as EtimsInvoice[];
+  const invoices = statsData;
+  const loading = list.loading;
 
-  useEffect(() => { load(); }, []);
+  const load = useCallback(async () => {
+    list.refresh();
+    setStatsData(await getRecentInvoices(200));
+  }, [list]);
+
+  useEffect(() => {
+    getRecentInvoices(200).then(setStatsData);
+  }, []);
 
   const handleRetry = async () => {
     setRetrying(true);
@@ -44,8 +58,6 @@ export function EtimsQueuePage() {
     }
     load();
   };
-
-  const filtered = filter === "all" ? invoices : invoices.filter(i => i.status === filter);
 
   const stats = {
     total: invoices.length,
@@ -112,6 +124,18 @@ export function EtimsQueuePage() {
           <p className="text-sm">No invoices in this category</p>
         </div>
       ) : (
+        <>
+        <div className="flex items-center gap-2 mb-3">
+          <div className="relative flex-1 max-w-sm">
+            <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
+            <Input
+              value={list.search}
+              onChange={(e) => list.setSearch(e.target.value)}
+              placeholder="Search invoice number or sale..."
+              className="pl-9"
+            />
+          </div>
+        </div>
         <div className="border border-border rounded-lg overflow-hidden">
           <table className="w-full text-sm">
             <thead className="bg-muted/30 border-b border-border">
@@ -153,6 +177,7 @@ export function EtimsQueuePage() {
             </tbody>
           </table>
         </div>
+        </>
       )}
 
       {/* Error details */}
@@ -202,6 +227,8 @@ export function EtimsQueuePage() {
           )}
         />
       )}
+
+      <PaginationBar list={list} />
     </div>
   );
 }

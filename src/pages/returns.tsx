@@ -19,6 +19,9 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { query } from "@/lib/db";
 import { listReturns, createSaleReturn, type SaleReturn } from "@/services/erp";
+import { pageReturns } from "@/services/paged";
+import { useListData } from "@/hooks/use-list-data";
+import { PaginationBar } from "@/components/pagination-bar";
 import { useAuthStore } from "@/stores/auth";
 import { toast } from "sonner";
 import { intlLocale } from "@/lib/intl";
@@ -44,13 +47,16 @@ interface SaleItem {
 }
 
 export function ReturnsPage() {
-  const [returns, setReturns] = useState<SaleReturn[]>([]);
   const navigate = useNavigate();
+  const [totalRefunded, setTotalRefunded] = useState(0);
 
-  const load = async () => setReturns(await listReturns());
-  useEffect(() => { load(); }, []);
+  const list = useListData(pageReturns, { pageSize: 50 });
+  const returns = list.rows as unknown as SaleReturn[];
 
-  const totalRefunded = returns.reduce((s, r) => s + r.refund_amount, 0);
+  // Aggregate total across all returns, not just current page
+  useEffect(() => {
+    listReturns().then((all) => setTotalRefunded(all.reduce((s, r) => s + r.refund_amount, 0)));
+  }, [list.rows]);
 
   return (
     <div className="space-y-5">
@@ -66,8 +72,20 @@ export function ReturnsPage() {
         }
       />
 
+      <div className="flex items-center gap-2">
+        <div className="relative flex-1 max-w-sm">
+          <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
+          <Input
+            value={list.search}
+            onChange={(e) => list.setSearch(e.target.value)}
+            placeholder="Search return number, sale number, customer..."
+            className="pl-9"
+          />
+        </div>
+      </div>
+
       <div className="grid grid-cols-3 gap-3">
-        <StatCard label="Total Returns" value={String(returns.length)} icon={RotateCcw} />
+        <StatCard label="Total Returns" value={String(list.total)} icon={RotateCcw} />
         <StatCard label="Refunded This Period" value={money(totalRefunded)} icon={RotateCcw} />
         <StatCard label="Recent Returns" value={String(returns.filter((r) => {
           const d = new Date(r.return_date);
@@ -115,6 +133,8 @@ export function ReturnsPage() {
           </table>
         </div>
       )}
+
+      <PaginationBar list={list} />
     </div>
   );
 }
