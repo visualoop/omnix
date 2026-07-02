@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { confirm } from "@/components/ui/confirm-dialog";
 import {
@@ -17,36 +17,51 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Badge } from "@/components/ui/badge";
-import { listSuppliers, upsertSupplier, deactivateSupplier, type Supplier } from "@/services/erp";
+import { listSuppliers, pageSuppliers, upsertSupplier, deactivateSupplier, type Supplier } from "@/services/erp";
 import { recordSupplierPayment } from "@/services/settlement";
 import { useAuthStore } from "@/stores/auth";
 import { PaymentRecordDialog } from "@/components/payment-record-dialog";
+import { PaginationBar } from "@/components/pagination-bar";
+import { useListData } from "@/hooks/use-list-data";
 import { toast } from "sonner";
 import { money } from "@/lib/money";
 
 export function SuppliersPage() {
-  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const navigate = useNavigate();
-  const [search, setSearch] = useState("");
   const [showAll, setShowAll] = useState(false);
   const [editing, setEditing] = useState<Supplier | null>(null);
   const [creating, setCreating] = useState(false);
   const [paying, setPaying] = useState<Supplier | null>(null);
+  const [totals, setTotals] = useState({ active: 0, all: 0, owed: 0 });
   const userId = useAuthStore((s) => s.user?.id);
 
-  const load = async () => {
-    setSuppliers(await listSuppliers(!showAll));
-  };
-  useEffect(() => { load(); }, [showAll]);
-
-  const filtered = suppliers.filter((s) =>
-    !search.trim() ||
-    s.name.toLowerCase().includes(search.toLowerCase()) ||
-    s.phone?.includes(search) ||
-    s.email?.toLowerCase().includes(search.toLowerCase())
+  // DB-driven pagination + search (was: fetch all + client-side filter)
+  const fetcher = useCallback(
+    (q: { search?: string; page?: number; pageSize?: number }) =>
+      pageSuppliers({ ...q, activeOnly: !showAll }),
+    [showAll],
   );
+  const list = useListData<Supplier>(fetcher, { pageSize: 50 });
 
-  const totalOwed = suppliers.reduce((s, sup) => s + sup.balance_owed, 0);
+  // Independent aggregate for the stat cards — cheap query, doesn't paginate
+  const loadTotals = useCallback(async () => {
+    const all = await listSuppliers(false);
+    setTotals({
+      active: all.filter((s) => s.active === 1).length,
+      all: all.length,
+      owed: all.reduce((sum, s) => sum + (s.balance_owed || 0), 0),
+    });
+  }, []);
+  useEffect(() => { loadTotals(); }, [loadTotals]);
+
+  const filtered = list.rows;
+  const suppliers = list.rows;
+  const search = list.search;
+  const setSearch = list.setSearch;
+  const load = list.refresh;
+  void suppliers; void filtered; // preserve names used later in the render
+
+  const totalOwed = totals.owed;
 
   return (
     <div className="space-y-5">
@@ -63,8 +78,8 @@ export function SuppliersPage() {
       />
 
       <div className="grid grid-cols-3 gap-3">
-        <StatCard label="Active Suppliers" value={String(suppliers.filter((s) => s.active === 1).length)} icon={Truck} />
-        <StatCard label="Total Suppliers" value={String(suppliers.length)} icon={Truck} />
+        <StatCard label="Active Suppliers" value={String(totals.active)} icon={Truck} />
+        <StatCard label="Total Suppliers" value={String(totals.all)} icon={Truck} />
         <StatCard label="Outstanding Balance" value={money(totalOwed)} icon={Truck} highlight={totalOwed > 0} />
       </div>
 
@@ -162,8 +177,10 @@ export function SuppliersPage() {
         open={creating || !!editing}
         supplier={editing}
         onClose={() => { setCreating(false); setEditing(null); }}
-        onSaved={() => { setCreating(false); setEditing(null); load(); }}
+        onSaved={() => { setCreating(false); setEditing(null); load(); loadTotals(); }}
       />
+
+      <PaginationBar list={list} />
 
       <PaymentRecordDialog
         open={!!paying}

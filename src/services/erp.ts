@@ -1,5 +1,7 @@
 import { query, execute } from "@/lib/db";
 import { getActiveBranchId } from "@/stores/active-branch";
+import { pagedQuery } from "@/lib/paged-query";
+import type { ListPage, ListQuery } from "@/lib/list-types";
 
 // ============================================================
 // Suppliers
@@ -24,6 +26,24 @@ export async function listSuppliers(activeOnly = true): Promise<Supplier[]> {
     ? "SELECT * FROM suppliers WHERE active = 1 ORDER BY name"
     : "SELECT * FROM suppliers ORDER BY name";
   return query<Supplier>(sql);
+}
+
+/**
+ * Paginated + searchable list of suppliers. New shape — pages use this via
+ * useListData. Search hits name / phone / email / kra_pin.
+ */
+export async function pageSuppliers(q: ListQuery & { activeOnly?: boolean }): Promise<ListPage<Supplier>> {
+  const extraWhere: string[] = [];
+  if (q.activeOnly !== false) extraWhere.push(`active = 1`);
+  return pagedQuery<Supplier>(
+    {
+      table: "suppliers",
+      searchColumns: ["name", "phone", "email", "contact_person"],
+      orderBy: "name ASC",
+      extraWhere,
+    },
+    q,
+  );
 }
 
 export async function getSupplier(id: string): Promise<Supplier | null> {
