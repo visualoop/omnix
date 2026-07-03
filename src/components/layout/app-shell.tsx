@@ -9,6 +9,7 @@ import { RouteErrorBoundary } from "@/components/route-error-boundary";
 import { OnboardingTour } from "@/components/onboarding-tour";
 import { ShortcutsOverlay } from "@/components/shortcuts-overlay";
 import { IdleAutoLock } from "@/components/idle-auto-lock";
+import { ApprovalDialog } from "@/components/ai/approval-dialog";
 import { useAutoCloudBackup } from "@/hooks/use-auto-cloud-backup";
 
 /** Return the top-level route prefix, e.g. "/settings/license" → "settings". */
@@ -80,6 +81,7 @@ export function AppShell() {
       <OnboardingTour />
       <ShortcutsOverlay />
       <IdleAutoLock />
+      <ApprovalDialog />
     </div>
   );
 }

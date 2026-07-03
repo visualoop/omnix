@@ -31,6 +31,7 @@ import { ExpiryPage } from "@/pages/expiry";
 import { WastageReportPage } from "@/pages/wastage-report";
 import { ReportsPage } from "@/pages/reports";
 import { AiWorkspacePage } from "@/pages/ai-workspace";
+import { AiChatV2Page } from "@/pages/ai-chat-v2";
 import { ReportsIndexPage } from "@/pages/reports-index";
 import { InventoryReportsPage } from "@/pages/inventory-reports";
 import { ZReportPage } from "@/pages/zreport";
@@ -300,6 +301,7 @@ function AppContent() {
         <Route element={<AppShell />}>
           <Route index element={<DashboardPage />} />
           <Route path="/ai" element={<AiWorkspacePage />} />
+          <Route path="/ai/v2" element={<AiChatV2Page />} />
           <Route path="/pos" element={<RequireRole permission="pos.use"><POSOverviewPage /></RequireRole>} />
           <Route path="/pos/sale" element={<RequireRole permission="pos.use"><POSSalePage /></RequireRole>} />
           <Route path="/inventory" element={<RequireRole permission="inventory.view"><InventoryHubPage /></RequireRole>} />
