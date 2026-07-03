@@ -120,7 +120,11 @@ export async function openKitchenDisplay(): Promise<void> {
     minHeight: 720,
     decorations: false,
     resizable: true,
-    fullscreen: false,
+    // Industry standard: KDS runs fullscreen because the kitchen tablet is
+    // dedicated hardware. Chefs need every pixel + no distraction from
+    // the OS chrome. F11 exits to windowed if the operator needs to
+    // reposition it on another monitor.
+    fullscreen: true,
     center: false,
     x: 220,
     y: 130,
