@@ -31,8 +31,9 @@ register(defineTool<z.infer<typeof params>, { count: number }>({
     const rows = await query<Row>(
       `SELECT p.id, p.name, p.sku, p.barcode, p.reorder_level,
               COALESCE((SELECT SUM(quantity) FROM batches WHERE product_id = p.id), 0) AS stock_qty,
-              COALESCE((SELECT selling_price FROM product_prices WHERE product_id = p.id LIMIT 1), 0) AS selling_price
+              COALESCE(pp.price, 0) AS selling_price
        FROM products p
+       LEFT JOIN (SELECT product_id, selling_price AS price FROM product_prices) pp ON pp.product_id = p.id
        WHERE p.active = 1 AND (p.name LIKE ?1 OR p.sku LIKE ?1 OR COALESCE(p.barcode, '') LIKE ?1)
        ORDER BY p.name LIMIT 20`,
       [like],

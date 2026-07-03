@@ -14,7 +14,7 @@ interface Row {
   id: string;
   name: string;
   phone: string | null;
-  balance: number;
+  credit_limit: number;
 }
 
 register(defineTool<z.infer<typeof params>, { count: number }>({
@@ -26,7 +26,7 @@ register(defineTool<z.infer<typeof params>, { count: number }>({
   async execute(args) {
     const like = `%${args.q}%`;
     const rows = await query<Row>(
-      `SELECT id, name, phone, COALESCE(current_balance, 0) AS balance
+      `SELECT id, name, phone, COALESCE(credit_limit, 0) AS credit_limit
        FROM customers
        WHERE name LIKE ?1 OR COALESCE(phone, '') LIKE ?1
        ORDER BY name LIMIT 20`,
@@ -35,7 +35,7 @@ register(defineTool<z.infer<typeof params>, { count: number }>({
     const output = rows.length === 0
       ? `No customers match "${args.q}".`
       : rows.map((r) =>
-          `  • ${r.name}${r.phone ? ` (${r.phone})` : ""}${r.balance > 0 ? ` · owes KES ${r.balance.toFixed(2)}` : ""}`,
+          `  • ${r.name}${r.phone ? ` (${r.phone})` : ""}${r.credit_limit > 0 ? ` · credit limit KES ${r.credit_limit.toFixed(2)}` : ""}`,
         ).join("\n");
     return {
       title: `${rows.length} match${rows.length === 1 ? "" : "es"} for "${args.q}"`,
