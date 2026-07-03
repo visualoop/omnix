@@ -153,16 +153,41 @@ export interface HospitalityCheckoutPayload {
   totalBeforeServiceCharge: number;
 }
 
-export async function openOrder(input: { tableId?: string | null; orderType: OrderType; waiterId?: string | null; customerId?: string | null; userId?: string }): Promise<string> {
+export async function openOrder(input: {
+  tableId?: string | null;
+  orderType: OrderType;
+  waiterId?: string | null;
+  customerId?: string | null;
+  userId?: string;
+  partySize?: number | null;
+  roomId?: string | null;
+}): Promise<string> {
   await assertModuleEntitled("hospitality");
   await requirePermission("hospitality.orders.take", { entityType: "hospitality_order" });
   const id = uid();
   const [row] = await query<{ n: number }>(`SELECT COUNT(*) AS n FROM hospitality_orders`);
   const number = `ORD-${String((row?.n ?? 0) + 1).padStart(5, "0")}`;
+
+  // For room_service, resolve the room's active folio so charges post there.
+  let folioId: string | null = null;
+  if (input.orderType === "room_service" && input.roomId) {
+    const [folio] = await query<{ id: string }>(
+      `SELECT gf.id FROM guest_folios gf
+       JOIN bookings b ON b.id = gf.booking_id
+       WHERE b.room_id = ?1 AND gf.status = 'open'
+       ORDER BY gf.opened_at DESC LIMIT 1`,
+      [input.roomId],
+    );
+    if (!folio) throw new Error("No open folio found for that room. Check the guest in first.");
+    folioId = folio.id;
+  }
+
   await execute(
-    `INSERT INTO hospitality_orders (id, order_number, branch_id, table_id, customer_id, order_type, status, waiter_id, opened_by)
-     VALUES (?1, ?2, ?3, ?4, ?5, ?6, 'open', ?7, ?8)`,
-    [id, number, getActiveBranchId(), input.tableId ?? null, input.customerId ?? null, input.orderType, input.waiterId ?? null, input.userId ?? null],
+    `INSERT INTO hospitality_orders (id, order_number, branch_id, table_id, customer_id, order_type, status, waiter_id, opened_by, party_size, room_id, folio_id)
+     VALUES (?1, ?2, ?3, ?4, ?5, ?6, 'open', ?7, ?8, ?9, ?10, ?11)`,
+    [id, number, getActiveBranchId(), input.tableId ?? null, input.customerId ?? null,
+     input.orderType, input.waiterId ?? null, input.userId ?? null,
+     input.partySize ?? null, input.roomId ?? null, folioId],
   );
   // Dine-in occupies the table.
   if (input.tableId) await execute(`UPDATE dining_tables SET status = 'occupied' WHERE id = ?1`, [input.tableId]);

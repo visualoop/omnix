@@ -562,6 +562,12 @@ fn run_inner() {
             sql: include_str!("../migrations/075_menu_photos.sql"),
             kind: MigrationKind::Up,
         },
+        Migration {
+            version: 76,
+            description: "Party size + folio + room link on hospitality orders",
+            sql: include_str!("../migrations/076_hospitality_party_folio.sql"),
+            kind: MigrationKind::Up,
+        },
     ];
 
     tauri::Builder::default()

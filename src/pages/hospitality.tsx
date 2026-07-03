@@ -371,8 +371,21 @@ export function HospitalityOrdersPage() {
   }, [selected, orders]);
 
   const newOrder = async () => {
+    // Party size is required for dine-in / room-service so we can report
+    // covers per shift (industry standard — Toast, Square, Cake all enforce).
+    let partySize: number | null = null;
+    if (orderType === "dine_in" || orderType === "room_service") {
+      const raw = window.prompt(`Party size (guests)?`, "2");
+      if (raw === null) return; // cancelled
+      const n = Number(raw);
+      if (!Number.isFinite(n) || n < 1 || n > 30) {
+        toast.error("Party size must be between 1 and 30");
+        return;
+      }
+      partySize = Math.floor(n);
+    }
     try {
-      const id = await openOrder({ orderType, userId });
+      const id = await openOrder({ orderType, userId, partySize });
       await loadOrders();
       setSelected(id);
       toast.success(`${orderType === "room_service" ? "Room service" : "Dine-in"} order opened`);

@@ -51,6 +51,11 @@ interface TicketRow {
   notes: string | null;
   sent_at: string;
   status: string;
+  party_size: number | null;
+  room_id: string | null;
+  image_path: string | null;
+  allergens: string | null;
+  order_type: string;
 }
 
 interface Ticket {
@@ -61,6 +66,9 @@ interface Ticket {
   station_id: string | null;
   station_name: string;
   sent_at: string;
+  party_size: number | null;
+  room_id: string | null;
+  order_type: string;
   items: TicketRow[];
 }
 
@@ -78,12 +86,18 @@ async function loadTickets(): Promise<Map<string, Ticket[]>> {
         oi.quantity,
         oi.notes,
         oi.sent_at,
-        oi.status
+        oi.status,
+        o.party_size,
+        o.room_id,
+        o.order_type,
+        mi.image_path,
+        mi.allergens
      FROM hospitality_order_items oi
      JOIN hospitality_orders o ON o.id = oi.order_id
      LEFT JOIN dining_tables dt ON dt.id = o.table_id
      LEFT JOIN employees e ON e.id = o.waiter_id
      LEFT JOIN kitchen_stations ks ON ks.id = oi.station_id
+     LEFT JOIN menu_items mi ON mi.id = oi.menu_item_id
      WHERE oi.status IN ('sent', 'preparing')
        AND oi.sent_at IS NOT NULL
      ORDER BY oi.sent_at ASC`,
@@ -104,6 +118,9 @@ async function loadTickets(): Promise<Map<string, Ticket[]>> {
         station_id: r.station_id,
         station_name: stationName,
         sent_at: r.sent_at,
+        party_size: r.party_size,
+        room_id: r.room_id,
+        order_type: r.order_type,
         items: [],
       };
       list.push(ticket);
@@ -375,18 +392,27 @@ export function KitchenDisplayPage() {
                     <div key={`${t.order_id}-${stationKey}`} className={`rounded-md border-l-4 border p-2.5 ${elapsedColor(mins)}`}>
                       <div className={cn("flex items-center justify-between mb-1", fontCls.ticketHeader)}>
                         <span className="font-semibold">
-                          #{t.order_number} · {t.table_name || "Takeaway"}
+                          #{t.order_number} · {t.order_type === "room_service" && t.room_id ? `Room ${t.room_id.slice(0, 6)}` : (t.table_name || (t.order_type === "takeaway" ? "Takeaway" : "Walk-in"))}
+                          {t.party_size ? <span className="ml-1 text-muted-foreground font-normal">· {t.party_size}p</span> : null}
                         </span>
                         <span className="inline-flex items-center gap-0.5 font-mono">
                           <Timer className="h-3 w-3" /> {mins}m
                         </span>
                       </div>
-                      <ul className={cn("space-y-0.5", fontCls.itemName)}>
+                      <ul className={cn("space-y-1", fontCls.itemName)}>
                         {t.items.map((it) => (
-                          <li key={it.item_id} className="flex">
-                            <span className={cn("font-mono text-muted-foreground w-6", fontCls.itemQty)}>{it.quantity}×</span>
+                          <li key={it.item_id} className="flex gap-1.5">
+                            {it.image_path ? (
+                              <img src={it.image_path} alt="" className="h-6 w-6 rounded object-cover flex-shrink-0" />
+                            ) : null}
+                            <span className={cn("font-mono text-muted-foreground w-6 flex-shrink-0", fontCls.itemQty)}>{it.quantity}×</span>
                             <span className="flex-1">
                               {it.item_name}
+                              {it.allergens ? (
+                                <span className="ml-1 inline-flex text-[9px] px-1 py-0.5 rounded bg-rose-500/15 text-rose-700 font-medium">
+                                  ⚠ {it.allergens}
+                                </span>
+                              ) : null}
                               {it.notes && (
                                 <span className={cn("block italic text-amber-700 pl-1", fontCls.notes)}>! {it.notes}</span>
                               )}

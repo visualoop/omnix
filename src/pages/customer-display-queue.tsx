@@ -34,6 +34,8 @@ interface QueueOrder {
   customer_name: string | null;
   item_count: number;
   opened_at: string;
+  party_size: number | null;
+  room_id: string | null;
 }
 
 const POLL_MS = 2000;
@@ -51,6 +53,7 @@ export function CustomerDisplayQueuePage() {
       try {
         const rows = await query<QueueOrder>(
           `SELECT o.id, o.order_number, o.status, o.order_type, o.opened_at,
+                  o.party_size, o.room_id,
                   dt.table_code AS table_code,
                   dt.name AS table_name,
                   c.name AS customer_name,
@@ -190,7 +193,9 @@ function Column({
 
 function OrderCard({ order, pulse }: { order: QueueOrder; pulse?: boolean }) {
   const age = useAgeMinutes(order.opened_at);
-  const tableText = order.table_code
+  const tableText = order.order_type === "room_service" && order.room_id
+    ? `Room ${order.room_id.slice(-4)}`
+    : order.table_code
     ? `Table ${order.table_code}`
     : order.order_type === "takeaway"
       ? "Takeaway"
@@ -216,7 +221,10 @@ function OrderCard({ order, pulse }: { order: QueueOrder; pulse?: boolean }) {
         </span>
       </div>
       <div className="mt-3 flex items-center justify-between text-stone-300">
-        <span className="text-xl font-medium">{tableText}</span>
+        <span className="text-xl font-medium">
+          {tableText}
+          {order.party_size ? <span className="ml-2 text-sm text-stone-500 font-mono">· {order.party_size} guest{order.party_size === 1 ? "" : "s"}</span> : null}
+        </span>
         <span className="text-sm text-stone-500 font-mono tabular-nums">
           {order.item_count} item{order.item_count !== 1 ? "s" : ""}
         </span>
