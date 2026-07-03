@@ -72,6 +72,7 @@ import { AreaDetailPage } from "@/pages/area-detail";
 import { TableDetailPage } from "@/pages/table-detail";
 import { RoomTypeDetailPage } from "@/pages/room-type-detail";
 import { RoomDetailPage } from "@/pages/room-detail";
+import { BrandDetailPage } from "@/pages/brand-detail";
 import { PeripheralsPage } from "@/pages/peripherals";
 import { CashFlowStatementPage } from "@/pages/cash-flow-statement";
 import { PeriodClosePage } from "@/pages/period-close";
@@ -343,6 +344,7 @@ function AppContent() {
           <Route path="/hospitality/tables/:id" element={<RequireRole permission="hospitality.tables.manage"><TableDetailPage /></RequireRole>} />
           <Route path="/hospitality/room-types/:id" element={<RequireRole permission="hospitality.bookings.manage"><RoomTypeDetailPage /></RequireRole>} />
           <Route path="/hospitality/rooms/:id" element={<RequireRole permission="hospitality.bookings.manage"><RoomDetailPage /></RequireRole>} />
+          <Route path="/retail/brands/:id" element={<RequireRole permission="retail.brands.manage"><BrandDetailPage /></RequireRole>} />
           <Route path="/reports/sales" element={<RequireRole permission="reports.view"><ReportsPage /></RequireRole>} />
           <Route path="/reports/inventory" element={<RequireRole permission="reports.view"><InventoryReportsPage /></RequireRole>} />
           <Route path="/reports/wastage" element={<RequireRole permission="reports.view"><WastageReportPage /></RequireRole>} />
