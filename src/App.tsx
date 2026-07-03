@@ -68,6 +68,7 @@ import { BalanceSheetPage } from "@/pages/balance-sheet";
 import { ChartOfAccountsPage } from "@/pages/chart-of-accounts";
 import { ReservationsPage } from "@/pages/reservations";
 import { KitchenDisplayPage } from "@/pages/kitchen-display";
+import { AreaDetailPage } from "@/pages/area-detail";
 import { PeripheralsPage } from "@/pages/peripherals";
 import { CashFlowStatementPage } from "@/pages/cash-flow-statement";
 import { PeriodClosePage } from "@/pages/period-close";
@@ -335,6 +336,7 @@ function AppContent() {
           <Route path="/anomalies" element={<RequireRole permission="reports.view"><AnomaliesPage /></RequireRole>} />
           <Route path="/hospitality/reservations" element={<RequireRole permission="hospitality.bookings.manage"><ReservationsPage /></RequireRole>} />
           <Route path="/hospitality/kitchen" element={<RequireRole permission="hospitality.kitchen.bump"><KitchenDisplayPage /></RequireRole>} />
+          <Route path="/hospitality/areas/:id" element={<RequireRole permission="hospitality.tables.manage"><AreaDetailPage /></RequireRole>} />
           <Route path="/reports/sales" element={<RequireRole permission="reports.view"><ReportsPage /></RequireRole>} />
           <Route path="/reports/inventory" element={<RequireRole permission="reports.view"><InventoryReportsPage /></RequireRole>} />
           <Route path="/reports/wastage" element={<RequireRole permission="reports.view"><WastageReportPage /></RequireRole>} />

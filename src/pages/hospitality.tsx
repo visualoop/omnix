@@ -112,6 +112,7 @@ export function HospitalityTablesPage() {
   const [loading, setLoading] = useState(true);
   const [areaDialog, setAreaDialog] = useState(false);
   const [tableDialog, setTableDialog] = useState(false);
+  const navigate = useNavigate();
 
   const load = () => {
     setLoading(true);
@@ -140,29 +141,43 @@ export function HospitalityTablesPage() {
           </div>
         }
       />
-      {tables.length === 0 ? (
+      {tables.length === 0 && areas.length === 0 ? (
         <EmptyHint text="No tables yet. Add a dining area, then tables." />
       ) : (
         <div className="space-y-5">
           {(areas.length ? areas : [{ id: null, name: "Tables" } as unknown as DiningArea]).map((area) => {
             const areaTables = tables.filter((t) => t.area_id === (area.id ?? null) || (!area.id && !t.area_id));
-            if (areaTables.length === 0) return null;
             return (
               <div key={area.id ?? "none"}>
-                <div className="text-[11px] uppercase tracking-wide text-muted-foreground mb-2">{area.name}</div>
-                <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2.5">
-                  {areaTables.map((t) => (
-                    <button
-                      key={t.id}
-                      onClick={() => cycleStatus(t)}
-                      className={cn("rounded-lg border p-3 text-left transition-colors cursor-pointer hover:opacity-80", TABLE_STATUS[t.status])}
-                    >
-                      <div className="text-sm font-semibold">{t.table_code}</div>
-                      <div className="text-[10px] mt-1 capitalize">{t.status}</div>
-                      <div className="text-[10px] text-muted-foreground">{t.seats} seats</div>
-                    </button>
-                  ))}
-                </div>
+                {area.id ? (
+                  <button
+                    onClick={() => navigate(`/hospitality/areas/${area.id}`)}
+                    className="text-[11px] uppercase tracking-wide text-muted-foreground mb-2 hover:text-foreground transition-colors"
+                  >
+                    {area.name} →
+                  </button>
+                ) : (
+                  <div className="text-[11px] uppercase tracking-wide text-muted-foreground mb-2">{area.name}</div>
+                )}
+                {areaTables.length === 0 ? (
+                  <div className="text-[11px] text-muted-foreground italic mb-3">
+                    No tables in this area yet. Add tables from the button above.
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2.5">
+                    {areaTables.map((t) => (
+                      <button
+                        key={t.id}
+                        onClick={() => cycleStatus(t)}
+                        className={cn("rounded-lg border p-3 text-left transition-colors cursor-pointer hover:opacity-80", TABLE_STATUS[t.status])}
+                      >
+                        <div className="text-sm font-semibold">{t.table_code}</div>
+                        <div className="text-[10px] mt-1 capitalize">{t.status}</div>
+                        <div className="text-[10px] text-muted-foreground">{t.seats} seats</div>
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
             );
           })}
