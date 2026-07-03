@@ -43,7 +43,7 @@ import {
 import { useAuthStore } from "@/stores/auth";
 import { useCartStore } from "@/stores/cart";
 import { query } from "@/lib/db";
-import { confirm } from "@/components/ui/confirm-dialog";
+import { confirm, prompt } from "@/components/ui/confirm-dialog";
 import { MenuItemDialog, type MenuItemFormValues } from "@/components/hospitality/menu-item-dialog";
 import { RecipeDialog } from "@/components/hospitality/recipe-dialog";
 import { CompactFormDialog } from "@/components/hospitality/compact-form-dialog";
@@ -375,7 +375,13 @@ export function HospitalityOrdersPage() {
     // covers per shift (industry standard — Toast, Square, Cake all enforce).
     let partySize: number | null = null;
     if (orderType === "dine_in" || orderType === "room_service") {
-      const raw = window.prompt(`Party size (guests)?`, "2");
+      const raw = await prompt({
+        title: "Party size",
+        description: "How many guests are seated?",
+        placeholder: "e.g. 2",
+        defaultValue: "2",
+        required: true,
+      });
       if (raw === null) return; // cancelled
       const n = Number(raw);
       if (!Number.isFinite(n) || n < 1 || n > 30) {
