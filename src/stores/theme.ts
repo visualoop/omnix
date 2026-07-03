@@ -13,12 +13,16 @@
 import { create } from "zustand";
 
 export const THEMES = [
-  { id: "classic", name: "Classic",  description: "Warm off-white • slate dark. The default." },
-  { id: "cream",   name: "Cream",    description: "Notion-editorial. Best for long-session reading." },
-  { id: "nordic",  name: "Nordic",   description: "Cool bluish snow + polar-night dark." },
-  { id: "sepia",   name: "Sepia",    description: "Parchment + walnut. E-reader vibe." },
-  { id: "slate",   name: "Slate",    description: "Pure neutral grey. No hue tint." },
-  { id: "meadow",  name: "Meadow",   description: "Mint paper + forest dark. Calm." },
+  { id: "classic",  name: "Classic",  description: "Warm off-white • slate dark. The default." },
+  { id: "cream",    name: "Cream",    description: "Notion-editorial. Best for long-session reading." },
+  { id: "nordic",   name: "Nordic",   description: "Cool bluish snow + polar-night dark." },
+  { id: "sepia",    name: "Sepia",    description: "Parchment + walnut. E-reader vibe." },
+  { id: "slate",    name: "Slate",    description: "Pure neutral grey. No hue tint." },
+  { id: "meadow",   name: "Meadow",   description: "Mint paper + forest dark. Calm." },
+  { id: "espresso", name: "Espresso", description: "Latte-tan + espresso-brown. Cafe / patisserie." },
+  { id: "mono",     name: "Mono",     description: "Pure black-and-white. Maximum contrast." },
+  { id: "peach",    name: "Peach",    description: "Warm rose + aubergine. Salon / spa vibe." },
+  { id: "ocean",    name: "Ocean",    description: "Cool cyan + ocean navy. Clinical / medical." },
 ] as const;
 
 export type PaletteId = typeof THEMES[number]["id"];
