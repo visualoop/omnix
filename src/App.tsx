@@ -9,6 +9,7 @@ import { useAutoUpdate } from "@/hooks/use-auto-update";
 import { useLanAutostart } from "@/hooks/use-lan-autostart";
 import { useAlertScanner } from "@/hooks/use-alert-scanner";
 import { useOfflineQueueDrainer } from "@/hooks/use-offline-queue-drainer";
+import { useBackgroundJobs } from "@/hooks/use-background-jobs";
 import { AppShell } from "@/components/layout/app-shell";
 import { SettingsLayout } from "@/components/layout/settings-layout";
 import { LicenseGuard } from "@/components/license-guard";
@@ -188,6 +189,7 @@ function AppContent() {
   useLanAutostart();
   useAlertScanner();
   useOfflineQueueDrainer();
+  useBackgroundJobs();
 
   // Install crash telemetry handlers once on boot.
   useEffect(() => {
