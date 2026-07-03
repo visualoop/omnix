@@ -33,8 +33,13 @@ type WinApi = {
 
 async function getWindowApi(): Promise<WinApi | null> {
   try {
-    const mod = await import("@tauri-apps/api/window");
-    const w = mod.getCurrentWindow();
+    // Prefer getCurrentWebviewWindow — it resolves to the specific
+    // WebView that made the call (works for main + every secondary
+    // window we spawn via openCustomerDisplay / openKitchenDisplay).
+    // getCurrentWindow from `@tauri-apps/api/window` should also work
+    // but the webview flavour is the recommended API for v2.
+    const mod = await import("@tauri-apps/api/webviewWindow");
+    const w = mod.getCurrentWebviewWindow();
     return {
       minimize: () => w.minimize(),
       toggleMaximize: () => w.toggleMaximize(),
@@ -42,7 +47,8 @@ async function getWindowApi(): Promise<WinApi | null> {
       isMaximized: () => w.isMaximized(),
       onResized: (cb) => w.onResized(cb),
     };
-  } catch {
+  } catch (e) {
+    console.warn("[titlebar] window API unavailable — running outside Tauri?", e);
     return null;
   }
 }
@@ -117,13 +123,23 @@ export function WindowTitlebar({ title, hidden, extras }: Props) {
 
         {isTauri ? (
           <div className="flex items-stretch">
-            <TitlebarButton onClick={() => api!.minimize()} label="Minimize">
+            <TitlebarButton
+              onClick={() => api!.minimize().catch((e) => console.error("[titlebar] minimize failed", e))}
+              label="Minimize"
+            >
               <Minus className="h-3 w-3" />
             </TitlebarButton>
-            <TitlebarButton onClick={() => api!.toggleMaximize()} label={maxed ? "Restore" : "Maximize"}>
+            <TitlebarButton
+              onClick={() => api!.toggleMaximize().catch((e) => console.error("[titlebar] toggleMaximize failed", e))}
+              label={maxed ? "Restore" : "Maximize"}
+            >
               {maxed ? <CopySimple className="h-3 w-3" /> : <Square className="h-3 w-3" />}
             </TitlebarButton>
-            <TitlebarButton onClick={() => api!.close()} label="Close" danger>
+            <TitlebarButton
+              onClick={() => api!.close().catch((e) => console.error("[titlebar] close failed", e))}
+              label="Close"
+              danger
+            >
               <X className="h-3.5 w-3.5" />
             </TitlebarButton>
           </div>
