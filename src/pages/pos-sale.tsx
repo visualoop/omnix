@@ -48,6 +48,7 @@ import { getOpenShift, type CashShift } from "@/services/accounting";
 import { PaymentModal } from "@/components/pos/payment-modal";
 import { InteractionAlerts } from "@/components/pos/interaction-alerts";
 import { HeldSalesDialog } from "@/components/pos/held-sales";
+import { ReturnDialog } from "@/components/pos/return-dialog";
 import { DiscountDialog } from "@/components/pos/discount-dialog";
 import { CustomerPicker } from "@/components/pos/customer-picker";
 import { AllergyAlertBanner } from "@/components/pos/allergy-alert-banner";
@@ -133,6 +134,7 @@ export function POSSalePage() {
   const [lowStock, setLowStock] = useState<Array<{ id: string; name: string; stock_qty: number; reorder_level: number }>>([]);
   const [payOpen, setPayOpen] = useState(false);
   const [heldOpen, setHeldOpen] = useState(false);
+  const [returnOpen, setReturnOpen] = useState(false);
   const [discountOpen, setDiscountOpen] = useState(false);
   const [heldCount, setHeldCount] = useState(0);
   const [subFor, setSubFor] = useState<Product | null>(null);
@@ -480,7 +482,7 @@ export function POSSalePage() {
             <ActionPill icon={Lock} label="Close Day" onClick={() => setCloseShiftDialog(true)} />
           )}
           <ActionPill icon={Pause} label="Park" hotkey="F2" badge={heldCount} onClick={() => setHeldOpen(true)} />
-          <ActionPill icon={RotateCcw} label="Returns" onClick={() => navigate("/returns")} />
+          <ActionPill icon={RotateCcw} label="Returns" onClick={() => setReturnOpen(true)} />
           <ActionPill icon={Percent} label="Discount" hotkey="F3" onClick={() => setDiscountOpen(true)} disabled={items.length === 0} />
           <ActionPill icon={Tag} label="Promo" onClick={() => setPromoOpen(true)} disabled={items.length === 0} />
           <ActionPill icon={Banknote} label="Petty Cash" onClick={() => setPettyCashDialog(true)} disabled={!shift} />
@@ -668,6 +670,7 @@ export function POSSalePage() {
       {/* ─── DIALOGS ────────────────────────────────────────────────── */}
       <PaymentModal open={payOpen} onClose={() => setPayOpen(false)} />
       <HeldSalesDialog open={heldOpen} onClose={() => setHeldOpen(false)} />
+      <ReturnDialog open={returnOpen} onClose={() => setReturnOpen(false)} />
       <DiscountDialog open={discountOpen} onClose={() => setDiscountOpen(false)} />
       <PromoDialog open={promoOpen} onClose={() => setPromoOpen(false)} onApply={(amount, type, promo) => {
         useCartStore.getState().setDiscount(amount, type, promo ? { id: promo.id, label: promo.name } : null);
