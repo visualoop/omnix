@@ -937,7 +937,7 @@ function ProductCard({ product, onClick }: {
             (hasMargin && !oos ? " group-hover:opacity-0" : "")
           }
         >
-          {oos ? "OUT" : `${stock}`}
+          {oos ? "OUT" : lowStock ? `${stock} LOW` : `${stock}`}
         </span>
         {hasMargin && !oos ? (
           <span
