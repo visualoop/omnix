@@ -14,7 +14,9 @@ const BASE: CSSProperties = {
   width: "100%",
   height: "100%",
   color: "currentColor",
-  opacity: 0.06,
+  // Theme-tuned opacity — read the CSS custom property so dark cream +
+  // light dark modes each get the presence they need.
+  opacity: "var(--hero-art-opacity, 0.08)" as unknown as CSSProperties["opacity"],
   pointerEvents: "none",
   // Fade the LEFT half of the art to transparent so it never sits behind
   // the stat strip (which lives in the left ~40% of the right column).

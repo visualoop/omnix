@@ -61,7 +61,7 @@ export function AppShell() {
       <div className="flex flex-col flex-1 overflow-hidden">
         {!isFullscreen && <TrialLifecycleBanner />}
         {!isFullscreen && <Topbar />}
-        <main className={isFullscreen ? "flex-1 overflow-auto" : "flex-1 overflow-auto p-6 bg-[#FBFAF6] dark:bg-background"}>
+        <main className={isFullscreen ? "flex-1 overflow-auto" : "flex-1 overflow-auto p-6 bg-background"}>
           <div key={routeKey} className={transitionClass}>
             <RouteErrorBoundary resetKey={location.pathname}>
               <Outlet />

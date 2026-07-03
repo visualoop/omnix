@@ -140,7 +140,7 @@ export function PnLPage() {
   const days = daysBetween(startDate, endDate);
 
   return (
-    <div className="bg-[#FBFAF6] dark:bg-background -m-6 min-h-[calc(100vh-48px)]">
+    <div className="bg-background -m-6 min-h-[calc(100vh-48px)]">
       {/* ─── Masthead ───────────────────────────────────── */}
       <header className="border-b border-foreground/15 px-8 md:px-14 py-4 flex items-baseline justify-between print-hide">
         <div className="font-mono text-[10px] uppercase tracking-[0.22em] text-foreground/80">

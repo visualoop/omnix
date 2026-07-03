@@ -116,7 +116,7 @@ export function DashboardPage() {
   const cashOnHand = kpis?.cash_position ?? 0;
 
   return (
-    <div className="min-h-[calc(100vh-48px)] -m-6 bg-[#FBFAF6] dark:bg-[#0a0a0a]">
+    <div className="min-h-[calc(100vh-48px)] -m-6 bg-background">
       {/* ─── Masthead ────────────────────────────────── */}
       <header className="border-b border-foreground/15 px-8 md:px-14 py-3 flex items-baseline justify-between text-foreground/80">
         <div className="flex items-baseline gap-3 font-mono text-[10px] uppercase tracking-[0.22em]">

@@ -115,7 +115,7 @@ export function POSOverviewPage() {
   });
 
   return (
-    <div className="min-h-[calc(100vh-48px)] -m-6 bg-[#FBFAF6] dark:bg-[#0a0a0a]">
+    <div className="min-h-[calc(100vh-48px)] -m-6 bg-background">
       {/* ─── Masthead ───────────────────────────────────── */}
       {/* Newspaper header. Title left, date + clock right. */}
       <header className="border-b border-foreground/15 px-8 md:px-14 py-3 flex items-baseline justify-between text-foreground/80">

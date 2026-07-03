@@ -84,7 +84,7 @@ export function SettingsLayout() {
   const backToDashboard = () => navigate("/");
 
   return (
-    <div className="-m-6 flex h-[calc(100vh-48px)] bg-[#FBFAF6] dark:bg-background">
+    <div className="-m-6 flex h-[calc(100vh-48px)] bg-background">
       {/* ─── Sidebar ─────────────────────────────────────── */}
       <aside className="w-[280px] shrink-0 border-r border-foreground/10 flex flex-col">
         {/* Header — back + masthead */}

@@ -143,6 +143,7 @@ import { ReturnsPage, NewReturnPage } from "@/pages/returns";
 import { StockTakesPage, StockTakeDetailPage } from "@/pages/stock-take";
 import { PatientProfilePage } from "@/pages/patient-profile";
 import { ModulesPage } from "@/pages/modules";
+import { AppearanceSettingsPage } from "@/pages/settings-appearance";
 import {
   HardwareDashboardPage, HardwareQuotationsPage, HardwareDeliveryNotesPage,
   HardwareAccountsPage, HardwareCommissionsPage, HardwareReportsPage,
@@ -367,6 +368,7 @@ function AppContent() {
             <Route path="insurance" element={<RequireRole permission="claims.view"><InsuranceSettingsPage /></RequireRole>} />
             <Route path="network" element={<RequireRole permission="settings.network"><NetworkSettingsPage /></RequireRole>} />
             <Route path="modules" element={<RequireRole permission="settings.modules"><ModulesPage /></RequireRole>} />
+            <Route path="appearance" element={<RequireRole permission="settings.business"><AppearanceSettingsPage /></RequireRole>} />
             <Route path="backup" element={<RequireRole permission="settings.backup"><BackupPage /></RequireRole>} />
             <Route path="cloud-backup" element={<RequireRole permission="settings.backup"><CloudBackupPage /></RequireRole>} />
             <Route path="taxes" element={<RequireRole permission="settings.business"><TaxSettingsPage /></RequireRole>} />

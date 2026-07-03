@@ -44,6 +44,7 @@ import {
   Power,
   ArrowsClockwise,
   Barcode,
+  PaintBrush,
 } from "@phosphor-icons/react";
 import type { Icon as LucideIcon } from "@phosphor-icons/react";
 import type { ModuleId } from "@/stores/active-module";
@@ -98,6 +99,7 @@ const CORE_SETTINGS: SettingsNavItem[] = [
   { to: "/settings", label: "Business profile", description: "Name, contacts, identity", icon: Building2, permission: "settings.business", group: "Business" },
   { to: "/settings/branches", label: "Locations & branches", description: "Branches and user access", icon: MapPin, permission: "settings.business", group: "Business" },
   { to: "/settings/modules", label: "Active module", description: "Which trade is running", icon: Boxes, permission: "settings.modules", group: "Business" },
+  { to: "/settings/appearance", label: "Appearance", description: "Themes and light/dark mode", icon: PaintBrush, permission: "settings.business", group: "Business" },
 
   // ── People ────────────────────────────────────────────────
   { to: "/settings/users", label: "Staff", description: "Staff accounts and branch access", icon: Users, permission: "users.view", group: "People" },
