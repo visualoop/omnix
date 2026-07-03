@@ -518,12 +518,18 @@ export function HospitalityOrdersPage() {
                     onClick={async () => { await addItem(m); loadAvailability(); }}
                     disabled={isOut}
                     className={cn(
-                      "rounded-lg border border-border p-3 text-left transition-colors",
+                      "rounded-lg border border-border p-2 text-left transition-colors flex gap-2",
                       isOut
                         ? "opacity-50 cursor-not-allowed bg-muted/30"
                         : "hover:bg-accent/30 cursor-pointer",
                     )}
                   >
+                    {m.image_path ? (
+                      <img src={m.image_path} alt="" className="h-12 w-12 rounded object-cover flex-shrink-0" />
+                    ) : (
+                      <div className="h-12 w-12 rounded bg-muted grid place-items-center text-[10px] text-muted-foreground flex-shrink-0">—</div>
+                    )}
+                    <div className="min-w-0 flex-1">
                     <div className="text-[13px] font-medium truncate">{m.menu_name}</div>
                     <div className="flex items-center justify-between mt-0.5">
                       <div className="text-[11px] text-muted-foreground font-mono">
@@ -538,6 +544,7 @@ export function HospitalityOrdersPage() {
                           Last {max}
                         </span>
                       ) : null}
+                    </div>
                     </div>
                   </button>
                 );
