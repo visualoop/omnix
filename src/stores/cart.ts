@@ -42,6 +42,7 @@ interface CartPayload {
   sourceType: "hospitality_order" | "prescription" | "layby" | "special_order" | "folio" | "hardware_quote" | null;
   sourceId: string | null;
   sourceLabel: string | null;
+  quoteMode: boolean;
   revision: number;
 }
 
@@ -65,6 +66,7 @@ function serializeCart(): CartPayload {
     sourceType: s.sourceType,
     sourceId: s.sourceId,
     sourceLabel: s.sourceLabel,
+    quoteMode: s.quoteMode,
     revision: s.revision,
   };
 }
@@ -105,6 +107,9 @@ interface CartState {
   sourceType: "hospitality_order" | "prescription" | "layby" | "special_order" | "folio" | "hardware_quote" | null;
   sourceId: string | null;
   sourceLabel: string | null;
+  /** Quote mode — POS defers the sale, stashes the cart as a hardware quotation on Save. */
+  quoteMode: boolean;
+  setQuoteMode: (b: boolean) => void;
   revision: number;
   addItem: (product: CartProduct) => void;
   addItemWithQuantity: (product: CartProduct, quantity?: number) => void;
@@ -156,9 +161,11 @@ export const useCartStore = create<CartState>()(
       sourceType: null,
       sourceId: null,
       sourceLabel: null,
+      quoteMode: false,
       revision: 0,
       taxMode: "exclusive",
       setTaxMode: (mode) => set({ taxMode: mode }),
+      setQuoteMode: (b) => set({ quoteMode: b }),
 
       addItem: (product) => get().addItemWithQuantity(product, 1),
 
@@ -318,6 +325,7 @@ export const useCartStore = create<CartState>()(
           sourceType: null,
           sourceId: null,
           sourceLabel: null,
+          quoteMode: false,
           revision: nextRevision(state),
         }));
         broadcastNow();

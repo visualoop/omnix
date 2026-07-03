@@ -73,6 +73,7 @@ import { AreaDetailPage } from "@/pages/area-detail";
 import { TableDetailPage } from "@/pages/table-detail";
 import { RoomTypeDetailPage } from "@/pages/room-type-detail";
 import { RoomDetailPage } from "@/pages/room-detail";
+import { MenuItemDetailPage } from "@/pages/menu-item-detail";
 import { BrandDetailPage } from "@/pages/brand-detail";
 import { QuotationDetailPage } from "@/pages/quotation-detail";
 import { PeripheralsPage } from "@/pages/peripherals";
@@ -459,6 +460,7 @@ function AppContent() {
           <Route path="/hospitality/dashboard" element={<RequireRole permission="hospitality.reports.view"><HospitalityDashboardPage /></RequireRole>} />
           <Route path="/hospitality/tables" element={<RequireRole permission="hospitality.tables.manage"><HospitalityTablesPage /></RequireRole>} />
           <Route path="/hospitality/menu" element={<RequireRole permission="hospitality.menu.manage"><HospitalityMenuPage /></RequireRole>} />
+          <Route path="/hospitality/menu/:id" element={<RequireRole permission="hospitality.menu.manage"><MenuItemDetailPage /></RequireRole>} />
           <Route path="/hospitality/orders" element={<RequireRole permission="hospitality.orders.take"><HospitalityOrdersPage /></RequireRole>} />
           <Route path="/hospitality/kitchen" element={<RequireRole permission="hospitality.kitchen.bump"><HospitalityKitchenPage /></RequireRole>} />
           <Route path="/hospitality/rooms" element={<RequireRole permission="hospitality.bookings.manage"><HospitalityRoomsPage /></RequireRole>} />

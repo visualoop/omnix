@@ -116,12 +116,12 @@ export function CustomerDisplayQueuePage() {
   const ready = useMemo(() => orders.filter((o) => o.status === "ready"), [orders]);
 
   return (
-    <div className="min-h-screen bg-stone-950 text-stone-100 flex flex-col">
-      <header className="px-12 py-6 flex items-center justify-between border-b border-stone-800">
+    <div className="min-h-screen bg-background text-foreground flex flex-col">
+      <header className="px-12 py-6 flex items-center justify-between border-b border-border">
         <div className="flex items-center gap-4">
           <OmnixLogo size={42} />
           <div className="leading-tight">
-            <div className="text-xs font-medium uppercase tracking-[0.22em] text-stone-400">
+            <div className="text-xs font-medium uppercase tracking-[0.22em] text-muted-foreground">
               Kitchen status
             </div>
             <div className="text-2xl font-semibold">Order board</div>
@@ -130,13 +130,13 @@ export function CustomerDisplayQueuePage() {
         <Clockface />
       </header>
 
-      <main className="flex-1 grid grid-cols-2 divide-x divide-stone-800 overflow-hidden">
+      <main className="flex-1 grid grid-cols-2 divide-x divide-border overflow-hidden">
         {/* PREPARING column */}
         <Column
           title="Preparing"
           subtitle="In the kitchen"
           accent="amber"
-          icon={<ForkKnife className="size-6 text-amber-400" weight="duotone" />}
+          icon={<ForkKnife className="size-6 text-amber-500" weight="duotone" />}
           orders={preparing}
         />
         {/* READY column */}
@@ -144,7 +144,7 @@ export function CustomerDisplayQueuePage() {
           title="Ready"
           subtitle="Please come to the counter"
           accent="emerald"
-          icon={<BellRinging className="size-6 text-emerald-400" weight="duotone" />}
+          icon={<BellRinging className="size-6 text-emerald-500" weight="duotone" />}
           orders={ready}
           pulse
         />
@@ -164,7 +164,7 @@ function Column({
   pulse?: boolean;
 }) {
   const accentBar = accent === "amber" ? "bg-amber-500" : "bg-emerald-500";
-  const accentText = accent === "amber" ? "text-amber-300" : "text-emerald-300";
+  const accentText = accent === "amber" ? "text-amber-600 dark:text-amber-400" : "text-emerald-600 dark:text-emerald-400";
   return (
     <section className="flex flex-col min-h-0 overflow-hidden">
       <div className={`h-1.5 ${accentBar}`} />
@@ -172,7 +172,7 @@ function Column({
         {icon}
         <div className="leading-tight">
           <h2 className="text-5xl font-bold tracking-tight">{title}</h2>
-          <p className="text-base text-stone-400 mt-1">{subtitle}</p>
+          <p className="text-base text-muted-foreground mt-1">{subtitle}</p>
         </div>
         <span className={`ml-auto text-3xl font-mono tabular-nums ${accentText}`}>
           {orders.length}
@@ -180,7 +180,7 @@ function Column({
       </header>
       <div className="flex-1 overflow-y-auto px-10 pb-10 grid grid-cols-1 lg:grid-cols-2 gap-4 auto-rows-min content-start">
         {orders.length === 0 ? (
-          <div className="col-span-full text-center text-stone-600 py-20 text-lg italic">
+          <div className="col-span-full text-center text-muted-foreground/70 py-20 text-lg italic">
             No orders.
           </div>
         ) : (
@@ -207,30 +207,30 @@ function OrderCard({ order, pulse }: { order: QueueOrder; pulse?: boolean }) {
   return (
     <article
       className={
-        "rounded-2xl border border-stone-800 bg-stone-900/60 px-6 py-5 flex flex-col " +
+        "rounded-2xl border border-border bg-card/60 px-6 py-5 flex flex-col " +
         (pulse ? "ring-2 ring-emerald-500/40 animate-pulse-soft" : "")
       }
     >
       <div className="flex items-baseline justify-between">
-        <div className="text-5xl font-bold font-mono tabular-nums tracking-tight text-white">
+        <div className="text-5xl font-bold font-mono tabular-nums tracking-tight text-foreground">
           {/* Last 4-5 chars of the order number, like "#00045". */}
           #{order.order_number.replace(/^ORD-/, "")}
         </div>
-        <span className="text-base text-stone-400 inline-flex items-center gap-1.5 font-mono tabular-nums">
+        <span className="text-base text-muted-foreground inline-flex items-center gap-1.5 font-mono tabular-nums">
           <Clock className="size-4 opacity-60" /> {age}m
         </span>
       </div>
-      <div className="mt-3 flex items-center justify-between text-stone-300">
+      <div className="mt-3 flex items-center justify-between text-foreground/85">
         <span className="text-xl font-medium">
           {tableText}
-          {order.party_size ? <span className="ml-2 text-sm text-stone-500 font-mono">· {order.party_size} guest{order.party_size === 1 ? "" : "s"}</span> : null}
+          {order.party_size ? <span className="ml-2 text-sm text-muted-foreground font-mono">· {order.party_size} guest{order.party_size === 1 ? "" : "s"}</span> : null}
         </span>
-        <span className="text-sm text-stone-500 font-mono tabular-nums">
+        <span className="text-sm text-muted-foreground font-mono tabular-nums">
           {order.item_count} item{order.item_count !== 1 ? "s" : ""}
         </span>
       </div>
       {order.customer_name && (
-        <div className="text-sm text-stone-500 mt-1.5 truncate">{order.customer_name}</div>
+        <div className="text-sm text-muted-foreground mt-1.5 truncate">{order.customer_name}</div>
       )}
     </article>
   );
@@ -246,8 +246,8 @@ function Clockface() {
   const date = now.toLocaleDateString([], { weekday: "long", month: "short", day: "numeric" });
   return (
     <div className="text-right leading-tight">
-      <div className="text-4xl font-mono tabular-nums text-white">{time}</div>
-      <div className="text-sm text-stone-500">{date}</div>
+      <div className="text-4xl font-mono tabular-nums text-foreground">{time}</div>
+      <div className="text-sm text-muted-foreground">{date}</div>
     </div>
   );
 }

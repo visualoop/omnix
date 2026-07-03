@@ -132,7 +132,7 @@ export function HardwareQuotationsPage() {
         eyebrow="Hardware · Quotations"
         title="Quotations"
         subtitle="Quote contractors, then convert accepted quotes straight to a sale."
-        actions={<Button size="sm" className={cn("cursor-pointer", BRAND_BTN)} onClick={() => toast.info("Use POS → Quote, or the contractor account page to build a quotation.")}><Plus className="h-3.5 w-3.5 mr-1.5" /> New quote</Button>}
+        actions={<Button size="sm" className={cn("cursor-pointer", BRAND_BTN)} onClick={() => navigate("/pos/sale?mode=quote")}><Plus className="h-3.5 w-3.5 mr-1.5" /> New quote</Button>}
       />
       {loading ? <ModuleSpinner /> : quotes.length === 0 ? (
         <ModuleEmpty icon={FileText} title="No quotations yet" hint="Build a quote from the POS or a contractor account." />

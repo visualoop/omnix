@@ -79,10 +79,132 @@ export interface MenuItem {
   image_path: string | null; allergens: string | null;
 }
 
-export async function listMenuItems(): Promise<MenuItem[]> {
+export async function listMenuItems(opts: { hide86?: boolean } = {}): Promise<MenuItem[]> {
+  const hide86 = opts.hide86 !== false; // default: hide 86'd items
   return query<MenuItem>(
-    `SELECT id, product_id, menu_name, category, station_id, dine_in_price, active, image_path, allergens
-     FROM menu_items WHERE active = 1 ORDER BY category, menu_name`,
+    `SELECT mi.id, mi.product_id, mi.menu_name, mi.category, mi.station_id, mi.dine_in_price,
+            mi.active, mi.image_path, mi.allergens
+     FROM menu_items mi
+     ${hide86 ? `LEFT JOIN menu_86s x ON x.menu_item_id = mi.id
+                 WHERE mi.active = 1
+                 AND (x.menu_item_id IS NULL OR (x.until IS NOT NULL AND x.until <= datetime('now')))`
+              : "WHERE mi.active = 1"}
+     ORDER BY mi.category, mi.menu_name`,
+  );
+}
+
+export interface MenuItemFull extends MenuItem {
+  takeaway_price: number | null;
+  prep_minutes: number | null;
+  station_name: string | null;
+}
+
+export async function getMenuItem(id: string): Promise<MenuItemFull | null> {
+  const rows = await query<MenuItemFull>(
+    `SELECT mi.id, mi.product_id, mi.menu_name, mi.category, mi.station_id, mi.dine_in_price,
+            mi.takeaway_price, mi.prep_minutes, mi.active, mi.image_path, mi.allergens,
+            ks.name AS station_name
+     FROM menu_items mi
+     LEFT JOIN kitchen_stations ks ON ks.id = mi.station_id
+     WHERE mi.id = ?1`,
+    [id],
+  );
+  return rows[0] ?? null;
+}
+
+// ─── 86 (soft-hide with expiry) ──────────────────────────────────────
+// "86" is the kitchen term for "we've run out of this tonight". Distinct
+// from active=0 (retired forever) — 86'd items auto-restore when their
+// `until` timestamp passes.
+
+export interface MenuItem86 {
+  menu_item_id: string;
+  reason: string | null;
+  until: string | null;
+  set_by: string | null;
+  set_at: string;
+}
+
+export async function get86s(): Promise<MenuItem86[]> {
+  return query<MenuItem86>(
+    `SELECT menu_item_id, reason, until, set_by, set_at FROM menu_86s
+     WHERE until IS NULL OR until > datetime('now')`,
+  );
+}
+
+export async function set86(menuItemId: string, opts: { until?: string | null; reason?: string | null } = {}): Promise<void> {
+  await assertModuleEntitled("hospitality");
+  await requirePermission("hospitality.menu.manage", { entityType: "menu_86", entityId: menuItemId });
+  await execute(
+    `INSERT INTO menu_86s (menu_item_id, reason, until) VALUES (?1, ?2, ?3)
+     ON CONFLICT(menu_item_id) DO UPDATE SET reason = excluded.reason, until = excluded.until, set_at = datetime('now')`,
+    [menuItemId, opts.reason ?? null, opts.until ?? null],
+  );
+}
+
+export async function clear86(menuItemId: string): Promise<void> {
+  await assertModuleEntitled("hospitality");
+  await requirePermission("hospitality.menu.manage", { entityType: "menu_86", entityId: menuItemId });
+  await execute(`DELETE FROM menu_86s WHERE menu_item_id = ?1`, [menuItemId]);
+}
+
+/** Common expiry helpers for the UI presets. Returns ISO datetime. */
+export function eightySixPresets() {
+  const now = new Date();
+  const at = (h: number) => {
+    const d = new Date(now); d.setHours(h, 0, 0, 0);
+    if (d <= now) d.setDate(d.getDate() + 1); // if past that hour today, next day
+    return d.toISOString();
+  };
+  const tomorrowMorning = () => {
+    const d = new Date(now); d.setDate(d.getDate() + 1); d.setHours(8, 0, 0, 0);
+    return d.toISOString();
+  };
+  const endOfWeek = () => {
+    const d = new Date(now);
+    const daysUntilSunday = (7 - d.getDay()) % 7 || 7;
+    d.setDate(d.getDate() + daysUntilSunday); d.setHours(23, 59, 59, 0);
+    return d.toISOString();
+  };
+  return [
+    { label: "After 6 pm today",     until: at(18) },
+    { label: "Tomorrow morning",     until: tomorrowMorning() },
+    { label: "End of week",          until: endOfWeek() },
+    { label: "Indefinite",           until: null },
+  ] as const;
+}
+
+export async function updateMenuItem(id: string, patch: {
+  name?: string;
+  category?: string | null;
+  stationId?: string | null;
+  dineInPrice?: number | null;
+  takeawayPrice?: number | null;
+  prepMinutes?: number | null;
+  allergens?: string | null;
+  imagePath?: string | null;
+}): Promise<void> {
+  await assertModuleEntitled("hospitality");
+  await requirePermission("hospitality.menu.manage", { entityType: "menu_item", entityId: id });
+  const set: string[] = [];
+  const params: unknown[] = [];
+  const push = (col: string, val: unknown) => {
+    params.push(val);
+    set.push(`${col} = ?${params.length}`);
+  };
+  if (patch.name !== undefined) push("menu_name", patch.name);
+  if (patch.category !== undefined) push("category", patch.category);
+  if (patch.stationId !== undefined) push("station_id", patch.stationId);
+  if (patch.dineInPrice !== undefined) push("dine_in_price", patch.dineInPrice);
+  if (patch.takeawayPrice !== undefined) push("takeaway_price", patch.takeawayPrice);
+  if (patch.prepMinutes !== undefined) push("prep_minutes", patch.prepMinutes);
+  if (patch.allergens !== undefined) push("allergens", patch.allergens);
+  if (patch.imagePath !== undefined) push("image_path", patch.imagePath);
+  if (set.length === 0) return;
+  params.push(id);
+  await execute(
+    `UPDATE menu_items SET ${set.join(", ")} WHERE id = ?${params.length}`,
+    params,
   );
 }
 
@@ -867,20 +989,20 @@ export async function listRecipes(): Promise<RecipeRow[]> {
 }
 
 export interface RecipeIngredientRow { id: string; product_id: string; product_name: string; quantity: number; unit: string; wastage_percent: number; buying_price: number; }
-export async function getRecipeForMenuItem(menuItemId: string): Promise<{ id: string; yield_quantity: number; ingredients: RecipeIngredientRow[] } | null> {
-  const [r] = await query<{ id: string; yield_quantity: number }>(
-    `SELECT id, yield_quantity FROM recipes WHERE menu_item_id = ?1 AND active = 1 LIMIT 1`, [menuItemId]);
+export async function getRecipeForMenuItem(menuItemId: string): Promise<{ id: string; yield_quantity: number; ingredients: RecipeIngredientRow[]; canvas_layout: string | null } | null> {
+  const [r] = await query<{ id: string; yield_quantity: number; canvas_layout: string | null }>(
+    `SELECT id, yield_quantity, canvas_layout FROM recipes WHERE menu_item_id = ?1 AND active = 1 LIMIT 1`, [menuItemId]);
   if (!r) return null;
   const ings = await query<RecipeIngredientRow>(
     `SELECT ri.id, ri.product_id, p.name AS product_name, ri.quantity, ri.unit, ri.wastage_percent,
             COALESCE((SELECT AVG(buying_price) FROM batches WHERE product_id = ri.product_id AND quantity > 0), 0) AS buying_price
      FROM recipe_ingredients ri JOIN products p ON p.id = ri.product_id
      WHERE ri.recipe_id = ?1 ORDER BY p.name`, [r.id]);
-  return { id: r.id, yield_quantity: r.yield_quantity, ingredients: ings };
+  return { id: r.id, yield_quantity: r.yield_quantity, ingredients: ings, canvas_layout: r.canvas_layout };
 }
 
 /** Delete existing recipe + ingredients and re-create with new set. */
-export async function replaceRecipe(menuItemId: string, yieldQty: number, ingredients: RecipeIngredientInput[]): Promise<string> {
+export async function replaceRecipe(menuItemId: string, yieldQty: number, ingredients: RecipeIngredientInput[], canvasLayout?: string | null): Promise<string> {
   await assertModuleEntitled("hospitality");
   await requirePermission("hospitality.recipes.manage", { entityType: "recipe", entityId: menuItemId });
   const existing = await query<{ id: string }>(`SELECT id FROM recipes WHERE menu_item_id = ?1`, [menuItemId]);
@@ -888,7 +1010,11 @@ export async function replaceRecipe(menuItemId: string, yieldQty: number, ingred
     await execute(`DELETE FROM recipe_ingredients WHERE recipe_id = ?1`, [r.id]);
     await execute(`DELETE FROM recipes WHERE id = ?1`, [r.id]);
   }
-  return createRecipe(menuItemId, yieldQty, ingredients);
+  const id = await createRecipe(menuItemId, yieldQty, ingredients);
+  if (canvasLayout !== undefined) {
+    await execute(`UPDATE recipes SET canvas_layout = ?1 WHERE id = ?2`, [canvasLayout, id]);
+  }
+  return id;
 }
 
 export async function recordWastage(input: {

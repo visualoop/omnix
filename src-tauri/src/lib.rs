@@ -568,6 +568,18 @@ fn run_inner() {
             sql: include_str!("../migrations/076_hospitality_party_folio.sql"),
             kind: MigrationKind::Up,
         },
+        Migration {
+            version: 77,
+            description: "Soft-86 for menu items with expiry (temporary out-of-stock)",
+            sql: include_str!("../migrations/077_menu_86s.sql"),
+            kind: MigrationKind::Up,
+        },
+        Migration {
+            version: 78,
+            description: "Visual recipe canvas layout persistence",
+            sql: include_str!("../migrations/078_recipe_canvas.sql"),
+            kind: MigrationKind::Up,
+        },
     ];
 
     tauri::Builder::default()

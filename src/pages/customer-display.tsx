@@ -301,7 +301,7 @@ export function CustomerDisplayPage() {
   // ── Payment success ──────────────────────────────────────────────
   if (paidTotal !== null) {
     return (
-      <div className="relative min-h-screen bg-stone-950 text-white flex flex-col items-center justify-center p-12 overflow-hidden">
+      <div className="relative min-h-screen bg-background text-foreground flex flex-col items-center justify-center p-12 overflow-hidden">
         {/* Atmospheric ambient glow — module-tinted */}
         <div aria-hidden className="pointer-events-none absolute inset-0">
           <div className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 h-[60vmin] w-[60vmin] rounded-full ${cfg.accentLine} opacity-20 blur-[140px]`} />
@@ -309,9 +309,9 @@ export function CustomerDisplayPage() {
         <div className="relative z-10 glass-thick rounded-glass-xl px-16 py-14 flex flex-col items-center bg-white/5 dark:bg-white/[0.02]">
           <div className={`h-1 w-24 ${cfg.accentLine} rounded-full mb-10`} />
           <CheckCircle2 className={`h-24 w-24 ${cfg.accentText}`} strokeWidth={1.5} />
-          <div className="text-2xl text-stone-400 mt-8">Paid</div>
+          <div className="text-2xl text-muted-foreground mt-8">Paid</div>
           <div className="text-7xl font-bold font-mono tabular-nums mt-2 tracking-tight">{KES(paidTotal)}</div>
-          <div className="text-xl text-stone-300 mt-8">{cfg.successMessage}</div>
+          <div className="text-xl text-foreground/75 mt-8">{cfg.successMessage}</div>
         </div>
       </div>
     );
@@ -324,7 +324,7 @@ export function CustomerDisplayPage() {
     const slide = playlist[slideIdx];
     if (slide) {
       return (
-        <div className="relative min-h-screen bg-stone-950 text-stone-200 overflow-hidden">
+        <div className="relative min-h-screen bg-background text-foreground/85 overflow-hidden">
           {slide.type === "image" ? (
             <img src={slide.url} alt="" className="absolute inset-0 h-full w-full object-cover" />
           ) : slide.type === "video" || slide.type === "iframe" ? (
@@ -336,19 +336,19 @@ export function CustomerDisplayPage() {
               allowFullScreen
             />
           ) : null}
-          <div className="absolute top-0 left-0 right-0 p-6 bg-gradient-to-b from-stone-950/80 to-transparent flex items-start justify-between">
+          <div className="absolute top-0 left-0 right-0 p-6 bg-gradient-to-b from-black/80 to-transparent flex items-start justify-between">
             <BusinessNameBadge name={businessName} />
           </div>
-          <div className="absolute bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-stone-950/90 to-transparent flex items-end justify-between">
+          <div className="absolute bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-black/90 to-transparent flex items-end justify-between">
             <OmnixBrandBlock moduleLabel={moduleLabel} size="md" />
-            <span className="font-mono text-sm text-stone-400 tabular-nums">{clock}</span>
+            <span className="font-mono text-sm text-muted-foreground tabular-nums">{clock}</span>
           </div>
         </div>
       );
     }
 
     return (
-      <div className="relative min-h-screen bg-stone-950 text-stone-200 flex flex-col items-center justify-center p-12 overflow-hidden">
+      <div className="relative min-h-screen bg-background text-foreground/85 flex flex-col items-center justify-center p-12 overflow-hidden">
         {/* Ambient module-tinted glow */}
         <div aria-hidden className="pointer-events-none absolute inset-0">
           <div className={`absolute top-[15%] left-[15%] h-[40vmin] w-[40vmin] rounded-full ${cfg.accentLine} opacity-10 blur-[160px]`} />
@@ -358,17 +358,17 @@ export function CustomerDisplayPage() {
           <div className="glass-thick rounded-glass-xl bg-white/5 dark:bg-white/[0.02] p-8 mb-2">
             <ModuleLogo moduleId={moduleId} size={120} />
           </div>
-          <h1 className="text-5xl font-bold mt-6 text-white tracking-tight">{businessName}</h1>
-          <p className="text-xl text-stone-400 mt-3">{cfg.idleSubtitle}</p>
+          <h1 className="text-5xl font-bold mt-6 text-foreground tracking-tight">{businessName}</h1>
+          <p className="text-xl text-muted-foreground mt-3">{cfg.idleSubtitle}</p>
           <div className={`mt-12 h-1 w-24 ${cfg.accentLine} rounded-full`} />
-          <div className="mt-8 text-base text-stone-500">
+          <div className="mt-8 text-base text-muted-foreground">
             {now.toLocaleDateString(intlLocale(), { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
           </div>
-          <div className="mt-1 text-3xl font-mono tabular-nums text-stone-300">{clock}</div>
+          <div className="mt-1 text-3xl font-mono tabular-nums text-foreground/75">{clock}</div>
           {privacyMode && (
-            <p className="mt-10 text-stone-500 text-sm">Privacy mode · item names hidden</p>
+            <p className="mt-10 text-muted-foreground text-sm">Privacy mode · item names hidden</p>
           )}
-          <p className="mt-8 text-stone-600 text-sm">{cfg.idleHint}</p>
+          <p className="mt-8 text-muted-foreground/70 text-sm">{cfg.idleHint}</p>
         </div>
         {/* Omnix branding — bottom-left on the idle canvas */}
         <div className="absolute bottom-6 left-6 z-10">
@@ -380,50 +380,50 @@ export function CustomerDisplayPage() {
 
   // ── Active order ─────────────────────────────────────────────────
   return (
-    <div className="min-h-screen bg-stone-950 text-stone-200 flex flex-col">
+    <div className="min-h-screen bg-background text-foreground/85 flex flex-col">
       <div className="flex-shrink-0">
         <div className={`h-1 ${cfg.accentLine}`} />
-        <div className="px-10 py-5 flex items-center justify-between border-b border-stone-800">
+        <div className="px-10 py-5 flex items-center justify-between border-b border-border">
           <div className="flex items-center gap-3">
             <BusinessNameBadge name={businessName} />
-            <div className="text-sm text-stone-500">
+            <div className="text-sm text-muted-foreground">
               {cfg.activeLabels.orderTitle}
-              {sourceLabel && <span className="ml-2 text-stone-400">· {sourceLabel}</span>}
+              {sourceLabel && <span className="ml-2 text-muted-foreground">· {sourceLabel}</span>}
             </div>
           </div>
           <div className="flex items-center gap-6">
             {hospContext?.tableCode && (
               <div className="text-right leading-tight">
-                <div className="text-[10px] font-medium uppercase tracking-[0.2em] text-stone-500">
+                <div className="text-[10px] font-medium uppercase tracking-[0.2em] text-muted-foreground">
                   Table
                 </div>
-                <div className="text-base font-medium text-stone-100">
+                <div className="text-base font-medium text-foreground">
                   {hospContext.tableCode}
                   {hospContext.tableName && hospContext.tableName !== hospContext.tableCode && (
-                    <span className="text-stone-500 ml-1.5 text-sm">· {hospContext.tableName}</span>
+                    <span className="text-muted-foreground ml-1.5 text-sm">· {hospContext.tableName}</span>
                   )}
                 </div>
               </div>
             )}
             {hospContext?.waiterName && (
               <div className="text-right leading-tight">
-                <div className="text-[10px] font-medium uppercase tracking-[0.2em] text-stone-500">
+                <div className="text-[10px] font-medium uppercase tracking-[0.2em] text-muted-foreground">
                   Server
                 </div>
-                <div className="text-base font-medium text-stone-100">{hospContext.waiterName}</div>
+                <div className="text-base font-medium text-foreground">{hospContext.waiterName}</div>
               </div>
             )}
             {customerName && (
               <div className="text-right leading-tight">
-                <div className="text-[10px] font-medium uppercase tracking-[0.2em] text-stone-500">
+                <div className="text-[10px] font-medium uppercase tracking-[0.2em] text-muted-foreground">
                   Customer
                 </div>
-                <div className="text-base font-medium text-stone-100">{customerName}</div>
+                <div className="text-base font-medium text-foreground">{customerName}</div>
               </div>
             )}
             <div className="text-right">
-              <div className="text-sm text-stone-500">{items.length} item{items.length !== 1 ? "s" : ""}</div>
-              <div className="text-base font-mono tabular-nums text-stone-400">{clock}</div>
+              <div className="text-sm text-muted-foreground">{items.length} item{items.length !== 1 ? "s" : ""}</div>
+              <div className="text-base font-mono tabular-nums text-muted-foreground">{clock}</div>
             </div>
           </div>
         </div>
@@ -441,7 +441,7 @@ export function CustomerDisplayPage() {
         ) : (
           <table className="w-full">
           <thead>
-            <tr className="border-b border-stone-800 text-sm font-semibold text-stone-500">
+            <tr className="border-b border-border text-sm font-semibold text-muted-foreground">
               <th className="text-left py-3">Item</th>
               <th className="text-right py-3 w-24">Qty</th>
               <th className="text-right py-3 w-36">Price</th>
@@ -453,19 +453,19 @@ export function CustomerDisplayPage() {
               const meta = cfg.lineMetadata?.(item);
               const img = productImages[item.product_id];
               return (
-                <tr key={item.id} className={`border-b border-stone-800/50 ${idx === items.length - 1 ? "bg-stone-900/40" : ""}`}>
+                <tr key={item.id} className={`border-b border-border/50 ${idx === items.length - 1 ? "bg-card/40" : ""}`}>
                   <td className="py-3.5">
                     <div className="flex items-center gap-4">
                       <LineThumb image={img} accent={cfg.accentLine} />
                       <div className="min-w-0">
-                        <div className="text-xl font-medium text-white truncate">{itemName(item.name)}</div>
-                        {meta && <div className="text-sm text-stone-500">{meta}</div>}
+                        <div className="text-xl font-medium text-foreground truncate">{itemName(item.name)}</div>
+                        {meta && <div className="text-sm text-muted-foreground">{meta}</div>}
                       </div>
                     </div>
                   </td>
                   <td className="py-3.5 text-right text-xl font-mono tabular-nums">{item.quantity}</td>
-                  <td className="py-3.5 text-right text-xl font-mono tabular-nums text-stone-400">{item.unit_price.toFixed(2)}</td>
-                  <td className="py-3.5 text-right text-xl font-mono tabular-nums font-semibold text-white">{(item.unit_price * item.quantity).toFixed(2)}</td>
+                  <td className="py-3.5 text-right text-xl font-mono tabular-nums text-muted-foreground">{item.unit_price.toFixed(2)}</td>
+                  <td className="py-3.5 text-right text-xl font-mono tabular-nums font-semibold text-foreground">{(item.unit_price * item.quantity).toFixed(2)}</td>
                 </tr>
               );
             })}
@@ -474,9 +474,9 @@ export function CustomerDisplayPage() {
         )}
       </div>
 
-      <div className="bg-stone-900 px-10 py-7 border-t border-stone-800 flex-shrink-0">
+      <div className="bg-card px-10 py-7 border-t border-border flex-shrink-0">
         <div className="grid grid-cols-2 gap-10 max-w-5xl mx-auto">
-          <div className="space-y-2.5 text-stone-400 text-lg self-center">
+          <div className="space-y-2.5 text-muted-foreground text-lg self-center">
             <div className="flex justify-between">
               <span>Subtotal</span>
               <span className="font-mono tabular-nums">{subtotal.toFixed(2)}</span>
@@ -501,12 +501,12 @@ export function CustomerDisplayPage() {
             )}
           </div>
           <div className="flex flex-col items-end justify-end">
-            <div className="text-stone-500 text-sm uppercase tracking-widest">{cfg.activeLabels.totalLabel}</div>
-            <div className={`text-7xl font-bold font-mono tabular-nums leading-none mt-2 text-white`}>{KES(grandTotal)}</div>
+            <div className="text-muted-foreground text-sm uppercase tracking-widest">{cfg.activeLabels.totalLabel}</div>
+            <div className={`text-7xl font-bold font-mono tabular-nums leading-none mt-2 text-foreground`}>{KES(grandTotal)}</div>
           </div>
         </div>
         {/* Omnix branding strip — our shop window on the live sale */}
-        <div className="max-w-5xl mx-auto mt-6 pt-4 border-t border-stone-800/60 flex items-center justify-between">
+        <div className="max-w-5xl mx-auto mt-6 pt-4 border-t border-border/60 flex items-center justify-between">
           <OmnixBrandBlock moduleLabel={moduleLabel} size="sm" />
         </div>
       </div>
@@ -540,13 +540,13 @@ function OmnixBrandBlock({
       <OmnixLogo size={logoSize} />
       <div className="leading-tight">
         <div className="flex items-baseline gap-2">
-          <span className={`font-semibold tracking-tight text-white ${wordmark}`}>Omnix</span>
-          <span className="text-[11px] font-medium uppercase tracking-[0.18em] text-stone-400">
+          <span className={`font-semibold tracking-tight text-foreground ${wordmark}`}>Omnix</span>
+          <span className="text-[11px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
             {moduleLabel}
           </span>
         </div>
-        <div className="text-[11px] text-stone-500">POS • Inventory • Accounting</div>
-        <div className="text-[11px] font-mono text-stone-500">{OMNIX_DOMAIN}</div>
+        <div className="text-[11px] text-muted-foreground">POS • Inventory • Accounting</div>
+        <div className="text-[11px] font-mono text-muted-foreground">{OMNIX_DOMAIN}</div>
       </div>
     </div>
   );
@@ -561,10 +561,10 @@ function BusinessNameBadge({ name }: { name: string }) {
   if (!name || name === "Omnix") return null;
   return (
     <div className="leading-tight">
-      <div className="text-[10px] font-medium uppercase tracking-[0.2em] text-stone-500">
+      <div className="text-[10px] font-medium uppercase tracking-[0.2em] text-muted-foreground">
         Welcome to
       </div>
-      <div className="text-base font-semibold text-white">{name}</div>
+      <div className="text-base font-semibold text-foreground">{name}</div>
     </div>
   );
 }
@@ -580,7 +580,7 @@ function LineThumb({ image, accent }: { image: string | null | undefined; accent
   const ringClass = accent.replace(/^bg-/, "ring-").replace(/\/\d+$/, "/40");
   if (image) {
     return (
-      <div className={`h-14 w-14 shrink-0 rounded-md overflow-hidden ring-1 ${ringClass} bg-stone-900`}>
+      <div className={`h-14 w-14 shrink-0 rounded-md overflow-hidden ring-1 ${ringClass} bg-card`}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={image}
@@ -592,8 +592,8 @@ function LineThumb({ image, accent }: { image: string | null | undefined; accent
     );
   }
   return (
-    <div className={`h-14 w-14 shrink-0 rounded-md grid place-items-center ring-1 ${ringClass} bg-stone-900/60`}>
-      <Package className="size-7 text-stone-500" strokeWidth={1.25} />
+    <div className={`h-14 w-14 shrink-0 rounded-md grid place-items-center ring-1 ${ringClass} bg-card/60`}>
+      <Package className="size-7 text-muted-foreground" strokeWidth={1.25} />
     </div>
   );
 }
@@ -633,13 +633,13 @@ function HospitalityItemList({
     <div className="space-y-7">
       {Array.from(buckets.entries()).map(([course, lines]) => (
         <section key={course}>
-          <header className="flex items-baseline justify-between border-b border-stone-800 pb-2 mb-3">
-            <h3 className="text-[11px] font-semibold uppercase tracking-[0.22em] text-stone-400">{course}</h3>
-            <span className="text-[11px] font-mono tabular-nums text-stone-500">
+          <header className="flex items-baseline justify-between border-b border-border pb-2 mb-3">
+            <h3 className="text-[11px] font-semibold uppercase tracking-[0.22em] text-muted-foreground">{course}</h3>
+            <span className="text-[11px] font-mono tabular-nums text-muted-foreground">
               {lines.length} item{lines.length !== 1 ? "s" : ""}
             </span>
           </header>
-          <ul className="divide-y divide-stone-800/60">
+          <ul className="divide-y divide-border/60">
             {lines.map((line) => {
               const cartMatch = cartItems.find((c) => c.name === line.name);
               const img = cartMatch ? images[cartMatch.product_id] : null;
@@ -650,18 +650,18 @@ function HospitalityItemList({
                   <LineThumb image={img} accent={accent} />
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2.5">
-                      <span className="text-xl font-medium text-white truncate">{itemName(line.name)}</span>
+                      <span className="text-xl font-medium text-foreground truncate">{itemName(line.name)}</span>
                       <KotStatusChip status={line.status} />
                     </div>
                     {line.station_name && (
-                      <div className="text-xs text-stone-500 mt-0.5">{line.station_name}</div>
+                      <div className="text-xs text-muted-foreground mt-0.5">{line.station_name}</div>
                     )}
                   </div>
                   <div className="text-right">
-                    <div className="text-xl font-mono tabular-nums text-stone-300">×{line.quantity}</div>
+                    <div className="text-xl font-mono tabular-nums text-foreground/75">×{line.quantity}</div>
                     {total != null && (
-                      <div className="text-sm font-mono tabular-nums text-stone-500">
-                        {unit?.toFixed(2)} · <span className="text-stone-300 font-semibold">{total.toFixed(2)}</span>
+                      <div className="text-sm font-mono tabular-nums text-muted-foreground">
+                        {unit?.toFixed(2)} · <span className="text-foreground/75 font-semibold">{total.toFixed(2)}</span>
                       </div>
                     )}
                   </div>
@@ -682,11 +682,11 @@ function HospitalityItemList({
  */
 function KotStatusChip({ status }: { status: KotItemStatus }) {
   const map: Record<KotItemStatus, { label: string; cls: string; pulse?: boolean }> = {
-    new:        { label: "Queued",    cls: "bg-stone-700/40 text-stone-300 ring-stone-600/60" },
+    new:        { label: "Queued",    cls: "bg-muted/40 text-foreground/75 ring-muted-foreground/30" },
     sent:       { label: "In kitchen", cls: "bg-amber-500/15 text-amber-200 ring-amber-500/40" },
     preparing:  { label: "Cooking",   cls: "bg-amber-500/20 text-amber-100 ring-amber-400/60", pulse: true },
     ready:      { label: "Ready",     cls: "bg-emerald-500/25 text-emerald-100 ring-emerald-400/70", pulse: true },
-    served:     { label: "Served",    cls: "bg-stone-800/60 text-stone-500 ring-stone-700" },
+    served:     { label: "Served",    cls: "bg-muted/60 text-muted-foreground ring-muted-foreground/40" },
     voided:     { label: "Cancelled", cls: "bg-rose-500/15 text-rose-200 ring-rose-500/40" },
   };
   const v = map[status];

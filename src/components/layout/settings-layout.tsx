@@ -22,11 +22,18 @@ import {
   ArrowLeft,
   MagnifyingGlass as Search,
   X,
+  Pill,
+  Storefront,
+  ForkKnife,
+  Wrench,
+  Sparkle,
 } from "@phosphor-icons/react";
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { useAuthStore } from "@/stores/auth";
 import { useActiveModule } from "@/stores/active-module";
+import { BRAND } from "@/lib/brand";
+import { VARIANT, VARIANT_ACCENT, IS_PRO } from "@/lib/variant";
 import { hasPermission } from "@/lib/permissions";
 import {
   settingsRegistry,
@@ -169,6 +176,11 @@ export function SettingsLayout() {
             })
           )}
         </nav>
+
+        {/* Footer — module identity + Powered by Omnix + version pill.
+         *  Sits at the bottom of the sidebar so people always know which
+         *  binary + which build they're on. Hidden on Pro (redundant). */}
+        <SettingsSidebarFooter />
       </aside>
 
       {/* ─── Content ─────────────────────────────────────── */}
@@ -203,6 +215,73 @@ interface SidebarRowProps {
   item: import("@/lib/settings-registry").SettingsNavItem;
   /** When set, shown as a subtle group hint (used in search results). */
   groupLabel?: string;
+}
+
+/**
+ * Sidebar footer — module logo + variant name + "Powered by Omnix" +
+ * version pill. Grounds the settings surface with a persistent
+ * identity strip so the operator always knows which module they're
+ * looking at and which build they're on.
+ */
+declare const __APP_VERSION__: string;
+
+function moduleIconFor(moduleId: string, size = 20) {
+  const style = { color: VARIANT_ACCENT };
+  const cls = "shrink-0";
+  switch (moduleId) {
+    case "dawa":
+      return <Pill className={cls} size={size} weight="fill" style={style} />;
+    case "retail":
+      return <Storefront className={cls} size={size} weight="fill" style={style} />;
+    case "hospitality":
+      return <ForkKnife className={cls} size={size} weight="fill" style={style} />;
+    case "hardware":
+      return <Wrench className={cls} size={size} weight="fill" style={style} />;
+    default:
+      return <Sparkle className={cls} size={size} weight="fill" style={style} />;
+  }
+}
+
+function SettingsSidebarFooter() {
+  const activeModule = useActiveModule((s) => s.active);
+  const moduleId = VARIANT === "pro" ? activeModule : VARIANT;
+  const version = (typeof __APP_VERSION__ !== "undefined" && __APP_VERSION__) || "";
+  const navigate = useNavigate();
+  return (
+    <div className="border-t border-foreground/10 px-4 py-3 mt-auto">
+      <div className="flex items-center gap-2.5">
+        <div
+          className="size-9 rounded-lg grid place-items-center shrink-0"
+          style={{ background: `${VARIANT_ACCENT}14` }}
+        >
+          {moduleIconFor(moduleId, 20)}
+        </div>
+        <div className="min-w-0 flex-1">
+          <div
+            style={{ fontFamily: "var(--font-display, serif)" }}
+            className="text-[13px] font-medium leading-tight truncate"
+          >
+            {BRAND.name}
+          </div>
+          {!IS_PRO ? (
+            <div className="text-[10px] text-muted-foreground/80 truncate">
+              Powered by {BRAND.parentBrand}
+            </div>
+          ) : null}
+        </div>
+      </div>
+      {version ? (
+        <button
+          type="button"
+          onClick={() => navigate("/settings/updates")}
+          title="View update settings"
+          className="mt-2 inline-flex items-center gap-1 rounded-full border border-foreground/10 px-2 py-0.5 text-[10px] font-mono text-muted-foreground hover:bg-foreground/[0.04] hover:text-foreground transition-colors"
+        >
+          <span className="opacity-60">v</span>{version}
+        </button>
+      ) : null}
+    </div>
+  );
 }
 
 function SidebarRow({ item, groupLabel }: SidebarRowProps) {

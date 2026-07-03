@@ -46,6 +46,7 @@ import {
 } from "@/services/pos-helpers";
 import { getOpenShift, type CashShift } from "@/services/accounting";
 import { PaymentModal } from "@/components/pos/payment-modal";
+import { SaveQuoteSheet } from "@/components/pos/save-quote-sheet";
 import { InteractionAlerts } from "@/components/pos/interaction-alerts";
 import { HeldSalesDialog } from "@/components/pos/held-sales";
 import { ReturnDialog } from "@/components/pos/return-dialog";
@@ -62,7 +63,7 @@ import { openCustomerDisplay } from "@/lib/customer-display";
 import { countHeldSales } from "@/services/held-sales";
 import { categoryColor } from "@/lib/category-colors";
 import { VARIANT_ACCENT } from "@/lib/variant";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { money as KES } from "@/lib/money";
 import { useCountry } from "@/stores/country";
 import { pharmacyTerm } from "@/lib/locale";
@@ -121,6 +122,7 @@ function useModuleAccent() {
 
 export function POSSalePage() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const accent = useModuleAccent();
   const countryCode = useCountry((s) => s.code);
   const [search, setSearch] = useState("");
@@ -167,6 +169,8 @@ export function POSSalePage() {
     serviceChargeAmount,
     sourceType,
     sourceLabel,
+    quoteMode,
+    setQuoteMode,
     taxMode,
     setTaxMode,
   } = useCartStore(useShallow((s) => ({
@@ -186,6 +190,8 @@ export function POSSalePage() {
     serviceChargeAmount: s.serviceChargeAmount,
     sourceType: s.sourceType,
     sourceLabel: s.sourceLabel,
+    quoteMode: s.quoteMode,
+    setQuoteMode: s.setQuoteMode,
     taxMode: s.taxMode,
     setTaxMode: s.setTaxMode,
   })));
@@ -218,6 +224,15 @@ export function POSSalePage() {
     });
   }, [user?.id]);
 
+  // Sync ?mode=quote from URL with the cart-store quote flag. Land-on
+  // and page-refresh both flip the flag; toggling in the ribbon also
+  // updates the URL so a shared link would reproduce the mode.
+  useEffect(() => {
+    const wantsQuote = searchParams.get("mode") === "quote";
+    if (wantsQuote !== quoteMode) setQuoteMode(wantsQuote);
+  }, [searchParams, quoteMode, setQuoteMode]);
+
+  const [saveQuoteOpen, setSaveQuoteOpen] = useState(false);
   // Refresh today's stats whenever a sale completes (payOpen closes)
   useEffect(() => {
     if (!payOpen) {
@@ -402,6 +417,37 @@ export function POSSalePage() {
 
   return (
     <div className="flex flex-col h-screen w-full overflow-hidden bg-muted/30">
+      {/* Quote mode ribbon — makes the mode unmissable and lets the
+          operator back out to normal POS or straight to the quotations list. */}
+      {quoteMode ? (
+        <div className="flex items-center gap-3 px-5 py-1.5 text-[12px] bg-amber-500/15 border-b border-amber-500/30 text-amber-950 dark:text-amber-200 flex-shrink-0">
+          <span className="inline-flex items-center gap-1.5 font-medium">
+            <span className="inline-block h-1.5 w-1.5 rounded-full bg-amber-500 animate-pulse" />
+            Quotation mode
+          </span>
+          <span className="text-amber-900/70 dark:text-amber-200/70">
+            nothing will be sold — you'll save a quote instead
+          </span>
+          <div className="ml-auto flex items-center gap-1">
+            <button
+              onClick={() => {
+                setQuoteMode(false);
+                setSearchParams((p) => { p.delete("mode"); return p; });
+              }}
+              className="rounded-md px-2 py-0.5 hover:bg-amber-500/20 transition-colors font-medium"
+            >
+              Exit
+            </button>
+            <button
+              onClick={() => navigate("/hardware/quotations")}
+              className="rounded-md px-2 py-0.5 hover:bg-amber-500/20 transition-colors"
+            >
+              All quotes →
+            </button>
+          </div>
+        </div>
+      ) : null}
+
       {/* ─── TOP STATUS BAR ─────────────────────────────────────────── */}
       <div className={`${accent.headerBg} text-white flex-shrink-0 shadow-md shadow-black/10`}>
         <div className="px-5 py-2.5 flex items-center gap-5 text-xs">
@@ -661,7 +707,8 @@ export function POSSalePage() {
             onPark={() => setHeldOpen(true)}
             onDiscount={() => setDiscountOpen(true)}
             onTip={() => setTipDialog(true)}
-            onPay={() => setPayOpen(true)}
+            onPay={() => (quoteMode ? setSaveQuoteOpen(true) : setPayOpen(true))}
+            quoteMode={quoteMode}
             onClear={clear}
           />
         </div>
@@ -669,6 +716,7 @@ export function POSSalePage() {
 
       {/* ─── DIALOGS ────────────────────────────────────────────────── */}
       <PaymentModal open={payOpen} onClose={() => setPayOpen(false)} />
+      <SaveQuoteSheet open={saveQuoteOpen} onClose={() => setSaveQuoteOpen(false)} />
       <HeldSalesDialog open={heldOpen} onClose={() => setHeldOpen(false)} />
       <ReturnDialog open={returnOpen} onClose={() => setReturnOpen(false)} />
       <DiscountDialog open={discountOpen} onClose={() => setDiscountOpen(false)} />
@@ -987,6 +1035,7 @@ function CartPanel({
   taxMode, setTaxMode,
   onRemoveItem, onUpdateQty, onSubFor,
   onPark, onDiscount, onTip, onPay,
+  quoteMode,
 }: any) {
   return (
     <>
@@ -1150,7 +1199,7 @@ function CartPanel({
           onClick={onPay}
         >
           <Zap className="h-5 w-5 mr-2" />
-          Pay {grandTotal > 0 && KES(grandTotal)}
+          {quoteMode ? "Save quote" : "Pay"} {grandTotal > 0 && KES(grandTotal)}
           <kbd className="text-[11px] opacity-80 ml-auto font-mono">F4</kbd>
         </Button>
         {!shift && items.length > 0 && (

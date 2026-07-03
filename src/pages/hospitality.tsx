@@ -21,6 +21,7 @@ import {
   Sparkle as Sparkles,
 } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
@@ -35,6 +36,7 @@ import {
   listBookings, createBooking, checkIn, checkOut, folioBalance, postFolioPayment,
   listRecipes, recipeCost, restaurantReport, hotelReport,
   menuAvailability, type MenuAvailability,
+  get86s, type MenuItem86,
   type DiningArea, type DiningTable, type MenuItem,
   type HospitalityOrder, type HospitalityOrderItem,
   type RoomType, type Room, type Booking, type RecipeRow,
@@ -232,8 +234,18 @@ export function HospitalityMenuPage() {
   const [loading, setLoading] = useState(true);
   const [itemDialog, setItemDialog] = useState(false);
   const [recipeMenu, setRecipeMenu] = useState<{ id: string; name: string } | null>(null);
+  const [search, setSearch] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState<string | null>(null);
+  const [eightySixed, setEightySixed] = useState<MenuItem86[]>([]);
+  const navigate = useNavigate();
 
-  const load = () => { setLoading(true); listMenuItems().then(setItems).finally(() => setLoading(false)); };
+  const load = () => {
+    setLoading(true);
+    Promise.all([
+      listMenuItems({ hide86: false }),
+      get86s(),
+    ]).then(([m, s]) => { setItems(m); setEightySixed(s); }).finally(() => setLoading(false));
+  };
   useEffect(() => { load(); }, []);
 
   const handleSubmit = async (v: MenuItemFormValues) => {
@@ -254,6 +266,14 @@ export function HospitalityMenuPage() {
 
   if (loading) return <CenterSpin />;
 
+  const categories = Array.from(new Set(items.map((i) => i.category).filter(Boolean))) as string[];
+  const filtered = items.filter((i) => {
+    if (search && !i.menu_name.toLowerCase().includes(search.toLowerCase()) && !(i.category ?? "").toLowerCase().includes(search.toLowerCase())) return false;
+    if (categoryFilter && i.category !== categoryFilter) return false;
+    return true;
+  });
+  const eightySixedIds = new Set(eightySixed.map((x) => x.menu_item_id));
+
   return (
     <div>
       <PageHead
@@ -262,6 +282,50 @@ export function HospitalityMenuPage() {
         subtitle="Dishes, categories, and prices."
         action={<Button size="sm" className={cn("cursor-pointer", BRAND_BTN)} onClick={() => setItemDialog(true)}><Plus className="h-3.5 w-3.5 mr-1" /> Menu item</Button>}
       />
+
+      {/* Search + category filter */}
+      <div className="flex flex-wrap items-center gap-2 mb-3">
+        <Input
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Search menu items…"
+          className="h-8 text-xs max-w-[240px]"
+        />
+        {categories.length > 0 ? (
+          <div className="flex flex-wrap items-center gap-1">
+            <button
+              onClick={() => setCategoryFilter(null)}
+              className={cn(
+                "text-[11px] px-2 py-0.5 rounded-full border transition-colors",
+                categoryFilter === null
+                  ? "border-foreground/30 bg-foreground/[0.06] text-foreground"
+                  : "border-border text-muted-foreground hover:text-foreground",
+              )}
+            >
+              All
+            </button>
+            {categories.map((c) => (
+              <button
+                key={c}
+                onClick={() => setCategoryFilter(c)}
+                className={cn(
+                  "text-[11px] px-2 py-0.5 rounded-full border transition-colors",
+                  categoryFilter === c
+                    ? "border-foreground/30 bg-foreground/[0.06] text-foreground"
+                    : "border-border text-muted-foreground hover:text-foreground",
+                )}
+              >
+                {c}
+              </button>
+            ))}
+          </div>
+        ) : null}
+        <div className="ml-auto text-[11px] text-muted-foreground font-mono tabular-nums">
+          {filtered.length} of {items.length}
+          {eightySixed.length > 0 ? <span className="ml-2 text-rose-600">· {eightySixed.length} 86'd</span> : null}
+        </div>
+      </div>
+
       <MenuItemDialog open={itemDialog} onClose={() => setItemDialog(false)} onSubmit={handleSubmit} />
       {recipeMenu && (
         <RecipeDialog
@@ -271,8 +335,8 @@ export function HospitalityMenuPage() {
           menuItemName={recipeMenu.name}
         />
       )}
-      {items.length === 0 ? (
-        <EmptyHint text="No menu items yet." />
+      {filtered.length === 0 ? (
+        <EmptyHint text={search || categoryFilter ? "No items match this filter." : "No menu items yet."} />
       ) : (
         <div className="border border-border rounded-lg overflow-hidden">
           <table className="w-full text-[13px]">
@@ -286,8 +350,15 @@ export function HospitalityMenuPage() {
               </tr>
             </thead>
             <tbody>
-              {items.map((m) => (
-                <tr key={m.id} className="border-t border-border hover:bg-accent/30 transition-colors">
+              {filtered.map((m) => (
+                <tr
+                  key={m.id}
+                  className={cn(
+                    "border-t border-border hover:bg-accent/30 transition-colors cursor-pointer",
+                    eightySixedIds.has(m.id) ? "opacity-70" : "",
+                  )}
+                  onClick={() => navigate(`/hospitality/menu/${m.id}`)}
+                >
                   <td className="px-3 py-2 font-medium">
                     <div className="flex items-center gap-2">
                       {m.image_path ? (
@@ -296,12 +367,15 @@ export function HospitalityMenuPage() {
                         <div className="h-8 w-8 rounded bg-muted grid place-items-center text-[10px] text-muted-foreground">—</div>
                       )}
                       <span>{m.menu_name}</span>
+                      {eightySixedIds.has(m.id) ? (
+                        <Badge variant="outline" className="bg-rose-500/10 text-rose-600 border-rose-500/30 text-[10px] uppercase tracking-wide">86</Badge>
+                      ) : null}
                     </div>
                   </td>
                   <td className="px-3 py-2 text-muted-foreground">{m.category ?? "—"}</td>
                   <td className="px-3 py-2 text-right font-mono tabular-nums">{m.dine_in_price != null ? KES(m.dine_in_price) : "—"}</td>
                   <td className="px-3 py-2 text-right">
-                    <button onClick={() => toggle(m)} className="cursor-pointer">
+                    <button onClick={(e) => { e.stopPropagation(); toggle(m); }} className="cursor-pointer">
                       <Badge variant="outline" className={cn("text-[10px]", m.active ? "bg-emerald-500/10 text-emerald-600" : "text-muted-foreground")}>
                         {m.active ? "Active" : "Hidden"}
                       </Badge>
@@ -309,7 +383,7 @@ export function HospitalityMenuPage() {
                   </td>
                   <td className="px-3 py-2 text-right">
                     <button
-                      onClick={() => setRecipeMenu({ id: m.id, name: m.menu_name })}
+                      onClick={(e) => { e.stopPropagation(); setRecipeMenu({ id: m.id, name: m.menu_name }); }}
                       className="text-[11px] text-primary hover:underline"
                     >
                       Recipe
@@ -352,14 +426,16 @@ export function HospitalityOrdersPage() {
   const [showRoomPicker, setShowRoomPicker] = useState(false);
   const [chargingRoom, setChargingRoom] = useState<string | null>(null);
   const [availability, setAvailability] = useState<Map<string, MenuAvailability>>(new Map());
+  const [eightySixMap, setEightySixMap] = useState<Set<string>>(new Set());
 
   const loadOrders = () => listActiveOrders().then(setOrders);
   const loadAvailability = () => menuAvailability().then(setAvailability).catch(() => setAvailability(new Map()));
   useEffect(() => {
     Promise.all([
       loadOrders(),
-      listMenuItems().then(setMenu),
+      listMenuItems({ hide86: false }).then(setMenu),
       loadAvailability(),
+      get86s().then((rows) => setEightySixMap(new Set(rows.map((r) => r.menu_item_id)))),
     ]).finally(() => setLoading(false));
   }, []);
   useEffect(() => { if (selected) listOrderItems(selected).then(setItems); else setItems([]); }, [selected]);
@@ -512,14 +588,16 @@ export function HospitalityOrdersPage() {
                 const max = av?.max_servings ?? Infinity;
                 const isOut = max === 0;
                 const isLow = max !== Infinity && max > 0 && max <= 3;
+                const is86 = eightySixMap.has(m.id);
+                const disabled = isOut || is86;
                 return (
                   <button
                     key={m.id}
                     onClick={async () => { await addItem(m); loadAvailability(); }}
-                    disabled={isOut}
+                    disabled={disabled}
                     className={cn(
                       "rounded-lg border border-border p-2 text-left transition-colors flex gap-2",
-                      isOut
+                      disabled
                         ? "opacity-50 cursor-not-allowed bg-muted/30"
                         : "hover:bg-accent/30 cursor-pointer",
                     )}
@@ -530,7 +608,12 @@ export function HospitalityOrdersPage() {
                       <div className="h-12 w-12 rounded bg-muted grid place-items-center text-[10px] text-muted-foreground flex-shrink-0">—</div>
                     )}
                     <div className="min-w-0 flex-1">
-                    <div className="text-[13px] font-medium truncate">{m.menu_name}</div>
+                    <div className="text-[13px] font-medium truncate flex items-center gap-1.5">
+                      {m.menu_name}
+                      {is86 ? (
+                        <span className="text-[9px] px-1 py-0.5 rounded bg-rose-500/15 text-rose-600 border border-rose-500/30 font-mono uppercase tracking-wide">86</span>
+                      ) : null}
+                    </div>
                     <div className="flex items-center justify-between mt-0.5">
                       <div className="text-[11px] text-muted-foreground font-mono">
                         {m.dine_in_price != null ? KES(m.dine_in_price) : "—"}

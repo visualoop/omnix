@@ -17,10 +17,100 @@
  * the OS. The buttons opt out via their own click handlers.
  */
 import { useEffect, useState } from "react";
-import { Minus, Square, X, CopySimple } from "@phosphor-icons/react";
+import { useLocation } from "react-router-dom";
+import { Minus, Square, X, CopySimple, Pill, Storefront, ForkKnife, Wrench, Sparkle } from "@phosphor-icons/react";
 import { cn } from "@/lib/utils";
+import { BRAND } from "@/lib/brand";
+import { VARIANT, VARIANT_ACCENT } from "@/lib/variant";
+import { useActiveModule } from "@/stores/active-module";
 
 const H = 32; // matches Windows default titlebar height
+
+/**
+ * Route → human label map for the titlebar.
+ *
+ * Only the first path segment is looked up (so /hospitality/menu/abc
+ * and /hospitality both resolve to "Hospitality").
+ */
+const ROUTE_LABEL_MAP: Record<string, string> = {
+  "": "Dashboard",
+  "dashboard": "Dashboard",
+  "hospitality": "Hospitality",
+  "pos": "POS",
+  "inventory": "Inventory",
+  "products": "Products",
+  "customers": "Customers",
+  "suppliers": "Suppliers",
+  "purchase-orders": "Purchase Orders",
+  "sales-history": "Sales",
+  "sales": "Sales",
+  "reports": "Reports",
+  "insights": "Insights",
+  "settings": "Settings",
+  "invoicing": "Invoicing",
+  "expenses": "Expenses",
+  "banking": "Banking",
+  "petty-cash": "Petty Cash",
+  "receivables": "Receivables",
+  "stock-transfers": "Transfers",
+  "stock-take": "Stock Take",
+  "returns": "Returns",
+  "employees": "Employees",
+  "users": "Users",
+  "audit-log": "Audit Log",
+  "etims-queue": "eTIMS Queue",
+  "prescriptions": "Prescriptions",
+  "refills": "Refills",
+  "claims": "Claims",
+  "brands": "Brands",
+  "laybys": "Laybys",
+  "special-orders": "Special Orders",
+  "shrinkage": "Shrinkage",
+  "hardware": "Hardware",
+  "quotations": "Quotations",
+  "delivery-notes": "Delivery Notes",
+  "contractors": "Contractors",
+  "ai": "AI",
+  "hub": "Hub",
+  "hub-modules": "Modules",
+  "hub-inventory": "Inventory Hub",
+  "hub-sales": "Sales Hub",
+  "hub-people": "People Hub",
+  "hub-finance": "Finance Hub",
+  "hub-operations": "Operations Hub",
+};
+
+function routeLabelFromPath(pathname: string): string {
+  const seg = pathname.split("/").filter(Boolean)[0] ?? "";
+  return ROUTE_LABEL_MAP[seg] ?? "";
+}
+
+/**
+ * Icon for the currently-active module. Trade variants pick from VARIANT;
+ * Pro reads the useActiveModule store so switching modules refreshes.
+ */
+function ModuleIcon({ moduleId, size = 14 }: { moduleId: string; size?: number }) {
+  const cls = "shrink-0";
+  const style = { color: VARIANT_ACCENT };
+  switch (moduleId) {
+    case "dawa":
+      return <Pill className={cls} size={size} weight="fill" style={style} />;
+    case "retail":
+      return <Storefront className={cls} size={size} weight="fill" style={style} />;
+    case "hospitality":
+      return <ForkKnife className={cls} size={size} weight="fill" style={style} />;
+    case "hardware":
+      return <Wrench className={cls} size={size} weight="fill" style={style} />;
+    default:
+      return <Sparkle className={cls} size={size} weight="fill" style={style} />;
+  }
+}
+
+/** Resolves the module id to render, whether trade-locked or Pro-active. */
+function useCurrentModuleId(): string {
+  const active = useActiveModule((s) => s.active);
+  return VARIANT === "pro" ? active : VARIANT;
+}
 
 type WinApi = {
   minimize: () => Promise<void>;
@@ -102,8 +192,16 @@ export function WindowTitlebar({ title, hidden, extras }: Props) {
       )}
       style={{ height: H }}
     >
-      {/* Left — spacer so title stays centered when there's no logo yet */}
-      <div className="w-24 shrink-0" data-tauri-drag-region />
+      {/* Left — module identity: [icon] BRAND.name · <route label>.
+       *  Keeps drag region — the buttons/routing target only fires on
+       *  the button itself.
+       *  When the caller passes a `title` (e.g. KDS / customer display),
+       *  the module block is hidden to keep those windows compact. */}
+      {title ? (
+        <div className="w-24 shrink-0" data-tauri-drag-region />
+      ) : (
+        <ModuleIdentity />
+      )}
 
       {/* Centre — title (optional). Draggable. */}
       <div
@@ -145,6 +243,36 @@ export function WindowTitlebar({ title, hidden, extras }: Props) {
           </div>
         ) : null}
       </div>
+    </div>
+  );
+}
+
+/**
+ * Left-side module identity block on the custom titlebar.
+ * Shows the variant/module icon (tinted with the variant accent) then
+ * the product name + current top-level route label.
+ */
+function ModuleIdentity() {
+  const location = useLocation();
+  const moduleId = useCurrentModuleId();
+  const routeLabel = routeLabelFromPath(location.pathname);
+  return (
+    <div
+      data-tauri-drag-region
+      className="flex items-center gap-2 pl-3 pr-2 shrink-0 min-w-[180px]"
+    >
+      <ModuleIcon moduleId={moduleId} size={14} />
+      <span className="text-[11px] font-medium tracking-wide text-foreground/85 truncate">
+        {BRAND.name}
+      </span>
+      {routeLabel ? (
+        <>
+          <span className="text-[11px] text-muted-foreground/70">·</span>
+          <span className="text-[11px] text-muted-foreground truncate">
+            {routeLabel}
+          </span>
+        </>
+      ) : null}
     </div>
   );
 }

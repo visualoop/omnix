@@ -260,6 +260,43 @@ const RULES = [
       return hits
     },
   },
+  {
+    // toast.info("Use /pos/sale to …") + friends. Whenever a UI hint
+    // points at another page, that's a redirect (or a sheet) waiting
+    // to happen — don't tell the user to navigate, take them there.
+    id: 'ui.toast.route-hint',
+    label: 'Toast referencing a route path — use navigate() or a Sheet instead of a toast hint',
+    severity: 'warning',
+    extensions: ['.ts', '.tsx'],
+    test(text) {
+      const hits = []
+      const re = /toast\.(info|warning|success)\(\s*["'`]([^"'`]*(?:Use|Go to|Head to|From|Try|Open)[^"'`]*\/(?:\w[\w-]*)[^"'`]*)["'`]/g
+      for (const m of text.matchAll(re)) {
+        const line = text.slice(0, m.index).split('\n').length
+        hits.push({ kind: `toast.${m[1]}`, snippet: trim(m[2].slice(0, 80)), line })
+      }
+      return hits
+    },
+  },
+  {
+    // Customer-display + KDS surfaces used to hardcode `bg-stone-*` for
+    // a "dark customer wall". Now every palette has its own dark axis;
+    // hardcoded stone-* ignores the operator's theme choice.
+    id: 'ui.display.hardcoded-stone',
+    label: 'Customer-display / order-board hardcoding stone-* — use theme tokens (bg-background, text-foreground, bg-card, bg-muted, border-border, text-muted-foreground)',
+    severity: 'error',
+    extensions: ['.tsx'],
+    pathFilter: (p) => /pages\/(customer-display|kitchen-display)/.test(p),
+    test(text) {
+      const hits = []
+      const re = /\b(?:bg|text|border|divide|ring)-stone-\d+/g
+      for (const m of text.matchAll(re)) {
+        const line = text.slice(0, m.index).split('\n').length
+        hits.push({ kind: 'hardcoded-stone', snippet: m[0], line })
+      }
+      return hits
+    },
+  },
 ]
 
 /* ────────────────────────────────────────────────────────────────── *
@@ -534,6 +571,7 @@ for (const file of files) {
   const text = readFileSync(file, 'utf8')
   for (const rule of RULES) {
     if (!rule.extensions.some((e) => file.endsWith(e))) continue
+    if (rule.pathFilter && !rule.pathFilter(file)) continue
     const hits = rule.test(text, file)
     if (hits.length) findings.push({ file: rel, rule: rule.id, severity: rule.severity, label: rule.label, hits })
   }
