@@ -45,6 +45,7 @@ import { useCartStore } from "@/stores/cart";
 import { query } from "@/lib/db";
 import { confirm } from "@/components/ui/confirm-dialog";
 import { MenuItemDialog, type MenuItemFormValues } from "@/components/hospitality/menu-item-dialog";
+import { RecipeDialog } from "@/components/hospitality/recipe-dialog";
 import { CompactFormDialog } from "@/components/hospitality/compact-form-dialog";
 import { useNavigate } from "react-router-dom";
 import { money as KES } from "@/lib/money";
@@ -230,6 +231,7 @@ export function HospitalityMenuPage() {
   const [items, setItems] = useState<MenuItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [itemDialog, setItemDialog] = useState(false);
+  const [recipeMenu, setRecipeMenu] = useState<{ id: string; name: string } | null>(null);
 
   const load = () => { setLoading(true); listMenuItems().then(setItems).finally(() => setLoading(false)); };
   useEffect(() => { load(); }, []);
@@ -261,6 +263,14 @@ export function HospitalityMenuPage() {
         action={<Button size="sm" className={cn("cursor-pointer", BRAND_BTN)} onClick={() => setItemDialog(true)}><Plus className="h-3.5 w-3.5 mr-1" /> Menu item</Button>}
       />
       <MenuItemDialog open={itemDialog} onClose={() => setItemDialog(false)} onSubmit={handleSubmit} />
+      {recipeMenu && (
+        <RecipeDialog
+          open={!!recipeMenu}
+          onClose={() => setRecipeMenu(null)}
+          menuItemId={recipeMenu.id}
+          menuItemName={recipeMenu.name}
+        />
+      )}
       {items.length === 0 ? (
         <EmptyHint text="No menu items yet." />
       ) : (
@@ -272,6 +282,7 @@ export function HospitalityMenuPage() {
                 <th className="text-left px-3 py-2">Category</th>
                 <th className="text-right px-3 py-2">Dine-in</th>
                 <th className="text-right px-3 py-2">Status</th>
+                <th className="text-right px-3 py-2 w-20">Recipe</th>
               </tr>
             </thead>
             <tbody>
@@ -294,6 +305,14 @@ export function HospitalityMenuPage() {
                       <Badge variant="outline" className={cn("text-[10px]", m.active ? "bg-emerald-500/10 text-emerald-600" : "text-muted-foreground")}>
                         {m.active ? "Active" : "Hidden"}
                       </Badge>
+                    </button>
+                  </td>
+                  <td className="px-3 py-2 text-right">
+                    <button
+                      onClick={() => setRecipeMenu({ id: m.id, name: m.menu_name })}
+                      className="text-[11px] text-primary hover:underline"
+                    >
+                      Recipe
                     </button>
                   </td>
                 </tr>

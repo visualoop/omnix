@@ -841,6 +841,31 @@ export async function listRecipes(): Promise<RecipeRow[]> {
   );
 }
 
+export interface RecipeIngredientRow { id: string; product_id: string; product_name: string; quantity: number; unit: string; wastage_percent: number; buying_price: number; }
+export async function getRecipeForMenuItem(menuItemId: string): Promise<{ id: string; yield_quantity: number; ingredients: RecipeIngredientRow[] } | null> {
+  const [r] = await query<{ id: string; yield_quantity: number }>(
+    `SELECT id, yield_quantity FROM recipes WHERE menu_item_id = ?1 AND active = 1 LIMIT 1`, [menuItemId]);
+  if (!r) return null;
+  const ings = await query<RecipeIngredientRow>(
+    `SELECT ri.id, ri.product_id, p.name AS product_name, ri.quantity, ri.unit, ri.wastage_percent,
+            COALESCE((SELECT AVG(buying_price) FROM batches WHERE product_id = ri.product_id AND quantity > 0), 0) AS buying_price
+     FROM recipe_ingredients ri JOIN products p ON p.id = ri.product_id
+     WHERE ri.recipe_id = ?1 ORDER BY p.name`, [r.id]);
+  return { id: r.id, yield_quantity: r.yield_quantity, ingredients: ings };
+}
+
+/** Delete existing recipe + ingredients and re-create with new set. */
+export async function replaceRecipe(menuItemId: string, yieldQty: number, ingredients: RecipeIngredientInput[]): Promise<string> {
+  await assertModuleEntitled("hospitality");
+  await requirePermission("hospitality.recipes.manage", { entityType: "recipe", entityId: menuItemId });
+  const existing = await query<{ id: string }>(`SELECT id FROM recipes WHERE menu_item_id = ?1`, [menuItemId]);
+  for (const r of existing) {
+    await execute(`DELETE FROM recipe_ingredients WHERE recipe_id = ?1`, [r.id]);
+    await execute(`DELETE FROM recipes WHERE id = ?1`, [r.id]);
+  }
+  return createRecipe(menuItemId, yieldQty, ingredients);
+}
+
 export async function recordWastage(input: {
   productId: string; quantity: number; reason: "prep_waste" | "spoilage" | "burnt" | "breakage" | "staff_meal" | "comped";
   costValue?: number; userId?: string; notes?: string;
