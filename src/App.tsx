@@ -163,6 +163,11 @@ function App() {
   if (window.location.pathname.startsWith("/customer-display")) {
     return <CustomerDisplayShell />;
   }
+  // Kitchen Display Screen also runs in a separate window on a wall-mounted
+  // kitchen tablet — no chrome, no sidebar, just the live ticket board.
+  if (window.location.pathname.startsWith("/kitchen-display")) {
+    return <KitchenDisplayShell />;
+  }
   return (
     <LicenseGuard>
       <AppContent />
@@ -180,6 +185,18 @@ function CustomerDisplayShell() {
       <Routes>
         <Route path="/customer-display/queue" element={<CustomerDisplayQueuePage />} />
         <Route path="*" element={<CustomerDisplayPage />} />
+      </Routes>
+    </BrowserRouter>
+  );
+}
+
+/** Kitchen Display window — chrome-less, fullscreen-friendly. */
+function KitchenDisplayShell() {
+  useF11Fullscreen();
+  return (
+    <BrowserRouter>
+      <Routes>
+        <Route path="*" element={<KitchenDisplayPage />} />
       </Routes>
     </BrowserRouter>
   );

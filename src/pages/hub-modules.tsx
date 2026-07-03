@@ -164,7 +164,6 @@ export function HardwareHubPage() {
 
 export function HospitalityHubPage() {
   const user = useAuthStore((s) => s.user);
-  const navigate = useNavigate();
   const has = (perm: string) => hasPermission(user, perm as Permission);
   return (
     <HubLayout
@@ -176,7 +175,14 @@ export function HospitalityHubPage() {
           <Button
             variant="default"
             className="bg-amber-600 hover:bg-amber-700 text-white"
-            onClick={() => navigate("/hospitality/kitchen")}
+            onClick={async () => {
+              const { openKitchenDisplay } = await import("@/lib/customer-display");
+              try {
+                await openKitchenDisplay();
+              } catch (e) {
+                console.warn("[hospitality] KDS window failed to open:", e);
+              }
+            }}
           >
             <Flame className="h-4 w-4 mr-2" />
             Open Kitchen Display

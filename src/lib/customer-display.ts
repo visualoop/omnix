@@ -97,3 +97,42 @@ export async function toggleDisplayFullscreen(): Promise<void> {
   const fs = await found.isFullscreen();
   await found.setFullscreen(!fs);
 }
+
+
+/* ─── Kitchen Display Screen ──────────────────────────────────────────────
+ *
+ * The KDS runs on a wall-mounted tablet in the kitchen. Same architecture
+ * as the customer display: separate Tauri WebviewWindow, no app chrome,
+ * fullscreen-friendly. Reads live off the same SQLite DB, no props to sync.
+ */
+const KITCHEN_LABEL = "kitchen-display";
+
+export async function openKitchenDisplay(): Promise<void> {
+  const existing = await getAllWebviewWindows();
+  const found = existing.find((w) => w.label === KITCHEN_LABEL);
+  if (found) { await found.setFocus(); return; }
+  const win = new WebviewWindow(KITCHEN_LABEL, {
+    url: "/kitchen-display",
+    title: "Kitchen Display",
+    width: 1600,
+    height: 900,
+    minWidth: 1024,
+    minHeight: 720,
+    decorations: true,
+    resizable: true,
+    fullscreen: false,
+    center: false,
+    x: 220,
+    y: 130,
+  });
+  return new Promise((resolve, reject) => {
+    win.once("tauri://created", () => resolve());
+    win.once("tauri://error", (e) => reject(e));
+  });
+}
+
+export async function closeKitchenDisplay(): Promise<void> {
+  const existing = await getAllWebviewWindows();
+  const found = existing.find((w) => w.label === KITCHEN_LABEL);
+  if (found) await found.close();
+}
