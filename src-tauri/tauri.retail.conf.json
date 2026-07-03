@@ -6,7 +6,9 @@
   "app": {
     "windows": [
       {
-        "title": "Omnix Retail"
+        "title": "Omnix Retail",
+        "decorations": false,
+        "shadow": false
       }
     ]
   },

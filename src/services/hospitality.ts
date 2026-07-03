@@ -76,11 +76,12 @@ export async function createStation(name: string, printerName?: string): Promise
 export interface MenuItem {
   id: string; product_id: string | null; menu_name: string; category: string | null;
   station_id: string | null; dine_in_price: number | null; active: number;
+  image_path: string | null; allergens: string | null;
 }
 
 export async function listMenuItems(): Promise<MenuItem[]> {
   return query<MenuItem>(
-    `SELECT id, product_id, menu_name, category, station_id, dine_in_price, active
+    `SELECT id, product_id, menu_name, category, station_id, dine_in_price, active, image_path, allergens
      FROM menu_items WHERE active = 1 ORDER BY category, menu_name`,
   );
 }
@@ -93,16 +94,19 @@ export async function createMenuItem(input: {
   dineInPrice?: number;
   takeawayPrice?: number;
   prepMinutes?: number;
+  imagePath?: string | null;
+  allergens?: string | null;
 }): Promise<string> {
   await assertModuleEntitled("hospitality");
   await requirePermission("hospitality.menu.manage", { entityType: "menu_item", metadata: { name: input.name } });
   const id = uid();
   const productId = input.productId ?? await createMenuProduct(input.name, input.dineInPrice ?? input.takeawayPrice ?? 0);
   await execute(
-    `INSERT INTO menu_items (id, product_id, branch_id, menu_name, category, station_id, prep_minutes, dine_in_price, takeaway_price)
-     VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)`,
+    `INSERT INTO menu_items (id, product_id, branch_id, menu_name, category, station_id, prep_minutes, dine_in_price, takeaway_price, image_path, allergens)
+     VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)`,
     [id, productId, getActiveBranchId(), input.name, input.category ?? null,
-     input.stationId ?? null, input.prepMinutes ?? null, input.dineInPrice ?? null, input.takeawayPrice ?? null],
+     input.stationId ?? null, input.prepMinutes ?? null, input.dineInPrice ?? null, input.takeawayPrice ?? null,
+     input.imagePath ?? null, input.allergens ?? null],
   );
   return id;
 }
@@ -188,13 +192,47 @@ export async function addOrderItem(orderId: string, input: {
   await requirePermission("hospitality.orders.take", { entityType: "hospitality_order", entityId: orderId });
   const id = uid();
   const lineTotal = input.unitPrice * input.quantity;
+  // Auto-fire: if the business set hospitality.auto_fire = 'on' (default),
+  // items enter as 'sent' and immediately appear on the KDS. This matches
+  // Toast / Square / Chowbus defaults. Businesses that want a
+  // review-before-send workflow can flip the setting off.
+  const autoFire = await isAutoFireEnabled();
+  const initialStatus = autoFire ? "sent" : "new";
   await execute(
-    `INSERT INTO hospitality_order_items (id, order_id, product_id, menu_item_id, station_id, name, quantity, unit_price, tax_rate, line_total, status, notes)
-     VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, 'new', ?11)`,
+    `INSERT INTO hospitality_order_items (id, order_id, product_id, menu_item_id, station_id, name, quantity, unit_price, tax_rate, line_total, status, notes${autoFire ? ", sent_at" : ""})
+     VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12${autoFire ? ", datetime('now')" : ""})`,
     [id, orderId, input.productId ?? null, input.menuItemId ?? null, input.stationId ?? null,
-     input.name, input.quantity, input.unitPrice, input.taxRate ?? 0, lineTotal, input.notes ?? null],
+     input.name, input.quantity, input.unitPrice, input.taxRate ?? 0, lineTotal, initialStatus, input.notes ?? null],
   );
+  if (autoFire) {
+    // Advance the order to 'sent' if it was still 'open' — mirrors what
+    // sendToKitchen() does. Keeps the Order Board in sync.
+    await execute(`UPDATE hospitality_orders SET status = 'sent' WHERE id = ?1 AND status = 'open'`, [orderId]);
+  }
   return id;
+}
+
+/**
+ * Is the auto-fire on? Cached in-memory for the session so the settings
+ * lookup doesn't fire on every add. Cleared on setAutoFire().
+ */
+let autoFireCache: boolean | null = null;
+async function isAutoFireEnabled(): Promise<boolean> {
+  if (autoFireCache !== null) return autoFireCache;
+  const rows = await query<{ value: string }>(
+    `SELECT value FROM settings WHERE key = 'hospitality.auto_fire' LIMIT 1`,
+  );
+  // Default: on. Every mainstream KDS auto-fires.
+  autoFireCache = rows[0]?.value !== "off";
+  return autoFireCache;
+}
+export async function setAutoFire(enabled: boolean): Promise<void> {
+  await execute(
+    `INSERT INTO settings (key, value) VALUES ('hospitality.auto_fire', ?1)
+     ON CONFLICT(key) DO UPDATE SET value = excluded.value`,
+    [enabled ? "on" : "off"],
+  );
+  autoFireCache = enabled;
 }
 
 /** Send all unsent ('new') items on an order to the kitchen. */
@@ -202,6 +240,32 @@ export async function sendToKitchen(orderId: string): Promise<void> {
   await requirePermission("hospitality.orders.send_kitchen", { entityType: "hospitality_order", entityId: orderId });
   await execute(`UPDATE hospitality_order_items SET status = 'sent', sent_at = datetime('now') WHERE order_id = ?1 AND status = 'new'`, [orderId]);
   await execute(`UPDATE hospitality_orders SET status = 'sent' WHERE id = ?1 AND status = 'open'`, [orderId]);
+  await refreshOrderStatus(orderId);
+}
+
+/**
+ * Auto-advance the order-level status based on its items.
+ *
+ * When every non-voided item is `ready`, mark the order `ready` too — so
+ * the Order Board can jump the order from PREPARING to READY column.
+ * When every item is `served`, mark the order `served`.
+ *
+ * Called after every bump/serve/void. Idempotent.
+ */
+export async function refreshOrderStatus(orderId: string): Promise<void> {
+  const rows = await query<{ status: string }>(
+    `SELECT status FROM hospitality_order_items WHERE order_id = ?1 AND status != 'voided'`,
+    [orderId],
+  );
+  if (rows.length === 0) return;
+  const statuses = rows.map((r) => r.status);
+  const allServed = statuses.every((s) => s === "served");
+  const allReady = statuses.every((s) => s === "ready" || s === "served");
+  if (allServed) {
+    await execute(`UPDATE hospitality_orders SET status = 'served' WHERE id = ?1 AND status NOT IN ('paid','voided')`, [orderId]);
+  } else if (allReady) {
+    await execute(`UPDATE hospitality_orders SET status = 'ready' WHERE id = ?1 AND status IN ('open','sent','preparing')`, [orderId]);
+  }
 }
 
 /** Kitchen display: items that are sent/preparing/ready, grouped per station. */
@@ -221,16 +285,19 @@ export async function kitchenQueue(): Promise<Array<HospitalityOrderItem & { ord
 /** Advance a kitchen item: sent → preparing → ready. */
 export async function bumpItem(itemId: string): Promise<void> {
   await requirePermission("hospitality.kitchen.bump", { entityType: "hospitality_order_item", entityId: itemId });
-  const [it] = await query<{ status: string }>(`SELECT status FROM hospitality_order_items WHERE id = ?1`, [itemId]);
+  const [it] = await query<{ status: string; order_id: string }>(`SELECT status, order_id FROM hospitality_order_items WHERE id = ?1`, [itemId]);
   if (!it) return;
   const next = it.status === "sent" ? "preparing" : it.status === "preparing" ? "ready" : it.status;
   const stamp = next === "ready" ? ", ready_at = datetime('now')" : "";
   await execute(`UPDATE hospitality_order_items SET status = ?2${stamp} WHERE id = ?1`, [itemId, next]);
+  await refreshOrderStatus(it.order_id);
 }
 
 export async function markServed(itemId: string): Promise<void> {
   await requirePermission("hospitality.orders.take", { entityType: "hospitality_order_item", entityId: itemId });
+  const [it] = await query<{ order_id: string }>(`SELECT order_id FROM hospitality_order_items WHERE id = ?1`, [itemId]);
   await execute(`UPDATE hospitality_order_items SET status = 'served', served_at = datetime('now') WHERE id = ?1`, [itemId]);
+  if (it) await refreshOrderStatus(it.order_id);
 }
 
 export async function voidOrderItem(itemId: string, reason: string): Promise<void> {

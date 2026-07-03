@@ -18,7 +18,6 @@ import {
   CookingPot,
   Timer,
   Check,
-  ArrowsOut,
   Gear as Settings,
   X as XIcon,
   SpeakerHigh,
@@ -37,7 +36,6 @@ import {
 } from "@/hooks/use-kds-prefs";
 import { cn } from "@/lib/utils";
 
-import { BackButton } from "@/components/ui/back-button";
 const REFRESH_MS = 5_000;
 
 interface TicketRow {
@@ -136,6 +134,14 @@ async function bumpTicket(orderId: string, stationId: string | null): Promise<vo
        AND (?2 IS NULL OR station_id = ?2)`,
     [orderId, stationId],
   );
+  // Ripple: parent order jumps to 'ready' once all items are done. This
+  // is what makes the Order Board move the order from PREPARING to READY.
+  try {
+    const { refreshOrderStatus } = await import("@/services/hospitality");
+    await refreshOrderStatus(orderId);
+  } catch (e) {
+    console.warn("[kds] refreshOrderStatus failed:", e);
+  }
 }
 
 export function KitchenDisplayPage() {
@@ -208,16 +214,19 @@ export function KitchenDisplayPage() {
   return (
     <div className={cn("min-h-screen bg-background p-4 space-y-3", prefs.forceDark && "dark")}>
       <div className={cn(prefs.forceDark && "bg-background text-foreground -m-4 p-4 min-h-screen")}>
-      <header className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <CookingPot className="h-5 w-5 text-primary" />
-          <BackButton fallback="/hospitality" />
-          <h1 className={cn("font-semibold", fontCls.header)}>Kitchen Display</h1>
-          <span className={cn("text-muted-foreground", fontCls.meta)}>
-            Live · {new Date().toLocaleTimeString(intlLocale())}
-          </span>
-        </div>
+      <header className="flex items-center justify-between pb-2 border-b border-border/60">
         <div className="flex items-center gap-3">
+          <div className="flex items-center justify-center h-8 w-8 rounded-lg bg-primary/10">
+            <CookingPot className="h-4 w-4 text-primary" />
+          </div>
+          <div className="flex flex-col">
+            <h1 className={cn("font-semibold leading-tight", fontCls.header)}>Kitchen Display</h1>
+            <span className={cn("text-muted-foreground leading-tight", fontCls.meta)}>
+              Live · {new Date().toLocaleTimeString(intlLocale(), { hour: "2-digit", minute: "2-digit" })}
+            </span>
+          </div>
+        </div>
+        <div className="flex items-center gap-1.5">
           <button
             onClick={async () => {
               const { openCustomerDisplayQueue } = await import("@/lib/customer-display");
@@ -228,26 +237,27 @@ export function KitchenDisplayPage() {
               }
             }}
             title="Open the guest-facing order board (PREPARING / READY) in a separate window"
-            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded border border-border hover:bg-accent text-[12px] font-medium"
+            className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-border hover:bg-accent text-[12px] font-medium"
           >
             <Monitor className="h-3.5 w-3.5" /> Order board
           </button>
+          <div className="w-px h-6 bg-border mx-1" aria-hidden />
           <button
             onClick={() => setPrefs({ audioCue: !prefs.audioCue })}
             title={prefs.audioCue ? "Mute new-ticket beep" : "Unmute new-ticket beep"}
-            className="p-1.5 rounded hover:bg-accent"
+            className="p-2 rounded-md hover:bg-accent"
           >
             {prefs.audioCue ? <SpeakerHigh className="h-4 w-4" /> : <SpeakerX className="h-4 w-4 text-muted-foreground" />}
           </button>
           <button
             onClick={() => setSettingsOpen(!settingsOpen)}
-            className="p-1.5 rounded hover:bg-accent"
+            className="p-2 rounded-md hover:bg-accent"
             title="Customize display"
           >
             <Settings className="h-4 w-4" />
           </button>
-          <span className={cn("text-muted-foreground inline-flex items-center gap-1", fontCls.meta)}>
-            <ArrowsOut className="h-3.5 w-3.5" /> F11
+          <span className="ml-1 text-[10px] uppercase tracking-wider text-muted-foreground border border-border rounded px-1.5 py-0.5">
+            F11
           </span>
         </div>
       </header>

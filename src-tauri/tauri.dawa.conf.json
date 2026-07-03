@@ -6,7 +6,9 @@
   "app": {
     "windows": [
       {
-        "title": "Omnix Dawa"
+        "title": "Omnix Dawa",
+        "decorations": false,
+        "shadow": false
       }
     ]
   },

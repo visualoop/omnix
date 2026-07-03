@@ -25,6 +25,7 @@ export interface MenuItemFormValues {
   description?: string;
   prepTimeMin?: number;
   allergens?: string;
+  imagePath?: string;
   active: boolean;
 }
 
@@ -45,6 +46,7 @@ export function MenuItemDialog({ open, onClose, onSubmit, initial, categories = 
   const [description, setDescription] = useState("");
   const [prepTime, setPrepTime] = useState("");
   const [allergens, setAllergens] = useState("");
+  const [imagePath, setImagePath] = useState<string>("");
   const [active, setActive] = useState(true);
   const [submitting, setSubmitting] = useState(false);
 
@@ -57,6 +59,7 @@ export function MenuItemDialog({ open, onClose, onSubmit, initial, categories = 
       setDescription(initial?.description ?? "");
       setPrepTime(initial?.prepTimeMin != null ? String(initial.prepTimeMin) : "");
       setAllergens(initial?.allergens ?? "");
+      setImagePath(initial?.imagePath ?? "");
       setActive(initial?.active ?? true);
     }
   }, [open, initial]);
@@ -82,6 +85,7 @@ export function MenuItemDialog({ open, onClose, onSubmit, initial, categories = 
         description: description.trim() || undefined,
         prepTimeMin: prepTime.trim() === "" ? undefined : parseInt(prepTime, 10) || 0,
         allergens: allergens.trim() || undefined,
+        imagePath: imagePath || undefined,
         active,
       });
       onClose();
@@ -175,6 +179,47 @@ export function MenuItemDialog({ open, onClose, onSubmit, initial, categories = 
               />
             </Field>
           </div>
+
+          <Field label="Photo">
+            <div className="flex items-center gap-2">
+              {imagePath ? (
+                <img
+                  src={imagePath}
+                  alt="menu item"
+                  className="h-14 w-14 object-cover rounded-md border border-border"
+                />
+              ) : (
+                <div className="h-14 w-14 rounded-md border border-dashed border-border grid place-items-center text-[10px] text-muted-foreground">
+                  none
+                </div>
+              )}
+              <input
+                type="file"
+                accept="image/png,image/jpeg,image/webp"
+                onChange={async (e) => {
+                  const file = e.target.files?.[0];
+                  if (!file) return;
+                  if (file.size > 1_000_000) {
+                    toast.error("Image must be under 1MB");
+                    return;
+                  }
+                  const reader = new FileReader();
+                  reader.onload = () => setImagePath(String(reader.result));
+                  reader.readAsDataURL(file);
+                }}
+                className="text-[11px]"
+              />
+              {imagePath && (
+                <button
+                  type="button"
+                  onClick={() => setImagePath("")}
+                  className="text-[11px] text-rose-600 hover:underline"
+                >
+                  Remove
+                </button>
+              )}
+            </div>
+          </Field>
 
           <Field label="Description">
             <Textarea

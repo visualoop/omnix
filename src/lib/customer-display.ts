@@ -28,6 +28,7 @@ export async function openCustomerDisplay(): Promise<void> {
     minWidth: 800,
     minHeight: 600,
     decorations: false,
+    shadow: false,
     resizable: true,
     fullscreen: false,
     center: false,
@@ -57,6 +58,7 @@ export async function openCustomerDisplayQueue(): Promise<void> {
     minWidth: 1024,
     minHeight: 720,
     decorations: false,
+    shadow: false,
     resizable: true,
     fullscreen: false,
     center: false,
@@ -119,6 +121,7 @@ export async function openKitchenDisplay(): Promise<void> {
     minWidth: 1024,
     minHeight: 720,
     decorations: false,
+    shadow: false,
     resizable: true,
     // Industry standard: KDS runs fullscreen because the kitchen tablet is
     // dedicated hardware. Chefs need every pixel + no distraction from

@@ -235,7 +235,15 @@ export function HospitalityMenuPage() {
   useEffect(() => { load(); }, []);
 
   const handleSubmit = async (v: MenuItemFormValues) => {
-    await createMenuItem({ name: v.name, dineInPrice: v.dineInPrice });
+    await createMenuItem({
+      name: v.name,
+      category: v.category || undefined,
+      dineInPrice: v.dineInPrice,
+      takeawayPrice: v.takeawayPrice,
+      prepMinutes: v.prepTimeMin,
+      imagePath: v.imagePath,
+      allergens: v.allergens,
+    });
     load();
   };
   const toggle = async (m: MenuItem) => {
@@ -269,7 +277,16 @@ export function HospitalityMenuPage() {
             <tbody>
               {items.map((m) => (
                 <tr key={m.id} className="border-t border-border hover:bg-accent/30 transition-colors">
-                  <td className="px-3 py-2 font-medium">{m.menu_name}</td>
+                  <td className="px-3 py-2 font-medium">
+                    <div className="flex items-center gap-2">
+                      {m.image_path ? (
+                        <img src={m.image_path} alt="" className="h-8 w-8 rounded object-cover border border-border" />
+                      ) : (
+                        <div className="h-8 w-8 rounded bg-muted grid place-items-center text-[10px] text-muted-foreground">—</div>
+                      )}
+                      <span>{m.menu_name}</span>
+                    </div>
+                  </td>
                   <td className="px-3 py-2 text-muted-foreground">{m.category ?? "—"}</td>
                   <td className="px-3 py-2 text-right font-mono tabular-nums">{m.dine_in_price != null ? KES(m.dine_in_price) : "—"}</td>
                   <td className="px-3 py-2 text-right">

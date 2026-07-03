@@ -6,7 +6,9 @@
   "app": {
     "windows": [
       {
-        "title": "Omnix Hardware"
+        "title": "Omnix Hardware",
+        "decorations": false,
+        "shadow": false
       }
     ]
   },

@@ -6,7 +6,9 @@
   "app": {
     "windows": [
       {
-        "title": "Omnix Hospitality"
+        "title": "Omnix Hospitality",
+        "decorations": false,
+        "shadow": false
       }
     ]
   },

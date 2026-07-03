@@ -556,6 +556,12 @@ fn run_inner() {
             sql: include_str!("../migrations/074_audit_log_view.sql"),
             kind: MigrationKind::Up,
         },
+        Migration {
+            version: 75,
+            description: "Menu-item photos + allergens (KDS + order tiles show images)",
+            sql: include_str!("../migrations/075_menu_photos.sql"),
+            kind: MigrationKind::Up,
+        },
     ];
 
     tauri::Builder::default()
