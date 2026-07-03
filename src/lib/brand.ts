@@ -31,6 +31,10 @@ export const BRAND = {
   shortName: VARIANT_NAME,
   tagline: VARIANT_TAGLINE,
 
+  /** Always "Omnix" — the parent brand, used for 'Powered by' captions
+   *  where the trade-variant name would be redundant with the module label. */
+  parentBrand: "Omnix",
+
   /** Build-time variant identifier. */
   variant: VARIANT,
   isPro: IS_PRO,
@@ -56,9 +60,10 @@ export const BRAND = {
     supportEmail: "support@omnix.co.ke",
   },
 
-  /** Receipt header (override per tenant via setup wizard later if desired). */
+  /** Receipt header — always the parent brand ('Powered by Omnix') so it
+   *  doesn't repeat the trade-variant name that's already on the header. */
   receipt: {
-    poweredBy: `Powered by ${VARIANT_NAME}`,
+    poweredBy: "Powered by Omnix",
   },
 
   /** Updater / installer naming. */
@@ -69,6 +74,8 @@ export const BRAND = {
 
 // Convenience re-exports for the most-used values
 export const APP_NAME = BRAND.name;
+/** Always 'Powered by Omnix' — see BRAND.parentBrand rationale. */
+export const POWERED_BY = `Powered by ${BRAND.parentBrand}`;
 export const APP_TAGLINE = BRAND.tagline;
 export const COMPANY_DOMAIN = BRAND.company.domain;
 export const SUPPORT_EMAIL = BRAND.company.supportEmail;

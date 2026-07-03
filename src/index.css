@@ -184,7 +184,8 @@
  * THEME: Cream — richer warm cream, Notion-editorial. Slight brown warmth
  * in dark mode. Best for long-session reading + long-hour till duty.
  * ═════════════════════════════════════════════════════════════════════ */
-:root[data-theme="cream"] {
+:root[data-theme="cream"],
+[data-theme="cream"]:not(:root) {
   --background: oklch(0.945 0.014 82);
   --foreground: oklch(0.21 0.010 60);
   --card: oklch(0.975 0.012 82);
@@ -255,7 +256,8 @@
  * THEME: Nordic — Nord-inspired cool bluish snow + polar-night dark.
  * Popular with engineers; low chroma so it's easy on the eyes for 8h+.
  * ═════════════════════════════════════════════════════════════════════ */
-:root[data-theme="nordic"] {
+:root[data-theme="nordic"],
+[data-theme="nordic"]:not(:root) {
   --background: oklch(0.955 0.008 240);
   --foreground: oklch(0.22 0.020 240);
   --card: oklch(0.975 0.006 240);
@@ -326,7 +328,8 @@
  * THEME: Sepia — parchment / dark walnut. E-reader vibe for long reads.
  * Highest chroma of the light themes but stays under 0.03 to avoid tint.
  * ═════════════════════════════════════════════════════════════════════ */
-:root[data-theme="sepia"] {
+:root[data-theme="sepia"],
+[data-theme="sepia"]:not(:root) {
   --background: oklch(0.925 0.028 70);
   --foreground: oklch(0.24 0.020 55);
   --card: oklch(0.955 0.022 70);
@@ -397,7 +400,8 @@
  * THEME: Slate — pure neutral grey. No hue tint. For users who find any
  * warmth or cool tint distracting.
  * ═════════════════════════════════════════════════════════════════════ */
-:root[data-theme="slate"] {
+:root[data-theme="slate"],
+[data-theme="slate"]:not(:root) {
   --background: oklch(0.955 0 0);
   --foreground: oklch(0.19 0 0);
   --card: oklch(0.985 0 0);
@@ -468,7 +472,8 @@
  * THEME: Meadow — mint-tinted paper + forest-tinted dark. Feels calm
  * for long till duty. Same low chroma discipline as the others.
  * ═════════════════════════════════════════════════════════════════════ */
-:root[data-theme="meadow"] {
+:root[data-theme="meadow"],
+[data-theme="meadow"]:not(:root) {
   --background: oklch(0.955 0.015 150);
   --foreground: oklch(0.22 0.015 150);
   --card: oklch(0.978 0.012 150);

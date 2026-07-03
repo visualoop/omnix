@@ -21,6 +21,7 @@ import {
   FileText,
   FileText as FileWarning,
   Flame as Flame,
+  Monitor as MonitorIcon,
   Folder as FolderOpen,
   ForkKnife as UtensilsCrossed,
   House as LayoutDashboard,
@@ -172,21 +173,37 @@ export function HospitalityHubPage() {
       description="Tables, kitchen, rooms, bookings — the whole front-of-house and back-of-house."
       actions={
         has("hospitality.kitchen.view") ? (
-          <Button
-            variant="default"
-            className="bg-amber-600 hover:bg-amber-700 text-white"
-            onClick={async () => {
-              const { openKitchenDisplay } = await import("@/lib/customer-display");
-              try {
-                await openKitchenDisplay();
-              } catch (e) {
-                console.warn("[hospitality] KDS window failed to open:", e);
-              }
-            }}
-          >
-            <Flame className="h-4 w-4 mr-2" />
-            Open Kitchen Display
-          </Button>
+          <>
+            <Button
+              variant="outline"
+              onClick={async () => {
+                const { openCustomerDisplayQueue } = await import("@/lib/customer-display");
+                try {
+                  await openCustomerDisplayQueue();
+                } catch (e) {
+                  console.warn("[hospitality] order-board window failed to open:", e);
+                }
+              }}
+            >
+              <MonitorIcon className="h-4 w-4 mr-2" />
+              Order Board
+            </Button>
+            <Button
+              variant="default"
+              className="bg-amber-600 hover:bg-amber-700 text-white"
+              onClick={async () => {
+                const { openKitchenDisplay } = await import("@/lib/customer-display");
+                try {
+                  await openKitchenDisplay();
+                } catch (e) {
+                  console.warn("[hospitality] KDS window failed to open:", e);
+                }
+              }}
+            >
+              <Flame className="h-4 w-4 mr-2" />
+              Open Kitchen Display
+            </Button>
+          </>
         ) : undefined
       }
       tabs={[

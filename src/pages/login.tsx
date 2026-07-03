@@ -13,7 +13,7 @@ import { useAuthStore } from "@/stores/auth";
 import { OmnixLogo } from "@/components/omnix-logo";
 import { ModuleLogo } from "@/components/module-logos";
 import { useActiveModule, MODULE_DEFINITIONS } from "@/stores/active-module";
-import { APP_NAME } from "@/lib/brand";
+import { APP_NAME, POWERED_BY } from "@/lib/brand";
 import { getActiveUsernames, listUsers, resetUserPassword, type User } from "@/services/auth";
 import { ProfilePicker, initialsOf } from "@/components/login/profile-picker";
 
@@ -207,7 +207,7 @@ export function LoginPage() {
             {isModule ? moduleDef.name : APP_NAME}
           </h1>
           <p className="text-xs text-muted-foreground">
-            {isModule ? `Powered by ${APP_NAME}` : "Sign in to continue"}
+            {isModule ? POWERED_BY : "Sign in to continue"}
           </p>
         </div>
 

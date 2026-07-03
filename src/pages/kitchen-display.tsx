@@ -23,6 +23,7 @@ import {
   X as XIcon,
   SpeakerHigh,
   SpeakerX,
+  Monitor,
 } from "@phosphor-icons/react";
 import { query, execute } from "@/lib/db";
 import { intlLocale } from "@/lib/intl";
@@ -217,6 +218,20 @@ export function KitchenDisplayPage() {
           </span>
         </div>
         <div className="flex items-center gap-3">
+          <button
+            onClick={async () => {
+              const { openCustomerDisplayQueue } = await import("@/lib/customer-display");
+              try {
+                await openCustomerDisplayQueue();
+              } catch (e) {
+                console.warn("[kds] order-board window failed to open:", e);
+              }
+            }}
+            title="Open the guest-facing order board (PREPARING / READY) in a separate window"
+            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded border border-border hover:bg-accent text-[12px] font-medium"
+          >
+            <Monitor className="h-3.5 w-3.5" /> Order board
+          </button>
           <button
             onClick={() => setPrefs({ audioCue: !prefs.audioCue })}
             title={prefs.audioCue ? "Mute new-ticket beep" : "Unmute new-ticket beep"}

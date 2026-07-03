@@ -107,17 +107,32 @@ function ThemeCard({ id, name, description, active, onSelect }: {
     >
       <Card className="border-0 rounded-lg">
         <CardContent className="p-4">
-          {/* Swatch — 6 chips mimicking the palette's key tokens */}
-          <div
-            data-theme={id}
-            className="grid grid-cols-6 gap-1 mb-3 rounded overflow-hidden"
-          >
-            <div className="h-8 bg-background" />
-            <div className="h-8 bg-card" />
-            <div className="h-8 bg-muted" />
-            <div className="h-8 bg-accent" />
-            <div className="h-8 bg-primary" />
-            <div className="h-8 bg-border" />
+          {/* Swatch — top row is the palette in LIGHT, bottom is DARK.
+              data-theme scopes the CSS variables to this subtree so each
+              swatch shows the palette's actual tokens (not the app-wide one). */}
+          <div className="space-y-1 mb-3 rounded overflow-hidden">
+            <div
+              data-theme={id}
+              className="grid grid-cols-6 gap-1"
+            >
+              <div className="h-7 bg-background" title="background" />
+              <div className="h-7 bg-card" title="card" />
+              <div className="h-7 bg-muted" title="muted" />
+              <div className="h-7 bg-accent" title="accent" />
+              <div className="h-7 bg-primary" title="primary" />
+              <div className="h-7 bg-border" title="border" />
+            </div>
+            <div
+              data-theme={id}
+              className="dark grid grid-cols-6 gap-1"
+            >
+              <div className="h-7 bg-background" title="dark background" />
+              <div className="h-7 bg-card" title="dark card" />
+              <div className="h-7 bg-muted" title="dark muted" />
+              <div className="h-7 bg-accent" title="dark accent" />
+              <div className="h-7 bg-primary" title="dark primary" />
+              <div className="h-7 bg-border" title="dark border" />
+            </div>
           </div>
           <div className="flex items-center justify-between">
             <span className="font-semibold text-[14px]">{name}</span>

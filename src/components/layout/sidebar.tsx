@@ -27,7 +27,7 @@ import { NavLink } from "react-router-dom";
 import { OmnixLogo } from "@/components/omnix-logo";
 import { ModuleSwitcher } from "@/components/layout/module-switcher";
 import { ModuleLogo } from "@/components/module-logos";
-import { APP_NAME } from "@/lib/brand";
+import { APP_NAME, POWERED_BY } from "@/lib/brand";
 import { useAuthStore } from "@/stores/auth";
 import { useActiveModule, MODULE_DEFINITIONS, type ModuleId } from "@/stores/active-module";
 import { hasAnyPermission, type Permission } from "@/lib/permissions";
@@ -146,7 +146,7 @@ export function Sidebar({ onCommandOpen }: { onCommandOpen: () => void }) {
             </div>
             {activeModule && activeModule.id !== "core" && (
               <div className="font-mono text-[9px] uppercase tracking-[0.18em] text-muted-foreground leading-tight mt-1">
-                Powered by {APP_NAME}
+                {POWERED_BY}
               </div>
             )}
           </div>
