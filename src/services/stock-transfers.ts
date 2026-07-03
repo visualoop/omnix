@@ -144,6 +144,7 @@ export async function dispatchTransfer(transferId: string): Promise<void> {
     const batches = await query<{ id: string; quantity: number }>(
       `SELECT id, quantity FROM batches
        WHERE product_id = ?1 AND branch_id = ?2 AND quantity > 0
+         AND (expiry_date IS NULL OR expiry_date > date('now'))
        ORDER BY expiry_date ASC NULLS LAST, created_at ASC`,
       [item.product_id, transfer.from_branch_id],
     );

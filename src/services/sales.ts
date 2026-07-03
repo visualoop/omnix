@@ -113,7 +113,9 @@ export async function completeSale(
       const stockRows = await query<{ product_id: string; available: number }>(
         `SELECT product_id, COALESCE(SUM(quantity), 0) AS available
          FROM batches
-         WHERE product_id IN (${placeholders}) AND quantity > 0
+         WHERE product_id IN (${placeholders})
+           AND quantity > 0
+           AND (expiry_date IS NULL OR expiry_date > date('now'))
          GROUP BY product_id`,
         productLines.map((i) => i.product_id),
       );
@@ -226,7 +228,10 @@ export async function completeSale(
     // clamped deductions inside the transaction.
     let remaining = item.quantity;
     const batches = await query<{ id: string; quantity: number }>(
-      "SELECT id, quantity FROM batches WHERE product_id = ?1 AND quantity > 0 ORDER BY received_at ASC",
+      `SELECT id, quantity FROM batches
+       WHERE product_id = ?1 AND quantity > 0
+         AND (expiry_date IS NULL OR expiry_date > date('now'))
+       ORDER BY expiry_date ASC NULLS LAST, received_at ASC`,
       [item.product_id],
     );
     for (const batch of batches) {

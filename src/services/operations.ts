@@ -185,7 +185,9 @@ export async function createCompounded(input: {
     // Deduct from stock (FIFO).
     let remaining = c.quantity;
     const batches = await query<{ id: string; quantity: number }>(
-      `SELECT id, quantity FROM batches WHERE product_id = ?1 AND quantity > 0
+      `SELECT id, quantity FROM batches
+       WHERE product_id = ?1 AND quantity > 0
+         AND (expiry_date IS NULL OR expiry_date > date('now'))
        ORDER BY expiry_date ASC NULLS LAST, received_at ASC`,
       [c.product_id],
     );

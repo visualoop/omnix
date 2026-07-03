@@ -283,7 +283,9 @@ export async function runProduction(bomId: string, outputQuantity: number, produ
     let remaining = ing.quantity * scale;
     ingredientCost += ing.unit_cost * remaining;
     const batches = await query<{ id: string; quantity: number }>(
-      `SELECT id, quantity FROM batches WHERE product_id = ?1 AND quantity > 0
+      `SELECT id, quantity FROM batches
+       WHERE product_id = ?1 AND quantity > 0
+         AND (expiry_date IS NULL OR expiry_date > date('now'))
        ORDER BY expiry_date ASC NULLS LAST, received_at ASC`,
       [ing.ingredient_product_id],
     );
