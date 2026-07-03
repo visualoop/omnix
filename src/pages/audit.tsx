@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useCallback, useState } from "react";
 import {
   Pulse as Activity,
   Cpu,
@@ -8,117 +8,27 @@ import {
   ShieldWarning as ShieldAlert,
   ShieldCheck,
   Warning as AlertTriangle,
+  MagnifyingGlass as Search,
 } from "@phosphor-icons/react";
 import { Badge } from "@/components/ui/badge";
-import { query } from "@/lib/db";
+import { Input } from "@/components/ui/input";
 import { intlLocale } from "@/lib/intl";
+import { pageAuditLog, type AuditRow as AuditRowType } from "@/services/paged";
+import { useListData } from "@/hooks/use-list-data";
+import { PaginationBar } from "@/components/pagination-bar";
 
 import { BackButton } from "@/components/ui/back-button";
-interface AuditEntry {
-  id: string;
-  type: "license" | "sale" | "void" | "permission";
-  event: string;
-  description: string;
-  user: string | null;
-  metadata: string | null;
-  created_at: string;
-}
 
 export function AuditLogPage() {
-  const [entries, setEntries] = useState<AuditEntry[]>([]);
   const [filter, setFilter] = useState<"all" | "license" | "sale" | "void" | "permission">("all");
-  const [loading, setLoading] = useState(true);
 
-  const load = async () => {
-    setLoading(true);
-
-    const licenseEvents = await query<{
-      id: string;
-      license_kid: string;
-      machine_fingerprint: string;
-      event: string;
-      error_message: string | null;
-      created_at: string;
-    }>(
-      "SELECT * FROM license_activations ORDER BY created_at DESC LIMIT 100"
-    );
-
-    const saleEvents = await query<{
-      id: string;
-      sale_number: number;
-      total: number;
-      status: string;
-      created_at: string;
-      cashier: string | null;
-    }>(
-      `SELECT s.id, s.sale_number, s.total, s.status, s.created_at, u.full_name as cashier
-       FROM sales s
-       LEFT JOIN users u ON u.id = s.user_id
-       WHERE s.status != 'held'
-       ORDER BY s.created_at DESC LIMIT 100`
-    );
-
-    const permissionEvents = await query<{
-      id: string;
-      user_name: string | null;
-      permission_key: string;
-      outcome: string;
-      risk_level: string;
-      entity_type: string | null;
-      entity_id: string | null;
-      created_at: string;
-    }>(
-      "SELECT id, user_name, permission_key, outcome, risk_level, entity_type, entity_id, created_at FROM audit_log ORDER BY created_at DESC LIMIT 100"
-    );
-
-    const all: AuditEntry[] = [
-      ...permissionEvents.map((e) => ({
-        id: `perm-${e.id}`,
-        type: "permission" as const,
-        event: e.outcome,
-        description:
-          `${e.outcome === "denied" ? "Blocked" : "Allowed"}: ${e.permission_key}` +
-          (e.entity_type ? ` on ${e.entity_type}${e.entity_id ? ` ${e.entity_id}` : ""}` : "") +
-          ` (${e.risk_level})`,
-        user: e.user_name,
-        metadata: null,
-        created_at: e.created_at,
-      })),
-      ...licenseEvents.map((e) => ({
-        id: `lic-${e.id}`,
-        type: "license" as const,
-        event: e.event,
-        description:
-          e.event === "activated" ? `License activated: ${e.license_kid}` :
-          e.event === "verified" ? `License verified: ${e.license_kid}` :
-          e.event === "deactivated" ? `License deactivated: ${e.license_kid}` :
-          e.event === "failed" ? `License verification failed: ${e.error_message || "unknown"}` :
-          `License event: ${e.event}`,
-        user: null,
-        metadata: e.machine_fingerprint,
-        created_at: e.created_at,
-      })),
-      ...saleEvents.map((e) => ({
-        id: `sale-${e.id}`,
-        type: e.status === "voided" ? "void" as const : "sale" as const,
-        event: e.status === "voided" ? "voided" : "completed",
-        description: e.status === "voided"
-          ? `Sale #${e.sale_number} voided (${e.total.toFixed(2)})`
-          : `Sale #${e.sale_number} (${e.total.toFixed(2)})`,
-        user: e.cashier,
-        metadata: null,
-        created_at: e.created_at,
-      })),
-    ];
-
-    all.sort((a, b) => b.created_at.localeCompare(a.created_at));
-    setEntries(all);
-    setLoading(false);
-  };
-
-  useEffect(() => { load(); }, []);
-
-  const filtered = filter === "all" ? entries : entries.filter((e) => e.type === filter);
+  const fetcher = useCallback(
+    (q: { search?: string; page?: number; pageSize?: number }) =>
+      pageAuditLog({ ...q, kind: filter === "all" ? undefined : filter }),
+    [filter],
+  );
+  const list = useListData(fetcher, { pageSize: 50 });
+  const entries = list.rows;
 
   return (
     <div className="space-y-5">
@@ -128,6 +38,19 @@ export function AuditLogPage() {
         <p className="text-sm text-muted-foreground mt-1">
           Activity history for compliance and security review
         </p>
+      </div>
+
+      {/* Search */}
+      <div className="flex items-center gap-2">
+        <div className="relative flex-1 max-w-sm">
+          <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
+          <Input
+            value={list.search}
+            onChange={(e) => list.setSearch(e.target.value)}
+            placeholder="Search description, user, event..."
+            className="pl-9"
+          />
+        </div>
       </div>
 
       {/* Filter */}
@@ -147,14 +70,14 @@ export function AuditLogPage() {
           ))}
         </div>
         <span className="text-xs text-muted-foreground ml-auto">
-          {filtered.length} entries
+          {list.total.toLocaleString()} entries
         </span>
       </div>
 
       {/* Timeline */}
-      {loading ? (
+      {list.loading ? (
         <p className="text-sm text-muted-foreground text-center py-8">Loading...</p>
-      ) : filtered.length === 0 ? (
+      ) : entries.length === 0 ? (
         <div className="text-center py-12 text-muted-foreground">
           <Activity className="h-10 w-10 mx-auto mb-2 opacity-30" />
           <p className="text-sm">No activity yet</p>
@@ -162,24 +85,26 @@ export function AuditLogPage() {
       ) : (
         <div className="border border-border rounded-lg overflow-hidden">
           <div className="divide-y divide-border">
-            {filtered.map((entry) => (
+            {entries.map((entry) => (
               <AuditRow key={entry.id} entry={entry} />
             ))}
           </div>
         </div>
       )}
+
+      <PaginationBar list={list} />
     </div>
   );
 }
 
-function AuditRow({ entry }: { entry: AuditEntry }) {
+function AuditRow({ entry }: { entry: AuditRowType }) {
   const time = new Date(entry.created_at).toLocaleString(intlLocale(), {
     day: "2-digit", month: "short", year: "numeric",
     hour: "2-digit", minute: "2-digit", second: "2-digit",
   });
 
   const { Icon, iconColor, badge } = (() => {
-    if (entry.type === "license") {
+    if (entry.kind === "license") {
       if (entry.event === "failed") {
         return { Icon: ShieldAlert, iconColor: "text-red-600", badge: <Badge variant="destructive">Failed</Badge> };
       }
@@ -191,8 +116,16 @@ function AuditRow({ entry }: { entry: AuditEntry }) {
       }
       return { Icon: ShieldCheck, iconColor: "text-blue-600", badge: <Badge variant="outline">Verified</Badge> };
     }
-    if (entry.type === "void") {
+    if (entry.kind === "void") {
       return { Icon: AlertTriangle, iconColor: "text-amber-600", badge: <Badge variant="destructive">Voided</Badge> };
+    }
+    if (entry.kind === "permission") {
+      const allowed = entry.event !== "denied";
+      return {
+        Icon: allowed ? ShieldCheck : ShieldAlert,
+        iconColor: allowed ? "text-green-600" : "text-red-600",
+        badge: <Badge variant={allowed ? "outline" : "destructive"}>{allowed ? "Allowed" : "Denied"}</Badge>,
+      };
     }
     return { Icon: Receipt, iconColor: "text-primary", badge: <Badge className="bg-green-600 hover:bg-green-600">Sale</Badge> };
   })();
@@ -210,7 +143,7 @@ function AuditRow({ entry }: { entry: AuditEntry }) {
         <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
           <span>{time}</span>
           {entry.user && <span>· {entry.user}</span>}
-          {entry.metadata && entry.type === "license" && (
+          {entry.metadata && entry.kind === "license" && (
             <span className="font-mono inline-flex items-center gap-1">
               <Cpu className="h-3 w-3" />
               {entry.metadata.slice(0, 8)}...

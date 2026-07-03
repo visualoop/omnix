@@ -550,6 +550,12 @@ fn run_inner() {
             sql: include_str!("../migrations/073_hardware_quote_columns.sql"),
             kind: MigrationKind::Up,
         },
+        Migration {
+            version: 74,
+            description: "Unified audit_log_unified VIEW for the /audit feed",
+            sql: include_str!("../migrations/074_audit_log_view.sql"),
+            kind: MigrationKind::Up,
+        },
     ];
 
     tauri::Builder::default()

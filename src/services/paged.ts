@@ -122,26 +122,30 @@ export async function pageSales(q: ListQuery & { from?: string; to?: string; sta
 }
 
 // ─── Audit log ─────────────────────────────────────────────────
+// Unified audit feed backed by the audit_log_unified VIEW (migration 074).
+// The view UNIONs permission events, license activations, and sale/void
+// events into a common shape so this page can paginate the merged feed.
 export interface AuditRow {
   id: string;
-  actor_id: string | null;
-  action: string;
-  resource: string | null;
+  kind: "permission" | "license" | "sale" | "void";
+  event: string;
+  description: string;
+  user: string | null;
   metadata: string | null;
   created_at: string;
 }
 
-export async function pageAuditLog(q: ListQuery & { action?: string }): Promise<ListPage<AuditRow>> {
+export async function pageAuditLog(q: ListQuery & { kind?: string }): Promise<ListPage<AuditRow>> {
   const extraWhere: string[] = [];
   const extraParams: unknown[] = [];
-  if (q.action) {
-    extraWhere.push(`action = ?${extraParams.length + 1}`);
-    extraParams.push(q.action);
+  if (q.kind) {
+    extraWhere.push(`kind = ?${extraParams.length + 1}`);
+    extraParams.push(q.kind);
   }
   return pagedQuery<AuditRow>(
     {
-      table: "audit_log",
-      searchColumns: ["action", "resource", "metadata"],
+      table: "audit_log_unified",
+      searchColumns: ["description", "user", "event"],
       orderBy: "created_at DESC",
       extraWhere,
       extraParams,
