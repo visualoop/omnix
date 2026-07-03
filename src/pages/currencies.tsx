@@ -51,6 +51,7 @@ export function CurrenciesPage() {
         title="Currencies & FX rates"
         description="Base currency is KES. Add rates for other currencies so you can price invoices in USD, EUR, UGX, etc. Reports convert everything back to KES at the rate captured on the transaction date."
         back={{ fallback: "/settings" }}
+        actions={<RefreshFxButton onRefreshed={load} />}
       />
 
       {/* Add rate — its own dedicated section, not fighting with the title */}
@@ -162,5 +163,35 @@ export function CurrenciesPage() {
         )}
       </section>
     </div>
+  );
+}
+
+
+function RefreshFxButton({ onRefreshed }: { onRefreshed: () => void }) {
+  const [busy, setBusy] = useState(false);
+  const [status, setStatus] = useState<string>("");
+  return (
+    <button
+      onClick={async () => {
+        if (busy) return;
+        setBusy(true);
+        setStatus("");
+        try {
+          const { refreshFxRates } = await import("@/services/fx-refresh");
+          const n = await refreshFxRates({ force: true });
+          setStatus(n > 0 ? `Updated ${n / 2} currencies` : "No changes");
+          onRefreshed();
+        } catch {
+          setStatus("Refresh failed");
+        } finally {
+          setBusy(false);
+        }
+      }}
+      disabled={busy}
+      className="inline-flex items-center gap-2 rounded-md border border-border px-3 py-1.5 text-[12px] font-medium hover:bg-accent disabled:opacity-50"
+      title="Fetch latest FX rates from open.er-api.com"
+    >
+      {busy ? "Refreshing…" : status || "Refresh rates"}
+    </button>
   );
 }

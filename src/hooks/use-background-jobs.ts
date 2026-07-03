@@ -70,6 +70,16 @@ async function tryDepreciationPost(): Promise<void> {
   }
 }
 
+async function tryFxRefresh(): Promise<void> {
+  if (typeof navigator !== "undefined" && !navigator.onLine) return;
+  try {
+    const { refreshFxRates } = await import("@/services/fx-refresh");
+    await refreshFxRates();
+  } catch (e) {
+    console.warn("[background] fx refresh failed:", e);
+  }
+}
+
 export function useBackgroundJobs(): void {
   useEffect(() => {
     let cancelled = false;
@@ -82,12 +92,19 @@ export function useBackgroundJobs(): void {
     const deprBoot = setTimeout(() => { if (!cancelled) tryDepreciationPost(); }, 90_000);
     const deprInterval = setInterval(() => { if (!cancelled) tryDepreciationPost(); }, DEPR_CHECK_INTERVAL_MS);
 
+    // FX refresh — first attempt 120s after boot, then every 12h. Silent-fail
+    // when offline. The service itself rate-limits to once every 20h.
+    const fxBoot = setTimeout(() => { if (!cancelled) tryFxRefresh(); }, 120_000);
+    const fxInterval = setInterval(() => { if (!cancelled) tryFxRefresh(); }, DEPR_CHECK_INTERVAL_MS);
+
     return () => {
       cancelled = true;
       clearTimeout(etimsBoot);
       clearInterval(etimsInterval);
       clearTimeout(deprBoot);
       clearInterval(deprInterval);
+      clearTimeout(fxBoot);
+      clearInterval(fxInterval);
     };
   }, []);
 }
