@@ -44,6 +44,15 @@ const EXPECTED_TOOLS = [
   "record_shrinkage",
   "create_hardware_quotation",
   "create_delivery_note",
+  // write — more
+  "check_in_booking",
+  "check_out_booking",
+  "record_layby_payment",
+  "receive_goods",
+  "adjust_stock",
+  "update_product",
+  // system
+  "task",
 ] as const;
 
 describe("ai/v2 tool coverage", () => {

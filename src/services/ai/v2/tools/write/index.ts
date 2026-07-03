@@ -26,3 +26,4 @@ export * as FinanceOps from "./finance-ops";
 export * as Hospitality from "./hospitality";
 export * as Pharmacy from "./pharmacy";
 export * as RetailHardware from "./retail-hardware";
+export * as MoreWrites from "./more-writes";

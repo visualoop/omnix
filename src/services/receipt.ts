@@ -9,6 +9,7 @@ export interface ReceiptData {
     address?: string | null;
     phone?: string | null;
     email?: string | null;
+    logo?: string | null;
   };
   sale: {
     sale_number: number | string;
@@ -44,8 +45,8 @@ export interface BusinessRow {
 }
 
 export async function buildReceiptData(saleId: string): Promise<ReceiptData | null> {
-  const businesses = await query<BusinessRow>("SELECT name, address, phone, email FROM business LIMIT 1");
-  const business = businesses[0];
+  const { getBusinessProfile } = await import("@/services/business-profile");
+  const business = await getBusinessProfile();
   if (!business) return null;
 
   const sales = await query<{
@@ -107,6 +108,7 @@ export async function buildReceiptData(saleId: string): Promise<ReceiptData | nu
       address: business.address,
       phone: business.phone,
       email: business.email,
+      logo: business.logoPath ?? null,
     },
     sale: {
       sale_number: sale.sale_number,
@@ -258,6 +260,7 @@ async function renderReceiptHTML(d: ReceiptData): Promise<string> {
 </style>
 </head>
 <body>
+  ${d.business.logo ? `<div class="center" style="margin:0 0 6px 0;"><img src="${d.business.logo}" alt="Logo" style="max-height:48px;max-width:80%;object-fit:contain;" /></div>` : ""}
   <div class="center bold lg">${escapeHtml(d.business.name)}</div>
   ${d.business.address ? `<div class="center sm">${escapeHtml(d.business.address)}</div>` : ""}
   ${d.business.phone ? `<div class="center sm">Tel: ${escapeHtml(d.business.phone)}</div>` : ""}

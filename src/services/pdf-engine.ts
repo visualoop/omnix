@@ -40,9 +40,26 @@ export interface BrandHeader {
  * masthead so callers know where to start their content.
  */
 export function drawMasthead(pdf: jsPDF, brand: BrandHeader, title: string, subtitle?: string): number {
+  // Optional logo — embedded top-left if a dataURL was provided in the
+  // brand header. The business-profile page uploads the logo as a
+  // data-URL string, so it's already base64 and ready to drop in.
+  let textOffsetX = MARGIN_MM
+  if (brand.logoPath && brand.logoPath.startsWith("data:image")) {
+    try {
+      const format = brand.logoPath.startsWith("data:image/png") ? "PNG"
+        : brand.logoPath.startsWith("data:image/jpeg") ? "JPEG"
+        : brand.logoPath.startsWith("data:image/jpg") ? "JPEG"
+        : "PNG";
+      pdf.addImage(brand.logoPath, format, MARGIN_MM, MARGIN_MM, 14, 14, undefined, "FAST");
+      textOffsetX = MARGIN_MM + 18;
+    } catch {
+      // Logo failed to decode — fall back to text-only masthead
+    }
+  }
+
   pdf.setFont("helvetica", "bold")
   pdf.setFontSize(20)
-  pdf.text(brand.businessName, MARGIN_MM, MARGIN_MM + 6)
+  pdf.text(brand.businessName, textOffsetX, MARGIN_MM + 6)
 
   pdf.setFont("helvetica", "normal")
   pdf.setFontSize(8)
