@@ -473,6 +473,8 @@ function ReceiveGoodsDialog({
     product_id: it.product_id,
     product_name: it.product_name,
     quantity: Math.max(0, it.quantity - it.received_quantity),
+    damaged_quantity: 0,
+    damage_reason: "",
     unit_cost: it.unit_cost,
     batch_number: "",
     expiry_date: "",
@@ -482,7 +484,7 @@ function ReceiveGoodsDialog({
   const update = (idx: number, field: string, value: string | number) => {
     const newItems = [...receiveItems];
     newItems[idx] = { ...newItems[idx], [field]: typeof value === "string" ? value : value };
-    if (field === "quantity") (newItems[idx] as { quantity: number }).quantity = Number(value);
+    if (field === "quantity" || field === "damaged_quantity") (newItems[idx] as any)[field] = Number(value);
     setReceiveItems(newItems);
   };
 
@@ -509,6 +511,29 @@ function ReceiveGoodsDialog({
           expiry_date: i.expiry_date || undefined,
         })),
       });
+
+      // Post any on-receipt damages after the GRN. Deliberately non-transactional
+      // with the GRN: if the GRN posts but damage logging fails, the receipt is
+      // still valid and the user can add damages retroactively from /inventory/damages.
+      const damagedItems = receiveItems.filter((i) => (i.damaged_quantity ?? 0) > 0);
+      if (damagedItems.length > 0) {
+        const { recordDamage } = await import("@/services/inventory-quality");
+        for (const d of damagedItems) {
+          try {
+            await recordDamage({
+              product_id: d.product_id,
+              quantity: d.damaged_quantity,
+              discovered_at_stage: "on_receipt",
+              reason: d.damage_reason || "Damaged on receipt",
+              reported_by: userId,
+            });
+          } catch (e) {
+            console.warn("[po] damage record failed for", d.product_name, e);
+          }
+        }
+        toast.info(`Recorded ${damagedItems.length} damage entr${damagedItems.length === 1 ? "y" : "ies"}`);
+      }
+
       toast.success("Goods received successfully");
       onReceived();
     } catch (e) {
@@ -541,6 +566,7 @@ function ReceiveGoodsDialog({
                 <tr className="text-xs text-muted-foreground">
                   <th className="text-left px-2 py-2 font-medium">Product</th>
                   <th className="text-right px-2 py-2 font-medium w-20">Receive</th>
+                  <th className="text-right px-2 py-2 font-medium w-20">Damaged</th>
                   <th className="text-left px-2 py-2 font-medium w-32">Batch #</th>
                   <th className="text-left px-2 py-2 font-medium w-36">Expiry Date</th>
                 </tr>
@@ -555,6 +581,16 @@ function ReceiveGoodsDialog({
                         value={item.quantity}
                         onChange={(e) => update(idx, "quantity", Number(e.target.value))}
                         className="text-right h-8 font-mono"
+                      />
+                    </td>
+                    <td className="px-2 py-2">
+                      <Input
+                        type="number"
+                        value={item.damaged_quantity}
+                        onChange={(e) => update(idx, "damaged_quantity", Number(e.target.value))}
+                        className="text-right h-8 font-mono"
+                        placeholder="0"
+                        title="Damaged units — logged to /inventory/damages"
                       />
                     </td>
                     <td className="px-2 py-2">
@@ -578,6 +614,11 @@ function ReceiveGoodsDialog({
               </tbody>
             </table>
           </div>
+
+          <p className="text-[11px] text-muted-foreground mt-1.5">
+            Enter units received into stock and units found damaged separately.
+            Damaged units are posted to the damages register with stage &ldquo;on receipt&rdquo;.
+          </p>
         </div>
 
         <div className="px-5 py-3 border-t border-border flex justify-end gap-2">

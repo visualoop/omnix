@@ -13,6 +13,7 @@ import {
   SquaresFour,
   Tag,
   Truck,
+  Warning as AlertTriangle,
 } from "@phosphor-icons/react";
 import { HubLayout } from "@/components/layout/hub-layout";
 import { InventoryPage } from "@/pages/inventory";
@@ -21,6 +22,7 @@ import { StockTransfersPage } from "@/pages/stock-transfers";
 import { PurchaseOrdersPage } from "@/pages/purchase-orders";
 import { StockTakesPage } from "@/pages/stock-take";
 import { SuppliersPage } from "@/pages/suppliers";
+import { DamagesPage } from "@/pages/damages";
 
 export function InventoryHubPage() {
   const user = useAuthStore((s) => s.user);
@@ -36,6 +38,7 @@ export function InventoryHubPage() {
         { id: "transfers", label: "Transfers", icon: ArrowLeftRight, component: StockTransfersPage, permission: "inventory.view" },
         { id: "purchases", label: "Purchases", icon: Truck, component: PurchaseOrdersPage, permission: "purchase_orders.view" },
         { id: "stock-take", label: "Stock take", icon: ClipboardCheck, component: StockTakesPage, permission: "stock_take.use" },
+        { id: "damages", label: "Damages", icon: AlertTriangle, component: DamagesPage, permission: "inventory.edit" },
         { id: "suppliers", label: "Suppliers", icon: Building2, component: SuppliersPage, permission: "suppliers.view" },
       ]}
       hasPermission={has}

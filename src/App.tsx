@@ -119,6 +119,7 @@ import { VatReportPage } from "@/pages/vat-report";
 import { SettingsLicensesPage } from "@/pages/settings-licenses";
 import { SettingsDisplayPage } from "@/pages/settings-display";
 import { ImportProductsPage } from "@/pages/import-products";
+import { DamagesPage } from "@/pages/damages";
 import { SalesHistoryPage } from "@/pages/sales-history";
 import { UsersPage } from "@/pages/users";
 import { SettingsPage } from "@/pages/settings";
@@ -276,6 +277,7 @@ function AppContent() {
           <Route path="/inventory/categories" element={<RequireRole permission="inventory.edit"><CategoriesPage /></RequireRole>} />
           <Route path="/inventory/stock" element={<RequireRole permission="inventory.view"><StockPage /></RequireRole>} />
           <Route path="/inventory/import" element={<RequireRole permission="inventory.edit"><ImportProductsPage /></RequireRole>} />
+          <Route path="/inventory/damages" element={<RequireRole permission="inventory.edit"><DamagesPage /></RequireRole>} />
           <Route path="/sales" element={<RequireRole permission="sales.view"><SalesHubPage /></RequireRole>} />
           <Route path="/sales/history" element={<RequireRole permission="sales.view"><SalesHistoryPage /></RequireRole>} />
           <Route path="/sales/:id" element={<RequireRole permission="sales.view"><SaleDetailPage /></RequireRole>} />
