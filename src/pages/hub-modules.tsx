@@ -8,6 +8,8 @@
  * etc.) are still mounted for deep links.
  */
 import { useAuthStore } from "@/stores/auth";
+import { useNavigate } from "react-router-dom";
+import { Button } from "@/components/ui/button";
 import { hasPermission, type Permission } from "@/lib/permissions";
 import {
   ArrowsClockwise as RefreshCw,
@@ -135,12 +137,25 @@ export function HardwareHubPage() {
 
 export function HospitalityHubPage() {
   const user = useAuthStore((s) => s.user);
+  const navigate = useNavigate();
   const has = (perm: string) => hasPermission(user, perm as Permission);
   return (
     <HubLayout
       eyebrow="Module"
       title="Hospitality"
       description="Tables, kitchen, rooms, bookings — the whole front-of-house and back-of-house."
+      actions={
+        has("hospitality.kitchen.view") ? (
+          <Button
+            variant="default"
+            className="bg-amber-600 hover:bg-amber-700 text-white"
+            onClick={() => navigate("/hospitality/kitchen")}
+          >
+            <Flame className="h-4 w-4 mr-2" />
+            Open Kitchen Display
+          </Button>
+        ) : undefined
+      }
       tabs={[
         { id: "overview", label: "Overview", icon: LayoutDashboard, component: HospitalityDashboardPage, permission: "hospitality.tables.manage" },
         { id: "tables", label: "Tables", icon: UtensilsCrossed, component: HospitalityTablesPage, permission: "hospitality.tables.manage" },

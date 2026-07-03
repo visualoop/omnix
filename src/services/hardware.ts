@@ -30,8 +30,9 @@ export interface QuoteItemInput {
 
 export interface Quotation {
   id: string;
-  quote_number: string;
+  quotation_number: string;
   customer_id: string | null;
+  customer_name: string | null;
   status: string;
   total: number;
   valid_until: string | null;
@@ -44,8 +45,24 @@ async function nextNumber(table: string, prefix: string): Promise<string> {
   return `${prefix}-${String((row?.n ?? 0) + 1).padStart(5, "0")}`;
 }
 
+async function resolveCustomerName(customerId: string | null): Promise<string> {
+  if (!customerId) return "Walk-in customer";
+  const [row] = await query<{ name: string }>(
+    `SELECT name FROM customers WHERE id = ?1`,
+    [customerId],
+  );
+  return row?.name ?? "Walk-in customer";
+}
+
+function defaultValidUntil(): string {
+  const d = new Date();
+  d.setDate(d.getDate() + 30);
+  return d.toISOString().slice(0, 10);
+}
+
 export async function createQuotation(input: {
   customerId: string | null;
+  userId: string;
   salespersonId?: string | null;
   validUntil?: string | null;
   items: QuoteItemInput[];
@@ -66,19 +83,30 @@ export async function createQuotation(input: {
   const discount = lines.reduce((s, l) => s + l.discount, 0);
   const taxAmount = lines.reduce((s, l) => s + (l.unit_price * l.quantity - l.discount) * (l.tax_rate / 100), 0);
   const total = subtotal - discount + taxAmount;
+  const customerName = await resolveCustomerName(input.customerId);
+  const validUntil = input.validUntil ?? defaultValidUntil();
 
   await execute(
-    `INSERT INTO quotations (id, quote_number, branch_id, customer_id, status, valid_until,
-        subtotal, discount, tax_amount, total, salesperson_id, notes)
-     VALUES (?1, ?2, ?3, ?4, 'draft', ?5, ?6, ?7, ?8, ?9, ?10, ?11)`,
-    [id, number, getActiveBranchId(), input.customerId, input.validUntil ?? null,
-     subtotal, discount, taxAmount, total, input.salespersonId ?? null, input.notes ?? null],
+    `INSERT INTO quotations
+       (id, quotation_number, branch_id, customer_id, customer_name, status, valid_until,
+        subtotal, discount_amount, tax_amount, total, salesperson_id, notes, user_id)
+     VALUES (?1, ?2, ?3, ?4, ?5, 'draft', ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13)`,
+    [
+      id, number, getActiveBranchId(), input.customerId, customerName, validUntil,
+      subtotal, discount, taxAmount, total, input.salespersonId ?? null,
+      input.notes ?? null, input.userId,
+    ],
   );
+  let sortOrder = 0;
   for (const l of lines) {
     await execute(
-      `INSERT INTO quotation_items (id, quotation_id, product_id, name, uom, quantity, unit_price, discount, tax_rate, line_total)
-       VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)`,
-      [uid(), id, l.product_id ?? null, l.name, l.uom ?? null, l.quantity, l.unit_price, l.discount, l.tax_rate, l.line_total],
+      `INSERT INTO quotation_items
+         (id, quotation_id, product_id, description, quantity, unit, unit_price, tax_rate, discount_amount, line_total, sort_order)
+       VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)`,
+      [
+        uid(), id, l.product_id ?? null, l.name, l.quantity,
+        l.uom ?? "pcs", l.unit_price, l.tax_rate, l.discount, l.line_total, sortOrder++,
+      ],
     );
   }
   return id;
@@ -86,7 +114,8 @@ export async function createQuotation(input: {
 
 export async function listQuotations(): Promise<Quotation[]> {
   return query<Quotation>(
-    `SELECT id, quote_number, customer_id, status, total, valid_until, converted_sale_id, created_at
+    `SELECT id, quotation_number, customer_id, customer_name, status, total,
+            valid_until, converted_sale_id, created_at
      FROM quotations ORDER BY created_at DESC LIMIT 200`,
   );
 }
@@ -100,28 +129,29 @@ export async function convertQuoteToSale(
   await assertModuleEntitled("hardware");
   await requirePermission("hardware.quotations.manage", { entityType: "quotation", entityId: quoteId });
 
-  const [q] = await query<{ customer_id: string | null; status: string; discount: number }>(
-    `SELECT customer_id, status, discount FROM quotations WHERE id = ?1`, [quoteId],
+  const [q] = await query<{ customer_id: string | null; status: string; discount_amount: number }>(
+    `SELECT customer_id, status, discount_amount FROM quotations WHERE id = ?1`, [quoteId],
   );
   if (!q) throw new Error("Quotation not found");
   if (q.status === "converted") throw new Error("Quotation already converted");
 
-  const items = await query<{ product_id: string | null; name: string; quantity: number; unit_price: number; discount: number; tax_rate: number; line_total: number }>(
-    `SELECT product_id, name, quantity, unit_price, discount, tax_rate, line_total FROM quotation_items WHERE quotation_id = ?1`,
+  const items = await query<{ product_id: string | null; description: string; quantity: number; unit_price: number; discount_amount: number; tax_rate: number; line_total: number }>(
+    `SELECT product_id, description, quantity, unit_price, discount_amount, tax_rate, line_total
+       FROM quotation_items WHERE quotation_id = ?1`,
     [quoteId],
   );
   const cart: CartItem[] = items.map((i) => ({
     id: uid(),
     product_id: i.product_id ?? "",
-    name: i.name,
+    name: i.description,
     quantity: i.quantity,
     unit_price: i.unit_price,
-    discount: i.discount,
+    discount: i.discount_amount,
     tax_rate: i.tax_rate,
     total: i.line_total,
   }));
 
-  const { saleId } = await completeSale(cart, payments, q.customer_id, userId, q.discount);
+  const { saleId } = await completeSale(cart, payments, q.customer_id, userId, q.discount_amount);
   await execute(`UPDATE quotations SET status = 'converted', converted_sale_id = ?2 WHERE id = ?1`, [quoteId, saleId]);
   return saleId;
 }
@@ -132,7 +162,7 @@ export async function convertQuoteToSale(
  * collected through the standard POS flow (cash, M-Pesa, customer credit).
  */
 export interface HardwareCheckoutPayload {
-  quote: { id: string; quote_number: string; customer_id: string | null; customer_name: string | null; discount: number };
+  quote: { id: string; quotation_number: string; customer_id: string | null; customer_name: string | null; discount: number };
   items: CartItem[];
 }
 
@@ -140,9 +170,9 @@ export async function prepareQuoteForPosCheckout(quoteId: string): Promise<Hardw
   await assertModuleEntitled("hardware");
   await requirePermission("hardware.quotations.manage", { entityType: "quotation", entityId: quoteId });
 
-  const [q] = await query<{ id: string; quote_number: string; customer_id: string | null; customer_name: string | null; status: string; discount: number }>(
-    `SELECT q.id, q.quote_number, q.customer_id, c.name AS customer_name, q.status, q.discount
-       FROM quotations q LEFT JOIN customers c ON c.id = q.customer_id
+  const [q] = await query<{ id: string; quotation_number: string; customer_id: string | null; customer_name: string | null; status: string; discount_amount: number }>(
+    `SELECT q.id, q.quotation_number, q.customer_id, q.customer_name, q.status, q.discount_amount
+       FROM quotations q
       WHERE q.id = ?1`,
     [quoteId],
   );
@@ -150,8 +180,9 @@ export async function prepareQuoteForPosCheckout(quoteId: string): Promise<Hardw
   if (q.status === "converted") throw new Error("Quotation already converted");
   if (q.status === "cancelled" || q.status === "expired") throw new Error(`Cannot check out a ${q.status} quote`);
 
-  const items = await query<{ product_id: string | null; name: string; quantity: number; unit_price: number; discount: number; tax_rate: number; line_total: number }>(
-    `SELECT product_id, name, quantity, unit_price, discount, tax_rate, line_total FROM quotation_items WHERE quotation_id = ?1`,
+  const items = await query<{ product_id: string | null; description: string; quantity: number; unit_price: number; discount_amount: number; tax_rate: number; line_total: number }>(
+    `SELECT product_id, description, quantity, unit_price, discount_amount, tax_rate, line_total
+       FROM quotation_items WHERE quotation_id = ?1`,
     [quoteId],
   );
   if (items.length === 0) throw new Error("No items on this quote");
@@ -159,16 +190,22 @@ export async function prepareQuoteForPosCheckout(quoteId: string): Promise<Hardw
   const cart: CartItem[] = items.map((i) => ({
     id: uid(),
     product_id: i.product_id ?? "",
-    name: i.name,
+    name: i.description,
     quantity: i.quantity,
     unit_price: i.unit_price,
-    discount: i.discount,
+    discount: i.discount_amount,
     tax_rate: i.tax_rate,
     total: i.line_total,
   }));
 
   return {
-    quote: { id: q.id, quote_number: q.quote_number, customer_id: q.customer_id, customer_name: q.customer_name, discount: q.discount },
+    quote: {
+      id: q.id,
+      quotation_number: q.quotation_number,
+      customer_id: q.customer_id,
+      customer_name: q.customer_name,
+      discount: q.discount_amount,
+    },
     items: cart,
   };
 }

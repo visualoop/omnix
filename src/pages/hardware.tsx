@@ -111,12 +111,12 @@ export function HardwareQuotationsPage() {
       const { prepareQuoteForPosCheckout } = await import("@/services/hardware");
       const payload = await prepareQuoteForPosCheckout(q.id);
       const label = payload.quote.customer_name
-        ? `${payload.quote.quote_number} — ${payload.quote.customer_name}`
-        : payload.quote.quote_number;
+        ? `${payload.quote.quotation_number} — ${payload.quote.customer_name}`
+        : payload.quote.quotation_number;
       loadSnapshot(payload.items, payload.quote.discount, payload.quote.customer_id, {
         source: { type: "hardware_quote", id: payload.quote.id, label },
       });
-      toast.success(`Quote ${payload.quote.quote_number} loaded in POS`);
+      toast.success(`Quote ${payload.quote.quotation_number} loaded in POS`);
       navigate("/pos/sale");
     } catch (e) {
       toast.error(String(e));
@@ -152,7 +152,7 @@ export function HardwareQuotationsPage() {
               const canSend = q.status === "draft" || q.status === "sent" || q.status === "accepted";
               return (
                 <tr key={q.id} className="border-t border-border hover:bg-accent/30 transition-colors">
-                  <td className="px-3 py-2 font-mono">{q.quote_number}</td>
+                  <td className="px-3 py-2 font-mono">{q.quotation_number}</td>
                   <td className="px-3 py-2"><Badge variant="outline" className={cn("text-[10px]", STATUS_STYLE[q.status])}>{q.status}</Badge></td>
                   <td className="px-3 py-2 text-right font-mono tabular-nums">{KES(q.total)}</td>
                   <td className="px-3 py-2 text-muted-foreground">{q.valid_until ?? "—"}</td>

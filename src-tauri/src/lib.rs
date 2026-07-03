@@ -544,6 +544,12 @@ fn run_inner() {
             sql: include_str!("../migrations/072_low_tier.sql"),
             kind: MigrationKind::Up,
         },
+        Migration {
+            version: 73,
+            description: "Hardware quote columns — patch 018/031 quotations collision",
+            sql: include_str!("../migrations/073_hardware_quote_columns.sql"),
+            kind: MigrationKind::Up,
+        },
     ];
 
     tauri::Builder::default()

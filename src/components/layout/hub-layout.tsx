@@ -44,6 +44,8 @@ interface Props {
   description?: string;
   /** Right-aligned summary content — usually 2–3 KPI stats. */
   summary?: ReactNode;
+  /** Right-aligned action buttons (e.g. "Open kitchen display", "New quotation"). */
+  actions?: ReactNode;
   tabs: HubTab[];
   /** Default tab when no ?tab= is in URL. Falls back to first tab. */
   defaultTabId?: string;
@@ -52,7 +54,7 @@ interface Props {
 }
 
 export function HubLayout({
-  title, eyebrow, description, summary, tabs, defaultTabId, hasPermission,
+  title, eyebrow, description, summary, actions, tabs, defaultTabId, hasPermission,
 }: Props) {
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
@@ -99,8 +101,11 @@ export function HubLayout({
             </p>
           ) : null}
         </div>
-        {summary ? (
-          <div className="shrink-0">{summary}</div>
+        {(summary || actions) ? (
+          <div className="shrink-0 flex items-center gap-3">
+            {actions}
+            {summary}
+          </div>
         ) : null}
       </header>
 
