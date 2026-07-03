@@ -62,7 +62,7 @@ export function BackButton({ fallback, label = "Back", className }: Props) {
       size="sm"
       onClick={go}
       className={cn(
-        "h-8 -ml-2 mb-3 inline-flex items-center gap-1.5 px-2 text-[12px] text-muted-foreground hover:text-foreground hover:bg-foreground/[0.04] rounded-md cursor-pointer",
+        "h-8 -ml-2 mb-3 w-fit inline-flex items-center gap-1.5 px-2 text-[12px] text-muted-foreground hover:text-foreground hover:bg-foreground/[0.04] rounded-md cursor-pointer",
         className,
       )}
       aria-label={label}

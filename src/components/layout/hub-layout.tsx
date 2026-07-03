@@ -109,8 +109,12 @@ export function HubLayout({
         ) : null}
       </header>
 
-      {/* Tab strip */}
-      <nav className="flex flex-wrap items-center gap-1.5 border-b border-border/60 -mx-1 px-1 pb-px">
+      {/* Tab strip — sticks to top when scrolling long tab content so the user
+          can always switch tabs without scrolling back up. Sits below the
+          window titlebar (32px), which is why top-8 not top-0. */}
+      <nav
+        className="sticky top-0 z-20 -mx-6 px-6 flex flex-wrap items-center gap-1.5 border-b border-border/60 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/85 pt-2 pb-px"
+      >
         {visibleTabs.map((t) => {
           const active = t.id === activeTab?.id;
           const Icon = t.icon;
