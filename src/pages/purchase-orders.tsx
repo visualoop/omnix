@@ -14,7 +14,7 @@ import {
   Trash as Trash2,
 } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { EntityCombobox } from "@/components/ui/entity-combobox";
 import { PageHeader } from "@/components/layout/page-header";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -147,7 +147,7 @@ interface CartItem {
 
 export function NewPurchaseOrderPage() {
   const trialGuard = useTrialWriteGuard();
-  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
+  const [, setSuppliers] = useState<Supplier[]>([]);
   const [supplierId, setSupplierId] = useState("");
   const [expectedDate, setExpectedDate] = useState("");
   const [notes, setNotes] = useState("");
@@ -231,10 +231,17 @@ export function NewPurchaseOrderPage() {
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-3">
           <Field label="Supplier *">
-            <Select value={supplierId} onValueChange={(v) => setSupplierId(String(v))}><SelectTrigger><SelectValue placeholder="Select supplier..." /></SelectTrigger><SelectContent>
-              
-              {suppliers.map((s) => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
-            </SelectContent></Select>
+            <EntityCombobox
+              kind="supplier"
+              value={supplierId}
+              onChange={setSupplierId}
+              onCreate={async (name) => {
+                const { upsertSupplier } = await import("@/services/erp");
+                const id = await upsertSupplier({ name });
+                setSuppliers((prev) => [...prev, { id, name } as Supplier]);
+                return { value: id, label: name };
+              }}
+            />
           </Field>
           <Field label="Expected Delivery Date">
             <Input type="date" value={expectedDate} onChange={(e) => setExpectedDate(e.target.value)} />
