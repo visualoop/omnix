@@ -56,6 +56,7 @@ interface TicketRow {
   image_path: string | null;
   allergens: string | null;
   order_type: string;
+  modifiers?: Array<{ modifier_name: string; option_name: string }>;
 }
 
 interface Ticket {
@@ -103,8 +104,23 @@ async function loadTickets(): Promise<Map<string, Ticket[]>> {
      ORDER BY oi.sent_at ASC`,
   ).catch(() => []);
 
+  // Fetch selected modifiers in one shot for every visible item.
+  let modifiersByItem = new Map<string, Array<{ modifier_name: string; option_name: string; price_delta: number }>>();
+  if (rows.length > 0) {
+    try {
+      const { listOrderItemModifiersForItems } = await import("@/services/hospitality");
+      modifiersByItem = await listOrderItemModifiersForItems(rows.map((r) => r.item_id));
+    } catch {
+      // Best-effort — modifiers table not present on cold boot.
+    }
+  }
+
   const map = new Map<string, Ticket[]>();
   for (const r of rows) {
+    // Enrich the row with any modifier selections so the render can
+    // paint chips directly under the item name.
+    (r as TicketRow & { modifiers?: Array<{ modifier_name: string; option_name: string }> }).modifiers =
+      modifiersByItem.get(r.item_id) ?? [];
     const stationKey = r.station_id ?? "unassigned";
     const stationName = r.station_name || "Kitchen";
     const list = map.get(stationKey) ?? [];
@@ -411,6 +427,15 @@ export function KitchenDisplayPage() {
                               {it.allergens ? (
                                 <span className="ml-1 inline-flex text-[9px] px-1 py-0.5 rounded bg-rose-500/15 text-rose-700 font-medium">
                                   ⚠ {it.allergens}
+                                </span>
+                              ) : null}
+                              {it.modifiers && it.modifiers.length > 0 ? (
+                                <span className="block mt-0.5 flex flex-wrap gap-1">
+                                  {it.modifiers.map((mod, mi) => (
+                                    <span key={mi} className="text-[10px] px-1 py-0.5 rounded bg-primary/10 text-primary font-medium">
+                                      {mod.option_name}
+                                    </span>
+                                  ))}
                                 </span>
                               ) : null}
                               {it.notes && (

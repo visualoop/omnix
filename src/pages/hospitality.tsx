@@ -37,6 +37,7 @@ import {
   listRecipes, recipeCost, restaurantReport, hotelReport,
   menuAvailability, type MenuAvailability,
   get86s, type MenuItem86,
+  listModifierGroupsForItem, type MenuModifierGroupFull,
   type DiningArea, type DiningTable, type MenuItem,
   type HospitalityOrder, type HospitalityOrderItem,
   type RoomType, type Room, type Booking, type RecipeRow,
@@ -48,6 +49,8 @@ import { query } from "@/lib/db";
 import { confirm, prompt } from "@/components/ui/confirm-dialog";
 import { MenuItemDialog, type MenuItemFormValues } from "@/components/hospitality/menu-item-dialog";
 import { RecipeDialog } from "@/components/hospitality/recipe-dialog";
+import { ModifierPicker } from "@/components/hospitality/modifier-groups";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { CompactFormDialog } from "@/components/hospitality/compact-form-dialog";
 import { useNavigate } from "react-router-dom";
 import { money as KES } from "@/lib/money";
@@ -427,6 +430,11 @@ export function HospitalityOrdersPage() {
   const [chargingRoom, setChargingRoom] = useState<string | null>(null);
   const [availability, setAvailability] = useState<Map<string, MenuAvailability>>(new Map());
   const [eightySixMap, setEightySixMap] = useState<Set<string>>(new Set());
+  const [modifierState, setModifierState] = useState<{
+    menuItem: MenuItem;
+    groups: MenuModifierGroupFull[];
+    selections: Array<{ modifierName: string; optionName: string; priceDelta: number }>;
+  } | null>(null);
 
   const loadOrders = () => listActiveOrders().then(setOrders);
   const loadAvailability = () => menuAvailability().then(setAvailability).catch(() => setAvailability(new Map()));
@@ -476,8 +484,33 @@ export function HospitalityOrdersPage() {
   const addItem = async (m: MenuItem) => {
     if (!selected) return;
     try {
+      // If this menu item has modifier groups, open the picker first —
+      // guests can then customise before it lands on the order.
+      const groups = await listModifierGroupsForItem(m.id);
+      if (groups.length > 0) {
+        setModifierState({ menuItem: m, groups, selections: [] });
+        return;
+      }
       await addOrderItem(selected, { productId: m.product_id, menuItemId: m.id, stationId: m.station_id, name: m.menu_name, quantity: 1, unitPrice: m.dine_in_price ?? 0 });
       listOrderItems(selected).then(setItems);
+    } catch (e) { toast.error(String(e)); }
+  };
+
+  const confirmModifiersAndAdd = async () => {
+    if (!selected || !modifierState) return;
+    const { menuItem: m, selections } = modifierState;
+    try {
+      await addOrderItem(selected, {
+        productId: m.product_id,
+        menuItemId: m.id,
+        stationId: m.station_id,
+        name: m.menu_name,
+        quantity: 1,
+        unitPrice: m.dine_in_price ?? 0,
+        modifiers: selections,
+      });
+      listOrderItems(selected).then(setItems);
+      setModifierState(null);
     } catch (e) { toast.error(String(e)); }
   };
   const send = async () => {
@@ -669,6 +702,29 @@ export function HospitalityOrdersPage() {
           ))}
         </div>
       )}
+
+      {/* Modifier picker — surfaces when the picked menu item has
+       *  modifier groups. Guests customise; then the line lands with
+       *  the selections on `hospitality_order_item_modifiers`. */}
+      {modifierState ? (
+        <Dialog open={true} onOpenChange={(o) => !o && setModifierState(null)}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>Customise · {modifierState.menuItem.menu_name}</DialogTitle>
+            </DialogHeader>
+            <div className="py-2">
+              <ModifierPicker
+                groups={modifierState.groups}
+                onSelectionsChange={(sels) => setModifierState((s) => s ? { ...s, selections: sels } : s)}
+              />
+            </div>
+            <DialogFooter>
+              <Button variant="ghost" onClick={() => setModifierState(null)}>Cancel</Button>
+              <Button onClick={confirmModifiersAndAdd}>Add to order</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      ) : null}
     </div>
   );
 }

@@ -34,12 +34,29 @@ import {
   set86,
   clear86,
   eightySixPresets,
+  menuItemSalesTrend,
+  menuItemCostHistory,
   type MenuItemFull,
   type KitchenStation,
   type MenuAvailability,
   type MenuItem86,
+  type MenuItemDailyStat,
+  type RecipeCostPoint,
 } from "@/services/hospitality";
 import { RecipeCanvas } from "@/components/hospitality/recipe-canvas";
+import { ModifierGroups } from "@/components/hospitality/modifier-groups";
+import {
+  BarChart as RechartsBarChart,
+  Bar,
+  LineChart as RechartsLineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+} from "recharts";
 import { money as KES } from "@/lib/money";
 import { cn } from "@/lib/utils";
 
@@ -319,6 +336,24 @@ export function MenuItemDetailPage() {
         />
       </div>
 
+      {/* ─── Modifiers section ──────────────────────────────────── */}
+      <div className="rounded-xl border border-border bg-card p-5">
+        <div className="mb-3">
+          <div className="text-[11px] uppercase tracking-wide text-muted-foreground font-medium">
+            Modifiers
+          </div>
+          <h2 className="text-lg font-semibold mt-0.5">Sauces, sides &amp; add-ons</h2>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            What the guest can pick when they add this item to an order.
+            Each option can carry a price delta.
+          </p>
+        </div>
+        <ModifierGroups menuItemId={id} />
+      </div>
+
+      {/* ─── Sales trend + cost history charts ─────────────────── */}
+      <MenuItemCharts menuItemId={id} />
+
       {/* ─── Sticky Save bar ────────────────────────────────────── */}
       {Object.keys(dirty).length > 0 ? (
         <div className="fixed bottom-4 inset-x-4 sm:inset-x-auto sm:right-6 z-40 rounded-full bg-foreground text-background shadow-lg px-4 py-2 flex items-center gap-3 text-sm">
@@ -370,6 +405,132 @@ function Field({
 export function _priceChip(v: number | null | undefined): string {
   if (v == null) return "—";
   return KES(v);
+}
+
+/**
+ * MenuItemCharts — 14-day sales trend (stacked bar) + 30-day cost
+ * history (line). Wraps recharts primitives directly so we can enable
+ * a stacked bar (the shared BarChart wrapper is single-series).
+ */
+function MenuItemCharts({ menuItemId }: { menuItemId: string }) {
+  const [salesTrend, setSalesTrend] = useState<MenuItemDailyStat[]>([]);
+  const [costHistory, setCostHistory] = useState<RecipeCostPoint[]>([]);
+
+  useEffect(() => {
+    if (!menuItemId) return;
+    menuItemSalesTrend(menuItemId, 14).then(setSalesTrend).catch(() => setSalesTrend([]));
+    menuItemCostHistory(menuItemId, 30).then(setCostHistory).catch(() => setCostHistory([]));
+  }, [menuItemId]);
+
+  const salesTotal = salesTrend.reduce(
+    (s, d) => s + d.dine_in + d.takeaway + d.room_service + d.delivery,
+    0,
+  );
+  const costLatest = costHistory.length > 0 ? costHistory[costHistory.length - 1].cost_per_serving : 0;
+  const costFirst = costHistory.length > 0 ? costHistory[0].cost_per_serving : 0;
+  const costChange = costFirst > 0 ? ((costLatest - costFirst) / costFirst) * 100 : 0;
+
+  return (
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      {/* Sales trend */}
+      <div className="rounded-xl border border-border bg-card p-5">
+        <div className="flex items-start justify-between mb-3">
+          <div>
+            <div className="text-[11px] uppercase tracking-wide text-muted-foreground font-medium">
+              Sales trend
+            </div>
+            <h2 className="text-lg font-semibold mt-0.5">Last 14 days</h2>
+          </div>
+          <div className="text-right">
+            <div className="text-2xl font-mono tabular-nums font-semibold">{salesTotal}</div>
+            <div className="text-[10px] text-muted-foreground">units sold</div>
+          </div>
+        </div>
+        {salesTotal === 0 ? (
+          <div className="text-sm text-muted-foreground italic py-6">
+            No sales yet.
+          </div>
+        ) : (
+          <ResponsiveContainer width="100%" height={180}>
+            <RechartsBarChart data={salesTrend} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--chart-grid, #e5e5e5)" />
+              <XAxis
+                dataKey="day"
+                stroke="var(--chart-axis, #999)"
+                fontSize={10}
+                tick={{ fill: "var(--chart-axis, #999)" }}
+                tickFormatter={(d) => new Date(d as string).getDate().toString()}
+              />
+              <YAxis stroke="var(--chart-axis, #999)" fontSize={10} tick={{ fill: "var(--chart-axis, #999)" }} />
+              <Tooltip
+                contentStyle={{ background: "var(--chart-tooltip-bg, white)", border: "1px solid var(--chart-tooltip-border, #e5e5e5)", borderRadius: 6, fontSize: 12 }}
+                labelStyle={{ color: "var(--chart-tooltip-fg, #333)", fontWeight: 600 }}
+              />
+              <Legend wrapperStyle={{ fontSize: 10 }} />
+              <Bar dataKey="dine_in" stackId="a" fill="var(--chart-1, #10b981)" name="Dine-in" />
+              <Bar dataKey="takeaway" stackId="a" fill="var(--chart-2, #f59e0b)" name="Takeaway" />
+              <Bar dataKey="room_service" stackId="a" fill="var(--chart-3, #6366f1)" name="Room service" />
+              <Bar dataKey="delivery" stackId="a" fill="var(--chart-4, #ec4899)" name="Delivery" />
+            </RechartsBarChart>
+          </ResponsiveContainer>
+        )}
+      </div>
+
+      {/* Cost history */}
+      <div className="rounded-xl border border-border bg-card p-5">
+        <div className="flex items-start justify-between mb-3">
+          <div>
+            <div className="text-[11px] uppercase tracking-wide text-muted-foreground font-medium">
+              Cost per serving
+            </div>
+            <h2 className="text-lg font-semibold mt-0.5">Last 30 days</h2>
+          </div>
+          <div className="text-right">
+            <div className="text-2xl font-mono tabular-nums font-semibold">{KES(costLatest)}</div>
+            {costFirst > 0 ? (
+              <div className={cn(
+                "text-[10px] font-mono",
+                costChange > 0 ? "text-rose-600" : costChange < 0 ? "text-emerald-600" : "text-muted-foreground",
+              )}>
+                {costChange > 0 ? "+" : ""}{costChange.toFixed(1)}% vs 30d ago
+              </div>
+            ) : null}
+          </div>
+        </div>
+        {costHistory.length === 0 || costLatest === 0 ? (
+          <div className="text-sm text-muted-foreground italic py-6">
+            Add a recipe to see cost history.
+          </div>
+        ) : (
+          <ResponsiveContainer width="100%" height={180}>
+            <RechartsLineChart data={costHistory} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--chart-grid, #e5e5e5)" />
+              <XAxis
+                dataKey="day"
+                stroke="var(--chart-axis, #999)"
+                fontSize={10}
+                tick={{ fill: "var(--chart-axis, #999)" }}
+                tickFormatter={(d) => new Date(d as string).getDate().toString()}
+              />
+              <YAxis stroke="var(--chart-axis, #999)" fontSize={10} tick={{ fill: "var(--chart-axis, #999)" }} />
+              <Tooltip
+                contentStyle={{ background: "var(--chart-tooltip-bg, white)", border: "1px solid var(--chart-tooltip-border, #e5e5e5)", borderRadius: 6, fontSize: 12 }}
+                labelStyle={{ color: "var(--chart-tooltip-fg, #333)", fontWeight: 600 }}
+                formatter={(v: unknown) => KES(Number(v))}
+              />
+              <Line
+                type="monotone"
+                dataKey="cost_per_serving"
+                stroke="var(--chart-primary, #10b981)"
+                strokeWidth={2}
+                dot={false}
+              />
+            </RechartsLineChart>
+          </ResponsiveContainer>
+        )}
+      </div>
+    </div>
+  );
 }
 
 function Eighty6Toggle({

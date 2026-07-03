@@ -112,6 +112,233 @@ export async function getMenuItem(id: string): Promise<MenuItemFull | null> {
   return rows[0] ?? null;
 }
 
+// ─── Modifier groups + options ───────────────────────────────────────
+// Menu-item modifiers (Sauces, Sides, Doneness) let the guest customise
+// a menu item at order time — each modifier is a group with 1..N options
+// that carry an optional price_delta.
+
+export interface MenuModifierGroup {
+  id: string;
+  name: string;
+  type: "single" | "multiple";
+  required: number;
+  min_select: number;
+  max_select: number | null;
+  active: number;
+}
+
+export interface MenuModifierOption {
+  id: string;
+  modifier_id: string;
+  name: string;
+  price_delta: number;
+  sort_order: number;
+}
+
+export interface MenuModifierGroupFull extends MenuModifierGroup {
+  options: MenuModifierOption[];
+}
+
+export async function listModifierGroupsForItem(menuItemId: string): Promise<MenuModifierGroupFull[]> {
+  const groups = await query<MenuModifierGroup>(
+    `SELECT mm.id, mm.name, mm.type, mm.required, mm.min_select, mm.max_select, mm.active
+     FROM menu_modifiers mm
+     JOIN menu_item_modifiers mim ON mim.modifier_id = mm.id
+     WHERE mim.menu_item_id = ?1 AND mm.active = 1
+     ORDER BY mm.name`,
+    [menuItemId],
+  );
+  const out: MenuModifierGroupFull[] = [];
+  for (const g of groups) {
+    const options = await query<MenuModifierOption>(
+      `SELECT id, modifier_id, name, price_delta, sort_order
+       FROM menu_modifier_options WHERE modifier_id = ?1 ORDER BY sort_order, name`,
+      [g.id],
+    );
+    out.push({ ...g, options });
+  }
+  return out;
+}
+
+export async function createModifierGroup(menuItemId: string, input: {
+  name: string;
+  type?: "single" | "multiple";
+  required?: boolean;
+  minSelect?: number;
+  maxSelect?: number | null;
+  options: Array<{ name: string; priceDelta?: number }>;
+}): Promise<string> {
+  await assertModuleEntitled("hospitality");
+  await requirePermission("hospitality.menu.manage", { entityType: "menu_modifier", metadata: { menuItemId } });
+  const groupId = uid();
+  await execute(
+    `INSERT INTO menu_modifiers (id, name, type, required, min_select, max_select)
+     VALUES (?1, ?2, ?3, ?4, ?5, ?6)`,
+    [
+      groupId,
+      input.name,
+      input.type ?? "single",
+      input.required ? 1 : 0,
+      input.minSelect ?? (input.required ? 1 : 0),
+      input.maxSelect ?? (input.type === "multiple" ? null : 1),
+    ],
+  );
+  await execute(
+    `INSERT INTO menu_item_modifiers (menu_item_id, modifier_id) VALUES (?1, ?2)`,
+    [menuItemId, groupId],
+  );
+  for (let i = 0; i < input.options.length; i++) {
+    const opt = input.options[i];
+    await execute(
+      `INSERT INTO menu_modifier_options (id, modifier_id, name, price_delta, sort_order)
+       VALUES (?1, ?2, ?3, ?4, ?5)`,
+      [uid(), groupId, opt.name, opt.priceDelta ?? 0, i],
+    );
+  }
+  return groupId;
+}
+
+export async function addModifierOption(groupId: string, name: string, priceDelta = 0): Promise<string> {
+  await assertModuleEntitled("hospitality");
+  await requirePermission("hospitality.menu.manage", { entityType: "menu_modifier_option", metadata: { groupId } });
+  const id = uid();
+  const [row] = await query<{ n: number }>(
+    `SELECT COUNT(*) AS n FROM menu_modifier_options WHERE modifier_id = ?1`,
+    [groupId],
+  );
+  await execute(
+    `INSERT INTO menu_modifier_options (id, modifier_id, name, price_delta, sort_order)
+     VALUES (?1, ?2, ?3, ?4, ?5)`,
+    [id, groupId, name, priceDelta, row?.n ?? 0],
+  );
+  return id;
+}
+
+export async function removeModifierOption(optionId: string): Promise<void> {
+  await requirePermission("hospitality.menu.manage", { entityType: "menu_modifier_option", entityId: optionId });
+  await execute(`DELETE FROM menu_modifier_options WHERE id = ?1`, [optionId]);
+}
+
+export async function deleteModifierGroup(groupId: string): Promise<void> {
+  await requirePermission("hospitality.menu.manage", { entityType: "menu_modifier", entityId: groupId });
+  // Cascades: menu_modifier_options + menu_item_modifiers via ON DELETE CASCADE.
+  await execute(`DELETE FROM menu_modifiers WHERE id = ?1`, [groupId]);
+}
+
+export interface OrderItemModifier {
+  order_item_id: string;
+  modifier_name: string;
+  option_name: string;
+  price_delta: number;
+}
+
+/** All modifier selections for a batch of order-item IDs — used by KDS to
+ *  paint the selected options under each ticket item. */
+export async function listOrderItemModifiersForItems(itemIds: string[]): Promise<Map<string, OrderItemModifier[]>> {
+  if (itemIds.length === 0) return new Map();
+  const placeholders = itemIds.map((_, i) => `?${i + 1}`).join(",");
+  const rows = await query<OrderItemModifier>(
+    `SELECT order_item_id, modifier_name, option_name, price_delta
+     FROM hospitality_order_item_modifiers WHERE order_item_id IN (${placeholders})`,
+    itemIds,
+  );
+  const map = new Map<string, OrderItemModifier[]>();
+  for (const r of rows) {
+    const list = map.get(r.order_item_id) ?? [];
+    list.push(r);
+    map.set(r.order_item_id, list);
+  }
+  return map;
+}
+
+// ─── Sales trend + cost history (for menu-item detail page) ──────────
+
+export interface MenuItemDailyStat {
+  day: string;
+  dine_in: number;
+  takeaway: number;
+  room_service: number;
+  delivery: number;
+}
+
+/** Units sold per day for a menu item over the last N days (default 14),
+ *  split by order type. Zero-filled so the bar chart shows every day. */
+export async function menuItemSalesTrend(menuItemId: string, days = 14): Promise<MenuItemDailyStat[]> {
+  const rows = await query<{ day: string; order_type: string; units: number }>(
+    `SELECT date(o.opened_at) AS day, o.order_type, SUM(oi.quantity) AS units
+     FROM hospitality_order_items oi
+     JOIN hospitality_orders o ON o.id = oi.order_id
+     WHERE oi.menu_item_id = ?1
+       AND o.status NOT IN ('voided')
+       AND date(o.opened_at) >= date('now', ?2)
+     GROUP BY date(o.opened_at), o.order_type
+     ORDER BY day`,
+    [menuItemId, `-${days} days`],
+  );
+  // Zero-fill days so recharts renders a smooth bar strip.
+  const map = new Map<string, MenuItemDailyStat>();
+  const today = new Date();
+  for (let i = days - 1; i >= 0; i--) {
+    const d = new Date(today);
+    d.setDate(d.getDate() - i);
+    const iso = d.toISOString().slice(0, 10);
+    map.set(iso, { day: iso, dine_in: 0, takeaway: 0, room_service: 0, delivery: 0 });
+  }
+  for (const r of rows) {
+    const cur = map.get(r.day);
+    if (!cur) continue;
+    const key = r.order_type as keyof Omit<MenuItemDailyStat, "day">;
+    if (key in cur) cur[key] = r.units;
+  }
+  return Array.from(map.values());
+}
+
+export interface RecipeCostPoint {
+  day: string;
+  cost_per_serving: number;
+}
+
+/** Historical cost-per-serving series derived from `stock_movements` +
+ *  goods-receipt buying prices. Not a true audit log (that would need a
+ *  `recipe_cost_history` table populated by a receipt hook) — this
+ *  reconstructs cost using the current ingredient prices as a proxy,
+ *  which is close enough for the small-restaurant use case. */
+export async function menuItemCostHistory(menuItemId: string, days = 30): Promise<RecipeCostPoint[]> {
+  // Get the recipe ingredients + wastage.
+  const r = await getRecipeForMenuItem(menuItemId);
+  if (!r) return [];
+  // For each ingredient, get its 14-day buying-price average per day.
+  const dayCosts = new Map<string, number>();
+  const today = new Date();
+  for (let i = days - 1; i >= 0; i--) {
+    const d = new Date(today);
+    d.setDate(d.getDate() - i);
+    dayCosts.set(d.toISOString().slice(0, 10), 0);
+  }
+  for (const ing of r.ingredients) {
+    const rows = await query<{ day: string; avg_price: number }>(
+      `SELECT date(received_at) AS day, AVG(buying_price) AS avg_price
+       FROM batches
+       WHERE product_id = ?1 AND date(received_at) >= date('now', ?2)
+       GROUP BY date(received_at)`,
+      [ing.product_id, `-${days} days`],
+    );
+    // Ingredient contribution per day = qty * (1 + waste%) * priceOnDay.
+    // Fallback price = current buying price if no receipt that day.
+    let lastPrice = ing.buying_price;
+    for (const day of Array.from(dayCosts.keys())) {
+      const rowForDay = rows.find((rr) => rr.day === day);
+      if (rowForDay) lastPrice = rowForDay.avg_price;
+      const contribution = ing.quantity * (1 + ing.wastage_percent / 100) * lastPrice;
+      dayCosts.set(day, (dayCosts.get(day) ?? 0) + contribution);
+    }
+  }
+  return Array.from(dayCosts.entries()).map(([day, cost]) => ({
+    day,
+    cost_per_serving: cost / (r.yield_quantity || 1),
+  }));
+}
+
 // ─── 86 (soft-hide with expiry) ──────────────────────────────────────
 // "86" is the kitchen term for "we've run out of this tonight". Distinct
 // from active=0 (retired forever) — 86'd items auto-restore when their
@@ -335,10 +562,12 @@ export async function listOrderItems(orderId: string): Promise<HospitalityOrderI
 export async function addOrderItem(orderId: string, input: {
   productId?: string | null; menuItemId?: string | null; stationId?: string | null;
   name: string; quantity: number; unitPrice: number; taxRate?: number; notes?: string;
+  modifiers?: Array<{ modifierName: string; optionName: string; priceDelta: number }>;
 }): Promise<string> {
   await requirePermission("hospitality.orders.take", { entityType: "hospitality_order", entityId: orderId });
   const id = uid();
-  const lineTotal = input.unitPrice * input.quantity;
+  const modifierTotal = (input.modifiers ?? []).reduce((s, m) => s + m.priceDelta, 0) * input.quantity;
+  const lineTotal = input.unitPrice * input.quantity + modifierTotal;
   // Auto-fire: if the business set hospitality.auto_fire = 'on' (default),
   // items enter as 'sent' and immediately appear on the KDS. This matches
   // Toast / Square / Chowbus defaults. Businesses that want a
@@ -346,11 +575,18 @@ export async function addOrderItem(orderId: string, input: {
   const autoFire = await isAutoFireEnabled();
   const initialStatus = autoFire ? "sent" : "new";
   await execute(
-    `INSERT INTO hospitality_order_items (id, order_id, product_id, menu_item_id, station_id, name, quantity, unit_price, tax_rate, line_total, status, notes${autoFire ? ", sent_at" : ""})
-     VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12${autoFire ? ", datetime('now')" : ""})`,
+    `INSERT INTO hospitality_order_items (id, order_id, product_id, menu_item_id, station_id, name, quantity, unit_price, tax_rate, line_total, modifier_total, status, notes${autoFire ? ", sent_at" : ""})
+     VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13${autoFire ? ", datetime('now')" : ""})`,
     [id, orderId, input.productId ?? null, input.menuItemId ?? null, input.stationId ?? null,
-     input.name, input.quantity, input.unitPrice, input.taxRate ?? 0, lineTotal, initialStatus, input.notes ?? null],
+     input.name, input.quantity, input.unitPrice, input.taxRate ?? 0, lineTotal, modifierTotal, initialStatus, input.notes ?? null],
   );
+  for (const mod of input.modifiers ?? []) {
+    await execute(
+      `INSERT INTO hospitality_order_item_modifiers (id, order_item_id, modifier_name, option_name, price_delta)
+       VALUES (?1, ?2, ?3, ?4, ?5)`,
+      [uid(), id, mod.modifierName, mod.optionName, mod.priceDelta],
+    );
+  }
   if (autoFire) {
     // Advance the order to 'sent' if it was still 'open' — mirrors what
     // sendToKitchen() does. Keeps the Order Board in sync.
