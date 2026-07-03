@@ -72,12 +72,21 @@ export function PharmacyHubPage() {
   const cc = useCountry((s) => s.code);
   const term = pharmacyTerm(cc);
   const user = useAuthStore((s) => s.user);
+  const navigate = useNavigate();
   const has = (perm: string) => hasPermission(user, perm as Permission);
   return (
     <HubLayout
       eyebrow={term}
       title={`${term} module`}
       description="Dispensing, controlled drugs, expiry watch, claims and refills."
+      actions={
+        has("pos.use") ? (
+          <Button onClick={() => navigate("/pos/sale")}>
+            <ShoppingBag className="h-4 w-4 mr-2" />
+            Go to POS
+          </Button>
+        ) : undefined
+      }
       tabs={[
         { id: "dispense", label: "Dispense", icon: Pill, component: PharmacyPage, permission: "pharmacy.dispense" },
         { id: "patients", label: "Patients", icon: UsersIcon, component: PatientsPage, permission: "pharmacy.dispense" },
@@ -96,12 +105,21 @@ export function PharmacyHubPage() {
 
 export function RetailHubPage() {
   const user = useAuthStore((s) => s.user);
+  const navigate = useNavigate();
   const has = (perm: string) => hasPermission(user, perm as Permission);
   return (
     <HubLayout
       eyebrow="Module"
       title="Retail"
       description="Shop-floor insights, brand mix, laybys, special orders, shrinkage."
+      actions={
+        has("pos.use") ? (
+          <Button onClick={() => navigate("/pos/sale")}>
+            <ShoppingBag className="h-4 w-4 mr-2" />
+            Go to POS
+          </Button>
+        ) : undefined
+      }
       tabs={[
         { id: "insights", label: "Insights", icon: TrendingUp, component: RetailDashboardPage, permission: "reports.view" },
         { id: "brands", label: "Brands", icon: TagIcon, component: BrandsPage, permission: "retail.brands.manage" },
@@ -116,12 +134,21 @@ export function RetailHubPage() {
 
 export function HardwareHubPage() {
   const user = useAuthStore((s) => s.user);
+  const navigate = useNavigate();
   const has = (perm: string) => hasPermission(user, perm as Permission);
   return (
     <HubLayout
       eyebrow="Module"
       title="Hardware"
       description="Quotations, delivery notes, contractor accounts, sales-rep commissions."
+      actions={
+        has("pos.use") ? (
+          <Button onClick={() => navigate("/pos/sale")}>
+            <ShoppingBag className="h-4 w-4 mr-2" />
+            Go to POS
+          </Button>
+        ) : undefined
+      }
       tabs={[
         { id: "overview", label: "Overview", icon: LayoutDashboard, component: HardwareDashboardPage, permission: "hardware.reports.view" },
         { id: "quotations", label: "Quotations", icon: FileText, component: HardwareQuotationsPage, permission: "hardware.quotations.manage" },
