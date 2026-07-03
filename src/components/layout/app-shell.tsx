@@ -2,6 +2,7 @@ import { useState, useCallback, useEffect, useRef } from "react";
 import { Outlet, useLocation } from "react-router-dom";
 import { Sidebar } from "./sidebar";
 import { Topbar } from "./topbar";
+import { WindowTitlebar, TITLEBAR_HEIGHT_PX } from "./window-titlebar";
 import { TrialLifecycleBanner } from "@/components/trial-lifecycle";
 import { CommandPalette } from "@/components/layout/command-palette";
 import { RouteErrorBoundary } from "@/components/route-error-boundary";
@@ -56,18 +57,24 @@ export function AppShell() {
   }, [location.pathname]);
 
   return (
-    <div className="flex h-screen w-screen overflow-hidden bg-background text-foreground">
-      {!isSettingsRoute && !isFullscreen && <Sidebar onCommandOpen={openCmd} />}
-      <div className="flex flex-col flex-1 overflow-hidden">
-        {!isFullscreen && <TrialLifecycleBanner />}
-        {!isFullscreen && <Topbar />}
-        <main className={isFullscreen ? "flex-1 overflow-auto" : "flex-1 overflow-auto p-6 bg-background"}>
-          <div key={routeKey} className={transitionClass}>
-            <RouteErrorBoundary resetKey={location.pathname}>
-              <Outlet />
-            </RouteErrorBoundary>
-          </div>
-        </main>
+    <div className="flex flex-col h-screen w-screen overflow-hidden bg-background text-foreground">
+      <WindowTitlebar hidden={isFullscreen} />
+      <div
+        className="flex flex-1 overflow-hidden"
+        style={{ marginTop: isFullscreen ? 0 : TITLEBAR_HEIGHT_PX }}
+      >
+        {!isSettingsRoute && !isFullscreen && <Sidebar onCommandOpen={openCmd} />}
+        <div className="flex flex-col flex-1 overflow-hidden">
+          {!isFullscreen && <TrialLifecycleBanner />}
+          {!isFullscreen && <Topbar />}
+          <main className={isFullscreen ? "flex-1 overflow-auto" : "flex-1 overflow-auto p-6 bg-background"}>
+            <div key={routeKey} className={transitionClass}>
+              <RouteErrorBoundary resetKey={location.pathname}>
+                <Outlet />
+              </RouteErrorBoundary>
+            </div>
+          </main>
+        </div>
       </div>
       <CommandPalette open={cmdOpen} onOpenChange={setCmdOpen} />
       <OnboardingTour />

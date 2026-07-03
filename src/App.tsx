@@ -5,6 +5,7 @@ import { ConfirmDialogHost } from "@/components/ui/confirm-dialog";
 import { TouchTextKeyboardProvider } from "@/components/ui/touch-text-keyboard-provider";
 import { useAuthStore } from "@/stores/auth";
 import { useF11Fullscreen } from "@/hooks/use-f11-fullscreen";
+import { WindowTitlebar, TITLEBAR_HEIGHT_PX } from "@/components/layout/window-titlebar";
 import { useAutoUpdate } from "@/hooks/use-auto-update";
 import { useLanAutostart } from "@/hooks/use-lan-autostart";
 import { useAlertScanner } from "@/hooks/use-alert-scanner";
@@ -182,10 +183,13 @@ function CustomerDisplayShell() {
   useF11Fullscreen();
   return (
     <BrowserRouter>
-      <Routes>
-        <Route path="/customer-display/queue" element={<CustomerDisplayQueuePage />} />
-        <Route path="*" element={<CustomerDisplayPage />} />
-      </Routes>
+      <WindowTitlebar title="Customer Display" />
+      <div style={{ marginTop: TITLEBAR_HEIGHT_PX }}>
+        <Routes>
+          <Route path="/customer-display/queue" element={<CustomerDisplayQueuePage />} />
+          <Route path="*" element={<CustomerDisplayPage />} />
+        </Routes>
+      </div>
     </BrowserRouter>
   );
 }
@@ -195,9 +199,12 @@ function KitchenDisplayShell() {
   useF11Fullscreen();
   return (
     <BrowserRouter>
-      <Routes>
-        <Route path="*" element={<KitchenDisplayPage />} />
-      </Routes>
+      <WindowTitlebar title="Kitchen Display" />
+      <div style={{ marginTop: TITLEBAR_HEIGHT_PX }}>
+        <Routes>
+          <Route path="*" element={<KitchenDisplayPage />} />
+        </Routes>
+      </div>
     </BrowserRouter>
   );
 }
