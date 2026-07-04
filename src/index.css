@@ -832,6 +832,13 @@
   * {
     @apply border-border;
   }
+  /* Native desktop chrome never scrolls horizontally. 100vw-based widths
+     (w-screen) overflow by the vertical scrollbar's width on Windows, which
+     showed a stray horizontal bar on login/setup/hospitality. Clamp it. */
+  html, body, #root {
+    overflow-x: hidden;
+    max-width: 100%;
+  }
   body {
     @apply bg-background text-foreground;
     font-family: "Geist", "Segoe UI Variable", "Segoe UI", -apple-system, BlinkMacSystemFont, sans-serif;

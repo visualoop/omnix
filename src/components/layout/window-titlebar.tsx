@@ -328,7 +328,7 @@ function TitlebarButton({
       className={cn(
         "inline-flex items-center justify-center h-8 w-[46px]",
         "text-muted-foreground hover:text-foreground",
-        danger ? "hover:bg-destructive hover:text-destructive-foreground" : "hover:bg-accent",
+        danger ? "hover:bg-destructive hover:text-white" : "hover:bg-accent",
         "transition-colors",
       )}
     >

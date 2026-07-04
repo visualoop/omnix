@@ -59,7 +59,7 @@ export function AppShell() {
   }, [location.pathname]);
 
   return (
-    <div className="flex flex-col h-screen w-screen overflow-hidden bg-background text-foreground">
+    <div className="flex flex-col h-screen w-full overflow-hidden bg-background text-foreground">
       <WindowTitlebar hidden={isFullscreen} />
       <div
         className="flex flex-1 overflow-hidden"
@@ -69,7 +69,7 @@ export function AppShell() {
         <div className="flex flex-col flex-1 overflow-hidden">
           {!isFullscreen && <TrialLifecycleBanner />}
           {!isFullscreen && <Topbar />}
-          <main className={isFullscreen ? "flex-1 overflow-auto" : "flex-1 overflow-auto bg-background"}>
+          <main className={isFullscreen ? "flex-1 overflow-y-auto overflow-x-hidden" : "flex-1 overflow-y-auto overflow-x-hidden bg-background"}>
             <div key={routeKey} className={cn(isFullscreen ? "" : "p-6", transitionClass)}>
               <RouteErrorBoundary resetKey={location.pathname}>
                 <Outlet />
