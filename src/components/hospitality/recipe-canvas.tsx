@@ -13,7 +13,7 @@
  * Persistence: nodes + viewport saved as JSON on `recipes.canvas_layout`
  * via `replaceRecipe(..., canvasLayout)`. Rehydrates on load.
  */
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   ReactFlow,
   Background,
@@ -30,7 +30,7 @@ import dagre from "@dagrejs/dagre";
 import { Plus, Warning, MagicWand, FloppyDisk, ForkKnife } from "@phosphor-icons/react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { Combobox } from "@/components/ui/combobox";
+import { IngredientPickerSheet } from "@/components/hospitality/ingredient-picker-sheet";
 import { getProducts, type Product } from "@/services/inventory";
 import { getRecipeForMenuItem, replaceRecipe } from "@/services/hospitality";
 import { money as KES } from "@/lib/money";
@@ -196,6 +196,7 @@ export function RecipeCanvas({ menuItemId, menuItemName, menuItemImage, sellingP
   const [lines, setLines] = useState<IngredientLine[]>([]);
   const [yieldQty, setYieldQty] = useState(1);
   const [saving, setSaving] = useState(false);
+  const [pickerOpen, setPickerOpen] = useState(false);
 
   // Load products (hospitality rule: getProducts already filters to
   // kind='physical' via services/inventory.ts:getProductsPage — so we
@@ -407,29 +408,6 @@ export function RecipeCanvas({ menuItemId, menuItemName, menuItemImage, sellingP
   // ingredients).
   const onConnect = useCallback((_params: Connection) => {}, []);
 
-  const addIngredient = (productId: string) => {
-    if (lines.some((l) => l.productId === productId)) {
-      toast.error("Ingredient already in the recipe");
-      return;
-    }
-    const p = products.find((pp) => pp.id === productId);
-    if (!p) return;
-    void stockFor(productId).then((stock) => {
-      setLines((prev) => [
-        ...prev,
-        {
-          productId,
-          name: p.name,
-          quantity: 100,
-          unit: "g",
-          wastagePercent: 0,
-          buyingPrice: (p as unknown as { buying_price?: number }).buying_price ?? 0,
-          stockQty: stock,
-        },
-      ]);
-    });
-  };
-
   const patchLine = (productId: string, patch: Partial<IngredientLine>) => {
     setLines((prev) => prev.map((l) => (l.productId === productId ? { ...l, ...patch } : l)));
   };
@@ -480,11 +458,6 @@ export function RecipeCanvas({ menuItemId, menuItemName, menuItemImage, sellingP
   const suggestedPrice = costPerServing / 0.35; // 65% food-cost = 35% cost ratio
   const missing = lines.filter((l) => l.stockQty === 0);
 
-  const productOptions = useMemo(
-    () => products.filter((p) => !lines.some((l) => l.productId === p.id)).map((p) => ({ value: p.id, label: p.name })),
-    [products, lines],
-  );
-
   return (
     <div className="flex flex-col lg:flex-row gap-3 h-[600px]">
       {/* Canvas */}
@@ -505,19 +478,44 @@ export function RecipeCanvas({ menuItemId, menuItemName, menuItemImage, sellingP
         </ReactFlow>
         {/* Overlay toolbar */}
         <div className="absolute top-3 left-3 flex items-center gap-2 bg-background/95 backdrop-blur border border-border rounded-md p-1.5">
-          <div className="max-w-[220px]">
-            <Combobox
-              value=""
-              onChange={(v) => v && addIngredient(v)}
-              options={productOptions}
-              placeholder="+ Add ingredient…"
-            />
-          </div>
+          <Button size="sm" variant="outline" onClick={() => setPickerOpen(true)}>
+            <Plus className="h-3.5 w-3.5 mr-1.5" /> Add ingredient
+          </Button>
           <Button size="sm" variant="ghost" onClick={runAutoLayout} title="Auto-layout">
             <MagicWand className="h-4 w-4" />
           </Button>
         </div>
       </div>
+
+      <IngredientPickerSheet
+        open={pickerOpen}
+        onClose={() => setPickerOpen(false)}
+        excludeIds={lines.map((l) => l.productId)}
+        onPick={(ids) => {
+          // Add each picked product as a new ingredient line — quantity
+          // defaults to 100g / 1pcs (chef edits inline afterwards).
+          Promise.all(ids.map(async (id) => {
+            const p = products.find((pp) => pp.id === id);
+            const stock = await stockFor(id);
+            return { p, stock };
+          })).then((results) => {
+            setLines((prev) => [
+              ...prev,
+              ...results
+                .filter((r) => r.p)
+                .map((r) => ({
+                  productId: r.p!.id,
+                  name: r.p!.name,
+                  quantity: 100,
+                  unit: "g",
+                  wastagePercent: 0,
+                  buyingPrice: (r.p as unknown as { buying_price?: number }).buying_price ?? 0,
+                  stockQty: r.stock,
+                })),
+            ]);
+          });
+        }}
+      />
 
       {/* Sidebar */}
       <div className="lg:w-[280px] flex flex-col gap-3">

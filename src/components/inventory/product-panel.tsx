@@ -38,7 +38,7 @@ interface Props {
   open: boolean;
   onClose: () => void;
   productId: string | null;
-  onSaved: () => void;
+  onSaved: (savedId?: string) => void;
 }
 
 export function ProductPanel({ open, onClose, productId, onSaved }: Props) {
@@ -192,7 +192,7 @@ export function ProductPanel({ open, onClose, productId, onSaved }: Props) {
         });
       }
       const wasCreate = !isEdit;
-      onSaved();
+      onSaved(savedId ?? undefined);
       if (wasCreate && activeModule === "retail" && savedId) {
         // Switch into edit mode in-place so the user can immediately add
         // variants / packs without reopening the panel.
