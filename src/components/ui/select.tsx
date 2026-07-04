@@ -8,8 +8,44 @@ import {
 } from "@phosphor-icons/react";
 import { cn } from "@/lib/utils";
 
-function Select(props: React.ComponentProps<typeof SelectPrimitive.Root>) {
-  return <SelectPrimitive.Root data-slot="select" {...props} />;
+/**
+ * Walk the Select subtree and collect every <SelectItem>'s value + label.
+ * Base UI's <Select.Value> renders the raw value unless the Root is given an
+ * `items` map — so we derive that map from the items themselves. This makes
+ * the trigger show the human label (e.g. a brand/room-type NAME) instead of
+ * the id for every select in the app, with zero call-site changes. Falls back
+ * to the raw value when no items are found (no regression).
+ */
+function collectSelectItems(
+  node: React.ReactNode,
+  out: Array<{ label: React.ReactNode; value: unknown }>,
+): void {
+  React.Children.forEach(node, (child) => {
+    if (!React.isValidElement(child)) return;
+    if (child.type === SelectItem) {
+      const p = child.props as { value?: unknown; children?: React.ReactNode };
+      if (p.value !== undefined && p.value !== null) {
+        out.push({ value: p.value, label: p.children });
+      }
+      return;
+    }
+    const p = child.props as { children?: React.ReactNode };
+    if (p && p.children) collectSelectItems(p.children, out);
+  });
+}
+
+function Select({ items, children, ...props }: React.ComponentProps<typeof SelectPrimitive.Root>) {
+  const derivedItems = React.useMemo(() => {
+    if (items) return items;
+    const acc: Array<{ label: React.ReactNode; value: unknown }> = [];
+    collectSelectItems(children, acc);
+    return acc.length > 0 ? acc : undefined;
+  }, [items, children]);
+  return (
+    <SelectPrimitive.Root data-slot="select" items={derivedItems} {...props}>
+      {children}
+    </SelectPrimitive.Root>
+  );
 }
 
 function SelectValue(props: React.ComponentProps<typeof SelectPrimitive.Value>) {

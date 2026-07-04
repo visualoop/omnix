@@ -113,13 +113,13 @@ export function TouchKeypad({
     <>
       {/* click-outside dismiss layer */}
       <div
-        className="fixed inset-0 bottom-[280px] z-40"
+        className="fixed inset-0 bottom-[280px] z-[200]"
         onClick={() => onDismiss?.()}
         aria-hidden
       />
       <div
         ref={panelRef}
-        className="fixed inset-x-0 bottom-0 z-50 border-t border-border bg-background shadow-[0_-4px_24px_rgb(0_0_0_/_0.08)]"
+        className="fixed inset-x-0 bottom-0 z-[210] border-t border-border bg-background shadow-[0_-4px_24px_rgb(0_0_0_/_0.08)]"
         role="dialog"
         aria-label="On-screen keypad"
       >
