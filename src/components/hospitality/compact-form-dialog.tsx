@@ -86,9 +86,18 @@ export function CompactFormDialog({ open, onClose, title, description, fields, o
                 {f.required && <span className="text-primary"> *</span>}
               </span>
               {f.type === "select" ? (
-                <Select value={values[f.name] ?? ""} onValueChange={(next) => setValues((prev) => ({ ...prev, [f.name]: String(next) }))}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>
-                  {f.options?.map((opt) => <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>)}
-                </SelectContent></Select>
+                <Select value={values[f.name] ?? ""} onValueChange={(next) => setValues((prev) => ({ ...prev, [f.name]: String(next) }))}>
+                  <SelectTrigger>
+                    {/* Base UI renders the raw value by default — map it back to
+                        the option label so the trigger shows the name, not the id. */}
+                    <SelectValue>
+                      {(value: string) => f.options?.find((o) => o.value === value)?.label ?? f.placeholder ?? "Select…"}
+                    </SelectValue>
+                  </SelectTrigger>
+                  <SelectContent>
+                    {f.options?.map((opt) => <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>)}
+                  </SelectContent>
+                </Select>
               ) : (
                 <Input
                   type={f.type === "number" ? "number" : "text"}
