@@ -198,13 +198,28 @@ export async function completeSale(
       // of batch-deducting the menu product (which has no batches). The
       // plan is resolved here; the actual writes go into the transaction.
       try {
-        const { planRecipeConsumption } = await import("./hospitality");
+        const { planRecipeConsumption, isRequireRecipeEnabled } = await import("./hospitality");
+        // Guardrail: block the sale if the operator requires recipes and
+        // this menu item has none attached. Prevents silent zero-deduct
+        // sales.
+        if (await isRequireRecipeEnabled()) {
+          const check = await planRecipeConsumption(item.menu_item_id, item.quantity, saleId);
+          if (check.writes.length === 0) {
+            throw new Error(
+              `${item.name} has no recipe attached. Add ingredients on the menu-item detail page before selling it, or disable "Require recipe to sell" in Settings → Hospitality.`,
+            );
+          }
+        }
         const plan = await planRecipeConsumption(item.menu_item_id, item.quantity, saleId);
         for (const w of plan.writes) stmts.push(w);
         if (plan.missing.length > 0) {
           console.warn(`[sale ${saleNumber}] menu_item ${item.menu_item_id}: insufficient ingredients`, plan.missing);
         }
       } catch (e) {
+        // Re-throw explicit require-recipe rejections so the POS shows
+        // them to the cashier. Swallow other planning errors so a
+        // corrupted recipe doesn't block payment.
+        if (e instanceof Error && /no recipe attached/i.test(e.message)) throw e;
         console.error("Recipe planning failed for menu item:", e);
       }
       continue;

@@ -193,23 +193,17 @@ export function WindowTitlebar({ title, hidden, extras }: Props) {
       style={{ height: H }}
     >
       {/* Left — module identity: [icon] BRAND.name · <route label>.
-       *  Keeps drag region — the buttons/routing target only fires on
-       *  the button itself.
-       *  When the caller passes a `title` (e.g. KDS / customer display),
-       *  the module block is hidden to keep those windows compact. */}
-      {title ? (
-        <div className="w-24 shrink-0" data-tauri-drag-region />
-      ) : (
-        <ModuleIdentity />
-      )}
+       *  Always shown so secondary windows (KDS / Customer Display /
+       *  Order Board) also carry the branding. When the caller passes
+       *  a `title` (e.g. "Kitchen Display"), it becomes the route
+       *  label suffix so the strip reads
+       *  "Omnix Hospitality · Kitchen Display". */}
+      <ModuleIdentity title={title} />
 
-      {/* Centre — title (optional). Draggable. */}
-      <div
-        data-tauri-drag-region
-        className="flex-1 text-center text-[11px] font-medium tracking-wide text-muted-foreground truncate px-3"
-      >
-        {title ?? ""}
-      </div>
+      {/* Centre — draggable spacer. The route label already lives on the
+       *  left inside ModuleIdentity, so keep the centre empty for a
+       *  cleaner strip. */}
+      <div data-tauri-drag-region className="flex-1 min-w-0" />
 
       {/* Right — extras + window controls */}
       <div className="flex items-center shrink-0">
@@ -251,11 +245,21 @@ export function WindowTitlebar({ title, hidden, extras }: Props) {
  * Left-side module identity block on the custom titlebar.
  * Shows the variant/module icon (tinted with the variant accent) then
  * the product name + current top-level route label.
+ *
+ * If `title` is passed by the caller (secondary windows like KDS /
+ * Customer Display / Order Board), it wins over the derived route
+ * label. If the label duplicates the trailing word of BRAND.name
+ * (e.g. "Hospitality" on an "Omnix Hospitality" build), the suffix is
+ * dropped to avoid "Omnix Hospitality · Hospitality".
  */
-function ModuleIdentity() {
+function ModuleIdentity({ title }: { title?: string }) {
   const location = useLocation();
   const moduleId = useCurrentModuleId();
-  const routeLabel = routeLabelFromPath(location.pathname);
+  const derived = routeLabelFromPath(location.pathname);
+  const label = title ?? derived;
+  const brandTail = BRAND.name.split(/\s+/).pop() ?? "";
+  const suppress = label && brandTail && label.toLowerCase() === brandTail.toLowerCase();
+  const showLabel = label && !suppress;
   return (
     <div
       data-tauri-drag-region
@@ -265,11 +269,11 @@ function ModuleIdentity() {
       <span className="text-[11px] font-medium tracking-wide text-foreground/85 truncate">
         {BRAND.name}
       </span>
-      {routeLabel ? (
+      {showLabel ? (
         <>
           <span className="text-[11px] text-muted-foreground/70">·</span>
           <span className="text-[11px] text-muted-foreground truncate">
-            {routeLabel}
+            {label}
           </span>
         </>
       ) : null}

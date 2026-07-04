@@ -640,6 +640,12 @@ export async function addOrderItem(orderId: string, input: {
   modifiers?: Array<{ modifierName: string; optionName: string; priceDelta: number }>;
 }): Promise<string> {
   await requirePermission("hospitality.orders.take", { entityType: "hospitality_order", entityId: orderId });
+  // Require-recipe guardrail (opt-in per business setting). Only blocks
+  // menu-item lines — free-form 'name' lines (rare, but allowed for
+  // one-offs like a service fee) always pass through.
+  if (input.menuItemId && await isRequireRecipeEnabled()) {
+    await assertRecipeExists(input.menuItemId);
+  }
   const id = uid();
   const modifierTotal = (input.modifiers ?? []).reduce((s, m) => s + m.priceDelta, 0) * input.quantity;
   const lineTotal = input.unitPrice * input.quantity + modifierTotal;
@@ -691,6 +697,60 @@ export async function setAutoFire(enabled: boolean): Promise<void> {
     [enabled ? "on" : "off"],
   );
   autoFireCache = enabled;
+}
+
+/**
+ * "Require recipe to sell" — when on, addOrderItem refuses to add a
+ * menu-item line whose menu_item_id has no attached recipe with >=1
+ * ingredient. Prevents "silent sells" where inventory never decrements
+ * because a chef forgot to build the recipe.
+ *
+ * Default: OFF. Simple venues (bars with mostly bottled drinks) can
+ * leave it off; full-service restaurants with strict food-cost targets
+ * should turn it on.
+ */
+let requireRecipeCache: boolean | null = null;
+export async function isRequireRecipeEnabled(): Promise<boolean> {
+  if (requireRecipeCache !== null) return requireRecipeCache;
+  const rows = await query<{ value: string }>(
+    `SELECT value FROM settings WHERE key = 'hospitality.require_recipe_to_sell' LIMIT 1`,
+  );
+  requireRecipeCache = rows[0]?.value === "on";
+  return requireRecipeCache;
+}
+
+export async function setRequireRecipeToSell(enabled: boolean): Promise<void> {
+  await execute(
+    `INSERT INTO settings (key, value, category) VALUES ('hospitality.require_recipe_to_sell', ?1, 'hospitality')
+     ON CONFLICT(key) DO UPDATE SET value = excluded.value`,
+    [enabled ? "on" : "off"],
+  );
+  requireRecipeCache = enabled;
+}
+
+/** Assert that a given menu_item_id has a recipe attached — used by
+ *  addOrderItem when require-recipe-to-sell is on. Throws with a
+ *  friendly message that names the item so the operator knows exactly
+ *  which item is missing a recipe.
+ *
+ *  Cheap: single SELECT with EXISTS. */
+async function assertRecipeExists(menuItemId: string): Promise<void> {
+  const rows = await query<{ has: number; name: string | null }>(
+    `SELECT
+       (SELECT 1 FROM recipes r
+          JOIN recipe_ingredients ri ON ri.recipe_id = r.id
+          WHERE r.menu_item_id = ?1 AND r.active = 1
+          LIMIT 1) AS has,
+       (SELECT menu_name FROM menu_items WHERE id = ?1) AS name`,
+    [menuItemId],
+  );
+  const row = rows[0];
+  if (!row?.has) {
+    const label = row?.name ?? "this item";
+    throw new Error(
+      `${label} has no recipe attached. Add ingredients on the menu-item detail page before selling it, or disable "Require recipe to sell" in Settings → Hospitality.`,
+    );
+  }
 }
 
 /** Send all unsent ('new') items on an order to the kitchen. */

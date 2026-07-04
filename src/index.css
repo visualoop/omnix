@@ -1094,3 +1094,40 @@
     .glass-topbar { background: var(--background); }
   }
 }
+
+/* ─── xyflow / React Flow — themed controls + minimap ────────────────
+ * The default @xyflow/react controls ship with hardcoded white bg +
+ * dark icons which vanish under our dark palettes. Map every relevant
+ * CSS custom property the plugin honours onto our own theme tokens so
+ * light + dark + every palette render legibly.
+ */
+.react-flow {
+  --xy-background-color-default: var(--background);
+  --xy-background-pattern-color-default: var(--border);
+
+  --xy-controls-button-background-color-default: var(--card);
+  --xy-controls-button-background-color-hover-default: var(--accent);
+  --xy-controls-button-color-default: var(--foreground);
+  --xy-controls-button-color-hover-default: var(--foreground);
+  --xy-controls-button-border-color-default: var(--border);
+
+  --xy-minimap-background-color-default: color-mix(in oklch, var(--card) 92%, transparent);
+  --xy-minimap-mask-background-color-default: color-mix(in oklch, var(--muted-foreground) 15%, transparent);
+  --xy-minimap-node-background-color-default: var(--muted-foreground);
+
+  --xy-attribution-background-color-default: var(--card);
+}
+
+.react-flow__controls {
+  box-shadow: none;
+  border-radius: 6px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+}
+.react-flow__controls-button {
+  border-bottom: 1px solid var(--border);
+}
+.react-flow__controls-button:last-child { border-bottom: none; }
+.react-flow__controls-button svg {
+  fill: currentColor;
+}
