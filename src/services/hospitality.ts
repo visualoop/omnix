@@ -1177,15 +1177,56 @@ export async function listRoomsForRoomService(): Promise<Array<{
 
 /** Open guest folios for the charge-to-room picker. Replaces the
  *  inline SQL in the Orders page (audit finding H8). */
-export async function listOpenFolios(): Promise<Array<{ id: string; room_number: string; guest_name: string }>> {
+/** Create a folio not tied to a booking — for casual room-service
+ *  when the guest hasn't formally checked in, or a bar tab that lasts
+ *  a few days. The folio_number carries a "W" prefix so reporting can
+ *  distinguish walk-in tabs from full stays.
+ *
+ *  Adopts an existing guest by phone if provided (findGuestByPhoneOrId),
+ *  otherwise inserts a minimal guest row. */
+export async function createWalkInFolio(input: {
+  guestName: string;
+  phone?: string;
+  idNumber?: string;
+  notes?: string;
+}): Promise<{ folioId: string; folioNumber: string; guestId: string }> {
+  await assertModuleEntitled("hospitality");
+  await requirePermission("hospitality.bookings.manage", { entityType: "walkin_folio" });
+  // Reuse existing guest by phone or id_number.
+  let guestId: string;
+  const existing = await findGuestByPhoneOrId({ phone: input.phone, nationalId: input.idNumber });
+  if (existing) {
+    guestId = existing.id;
+  } else {
+    guestId = uid();
+    await execute(
+      `INSERT INTO guests (id, full_name, phone, id_number, notes) VALUES (?1, ?2, ?3, ?4, ?5)`,
+      [guestId, input.guestName, input.phone ?? null, input.idNumber ?? null, input.notes ?? null],
+    );
+  }
+  const folioId = uid();
+  const [row] = await query<{ n: number }>(`SELECT COUNT(*) AS n FROM guest_folios WHERE folio_number LIKE 'W-%'`);
+  const number = `W-${String((row?.n ?? 0) + 1).padStart(5, "0")}`;
+  await execute(
+    `INSERT INTO guest_folios (id, guest_id, folio_number, status) VALUES (?1, ?2, ?3, 'open')`,
+    [folioId, guestId, number],
+  );
+  return { folioId, folioNumber: number, guestId };
+}
+
+export async function listOpenFolios(): Promise<Array<{ id: string; room_number: string | null; guest_name: string; is_walkin: boolean }>> {
   return query(
-    `SELECT gf.id, r.room_number, g.full_name AS guest_name
+    `SELECT gf.id,
+            r.room_number,
+            COALESCE(g.full_name, gb.full_name) AS guest_name,
+            CASE WHEN gf.booking_id IS NULL THEN 1 ELSE 0 END AS is_walkin
      FROM guest_folios gf
-     JOIN bookings b ON b.id = gf.booking_id
-     JOIN rooms r ON r.id = b.room_id
-     JOIN guests g ON g.id = b.guest_id
+     LEFT JOIN bookings b ON b.id = gf.booking_id
+     LEFT JOIN rooms r ON r.id = b.room_id
+     LEFT JOIN guests gb ON gb.id = b.guest_id
+     LEFT JOIN guests g ON g.id = gf.guest_id
      WHERE gf.status = 'open'
-     ORDER BY r.room_number`,
+     ORDER BY r.room_number NULLS LAST, gf.opened_at DESC`,
   );
 }
 
@@ -1258,7 +1299,15 @@ export async function checkIn(bookingId: string, roomId: string): Promise<string
   const folioId = uid();
   const [row] = await query<{ n: number }>(`SELECT COUNT(*) AS n FROM guest_folios`);
   const number = `FOL-${String((row?.n ?? 0) + 1).padStart(5, "0")}`;
-  await execute(`INSERT INTO guest_folios (id, booking_id, folio_number, status) VALUES (?1, ?2, ?3, 'open')`, [folioId, bookingId, number]);
+  // Denormalise guest_id onto the folio so charge-to-folio flows can
+  // render the guest name without joining through bookings — this also
+  // means walk-in folios (no booking) share the same query shape.
+  const [gid] = await query<{ guest_id: string | null }>(`SELECT guest_id FROM bookings WHERE id = ?1`, [bookingId]);
+  await execute(
+    `INSERT INTO guest_folios (id, booking_id, guest_id, folio_number, status)
+     VALUES (?1, ?2, ?3, ?4, 'open')`,
+    [folioId, bookingId, gid?.guest_id ?? null, number],
+  );
   return folioId;
 }
 

@@ -1179,12 +1179,19 @@ export function HospitalityFoliosPage() {
   const [folios, setFolios] = useState<FolioRow[]>([]);
   const [balances, setBalances] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
+  const [walkInOpen, setWalkInOpen] = useState(false);
 
   const load = async () => {
     setLoading(true);
+    // Now includes walk-in folios (booking_id NULL). Guest name resolved
+    // via COALESCE(folio.guest_id.name, booking.guest_id.name).
     const rows = await query<FolioRow>(
-      `SELECT f.id, f.folio_number, g.full_name AS guest_name, f.status
-       FROM guest_folios f JOIN bookings b ON b.id = f.booking_id JOIN guests g ON g.id = b.guest_id
+      `SELECT f.id, f.folio_number, f.status,
+              COALESCE(gf.full_name, gb.full_name) AS guest_name
+       FROM guest_folios f
+       LEFT JOIN bookings b ON b.id = f.booking_id
+       LEFT JOIN guests gb ON gb.id = b.guest_id
+       LEFT JOIN guests gf ON gf.id = f.guest_id
        WHERE f.status = 'open' ORDER BY f.opened_at DESC`,
     );
     setFolios(rows);
@@ -1204,7 +1211,11 @@ export function HospitalityFoliosPage() {
   if (loading) return <CenterSpin />;
   return (
     <div>
-      <PageHead icon={FileText} title="Guest Folios" subtitle="Open folios and balances." />
+      <PageHead icon={FileText} title="Guest Folios" subtitle="Open folios and balances." action={
+        <Button size="sm" className={cn("cursor-pointer", BRAND_BTN)} onClick={() => setWalkInOpen(true)}>
+          <Plus className="h-3.5 w-3.5 mr-1" /> Walk-in folio
+        </Button>
+      } />
       {folios.length === 0 ? <EmptyHint text="No open folios." /> : (
         <div className="border border-border rounded-lg overflow-hidden">
           <table className="w-full text-[13px]">
@@ -1231,7 +1242,71 @@ export function HospitalityFoliosPage() {
           </table>
         </div>
       )}
+
+      <WalkInFolioDialog
+        open={walkInOpen}
+        onClose={() => setWalkInOpen(false)}
+        onCreated={() => { setWalkInOpen(false); load(); }}
+      />
     </div>
+  );
+}
+
+function WalkInFolioDialog({
+  open, onClose, onCreated,
+}: { open: boolean; onClose: () => void; onCreated: () => void; }) {
+  const [name, setName] = useState("");
+  const [phone, setPhone] = useState("");
+  const [notes, setNotes] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => { if (open) { setName(""); setPhone(""); setNotes(""); } }, [open]);
+
+  const save = async () => {
+    if (!name.trim()) { toast.error("Guest name required"); return; }
+    setSaving(true);
+    try {
+      const mod = await import("@/services/hospitality");
+      const { folioNumber } = await mod.createWalkInFolio({
+        guestName: name.trim(),
+        phone: phone.trim() || undefined,
+        notes: notes.trim() || undefined,
+      });
+      toast.success(`Walk-in folio ${folioNumber} opened`);
+      onCreated();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : String(e));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="max-w-sm">
+        <DialogHeader>
+          <DialogTitle>Walk-in folio</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-2 py-2">
+          <label className="block space-y-1">
+            <span className="text-[11px] uppercase tracking-wide text-muted-foreground font-medium">Guest name</span>
+            <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Jane Mwangi" autoFocus />
+          </label>
+          <label className="block space-y-1">
+            <span className="text-[11px] uppercase tracking-wide text-muted-foreground font-medium">Phone (optional)</span>
+            <Input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+254 700 000 000" />
+          </label>
+          <label className="block space-y-1">
+            <span className="text-[11px] uppercase tracking-wide text-muted-foreground font-medium">Notes</span>
+            <Input value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Bar tab / room-service pass-through" />
+          </label>
+        </div>
+        <DialogFooter>
+          <Button variant="ghost" onClick={onClose} disabled={saving}>Cancel</Button>
+          <Button onClick={save} disabled={saving}>{saving ? "Opening…" : "Open folio"}</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 

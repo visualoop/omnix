@@ -19,10 +19,12 @@ import {
   Tag,
   Truck,
   Warning as AlertTriangle,
+  Package,
 } from "@phosphor-icons/react";
 import { HubLayout } from "@/components/layout/hub-layout";
 import { InventoryPage } from "@/pages/inventory";
 import { CategoriesSettingsPage } from "@/pages/settings-categories";
+import { GoodsReceiptsPage } from "@/pages/goods-receipts";
 import { StockTransfersPage } from "@/pages/stock-transfers";
 import { PurchaseOrdersPage } from "@/pages/purchase-orders";
 import { StockTakesPage } from "@/pages/stock-take";
@@ -123,6 +125,7 @@ export function InventoryHubPage() {
         { id: "categories", label: "Categories", icon: Tag, component: CategoriesSettingsPage, permission: "inventory.edit" },
         { id: "transfers", label: "Transfers", icon: ArrowLeftRight, component: StockTransfersPage, permission: "inventory.view" },
         { id: "purchases", label: "Purchases", icon: Truck, component: PurchaseOrdersPage, permission: "purchase_orders.view" },
+        { id: "receipts", label: "Receipts", icon: Package, component: GoodsReceiptsPage, permission: "purchase_orders.view" },
         { id: "stock-take", label: "Stock take", icon: ClipboardCheck, component: StockTakesPage, permission: "stock_take.use" },
         { id: "damages", label: "Damages", icon: AlertTriangle, component: DamagesPage, permission: "inventory.edit" },
         { id: "suppliers", label: "Suppliers", icon: Building2, component: SuppliersPage, permission: "suppliers.view" },

@@ -598,6 +598,12 @@ fn run_inner() {
             sql: include_str!("../migrations/082_service_periods.sql"),
             kind: MigrationKind::Up,
         },
+        Migration {
+            version: 83,
+            description: "Walk-in folios (nullable booking_id + direct guest_id link)",
+            sql: include_str!("../migrations/083_walkin_folios.sql"),
+            kind: MigrationKind::Up,
+        },
     ];
 
     tauri::Builder::default()
