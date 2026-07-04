@@ -556,7 +556,11 @@ export function POSSalePage() {
         </div>
 
         {/* Center: Search + product grid */}
-        <div className="flex-1 flex flex-col min-w-0 bg-background">
+        <div
+          data-osk-container
+          className="flex-1 flex flex-col min-w-0 bg-background"
+          style={{ paddingBottom: "var(--osk-height, 0)" }}
+        >
           {/* Search bar — icon sits in its own left slot (not floating on
               top of the input). Native flex layout: [icon | input | clear].
               The wrapper owns the border + focus ring so the inner input

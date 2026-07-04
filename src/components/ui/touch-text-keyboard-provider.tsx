@@ -20,6 +20,22 @@ import { useEffect, useRef, useState } from "react";
 import { useIsTouch } from "@/stores/density";
 import { TouchTextKeyboard } from "@/components/ui/touch-text-keyboard";
 
+/** Walk up from a focused input to find a `[data-osk-container]`
+ *  ancestor — the region the keyboard should fit within. Returns
+ *  { left, right } in viewport pixels, or null when no ancestor opts in
+ *  (falls back to full-width). */
+function resolveBounds(el: HTMLElement | null): { left: number; right: number } | null {
+  let cur: HTMLElement | null = el;
+  while (cur) {
+    if (cur.dataset && "oskContainer" in cur.dataset) {
+      const rect = cur.getBoundingClientRect();
+      return { left: rect.left, right: rect.right };
+    }
+    cur = cur.parentElement;
+  }
+  return null;
+}
+
 function isTextField(el: Element | null): el is HTMLInputElement | HTMLTextAreaElement {
   if (!el) return false;
   if (el instanceof HTMLTextAreaElement) return !el.dataset.noOsk;
@@ -39,10 +55,42 @@ function isTextField(el: Element | null): el is HTMLInputElement | HTMLTextAreaE
 export function TouchTextKeyboardProvider() {
   const touch = useIsTouch();
   const [open, setOpen] = useState(false);
+  const [bounds, setBounds] = useState<{ left: number; right: number } | null>(null);
   const targetRef = useRef<HTMLInputElement | HTMLTextAreaElement | null>(null);
   // Debounce focusout → close so that focus moving from one input to the
   // next doesn't blink the keyboard.
   const closeTimerRef = useRef<number | null>(null);
+
+  // Refresh bounds on window resize / orientation change while the
+  // keyboard is open — otherwise the keyboard would drift when the
+  // parent column resizes.
+  useEffect(() => {
+    if (!open) return;
+    const refresh = () => setBounds(resolveBounds(targetRef.current));
+    window.addEventListener("resize", refresh);
+    window.addEventListener("orientationchange", refresh);
+    return () => {
+      window.removeEventListener("resize", refresh);
+      window.removeEventListener("orientationchange", refresh);
+    };
+  }, [open]);
+
+  // Publish the keyboard height as a CSS custom property while open so
+  // any container can reserve space (padding-bottom: var(--osk-height)).
+  // The POS product column uses this to shift its grid up instead of
+  // letting the keyboard cover the last row.
+  useEffect(() => {
+    const root = document.documentElement;
+    if (open) {
+      // 260 px is the measured keyboard height (4 rows + padding). If we
+      // ever add a 5th row, bump this. Keeping it as a constant avoids
+      // an extra ResizeObserver on every render.
+      root.style.setProperty("--osk-height", "260px");
+    } else {
+      root.style.removeProperty("--osk-height");
+    }
+    return () => { root.style.removeProperty("--osk-height"); };
+  }, [open]);
 
   useEffect(() => {
     if (!touch) return;
@@ -74,6 +122,7 @@ export function TouchTextKeyboardProvider() {
       if (isTextField(el)) {
         cancelClose();
         targetRef.current = el;
+        setBounds(resolveBounds(el as HTMLElement));
         setOpen(true);
       } else {
         // focus moved to a non-text element — close
@@ -130,14 +179,17 @@ export function TouchTextKeyboardProvider() {
     <TouchTextKeyboard
       inputRef={targetRef}
       open={open}
+      bounds={bounds ?? undefined}
       onDismiss={() => {
         targetRef.current?.blur();
         targetRef.current = null;
+        setBounds(null);
         setOpen(false);
       }}
       onEnter={() => {
         targetRef.current?.blur();
         targetRef.current = null;
+        setBounds(null);
         setOpen(false);
       }}
     />

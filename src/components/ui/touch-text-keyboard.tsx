@@ -36,6 +36,11 @@ interface Props {
   /** Called on Enter; defaults to blurring the input (which the provider
    *  then sees as focusout and dismisses the keyboard). */
   onEnter?: () => void;
+  /** Optional horizontal bounds — clamp the keyboard inside a specific
+   *  region of the viewport (e.g. the POS product search column) rather
+   *  than spanning the full width. Coordinates are in CSS pixels from
+   *  the viewport left. */
+  bounds?: { left: number; right: number };
 }
 
 /* Layouts. Each is a list of rows; each row is a list of keys. A key is
@@ -80,7 +85,7 @@ function setNativeValue(el: HTMLInputElement | HTMLTextAreaElement, value: strin
   el.dispatchEvent(new Event("input", { bubbles: true }));
 }
 
-export function TouchTextKeyboard({ inputRef, open, onDismiss, onEnter }: Props) {
+export function TouchTextKeyboard({ inputRef, open, onDismiss, onEnter, bounds }: Props) {
   const [layout, setLayout] = useState<"lower" | "upper" | "symbols">("lower");
   const rows = useMemo(
     () => (layout === "lower" ? LOWER : layout === "upper" ? UPPER : SYMBOLS),
@@ -157,8 +162,10 @@ export function TouchTextKeyboard({ inputRef, open, onDismiss, onEnter }: Props)
       }}
       role="region"
       aria-label="On-screen keyboard"
+      style={bounds ? { left: bounds.left, right: Math.max(0, window.innerWidth - bounds.right) } : undefined}
       className={cn(
-        "fixed inset-x-0 bottom-0 z-[80]",
+        // Bounded → left/right computed from style; unbounded → full width.
+        bounds ? "fixed bottom-0 z-[80]" : "fixed inset-x-0 bottom-0 z-[80]",
         "border-t border-border bg-background/95 backdrop-blur-md",
         "px-2 pt-2 pb-[max(0.5rem,env(safe-area-inset-bottom))]",
         // Subtle slide-up
