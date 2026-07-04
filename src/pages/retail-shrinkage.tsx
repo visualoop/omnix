@@ -310,7 +310,9 @@ function RecordShrinkageDialog({ open, onClose, onSaved }: {
         product_id: form.product_id,
         quantity: form.quantity,
         reason: form.reason,
-        cost_value: form.cost_value,
+        // form.cost_value is the PER-UNIT cost (pre-filled from buying_price);
+        // store the total loss so reports (which sum cost_value) are correct.
+        cost_value: form.cost_value * form.quantity,
         notes: form.notes || undefined,
         incident_date: form.incident_date,
         user_id: userId,
@@ -394,7 +396,7 @@ function RecordShrinkageDialog({ open, onClose, onSaved }: {
           </div>
 
           <div className="space-y-1">
-            <label className="text-[11px] font-medium text-muted-foreground">Cost Value (KES)</label>
+            <label className="text-[11px] font-medium text-muted-foreground">Unit cost (KES)</label>
             <Input
               type="number"
               value={form.cost_value}

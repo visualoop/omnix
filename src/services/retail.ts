@@ -117,7 +117,37 @@ export async function upsertVariant(input: Partial<ProductVariant> & {
 }
 
 export async function deleteVariant(id: string): Promise<void> {
-  await execute(`DELETE FROM product_variants WHERE id = ?1`, [id]);
+  // Soft-delete (RT-18): preserve layby/sale history that references this variant.
+  await execute(`UPDATE product_variants SET active = 0 WHERE id = ?1`, [id]);
+}
+
+/**
+ * Adjust a variant's stock by a delta (positive = receive, negative = issue)
+ * and record a stock_movements row against the parent product so the change
+ * is auditable. This is the receiving path variants previously lacked (RT-6):
+ * upsertVariant's UPDATE never touched stock_qty, so variant stock could not
+ * change after creation. Callers pass a signed delta.
+ */
+export async function adjustVariantStock(
+  variantId: string,
+  delta: number,
+  reason: string,
+  userId?: string,
+): Promise<void> {
+  if (!delta) return;
+  const [v] = await query<{ product_id: string }>(
+    `SELECT product_id FROM product_variants WHERE id = ?1`, [variantId],
+  );
+  if (!v) throw new Error("Variant not found");
+  await execute(
+    `UPDATE product_variants SET stock_qty = MAX(0, stock_qty + ?2) WHERE id = ?1`,
+    [variantId, delta],
+  );
+  await execute(
+    `INSERT INTO stock_movements (id, product_id, type, quantity, reference_type, reference_id, notes, user_id)
+     VALUES (?1, ?2, ?3, ?4, 'variant_adjust', ?5, ?6, ?7)`,
+    [crypto.randomUUID(), v.product_id, delta > 0 ? "adjustment" : "damage", delta, variantId, reason, userId ?? null],
+  );
 }
 
 // ─── Price Lists ───────────────────────────────────────────────────────
@@ -143,6 +173,9 @@ export interface PriceListItem {
   variant_name?: string;
 }
 
+/** @deprecated (RT-22) Reads the orphan retail_price_lists registry. Use the
+ *  price_lists + product_prices system via resolvePrice / listPricingLists. Kept
+ *  for back-compat until the tables are dropped. */
 export async function listPriceLists(includeInactive = false): Promise<PriceList[]> {
   const where = includeInactive ? "" : "WHERE active = 1";
   return query<PriceList>(
@@ -232,48 +265,130 @@ export async function removeProductPriceTier(priceListId: string, productId: str
   );
 }
 
-/** Resolve the best price for a customer + product + quantity using their assigned price list. */
+/**
+ * Resolve the best price for a customer + product using their assigned price
+ * list. Reads from `product_prices` (the store POS uses), keyed by the
+ * customer's `pricing_list_id`, falling back to the `default` list.
+ *
+ * Convergence note (v0.48): the orphan `retail_price_lists` /
+ * `retail_price_list_items` system was deprecated. Quantity-break pricing is
+ * now modelled as separate price lists rather than min_quantity rows; the
+ * `quantity` argument is retained for API compatibility + future tiering.
+ */
 export async function resolvePrice(input: {
   product_id: string;
   variant_id?: string;
   quantity: number;
   customer_id?: string;
 }): Promise<{ price: number; tier: string } | null> {
-  // Find which price list applies
-  let priceListId: string | null = null;
+  // Which price list applies to this customer?
+  let priceListId = "default";
   if (input.customer_id) {
-    const [c] = await query<{ price_list_id: string | null }>(
-      `SELECT price_list_id FROM customers WHERE id = ?1`, [input.customer_id],
+    const [c] = await query<{ pricing_list_id: string | null }>(
+      `SELECT pricing_list_id FROM customers WHERE id = ?1`, [input.customer_id],
     );
-    priceListId = c?.price_list_id || null;
+    if (c?.pricing_list_id) priceListId = c.pricing_list_id;
   }
-  if (!priceListId) {
-    const [d] = await query<{ id: string }>(
-      `SELECT id FROM retail_price_lists WHERE is_default = 1 AND active = 1 LIMIT 1`,
-    );
-    priceListId = d?.id || null;
-  }
-  if (!priceListId) return null;
 
-  // Find applicable item: most specific (variant > product) and highest min_qty <= input qty
-  const items = await query<{ price: number; min_quantity: number; variant_id: string | null }>(
-    `SELECT price, min_quantity, variant_id
-     FROM retail_price_list_items
-     WHERE price_list_id = ?1
-       AND (
-         (variant_id = ?2 AND ?2 IS NOT NULL)
-         OR (variant_id IS NULL AND product_id = ?3)
-       )
-       AND min_quantity <= ?4
-     ORDER BY (variant_id IS NOT NULL) DESC, min_quantity DESC LIMIT 1`,
-    [priceListId, input.variant_id || null, input.product_id, input.quantity],
+  // Variant-specific price wins when present.
+  if (input.variant_id) {
+    const [v] = await query<{ selling_price: number | null }>(
+      `SELECT selling_price FROM product_variants WHERE id = ?1`, [input.variant_id],
+    );
+    if (v?.selling_price != null) {
+      const [pl] = await query<{ name: string }>(`SELECT name FROM price_lists WHERE id = ?1`, [priceListId]);
+      return { price: v.selling_price, tier: pl?.name || "Retail" };
+    }
+  }
+
+  // Price on the customer's list, else the default list.
+  const rows = await query<{ selling_price: number; price_list_id: string }>(
+    `SELECT selling_price, price_list_id FROM product_prices
+      WHERE product_id = ?1 AND price_list_id IN (?2, 'default')
+      ORDER BY (price_list_id = ?2) DESC LIMIT 1`,
+    [input.product_id, priceListId],
   );
-
-  if (items[0]) {
-    const [pl] = await query<{ name: string }>(`SELECT name FROM retail_price_lists WHERE id = ?1`, [priceListId]);
-    return { price: items[0].price, tier: pl?.name || "Custom" };
+  if (rows[0]) {
+    const [pl] = await query<{ name: string }>(`SELECT name FROM price_lists WHERE id = ?1`, [rows[0].price_list_id]);
+    return { price: rows[0].selling_price, tier: pl?.name || "Retail" };
   }
   return null;
+}
+
+// ─── Pricing lists (converged: price_lists + product_prices) ───────────
+export interface PricingList {
+  id: string;
+  name: string;
+  is_default: number;
+  active: number;
+}
+
+export interface ProductPriceRow {
+  product_id: string;
+  product_name: string;
+  selling_price: number;
+  buying_price: number;
+}
+
+/** List the REAL price lists (price_lists, migration 002) — the registry
+ *  product_prices + POS actually use (RT-4/RT-22). */
+export async function listPricingLists(): Promise<PricingList[]> {
+  return query<PricingList>(
+    `SELECT id, name, is_default, active FROM price_lists WHERE active = 1 ORDER BY is_default DESC, name`,
+  );
+}
+
+export async function createPricingList(name: string): Promise<string> {
+  const id = name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "") || crypto.randomUUID();
+  await execute(
+    `INSERT OR IGNORE INTO price_lists (id, name, is_default, active) VALUES (?1, ?2, 0, 1)`,
+    [id, name],
+  );
+  return id;
+}
+
+export async function setPricingListActive(id: string, active: boolean): Promise<void> {
+  await execute(`UPDATE price_lists SET active = ?2 WHERE id = ?1`, [id, active ? 1 : 0]);
+}
+
+/** Product prices configured on a given list. */
+export async function listProductPrices(priceListId: string, search?: string): Promise<ProductPriceRow[]> {
+  const like = search?.trim() ? `%${search.trim()}%` : null;
+  return query<ProductPriceRow>(
+    `SELECT pp.product_id, p.name AS product_name, pp.selling_price, pp.buying_price
+       FROM product_prices pp
+       JOIN products p ON p.id = pp.product_id
+      WHERE pp.price_list_id = ?1 ${like ? "AND p.name LIKE ?2" : ""}
+      ORDER BY p.name
+      LIMIT 300`,
+    like ? [priceListId, like] : [priceListId],
+  );
+}
+
+/** Set (upsert) a product's price on a list. */
+export async function setProductPrice(input: {
+  product_id: string;
+  price_list_id: string;
+  selling_price: number;
+  buying_price?: number;
+}): Promise<void> {
+  await execute(
+    `INSERT INTO product_prices (product_id, price_list_id, buying_price, selling_price)
+     VALUES (?1, ?2, ?3, ?4)
+     ON CONFLICT(product_id, price_list_id) DO UPDATE SET
+       selling_price = excluded.selling_price,
+       buying_price = CASE WHEN excluded.buying_price > 0 THEN excluded.buying_price ELSE product_prices.buying_price END`,
+    [input.product_id, input.price_list_id, input.buying_price ?? 0, input.selling_price],
+  );
+}
+
+export async function removeProductPrice(productId: string, priceListId: string): Promise<void> {
+  // Never strip the default-list price — that's the base sell price.
+  if (priceListId === "default") throw new Error("Cannot remove the default price");
+  await execute(
+    `DELETE FROM product_prices WHERE product_id = ?1 AND price_list_id = ?2`,
+    [productId, priceListId],
+  );
 }
 
 // ─── Shrinkage ─────────────────────────────────────────────────────────
@@ -352,14 +467,21 @@ export async function recordShrinkage(input: {
       [input.variant_id, input.quantity],
     );
   } else {
-    // Decrement from latest batch with stock
+    // FEFO multi-batch deduction (RT-9): consume across batches by expiry
+    // (soonest first, then received order) until the quantity is satisfied,
+    // instead of clipping a single LIFO batch.
+    let remaining = input.quantity;
     const batches = await query<{ id: string; quantity: number }>(
-      `SELECT id, quantity FROM batches WHERE product_id = ?1 AND quantity > 0 ORDER BY created_at LIMIT 1`,
+      `SELECT id, quantity FROM batches
+        WHERE product_id = ?1 AND quantity > 0
+        ORDER BY expiry_date ASC NULLS LAST, received_at ASC, created_at ASC`,
       [input.product_id],
     );
-    if (batches[0]) {
-      const decBy = Math.min(batches[0].quantity, input.quantity);
-      await execute(`UPDATE batches SET quantity = quantity - ?2 WHERE id = ?1`, [batches[0].id, decBy]);
+    for (const b of batches) {
+      if (remaining <= 0) break;
+      const decBy = Math.min(b.quantity, remaining);
+      await execute(`UPDATE batches SET quantity = quantity - ?2 WHERE id = ?1`, [b.id, decBy]);
+      remaining -= decBy;
     }
   }
 
@@ -445,11 +567,23 @@ async function getNextLaybyNumber(): Promise<string> {
   return `LB-${yyyymm}-${String((r?.count || 0) + 1).padStart(4, "0")}`;
 }
 
-export async function listLaybys(opts?: { status?: Layby["status"] }): Promise<Layby[]> {
-  // Auto-mark expired
+/** Background job (RT-16): flag active laybys past their expiry date.
+ *  Moved out of listLaybys so reads have no side effects. */
+export async function expireOverdueLaybys(): Promise<number> {
+  const before = await query<{ n: number }>(
+    `SELECT COUNT(*) AS n FROM laybys WHERE status = 'active' AND date('now') > expires_at`,
+  );
+  await execute(
+    `UPDATE layby_items SET reserved_qty = 0
+      WHERE layby_id IN (SELECT id FROM laybys WHERE status = 'active' AND date('now') > expires_at)`,
+  );
   await execute(
     `UPDATE laybys SET status = 'expired' WHERE status = 'active' AND date('now') > expires_at`,
   );
+  return before[0]?.n ?? 0;
+}
+
+export async function listLaybys(opts?: { status?: Layby["status"] }): Promise<Layby[]> {
   const where = opts?.status ? `WHERE status = ?1` : "";
   return query<Layby>(
     `SELECT * FROM laybys ${where} ORDER BY created_at DESC LIMIT 500`,
@@ -463,6 +597,32 @@ export async function getLayby(id: string): Promise<{ layby: Layby; items: Layby
   const items = await query<LaybyItem>(`SELECT * FROM layby_items WHERE layby_id = ?1`, [id]);
   const payments = await query<LaybyPayment>(`SELECT * FROM layby_payments WHERE layby_id = ?1 ORDER BY paid_at DESC`, [id]);
   return { layby, items, payments };
+}
+
+/** Physical sellable stock for a product (sum of batch quantities). */
+export async function getPhysicalStock(productId: string): Promise<number> {
+  const [r] = await query<{ qty: number }>(
+    `SELECT COALESCE(SUM(quantity), 0) AS qty FROM batches WHERE product_id = ?1`,
+    [productId],
+  );
+  return r?.qty ?? 0;
+}
+
+/** Quantity soft-reserved by ACTIVE laybys for a product (RT-10). */
+export async function getReservedStock(productId: string): Promise<number> {
+  const [r] = await query<{ qty: number }>(
+    `SELECT COALESCE(SUM(li.reserved_qty), 0) AS qty
+       FROM layby_items li JOIN laybys l ON l.id = li.layby_id
+      WHERE li.product_id = ?1 AND l.status = 'active'`,
+    [productId],
+  );
+  return r?.qty ?? 0;
+}
+
+/** Available-to-promise = physical - active reservations. */
+export async function getAvailableStock(productId: string): Promise<number> {
+  const [phys, reserved] = await Promise.all([getPhysicalStock(productId), getReservedStock(productId)]);
+  return phys - reserved;
 }
 
 export async function createLayby(input: {
@@ -495,10 +655,24 @@ export async function createLayby(input: {
       input.expires_at, input.notes || null, input.user_id, getActiveBranchId()],
   );
 
+  // Availability guard (RU3) + soft reservation (RT-10): each line must have
+  // enough available-to-promise stock (physical minus existing active-layby
+  // reservations). We record reserved_qty but DON'T deduct batches — physical
+  // deduction happens at completion via the POS sale, so reserving here would
+  // otherwise double-count.
+  for (const it of input.items) {
+    if (!it.variant_id) {
+      const avail = await getAvailableStock(it.product_id);
+      if (it.quantity > avail) {
+        throw new Error(`Insufficient stock for ${it.product_name}: need ${it.quantity}, ${avail} available (after existing laybys)`);
+      }
+    }
+  }
+
   for (const it of input.items) {
     await execute(
-      `INSERT INTO layby_items (id, layby_id, product_id, variant_id, product_name, quantity, unit_price, line_total)
-       VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)`,
+      `INSERT INTO layby_items (id, layby_id, product_id, variant_id, product_name, quantity, unit_price, line_total, reserved_qty)
+       VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?6)`,
       [crypto.randomUUID(), id, it.product_id, it.variant_id || null, it.product_name,
         it.quantity, it.unit_price, it.quantity * it.unit_price],
     );
@@ -511,6 +685,25 @@ export async function createLayby(input: {
        VALUES (?1, ?2, ?3, ?4, ?5, ?6)`,
       [crypto.randomUUID(), id, input.deposit_amount, input.deposit_method, input.deposit_reference || null, input.user_id],
     );
+    // RT-23: a layby deposit is a CUSTOMER DEPOSIT (liability), not yet a
+    // taxable supply — the eTIMS tax invoice is correctly deferred to
+    // completion (goods handover), which completeSale signs. Here we post the
+    // deposit to the GL: debit cash, credit customer-deposit liability.
+    try {
+      const { postJournal } = await import("@/services/gl");
+      await postJournal({
+        entry_date: new Date().toISOString().slice(0, 10),
+        description: `Layby deposit ${number}`,
+        source_kind: "layby_deposit",
+        source_id: id,
+        lines: [
+          { account_code: "1000", debit: input.deposit_amount, credit: 0 },
+          { account_code: "2300", debit: 0, credit: input.deposit_amount },
+        ],
+      });
+    } catch (e) {
+      console.warn("Layby deposit GL post skipped:", e);
+    }
   }
 
   return id;
@@ -554,6 +747,7 @@ export async function cancelLayby(id: string, refundAmount?: number, userId?: st
   const round2 = (n: number) => Math.round(n * 100) / 100;
   const stmts: import("@/lib/db").TxStatement[] = [
     { sql: `UPDATE laybys SET status = 'cancelled' WHERE id = ?1`, params: [id] },
+    { sql: `UPDATE layby_items SET reserved_qty = 0 WHERE layby_id = ?1`, params: [id] },
   ];
 
   if (refundAmount && refundAmount > 0 && userId) {
@@ -624,6 +818,8 @@ export async function completeLaybyFromPos(laybyId: string, saleId: string): Pro
     `UPDATE laybys SET status = 'completed', completed_at = datetime('now'), sale_id = ?2 WHERE id = ?1`,
     [laybyId, saleId],
   );
+  // Release the soft reservation — physical stock was deducted by the POS sale.
+  await execute(`UPDATE layby_items SET reserved_qty = 0 WHERE layby_id = ?1`, [laybyId]);
 }
 
 export async function prepareSpecialOrderForPosCheckout(orderId: string): Promise<{
@@ -651,16 +847,19 @@ export async function prepareSpecialOrderForPosCheckout(orderId: string): Promis
     prices.forEach((p) => taxMap.set(p.id, p.tax_rate));
   }
 
-  const cartItems: CartItem[] = raw.map((it) => ({
-    id: crypto.randomUUID(),
-    product_id: it.product_id || "",
-    name: it.product_name,
-    quantity: it.quantity,
-    unit_price: 0,
-    discount: 0,
-    tax_rate: it.product_id ? (taxMap.get(it.product_id) || 0) : 0,
-    total: 0,
-  }));
+  const cartItems: CartItem[] = raw.map((it) => {
+    const unit = it.unit_price ?? 0;
+    return {
+      id: crypto.randomUUID(),
+      product_id: it.product_id || "",
+      name: it.product_name,
+      quantity: it.quantity,
+      unit_price: unit,                        // RT-15: remembered estimate
+      discount: 0,
+      tax_rate: it.product_id ? (taxMap.get(it.product_id) || 0) : 0,
+      total: unit * it.quantity,
+    };
+  });
 
   return { items: cartItems, customerName: so.customer_name || "", customerId: so.customer_id };
 }
@@ -693,6 +892,8 @@ export interface SpecialOrderItem {
   product_id?: string;
   product_name: string;
   quantity: number;
+  /** Estimated/agreed unit price captured at order time; carried to POS (RT-15). */
+  unit_price?: number;
   notes?: string;
 }
 

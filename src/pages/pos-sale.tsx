@@ -243,6 +243,33 @@ export function POSSalePage() {
 
   useEffect(() => { countHeldSales().then(setHeldCount); }, [heldOpen, payOpen]);
 
+  // Customer price-list resolution (RT-3): when the attached customer changes,
+  // re-resolve each cart line's unit price from their assigned price list.
+  // Retail/Dawa only — hardware runs its own contractor pricing path.
+  useEffect(() => {
+    if (activeModule !== "retail") return;
+    let cancelled = false;
+    (async () => {
+      const cart = useCartStore.getState();
+      if (cart.items.length === 0) return;
+      const { resolvePrice } = await import("@/services/retail");
+      for (const line of cart.items) {
+        if (line.menu_item_id) continue;
+        const resolved = await resolvePrice({
+          product_id: line.product_id,
+          variant_id: line.variant_id ?? undefined,
+          quantity: line.quantity,
+          customer_id: cart.customerId ?? undefined,
+        });
+        if (cancelled) return;
+        if (resolved && Math.abs(resolved.price - line.unit_price) > 0.001) {
+          useCartStore.getState().setLinePrice(line.id, resolved.price);
+        }
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [customerId, activeModule]);
+
   // Stock-cap toast — fires when cart.addItem refused to add past stock.
   useEffect(() => {
     function onBlocked(e: Event) {
@@ -293,6 +320,15 @@ export function POSSalePage() {
       if (uomMatch) {
         const packQty = Math.max(1, uomMatch.uom.quantity_per || 1);
         const packPrice = uomMatch.uom.selling_price ?? (uomMatch.base_selling_price * packQty);
+        // RT-21: a carton scan adds packQty base units — refuse if the base
+        // stock can't cover a full pack (prevents pack-level oversell that the
+        // per-line stock cap would only catch after the fact).
+        if (packQty > uomMatch.product_stock_qty) {
+          toast.error(`Not enough stock for a full ${uomMatch.uom.name} (${packQty} units) — only ${uomMatch.product_stock_qty} on hand`);
+          setSearch("");
+          searchRef.current?.focus();
+          return;
+        }
         const { checkPharmacyAdd } = await import("@/services/pharmacy-gate");
         const gate = await checkPharmacyAdd({
           productId: uomMatch.product_id,

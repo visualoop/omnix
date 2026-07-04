@@ -11,7 +11,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { getActivePromotions, getPromotionByCode, type Promotion, type PromotionType } from "@/services/promotions";
+import { getActivePromotions, getPromotionByCode, computePromotionDiscount, type Promotion, type PromotionType } from "@/services/promotions";
+import { useCartStore } from "@/stores/cart";
 import { toast } from "sonner";
 
 interface Props {
@@ -38,11 +39,24 @@ export function PromoDialog({ open, onClose, onApply }: Props) {
     }
   }, [open]);
 
-  const applyActive = (promo: Promotion) => {
-    onApply(promo.value, promo.type === "percent_off" ? "percent" : "amount", { id: promo.id, name: promo.name });
-    toast.success(`Applied: ${promo.name}`);
+  const applyPromo = (promo: Promotion) => {
+    // Compute the real KES discount against the current cart (RT-12), so
+    // buy_x_get_y + product/category targets are honoured, not just a flat %.
+    const cart = useCartStore.getState();
+    const lines = cart.items
+      .filter((i) => !i.menu_item_id)
+      .map((i) => ({ product_id: i.product_id, category_id: i.category_id ?? null, quantity: i.quantity, unit_price: i.unit_price }));
+    const discount = computePromotionDiscount(promo, lines);
+    if (discount <= 0) {
+      toast.error(`${promo.name} doesn't apply to this cart (check minimum spend or eligible items)`);
+      return;
+    }
+    onApply(discount, "amount", { id: promo.id, name: promo.name });
+    toast.success(`Applied: ${promo.name} (−${discount.toFixed(0)})`);
     onClose();
   };
+
+  const applyActive = (promo: Promotion) => applyPromo(promo);
 
   const searchCode = async () => {
     const c = code.trim();
@@ -54,9 +68,7 @@ export function PromoDialog({ open, onClose, onApply }: Props) {
         toast.error("Invalid or expired promo code");
         return;
       }
-      onApply(promo.value, promo.type === "percent_off" ? "percent" : "amount", { id: promo.id, name: promo.name });
-      toast.success(`Code applied: ${promo.name}`);
-      onClose();
+      applyPromo(promo);
     } catch (e) {
       toast.error(String(e));
     } finally { setSearching(false); }

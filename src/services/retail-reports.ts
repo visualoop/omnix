@@ -21,7 +21,9 @@ export async function getBrandPerformance(opts?: {
   if (opts?.startDate) { conditions.push(`s.created_at >= ?${params.length + 1}`); params.push(opts.startDate); }
   if (opts?.endDate) { conditions.push(`s.created_at <= ?${params.length + 1}`); params.push(opts.endDate + " 23:59:59"); }
   if (opts?.branchId) { conditions.push(`s.branch_id = ?${params.length + 1}`); params.push(opts.branchId); }
-  const where = `WHERE ${conditions.join(" AND ")}`;
+  // Sale filters live in the JOIN condition so brands with no qualifying
+  // sales still evaluate cleanly; brand filter is the outer WHERE.
+  const joinCond = conditions.length ? `AND ${conditions.join(" AND ")}` : "";
 
   return query<BrandPerformance>(
     `SELECT b.id AS brand_id, b.name AS brand_name,
@@ -31,7 +33,7 @@ export async function getBrandPerformance(opts?: {
      FROM brands b
      LEFT JOIN products p ON p.brand_id = b.id
      LEFT JOIN sale_items si ON si.product_id = p.id
-     LEFT JOIN sales s ON s.id = si.sale_id ${where.replace("WHERE", "AND")}
+     LEFT JOIN sales s ON s.id = si.sale_id ${joinCond}
      WHERE b.active = 1
      GROUP BY b.id
      HAVING units_sold > 0

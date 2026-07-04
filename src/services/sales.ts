@@ -383,6 +383,18 @@ export async function completeSale(
     }
   }
 
+  // Loyalty points accrual (RT-1). Post-commit, best-effort. Awards points
+  // to the attached customer applying their tier multiplier. Never blocks a
+  // committed sale.
+  if (customerId) {
+    try {
+      const { earnPoints } = await import("./loyalty");
+      await earnPoints(customerId, saleId, total, userId);
+    } catch (e) {
+      console.warn("Loyalty accrual skipped for sale", saleId, ":", e);
+    }
+  }
+
   // Pharmacy post-commit hooks (DW-5 + DW-9). Belt-and-braces so a sale
   // completed *without* going through PaymentModal (e.g. via an API
   // integration) still auto-dispenses the linked prescription and posts

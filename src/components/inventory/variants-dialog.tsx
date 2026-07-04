@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { confirm } from "@/components/ui/confirm-dialog";
-import { listVariants, upsertVariant, deleteVariant, type ProductVariant } from "@/services/retail";
+import { listVariants, upsertVariant, deleteVariant, adjustVariantStock, type ProductVariant } from "@/services/retail";
 import type { Product } from "@/services/inventory";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -29,6 +29,8 @@ interface DraftRow {
   variant_sku: string;
   selling_price: string; // string so empty input → null (inherit from product)
   stock_qty: string;
+  /** Server stock at load time — used to compute the movement delta on save. */
+  original_stock: number;
   sort_order: number;
   /** Has unsaved changes vs server. */
   dirty: boolean;
@@ -42,6 +44,7 @@ function rowFromVariant(v: ProductVariant): DraftRow {
     variant_sku: v.variant_sku,
     selling_price: v.selling_price !== null ? String(v.selling_price) : "",
     stock_qty: String(v.stock_qty ?? 0),
+    original_stock: Number(v.stock_qty ?? 0),
     sort_order: v.sort_order ?? 0,
     dirty: false,
   };
@@ -105,6 +108,7 @@ export function VariantsDialog({ product, onClose, onSaved }: Props) {
         variant_sku: "",
         selling_price: "",
         stock_qty: "0",
+        original_stock: 0,
         sort_order: idx,
         dirty: true,
       },
@@ -155,16 +159,26 @@ export function VariantsDialog({ product, onClose, onSaved }: Props) {
         const sellingPrice = r.selling_price === "" ? null : Number(r.selling_price);
         const stockQty = r.stock_qty === "" ? 0 : Number(r.stock_qty);
 
-        await upsertVariant({
+        const savedId = await upsertVariant({
           id: r.id,
           product_id: product.id,
           variant_name: r.variant_name.trim(),
           variant_sku: sku,
           selling_price: sellingPrice,
+          // On CREATE this sets opening stock; on UPDATE upsertVariant ignores
+          // it (stock only moves via adjustVariantStock), so reconcile below.
           stock_qty: stockQty,
           sort_order: r.sort_order ?? i,
           active: 1,
         });
+        // Existing variant: the UPDATE path doesn't persist stock_qty, so post
+        // the delta as an auditable stock movement (RT-6).
+        if (r.id) {
+          const delta = stockQty - r.original_stock;
+          if (delta !== 0) {
+            await adjustVariantStock(savedId, delta, "Manual stock edit", undefined);
+          }
+        }
         i += 1;
       }
       toast.success("Variants saved");

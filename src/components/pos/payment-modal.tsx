@@ -43,6 +43,7 @@ interface PaymentSnapshot {
   serviceChargeAmount: number;
   sourceType: "hospitality_order" | "prescription" | "layby" | "special_order" | "folio" | "hardware_quote" | null;
   sourceId: string | null;
+  promoId: string | null;
 }
 
 export function PaymentModal({ open, onClose }: Props) {
@@ -65,11 +66,15 @@ export function PaymentModal({ open, onClose }: Props) {
   const [showInsuranceVerify, setShowInsuranceVerify] = useState(false);
   const [insurance, setInsurance] = useState<InsuranceState | null>(null);
   const [snapshot, setSnapshot] = useState<PaymentSnapshot | null>(null);
+  const [loyalty, setLoyalty] = useState<{ points: number; redeemRate: number; minRedeem: number } | null>(null);
+  const [redeemPts, setRedeemPts] = useState(0);
 
   const clear = useCartStore((s) => s.clear);
   const liveGrandTotal = useCartStore((s) => s.grandTotal);
   const user = useAuthStore((s) => s.user);
-  const total = snapshot?.total ?? liveGrandTotal();
+  const baseTotal = snapshot?.total ?? liveGrandTotal();
+  const redeemKesLive = loyalty && redeemPts > 0 ? redeemPts * loyalty.redeemRate : 0;
+  const total = Math.max(0, baseTotal - redeemKesLive);
   const paidSoFar = payments.reduce((s, p) => s + p.amount, 0);
   const remaining = total - paidSoFar;
 
@@ -86,12 +91,27 @@ export function PaymentModal({ open, onClose }: Props) {
         serviceChargeAmount: cart.serviceChargeAmount,
         sourceType: cart.sourceType,
         sourceId: cart.sourceId,
+        promoId: cart.promoId,
       };
       setSnapshot(nextSnapshot);
       getPaymentMethods().then(setMethods);
       getPaystackConfig().then((c) => { setPaystackActive(!!c?.active); setPaystackKey(c?.public_key ?? null); });
       getDarajaConfig().then((c) => setDarajaActive(!!c?.active));
       getManualMpesaConfig().then(setManualMpesa);
+      setRedeemPts(0);
+      setLoyalty(null);
+      if (cart.customerId) {
+        (async () => {
+          const { getLoyaltySettings } = await import("@/services/loyalty");
+          const { query } = await import("@/lib/db");
+          const settings = await getLoyaltySettings();
+          if (!settings.enabled) return;
+          const [c] = await query<{ loyalty_points: number }>(`SELECT loyalty_points FROM customers WHERE id = ?1`, [cart.customerId!]);
+          if (c && c.loyalty_points >= settings.min_redeem_points) {
+            setLoyalty({ points: c.loyalty_points, redeemRate: settings.redeem_rate, minRedeem: settings.min_redeem_points });
+          }
+        })();
+      }
       setPayments([]);
       setAmount(String(nextSnapshot.total.toFixed(2)));
       setReference("");
@@ -199,6 +219,7 @@ export function PaymentModal({ open, onClose }: Props) {
         serviceChargeAmount: cart.serviceChargeAmount,
         sourceType: cart.sourceType,
         sourceId: cart.sourceId,
+        promoId: cart.promoId,
       };
     })();
 
@@ -236,12 +257,18 @@ export function PaymentModal({ open, onClose }: Props) {
 
     setProcessing(true);
     try {
+      if (loyalty && redeemPts > 0 && redeemPts < loyalty.minRedeem) {
+        toast.error(`Minimum redemption is ${loyalty.minRedeem} points`);
+        setProcessing(false);
+        return;
+      }
+      const redeemKes = loyalty && redeemPts > 0 ? redeemPts * loyalty.redeemRate : 0;
       const { saleId, saleItemIds } = await completeSale(
         saleSnapshot.items,
         finalPayments,
         saleSnapshot.customerId,
         user!.id,
-        saleSnapshot.discountAmount,
+        saleSnapshot.discountAmount + redeemKes,
         saleSnapshot.tip,
         saleSnapshot.tipEmployeeId,
         saleSnapshot.serviceChargeAmount,
@@ -302,6 +329,28 @@ export function PaymentModal({ open, onClose }: Props) {
         toast.success(`Sale + claim created (KES ${insurance.claim.toFixed(0)} to ${insurance.provider.code})`);
       } else {
         toast.success("Sale completed");
+      }
+
+      // Loyalty redemption (RT-11): deduct the redeemed points + reverse the
+      // GL liability now that the sale is committed.
+      if (saleSnapshot.customerId && loyalty && redeemPts > 0) {
+        try {
+          const { redeemPoints } = await import("@/services/loyalty");
+          await redeemPoints(saleSnapshot.customerId, redeemPts, user!.id);
+        } catch (e) {
+          console.warn("Loyalty redemption failed:", e);
+        }
+      }
+
+      // Promotion usage tracking (RT-8): count the applied promo now that the
+      // sale is committed, so max_uses caps are enforced going forward.
+      if (saleSnapshot.promoId) {
+        try {
+          const { incrementPromotionUse } = await import("@/services/promotions");
+          await incrementPromotionUse(saleSnapshot.promoId);
+        } catch (e) {
+          console.warn("Promotion use increment failed:", e);
+        }
       }
 
       setTimeout(async () => {
@@ -419,6 +468,31 @@ export function PaymentModal({ open, onClose }: Props) {
               <p className="text-xs text-amber-700 mt-2">
                 Insurance covers KES {insurance.claim.toFixed(0)} · member pays copay KES {insurance.copay.toFixed(0)}
               </p>
+            )}
+            {loyalty && (
+              <div className="mt-3 flex items-center gap-2 rounded-md border border-violet-500/30 bg-violet-500/[0.06] px-2.5 py-2">
+                <span className="text-[11px] text-violet-700 dark:text-violet-300 font-medium">
+                  {loyalty.points} pts available
+                </span>
+                <input
+                  type="number"
+                  min={0}
+                  max={loyalty.points}
+                  value={redeemPts || ""}
+                  onChange={(e) => {
+                    const v = Math.max(0, Math.min(loyalty.points, parseInt(e.target.value) || 0));
+                    setRedeemPts(v);
+                  }}
+                  placeholder="Redeem pts"
+                  className="h-7 w-24 rounded border border-border bg-background px-2 text-xs"
+                />
+                <span className="text-[11px] text-muted-foreground">
+                  = KES {(redeemPts * loyalty.redeemRate).toFixed(0)}
+                </span>
+                {redeemPts > 0 && redeemPts < loyalty.minRedeem && (
+                  <span className="text-[10px] text-destructive">min {loyalty.minRedeem}</span>
+                )}
+              </div>
             )}
           </div>
 

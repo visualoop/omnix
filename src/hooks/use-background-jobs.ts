@@ -115,6 +115,36 @@ async function tryPpbAutoSubmit(): Promise<void> {
   }
 }
 
+async function tryLaybyExpiry(): Promise<void> {
+  try {
+    const { expireOverdueLaybys } = await import("@/services/retail");
+    const n = await expireOverdueLaybys();
+    if (n > 0) console.info(`[background] expired ${n} overdue laybys`);
+  } catch (e) {
+    console.warn("[background] layby expiry failed:", e);
+  }
+}
+
+async function tryLoyaltyExpiry(): Promise<void> {
+  try {
+    const { expireLoyaltyPoints } = await import("@/services/loyalty");
+    const n = await expireLoyaltyPoints();
+    if (n > 0) console.info(`[background] expired loyalty points for ${n} customers`);
+  } catch (e) {
+    console.warn("[background] loyalty expiry failed:", e);
+  }
+}
+
+async function tryRetailNotifications(): Promise<void> {
+  try {
+    const { queueRetailNotifications } = await import("@/services/retail-notifications");
+    const r = await queueRetailNotifications();
+    if (r.layby + r.specialOrder > 0) console.info(`[background] queued ${r.layby} layby + ${r.specialOrder} special-order notifications`);
+  } catch (e) {
+    console.warn("[background] retail notifications failed:", e);
+  }
+}
+
 export function useBackgroundJobs(): void {
   useEffect(() => {
     let cancelled = false;
@@ -148,6 +178,19 @@ export function useBackgroundJobs(): void {
     const ppbBoot = setTimeout(() => { if (!cancelled) tryPpbAutoSubmit(); }, 240_000);
     const ppbInterval = setInterval(() => { if (!cancelled) tryPpbAutoSubmit(); }, DEPR_CHECK_INTERVAL_MS);
 
+    // Layby expiry — 200s after boot, then every 12h. Flags active laybys
+    // past their expiry date (moved out of the listLaybys read path).
+    const laybyBoot = setTimeout(() => { if (!cancelled) tryLaybyExpiry(); }, 200_000);
+    const laybyInterval = setInterval(() => { if (!cancelled) tryLaybyExpiry(); }, DEPR_CHECK_INTERVAL_MS);
+
+    // Loyalty points expiry — 220s after boot, then every 12h.
+    const loyBoot = setTimeout(() => { if (!cancelled) tryLoyaltyExpiry(); }, 220_000);
+    const loyInterval = setInterval(() => { if (!cancelled) tryLoyaltyExpiry(); }, DEPR_CHECK_INTERVAL_MS);
+
+    // Retail customer notifications — 260s after boot, then every 12h.
+    const rnBoot = setTimeout(() => { if (!cancelled) tryRetailNotifications(); }, 260_000);
+    const rnInterval = setInterval(() => { if (!cancelled) tryRetailNotifications(); }, DEPR_CHECK_INTERVAL_MS);
+
     return () => {
       cancelled = true;
       clearTimeout(etimsBoot);
@@ -162,6 +205,12 @@ export function useBackgroundJobs(): void {
       clearInterval(refillInterval);
       clearTimeout(ppbBoot);
       clearInterval(ppbInterval);
+      clearTimeout(laybyBoot);
+      clearInterval(laybyInterval);
+      clearTimeout(loyBoot);
+      clearInterval(loyInterval);
+      clearTimeout(rnBoot);
+      clearInterval(rnInterval);
     };
   }, []);
 }

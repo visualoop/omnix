@@ -112,6 +112,52 @@ export async function getPromotionByCode(code: string): Promise<Promotion | null
   return rows[0] || null;
 }
 
+export interface PromoCartLine {
+  product_id: string;
+  category_id?: string | null;
+  quantity: number;
+  unit_price: number;
+}
+
+/**
+ * Compute the discount a promotion applies to a cart (RT-12). Pure +
+ * testable. Handles:
+ *   - percent_off: value% off qualifying lines (or whole cart)
+ *   - amount_off:  flat KES off, gated by min_purchase
+ *   - buy_x_get_y: value = X (buy X), one free unit per X on the cheapest
+ *     qualifying line; product/category-targeted or cart-wide.
+ * Returns the KES discount (never exceeds the qualifying subtotal).
+ */
+export function computePromotionDiscount(promo: Promotion, lines: PromoCartLine[]): number {
+  const qualifies = (l: PromoCartLine): boolean => {
+    if (promo.target_type === "cart") return true;
+    if (promo.target_type === "product") return l.product_id === promo.target_id;
+    if (promo.target_type === "category") return (l.category_id ?? null) === promo.target_id;
+    return false;
+  };
+  const qLines = lines.filter(qualifies);
+  const qSubtotal = qLines.reduce((s, l) => s + l.unit_price * l.quantity, 0);
+  const cartSubtotal = lines.reduce((s, l) => s + l.unit_price * l.quantity, 0);
+
+  if (cartSubtotal < (promo.min_purchase || 0)) return 0;
+
+  let discount = 0;
+  if (promo.type === "percent_off") {
+    discount = qSubtotal * (promo.value / 100);
+  } else if (promo.type === "amount_off") {
+    discount = promo.value;
+  } else if (promo.type === "buy_x_get_y") {
+    const x = Math.max(1, Math.floor(promo.value));
+    const totalQty = qLines.reduce((s, l) => s + l.quantity, 0);
+    const freeUnits = Math.floor(totalQty / (x + 1)); // buy X get 1 → group of X+1
+    if (freeUnits > 0 && qLines.length > 0) {
+      const cheapest = Math.min(...qLines.map((l) => l.unit_price));
+      discount = freeUnits * cheapest;
+    }
+  }
+  return Math.max(0, Math.min(discount, qSubtotal));
+}
+
 export async function incrementPromotionUse(id: string): Promise<void> {
   await execute(`UPDATE promotions SET uses_count = uses_count + 1 WHERE id = ?1`, [id]);
 }

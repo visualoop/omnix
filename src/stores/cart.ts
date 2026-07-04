@@ -120,6 +120,8 @@ interface CartState {
   setTip: (amount: number, employeeId?: string | null) => void;
   setServiceCharge: (amount: number) => void;
   setCustomer: (id: string | null) => void;
+  /** Re-price a single cart line (used by customer price-list resolution). */
+  setLinePrice: (id: string, unitPrice: number) => void;
   setSource: (source: { type: "hospitality_order" | "prescription" | "layby" | "special_order" | "folio" | "hardware_quote"; id: string; label: string } | null) => void;
   /** Tax mode for live cart math. POS pushes from settings on mount. */
   taxMode: "off" | "inclusive" | "exclusive";
@@ -278,6 +280,15 @@ export const useCartStore = create<CartState>()(
           const cappedDiscount = Math.max(0, Math.min(i.unit_price * i.quantity, discount));
           return { ...i, discount: cappedDiscount, total: lineTotal({ ...i, discount: cappedDiscount }) };
         }),
+        revision: nextRevision(state),
+      })),
+
+      setLinePrice: (id, unitPrice) => set((state) => ({
+        items: state.items.map((i) =>
+          i.id === id
+            ? { ...i, unit_price: Math.max(0, unitPrice), total: lineTotal({ ...i, unit_price: Math.max(0, unitPrice) }) }
+            : i,
+        ),
         revision: nextRevision(state),
       })),
 

@@ -622,6 +622,12 @@ fn run_inner() {
             sql: include_str!("../migrations/086_pharmacy_v47.sql"),
             kind: MigrationKind::Up,
         },
+        Migration {
+            version: 87,
+            description: "Retail pricing convergence (price_lists + product_prices), loyalty GL flag, layby reservation",
+            sql: include_str!("../migrations/087_retail_pricing_convergence.sql"),
+            kind: MigrationKind::Up,
+        },
     ];
 
     tauri::Builder::default()
