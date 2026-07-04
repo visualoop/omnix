@@ -577,7 +577,7 @@ export function RecipeCanvas({ menuItemId, menuItemName, menuItemImage, sellingP
       {/* Costing & ingredients — the numbers + inline editor live in a
           slide-over so the board keeps the full width. */}
       <Sheet open={detailsOpen} onOpenChange={setDetailsOpen}>
-        <SheetContent side="right" className="w-[380px] sm:w-[420px] overflow-y-auto">
+        <SheetContent side="right" className="w-[440px] sm:w-[560px] overflow-y-auto">
           <SheetHeader>
             <SheetTitle>Costing &amp; ingredients</SheetTitle>
           </SheetHeader>
@@ -645,26 +645,30 @@ export function RecipeCanvas({ menuItemId, menuItemName, menuItemImage, sellingP
                           <X className="h-3.5 w-3.5" />
                         </button>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <div className="flex-1">
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
                           <label className="text-[10px] text-muted-foreground">Quantity</label>
                           <input
                             type="number"
                             step="0.01"
                             value={l.quantity}
                             onChange={(e) => patchLine(l.productId, { quantity: Number(e.target.value) })}
-                            className="w-full h-8 px-2 rounded border border-input bg-transparent font-mono text-sm"
+                            className="w-full h-9 px-2 rounded border border-input bg-transparent font-mono text-sm"
                           />
                         </div>
-                        <div className="flex-1">
+                        <div>
                           <label className="text-[10px] text-muted-foreground">Unit</label>
+                          {/* Full half-width so the unit combobox + its search
+                              are actually readable (was a ~110px sliver). */}
                           <UnitSelect
                             value={l.unit}
                             onChange={(v) => patchLine(l.productId, { unit: v })}
                             className="w-full"
                           />
                         </div>
-                        <div className="w-20">
+                      </div>
+                      <div className="flex items-end justify-between gap-2">
+                        <div className="w-24">
                           <label className="text-[10px] text-muted-foreground">Waste %</label>
                           <input
                             type="number"
@@ -672,12 +676,12 @@ export function RecipeCanvas({ menuItemId, menuItemName, menuItemImage, sellingP
                             min={0}
                             value={l.wastagePercent}
                             onChange={(e) => patchLine(l.productId, { wastagePercent: Number(e.target.value) || 0 })}
-                            className="w-full h-8 px-2 rounded border border-input bg-transparent font-mono text-sm"
+                            className="w-full h-9 px-2 rounded border border-input bg-transparent font-mono text-sm"
                           />
                         </div>
-                      </div>
-                      <div className="text-[11px] text-muted-foreground font-mono">
-                        Line cost {KES(l.quantity * l.buyingPrice * (1 + l.wastagePercent / 100))}
+                        <div className="text-[11px] text-muted-foreground font-mono pb-1.5">
+                          Line cost {KES(l.quantity * l.buyingPrice * (1 + l.wastagePercent / 100))}
+                        </div>
                       </div>
                     </li>
                   ))}
