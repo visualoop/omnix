@@ -88,12 +88,12 @@ export function InsuranceVerifyPanel({ grossAmount, onMemberSelected, onCancel }
     const { copay, claim } = calculateCopay(verified.member, grossAmount);
     return (
       <div className="space-y-4">
-        {/* Verified-member banner — uses the insurance brand sky-blue
-            (matching the InsuranceIcon shield) for visual continuity with
-            the payment-method chip the cashier clicked to land here. */}
-        <div className="border border-[#0E84C7]/40 bg-[#0E84C7]/[0.06] rounded-lg p-4">
+        {/* Verified-member banner — uses theme primary tokens for palette
+            consistency with the rest of the app. Previously hardcoded to
+            #0E84C7 which broke themed installs. */}
+        <div className="border border-primary/40 bg-primary/[0.06] rounded-lg p-4">
           <div className="flex items-start gap-3">
-            <CheckCircle2 className="h-5 w-5 text-[#0E84C7] shrink-0 mt-0.5" weight="fill" />
+            <CheckCircle2 className="h-5 w-5 text-primary shrink-0 mt-0.5" weight="fill" />
             <div className="flex-1 min-w-0">
               <p className="text-sm font-semibold truncate">{verified.member.full_name}</p>
               <p className="text-xs text-muted-foreground mt-0.5">
@@ -138,7 +138,7 @@ export function InsuranceVerifyPanel({ grossAmount, onMemberSelected, onCancel }
           <Button variant="outline" onClick={() => setVerified(null)} className="flex-1 h-11">Change</Button>
           <Button
             onClick={handleConfirm}
-            className="flex-1 h-11 bg-[#0E84C7] hover:bg-[#0A6F9E] text-white"
+            className="flex-1 h-11 bg-primary hover:bg-primary/90 text-primary-foreground"
           >
             Confirm
           </Button>

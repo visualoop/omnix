@@ -190,10 +190,34 @@ function escape(s: string): string {
   return String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c] || c));
 }
 
+/** Wraps the raw printer error into a friendly shape for the UI to handle:
+ *  { code: "NO_PRINTER" | "NO_ITEMS" | "PRINT_FAILED", message: string }.
+ *  Callers use the code to render a "Configure printer" CTA that navigates
+ *  to Settings → Print without dumping a raw driver error on the user. */
+export class DrugLabelPrintError extends Error {
+  code: "NO_PRINTER" | "NO_ITEMS" | "PRINT_FAILED";
+  constructor(code: "NO_PRINTER" | "NO_ITEMS" | "PRINT_FAILED", message: string) {
+    super(message);
+    this.code = code;
+    this.name = "DrugLabelPrintError";
+  }
+}
+
 export async function printDrugLabels(prescriptionId: string): Promise<void> {
   const labels = await getDrugLabelsForPrescription(prescriptionId);
   if (labels.length === 0) {
-    throw new Error("No dispensed items to print labels for");
+    throw new DrugLabelPrintError("NO_ITEMS", "No dispensed items to print labels for");
   }
-  printHtml(renderDrugLabelHtml(labels));
+  try {
+    await Promise.resolve(printHtml(renderDrugLabelHtml(labels)));
+  } catch (err) {
+    const raw = String(err ?? "").toLowerCase();
+    if (raw.includes("no printer") || raw.includes("printer not") || raw.includes("no such device") || raw.includes("not configured")) {
+      throw new DrugLabelPrintError(
+        "NO_PRINTER",
+        "No receipt or label printer is configured. Set one up in Settings → Print, then try again.",
+      );
+    }
+    throw new DrugLabelPrintError("PRINT_FAILED", String(err));
+  }
 }

@@ -4,7 +4,10 @@
  * Tracks antibiotic dispensing volumes by class to support the National AMR
  * Surveillance Strategy. Pharmacies are expected to flag misuse patterns.
  *
- * Detection: by drug name pattern (no taxonomy in DB yet, so fuzzy match common antibiotics).
+ * Detection: prefers `pharmacy_products.drug_class` (migration 084) when
+ * populated. Falls back to the legacy pattern-matching for products
+ * without a class tag so the report doesn't drop rows on partially-tagged
+ * inventories.
  */
 import { query } from "@/lib/db";
 
@@ -52,38 +55,49 @@ export async function getAntibioticByClass(opts?: {
   if (opts?.branchId) { conditions.push(`s.branch_id = ?${params.length + 1}`); params.push(opts.branchId); }
   const where = `WHERE ${conditions.join(" AND ")}`;
 
-  // Get all sale items in period
+  // Get all sale items in period, joined to pharmacy_products so the
+  // drug_class tag (migration 084) is preferred over name-pattern matching.
   const items = await query<{
     product_name: string;
     quantity: number;
     total: number;
     customer_id: string | null;
+    drug_class: string | null;
+    is_antimicrobial: number | null;
   }>(
-    `SELECT si.product_name, si.quantity, si.total, s.customer_id
+    `SELECT si.product_name, si.quantity, si.total, s.customer_id,
+            pp.drug_class, pp.is_antimicrobial
      FROM sale_items si
      JOIN sales s ON s.id = si.sale_id
+     LEFT JOIN pharmacy_products pp ON pp.product_id = si.product_id
      ${where}`,
     params,
   );
 
-  // Classify each item by lowercase pattern match
+  // Classify each item: prefer the tagged drug_class, fall back to name pattern.
   const classMap = new Map<string, { units: number; revenue: number; patients: Set<string>; patterns: number }>();
   for (const item of items) {
-    const lower = item.product_name.toLowerCase();
-    for (const cls of ANTIBIOTIC_CLASSES) {
-      const matched = cls.patterns.some((p) => lower.includes(p));
-      if (matched) {
-        if (!classMap.has(cls.class)) {
-          classMap.set(cls.class, { units: 0, revenue: 0, patients: new Set(), patterns: 0 });
-        }
-        const entry = classMap.get(cls.class)!;
-        entry.units += item.quantity;
-        entry.revenue += item.total;
-        entry.patterns++;
-        if (item.customer_id) entry.patients.add(item.customer_id);
-        break; // only count once per class per item
-      }
+    let cls: string | null = null;
+
+    // Preferred path — explicit tag.
+    if (item.drug_class && (item.is_antimicrobial === 1 || ANTIBIOTIC_CLASSES.some((c) => c.class === item.drug_class))) {
+      cls = item.drug_class;
+    } else {
+      // Fallback pattern match for untagged rows.
+      const lower = item.product_name.toLowerCase();
+      const matched = ANTIBIOTIC_CLASSES.find((c) => c.patterns.some((p) => lower.includes(p)));
+      if (matched) cls = matched.class;
     }
+
+    if (!cls) continue;
+    if (!classMap.has(cls)) {
+      classMap.set(cls, { units: 0, revenue: 0, patients: new Set(), patterns: 0 });
+    }
+    const entry = classMap.get(cls)!;
+    entry.units += item.quantity;
+    entry.revenue += item.total;
+    entry.patterns++;
+    if (item.customer_id) entry.patients.add(item.customer_id);
   }
 
   return Array.from(classMap.entries())
@@ -115,30 +129,36 @@ export async function getTopAntibiotics(opts?: {
     quantity: number;
     total: number;
     customer_id: string | null;
+    drug_class: string | null;
+    is_antimicrobial: number | null;
   }>(
-    `SELECT si.product_name, si.quantity, si.total, s.customer_id
+    `SELECT si.product_name, si.quantity, si.total, s.customer_id,
+            pp.drug_class, pp.is_antimicrobial
      FROM sale_items si
      JOIN sales s ON s.id = si.sale_id
+     LEFT JOIN pharmacy_products pp ON pp.product_id = si.product_id
      ${where}`,
     params,
   );
 
   const productMap = new Map<string, { class: string; units: number; revenue: number; patients: Set<string> }>();
   for (const item of items) {
-    const lower = item.product_name.toLowerCase();
-    for (const cls of ANTIBIOTIC_CLASSES) {
-      const matched = cls.patterns.some((p) => lower.includes(p));
-      if (matched) {
-        if (!productMap.has(item.product_name)) {
-          productMap.set(item.product_name, { class: cls.class, units: 0, revenue: 0, patients: new Set() });
-        }
-        const entry = productMap.get(item.product_name)!;
-        entry.units += item.quantity;
-        entry.revenue += item.total;
-        if (item.customer_id) entry.patients.add(item.customer_id);
-        break;
-      }
+    let cls: string | null = null;
+    if (item.drug_class && (item.is_antimicrobial === 1 || ANTIBIOTIC_CLASSES.some((c) => c.class === item.drug_class))) {
+      cls = item.drug_class;
+    } else {
+      const lower = item.product_name.toLowerCase();
+      const matched = ANTIBIOTIC_CLASSES.find((c) => c.patterns.some((p) => lower.includes(p)));
+      if (matched) cls = matched.class;
     }
+    if (!cls) continue;
+    if (!productMap.has(item.product_name)) {
+      productMap.set(item.product_name, { class: cls, units: 0, revenue: 0, patients: new Set() });
+    }
+    const entry = productMap.get(item.product_name)!;
+    entry.units += item.quantity;
+    entry.revenue += item.total;
+    if (item.customer_id) entry.patients.add(item.customer_id);
   }
 
   return Array.from(productMap.entries())

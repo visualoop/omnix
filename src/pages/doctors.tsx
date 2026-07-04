@@ -7,6 +7,7 @@ import {
   Phone,
   Plus,
   Stethoscope,
+  UserMinus,
 } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -116,9 +117,34 @@ export function DoctorsPage() {
                   <td className="px-3 py-2.5 font-mono text-xs">{d.license_number || "—"}</td>
                   <td className="px-3 py-2.5 text-right font-mono">{d.prescription_count}</td>
                   <td className="px-3 py-2.5 text-right">
-                    <Button variant="ghost" size="sm" onClick={() => setEditing(d)}>
-                      <Edit3 className="h-3.5 w-3.5" />
-                    </Button>
+                    <div className="flex items-center justify-end gap-1">
+                      <Button variant="ghost" size="sm" onClick={() => setEditing(d)} title="Edit">
+                        <Edit3 className="h-3.5 w-3.5" />
+                      </Button>
+                      {d.active === 1 && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="text-muted-foreground hover:text-destructive"
+                          title="Deactivate"
+                          onClick={async () => {
+                            if (!(await confirm({
+                              title: `Deactivate ${d.full_name}?`,
+                              description: "The doctor stays in the database and past prescriptions remain linked, but they won't appear in the prescriber picker.",
+                            }))) return;
+                            try {
+                              await deactivateDoctor(d.id);
+                              toast.success("Doctor deactivated");
+                              load();
+                            } catch (e) {
+                              toast.error(String(e));
+                            }
+                          }}
+                        >
+                          <UserMinus className="h-3.5 w-3.5" />
+                        </Button>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))

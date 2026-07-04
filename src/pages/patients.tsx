@@ -55,6 +55,9 @@ export function PatientsPage() {
   const load = async () => {
     setLoading(true);
     try {
+      // Single query with LEFT JOINs + GROUP BY (DW-25). Prior version
+      // ran 3 subqueries per row → O(N) at up to 500 rows. This version
+      // is O(1) execution plans plus the row count.
       const result = await query<PatientRow>(
         `SELECT
            c.id AS customer_id,
@@ -63,17 +66,16 @@ export function PatientsPage() {
            c.email,
            pp.date_of_birth,
            pp.gender,
-           (SELECT COUNT(*) FROM patient_allergies WHERE customer_id = c.id) AS allergy_count,
-           (SELECT COUNT(*) FROM prescriptions
-             WHERE customer_id = c.id
-                OR (customer_id IS NULL AND patient_name = c.name)
-           ) AS prescription_count,
-           (SELECT MAX(created_at) FROM prescriptions
-             WHERE customer_id = c.id
-                OR (customer_id IS NULL AND patient_name = c.name)
-           ) AS last_visit
+           COUNT(DISTINCT a.id) AS allergy_count,
+           COUNT(DISTINCT r.id) AS prescription_count,
+           MAX(r.created_at)    AS last_visit
          FROM customers c
          INNER JOIN patient_profiles pp ON pp.customer_id = c.id
+         LEFT JOIN patient_allergies a ON a.customer_id = c.id
+         LEFT JOIN prescriptions r
+                ON r.customer_id = c.id
+                OR (r.customer_id IS NULL AND r.patient_name = c.name)
+         GROUP BY c.id, c.name, c.phone, c.email, pp.date_of_birth, pp.gender
          ORDER BY c.name ASC
          LIMIT 500`,
       );

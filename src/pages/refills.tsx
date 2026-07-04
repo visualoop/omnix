@@ -1,48 +1,31 @@
 import { useState } from "react";
-import { confirm } from "@/components/ui/confirm-dialog";
 import { useNavigate } from "react-router-dom";
 import {
   ArrowCounterClockwise as RotateCcw,
-  CircleNotch as Loader2,
   MagnifyingGlass as Search,
 } from "@phosphor-icons/react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { refillPrescription, type RefillablePrescription } from "@/services/pharmacy-extras";
+import { type RefillablePrescription } from "@/services/pharmacy-extras";
 import { pageRefills } from "@/services/paged";
 import { useListData } from "@/hooks/use-list-data";
 import { PaginationBar } from "@/components/pagination-bar";
 import { useAuthStore } from "@/stores/auth";
 import { EmptyState } from "@/components/ui/empty-state";
 import { TableRowSkeleton } from "@/components/ui/skeletons";
-import { toast } from "sonner";
+import { RefillAmendDialog } from "@/components/pharmacy/refill-amend-dialog";
 import { intlLocale } from "@/lib/intl";
 
 import { BackButton } from "@/components/ui/back-button";
 export function RefillsPage() {
-  const [refilling, setRefilling] = useState<string | null>(null);
+  const [amending, setAmending] = useState<RefillablePrescription | null>(null);
   const userId = useAuthStore((s) => s.user?.id);
   const navigate = useNavigate();
 
   const list = useListData(pageRefills, { pageSize: 50 });
   const items = list.rows as unknown as RefillablePrescription[];
   const loading = list.loading;
-
-  const handleRefill = async (rxId: string, patientName: string) => {
-    if (!userId) return;
-    if (!(await confirm({ title: `Create a refill for ${patientName}?` }))) return;
-    setRefilling(rxId);
-    try {
-      const newId = await refillPrescription(rxId, userId);
-      toast.success("Refill created");
-      navigate(`/pharmacy?rx=${newId}`);
-    } catch (e) {
-      toast.error(String(e));
-    } finally {
-      setRefilling(null);
-    }
-  };
 
   return (
     <div className="space-y-5">
@@ -111,10 +94,10 @@ export function RefillsPage() {
                   <td className="px-3 py-2.5 text-right">
                     <Button
                       size="sm"
-                      onClick={() => handleRefill(rx.id, rx.patient_name)}
-                      disabled={refilling === rx.id}
+                      onClick={() => setAmending(rx)}
+                      disabled={!userId}
                     >
-                      {refilling === rx.id ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : <RotateCcw className="h-3 w-3 mr-1" />}
+                      <RotateCcw className="h-3 w-3 mr-1" />
                       Refill
                     </Button>
                   </td>
@@ -126,6 +109,19 @@ export function RefillsPage() {
       </div>
 
       <PaginationBar list={list} />
+
+      <RefillAmendDialog
+        open={!!amending}
+        prescriptionId={amending?.id ?? null}
+        patientName={amending?.patient_name ?? ""}
+        userId={userId ?? null}
+        onClose={() => setAmending(null)}
+        onSaved={(newRxId) => {
+          setAmending(null);
+          list.refresh();
+          navigate(`/pharmacy/prescriptions/${newRxId}`);
+        }}
+      />
     </div>
   );
 }

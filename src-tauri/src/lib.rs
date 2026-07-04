@@ -604,6 +604,18 @@ fn run_inner() {
             sql: include_str!("../migrations/083_walkin_folios.sql"),
             kind: MigrationKind::Up,
         },
+        Migration {
+            version: 84,
+            description: "Pharmacy drug_class + is_antimicrobial tags on pharmacy_products",
+            sql: include_str!("../migrations/084_pharmacy_drug_class.sql"),
+            kind: MigrationKind::Up,
+        },
+        Migration {
+            version: 85,
+            description: "Pharmacy license expiry tracker (premises + pharmacist + PPB)",
+            sql: include_str!("../migrations/085_pharmacy_licenses.sql"),
+            kind: MigrationKind::Up,
+        },
     ];
 
     tauri::Builder::default()

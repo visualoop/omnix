@@ -293,6 +293,19 @@ export function POSSalePage() {
       if (uomMatch) {
         const packQty = Math.max(1, uomMatch.uom.quantity_per || 1);
         const packPrice = uomMatch.uom.selling_price ?? (uomMatch.base_selling_price * packQty);
+        const { checkPharmacyAdd } = await import("@/services/pharmacy-gate");
+        const gate = await checkPharmacyAdd({
+          productId: uomMatch.product_id,
+          productName: uomMatch.product_name,
+          sourceType: useCartStore.getState().sourceType,
+          activeModule,
+        });
+        if (!gate.ok) {
+          toast.error(gate.reason || "Cannot sell this item without a prescription");
+          setSearch("");
+          searchRef.current?.focus();
+          return;
+        }
         addItemWithQuantity({
           id: uomMatch.product_id,
           name: `${uomMatch.product_name} - ${uomMatch.uom.name}`,
@@ -756,11 +769,27 @@ export function POSSalePage() {
       <VariantPickerDialog
         product={pendingVariantPick}
         onClose={() => setPendingVariantPick(null)}
-        onPick={(p, variant) => {
+        onPick={async (p, variant) => {
           // Read freshest stock from live polling map; fall back to
           // whatever came in at click-time. Concurrent tills can no
           // longer oversell — Layer 2 (UI cap with live data).
           const liveProductStock = stockMap.get(p.id) ?? p.stock_qty;
+
+          // Pharmacy gate: refuse POM / controlled adds without an
+          // attached prescription. Applies inside the Dawa module only.
+          const { checkPharmacyAdd } = await import("@/services/pharmacy-gate");
+          const gate = await checkPharmacyAdd({
+            productId: p.id,
+            productName: p.name,
+            sourceType: useCartStore.getState().sourceType,
+            activeModule,
+          });
+          if (!gate.ok) {
+            toast.error(gate.reason || "Cannot sell this item without a prescription");
+            setPendingVariantPick(null);
+            return;
+          }
+
           if (variant) {
             addItemWithQuantity({
               id: p.id,                                      // PARENT product id (so completeSale can deduct variant stock by joining via the line.variant_id below)

@@ -89,6 +89,51 @@ export function ControlledRegisterPage() {
     downloadBytes(bytes, `controlled-register-${date}`);
   };
 
+  const exportCsv = () => {
+    // PPB e-Portal quarterly submission format — columns match the
+    // Pharmacy and Poisons Board CSV template. Aggregation per drug is
+    // done at the page level (one row per drug per day); a downstream
+    // consolidation script per quarter is out of scope here.
+    const headers = [
+      "date",
+      "drug_name",
+      "action",
+      "quantity",
+      "stock_before",
+      "stock_after",
+      "patient_name",
+      "patient_id_number",
+      "prescriber",
+      "prescription_number",
+      "pharmacist_name",
+      "pharmacist_license",
+      "recorded_at",
+    ];
+    const rows = entries.map((e) => [
+      date,
+      quoteCsv(e.product_name),
+      e.action,
+      String(e.quantity),
+      String(e.action === "dispense" ? e.balance_after + e.quantity : e.balance_after - e.quantity),
+      String(e.balance_after),
+      quoteCsv(e.patient_name ?? ""),
+      quoteCsv(e.patient_id_number ?? ""),
+      quoteCsv(e.prescribed_by ?? ""),
+      quoteCsv(e.prescription_number ?? ""),
+      quoteCsv(e.pharmacist_name ?? ""),
+      quoteCsv(e.pharmacist_license ?? ""),
+      e.created_at,
+    ]);
+    const csv = [headers.join(","), ...rows.map((r) => r.join(","))].join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `ppb-controlled-register-${date}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <div className="space-y-5" ref={printRef}>
       <div className="flex items-start justify-between">
@@ -113,6 +158,9 @@ export function ControlledRegisterPage() {
           </div>
           <Button variant="outline" onClick={exportPdf}>
             <Download className="h-3.5 w-3.5 mr-1.5" /> PDF
+          </Button>
+          <Button variant="outline" onClick={exportCsv} title="PPB e-Portal quarterly CSV">
+            <Download className="h-3.5 w-3.5 mr-1.5" /> PPB CSV
           </Button>
           <Button variant="outline" onClick={exportPdf}>
             <Printer className="h-3.5 w-3.5 mr-1.5" /> Print
@@ -216,4 +264,13 @@ function addDays(dateStr: string, n: number): string {
   const d = new Date(dateStr);
   d.setDate(d.getDate() + n);
   return d.toISOString().slice(0, 10);
+}
+
+/** Minimal RFC-4180 quoter for CSV cells (double-quotes wrap, embedded
+ *  quotes are doubled). Used by the PPB e-Portal export. */
+function quoteCsv(s: string): string {
+  if (s === "" || s === null || s === undefined) return "";
+  const needs = /[",\n]/.test(s);
+  const escaped = s.replace(/"/g, '""');
+  return needs ? `"${escaped}"` : escaped;
 }

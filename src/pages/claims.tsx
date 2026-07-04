@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { Link } from "react-router-dom";
 import {
   CheckCircle as CheckCircle2,
   Clock,
@@ -6,6 +7,7 @@ import {
   FileText,
   Money as Banknote,
   PaperPlaneTilt as Send,
+  Receipt,
   Shield,
   WarningCircle as AlertCircle,
   XCircle,
@@ -378,6 +380,16 @@ function ClaimDetail({ claim, onUpdated }: { claim: InsuranceClaim; onUpdated: (
           <p className="text-xs mt-2">
             Claim #: <span className="font-mono">{claim.claim_number}</span>
           </p>
+        )}
+        {claim.sale_id && (
+          <div className="mt-3 pt-3 border-t border-border">
+            <Link
+              to={`/sales/history/${claim.sale_id}`}
+              className="text-xs inline-flex items-center gap-1 text-primary hover:underline"
+            >
+              <Receipt className="h-3 w-3" /> View sale that generated this claim
+            </Link>
+          </div>
         )}
       </div>
 

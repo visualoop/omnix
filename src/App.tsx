@@ -24,6 +24,7 @@ import { StockPage } from "@/pages/stock";
 import { POSSalePage } from "@/pages/pos-sale";
 import { POSOverviewPage } from "@/pages/pos-overview";
 import { PharmacyPage } from "@/pages/pharmacy";
+import { PrescriptionDetailPage } from "@/pages/prescription-detail";
 import { ControlledRegisterPage } from "@/pages/controlled-register";
 import { ColdChainPage } from "@/pages/cold-chain";
 import { AmrReportPage } from "@/pages/amr-report";
@@ -128,6 +129,7 @@ import { VatReportPage } from "@/pages/vat-report";
 // view is unreachable. If we ever need to resurrect it, re-import from
 // "@/pages/license".
 import { SettingsLicensesPage } from "@/pages/settings-licenses";
+import { SettingsPharmacyLicensesPage } from "@/pages/settings-pharmacy-licenses";
 import { SettingsDisplayPage } from "@/pages/settings-display";
 import { ImportProductsPage } from "@/pages/import-products";
 import { DamagesPage } from "@/pages/damages";
@@ -326,6 +328,7 @@ function AppContent() {
           <Route path="/users" element={<RequireRole permission="users.view"><UsersPage /></RequireRole>} />
           <Route path="/pharmacy" element={<RequireRole permission="pharmacy.dispense"><PharmacyHubPage /></RequireRole>} />
           <Route path="/pharmacy/dispense" element={<RequireRole permission="pharmacy.dispense"><PharmacyPage /></RequireRole>} />
+          <Route path="/pharmacy/prescriptions/:id" element={<RequireRole permission="pharmacy.dispense"><PrescriptionDetailPage /></RequireRole>} />
           <Route path="/pharmacy/expiry" element={<RequireRole permission="inventory.view"><ExpiryPage /></RequireRole>} />
           <Route path="/reports" element={<RequireRole permission={["reports.view", "reports.zreport"]}><ReportsIndexPage /></RequireRole>} />
           <Route path="/notifications" element={<NotificationsPage />} />
@@ -441,6 +444,7 @@ function AppContent() {
                 bookmarks continue to resolve. New home is /settings/licenses. */}
             <Route path="license" element={<Navigate to="/settings/licenses" replace />} />
             <Route path="licenses" element={<RequireRole permission="license.view"><SettingsLicensesPage /></RequireRole>} />
+            <Route path="pharmacy-licenses" element={<RequireRole permission="pharmacy.dispense"><SettingsPharmacyLicensesPage /></RequireRole>} />
             <Route path="display" element={<RequireRole permission="settings.business"><SettingsDisplayPage /></RequireRole>} />
           </Route>
           <Route path="/audit" element={<Navigate to="/settings/audit" replace />} />

@@ -141,6 +141,26 @@ export async function refillPrescription(
   originalPrescriptionId: string,
   userId: string,
 ): Promise<string> {
+  return refillPrescriptionWithAmendments(originalPrescriptionId, userId, {});
+}
+
+/**
+ * Same as refillPrescription but allows per-item amendments — the
+ * prescriber may want to change quantity or dose on a refill (e.g.
+ * tapering blood pressure medication). Empty amendments = verbatim
+ * copy = same as refillPrescription.
+ */
+export async function refillPrescriptionWithAmendments(
+  originalPrescriptionId: string,
+  userId: string,
+  amendments: Record<string, {
+    quantity_prescribed?: number;
+    dosage?: string;
+    frequency?: string;
+    duration?: string;
+    instructions?: string | null;
+  }>,
+): Promise<string> {
   const [original] = await query<{
     rx_number: number; patient_name: string; patient_phone: string | null;
     patient_age: number | null; doctor_name: string | null; doctor_license: string | null;
@@ -173,14 +193,15 @@ export async function refillPrescription(
     ],
   );
 
-  // Copy items
+  // Copy items with amendments overlay.
   const items = await query<{
-    product_id: string; product_name: string; dosage: string | null;
+    id: string; product_id: string; product_name: string; dosage: string | null;
     frequency: string | null; duration: string | null;
     quantity_prescribed: number; substitution_allowed: number; instructions: string | null;
   }>(`SELECT * FROM prescription_items WHERE prescription_id = ?1`, [originalPrescriptionId]);
 
   for (const item of items) {
+    const amend = amendments[item.id] ?? amendments[item.product_id] ?? {};
     const itemId = crypto.randomUUID();
     await execute(
       `INSERT INTO prescription_items (
@@ -189,9 +210,13 @@ export async function refillPrescription(
          substitution_allowed, instructions
        ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, 0, ?9, ?10)`,
       [
-        itemId, newId, item.product_id, item.product_name, item.dosage,
-        item.frequency, item.duration, item.quantity_prescribed,
-        item.substitution_allowed, item.instructions,
+        itemId, newId, item.product_id, item.product_name,
+        amend.dosage ?? item.dosage,
+        amend.frequency ?? item.frequency,
+        amend.duration ?? item.duration,
+        amend.quantity_prescribed ?? item.quantity_prescribed,
+        item.substitution_allowed,
+        amend.instructions === undefined ? item.instructions : amend.instructions,
       ],
     );
   }

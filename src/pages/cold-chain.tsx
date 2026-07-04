@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import {
   Check,
   CircleNotch as Loader2,
+  Pencil as PencilSimple,
   Plus,
   Snowflake,
   Thermometer,
@@ -122,8 +123,8 @@ export function ColdChainPage() {
                       </p>
                     </div>
                     <Can permission="inventory.edit">
-                      <Button variant="ghost" size="icon-xs" onClick={() => setEditingUnit(u)}>
-                        <Plus className="h-3 w-3 rotate-45" />
+                      <Button variant="ghost" size="icon-xs" onClick={() => setEditingUnit(u)} title="Edit unit">
+                        <PencilSimple className="h-3 w-3" />
                       </Button>
                     </Can>
                   </div>

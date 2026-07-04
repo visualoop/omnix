@@ -383,6 +383,30 @@ export async function completeSale(
     }
   }
 
+  // Pharmacy post-commit hooks (DW-5 + DW-9). Belt-and-braces so a sale
+  // completed *without* going through PaymentModal (e.g. via an API
+  // integration) still auto-dispenses the linked prescription and posts
+  // the controlled-substance ledger. PaymentModal continues to call
+  // dispensePrescription directly; a second call here is idempotent.
+  try {
+    if (sourceType === "prescription" && sourceId) {
+      const { dispensePrescription } = await import("./pharmacy");
+      await dispensePrescription(sourceId, saleId);
+    }
+    const { autoPostControlledLog } = await import("./pharmacy");
+    await autoPostControlledLog(
+      saleId,
+      saleNumber,
+      items
+        .filter((i) => !i.menu_item_id) // menu items don't touch pharmacy stock
+        .map((i) => ({ product_id: i.product_id, product_name: i.name, quantity: i.quantity })),
+      userId,
+      sourceType === "prescription" ? sourceId : null,
+    );
+  } catch (e) {
+    console.warn("Pharmacy post-commit hooks skipped for sale", saleId, ":", e);
+  }
+
   return { saleId, saleItemIds };
 }
 

@@ -1,5 +1,6 @@
 import { fetch } from "@tauri-apps/plugin-http";
 import { query, execute } from "@/lib/db";
+import { encryptSecret, decryptSecret } from "@/services/secrets";
 
 export interface InsuranceProvider {
   id: string;
@@ -82,16 +83,28 @@ export interface InsuranceClaimItem {
 // ===== Providers =====
 
 export async function getProviders(activeOnly = true): Promise<InsuranceProvider[]> {
-  return query<InsuranceProvider>(
+  const rows = await query<InsuranceProvider>(
     activeOnly
       ? "SELECT * FROM insurance_providers WHERE active = 1 ORDER BY type, name"
       : "SELECT * FROM insurance_providers ORDER BY type, name"
   );
+  // Decrypt api_key + api_secret so downstream callers see plaintext.
+  // Legacy plaintext rows (missing the `omx1:` prefix) pass through
+  // unchanged; the next update through `updateProvider` re-encrypts.
+  for (const p of rows) {
+    p.api_key = await decryptSecret(p.api_key);
+    p.api_secret = await decryptSecret(p.api_secret);
+  }
+  return rows;
 }
 
 export async function getProvider(id: string): Promise<InsuranceProvider | null> {
   const rows = await query<InsuranceProvider>("SELECT * FROM insurance_providers WHERE id = ?1", [id]);
-  return rows[0] || null;
+  const p = rows[0];
+  if (!p) return null;
+  p.api_key = await decryptSecret(p.api_key);
+  p.api_secret = await decryptSecret(p.api_secret);
+  return p;
 }
 
 export async function updateProvider(id: string, input: {
@@ -105,6 +118,15 @@ export async function updateProvider(id: string, input: {
   test_mode?: boolean;
   requires_preauth?: boolean;
 }): Promise<void> {
+  // Encrypt any secrets the caller is updating. `undefined` means "leave
+  // as-is" (COALESCE below); `null` means "clear it". A concrete string
+  // gets encrypted before hitting the DB.
+  const encKey = input.api_key === undefined
+    ? undefined
+    : input.api_key === null ? null : await encryptSecret(input.api_key);
+  const encSecret = input.api_secret === undefined
+    ? undefined
+    : input.api_secret === null ? null : await encryptSecret(input.api_secret);
   await execute(
     `UPDATE insurance_providers SET 
        api_endpoint = COALESCE(?2, api_endpoint),
@@ -118,7 +140,7 @@ export async function updateProvider(id: string, input: {
        requires_preauth = COALESCE(?10, requires_preauth)
      WHERE id = ?1`,
     [
-      id, input.api_endpoint, input.api_key, input.api_secret,
+      id, input.api_endpoint, encKey ?? null, encSecret ?? null,
       input.facility_code, input.contact_phone, input.contact_email,
       input.active === undefined ? null : (input.active ? 1 : 0),
       input.test_mode === undefined ? null : (input.test_mode ? 1 : 0),
@@ -455,6 +477,104 @@ export async function updateClaimStatus(
     [status, data?.claim_number || null, data?.rejection_reason || null,
      data?.approved_amount ?? null, data?.paid_amount ?? null, id]
   );
+}
+
+/**
+ * Submit a draft claim to SHA / AfyaLink via the HIE claim submission
+ * endpoint. Behind the FF_SHA_SUBMIT feature flag (read from
+ * localStorage / settings) — the network call only fires when the flag
+ * is set. Otherwise the claim state machine advances to `submitted`
+ * with a locally-generated placeholder claim_number for tracking, and
+ * a background job can flush the queue later.
+ *
+ * Returns { ok, claimNumber?, error?, queued? } — a `queued: true`
+ * result means the state machine advanced but no network call fired.
+ */
+export async function submitClaimToSha(claimId: string): Promise<{
+  ok: boolean;
+  claimNumber?: string;
+  error?: string;
+  queued?: boolean;
+}> {
+  const claim = await getClaim(claimId);
+  if (!claim) return { ok: false, error: "Claim not found" };
+  if (claim.status !== "draft") {
+    return { ok: false, error: `Claim is already ${claim.status}` };
+  }
+
+  const provider = await getProvider(claim.provider_id);
+  if (!provider) return { ok: false, error: "Provider not found" };
+  if (provider.type !== "sha") return { ok: false, error: "SHA submission only supported for SHA-type providers" };
+
+  const featureFlag = typeof window !== "undefined"
+    ? window.localStorage?.getItem("ff.sha_submit") === "1"
+    : false;
+
+  if (!featureFlag) {
+    // Queued path — mark submitted with a local placeholder claim number
+    // so the pharmacist can see the intent. A future background job can
+    // pick this up and POST to AfyaLink once creds are wired.
+    const placeholder = `LOCAL-${Date.now()}`;
+    await updateClaimStatus(claimId, "submitted", { claim_number: placeholder });
+    return { ok: true, claimNumber: placeholder, queued: true };
+  }
+
+  // Live POST path (feature-flagged). Endpoint + auth mirror the
+  // verifyMember flow — Basic auth for JWT, then Bearer for submission.
+  if (!provider.api_key || !provider.api_secret) {
+    return { ok: false, error: "SHA API credentials not configured on provider" };
+  }
+  try {
+    const baseUrl = provider.test_mode === 1
+      ? "https://afyalink.dha.go.ke"
+      : (provider.api_endpoint || "https://afyalink.dha.go.ke");
+
+    const tokenRes = await fetch(`${baseUrl}/v1/hie-auth?key=${encodeURIComponent(provider.api_key)}`, {
+      method: "GET",
+      headers: {
+        "Authorization": `Basic ${btoa(`${provider.api_key}:${provider.api_secret}`)}`,
+      },
+    });
+    if (!tokenRes.ok) return { ok: false, error: `HIE auth failed (${tokenRes.status})` };
+    const tokenData = await tokenRes.json() as { token?: string; access_token?: string };
+    const jwt = tokenData.token || tokenData.access_token;
+    if (!jwt) return { ok: false, error: "No JWT in HIE auth response" };
+
+    const items = await getClaimItems(claimId);
+    const res = await fetch(`${baseUrl}/v1/hie-claim-submit`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${jwt}`,
+      },
+      body: JSON.stringify({
+        member_number: claim.member_number,
+        member_name: claim.member_name,
+        diagnosis_code: claim.diagnosis_code,
+        prescriber_license: claim.prescriber_license,
+        gross_amount: claim.gross_amount,
+        copay_amount: claim.copay_amount,
+        claim_amount: claim.claim_amount,
+        facility_code: provider.facility_code,
+        items: items.map((it) => ({
+          product_name: it.product_name,
+          quantity: it.quantity,
+          unit_price: it.unit_price,
+          line_total: it.line_total,
+        })),
+      }),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      return { ok: false, error: (err as { message?: string }).message || `HTTP ${res.status}` };
+    }
+    const body = await res.json() as { claim_number?: string };
+    const claimNumber = body.claim_number || `SHA-${Date.now()}`;
+    await updateClaimStatus(claimId, "submitted", { claim_number: claimNumber });
+    return { ok: true, claimNumber };
+  } catch (e) {
+    return { ok: false, error: String(e) };
+  }
 }
 
 // ===== Batches =====
