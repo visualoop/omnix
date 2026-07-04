@@ -76,6 +76,7 @@ import { RoomDetailPage } from "@/pages/room-detail";
 import { MenuItemDetailPage } from "@/pages/menu-item-detail";
 import { BrandDetailPage } from "@/pages/brand-detail";
 import { QuotationDetailPage } from "@/pages/quotation-detail";
+import { ContractorDetailPage } from "@/pages/contractor-detail";
 import { PeripheralsPage } from "@/pages/peripherals";
 import { CashFlowStatementPage } from "@/pages/cash-flow-statement";
 import { PeriodClosePage } from "@/pages/period-close";
@@ -155,7 +156,7 @@ import { PatientProfilePage } from "@/pages/patient-profile";
 import { ModulesPage } from "@/pages/modules";
 import { AppearanceSettingsPage } from "@/pages/settings-appearance";
 import {
-  HardwareDashboardPage, HardwareQuotationsPage, HardwareDeliveryNotesPage,
+  HardwareQuotationsPage, HardwareDeliveryNotesPage,
   HardwareAccountsPage, HardwareCommissionsPage, HardwareReportsPage,
 } from "@/pages/hardware";
 import { HardwareSettingsPage } from "@/pages/settings-hardware";
@@ -357,6 +358,7 @@ function AppContent() {
           <Route path="/hospitality/rooms/:id" element={<RequireRole permission="hospitality.bookings.manage"><RoomDetailPage /></RequireRole>} />
           <Route path="/retail/brands/:id" element={<RequireRole permission="retail.brands.manage"><BrandDetailPage /></RequireRole>} />
           <Route path="/hardware/quotations/:id" element={<RequireRole permission="hardware.quotations.manage"><QuotationDetailPage /></RequireRole>} />
+          <Route path="/hardware/accounts/:customerId" element={<RequireRole permission="hardware.accounts.manage"><ContractorDetailPage /></RequireRole>} />
           <Route path="/reports/sales" element={<RequireRole permission="reports.view"><ReportsPage /></RequireRole>} />
           <Route path="/reports/inventory" element={<RequireRole permission="reports.view"><InventoryReportsPage /></RequireRole>} />
           <Route path="/reports/wastage" element={<RequireRole permission="reports.view"><WastageReportPage /></RequireRole>} />
@@ -458,7 +460,7 @@ function AppContent() {
           <Route path="/etims" element={<RequireRole permission="etims.view"><EtimsQueuePage /></RequireRole>} />
           <Route path="/vat-report" element={<RequireRole permission="reports.view"><VatReportPage /></RequireRole>} />
           {/* Hardware module */}
-          <Route path="/hardware/dashboard" element={<RequireRole permission="hardware.reports.view"><HardwareDashboardPage /></RequireRole>} />
+          <Route path="/hardware/dashboard" element={<Navigate to="/hardware" replace />} />
           <Route path="/hardware/quotations" element={<RequireRole permission="hardware.quotations.manage"><HardwareQuotationsPage /></RequireRole>} />
           <Route path="/hardware/delivery-notes" element={<RequireRole permission="hardware.delivery_notes.manage"><HardwareDeliveryNotesPage /></RequireRole>} />
           <Route path="/hardware/accounts" element={<RequireRole permission="hardware.accounts.manage"><HardwareAccountsPage /></RequireRole>} />

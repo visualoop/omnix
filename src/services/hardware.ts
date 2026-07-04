@@ -45,15 +45,6 @@ async function nextNumber(table: string, prefix: string): Promise<string> {
   return `${prefix}-${String((row?.n ?? 0) + 1).padStart(5, "0")}`;
 }
 
-async function resolveCustomerName(customerId: string | null): Promise<string> {
-  if (!customerId) return "Walk-in customer";
-  const [row] = await query<{ name: string }>(
-    `SELECT name FROM customers WHERE id = ?1`,
-    [customerId],
-  );
-  return row?.name ?? "Walk-in customer";
-}
-
 function defaultValidUntil(): string {
   const d = new Date();
   d.setDate(d.getDate() + 30);
@@ -83,16 +74,35 @@ export async function createQuotation(input: {
   const discount = lines.reduce((s, l) => s + l.discount, 0);
   const taxAmount = lines.reduce((s, l) => s + (l.unit_price * l.quantity - l.discount) * (l.tax_rate / 100), 0);
   const total = subtotal - discount + taxAmount;
-  const customerName = await resolveCustomerName(input.customerId);
   const validUntil = input.validUntil ?? defaultValidUntil();
+
+  // Populate customer contact fields from the customers row so the
+  // quote PDF + detail view has phone/email/address without a JOIN.
+  let customerName = "Walk-in customer";
+  let customerPhone: string | null = null;
+  let customerEmail: string | null = null;
+  let customerAddress: string | null = null;
+  if (input.customerId) {
+    const [c] = await query<{ name: string; phone: string | null; email: string | null; address: string | null }>(
+      `SELECT name, phone, email, address FROM customers WHERE id = ?1`,
+      [input.customerId],
+    );
+    if (c) {
+      customerName = c.name;
+      customerPhone = c.phone ?? null;
+      customerEmail = c.email ?? null;
+      customerAddress = c.address ?? null;
+    }
+  }
 
   await execute(
     `INSERT INTO quotations
-       (id, quotation_number, branch_id, customer_id, customer_name, status, valid_until,
+       (id, quotation_number, branch_id, customer_id, customer_name, customer_phone, customer_email, customer_address, status, valid_until,
         subtotal, discount_amount, tax_amount, total, salesperson_id, notes, user_id)
-     VALUES (?1, ?2, ?3, ?4, ?5, 'draft', ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13)`,
+     VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, 'draft', ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16)`,
     [
-      id, number, getActiveBranchId(), input.customerId, customerName, validUntil,
+      id, number, getActiveBranchId(), input.customerId, customerName,
+      customerPhone, customerEmail, customerAddress, validUntil,
       subtotal, discount, taxAmount, total, input.salespersonId ?? null,
       input.notes ?? null, input.userId,
     ],
@@ -118,6 +128,49 @@ export async function listQuotations(): Promise<Quotation[]> {
             valid_until, converted_sale_id, created_at
      FROM quotations ORDER BY created_at DESC LIMIT 200`,
   );
+}
+
+/** Duplicate a quotation into a fresh draft revision. Copies every
+ *  line item; the original stays as-is. The new row's status is
+ *  'draft' so it can be edited via POS or amended before sending.
+ *  Amend workflow (HW-19). */
+export async function duplicateQuotation(originalId: string): Promise<string> {
+  await assertModuleEntitled("hardware");
+  await requirePermission("hardware.quotations.manage", { entityType: "quotation" });
+  const [orig] = await query<{ customer_id: string | null; salesperson_id: string | null; valid_until: string | null; notes: string | null; user_id: string; discount_amount: number; subtotal: number; tax_amount: number; total: number }>(
+    `SELECT customer_id, salesperson_id, valid_until, notes, user_id, discount_amount, subtotal, tax_amount, total
+     FROM quotations WHERE id = ?1`,
+    [originalId],
+  );
+  if (!orig) throw new Error("Quotation not found");
+
+  const items = await query<{ product_id: string | null; description: string; quantity: number; unit: string | null; unit_price: number; tax_rate: number; discount_amount: number; line_total: number; sort_order: number }>(
+    `SELECT product_id, description, quantity, unit, unit_price, tax_rate, discount_amount, line_total, sort_order
+     FROM quotation_items WHERE quotation_id = ?1 ORDER BY sort_order`,
+    [originalId],
+  );
+
+  const newId = uid();
+  const number = await nextNumber("quotations", "QT");
+  await execute(
+    `INSERT INTO quotations
+       (id, quotation_number, branch_id, customer_id, customer_name, status, valid_until,
+        subtotal, discount_amount, tax_amount, total, salesperson_id, notes, user_id)
+     SELECT ?1, ?2, branch_id, customer_id, customer_name, 'draft', valid_until,
+        subtotal, discount_amount, tax_amount, total, salesperson_id,
+        'Amended from ' || quotation_number || '\n\n' || COALESCE(notes, ''),
+        user_id
+     FROM quotations WHERE id = ?3`,
+    [newId, number, originalId],
+  );
+  for (const it of items) {
+    await execute(
+      `INSERT INTO quotation_items (id, quotation_id, product_id, description, quantity, unit, unit_price, tax_rate, discount_amount, line_total, sort_order)
+       VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)`,
+      [uid(), newId, it.product_id, it.description, it.quantity, it.unit ?? "pcs", it.unit_price, it.tax_rate, it.discount_amount, it.line_total, it.sort_order],
+    );
+  }
+  return newId;
 }
 
 /** Convert an accepted quotation into a Core sale (payments handled by caller/POS). */
@@ -277,9 +330,18 @@ export interface CustomerAccount {
 export async function getAccount(customerId: string): Promise<CustomerAccount> {
   const rows = await query<CustomerAccount>(`SELECT * FROM customer_accounts WHERE customer_id = ?1`, [customerId]);
   if (rows[0]) return rows[0];
-  // Lazily create a zero-limit account row.
-  await execute(`INSERT OR IGNORE INTO customer_accounts (customer_id) VALUES (?1)`, [customerId]);
-  return { customer_id: customerId, credit_limit: 0, balance: 0, terms_days: 30, on_hold: 0 };
+  // Read the hardware.default_terms_days setting so new accounts inherit
+  // the store's preferred terms instead of a hardcoded 30.
+  const [tset] = await query<{ value: string }>(
+    `SELECT value FROM settings WHERE key = 'hardware.default_terms_days' LIMIT 1`,
+  );
+  const terms = Math.max(1, parseInt(tset?.value ?? "30", 10) || 30);
+  // Lazily create a zero-limit account row with the resolved terms.
+  await execute(
+    `INSERT OR IGNORE INTO customer_accounts (customer_id, terms_days) VALUES (?1, ?2)`,
+    [customerId, terms],
+  );
+  return { customer_id: customerId, credit_limit: 0, balance: 0, terms_days: terms, on_hold: 0 };
 }
 
 export async function setCreditLimit(customerId: string, limit: number, termsDays = 30): Promise<void> {
@@ -290,6 +352,46 @@ export async function setCreditLimit(customerId: string, limit: number, termsDay
     [customerId, limit, termsDays],
   );
 }
+
+/** Toggle the on_hold flag for a contractor account. When on, no new
+ *  on-account charges accepted — used when a contractor is past due
+ *  or when payment terms are being renegotiated. */
+export async function setAccountHold(customerId: string, onHold: boolean): Promise<void> {
+  await requirePermission("hardware.accounts.manage", { entityType: "customer_account", entityId: customerId, metadata: { onHold } });
+  await execute(
+    `INSERT INTO customer_accounts (customer_id, on_hold) VALUES (?1, ?2)
+     ON CONFLICT(customer_id) DO UPDATE SET on_hold = excluded.on_hold, updated_at = datetime('now')`,
+    [customerId, onHold ? 1 : 0],
+  );
+}
+
+/** Post an adjustment to a customer's ledger. Positive = increase
+ *  balance (write-up), negative = decrease (write-off / credit note). */
+export async function postAdjustment(customerId: string, amount: number, reason: string, userId?: string): Promise<void> {
+  await requirePermission("hardware.accounts.manage", { entityType: "customer_account", entityId: customerId, metadata: { adjustment: amount, reason } });
+  await postLedger(customerId, "adjustment", amount, { reference: reason, userId });
+}
+
+/** All ledger entries for a customer, newest first. Powers the
+ *  contractor detail page ledger table. */
+export interface LedgerEntry {
+  id: string;
+  entry_type: "charge" | "payment" | "adjustment";
+  amount: number;
+  balance_after: number;
+  due_date: string | null;
+  reference: string | null;
+  sale_id: string | null;
+  created_at: string;
+}
+export async function listLedgerEntries(customerId: string, limit = 200): Promise<LedgerEntry[]> {
+  return query<LedgerEntry>(
+    `SELECT id, entry_type, amount, balance_after, due_date, reference, sale_id, created_at
+     FROM account_ledger WHERE customer_id = ?1 ORDER BY created_at DESC LIMIT ?2`,
+    [customerId, limit],
+  );
+}
+
 
 /** Returns true if an on-account charge of `amount` is allowed. */
 export async function creditCheck(customerId: string, amount: number): Promise<{ ok: boolean; reason?: string }> {
@@ -336,29 +438,199 @@ export interface AgingBuckets {
   total: number;
 }
 
-/** Aged receivables across all accounts (or one customer) as of a date. */
+/**
+ * Aged receivables across all accounts (or one customer) as of a date.
+ *
+ * Algorithm: FIFO payment application.
+ *   1. Load every ledger entry for the customer, oldest first.
+ *   2. Charges add to a virtual "outstanding" queue.
+ *   3. Payments + adjustments (net negative) consume the queue oldest-first.
+ *   4. Whatever charges remain in the queue at end are the true unpaid ones.
+ *   5. Bucket each remaining charge by (asOf - due_date OR asOf - created_at).
+ *
+ * This fixes the pre-v0.45 bug where the report summed ALL charges
+ * regardless of whether payments had cleared them. FIFO matches what
+ * Kenyan accountants do on paper — oldest debt clears first.
+ */
 export async function agedReceivables(asOf: Date = new Date(), customerId?: string): Promise<AgingBuckets> {
-  const charges = await query<{ amount: number; balance_after: number; due_date: string | null; created_at: string; customer_id: string }>(
-    `SELECT amount, balance_after, due_date, created_at, customer_id FROM account_ledger
-     WHERE entry_type = 'charge' ${customerId ? "AND customer_id = ?1" : ""}`,
+  const entries = await query<{ entry_type: string; amount: number; due_date: string | null; created_at: string; customer_id: string }>(
+    `SELECT entry_type, amount, due_date, created_at, customer_id
+     FROM account_ledger
+     ${customerId ? "WHERE customer_id = ?1" : ""}
+     ORDER BY created_at ASC`,
     customerId ? [customerId] : [],
   );
+
+  // Group by customer so FIFO consumption is per-account.
+  const perCustomer = new Map<string, typeof entries>();
+  for (const e of entries) {
+    const list = perCustomer.get(e.customer_id) ?? [];
+    list.push(e);
+    perCustomer.set(e.customer_id, list);
+  }
+
+  interface UnpaidCharge { amount: number; due: Date }
   const buckets: AgingBuckets = { current: 0, d1_30: 0, d31_60: 0, d61_90: 0, d90_plus: 0, total: 0 };
-  for (const c of charges) {
-    const base = c.due_date ? new Date(c.due_date) : new Date(c.created_at);
-    const days = Math.floor((asOf.getTime() - base.getTime()) / (1000 * 60 * 60 * 24));
-    const amt = Math.abs(c.amount);
-    if (days <= 0) buckets.current += amt;
-    else if (days <= 30) buckets.d1_30 += amt;
-    else if (days <= 60) buckets.d31_60 += amt;
-    else if (days <= 90) buckets.d61_90 += amt;
-    else buckets.d90_plus += amt;
-    buckets.total += amt;
+
+  for (const [, custEntries] of perCustomer) {
+    const unpaid: UnpaidCharge[] = [];
+    for (const e of custEntries) {
+      if (e.entry_type === "charge") {
+        unpaid.push({
+          amount: Math.abs(e.amount),
+          due: e.due_date ? new Date(e.due_date) : new Date(e.created_at),
+        });
+      } else {
+        // payment or adjustment reducing balance — consume unpaid FIFO.
+        let toApply = Math.abs(e.amount);
+        while (toApply > 0 && unpaid.length > 0) {
+          const head = unpaid[0];
+          if (head.amount <= toApply) {
+            toApply -= head.amount;
+            unpaid.shift();
+          } else {
+            head.amount -= toApply;
+            toApply = 0;
+          }
+        }
+      }
+    }
+    // Bucket remaining unpaid charges.
+    for (const u of unpaid) {
+      const days = Math.floor((asOf.getTime() - u.due.getTime()) / (1000 * 60 * 60 * 24));
+      if (days <= 0) buckets.current += u.amount;
+      else if (days <= 30) buckets.d1_30 += u.amount;
+      else if (days <= 60) buckets.d31_60 += u.amount;
+      else if (days <= 90) buckets.d61_90 += u.amount;
+      else buckets.d90_plus += u.amount;
+      buckets.total += u.amount;
+    }
   }
   return buckets;
 }
 
+/** Which customers have charges in a given bucket — powers the
+ *  aging widget drill-through (HW-28). */
+export interface AgingCustomerRow {
+  customer_id: string;
+  name: string;
+  outstanding: number;
+}
+export async function customersInAgingBucket(bucket: "current" | "d1_30" | "d31_60" | "d61_90" | "d90_plus"): Promise<AgingCustomerRow[]> {
+  const [minDays, maxDays] = ({
+    current: [Number.NEGATIVE_INFINITY, 0],
+    d1_30: [1, 30],
+    d31_60: [31, 60],
+    d61_90: [61, 90],
+    d90_plus: [91, Number.POSITIVE_INFINITY],
+  } as const)[bucket];
+
+  // Reuse the same FIFO algorithm to compute per-customer breakdown.
+  const entries = await query<{ entry_type: string; amount: number; due_date: string | null; created_at: string; customer_id: string; customer_name: string }>(
+    `SELECT al.entry_type, al.amount, al.due_date, al.created_at, al.customer_id, c.name AS customer_name
+     FROM account_ledger al
+     JOIN customers c ON c.id = al.customer_id
+     ORDER BY al.customer_id, al.created_at ASC`,
+  );
+
+  const perCustomer = new Map<string, { name: string; entries: typeof entries }>();
+  for (const e of entries) {
+    const g = perCustomer.get(e.customer_id) ?? { name: e.customer_name, entries: [] };
+    g.entries.push(e);
+    perCustomer.set(e.customer_id, g);
+  }
+
+  const now = Date.now();
+  const rows: AgingCustomerRow[] = [];
+  for (const [customerId, { name, entries: custEntries }] of perCustomer) {
+    interface U { amount: number; due: Date }
+    const unpaid: U[] = [];
+    for (const e of custEntries) {
+      if (e.entry_type === "charge") {
+        unpaid.push({ amount: Math.abs(e.amount), due: e.due_date ? new Date(e.due_date) : new Date(e.created_at) });
+      } else {
+        let toApply = Math.abs(e.amount);
+        while (toApply > 0 && unpaid.length > 0) {
+          const head = unpaid[0];
+          if (head.amount <= toApply) { toApply -= head.amount; unpaid.shift(); }
+          else { head.amount -= toApply; toApply = 0; }
+        }
+      }
+    }
+    let outstanding = 0;
+    for (const u of unpaid) {
+      const days = Math.floor((now - u.due.getTime()) / (1000 * 60 * 60 * 24));
+      if (days >= minDays && days <= maxDays) outstanding += u.amount;
+    }
+    if (outstanding > 0) rows.push({ customer_id: customerId, name, outstanding });
+  }
+  return rows.sort((a, b) => b.outstanding - a.outstanding);
+}
+
+/** Silently flip past-due quotes to 'expired'. Idempotent — safe to
+ *  call on every hub mount. */
+export async function autoExpireQuotes(): Promise<number> {
+  const result = await execute(
+    `UPDATE quotations SET status = 'expired'
+     WHERE status IN ('sent', 'accepted')
+       AND valid_until IS NOT NULL
+       AND date(valid_until) < date('now')`,
+  );
+  return (result as unknown as { rowsAffected?: number }).rowsAffected ?? 0;
+}
+
 // ─── Commissions ─────────────────────────────────────────────────────────────
+
+export interface CommissionRule {
+  id: string;
+  employee_id: string;
+  employee_name?: string;
+  category_id: string | null;
+  category_name?: string;
+  percent: number;
+  active: number;
+}
+
+/** All active commission rules with employee names for display. */
+export async function listCommissionRules(): Promise<CommissionRule[]> {
+  return query<CommissionRule>(
+    `SELECT cr.id, cr.employee_id, e.full_name AS employee_name,
+            cr.category_id, c.name AS category_name,
+            cr.percent, cr.active
+     FROM commission_rules cr
+     JOIN employees e ON e.id = cr.employee_id
+     LEFT JOIN categories c ON c.id = cr.category_id
+     WHERE cr.active = 1
+     ORDER BY e.full_name`,
+  );
+}
+
+/** Upsert a commission rule. When ruleId is undefined, inserts new. */
+export async function upsertCommissionRule(input: {
+  id?: string;
+  employeeId: string;
+  categoryId?: string | null;
+  percent: number;
+}): Promise<string> {
+  await requirePermission("hardware.accounts.manage", { entityType: "commission_rule", metadata: { employeeId: input.employeeId } });
+  const id = input.id ?? uid();
+  await execute(
+    `INSERT INTO commission_rules (id, employee_id, category_id, percent, active)
+     VALUES (?1, ?2, ?3, ?4, 1)
+     ON CONFLICT(id) DO UPDATE SET
+       employee_id = excluded.employee_id,
+       category_id = excluded.category_id,
+       percent = excluded.percent`,
+    [id, input.employeeId, input.categoryId ?? null, input.percent],
+  );
+  return id;
+}
+
+/** Soft-delete a commission rule (active=0). */
+export async function deleteCommissionRule(ruleId: string): Promise<void> {
+  await requirePermission("hardware.accounts.manage", { entityType: "commission_rule", entityId: ruleId });
+  await execute(`UPDATE commission_rules SET active = 0 WHERE id = ?1`, [ruleId]);
+}
 
 /** Accrue commission for a sale based on the salesperson's active rule. */
 export async function commissionForSale(saleId: string, employeeId: string, baseAmount: number): Promise<number> {

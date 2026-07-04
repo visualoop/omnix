@@ -50,14 +50,7 @@ interface QuoteItem {
   line_total: number;
 }
 
-const STATUS_CLASSES: Record<string, string> = {
-  draft: "bg-muted text-muted-foreground",
-  sent: "bg-blue-500/10 text-blue-600",
-  accepted: "bg-emerald-500/10 text-emerald-600",
-  converted: "bg-emerald-600 text-white",
-  cancelled: "bg-rose-500/10 text-rose-600",
-  expired: "bg-amber-500/10 text-amber-600",
-};
+import { QUOTE_STATUS_STYLE as STATUS_CLASSES } from "@/lib/hardware-status";
 
 export function QuotationDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -100,6 +93,91 @@ export function QuotationDetailPage() {
     await execute(`UPDATE quotations SET status = ?2 WHERE id = ?1`, [quote.id, next]);
     toast.success(`Quote ${next}`);
     load();
+  };
+
+  const [printing, setPrinting] = useState(false);
+  const [savingAsInvoice, setSavingAsInvoice] = useState(false);
+
+  const handlePrint = async () => {
+    if (!quote) return;
+    setPrinting(true);
+    try {
+      const { generateQuotationPdf } = await import("@/services/invoice-pdf");
+      // Adapt our DB shape into the invoicing service shape.
+      const q = {
+        id: quote.id,
+        quotation_number: quote.quotation_number,
+        customer_id: quote.customer_id,
+        customer_name: quote.customer_name,
+        customer_phone: quote.customer_phone,
+        customer_email: null,
+        customer_address: null,
+        customer_tax_pin: null,
+        issue_date: quote.issue_date,
+        valid_until: quote.valid_until,
+        status: quote.status as "draft" | "sent" | "accepted" | "declined" | "expired" | "converted",
+        subtotal: quote.subtotal,
+        discount_amount: quote.discount_amount,
+        tax_amount: quote.tax_amount,
+        total: quote.total,
+        converted_to_invoice_id: null,
+        notes: quote.notes,
+        terms: null,
+        user_id: "",
+        branch_id: null,
+        created_at: quote.created_at,
+      };
+      const documentItems = items.map((it, idx) => ({
+        id: it.id,
+        product_id: it.product_id,
+        description: it.description,
+        quantity: it.quantity,
+        unit: it.unit ?? "pcs",
+        unit_price: it.unit_price,
+        tax_rate: it.tax_rate,
+        discount_amount: it.discount_amount,
+        line_total: it.line_total,
+        sort_order: idx,
+      }));
+      const pdf = await generateQuotationPdf(q, documentItems);
+      pdf.save(`${quote.quotation_number}.pdf`);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : String(e));
+    } finally {
+      setPrinting(false);
+    }
+  };
+
+  const handleSaveAsInvoice = async () => {
+    if (!quote) return;
+    setSavingAsInvoice(true);
+    try {
+      const { convertQuotationToInvoice } = await import("@/services/invoicing");
+      const { useAuthStore } = await import("@/stores/auth");
+      const userId = useAuthStore.getState().user?.id ?? "";
+      // Default due date = 30 days from today.
+      const due = new Date();
+      due.setDate(due.getDate() + 30);
+      const invoiceId = await convertQuotationToInvoice(quote.id, due.toISOString().slice(0, 10), userId);
+      toast.success("Invoice created — payment due in 30 days");
+      navigate(`/invoices/${invoiceId}`);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : String(e));
+    } finally {
+      setSavingAsInvoice(false);
+    }
+  };
+
+  const handleAmend = async () => {
+    if (!quote) return;
+    try {
+      const { duplicateQuotation } = await import("@/services/hardware");
+      const newId = await duplicateQuotation(quote.id);
+      toast.success("Amended quote created — edit + send when ready");
+      navigate(`/hardware/quotations/${newId}`);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : String(e));
+    }
   };
 
   const checkoutInPos = async () => {
@@ -154,6 +232,17 @@ export function QuotationDetailPage() {
                 <Button size="sm" onClick={checkoutInPos} disabled={checkingOut}>
                   <FileText className="h-3.5 w-3.5 mr-1" />
                   {checkingOut ? "Loading…" : "Check out in POS"}
+                </Button>
+                <Button size="sm" variant="outline" onClick={handlePrint} disabled={printing}>
+                  {printing ? "…" : "Print"}
+                </Button>
+                {(quote.status === "accepted" || quote.status === "sent") ? (
+                  <Button size="sm" variant="outline" onClick={handleSaveAsInvoice} disabled={savingAsInvoice}>
+                    {savingAsInvoice ? "…" : "Save as invoice"}
+                  </Button>
+                ) : null}
+                <Button size="sm" variant="ghost" onClick={handleAmend}>
+                  Amend
                 </Button>
                 <Button size="sm" variant="ghost" onClick={() => setStatus("cancelled")} className="text-rose-600">
                   <XCircle className="h-3.5 w-3.5" />

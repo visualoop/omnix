@@ -10,6 +10,7 @@
 import { useAuthStore } from "@/stores/auth";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
+import { useEffect } from "react";
 import { hasPermission, type Permission } from "@/lib/permissions";
 import {
   ArrowsClockwise as RefreshCw,
@@ -136,16 +137,27 @@ export function HardwareHubPage() {
   const user = useAuthStore((s) => s.user);
   const navigate = useNavigate();
   const has = (perm: string) => hasPermission(user, perm as Permission);
+  // HW-15: silently flip past-due quotes to 'expired' on hub mount so
+  // the Quotations list is honest about validity without needing a
+  // background worker.
+  useEffect(() => {
+    (async () => {
+      try {
+        const { autoExpireQuotes } = await import("@/services/hardware");
+        await autoExpireQuotes();
+      } catch { /* best-effort */ }
+    })();
+  }, []);
   return (
     <HubLayout
       eyebrow="Module"
       title="Hardware"
-      description="Quotations, delivery notes, contractor accounts, sales-rep commissions."
+      description="Quotations, deliveries, contractor credit, commissions."
       actions={
-        has("pos.use") ? (
-          <Button onClick={() => navigate("/pos/sale")}>
-            <ShoppingBag className="h-4 w-4 mr-2" />
-            Go to POS
+        has("hardware.quotations.manage") ? (
+          <Button onClick={() => navigate("/pos/sale?mode=quote")}>
+            <FileText className="h-4 w-4 mr-2" />
+            New quote
           </Button>
         ) : undefined
       }

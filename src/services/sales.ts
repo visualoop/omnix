@@ -78,6 +78,13 @@ function inferMethodType(id: string, name: string): string {
   return "manual";
 }
 
+function isOnAccount(p: PaymentEntry): boolean {
+  const idNorm = (p.method_id || "").toLowerCase();
+  const nameNorm = (p.method_name || "").toLowerCase();
+  return idNorm === "on_account" || idNorm === "credit"
+    || nameNorm.includes("on account") || nameNorm.includes("contractor account");
+}
+
 export async function completeSale(
   items: CartItem[],
   payments: PaymentEntry[],
@@ -89,6 +96,7 @@ export async function completeSale(
   serviceChargeAmount = 0,
   sourceType: string | null = null,
   sourceId: string | null = null,
+  salespersonId: string | null = null,
 ): Promise<{ saleId: string; saleItemIds: string[] }> {
   const saleId = crypto.randomUUID();
 
@@ -267,7 +275,52 @@ export async function completeSale(
   }
 
   // 3) Payments + bank mirror (pre-resolve accounts), in the same txn.
+  //
+  // ON-ACCOUNT CREDIT (HW-6/7): payments with method_name matching
+  // 'on_account' or 'contractor account' or method_id 'on_account'
+  // route through the hardware credit flow instead of a cash-equivalent
+  // deposit. Every such payment:
+  //   1. Requires a customer_id (throws otherwise).
+  //   2. Runs creditCheck() — refuses if the customer would exceed
+  //      their credit_limit or the account is on hold.
+  //   3. Posts an account_ledger charge with saleId + due_date so the
+  //      contractor's balance grows and the aged-receivables report
+  //      picks it up correctly.
+  const onAccountTotal = payments
+    .filter((p) => isOnAccount(p))
+    .reduce((s, p) => s + p.amount, 0);
+  if (onAccountTotal > 0) {
+    if (!customerId) {
+      throw new Error("On-account payment requires a customer selected on the sale.");
+    }
+    const { creditCheck, getAccount } = await import("./hardware");
+    const check = await creditCheck(customerId, onAccountTotal);
+    if (!check.ok) {
+      throw new Error(check.reason ?? "Credit check failed");
+    }
+    // Compute due date from customer_accounts.terms_days.
+    const acc = await getAccount(customerId);
+    const dueDate = new Date();
+    dueDate.setDate(dueDate.getDate() + (acc.terms_days ?? 30));
+    // Append the ledger insert to the same tx statement list.
+    const balanceAfter = (acc.balance ?? 0) + onAccountTotal;
+    stmts.push({
+      sql: `INSERT INTO account_ledger (id, customer_id, entry_type, sale_id, amount, balance_after, due_date, reference, created_by)
+       VALUES (?1, ?2, 'charge', ?3, ?4, ?5, ?6, ?7, ?8)`,
+      params: [crypto.randomUUID(), customerId, saleId, round2(onAccountTotal), round2(balanceAfter), dueDate.toISOString().slice(0, 10), `Sale ${saleNumber}`, userId],
+    });
+    stmts.push({
+      sql: `UPDATE customer_accounts SET balance = ROUND(?2, 2), updated_at = datetime('now') WHERE customer_id = ?1`,
+      params: [customerId, round2(balanceAfter)],
+    });
+  }
+
   for (const p of payments) {
+    // Skip the standard payment insert for on-account rows — those
+    // route through account_ledger (handled above) and don't hit
+    // bank_accounts / payments. If we posted them here, the sale
+    // would look "paid" while the money is actually owed.
+    if (isOnAccount(p)) continue;
     // FK-safety: payments.method_id REFERENCES payment_methods(id). If the
     // UI passes a synthetic id ("mpesa-daraja", "mpesa-paystack") that
     // wasn't seeded in an older install, the FK fails AFTER Daraja has
@@ -313,6 +366,22 @@ export async function completeSale(
   signWithEtims(saleId, items, { subtotal, tax: taxAmount, total }).catch((e) => {
     console.error("eTIMS signing failed:", e);
   });
+
+  // Hardware commission accrual (HW-9). Best-effort — a missing rule
+  // just returns 0. Fails silent so a rule-config issue never blocks
+  // a sale that's already committed.
+  if (salespersonId) {
+    try {
+      const { commissionForSale } = await import("./hardware");
+      // Base amount = net of discount, exclusive of tax + tip. Payroll
+      // ops can change the base later; keeping it consistent with what
+      // Kenyan payroll teams call "gross of tax".
+      const base = subtotal - discountAmount;
+      await commissionForSale(saleId, salespersonId, base);
+    } catch (e) {
+      console.warn("Commission accrual skipped for sale", saleId, ":", e);
+    }
+  }
 
   return { saleId, saleItemIds };
 }

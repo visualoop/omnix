@@ -151,9 +151,23 @@ export function SaveQuoteSheet({ open, onClose }: Props) {
                 value={customerId ?? ""}
                 onChange={(v) => { setCustomerId(v || null); setShowCustomerError(false); }}
                 options={customerOptions}
-                placeholder="Pick a customer…"
+                placeholder="Pick or add a customer…"
                 searchPlaceholder="Search customers"
                 emptyText="No matching customer"
+                onCreate={async (label) => {
+                  try {
+                    const { upsertCustomer } = await import("@/services/erp");
+                    const id = await upsertCustomer({ name: label.trim() });
+                    // Reload so the just-created customer shows in the list.
+                    const { listCustomers } = await import("@/services/erp");
+                    const fresh = await listCustomers();
+                    setCustomers(fresh);
+                    return { value: id, label: label.trim() };
+                  } catch (e) {
+                    toast.error(e instanceof Error ? e.message : String(e));
+                    return null;
+                  }
+                }}
               />
             </div>
             <p className="text-[10px] text-muted-foreground">
