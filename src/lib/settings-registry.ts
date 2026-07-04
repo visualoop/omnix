@@ -45,6 +45,8 @@ import {
   ArrowsClockwise,
   Barcode,
   PaintBrush,
+  Certificate,
+  Buildings,
 } from "@phosphor-icons/react";
 import type { Icon as LucideIcon } from "@phosphor-icons/react";
 import type { ModuleId } from "@/stores/active-module";
@@ -140,6 +142,8 @@ const CORE_SETTINGS: SettingsNavItem[] = [
 
   // ── Module-specific ───────────────────────────────────────
   { to: "/settings/insurance", label: "Insurance providers", description: "SHA and private insurers", icon: Shield, permission: "claims.view", group: "Dawa", module: "dawa" },
+  { to: "/settings/pharmacy-licenses", label: "Pharmacy licenses", description: "Premises + pharmacist + PPB expiry tracking", icon: Certificate, permission: "pharmacy.dispense", group: "Dawa", module: "dawa" },
+  { to: "/settings/pharmacy-ppb", label: "PPB e-Portal", description: "Automatic quarterly controlled-substance returns", icon: Buildings, permission: "pharmacy.dispense", group: "Dawa", module: "dawa" },
 
   // ── Legacy paths — resolvable but hidden from the sidebar ─
   { to: "/settings/license", label: "License (legacy)", description: "Redirects to Licences", icon: Key, permission: "license.view", group: "Application", hidden: true },
