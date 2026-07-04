@@ -22,6 +22,7 @@ import {
   listUnits, upsertUnit, recordTemperature, listLogs, wasRecordedToday,
   type ColdChainUnit, type ColdChainLog,
 } from "@/services/cold-chain";
+import type { ColdChainAnalysis } from "@/services/cold-chain-rca";
 import { useAuthStore } from "@/stores/auth";
 import { toast } from "sonner";
 import { intlLocale } from "@/lib/intl";
@@ -215,6 +216,8 @@ export function ColdChainPage() {
         </CardContent>
       </Card>
 
+      <ExcursionAnalyses userId={userId} />
+
       <RecordDialog
         unit={recording}
         userId={userId}
@@ -397,5 +400,87 @@ function UnitForm({ open, unit, onClose, onSaved }: {
         </SheetFooter>
       </SheetContent>
     </Sheet>
+  );
+}
+
+function ExcursionAnalyses({ userId }: { userId?: string }) {
+  const [analyses, setAnalyses] = useState<ColdChainAnalysis[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const load = async () => {
+    setLoading(true);
+    try {
+      const { listAnalyses } = await import("@/services/cold-chain-rca");
+      setAnalyses(await listAnalyses());
+    } finally { setLoading(false); }
+  };
+  useEffect(() => { load(); }, []);
+
+  if (loading) return null;
+  if (analyses.length === 0) return null;
+
+  const ROOT_CAUSE_LABEL: Record<string, string> = {
+    power_outage: "Power outage",
+    unit_failure: "Unit failure",
+    door_left_open: "Door left open",
+    overload: "Overload / warm restock",
+    sensor_error: "Sensor error",
+    unknown: "Unknown",
+  };
+
+  return (
+    <Card>
+      <CardContent className="p-4">
+        <h2 className="font-semibold text-sm mb-3 flex items-center gap-1.5">
+          <AlertTriangle className="h-3.5 w-3.5 text-amber-600" /> Excursion root-cause analyses
+        </h2>
+        <div className="space-y-2">
+          {analyses.map((a) => (
+            <div
+              key={a.id}
+              className={`border rounded-md p-3 ${a.reviewed_at ? "border-border" : "border-amber-300 bg-amber-50 dark:bg-amber-950/20"}`}
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <Badge variant="outline" className="text-[10px]">
+                      {ROOT_CAUSE_LABEL[a.root_cause] || a.root_cause}
+                    </Badge>
+                    <span className="text-[10px] text-muted-foreground">
+                      {Math.round(a.confidence * 100)}% confidence · peak {a.peak_temperature_c.toFixed(1)}°C
+                      {a.duration_minutes ? ` · ${a.duration_minutes} min` : ""}
+                    </span>
+                  </div>
+                  {a.suggested_actions && (
+                    <ul className="mt-1.5 space-y-0.5 text-xs text-muted-foreground list-disc pl-4">
+                      {a.suggested_actions.split("\n").map((s, i) => <li key={i}>{s}</li>)}
+                    </ul>
+                  )}
+                  {a.affected_products && (
+                    <p className="text-[10px] text-muted-foreground mt-1">Affected: {a.affected_products}</p>
+                  )}
+                </div>
+                {!a.reviewed_at && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-7 text-xs shrink-0"
+                    onClick={async () => {
+                      if (!userId) return;
+                      const { reviewAnalysis } = await import("@/services/cold-chain-rca");
+                      await reviewAnalysis(a.id, userId, "Reviewed + actioned");
+                      toast.success("Marked reviewed");
+                      load();
+                    }}
+                  >
+                    <Check className="h-3 w-3 mr-1" /> Reviewed
+                  </Button>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      </CardContent>
+    </Card>
   );
 }

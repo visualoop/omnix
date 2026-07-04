@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import {
   ArrowClockwise as RotateCcw,
+  ChatCircleText,
   CheckCircle,
   Coins,
   FileText,
@@ -23,6 +24,7 @@ import {
   type PrescriptionItem,
 } from "@/services/pharmacy";
 import { getClaim, type InsuranceClaim } from "@/services/insurance";
+import { CounsellingSheet } from "@/components/pharmacy/counselling-sheet";
 import { query } from "@/lib/db";
 import { useCartStore } from "@/stores/cart";
 import { money as KES } from "@/lib/money";
@@ -46,6 +48,7 @@ export function PrescriptionDetailPage() {
   const [refills, setRefills] = useState<RefillChild[]>([]);
   const [loading, setLoading] = useState(true);
   const [dispensing, setDispensing] = useState(false);
+  const [counselOpen, setCounselOpen] = useState(false);
   const loadSnapshot = useCartStore((s) => s.loadSnapshot);
 
   useEffect(() => {
@@ -146,6 +149,9 @@ export function PrescriptionDetailPage() {
         </div>
         <div className="flex items-center gap-2">
           <StatusBadge status={prescription.status} />
+          <Button size="sm" variant="outline" onClick={() => setCounselOpen(true)}>
+            <ChatCircleText className="h-3.5 w-3.5 mr-1.5" /> Counsel
+          </Button>
           {prescription.status === "pending" && (
             <Button size="sm" onClick={handleDispense} disabled={dispensing}>
               <Receipt className="h-3.5 w-3.5 mr-1.5" />
@@ -327,6 +333,16 @@ export function PrescriptionDetailPage() {
           </CardContent>
         </Card>
       )}
+
+      <CounsellingSheet
+        open={counselOpen}
+        onClose={() => setCounselOpen(false)}
+        productIds={items.map((it) => it.product_id)}
+        patientName={prescription.patient_name}
+        prescriptionId={prescription.id}
+        saleId={prescription.sale_id}
+        customerId={prescription.customer_id}
+      />
     </div>
   );
 }

@@ -73,6 +73,17 @@ export async function recordTemperature(input: {
     `UPDATE cold_chain_units SET last_temp_c = ?2, last_recorded_at = datetime('now') WHERE id = ?1`,
     [input.unit_id, input.temperature_c],
   );
+
+  // Out-of-range reading → kick off root-cause analysis (best-effort;
+  // never blocks the temperature log write).
+  if (!inRange) {
+    try {
+      const { analyzeExcursion } = await import("./cold-chain-rca");
+      await analyzeExcursion(id);
+    } catch (e) {
+      console.warn("[cold-chain] RCA failed:", e);
+    }
+  }
   return id;
 }
 

@@ -160,6 +160,7 @@ export function PharmacyPage() {
           ["AMR report", "/pharmacy/amr"],
           ["Doctors", "/pharmacy/doctors"],
           ["Refills", "/pharmacy/refills"],
+          ["e-Prescriptions", "/pharmacy/eprescriptions"],
         ].map(([label, to]) => (
           <Link key={to} to={to}>
             <Button size="sm" variant="outline" className="h-8 text-xs">{label}</Button>

@@ -481,20 +481,24 @@ export async function updateClaimStatus(
 
 /**
  * Submit a draft claim to SHA / AfyaLink via the HIE claim submission
- * endpoint. Behind the FF_SHA_SUBMIT feature flag (read from
- * localStorage / settings) — the network call only fires when the flag
- * is set. Otherwise the claim state machine advances to `submitted`
- * with a locally-generated placeholder claim_number for tracking, and
- * a background job can flush the queue later.
+ * endpoint. Live as of v0.47 — the presence of api_key + api_secret on
+ * the provider is the trigger (no feature flag). If the provider has no
+ * credentials configured, the claim advances to `submitted` with a
+ * LOCAL- placeholder so the pharmacist sees the intent, and a
+ * background job can flush it once creds land.
  *
- * Returns { ok, claimNumber?, error?, queued? } — a `queued: true`
- * result means the state machine advanced but no network call fired.
+ * On a transient failure (5xx / network) the claim is enqueued in
+ * sha_claim_queue with exponential backoff. On a 4xx (member rejected,
+ * bad diagnosis) it is flagged for manual review — no retry.
+ *
+ * Returns { ok, claimNumber?, error?, queued?, willRetry? }.
  */
 export async function submitClaimToSha(claimId: string): Promise<{
   ok: boolean;
   claimNumber?: string;
   error?: string;
   queued?: boolean;
+  willRetry?: boolean;
 }> {
   const claim = await getClaim(claimId);
   if (!claim) return { ok: false, error: "Claim not found" };
@@ -506,47 +510,124 @@ export async function submitClaimToSha(claimId: string): Promise<{
   if (!provider) return { ok: false, error: "Provider not found" };
   if (provider.type !== "sha") return { ok: false, error: "SHA submission only supported for SHA-type providers" };
 
-  const featureFlag = typeof window !== "undefined"
-    ? window.localStorage?.getItem("ff.sha_submit") === "1"
-    : false;
-
-  if (!featureFlag) {
-    // Queued path — mark submitted with a local placeholder claim number
-    // so the pharmacist can see the intent. A future background job can
-    // pick this up and POST to AfyaLink once creds are wired.
+  // No credentials → queued placeholder path.
+  if (!provider.api_key || !provider.api_secret) {
     const placeholder = `LOCAL-${Date.now()}`;
     await updateClaimStatus(claimId, "submitted", { claim_number: placeholder });
     return { ok: true, claimNumber: placeholder, queued: true };
   }
 
-  // Live POST path (feature-flagged). Endpoint + auth mirror the
-  // verifyMember flow — Basic auth for JWT, then Bearer for submission.
-  if (!provider.api_key || !provider.api_secret) {
-    return { ok: false, error: "SHA API credentials not configured on provider" };
+  const result = await postClaimToAfyaLink(claim.id, provider, claim);
+  if (result.ok) {
+    await updateClaimStatus(claimId, "submitted", { claim_number: result.claimNumber });
+    await resolveClaimQueue(claimId, "submitted");
+    return { ok: true, claimNumber: result.claimNumber };
   }
+
+  // 4xx → permanent failure, no retry.
+  if (result.statusCode && result.statusCode >= 400 && result.statusCode < 500) {
+    await enqueueOrUpdateClaim(claimId, result.error ?? "Rejected", result.statusCode, /*permanent*/ true);
+    await updateClaimStatus(claimId, "rejected", { rejection_reason: result.error ?? "Rejected by SHA" });
+    return { ok: false, error: result.error, willRetry: false };
+  }
+
+  // 5xx / network → retryable. Enqueue with backoff.
+  await enqueueOrUpdateClaim(claimId, result.error ?? "Transient error", result.statusCode ?? 0, false);
+  return { ok: false, error: result.error, queued: true, willRetry: true };
+}
+
+/** Compute exponential backoff delay in minutes: 2^attempts capped at 24h. */
+export function backoffMinutes(attempts: number): number {
+  const base = Math.pow(2, Math.max(0, attempts)); // 1,2,4,...
+  return Math.min(base, 1440); // cap at 24h
+}
+
+/** Enqueue a claim for retry or bump its attempt counter. */
+async function enqueueOrUpdateClaim(
+  claimId: string,
+  error: string,
+  statusCode: number,
+  permanent: boolean,
+): Promise<void> {
+  const existing = await query<{ id: string; attempts: number; max_attempts: number }>(
+    `SELECT id, attempts, max_attempts FROM sha_claim_queue WHERE claim_id = ?1 AND resolved_at IS NULL`,
+    [claimId],
+  );
+  if (existing[0]) {
+    const attempts = existing[0].attempts + 1;
+    if (permanent) {
+      await execute(
+        `UPDATE sha_claim_queue SET attempts = ?2, last_error = ?3, last_status_code = ?4,
+           last_attempt_at = datetime('now'), resolved_at = datetime('now'), resolved_status = 'rejected'
+         WHERE id = ?1`,
+        [existing[0].id, attempts, error, statusCode],
+      );
+      return;
+    }
+    if (attempts >= existing[0].max_attempts) {
+      await execute(
+        `UPDATE sha_claim_queue SET attempts = ?2, last_error = ?3, last_status_code = ?4,
+           last_attempt_at = datetime('now'), resolved_at = datetime('now'), resolved_status = 'manual_review'
+         WHERE id = ?1`,
+        [existing[0].id, attempts, error, statusCode],
+      );
+      return;
+    }
+    const delay = backoffMinutes(attempts);
+    await execute(
+      `UPDATE sha_claim_queue SET attempts = ?2, last_error = ?3, last_status_code = ?4,
+         last_attempt_at = datetime('now'), next_retry_at = datetime('now', '+' || ?5 || ' minutes')
+       WHERE id = ?1`,
+      [existing[0].id, attempts, error, statusCode, delay],
+    );
+  } else {
+    const delay = permanent ? 0 : backoffMinutes(1);
+    await execute(
+      `INSERT INTO sha_claim_queue
+         (id, claim_id, attempts, next_retry_at, last_error, last_status_code, last_attempt_at, resolved_at, resolved_status)
+       VALUES (?1, ?2, 1, datetime('now', '+' || ?3 || ' minutes'), ?4, ?5, datetime('now'),
+               ?6, ?7)`,
+      [
+        crypto.randomUUID(), claimId, delay, error, statusCode,
+        permanent ? new Date().toISOString() : null,
+        permanent ? "rejected" : null,
+      ],
+    );
+  }
+}
+
+async function resolveClaimQueue(claimId: string, status: "submitted" | "cancelled"): Promise<void> {
+  await execute(
+    `UPDATE sha_claim_queue SET resolved_at = datetime('now'), resolved_status = ?2
+     WHERE claim_id = ?1 AND resolved_at IS NULL`,
+    [claimId, status],
+  );
+}
+
+/** Raw HTTP submission to AfyaLink. Returns statusCode for retry decisions. */
+async function postClaimToAfyaLink(
+  claimId: string,
+  provider: InsuranceProvider,
+  claim: InsuranceClaim,
+): Promise<{ ok: boolean; claimNumber?: string; error?: string; statusCode?: number }> {
   try {
     const baseUrl = provider.test_mode === 1
       ? "https://afyalink.dha.go.ke"
       : (provider.api_endpoint || "https://afyalink.dha.go.ke");
 
-    const tokenRes = await fetch(`${baseUrl}/v1/hie-auth?key=${encodeURIComponent(provider.api_key)}`, {
+    const tokenRes = await fetch(`${baseUrl}/v1/hie-auth?key=${encodeURIComponent(provider.api_key!)}`, {
       method: "GET",
-      headers: {
-        "Authorization": `Basic ${btoa(`${provider.api_key}:${provider.api_secret}`)}`,
-      },
+      headers: { "Authorization": `Basic ${btoa(`${provider.api_key}:${provider.api_secret}`)}` },
     });
-    if (!tokenRes.ok) return { ok: false, error: `HIE auth failed (${tokenRes.status})` };
+    if (!tokenRes.ok) return { ok: false, error: `HIE auth failed (${tokenRes.status})`, statusCode: tokenRes.status };
     const tokenData = await tokenRes.json() as { token?: string; access_token?: string };
     const jwt = tokenData.token || tokenData.access_token;
-    if (!jwt) return { ok: false, error: "No JWT in HIE auth response" };
+    if (!jwt) return { ok: false, error: "No JWT in HIE auth response", statusCode: 502 };
 
     const items = await getClaimItems(claimId);
     const res = await fetch(`${baseUrl}/v1/hie-claim-submit`, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${jwt}`,
-      },
+      headers: { "Content-Type": "application/json", "Authorization": `Bearer ${jwt}` },
       body: JSON.stringify({
         member_number: claim.member_number,
         member_name: claim.member_name,
@@ -566,15 +647,61 @@ export async function submitClaimToSha(claimId: string): Promise<{
     });
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
-      return { ok: false, error: (err as { message?: string }).message || `HTTP ${res.status}` };
+      return { ok: false, error: (err as { message?: string }).message || `HTTP ${res.status}`, statusCode: res.status };
     }
     const body = await res.json() as { claim_number?: string };
-    const claimNumber = body.claim_number || `SHA-${Date.now()}`;
-    await updateClaimStatus(claimId, "submitted", { claim_number: claimNumber });
-    return { ok: true, claimNumber };
+    return { ok: true, claimNumber: body.claim_number || `SHA-${Date.now()}` };
   } catch (e) {
-    return { ok: false, error: String(e) };
+    // Network error — no status code, treat as retryable.
+    return { ok: false, error: String(e), statusCode: 0 };
   }
+}
+
+export interface ShaQueueEntry {
+  id: string;
+  claim_id: string;
+  attempts: number;
+  max_attempts: number;
+  next_retry_at: string;
+  last_error: string | null;
+  last_status_code: number | null;
+  resolved_at: string | null;
+  resolved_status: string | null;
+}
+
+/**
+ * Background worker — flush all queued claims whose next_retry_at has
+ * passed. Called from the app's daily/hourly scheduler. Returns a
+ * summary of what happened.
+ */
+export async function flushShaClaimQueue(): Promise<{
+  attempted: number;
+  submitted: number;
+  stillPending: number;
+  failed: number;
+}> {
+  const due = await query<ShaQueueEntry>(
+    `SELECT * FROM sha_claim_queue
+      WHERE resolved_at IS NULL AND julianday(next_retry_at) <= julianday('now')
+      ORDER BY next_retry_at ASC
+      LIMIT 50`,
+  );
+  let submitted = 0, stillPending = 0, failed = 0;
+  for (const entry of due) {
+    const result = await submitClaimToSha(entry.claim_id).catch(() => ({ ok: false, willRetry: false }));
+    if (result.ok) submitted++;
+    else if ((result as { willRetry?: boolean }).willRetry) stillPending++;
+    else failed++;
+  }
+  return { attempted: due.length, submitted, stillPending, failed };
+}
+
+export async function listShaQueue(includeResolved = false): Promise<ShaQueueEntry[]> {
+  return query<ShaQueueEntry>(
+    `SELECT * FROM sha_claim_queue
+      ${includeResolved ? "" : "WHERE resolved_at IS NULL"}
+      ORDER BY created_at DESC LIMIT 200`,
+  );
 }
 
 // ===== Batches =====

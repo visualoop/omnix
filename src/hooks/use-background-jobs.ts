@@ -80,6 +80,41 @@ async function tryFxRefresh(): Promise<void> {
   }
 }
 
+async function tryShaClaimFlush(): Promise<void> {
+  if (typeof navigator !== "undefined" && !navigator.onLine) return;
+  try {
+    const { flushShaClaimQueue } = await import("@/services/insurance");
+    const summary = await flushShaClaimQueue();
+    if (summary.submitted > 0) {
+      console.info(`[background] flushed ${summary.submitted} SHA claims`);
+    }
+  } catch (e) {
+    console.warn("[background] sha claim flush failed:", e);
+  }
+}
+
+async function tryRefillReminders(): Promise<void> {
+  try {
+    const { queueRefillReminders } = await import("@/services/refill-reminders");
+    const summary = await queueRefillReminders(3);
+    if (summary.queued > 0) {
+      console.info(`[background] queued ${summary.queued} refill reminders`);
+    }
+  } catch (e) {
+    console.warn("[background] refill reminders failed:", e);
+  }
+}
+
+async function tryPpbAutoSubmit(): Promise<void> {
+  if (typeof navigator !== "undefined" && !navigator.onLine) return;
+  try {
+    const { runPpbAutoSubmission } = await import("@/services/ppb-submissions");
+    await runPpbAutoSubmission();
+  } catch (e) {
+    console.warn("[background] ppb auto-submit failed:", e);
+  }
+}
+
 export function useBackgroundJobs(): void {
   useEffect(() => {
     let cancelled = false;
@@ -97,6 +132,22 @@ export function useBackgroundJobs(): void {
     const fxBoot = setTimeout(() => { if (!cancelled) tryFxRefresh(); }, 120_000);
     const fxInterval = setInterval(() => { if (!cancelled) tryFxRefresh(); }, DEPR_CHECK_INTERVAL_MS);
 
+    // SHA claim queue flush — 150s after boot, then every 15 min. Retries
+    // any claim whose backoff window has elapsed. Offline-safe.
+    const shaBoot = setTimeout(() => { if (!cancelled) tryShaClaimFlush(); }, 150_000);
+    const shaInterval = setInterval(() => { if (!cancelled) tryShaClaimFlush(); }, 15 * 60 * 1000);
+
+    // Refill reminders — 180s after boot, then every 12h. Stages SMS
+    // reminders for prescriptions due within 3 days.
+    const refillBoot = setTimeout(() => { if (!cancelled) tryRefillReminders(); }, 180_000);
+    const refillInterval = setInterval(() => { if (!cancelled) tryRefillReminders(); }, DEPR_CHECK_INTERVAL_MS);
+
+    // PPB auto-submit — 240s after boot, then every 12h. Assembles +
+    // submits the prior quarter's return once we're past the configured
+    // auto_submit_day. Idempotent per period. No-op when disabled.
+    const ppbBoot = setTimeout(() => { if (!cancelled) tryPpbAutoSubmit(); }, 240_000);
+    const ppbInterval = setInterval(() => { if (!cancelled) tryPpbAutoSubmit(); }, DEPR_CHECK_INTERVAL_MS);
+
     return () => {
       cancelled = true;
       clearTimeout(etimsBoot);
@@ -105,6 +156,12 @@ export function useBackgroundJobs(): void {
       clearInterval(deprInterval);
       clearTimeout(fxBoot);
       clearInterval(fxInterval);
+      clearTimeout(shaBoot);
+      clearInterval(shaInterval);
+      clearTimeout(refillBoot);
+      clearInterval(refillInterval);
+      clearTimeout(ppbBoot);
+      clearInterval(ppbInterval);
     };
   }, []);
 }

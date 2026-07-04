@@ -616,6 +616,12 @@ fn run_inner() {
             sql: include_str!("../migrations/085_pharmacy_licenses.sql"),
             kind: MigrationKind::Up,
         },
+        Migration {
+            version: 86,
+            description: "Pharmacy v47: SHA claim queue, DHA e-scripts, cold-chain RCA, counselling, PPB submissions",
+            sql: include_str!("../migrations/086_pharmacy_v47.sql"),
+            kind: MigrationKind::Up,
+        },
     ];
 
     tauri::Builder::default()
