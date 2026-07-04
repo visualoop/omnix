@@ -58,11 +58,11 @@ function SheetContent({
           "data-ending-style:opacity-0 data-starting-style:opacity-0",
           "data-[side=bottom]:inset-x-0 data-[side=bottom]:bottom-0 data-[side=bottom]:h-auto data-[side=bottom]:max-h-[85vh] data-[side=bottom]:rounded-t-2xl",
           "data-[side=bottom]:data-ending-style:translate-y-2 data-[side=bottom]:data-starting-style:translate-y-2",
-          "data-[side=left]:inset-y-0 data-[side=left]:left-0 data-[side=left]:h-full data-[side=left]:w-[440px] data-[side=left]:max-w-[88vw] data-[side=left]:rounded-r-2xl",
+          "data-[side=left]:top-8 data-[side=left]:bottom-0 data-[side=left]:left-0 data-[side=left]:w-[440px] data-[side=left]:max-w-[88vw] data-[side=left]:rounded-r-2xl",
           "data-[side=left]:data-ending-style:-translate-x-4 data-[side=left]:data-starting-style:-translate-x-4",
-          "data-[side=right]:inset-y-0 data-[side=right]:right-0 data-[side=right]:h-full data-[side=right]:w-[440px] data-[side=right]:max-w-[88vw] data-[side=right]:rounded-l-2xl",
+          "data-[side=right]:top-8 data-[side=right]:bottom-0 data-[side=right]:right-0 data-[side=right]:w-[440px] data-[side=right]:max-w-[88vw] data-[side=right]:rounded-l-2xl",
           "data-[side=right]:data-ending-style:translate-x-4 data-[side=right]:data-starting-style:translate-x-4",
-          "data-[side=top]:inset-x-0 data-[side=top]:top-0 data-[side=top]:h-auto data-[side=top]:max-h-[85vh] data-[side=top]:rounded-b-2xl",
+          "data-[side=top]:inset-x-0 data-[side=top]:top-8 data-[side=top]:h-auto data-[side=top]:max-h-[85vh] data-[side=top]:rounded-b-2xl",
           "data-[side=top]:data-ending-style:-translate-y-2 data-[side=top]:data-starting-style:-translate-y-2",
           className
         )}

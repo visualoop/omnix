@@ -77,9 +77,10 @@ function DishNode({ data }: { data: DishData }) {
   return (
     <div className={cn("relative rounded-xl border-2 p-3 min-w-[220px] shadow-sm", marginColour)}>
       <Handle
+        id="in"
         type="target"
         position={Position.Left}
-        className="!h-3 !w-3 !bg-foreground/40 !border-2 !border-background"
+        className="!h-3.5 !w-3.5 !bg-primary !border-2 !border-background"
       />
       <div className="flex items-center gap-2.5">
         {data.imagePath ? (
@@ -123,9 +124,10 @@ function IngredientNode({ data }: { data: IngredientData }) {
   return (
     <div className={cn("relative rounded-lg border-2 p-2.5 min-w-[180px] max-w-[220px] shadow-sm", stockColour)}>
       <Handle
+        id="out"
         type="source"
         position={Position.Right}
-        className="!h-3 !w-3 !bg-foreground/40 !border-2 !border-background"
+        className="!h-3.5 !w-3.5 !bg-primary !border-2 !border-background"
       />
       <div className="flex items-start justify-between gap-1.5">
         <div className="min-w-0 flex-1">
@@ -315,14 +317,17 @@ export function RecipeCanvas({ menuItemId, menuItemName, menuItemImage, sellingP
       id: `e-${l.productId}`,
       source: `ing-${l.productId}`,
       target: "dish",
+      sourceHandle: "out",
+      targetHandle: "in",
       type: "smoothstep",
-      animated: false,
+      animated: true,
       label: `${l.quantity}${l.unit}`,
       labelStyle: { fontSize: 11, fontFamily: "monospace", fontWeight: 500 },
       labelBgPadding: [4, 4],
       labelBgBorderRadius: 4,
       labelBgStyle: { fill: "hsl(var(--muted))" },
-      markerEnd: { type: MarkerType.ArrowClosed },
+      style: { strokeWidth: 2, stroke: "#6366f1" },
+      markerEnd: { type: MarkerType.ArrowClosed, width: 20, height: 20, color: "#6366f1" },
     }));
 
     const laidOut = layout ? [dishNode, ...ingredientNodes] : autoLayout([dishNode, ...ingredientNodes], edgeList);
@@ -406,14 +411,17 @@ export function RecipeCanvas({ menuItemId, menuItemName, menuItemImage, sellingP
       id: `e-${l.productId}`,
       source: `ing-${l.productId}`,
       target: "dish",
+      sourceHandle: "out",
+      targetHandle: "in",
       type: "smoothstep",
-      animated: false,
+      animated: true,
       label: `${l.quantity}${l.unit}`,
       labelStyle: { fontSize: 11, fontFamily: "monospace", fontWeight: 500 },
       labelBgPadding: [4, 4],
       labelBgBorderRadius: 4,
       labelBgStyle: { fill: "hsl(var(--muted))" },
-      markerEnd: { type: MarkerType.ArrowClosed },
+      style: { strokeWidth: 2, stroke: "#6366f1" },
+      markerEnd: { type: MarkerType.ArrowClosed, width: 20, height: 20, color: "#6366f1" },
     })));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lines, yieldQty, menuItemName, menuItemImage, sellingPrice]);
@@ -485,6 +493,7 @@ export function RecipeCanvas({ menuItemId, menuItemName, menuItemImage, sellingP
           onEdgesChange={onEdgesChange}
           onConnect={onConnect}
           nodeTypes={nodeTypes}
+          defaultEdgeOptions={{ type: "smoothstep", animated: true }}
           fitView
           fitViewOptions={{ padding: 0.2 }}
           proOptions={{ hideAttribution: true }}

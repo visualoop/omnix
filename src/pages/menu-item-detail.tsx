@@ -164,7 +164,7 @@ export function MenuItemDetailPage() {
   const bottleneck = availability?.bottleneck_product_name;
 
   return (
-    <div className="max-w-5xl mx-auto p-6 pb-24 space-y-6">
+    <div className="w-full p-6 pb-24 space-y-6">
       {/* ─── Top bar ─────────────────────────────────────────────── */}
       <div className="flex items-center justify-between">
         <button
