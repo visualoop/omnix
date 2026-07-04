@@ -49,7 +49,14 @@ export function CustomerDisplayQueuePage() {
   useEffect(() => {
     let timer: number | undefined;
     let cancelled = false;
+    let lastTick = 0;
     const tick = async () => {
+      // Debounce: skip if the last successful tick was <500ms ago
+      // (protects against back-to-back triggers on multi-terminal setups).
+      if (Date.now() - lastTick < 500) return;
+      // Skip entirely when the tab is hidden — no user is watching.
+      if (typeof document !== "undefined" && document.hidden) return;
+      lastTick = Date.now();
       try {
         const rows = await query<QueueOrder>(
           `SELECT o.id, o.order_number, o.status, o.order_type, o.opened_at,

@@ -112,6 +112,7 @@ const CORE_SETTINGS: SettingsNavItem[] = [
   { to: "/settings/taxes", label: "Tax & VAT", description: "Default rates, tax classes", icon: Calculator, permission: "settings.business", group: "Money" },
   { to: "/settings/price-lists", label: "Price lists", description: "Customer pricing tiers", icon: ListChecks, permission: "retail.price_lists.manage", group: "Money" },
   { to: "/settings/categories", label: "Categories", description: "Group products by type", icon: Tag, permission: "inventory.edit", group: "Money" },
+  { to: "/settings/units", label: "Units", description: "Measures for stock and recipes", icon: Ruler, permission: "inventory.edit", group: "Money" },
   { to: "/settings/etims", label: "KRA eTIMS", description: "Tax invoice signing", icon: FileCheck, permission: "etims.view", group: "Money" },
 
   // ── Hardware Devices ──────────────────────────────────────

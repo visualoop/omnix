@@ -30,6 +30,7 @@ import dagre from "@dagrejs/dagre";
 import { Plus, Warning, MagicWand, FloppyDisk, ForkKnife } from "@phosphor-icons/react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { UnitSelect } from "@/components/ui/unit-select";
 import { IngredientPickerSheet } from "@/components/hospitality/ingredient-picker-sheet";
 import { getProducts, type Product } from "@/services/inventory";
 import { getRecipeForMenuItem, replaceRecipe } from "@/services/hospitality";
@@ -578,17 +579,11 @@ export function RecipeCanvas({ menuItemId, menuItemName, menuItemImage, sellingP
                     onChange={(e) => patchLine(l.productId, { quantity: Number(e.target.value) })}
                     className="w-14 h-6 px-1 rounded border border-input text-right bg-transparent font-mono text-[11px]"
                   />
-                  <select
+                  <UnitSelect
                     value={l.unit}
-                    onChange={(e) => patchLine(l.productId, { unit: e.target.value })}
-                    className="h-6 border border-input rounded px-0.5 text-[11px] bg-transparent"
-                  >
-                    <option value="g">g</option>
-                    <option value="kg">kg</option>
-                    <option value="ml">ml</option>
-                    <option value="l">l</option>
-                    <option value="pcs">pcs</option>
-                  </select>
+                    onChange={(v) => patchLine(l.productId, { unit: v })}
+                    className="w-16"
+                  />
                   <button
                     onClick={() => removeLine(l.productId)}
                     title="Remove"

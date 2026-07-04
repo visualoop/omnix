@@ -18,7 +18,8 @@
  * `updateMenuItem` call fired from the sticky Save bar at the bottom.
  */
 import { useEffect, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, useLocation } from "react-router-dom";
+import { setTitlebarDynamicLabel } from "@/components/layout/window-titlebar";
 import { toast } from "sonner";
 import { ArrowLeft, ForkKnife, Copy, Warning, Check } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
@@ -62,6 +63,7 @@ import {
 } from "recharts";
 import { money as KES } from "@/lib/money";
 import { cn } from "@/lib/utils";
+import { AllergenPicker } from "@/components/hospitality/allergen-picker";
 
 export function MenuItemDetailPage() {
   const { id = "" } = useParams();
@@ -86,6 +88,16 @@ export function MenuItemDetailPage() {
     if (!id) return;
     load();
   }, [id]);
+
+  const location = useLocation();
+  // Publish the current menu item name to the titlebar so the right-side
+  // label reads e.g. "Omnix Hospitality · Ugali Sukuma" instead of the
+  // static "Hospitality" segment (which gets deduped anyway).
+  useEffect(() => {
+    if (!item) return;
+    setTitlebarDynamicLabel(location.pathname, item.menu_name);
+    return () => setTitlebarDynamicLabel(location.pathname, null);
+  }, [item, location.pathname]);
 
   if (!item) {
     return (
@@ -302,10 +314,9 @@ export function MenuItemDetailPage() {
                 />
               </Field>
               <Field label="Allergens">
-                <Input
+                <AllergenPicker
                   value={allergensVal}
-                  onChange={(e) => patch("allergens", e.target.value || null)}
-                  placeholder="dairy, gluten…"
+                  onChange={(v) => patch("allergens", v || null)}
                 />
               </Field>
             </div>

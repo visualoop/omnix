@@ -80,7 +80,28 @@ const ROUTE_LABEL_MAP: Record<string, string> = {
   "hub-operations": "Operations Hub",
 };
 
+/** In-memory label overrides keyed by full pathname — set by pages
+ *  that know the "human" name for the current route (e.g. the menu
+ *  item detail page sets "Ugali Sukuma" so the titlebar shows that
+ *  instead of the raw path segment). */
+const dynamicLabels = new Map<string, string>();
+
+/** Detail pages call this after they load their entity so the titlebar
+ *  can show the item name instead of the deduped "Hospitality" label. */
+export function setTitlebarDynamicLabel(pathname: string, label: string | null) {
+  if (label === null) {
+    dynamicLabels.delete(pathname);
+  } else {
+    dynamicLabels.set(pathname, label);
+  }
+  // Fire a synthetic event so ModuleIdentity re-renders even though it
+  // doesn't subscribe to the map. Cheap — happens on route change only.
+  window.dispatchEvent(new Event("titlebar:label"));
+}
+
 function routeLabelFromPath(pathname: string): string {
+  const dyn = dynamicLabels.get(pathname);
+  if (dyn) return dyn;
   const seg = pathname.split("/").filter(Boolean)[0] ?? "";
   return ROUTE_LABEL_MAP[seg] ?? "";
 }
@@ -255,6 +276,13 @@ export function WindowTitlebar({ title, hidden, extras }: Props) {
 function ModuleIdentity({ title }: { title?: string }) {
   const location = useLocation();
   const moduleId = useCurrentModuleId();
+  const [labelTick, setLabelTick] = useState(0);
+  useEffect(() => {
+    const handler = () => setLabelTick((t) => t + 1);
+    window.addEventListener("titlebar:label", handler);
+    return () => window.removeEventListener("titlebar:label", handler);
+  }, []);
+  void labelTick;
   const derived = routeLabelFromPath(location.pathname);
   const label = title ?? derived;
   const brandTail = BRAND.name.split(/\s+/).pop() ?? "";

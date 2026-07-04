@@ -225,6 +225,45 @@ export async function deleteModifierGroup(groupId: string): Promise<void> {
   await execute(`DELETE FROM menu_modifiers WHERE id = ?1`, [groupId]);
 }
 
+/** Every active modifier group in the system (across all menu items).
+ *  Used by the "Attach existing group" picker so a group like Sauces
+ *  can be defined once and reused on many menu items. */
+export async function listAllModifierGroups(): Promise<MenuModifierGroupFull[]> {
+  const groups = await query<MenuModifierGroup>(
+    `SELECT id, name, type, required, min_select, max_select, active
+     FROM menu_modifiers WHERE active = 1 ORDER BY name`,
+  );
+  const out: MenuModifierGroupFull[] = [];
+  for (const g of groups) {
+    const options = await query<MenuModifierOption>(
+      `SELECT id, modifier_id, name, price_delta, sort_order
+       FROM menu_modifier_options WHERE modifier_id = ?1 ORDER BY sort_order, name`,
+      [g.id],
+    );
+    out.push({ ...g, options });
+  }
+  return out;
+}
+
+/** Attach an existing modifier group to a menu item (no duplication). */
+export async function attachModifierGroup(menuItemId: string, groupId: string): Promise<void> {
+  await requirePermission("hospitality.menu.manage", { entityType: "menu_item", entityId: menuItemId });
+  await execute(
+    `INSERT OR IGNORE INTO menu_item_modifiers (menu_item_id, modifier_id) VALUES (?1, ?2)`,
+    [menuItemId, groupId],
+  );
+}
+
+/** Detach a modifier group from a menu item (doesn't delete the group). */
+export async function detachModifierGroup(menuItemId: string, groupId: string): Promise<void> {
+  await requirePermission("hospitality.menu.manage", { entityType: "menu_item", entityId: menuItemId });
+  await execute(
+    `DELETE FROM menu_item_modifiers WHERE menu_item_id = ?1 AND modifier_id = ?2`,
+    [menuItemId, groupId],
+  );
+}
+
+
 export interface OrderItemModifier {
   order_item_id: string;
   modifier_name: string;
@@ -1048,21 +1087,164 @@ export async function listBookings(): Promise<Array<Booking & { guest_name: stri
   );
 }
 
+export interface Guest {
+  id: string;
+  full_name: string;
+  phone: string | null;
+  id_number: string | null;
+  email: string | null;
+  nationality: string | null;
+  notes: string | null;
+}
+
+/** Look up an existing guest by phone or id_number — used by the
+ *  booking flow to adopt a returning guest instead of creating a new
+ *  row every time. Both fields are indexed (migration 080). */
+export async function findGuestByPhoneOrId(opts: { phone?: string; nationalId?: string }): Promise<Guest | null> {
+  const clauses: string[] = [];
+  const params: unknown[] = [];
+  if (opts.phone && opts.phone.trim()) {
+    params.push(opts.phone.trim());
+    clauses.push(`phone = ?${params.length}`);
+  }
+  if (opts.nationalId && opts.nationalId.trim()) {
+    params.push(opts.nationalId.trim());
+    clauses.push(`id_number = ?${params.length}`);
+  }
+  if (clauses.length === 0) return null;
+  const rows = await query<Guest>(
+    `SELECT id, full_name, phone, id_number, email, nationality, notes
+     FROM guests WHERE ${clauses.join(" OR ")} LIMIT 1`,
+    params,
+  );
+  return rows[0] ?? null;
+}
+
+/** Search guests by name / phone / id — for the guest picker combobox. */
+export async function searchGuests(q: string, limit = 20): Promise<Guest[]> {
+  if (!q.trim()) {
+    return query<Guest>(
+      `SELECT id, full_name, phone, id_number, email, nationality, notes
+       FROM guests ORDER BY full_name LIMIT ?1`,
+      [limit],
+    );
+  }
+  const like = `%${q.trim()}%`;
+  return query<Guest>(
+    `SELECT id, full_name, phone, id_number, email, nationality, notes
+     FROM guests
+     WHERE full_name LIKE ?1 OR phone LIKE ?1 OR id_number LIKE ?1
+     ORDER BY full_name LIMIT ?2`,
+    [like, limit],
+  );
+}
+
+/** Every room that's assignable to a booking of a given type.
+ *  "Assignable" = available OR dirty OR cleaning. Front desk gets
+ *  to decide (dirty ones are flagged as needing turnaround). */
+export async function listAvailableRoomsForType(roomTypeId: string): Promise<Array<Room & { needs_turnaround: boolean }>> {
+  const rows = await query<Room>(
+    `SELECT id, room_type_id, room_number, floor, status
+     FROM rooms
+     WHERE active = 1
+       AND room_type_id = ?1
+       AND status IN ('available','dirty','cleaning')
+     ORDER BY room_number`,
+    [roomTypeId],
+  );
+  return rows.map((r) => ({ ...r, needs_turnaround: r.status !== "available" }));
+}
+
+/** Rooms that CAN receive a room-service order — the guest is in
+ *  residence. Returns the room number + status + linked folio + guest
+ *  name (so the picker shows "Room 204 · Ms Okoth"). */
+export async function listRoomsForRoomService(): Promise<Array<{
+  id: string;
+  room_number: string;
+  folio_id: string | null;
+  guest_name: string | null;
+}>> {
+  return query(
+    `SELECT r.id, r.room_number, gf.id AS folio_id, g.full_name AS guest_name
+     FROM rooms r
+     LEFT JOIN bookings b ON b.room_id = r.id AND b.status = 'checked_in'
+     LEFT JOIN guest_folios gf ON gf.booking_id = b.id AND gf.status = 'open'
+     LEFT JOIN guests g ON g.id = b.guest_id
+     WHERE r.active = 1 AND r.status = 'occupied'
+     ORDER BY r.room_number`,
+  );
+}
+
+/** Open guest folios for the charge-to-room picker. Replaces the
+ *  inline SQL in the Orders page (audit finding H8). */
+export async function listOpenFolios(): Promise<Array<{ id: string; room_number: string; guest_name: string }>> {
+  return query(
+    `SELECT gf.id, r.room_number, g.full_name AS guest_name
+     FROM guest_folios gf
+     JOIN bookings b ON b.id = gf.booking_id
+     JOIN rooms r ON r.id = b.room_id
+     JOIN guests g ON g.id = b.guest_id
+     WHERE gf.status = 'open'
+     ORDER BY r.room_number`,
+  );
+}
+
 export async function createBooking(input: {
-  guestName: string; phone?: string; roomTypeId: string; checkIn: string; checkOut: string;
-  ratePerNight: number; adults?: number; userId?: string;
+  guestName: string;
+  phone?: string;
+  email?: string;
+  nationalId?: string;
+  nationality?: string;
+  notes?: string;
+  roomTypeId: string;
+  checkIn: string;
+  checkOut: string;
+  ratePerNight: number;
+  adults?: number;
+  userId?: string;
+  /** Optional pre-assigned room. When set, check-in uses this room. */
+  preferredRoomId?: string | null;
 }): Promise<string> {
   await assertModuleEntitled("hospitality");
   await requirePermission("hospitality.bookings.manage", { entityType: "booking" });
-  const guestId = uid();
-  await execute(`INSERT INTO guests (id, full_name, phone) VALUES (?1, ?2, ?3)`, [guestId, input.guestName, input.phone ?? null]);
+
+  // Adopt an existing guest if phone / id_number already registered.
+  let guestId: string;
+  const existing = await findGuestByPhoneOrId({ phone: input.phone, nationalId: input.nationalId });
+  if (existing) {
+    guestId = existing.id;
+    // Fill in fields the operator provided this time but that were
+    // missing before — non-destructive merge.
+    await execute(
+      `UPDATE guests SET
+         full_name = COALESCE(NULLIF(?1, ''), full_name),
+         phone = COALESCE(NULLIF(?2, ''), phone),
+         email = COALESCE(NULLIF(?3, ''), email),
+         id_number = COALESCE(NULLIF(?4, ''), id_number),
+         nationality = COALESCE(NULLIF(?5, ''), nationality),
+         notes = COALESCE(NULLIF(?6, ''), notes)
+       WHERE id = ?7`,
+      [input.guestName, input.phone ?? "", input.email ?? "", input.nationalId ?? "",
+       input.nationality ?? "", input.notes ?? "", guestId],
+    );
+  } else {
+    guestId = uid();
+    await execute(
+      `INSERT INTO guests (id, full_name, phone, email, id_number, nationality, notes)
+       VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)`,
+      [guestId, input.guestName, input.phone ?? null, input.email ?? null,
+       input.nationalId ?? null, input.nationality ?? null, input.notes ?? null],
+    );
+  }
+
   const id = uid();
   const [row] = await query<{ n: number }>(`SELECT COUNT(*) AS n FROM bookings`);
   const number = `BK-${String((row?.n ?? 0) + 1).padStart(5, "0")}`;
   await execute(
-    `INSERT INTO bookings (id, booking_number, branch_id, guest_id, room_type_id, check_in_date, check_out_date, adults, rate_per_night, created_by)
-     VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)`,
-    [id, number, getActiveBranchId(), guestId, input.roomTypeId, input.checkIn, input.checkOut, input.adults ?? 1, input.ratePerNight, input.userId ?? null],
+    `INSERT INTO bookings (id, booking_number, branch_id, guest_id, room_type_id, room_id, check_in_date, check_out_date, adults, rate_per_night, created_by)
+     VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)`,
+    [id, number, getActiveBranchId(), guestId, input.roomTypeId, input.preferredRoomId ?? null,
+     input.checkIn, input.checkOut, input.adults ?? 1, input.ratePerNight, input.userId ?? null],
   );
   return id;
 }
@@ -1195,16 +1377,46 @@ export async function planRecipeConsumption(
   if (!recipeRows[0]) return { writes: [], missing: [] };
   const recipeId = recipeRows[0].id;
 
-  const ingredients = await query<{ product_id: string; quantity: number; wastage_percent: number }>(
-    `SELECT product_id, quantity, wastage_percent FROM recipe_ingredients WHERE recipe_id = ?1`,
+  // Fetch ingredients WITH their recipe-side unit AND the product's
+  // inventory unit so we can convert before deducting. Without this the
+  // recipe would over-deduct when the recipe measures grams but the
+  // product stores kilograms (200 g of flour deducting 200 units of kg).
+  const ingredients = await query<{
+    product_id: string;
+    quantity: number;
+    wastage_percent: number;
+    recipe_unit: string;
+    product_unit: string;
+  }>(
+    `SELECT ri.product_id, ri.quantity, ri.wastage_percent,
+            ri.unit AS recipe_unit,
+            COALESCE(p.unit, ri.unit) AS product_unit
+     FROM recipe_ingredients ri
+     JOIN products p ON p.id = ri.product_id
+     WHERE ri.recipe_id = ?1`,
     [recipeId],
   );
 
   const writes: import("@/lib/db").TxStatement[] = [];
   const missing: Array<{ product_id: string; needed: number; available: number }> = [];
+  const { convertUnits } = await import("./units");
 
   for (const ing of ingredients) {
-    const needed = ing.quantity * (1 + ing.wastage_percent / 100) * servings;
+    // Convert the recipe quantity into the product's stock unit BEFORE
+    // multiplying by servings so batch quantities compare like-for-like.
+    const rawNeeded = ing.quantity * (1 + ing.wastage_percent / 100) * servings;
+    let needed = rawNeeded;
+    if (ing.recipe_unit && ing.product_unit && ing.recipe_unit !== ing.product_unit) {
+      const converted = await convertUnits(rawNeeded, ing.recipe_unit, ing.product_unit);
+      if (converted === null) {
+        // Cross-dimension mismatch — hard error so the operator can fix
+        // the unit assignment before selling more of this dish.
+        throw new Error(
+          `Unit mismatch on ingredient (product ${ing.product_id}): recipe uses ${ing.recipe_unit}, stock is ${ing.product_unit}. Assign a compatible unit in Settings > Units, or edit the recipe to use ${ing.product_unit}.`,
+        );
+      }
+      needed = converted;
+    }
     let remaining = needed;
 
     const batches = await query<{ id: string; quantity: number }>(

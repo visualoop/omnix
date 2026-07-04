@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Combobox } from "@/components/ui/combobox";
+import { UnitSelect } from "@/components/ui/unit-select";
 import { AiButton } from "@/components/ai/AiButton";
 import { ai } from "@/services/ai";
 import { toast } from "sonner";
@@ -302,7 +303,7 @@ export function ProductPanel({ open, onClose, productId, onSaved }: Props) {
               </Field>
               <div className="grid grid-cols-2 gap-2">
                 <Field label="Unit">
-                  <Input value={form.unit} onChange={(e) => update("unit", e.target.value)} />
+                  <UnitSelect value={form.unit} onChange={(u) => update("unit", u)} />
                 </Field>
                 <Field label="Reorder level">
                   <Input type="number" value={form.reorder_level} onChange={(e) => update("reorder_level", e.target.value)} />

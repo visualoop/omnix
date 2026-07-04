@@ -17,6 +17,7 @@ import {
   ForkKnife as UtensilsCrossed,
 } from "@phosphor-icons/react";
 import { toast } from "sonner";
+import { AllergenPicker } from "@/components/hospitality/allergen-picker";
 
 export interface MenuItemFormValues {
   name: string;
@@ -170,11 +171,7 @@ export function MenuItemDialog({ open, onClose, onSubmit, initial, categories = 
               />
             </Field>
             <Field label="Allergens">
-              <Input
-                value={allergens}
-                onChange={(e) => setAllergens(e.target.value)}
-                placeholder="dairy, gluten…"
-              />
+              <AllergenPicker value={allergens} onChange={setAllergens} />
             </Field>
           </div>
 

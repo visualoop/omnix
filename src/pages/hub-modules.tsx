@@ -20,7 +20,6 @@ import {
   ClipboardText as ClipboardList,
   FileText,
   FileText as FileWarning,
-  Flame as Flame,
   Monitor as MonitorIcon,
   Folder as FolderOpen,
   ForkKnife as UtensilsCrossed,
@@ -30,12 +29,12 @@ import {
   ShoppingBag,
   Signature as FileSignature,
   Snowflake,
-  Sparkle as Sparkles,
   Stethoscope,
   Tag as TagIcon,
   TrendUp as TrendingUp,
   Users as UsersIcon,
   Wallet as WalletIcon,
+  Flame,
 } from "@phosphor-icons/react";
 import { HubLayout } from "@/components/layout/hub-layout";
 import { useCountry } from "@/stores/country";
@@ -64,8 +63,8 @@ import {
 
 import {
   HospitalityDashboardPage, HospitalityTablesPage, HospitalityMenuPage,
-  HospitalityOrdersPage, HospitalityKitchenPage,
-  HospitalityRoomsPage, HospitalityBookingsPage, HospitalityHousekeepingPage,
+  HospitalityOrdersPage,
+  HospitalityRoomsPage, HospitalityBookingsPage,
   HospitalityFoliosPage, HospitalityRecipesPage, HospitalityReportsPage,
 } from "@/pages/hospitality";
 
@@ -211,10 +210,8 @@ export function HospitalityHubPage() {
         { id: "tables", label: "Tables", icon: UtensilsCrossed, component: HospitalityTablesPage, permission: "hospitality.tables.manage" },
         { id: "menu", label: "Menu", icon: ClipboardList, component: HospitalityMenuPage, permission: "hospitality.menu.manage" },
         { id: "orders", label: "Orders", icon: FileText, component: HospitalityOrdersPage, permission: "hospitality.orders.manage" },
-        { id: "kitchen", label: "Kitchen", icon: Flame, component: HospitalityKitchenPage, permission: "hospitality.kitchen.view" },
         { id: "rooms", label: "Rooms", icon: Bed, component: HospitalityRoomsPage, permission: "hospitality.rooms.manage" },
         { id: "bookings", label: "Bookings", icon: CalendarRange, component: HospitalityBookingsPage, permission: "hospitality.bookings.manage" },
-        { id: "housekeeping", label: "Housekeeping", icon: Sparkles, component: HospitalityHousekeepingPage, permission: "hospitality.rooms.manage" },
         { id: "folios", label: "Folios", icon: FolderOpen, component: HospitalityFoliosPage, permission: "hospitality.folios.manage" },
         { id: "recipes", label: "Recipes", icon: ChefHat, component: HospitalityRecipesPage, permission: "hospitality.recipes.manage" },
         { id: "reports", label: "Reports", icon: BarChart3, component: HospitalityReportsPage, permission: "hospitality.reports.view" },

@@ -16,6 +16,8 @@ import {
   addModifierOption,
   removeModifierOption,
   deleteModifierGroup,
+  listAllModifierGroups,
+  attachModifierGroup,
   type MenuModifierGroupFull,
 } from "@/services/hospitality";
 import { money as KES } from "@/lib/money";
@@ -29,6 +31,7 @@ export function ModifierGroups({ menuItemId }: Props) {
   const [groups, setGroups] = useState<MenuModifierGroupFull[]>([]);
   const [loading, setLoading] = useState(true);
   const [addingGroup, setAddingGroup] = useState(false);
+  const [attachOpen, setAttachOpen] = useState(false);
 
   const load = () => {
     setLoading(true);
@@ -66,10 +69,91 @@ export function ModifierGroups({ menuItemId }: Props) {
           onDone={() => { setAddingGroup(false); load(); }}
         />
       ) : (
-        <Button size="sm" variant="outline" onClick={() => setAddingGroup(true)}>
-          <Plus className="h-3.5 w-3.5 mr-1.5" /> Add modifier group
-        </Button>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button size="sm" variant="outline" onClick={() => setAddingGroup(true)}>
+            <Plus className="h-3.5 w-3.5 mr-1.5" /> New group
+          </Button>
+          <Button size="sm" variant="ghost" onClick={() => setAttachOpen(true)}>
+            Attach existing group…
+          </Button>
+        </div>
       )}
+      <AttachExistingGroupPicker
+        open={attachOpen}
+        menuItemId={menuItemId}
+        currentGroupIds={groups.map((g) => g.id)}
+        onClose={() => setAttachOpen(false)}
+        onAttached={() => { setAttachOpen(false); load(); }}
+      />
+    </div>
+  );
+}
+
+function AttachExistingGroupPicker({
+  open,
+  menuItemId,
+  currentGroupIds,
+  onClose,
+  onAttached,
+}: {
+  open: boolean;
+  menuItemId: string;
+  currentGroupIds: string[];
+  onClose: () => void;
+  onAttached: () => void;
+}) {
+  const [groups, setGroups] = useState<MenuModifierGroupFull[]>([]);
+  const [saving, setSaving] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    listAllModifierGroups().then(setGroups);
+  }, [open]);
+
+  const attach = async (groupId: string) => {
+    setSaving(groupId);
+    try {
+      await attachModifierGroup(menuItemId, groupId);
+      toast.success("Group attached");
+      onAttached();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : String(e));
+    } finally {
+      setSaving(null);
+    }
+  };
+
+  if (!open) return null;
+
+  const available = groups.filter((g) => !currentGroupIds.includes(g.id));
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={onClose}>
+      <div className="bg-background border border-border rounded-lg shadow-lg w-96 p-4 max-h-[80vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+        <div className="text-sm font-medium mb-3">Attach an existing group</div>
+        {available.length === 0 ? (
+          <div className="text-xs text-muted-foreground italic py-4 text-center">
+            No other groups defined yet. Create one on any menu item and it becomes reusable everywhere.
+          </div>
+        ) : (
+          <ul className="space-y-1">
+            {available.map((g) => (
+              <li key={g.id} className="flex items-center justify-between border border-border rounded-md p-2 hover:bg-accent/40">
+                <div>
+                  <div className="text-sm font-medium">{g.name}</div>
+                  <div className="text-[10px] text-muted-foreground">{g.options.map((o) => o.name).join(", ") || "no options"}</div>
+                </div>
+                <Button size="sm" variant="outline" disabled={saving === g.id} onClick={() => attach(g.id)}>
+                  {saving === g.id ? "…" : "Attach"}
+                </Button>
+              </li>
+            ))}
+          </ul>
+        )}
+        <div className="flex justify-end mt-3">
+          <Button size="sm" variant="ghost" onClick={onClose}>Close</Button>
+        </div>
+      </div>
     </div>
   );
 }

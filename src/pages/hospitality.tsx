@@ -33,7 +33,7 @@ import {
   openOrder, listActiveOrders, listOrderItems, addOrderItem, sendToKitchen,
   kitchenQueue, bumpItem, markServed, prepareOrderForPosCheckout, chargeOrderToRoom,
   listRoomTypes, createRoomType, listRooms, createRoom, setRoomStatus,
-  listBookings, createBooking, checkIn, checkOut, folioBalance, postFolioPayment,
+  listBookings, checkIn, checkOut, folioBalance, postFolioPayment,
   listRecipes, recipeCost, restaurantReport, hotelReport,
   menuAvailability, type MenuAvailability,
   get86s, type MenuItem86,
@@ -49,11 +49,13 @@ import { useCartStore } from "@/stores/cart";
 import { query } from "@/lib/db";
 import { confirm, prompt } from "@/components/ui/confirm-dialog";
 import { MenuItemDialog, type MenuItemFormValues } from "@/components/hospitality/menu-item-dialog";
-import { RecipeDialog } from "@/components/hospitality/recipe-dialog";
+import { RoomPickerSheet } from "@/components/hospitality/room-picker-sheet";
+import { ServicePeriodBadge } from "@/components/hospitality/service-period-badge";
 import { ModifierPicker } from "@/components/hospitality/modifier-groups";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { CompactFormDialog } from "@/components/hospitality/compact-form-dialog";
-import { useNavigate } from "react-router-dom";
+import { BookingDialog } from "@/components/hospitality/booking-dialog";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { money as KES } from "@/lib/money";
 import {
   moduleAccent, ModuleMasthead, ModuleStat, ModuleSpinner,
@@ -237,7 +239,6 @@ export function HospitalityMenuPage() {
   const [items, setItems] = useState<MenuItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [itemDialog, setItemDialog] = useState(false);
-  const [recipeMenu, setRecipeMenu] = useState<{ id: string; name: string } | null>(null);
   const [search, setSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState<string | null>(null);
   const [eightySixed, setEightySixed] = useState<MenuItem86[]>([]);
@@ -333,14 +334,6 @@ export function HospitalityMenuPage() {
       </div>
 
       <MenuItemDialog open={itemDialog} onClose={() => setItemDialog(false)} onSubmit={handleSubmit} />
-      {recipeMenu && (
-        <RecipeDialog
-          open={!!recipeMenu}
-          onClose={() => setRecipeMenu(null)}
-          menuItemId={recipeMenu.id}
-          menuItemName={recipeMenu.name}
-        />
-      )}
       {filtered.length === 0 ? (
         <EmptyHint text={search || categoryFilter ? "No items match this filter." : "No menu items yet."} />
       ) : (
@@ -352,7 +345,6 @@ export function HospitalityMenuPage() {
                 <th className="text-left px-3 py-2">Category</th>
                 <th className="text-right px-3 py-2">Dine-in</th>
                 <th className="text-right px-3 py-2">Status</th>
-                <th className="text-right px-3 py-2 w-20">Recipe</th>
               </tr>
             </thead>
             <tbody>
@@ -390,14 +382,6 @@ export function HospitalityMenuPage() {
                       <Badge variant="outline" className={cn("text-[10px]", m.active ? "bg-emerald-500/10 text-emerald-600" : "text-muted-foreground")}>
                         {m.active ? "Active" : "Hidden"}
                       </Badge>
-                    </button>
-                  </td>
-                  <td className="px-3 py-2 text-right">
-                    <button
-                      onClick={(e) => { e.stopPropagation(); setRecipeMenu({ id: m.id, name: m.menu_name }); }}
-                      className="text-[11px] text-primary hover:underline"
-                    >
-                      Recipe
                     </button>
                   </td>
                 </tr>
@@ -438,6 +422,8 @@ export function HospitalityOrdersPage() {
   const [chargingRoom, setChargingRoom] = useState<string | null>(null);
   const [availability, setAvailability] = useState<Map<string, MenuAvailability>>(new Map());
   const [eightySixMap, setEightySixMap] = useState<Set<string>>(new Set());
+  const [roomPickerOpen, setRoomPickerOpen] = useState(false);
+  const [pendingPartySize, setPendingPartySize] = useState(1);
   const [modifierState, setModifierState] = useState<{
     menuItem: MenuItem;
     groups: MenuModifierGroupFull[];
@@ -462,10 +448,19 @@ export function HospitalityOrdersPage() {
       .catch(() => setScPct(0));
   }, [selected, orders]);
 
+  const openOrderWith = async (partySize: number, roomId?: string) => {
+    try {
+      const id = await openOrder({ orderType, userId, partySize, roomId });
+      await loadOrders();
+      setSelected(id);
+      toast.success(`${orderType === "room_service" ? "Room service" : "Dine-in"} order opened`);
+    } catch (e) { toast.error(String(e)); }
+  };
+
   const newOrder = async () => {
     // Party size is required for dine-in / room-service so we can report
     // covers per shift (industry standard — Toast, Square, Cake all enforce).
-    let partySize: number | null = null;
+    let partySize: number = 1;
     if (orderType === "dine_in" || orderType === "room_service") {
       const raw = await prompt({
         title: "Party size",
@@ -482,12 +477,13 @@ export function HospitalityOrdersPage() {
       }
       partySize = Math.floor(n);
     }
-    try {
-      const id = await openOrder({ orderType, userId, partySize });
-      await loadOrders();
-      setSelected(id);
-      toast.success(`${orderType === "room_service" ? "Room service" : "Dine-in"} order opened`);
-    } catch (e) { toast.error(String(e)); }
+    if (orderType === "room_service") {
+      // Open the room picker; picked room + folio come back via onPick.
+      setPendingPartySize(partySize);
+      setRoomPickerOpen(true);
+      return;
+    }
+    await openOrderWith(partySize);
   };
   const addItem = async (m: MenuItem) => {
     if (!selected) return;
@@ -686,7 +682,7 @@ export function HospitalityOrdersPage() {
         icon={UtensilsCrossed}
         title="Orders"
         subtitle="Active tabs and tickets."
-        action={<div className="flex items-center gap-2"><Select value={orderType} onValueChange={(v) => setOrderType(v as "dine_in" | "room_service")}>
+        action={<div className="flex items-center gap-2"><ServicePeriodBadge /><Select value={orderType} onValueChange={(v) => setOrderType(v as "dine_in" | "room_service")}>
   <SelectTrigger className="h-8 text-xs w-[140px]">
     <SelectValue />
   </SelectTrigger>
@@ -711,7 +707,20 @@ export function HospitalityOrdersPage() {
         </div>
       )}
 
-      {/* Modifier picker — surfaces when the picked menu item has
+      {/* Room service — open the picker so the operator picks WHICH
+       *  room the order is for. The picker also fetches the guest's
+       *  open folio so the auto folio_id resolution in openOrder works. */}
+      <RoomPickerSheet
+        mode="room_service"
+        open={roomPickerOpen}
+        onClose={() => setRoomPickerOpen(false)}
+        onPick={async (pick) => {
+          setRoomPickerOpen(false);
+          await openOrderWith(pendingPartySize, pick.roomId);
+        }}
+      />
+
+            {/* Modifier picker — surfaces when the picked menu item has
        *  modifier groups. Guests customise; then the line lands with
        *  the selections on `hospitality_order_item_modifiers`. */}
       {modifierState ? (
@@ -807,7 +816,9 @@ export function HospitalityRoomsPage() {
   const [typeDialog, setTypeDialog] = useState(false);
   const [roomDialog, setRoomDialog] = useState(false);
   const [roomSearch, setRoomSearch] = useState("");
-  const [roomStatusFilter, setRoomStatusFilter] = useState<Room["status"] | null>(null);
+  const [searchParams] = useSearchParams();
+  const initialStatus = (searchParams.get("status") as Room["status"] | null) ?? null;
+  const [roomStatusFilter, setRoomStatusFilter] = useState<Room["status"] | null>(initialStatus);
   const navigate = useNavigate();
   const load = () => Promise.all([listRooms(), listRoomTypes()]).then(([r, t]) => { setRooms(r); setTypes(t); }).finally(() => setLoading(false));
   useEffect(() => { load(); }, []);
@@ -876,15 +887,24 @@ export function HospitalityRoomsPage() {
         <EmptyHint text="No rooms yet. Add a room type, then rooms." />
       ) : (
         <>
-          {/* KPI strip */}
+          {/* KPI strip — clicking a tile applies it as the filter. */}
           <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 mb-3">
             {(["available", "occupied", "dirty", "cleaning", "maintenance"] as const).map((s) => {
               const count = rooms.filter((r) => r.status === s).length;
+              const isActive = roomStatusFilter === s;
               return (
-                <div key={s} className={cn("rounded-lg border border-border p-2.5 flex items-baseline justify-between", ROOM_STATUS[s])}>
+                <button
+                  key={s}
+                  onClick={() => setRoomStatusFilter(isActive ? null : s)}
+                  className={cn(
+                    "rounded-lg border p-2.5 flex items-baseline justify-between transition-all text-left",
+                    ROOM_STATUS[s],
+                    isActive ? "ring-2 ring-foreground/40" : "hover:opacity-80",
+                  )}
+                >
                   <div className="text-[10px] uppercase tracking-wide">{s}</div>
                   <div className="text-lg font-semibold font-mono tabular-nums">{count}</div>
-                </div>
+                </button>
               );
             })}
           </div>
@@ -950,7 +970,16 @@ export function HospitalityRoomsPage() {
                       onClick={() => navigate(`/hospitality/rooms/${r.id}`)}
                     >
                       <td className="px-3 py-2 font-medium">{r.room_number}</td>
-                      <td className="px-3 py-2 text-muted-foreground">{t?.name ?? "—"}</td>
+                      <td className="px-3 py-2 text-muted-foreground">
+                        {t ? (
+                          <button
+                            onClick={(e) => { e.stopPropagation(); navigate(`/hospitality/room-types/${t.id}`); }}
+                            className="hover:text-foreground hover:underline transition-colors"
+                          >
+                            {t.name}
+                          </button>
+                        ) : "—"}
+                      </td>
                       <td className="px-3 py-2">
                         <span className={cn("inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium capitalize border", ROOM_STATUS[r.status])}>
                           {r.status.replace("_", " ")}
@@ -992,6 +1021,8 @@ export function HospitalityBookingsPage() {
   const [rooms, setRooms] = useState<Room[]>([]);
   const [loading, setLoading] = useState(true);
   const [bookingDialog, setBookingDialog] = useState(false);
+  const [bookingSearch, setBookingSearch] = useState("");
+  const [bookingFilter, setBookingFilter] = useState<"all" | "arriving" | "in_house" | "departing">("all");
   const load = () => Promise.all([listBookings(), listRoomTypes(), listRooms()]).then(([b, t, r]) => { setBookings(b); setTypes(t); setRooms(r); }).finally(() => setLoading(false));
   useEffect(() => { load(); }, []);
 
@@ -1008,8 +1039,6 @@ export function HospitalityBookingsPage() {
   };
 
   if (loading) return <CenterSpin />;
-  const todayIso = new Date().toISOString().slice(0, 10);
-  const tomorrowIso = new Date(Date.now() + 86400000).toISOString().slice(0, 10);
   return (
     <div>
       <PageHead icon={CalendarDays} title="Bookings" subtitle="Reservations, arrivals and departures." action={
@@ -1018,38 +1047,53 @@ export function HospitalityBookingsPage() {
           setBookingDialog(true);
         }}><Plus className="h-3.5 w-3.5 mr-1" /> New booking</Button>} />
 
-      <CompactFormDialog
+      <BookingDialog
         open={bookingDialog}
         onClose={() => setBookingDialog(false)}
-        title="New booking"
-        description="Guest, room type, and stay dates — all on one screen."
-        fields={[
-          { name: "guest", label: "Guest name", placeholder: "Jane Mwangi", required: true },
-          ...(types.length > 0 ? [{
-            name: "typeId",
-            label: "Room type",
-            type: "select" as const,
-            options: types.map((t) => ({ value: String(t.id), label: `${t.name} — KES ${t.base_rate}/night` })),
-            defaultValue: String(types[0].id),
-          }] : []),
-          { name: "checkIn", label: "Check-in date", placeholder: "YYYY-MM-DD", defaultValue: todayIso, required: true },
-          { name: "checkOut", label: "Check-out date", placeholder: "YYYY-MM-DD", defaultValue: tomorrowIso, required: true },
-        ]}
-        submitLabel="Create booking"
-        onSubmit={async (v) => {
-          const type = types.find((t) => String(t.id) === v.typeId) ?? types[0];
-          await createBooking({
-            guestName: v.guest.trim(),
-            roomTypeId: type.id,
-            checkIn: v.checkIn,
-            checkOut: v.checkOut,
-            ratePerNight: type.base_rate,
-            userId,
-          });
-          load();
-          toast.success("Booking created");
-        }}
+        onCreated={load}
+        roomTypes={types}
+        userId={userId}
       />
+      {/* Search + arrival/in-house/departing filter chips */}
+      <div className="flex flex-wrap items-center gap-2 mb-3">
+        <Input
+          value={bookingSearch}
+          onChange={(e) => setBookingSearch(e.target.value)}
+          placeholder="Search bookings by guest or number…"
+          className="h-8 text-xs max-w-[260px]"
+        />
+        <div className="flex flex-wrap items-center gap-1">
+          {(["all", "arriving", "in_house", "departing"] as const).map((f) => (
+            <button
+              key={f}
+              onClick={() => setBookingFilter(f)}
+              className={cn(
+                "text-[11px] px-2 py-0.5 rounded-full border transition-colors capitalize",
+                bookingFilter === f
+                  ? "border-foreground/30 bg-foreground/[0.06] text-foreground"
+                  : "border-border text-muted-foreground hover:text-foreground",
+              )}
+            >
+              {f.replace("_", " ")}
+            </button>
+          ))}
+        </div>
+        <div className="ml-auto text-[11px] text-muted-foreground font-mono tabular-nums">
+          {(() => {
+            const todayStr = new Date().toISOString().slice(0, 10);
+            return bookings.filter((b) => {
+              if (bookingSearch) {
+                const q = bookingSearch.toLowerCase();
+                if (!b.guest_name.toLowerCase().includes(q) && !b.booking_number.toLowerCase().includes(q)) return false;
+              }
+              if (bookingFilter === "arriving") return b.status === "reserved" && b.check_in_date === todayStr;
+              if (bookingFilter === "in_house") return b.status === "checked_in";
+              if (bookingFilter === "departing") return b.status === "checked_in" && b.check_out_date === todayStr;
+              return true;
+            }).length;
+          })()} of {bookings.length}
+        </div>
+      </div>
       {bookings.length === 0 ? <EmptyHint text="No active bookings." /> : (
         <div className="border border-border rounded-lg overflow-hidden">
           <table className="w-full text-[13px]">
@@ -1063,7 +1107,19 @@ export function HospitalityBookingsPage() {
               </tr>
             </thead>
             <tbody>
-              {bookings.map((b) => (
+              {(() => {
+                const todayStr = new Date().toISOString().slice(0, 10);
+                return bookings.filter((b) => {
+                  if (bookingSearch) {
+                    const q = bookingSearch.toLowerCase();
+                    if (!b.guest_name.toLowerCase().includes(q) && !b.booking_number.toLowerCase().includes(q)) return false;
+                  }
+                  if (bookingFilter === "arriving") return b.status === "reserved" && b.check_in_date === todayStr;
+                  if (bookingFilter === "in_house") return b.status === "checked_in";
+                  if (bookingFilter === "departing") return b.status === "checked_in" && b.check_out_date === todayStr;
+                  return true;
+                });
+              })().map((b) => (
                 <tr key={b.id} className="border-t border-border hover:bg-accent/30 transition-colors">
                   <td className="px-3 py-2 font-mono">{b.booking_number}</td>
                   <td className="px-3 py-2 font-medium">{b.guest_name}</td>
@@ -1179,12 +1235,16 @@ export function HospitalityFoliosPage() {
   );
 }
 
-// ─── Recipes & costing ───────────────────────────────────────────────────────
+// ─── Food Cost Report ───────────────────────────────────────────────────────
+
+type SortKey = "name" | "cost" | "margin" | "fcp";
 
 export function HospitalityRecipesPage() {
   const [recipes, setRecipes] = useState<RecipeRow[]>([]);
   const [costs, setCosts] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
+  const [sortBy, setSortBy] = useState<SortKey>("fcp");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
 
   useEffect(() => {
     listRecipes().then(async (rows) => {
@@ -1196,30 +1256,58 @@ export function HospitalityRecipesPage() {
   }, []);
 
   if (loading) return <CenterSpin />;
+
+  const enriched = recipes.map((r) => {
+    const cost = costs[r.id] ?? 0;
+    const price = r.dine_in_price ?? 0;
+    const margin = price - cost;
+    const fcp = price > 0 ? (cost / price) * 100 : 0;
+    return { ...r, cost, price, margin, fcp };
+  });
+  const sorted = [...enriched].sort((a, b) => {
+    const dir = sortDir === "asc" ? 1 : -1;
+    const key = sortBy;
+    if (key === "name") return a.menu_name.localeCompare(b.menu_name) * dir;
+    if (key === "cost") return (a.cost - b.cost) * dir;
+    if (key === "margin") return (a.margin - b.margin) * dir;
+    return (a.fcp - b.fcp) * dir;
+  });
+  const total = enriched.length;
+  const avgFcp = total ? enriched.reduce((s, r) => s + r.fcp, 0) / total : 0;
+  const highFcp = enriched.filter((r) => r.fcp > 40).length;
   return (
     <div>
-      <PageHead icon={ClipboardList} title="Recipes & Costing" subtitle="Ingredient cost and food-cost % per dish." />
+      <PageHead icon={ClipboardList} title="Food Cost Report" subtitle="Ingredient cost vs price for every menu item. Sortable by margin, food-cost %, or cost." />
+
       {recipes.length === 0 ? <EmptyHint text="No recipes yet. Add recipes to track food cost." /> : (
+        <>
+          <div className="grid grid-cols-3 gap-2 mb-4">
+            <Kpi label="Recipes on file" value={String(total)} />
+            <Kpi label="Avg food cost %" value={`${avgFcp.toFixed(1)}%`} />
+            <Kpi label="Above 40% (concerning)" value={String(highFcp)} />
+          </div>
         <div className="border border-border rounded-lg overflow-hidden">
           <table className="w-full text-[13px]">
             <thead className="bg-muted/30 text-[11px] uppercase tracking-wide text-muted-foreground">
               <tr>
-                <th className="text-left px-3 py-2">Dish</th>
-                <th className="text-right px-3 py-2">Cost</th>
+                <SortableTh label="Dish" active={sortBy === "name"} dir={sortDir} onClick={() => { setSortBy("name"); setSortDir((d) => sortBy === "name" && d === "asc" ? "desc" : "asc"); }} align="left" />
+                <SortableTh label="Cost" active={sortBy === "cost"} dir={sortDir} onClick={() => { setSortBy("cost"); setSortDir((d) => sortBy === "cost" && d === "asc" ? "desc" : "desc"); }} />
                 <th className="text-right px-3 py-2">Price</th>
-                <th className="text-right px-3 py-2">Food cost %</th>
+                <SortableTh label="Margin" active={sortBy === "margin"} dir={sortDir} onClick={() => { setSortBy("margin"); setSortDir((d) => sortBy === "margin" && d === "asc" ? "desc" : "desc"); }} />
+                <SortableTh label="Food cost %" active={sortBy === "fcp"} dir={sortDir} onClick={() => { setSortBy("fcp"); setSortDir((d) => sortBy === "fcp" && d === "asc" ? "desc" : "desc"); }} />
               </tr>
             </thead>
             <tbody>
-              {recipes.map((r) => {
-                const cost = costs[r.id] ?? 0;
-                const price = r.dine_in_price ?? 0;
-                const pct = price > 0 ? Math.round((cost / price) * 100) : 0;
+              {sorted.map((r) => {
+                const pct = Math.round(r.fcp);
                 return (
                   <tr key={r.id} className="border-t border-border hover:bg-accent/30 transition-colors">
                     <td className="px-3 py-2 font-medium">{r.menu_name}</td>
-                    <td className="px-3 py-2 text-right font-mono tabular-nums">{KES(cost)}</td>
-                    <td className="px-3 py-2 text-right font-mono tabular-nums">{KES(price)}</td>
+                    <td className="px-3 py-2 text-right font-mono tabular-nums">{KES(r.cost)}</td>
+                    <td className="px-3 py-2 text-right font-mono tabular-nums">{KES(r.price)}</td>
+                    <td className={cn("px-3 py-2 text-right font-mono tabular-nums", r.margin < 0 ? "text-rose-600" : r.margin < r.cost ? "text-amber-600" : "text-emerald-600")}>
+                      {KES(r.margin)}
+                    </td>
                     <td className="px-3 py-2 text-right">
                       <Badge variant="outline" className={cn("text-[10px]", pct > 40 ? "bg-red-500/10 text-red-600" : pct > 30 ? "bg-amber-500/10 text-amber-600" : "bg-emerald-500/10 text-emerald-600")}>
                         {pct}%
@@ -1231,6 +1319,7 @@ export function HospitalityRecipesPage() {
             </tbody>
           </table>
         </div>
+        </>
       )}
     </div>
   );
@@ -1312,4 +1401,30 @@ function CenterSpin() {
 }
 function EmptyHint({ text }: { text: string }) {
   return <div className="border border-dashed border-border rounded-lg py-12 text-center text-sm text-muted-foreground">{text}</div>;
+}
+
+function SortableTh({
+  label,
+  active,
+  dir,
+  onClick,
+  align = "right",
+}: {
+  label: string;
+  active: boolean;
+  dir: "asc" | "desc";
+  onClick: () => void;
+  align?: "left" | "right";
+}) {
+  return (
+    <th className={`px-3 py-2 ${align === "left" ? "text-left" : "text-right"}`}>
+      <button
+        onClick={onClick}
+        className={`inline-flex items-center gap-0.5 ${active ? "text-foreground" : "text-muted-foreground"} hover:text-foreground transition-colors`}
+      >
+        {label}
+        {active ? <span className="text-[9px]">{dir === "asc" ? "▲" : "▼"}</span> : null}
+      </button>
+    </th>
+  );
 }

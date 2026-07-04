@@ -3,6 +3,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Combobox } from "@/components/ui/combobox";
+import { UnitSelect } from "@/components/ui/unit-select";
 import { getProducts, type Product } from "@/services/inventory";
 import { getRecipeForMenuItem, replaceRecipe, type RecipeIngredientRow } from "@/services/hospitality";
 import { money as KES } from "@/lib/money";
@@ -148,17 +149,10 @@ export function RecipeDialog({ open, onClose, menuItemId, menuItemName }: Props)
                       />
                     </td>
                     <td className="px-3 py-2">
-                      <select
+                      <UnitSelect
                         value={l.unit}
-                        onChange={(e) => patch(i, { unit: e.target.value })}
-                        className="border border-border rounded px-1 py-0.5 text-xs"
-                      >
-                        <option value="g">g</option>
-                        <option value="kg">kg</option>
-                        <option value="ml">ml</option>
-                        <option value="l">l</option>
-                        <option value="pcs">pcs</option>
-                      </select>
+                        onChange={(v) => patch(i, { unit: v })}
+                      />
                     </td>
                     <td className="px-3 py-2 text-right">
                       <Input

@@ -24,6 +24,7 @@ import {
   SpeakerX,
   Monitor,
 } from "@phosphor-icons/react";
+import { ServicePeriodBadge } from "@/components/hospitality/service-period-badge";
 import { query, execute } from "@/lib/db";
 import { intlLocale } from "@/lib/intl";
 import { useF11Fullscreen } from "@/hooks/use-f11-fullscreen";
@@ -260,6 +261,7 @@ export function KitchenDisplayPage() {
           </div>
         </div>
         <div className="flex items-center gap-1.5">
+          <ServicePeriodBadge />
           <button
             onClick={async () => {
               const { openCustomerDisplayQueue } = await import("@/lib/customer-display");

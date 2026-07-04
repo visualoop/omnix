@@ -29,7 +29,8 @@ import { EntityHero } from "@/components/ui/entity-hero"
 import { LazyTabs } from "@/components/ui/lazy-tabs"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
-import { Input } from "@/components/ui/input"
+import { Input } from "@/components/ui/input";
+import { UnitSelect } from "@/components/ui/unit-select"
 import { Combobox } from "@/components/ui/combobox"
 import { getProduct, updateProduct, getCategories, getProducts, type Product, type Category } from "@/services/inventory"
 import {
@@ -325,7 +326,10 @@ function OverviewTab({ product, editing, onSaved }: { product: Product; editing:
         <EditField label="Name" value={draft.name} onChange={(v) => setDraft({ ...draft, name: v })} required className="md:col-span-2" />
         <EditField label="SKU" value={draft.sku} onChange={(v) => setDraft({ ...draft, sku: v })} />
         <EditField label="Barcode" value={draft.barcode} onChange={(v) => setDraft({ ...draft, barcode: v })} />
-        <EditField label="Unit" value={draft.unit} onChange={(v) => setDraft({ ...draft, unit: v })} placeholder="pcs / kg / pack" />
+        <div className="flex flex-col gap-1.5">
+          <label className="text-[11px] uppercase tracking-wide text-muted-foreground font-medium">Unit</label>
+          <UnitSelect value={draft.unit} onChange={(v) => setDraft({ ...draft, unit: v })} />
+        </div>
         <div className="flex flex-col gap-1.5">
           <label className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
             Category

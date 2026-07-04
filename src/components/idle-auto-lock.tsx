@@ -21,6 +21,7 @@ import { useAuthStore } from "@/stores/auth";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { WindowTitlebar } from "@/components/layout/window-titlebar";
 
 const STORAGE_KEY = "omnix-idle-lock-minutes";
 const DEFAULT_MINUTES = 10;
@@ -103,6 +104,12 @@ export function IdleAutoLock() {
         <DialogPrimitive.Popup
           className="fixed inset-0 z-[201] flex items-center justify-center p-6 outline-none data-open:animate-in data-open:fade-in-0"
         >
+          {/* Titlebar overlay so the locked screen can still be dragged,
+           *  minimised, or closed — Frameless windows without controls
+           *  are a trap on the user's only escape hatch. */}
+          <div className="fixed top-0 inset-x-0 z-[220]">
+            <WindowTitlebar />
+          </div>
           {/* Atmospheric ambient orbs */}
           <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">
             <div className="absolute -top-40 -left-40 h-[28rem] w-[28rem] rounded-full bg-primary/15 blur-[160px]" />

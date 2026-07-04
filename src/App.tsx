@@ -96,6 +96,7 @@ import { DataQualityPage, CostCentresPage, DeliveriesPage, AnomaliesPage } from 
 import { GlobalSearchDialog } from "@/components/global-search";
 import { TaxSettingsPage } from "@/pages/settings-taxes";
 import { CategoriesSettingsPage } from "@/pages/settings-categories";
+import { UnitsSettingsPage } from "@/pages/settings-units";
 // Hub pages — flat sidebar with tabs inside each domain
 import { PeopleHubPage } from "@/pages/hub-people";
 import { SalesHubPage } from "@/pages/hub-sales";
@@ -160,8 +161,8 @@ import {
 import { HardwareSettingsPage } from "@/pages/settings-hardware";
 import {
   HospitalityDashboardPage, HospitalityTablesPage, HospitalityMenuPage,
-  HospitalityOrdersPage, HospitalityKitchenPage,
-  HospitalityRoomsPage, HospitalityBookingsPage, HospitalityHousekeepingPage, HospitalityFoliosPage,
+  HospitalityOrdersPage,
+  HospitalityRoomsPage, HospitalityBookingsPage, HospitalityFoliosPage,
   HospitalityRecipesPage, HospitalityReportsPage,
 } from "@/pages/hospitality";
 import { HospitalitySettingsPage } from "@/pages/settings-hospitality";
@@ -277,21 +278,27 @@ function AppContent() {
   // First run: setup wizard
   if (!isSetupComplete) {
     return (
-      <>
-        <SetupWizard />
+      <BrowserRouter>
+        <WindowTitlebar />
+        <div style={{ marginTop: TITLEBAR_HEIGHT_PX }}>
+          <SetupWizard />
+        </div>
         <Toaster position="bottom-right" />
         <ConfirmDialogHost />
-      </>
+      </BrowserRouter>
     );
   }
 
   // Not logged in: login page
   if (!user) {
     return (
-      <>
-        <LoginPage />
+      <BrowserRouter>
+        <WindowTitlebar />
+        <div style={{ marginTop: TITLEBAR_HEIGHT_PX }}>
+          <LoginPage />
+        </div>
         <Toaster position="bottom-right" />
-      </>
+      </BrowserRouter>
     );
   }
 
@@ -412,6 +419,7 @@ function AppContent() {
             <Route path="cloud-backup" element={<RequireRole permission="settings.backup"><CloudBackupPage /></RequireRole>} />
             <Route path="taxes" element={<RequireRole permission="settings.business"><TaxSettingsPage /></RequireRole>} />
             <Route path="categories" element={<RequireRole permission="inventory.edit"><CategoriesSettingsPage /></RequireRole>} />
+            <Route path="units" element={<RequireRole permission="inventory.edit"><UnitsSettingsPage /></RequireRole>} />
             <Route path="price-lists" element={<RequireRole permission="retail.price_lists.manage"><PriceListSettingsPage /></RequireRole>} />
             <Route path="customer-display" element={<RequireRole permission="settings.business"><CustomerDisplaySettingsPage /></RequireRole>} />
             <Route path="ai" element={<RequireRole permission="settings.business"><AiSettingsPage /></RequireRole>} />
@@ -462,11 +470,10 @@ function AppContent() {
           <Route path="/hospitality/menu" element={<RequireRole permission="hospitality.menu.manage"><HospitalityMenuPage /></RequireRole>} />
           <Route path="/hospitality/menu/:id" element={<RequireRole permission="hospitality.menu.manage"><MenuItemDetailPage /></RequireRole>} />
           <Route path="/hospitality/orders" element={<RequireRole permission="hospitality.orders.take"><HospitalityOrdersPage /></RequireRole>} />
-          <Route path="/hospitality/kitchen" element={<RequireRole permission="hospitality.kitchen.bump"><HospitalityKitchenPage /></RequireRole>} />
           <Route path="/hospitality/rooms" element={<RequireRole permission="hospitality.bookings.manage"><HospitalityRoomsPage /></RequireRole>} />
           <Route path="/hospitality/bookings" element={<RequireRole permission="hospitality.bookings.manage"><HospitalityBookingsPage /></RequireRole>} />
           <Route path="/hospitality/checkin" element={<RequireRole permission="hospitality.checkin.manage"><HospitalityBookingsPage /></RequireRole>} />
-          <Route path="/hospitality/housekeeping" element={<RequireRole permission="hospitality.housekeeping.manage"><HospitalityHousekeepingPage /></RequireRole>} />
+          <Route path="/hospitality/housekeeping" element={<Navigate to="/hospitality/rooms?status=dirty" replace />} />
           <Route path="/hospitality/folios" element={<RequireRole permission="hospitality.folios.manage"><HospitalityFoliosPage /></RequireRole>} />
           <Route path="/hospitality/recipes" element={<RequireRole permission="hospitality.recipes.manage"><HospitalityRecipesPage /></RequireRole>} />
           <Route path="/hospitality/reports" element={<RequireRole permission="hospitality.reports.view"><HospitalityReportsPage /></RequireRole>} />

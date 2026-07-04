@@ -6,13 +6,15 @@
  */
 import { useEffect, useState } from "react";
 import {
-  Percent, ForkKnife, Fire,
+  Percent, ForkKnife, Fire, Clock, Plus, Trash,
 } from "@phosphor-icons/react";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { query, execute } from "@/lib/db";
 import { toast } from "sonner";
+import { listServicePeriods, upsertServicePeriod, deleteServicePeriod, type ServicePeriod } from "@/services/service-periods";
+import { confirm } from "@/components/ui/confirm-dialog";
 import { cn } from "@/lib/utils";
 
 /** Setting keys — kept in one place so the read/write paths agree. */
@@ -116,6 +118,9 @@ export function HospitalitySettingsPage() {
         </div>
       </section>
 
+      {/* Service periods */}
+      <ServicePeriodsSection />
+
       {/* Service charge */}
       <section>
         <h3 className="text-sm font-medium flex items-center gap-2"><Percent className="h-4 w-4" /> Service charge</h3>
@@ -176,6 +181,159 @@ function SettingRow({
           )}
         />
       </button>
+    </div>
+  );
+}
+
+function ServicePeriodsSection() {
+  const [periods, setPeriods] = useState<ServicePeriod[]>([]);
+  const [editing, setEditing] = useState<ServicePeriod | null>(null);
+  const [adding, setAdding] = useState(false);
+
+  const load = () => listServicePeriods().then(setPeriods);
+  useEffect(() => { load(); }, []);
+
+  return (
+    <section>
+      <div className="flex items-center justify-between mb-3">
+        <div>
+          <h3 className="text-sm font-medium flex items-center gap-2"><Clock className="h-4 w-4" /> Service periods</h3>
+          <p className="text-[11px] text-muted-foreground mt-0.5">Lunch / dinner / brunch shifts. The KDS + Orders header shows the currently-open one.</p>
+        </div>
+        <Button size="sm" variant="outline" onClick={() => setAdding(true)}>
+          <Plus className="h-3.5 w-3.5 mr-1.5" /> Add period
+        </Button>
+      </div>
+      {periods.length === 0 ? (
+        <div className="text-xs text-muted-foreground italic border border-dashed border-border rounded-md px-3 py-4">
+          No periods yet — add one to start tracking shift totals.
+        </div>
+      ) : (
+        <div className="border border-border rounded-lg overflow-hidden">
+          <table className="w-full text-[13px]">
+            <thead className="bg-muted/30 text-[10px] uppercase tracking-wide text-muted-foreground">
+              <tr>
+                <th className="text-left px-3 py-2">Name</th>
+                <th className="text-left px-3 py-2 w-24">Starts</th>
+                <th className="text-left px-3 py-2 w-24">Ends</th>
+                <th className="text-right px-3 py-2 w-24">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {periods.map((sp) => (
+                <tr key={sp.id} className="border-t border-border hover:bg-accent/30">
+                  <td className="px-3 py-2 font-medium">{sp.name}</td>
+                  <td className="px-3 py-2 font-mono text-xs">{sp.starts_at}</td>
+                  <td className="px-3 py-2 font-mono text-xs">{sp.ends_at}</td>
+                  <td className="px-3 py-2 text-right">
+                    <button
+                      onClick={() => setEditing(sp)}
+                      className="text-[11px] text-primary hover:underline mr-2"
+                    >
+                      Edit
+                    </button>
+                    <button
+                      onClick={async () => {
+                        const ok = await confirm({
+                          title: `Delete "${sp.name}"?`,
+                          description: "Existing session records stay intact; the period just won't be selectable anymore.",
+                          confirmText: "Delete",
+                          cancelText: "Keep",
+                        });
+                        if (!ok) return;
+                        await deleteServicePeriod(sp.id);
+                        load();
+                      }}
+                      className="text-muted-foreground hover:text-rose-600"
+                    >
+                      <Trash className="h-3.5 w-3.5 inline" />
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      <ServicePeriodEditor
+        period={editing}
+        open={editing !== null || adding}
+        onClose={() => { setEditing(null); setAdding(false); }}
+        onSaved={() => { setEditing(null); setAdding(false); load(); }}
+      />
+    </section>
+  );
+}
+
+function ServicePeriodEditor({
+  period,
+  open,
+  onClose,
+  onSaved,
+}: {
+  period: ServicePeriod | null;
+  open: boolean;
+  onClose: () => void;
+  onSaved: () => void;
+}) {
+  const [name, setName] = useState("");
+  const [startsAt, setStartsAt] = useState("12:00");
+  const [endsAt, setEndsAt] = useState("15:30");
+
+  useEffect(() => {
+    if (!open) return;
+    setName(period?.name ?? "");
+    setStartsAt(period?.starts_at ?? "12:00");
+    setEndsAt(period?.ends_at ?? "15:30");
+  }, [open, period]);
+
+  const save = async () => {
+    if (!name.trim()) {
+      toast.error("Name required");
+      return;
+    }
+    try {
+      await upsertServicePeriod({
+        id: period?.id,
+        name: name.trim(),
+        startsAt,
+        endsAt,
+      });
+      toast.success(period ? "Period saved" : "Period added");
+      onSaved();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : String(e));
+    }
+  };
+
+  if (!open) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={onClose}>
+      <div className="bg-background border border-border rounded-lg shadow-lg w-96 p-4" onClick={(e) => e.stopPropagation()}>
+        <div className="text-sm font-medium mb-3">{period ? "Edit period" : "New service period"}</div>
+        <div className="space-y-2">
+          <label className="block">
+            <span className="text-[11px] uppercase tracking-wide text-muted-foreground font-medium">Name</span>
+            <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Lunch" />
+          </label>
+          <div className="grid grid-cols-2 gap-2">
+            <label className="block">
+              <span className="text-[11px] uppercase tracking-wide text-muted-foreground font-medium">Starts</span>
+              <Input type="time" value={startsAt} onChange={(e) => setStartsAt(e.target.value)} />
+            </label>
+            <label className="block">
+              <span className="text-[11px] uppercase tracking-wide text-muted-foreground font-medium">Ends</span>
+              <Input type="time" value={endsAt} onChange={(e) => setEndsAt(e.target.value)} />
+            </label>
+          </div>
+        </div>
+        <div className="flex justify-end gap-2 mt-4">
+          <Button variant="ghost" size="sm" onClick={onClose}>Cancel</Button>
+          <Button size="sm" onClick={save}>{period ? "Save" : "Add"}</Button>
+        </div>
+      </div>
     </div>
   );
 }

@@ -580,6 +580,24 @@ fn run_inner() {
             sql: include_str!("../migrations/078_recipe_canvas.sql"),
             kind: MigrationKind::Up,
         },
+        Migration {
+            version: 79,
+            description: "Units of measure with dimensions + Kenya-oriented seeds",
+            sql: include_str!("../migrations/079_units.sql"),
+            kind: MigrationKind::Up,
+        },
+        Migration {
+            version: 80,
+            description: "Guest AHRA fields (national_id, email, nationality, notes) + indexes",
+            sql: include_str!("../migrations/080_guest_fields.sql"),
+            kind: MigrationKind::Up,
+        },
+        Migration {
+            version: 82,
+            description: "Service periods + sessions (lunch/dinner shifts)",
+            sql: include_str!("../migrations/082_service_periods.sql"),
+            kind: MigrationKind::Up,
+        },
     ];
 
     tauri::Builder::default()

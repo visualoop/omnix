@@ -297,6 +297,77 @@ const RULES = [
       return hits
     },
   },
+  {
+    // Native <select> loses theme integration + on Tauri renders the OS
+    // dropdown chrome which never matches our palette. Anything new
+    // should route through the shadcn Select or the Combobox.
+    //
+    // We whitelist:
+    //   - the shadcn primitive itself
+    //   - Combobox internals (which use <select> for a11y fallback)
+    //   - pages we haven't migrated yet (below). Every migration removes
+    //     an entry from the whitelist; the ceiling drops over time.
+    id: 'ui.native.select',
+    label: 'Native <select> — use <Select> from @/components/ui/select or <Combobox> from @/components/ui/combobox instead',
+    severity: 'warning',
+    extensions: ['.tsx'],
+    pathFilter: (p) => {
+      // Skip the primitives + files that legitimately need a native select.
+      if (/components\/ui\/select\.tsx$/.test(p)) return false;
+      if (/components\/ui\/combobox\.tsx$/.test(p)) return false;
+      // Below is a migration whitelist — every entry is a promise to convert.
+      // Trimming this list is a good weekly chore.
+      const legacy = [
+        'pages/employees.tsx',
+        'pages/claims.tsx',
+        'pages/patient-profile.tsx',
+        'pages/returns.tsx',
+        'pages/banking-detail.tsx',
+        'pages/retail-laybys.tsx',
+        'pages/damages.tsx',
+        'pages/invoice-detail.tsx',
+        'pages/currencies.tsx',
+        'pages/promotions.tsx',
+        'pages/peripherals.tsx',
+        'pages/expenses.tsx',
+        'pages/quick-add.tsx',
+        'pages/invoicing.tsx',
+        'pages/settings-customer-display.tsx',
+        'pages/settings-taxes.tsx',
+        'pages/banking.tsx',
+        'pages/cloud-backup.tsx',
+        'pages/payroll.tsx',
+        'pages/doctors.tsx',
+        'pages/ai-chat-v2.tsx',
+        'pages/users.tsx',
+        'pages/stock.tsx',
+        'pages/leave.tsx',
+        'pages/retail-shrinkage.tsx',
+        'pages/stock-transfer-new.tsx',
+        'pages/settings-access-audit.tsx',
+        'pages/recurring-invoices.tsx',
+        'pages/login.tsx',
+        'pages/settings-ai.tsx',
+        'components/inventory/bulk-edit-dialog.tsx',
+        'components/pos/return-dialog.tsx',
+        'components/pos/insurance-verify.tsx',
+        'components/pos/tip-dialog.tsx',
+        'components/hospitality/compact-form-dialog.tsx',
+      ];
+      return !legacy.some((l) => p.replace(/\\/g, '/').endsWith('/' + l) || p.replace(/\\/g, '/').endsWith(l));
+    },
+    test(text) {
+      const hits = []
+      // Native <select ...> is lowercase, followed by whitespace or newline.
+      // <Select ...> (shadcn) is Uppercase — untouched.
+      const re = /<select[\s>]/g
+      for (const m of text.matchAll(re)) {
+        const line = text.slice(0, m.index).split('\n').length
+        hits.push({ kind: 'native-select', snippet: '<select ...>', line })
+      }
+      return hits
+    },
+  },
 ]
 
 /* ────────────────────────────────────────────────────────────────── *
