@@ -9,6 +9,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Combobox } from "@/components/ui/combobox";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import {
@@ -120,17 +121,14 @@ export function MenuItemDialog({ open, onClose, onSubmit, initial, categories = 
           </Field>
 
           <Field label="Category">
-            <Input
+            <Combobox
               value={category}
-              onChange={(e) => setCategory(e.target.value)}
-              placeholder="Mains, Drinks, Sides…"
-              list="menu-categories"
+              onChange={setCategory}
+              options={categories.map((c) => ({ value: c, label: c }))}
+              placeholder="Pick or type a new category…"
+              emptyText="No matching category"
+              onCreate={async (label) => ({ value: label, label })}
             />
-            {categories.length > 0 && (
-              <datalist id="menu-categories">
-                {categories.map((c) => <option key={c} value={c} />)}
-              </datalist>
-            )}
           </Field>
 
           <div className="grid grid-cols-2 gap-3">

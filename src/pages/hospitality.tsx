@@ -37,6 +37,7 @@ import {
   listRecipes, recipeCost, restaurantReport, hotelReport,
   menuAvailability, type MenuAvailability,
   get86s, type MenuItem86,
+  menuItemsWithRecipe,
   listModifierGroupsForItem, type MenuModifierGroupFull,
   type DiningArea, type DiningTable, type MenuItem,
   type HospitalityOrder, type HospitalityOrderItem,
@@ -240,6 +241,7 @@ export function HospitalityMenuPage() {
   const [search, setSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState<string | null>(null);
   const [eightySixed, setEightySixed] = useState<MenuItem86[]>([]);
+  const [withRecipe, setWithRecipe] = useState<Set<string>>(new Set());
   const navigate = useNavigate();
 
   const load = () => {
@@ -247,7 +249,8 @@ export function HospitalityMenuPage() {
     Promise.all([
       listMenuItems({ hide86: false }),
       get86s(),
-    ]).then(([m, s]) => { setItems(m); setEightySixed(s); }).finally(() => setLoading(false));
+      menuItemsWithRecipe(),
+    ]).then(([m, s, r]) => { setItems(m); setEightySixed(s); setWithRecipe(r); }).finally(() => setLoading(false));
   };
   useEffect(() => { load(); }, []);
 
@@ -372,6 +375,11 @@ export function HospitalityMenuPage() {
                       <span>{m.menu_name}</span>
                       {eightySixedIds.has(m.id) ? (
                         <Badge variant="outline" className="bg-rose-500/10 text-rose-600 border-rose-500/30 text-[10px] uppercase tracking-wide">86</Badge>
+                      ) : null}
+                      {!withRecipe.has(m.id) ? (
+                        <Badge variant="outline" className="bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/30 text-[10px] uppercase tracking-wide" title="No recipe attached — selling this won't deduct any ingredients">
+                          No recipe
+                        </Badge>
                       ) : null}
                     </div>
                   </td>
@@ -798,6 +806,9 @@ export function HospitalityRoomsPage() {
   const [loading, setLoading] = useState(true);
   const [typeDialog, setTypeDialog] = useState(false);
   const [roomDialog, setRoomDialog] = useState(false);
+  const [roomSearch, setRoomSearch] = useState("");
+  const [roomStatusFilter, setRoomStatusFilter] = useState<Room["status"] | null>(null);
+  const navigate = useNavigate();
   const load = () => Promise.all([listRooms(), listRoomTypes()]).then(([r, t]) => { setRooms(r); setTypes(t); }).finally(() => setLoading(false));
   useEffect(() => { load(); }, []);
 
@@ -807,6 +818,11 @@ export function HospitalityRoomsPage() {
   };
 
   if (loading) return <CenterSpin />;
+  const filteredRooms = rooms.filter((r) => {
+    if (roomSearch && !r.room_number.toLowerCase().includes(roomSearch.toLowerCase())) return false;
+    if (roomStatusFilter && r.status !== roomStatusFilter) return false;
+    return true;
+  });
   return (
     <div>
       <PageHead icon={BedDouble} title="Rooms" subtitle="Room status board." action={
@@ -856,15 +872,112 @@ export function HospitalityRoomsPage() {
           load();
         }}
       />
-      {rooms.length === 0 ? <EmptyHint text="No rooms yet. Add a room type, then rooms." /> : (
-        <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2.5">
-          {rooms.map((r) => (
-            <button key={r.id} onClick={() => cycle(r)} className={cn("rounded-lg border p-3 text-left transition-colors cursor-pointer hover:opacity-80", ROOM_STATUS[r.status])}>
-              <div className="text-sm font-semibold">{r.room_number}</div>
-              <div className="text-[10px] mt-1 capitalize">{r.status.replace("_", " ")}</div>
-            </button>
-          ))}
-        </div>
+      {rooms.length === 0 ? (
+        <EmptyHint text="No rooms yet. Add a room type, then rooms." />
+      ) : (
+        <>
+          {/* KPI strip */}
+          <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 mb-3">
+            {(["available", "occupied", "dirty", "cleaning", "maintenance"] as const).map((s) => {
+              const count = rooms.filter((r) => r.status === s).length;
+              return (
+                <div key={s} className={cn("rounded-lg border border-border p-2.5 flex items-baseline justify-between", ROOM_STATUS[s])}>
+                  <div className="text-[10px] uppercase tracking-wide">{s}</div>
+                  <div className="text-lg font-semibold font-mono tabular-nums">{count}</div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Search + filter */}
+          <div className="flex flex-wrap items-center gap-2 mb-3">
+            <Input
+              value={roomSearch}
+              onChange={(e) => setRoomSearch(e.target.value)}
+              placeholder="Search rooms…"
+              className="h-8 text-xs max-w-[200px]"
+            />
+            <div className="flex flex-wrap items-center gap-1">
+              <button
+                onClick={() => setRoomStatusFilter(null)}
+                className={cn(
+                  "text-[11px] px-2 py-0.5 rounded-full border transition-colors",
+                  roomStatusFilter === null
+                    ? "border-foreground/30 bg-foreground/[0.06] text-foreground"
+                    : "border-border text-muted-foreground hover:text-foreground",
+                )}
+              >
+                All
+              </button>
+              {(["available", "occupied", "dirty", "cleaning", "maintenance"] as const).map((s) => (
+                <button
+                  key={s}
+                  onClick={() => setRoomStatusFilter(s)}
+                  className={cn(
+                    "text-[11px] px-2 py-0.5 rounded-full border transition-colors capitalize",
+                    roomStatusFilter === s
+                      ? "border-foreground/30 bg-foreground/[0.06] text-foreground"
+                      : "border-border text-muted-foreground hover:text-foreground",
+                  )}
+                >
+                  {s}
+                </button>
+              ))}
+            </div>
+            <div className="ml-auto text-[11px] text-muted-foreground font-mono tabular-nums">
+              {filteredRooms.length} of {rooms.length}
+            </div>
+          </div>
+
+          {/* Compact table — click row to drill in */}
+          <div className="border border-border rounded-lg overflow-hidden">
+            <table className="w-full text-[13px]">
+              <thead className="bg-muted/30 text-[11px] uppercase tracking-wide text-muted-foreground">
+                <tr>
+                  <th className="text-left px-3 py-2">Room</th>
+                  <th className="text-left px-3 py-2">Type</th>
+                  <th className="text-left px-3 py-2">Status</th>
+                  <th className="text-right px-3 py-2 w-24">Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredRooms.map((r) => {
+                  const t = types.find((tt) => tt.id === r.room_type_id);
+                  return (
+                    <tr
+                      key={r.id}
+                      className="border-t border-border hover:bg-accent/30 transition-colors cursor-pointer"
+                      onClick={() => navigate(`/hospitality/rooms/${r.id}`)}
+                    >
+                      <td className="px-3 py-2 font-medium">{r.room_number}</td>
+                      <td className="px-3 py-2 text-muted-foreground">{t?.name ?? "—"}</td>
+                      <td className="px-3 py-2">
+                        <span className={cn("inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium capitalize border", ROOM_STATUS[r.status])}>
+                          {r.status.replace("_", " ")}
+                        </span>
+                      </td>
+                      <td className="px-3 py-2 text-right">
+                        <button
+                          onClick={(e) => { e.stopPropagation(); cycle(r); }}
+                          className="text-[11px] text-primary hover:underline"
+                        >
+                          Cycle
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
+                {filteredRooms.length === 0 && (
+                  <tr>
+                    <td colSpan={4} className="px-3 py-6 text-center text-xs text-muted-foreground italic">
+                      No rooms match this filter.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </>
       )}
     </div>
   );

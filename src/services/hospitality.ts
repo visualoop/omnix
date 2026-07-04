@@ -401,6 +401,81 @@ export function eightySixPresets() {
   ] as const;
 }
 
+/** Set of menu-item ids that currently have an active recipe attached
+ *  with at least one ingredient. Used by the menu list to warn on
+ *  items that will sell without deducting stock (no recipe = no
+ *  ingredient consumption). */
+export async function menuItemsWithRecipe(): Promise<Set<string>> {
+  const rows = await query<{ menu_item_id: string }>(
+    `SELECT DISTINCT r.menu_item_id
+     FROM recipes r
+     JOIN recipe_ingredients ri ON ri.recipe_id = r.id
+     WHERE r.active = 1`,
+  );
+  return new Set(rows.map((r) => r.menu_item_id));
+}
+
+/** Distinct categories currently in use across menu items. Used to
+ *  populate the category combobox on the create + edit surfaces so
+ *  operators pick existing tags rather than fat-fingering spelling
+ *  variations. */
+export async function listMenuCategories(): Promise<string[]> {
+  const rows = await query<{ category: string }>(
+    `SELECT DISTINCT category FROM menu_items
+     WHERE category IS NOT NULL AND category != ''
+     ORDER BY category`,
+  );
+  return rows.map((r) => r.category);
+}
+
+/** Duplicate an existing menu item (fresh id, name suffixed " (copy)")
+ *  including its recipe, if any, so an operator can iterate on a base
+ *  dish without rebuilding the whole recipe. Modifier groups are
+ *  linked to the copy so guests can pick sauces on the duplicate too. */
+export async function duplicateMenuItem(id: string): Promise<string> {
+  await assertModuleEntitled("hospitality");
+  await requirePermission("hospitality.menu.manage", { entityType: "menu_item", entityId: id });
+  const original = await getMenuItem(id);
+  if (!original) throw new Error("Menu item not found");
+  const copyId = await createMenuItem({
+    name: `${original.menu_name} (copy)`,
+    category: original.category ?? undefined,
+    stationId: original.station_id,
+    dineInPrice: original.dine_in_price ?? undefined,
+    takeawayPrice: original.takeaway_price ?? undefined,
+    prepMinutes: original.prep_minutes ?? undefined,
+    imagePath: original.image_path ?? undefined,
+    allergens: original.allergens ?? undefined,
+  });
+  // Copy recipe (if any).
+  const recipe = await getRecipeForMenuItem(id);
+  if (recipe && recipe.ingredients.length > 0) {
+    await replaceRecipe(
+      copyId,
+      recipe.yield_quantity,
+      recipe.ingredients.map((i) => ({
+        productId: i.product_id,
+        quantity: i.quantity,
+        unit: i.unit,
+        wastagePercent: i.wastage_percent,
+      })),
+      recipe.canvas_layout,
+    );
+  }
+  // Copy modifier-group links (share the same groups — options are shared).
+  const groups = await query<{ modifier_id: string }>(
+    `SELECT modifier_id FROM menu_item_modifiers WHERE menu_item_id = ?1`,
+    [id],
+  );
+  for (const g of groups) {
+    await execute(
+      `INSERT OR IGNORE INTO menu_item_modifiers (menu_item_id, modifier_id) VALUES (?1, ?2)`,
+      [copyId, g.modifier_id],
+    );
+  }
+  return copyId;
+}
+
 export async function updateMenuItem(id: string, patch: {
   name?: string;
   category?: string | null;

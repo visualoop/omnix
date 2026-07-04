@@ -23,12 +23,15 @@ import { toast } from "sonner";
 import { ArrowLeft, ForkKnife, Copy, Warning, Check } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Combobox, type ComboboxOption } from "@/components/ui/combobox";
 import { Badge } from "@/components/ui/badge";
 import {
   getMenuItem,
   updateMenuItem,
   setMenuItemActive,
+  duplicateMenuItem,
   listStations,
+  listMenuCategories,
   menuAvailability,
   get86s,
   set86,
@@ -67,6 +70,7 @@ export function MenuItemDetailPage() {
   const [stations, setStations] = useState<KitchenStation[]>([]);
   const [availability, setAvailability] = useState<MenuAvailability | null>(null);
   const [my86, setMy86] = useState<MenuItem86 | null>(null);
+  const [categoryOptions, setCategoryOptions] = useState<ComboboxOption[]>([]);
   const [dirty, setDirty] = useState<Partial<Record<string, string | number | null>>>({});
   const [saving, setSaving] = useState(false);
 
@@ -75,6 +79,7 @@ export function MenuItemDetailPage() {
     listStations().then(setStations);
     menuAvailability().then((m) => setAvailability(m.get(id) ?? null));
     get86s().then((rows) => setMy86(rows.find((r) => r.menu_item_id === id) ?? null));
+    listMenuCategories().then((cats) => setCategoryOptions(cats.map((c) => ({ value: c, label: c }))));
   };
 
   useEffect(() => {
@@ -175,7 +180,20 @@ export function MenuItemDetailPage() {
             onSet={async (until) => { await set86(id, { until }); load(); }}
             onClear={async () => { await clear86(id); load(); }}
           />
-          <Button size="sm" variant="outline" className="cursor-pointer">
+          <Button
+            size="sm"
+            variant="outline"
+            className="cursor-pointer"
+            onClick={async () => {
+              try {
+                const newId = await duplicateMenuItem(id);
+                toast.success("Duplicated");
+                navigate(`/hospitality/menu/${newId}`);
+              } catch (e) {
+                toast.error(e instanceof Error ? e.message : String(e));
+              }
+            }}
+          >
             <Copy className="h-3.5 w-3.5 mr-1.5" /> Duplicate
           </Button>
         </div>
@@ -229,25 +247,30 @@ export function MenuItemDetailPage() {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <Field label="Category">
-                <Input
+                <Combobox
                   value={categoryVal}
-                  onChange={(e) => patch("category", e.target.value || null)}
-                  placeholder="e.g. Mains"
+                  onChange={(v) => patch("category", v || null)}
+                  options={categoryOptions}
+                  placeholder="Pick or type a new category…"
+                  emptyText="No matching category"
+                  onCreate={async (label) => {
+                    // Just adopt the typed label — categories are free strings
+                    // on menu_items, no separate table needed. Refresh the list
+                    // so future comboboxes see the new value.
+                    const opt = { value: label, label };
+                    setCategoryOptions((prev) => [opt, ...prev]);
+                    return opt;
+                  }}
                 />
               </Field>
               <Field label="Station">
-                <select
+                <Combobox
                   value={stationVal}
-                  onChange={(e) => patch("stationId", e.target.value || null)}
-                  className="h-9 px-2 rounded-md border border-input bg-transparent text-sm w-full"
-                >
-                  <option value="">— No station —</option>
-                  {stations.map((s) => (
-                    <option key={s.id} value={s.id}>
-                      {s.name}
-                    </option>
-                  ))}
-                </select>
+                  onChange={(v) => patch("stationId", v || null)}
+                  options={[{ value: "", label: "— No station —" }, ...stations.map((s) => ({ value: s.id, label: s.name }))]}
+                  placeholder="Pick a station…"
+                  emptyText="No matching station"
+                />
               </Field>
               <Field label="Dine-in price">
                 <Input
@@ -291,17 +314,29 @@ export function MenuItemDetailPage() {
       </div>
 
       {/* ─── Availability strip ──────────────────────────────────── */}
-      <div className="rounded-xl border border-border bg-card p-4 flex items-center gap-4">
-        <div className="size-10 rounded-lg bg-emerald-500/15 grid place-items-center">
-          <ForkKnife className="h-5 w-5 text-emerald-600 dark:text-emerald-400" weight="duotone" />
+      <div className={cn(
+        "rounded-xl border p-4 flex items-center gap-4",
+        !availability
+          ? "border-amber-500/40 bg-amber-500/10"
+          : "border-border bg-card",
+      )}>
+        <div className={cn(
+          "size-10 rounded-lg grid place-items-center",
+          !availability ? "bg-amber-500/20" : "bg-emerald-500/15",
+        )}>
+          {!availability ? (
+            <Warning className="h-5 w-5 text-amber-600" weight="duotone" />
+          ) : (
+            <ForkKnife className="h-5 w-5 text-emerald-600 dark:text-emerald-400" weight="duotone" />
+          )}
         </div>
         <div className="flex-1 min-w-0">
           <div className="text-[11px] uppercase tracking-wide text-muted-foreground font-medium">
-            Available today
+            {!availability ? "No recipe attached" : "Available today"}
           </div>
           <div className="text-lg font-semibold">
-            {maxServings === undefined
-              ? "Add a recipe to see availability"
+            {!availability
+              ? "Selling this won't deduct ingredients — attach a recipe first."
               : maxServings === Infinity
               ? "Unlimited (no recipe attached)"
               : `${maxServings} serving${maxServings === 1 ? "" : "s"}`}
@@ -313,10 +348,15 @@ export function MenuItemDetailPage() {
             </div>
           ) : null}
         </div>
+        {!availability ? (
+          <a href="#recipe" className="text-xs font-medium text-amber-800 dark:text-amber-300 hover:underline whitespace-nowrap">
+            Attach recipe →
+          </a>
+        ) : null}
       </div>
 
       {/* ─── Recipe section ──────────────────────────────────────── */}
-      <div className="rounded-xl border border-border bg-card p-5">
+      <div id="recipe" className="rounded-xl border border-border bg-card p-5">
         <div className="mb-4">
           <div className="text-[11px] uppercase tracking-wide text-muted-foreground font-medium">
             Recipe

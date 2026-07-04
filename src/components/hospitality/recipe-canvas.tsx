@@ -21,7 +21,6 @@ import {
   useNodesState,
   useEdgesState,
   MarkerType,
-  addEdge,
   type Node,
   type Edge,
   type Connection,
@@ -316,14 +315,97 @@ export function RecipeCanvas({ menuItemId, menuItemName, menuItemImage, sellingP
   };
 
   useEffect(() => {
-    buildGraph(lines, yieldQty, null);
+    // Reflect data changes into the existing graph WITHOUT re-running
+    // auto-layout. Positions come from the current React Flow state so
+    // manual drags survive edits. When a NEW ingredient is added, its
+    // node lands at a sensible slot next to the dish (see addIngredient).
+    setNodes((prev) => {
+      // Bottleneck recomputed on every render — cheap enough.
+      let bottleneck: string | null = null;
+      let minServings = Infinity;
+      for (const l of lines) {
+        const per = l.quantity * (1 + l.wastagePercent / 100);
+        const servings = per > 0 ? l.stockQty / per : Infinity;
+        if (servings < minServings) { minServings = servings; bottleneck = l.productId; }
+      }
+      const totalCost = lines.reduce((s, l) => s + l.quantity * l.buyingPrice * (1 + l.wastagePercent / 100), 0);
+      const dishData: DishData = {
+        kind: "dish",
+        name: menuItemName,
+        imagePath: menuItemImage,
+        costPerServing: totalCost / (yieldQty || 1),
+        sellingPrice,
+        yieldQty,
+      };
+      const nodeMap = new Map(prev.map((n) => [n.id, n]));
+      const nextIngredientIds = new Set(lines.map((l) => `ing-${l.productId}`));
+
+      // Update / insert nodes.
+      const out: Node[] = [];
+      // Dish first (preserve position if present).
+      const existingDish = nodeMap.get("dish");
+      out.push({
+        id: "dish",
+        type: "dish",
+        position: existingDish?.position ?? { x: 400, y: 100 },
+        data: dishData,
+      });
+      // Ingredients — preserve positions for existing nodes; place new
+      // ones just to the left of the dish so they're immediately visible.
+      const dishX = existingDish?.position.x ?? 400;
+      const dishY = existingDish?.position.y ?? 100;
+      let newIdx = 0;
+      for (const l of lines) {
+        const nodeId = `ing-${l.productId}`;
+        const existing = nodeMap.get(nodeId);
+        const data: IngredientData = {
+          kind: "ingredient",
+          productId: l.productId,
+          name: l.name,
+          quantity: l.quantity,
+          unit: l.unit,
+          wastagePercent: l.wastagePercent,
+          buyingPrice: l.buyingPrice,
+          stockQty: l.stockQty,
+          isBottleneck: l.productId === bottleneck,
+        };
+        if (existing) {
+          out.push({ ...existing, data });
+        } else {
+          out.push({
+            id: nodeId,
+            type: "ingredient",
+            position: { x: dishX - 300, y: dishY - 100 + newIdx * 130 },
+            data,
+          });
+          newIdx += 1;
+        }
+      }
+      // Drop nodes whose ingredient was removed.
+      return out.filter((n) => n.id === "dish" || nextIngredientIds.has(n.id));
+    });
+
+    // Rebuild edges to match current ingredients.
+    setEdges(lines.map((l) => ({
+      id: `e-${l.productId}`,
+      source: `ing-${l.productId}`,
+      target: "dish",
+      type: "smoothstep",
+      animated: false,
+      label: `${l.quantity}${l.unit}`,
+      labelStyle: { fontSize: 11, fontFamily: "monospace", fontWeight: 500 },
+      labelBgPadding: [4, 4],
+      labelBgBorderRadius: 4,
+      labelBgStyle: { fill: "hsl(var(--muted))" },
+      markerEnd: { type: MarkerType.ArrowClosed },
+    })));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lines, yieldQty, menuItemName, menuItemImage, sellingPrice]);
 
-  const onConnect = useCallback(
-    (params: Connection) => setEdges((eds) => addEdge(params, eds)),
-    [setEdges],
-  );
+  // Edges are auto-derived from `lines`; block manual edge creation
+  // (would produce orphan edges the save logic can't map back to
+  // ingredients).
+  const onConnect = useCallback((_params: Connection) => {}, []);
 
   const addIngredient = (productId: string) => {
     if (lines.some((l) => l.productId === productId)) {

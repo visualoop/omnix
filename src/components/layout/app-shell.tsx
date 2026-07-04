@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import { Outlet, useLocation } from "react-router-dom";
+import { cn } from "@/lib/utils";
 import { Sidebar } from "./sidebar";
 import { Topbar } from "./topbar";
 import { WindowTitlebar, TITLEBAR_HEIGHT_PX } from "./window-titlebar";
@@ -68,8 +69,8 @@ export function AppShell() {
         <div className="flex flex-col flex-1 overflow-hidden">
           {!isFullscreen && <TrialLifecycleBanner />}
           {!isFullscreen && <Topbar />}
-          <main className={isFullscreen ? "flex-1 overflow-auto" : "flex-1 overflow-auto p-6 bg-background"}>
-            <div key={routeKey} className={transitionClass}>
+          <main className={isFullscreen ? "flex-1 overflow-auto" : "flex-1 overflow-auto bg-background"}>
+            <div key={routeKey} className={cn(isFullscreen ? "" : "p-6", transitionClass)}>
               <RouteErrorBoundary resetKey={location.pathname}>
                 <Outlet />
               </RouteErrorBoundary>

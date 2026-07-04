@@ -10,6 +10,17 @@ import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { APP_NAME } from "@/lib/brand";
 
+/**
+ * Strip any leading "Omnix …" / "Omnix Retail …" / "Omnix Dawa …" line
+ * from the release notes. The manifest sometimes ships notes prefixed
+ * with a product name from the CI job that built the assets (which is
+ * variant-agnostic today), so we scrub that so a Hospitality binary
+ * doesn't say "Omnix Retail v0.43.1" in its own update dialog.
+ */
+function stripBrandPrefix(body: string): string {
+  return body.replace(/^Omnix(?:\s+\w+)?\s+v?\d+\.\d+(?:\.\d+)?[^\n]*\n?/i, "").trim();
+}
+
 interface UpdateInfo {
   version: string;
   body?: string;
@@ -94,9 +105,13 @@ export function UpdateChecker() {
           <div className="flex items-start gap-2">
             <Download className="h-4 w-4 text-blue-600 shrink-0 mt-0.5" />
             <div className="flex-1">
-              <p className="text-sm font-medium">Update available: v{available.version}</p>
+              <p className="text-sm font-medium">
+                {APP_NAME} v{available.version} is available
+              </p>
               {available.body && (
-                <p className="text-xs text-muted-foreground mt-1 whitespace-pre-line">{available.body}</p>
+                <p className="text-xs text-muted-foreground mt-1 whitespace-pre-line">
+                  {stripBrandPrefix(available.body)}
+                </p>
               )}
             </div>
           </div>
