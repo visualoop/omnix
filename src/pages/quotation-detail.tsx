@@ -24,6 +24,8 @@ interface Quote {
   customer_id: string | null;
   customer_name: string;
   customer_phone: string | null;
+  customer_email: string | null;
+  customer_address: string | null;
   status: string;
   issue_date: string;
   valid_until: string;
@@ -110,8 +112,8 @@ export function QuotationDetailPage() {
         customer_id: quote.customer_id,
         customer_name: quote.customer_name,
         customer_phone: quote.customer_phone,
-        customer_email: null,
-        customer_address: null,
+        customer_email: quote.customer_email,
+        customer_address: quote.customer_address,
         customer_tax_pin: null,
         issue_date: quote.issue_date,
         valid_until: quote.valid_until,

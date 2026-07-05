@@ -199,8 +199,9 @@ export async function downloadPayslipPdf(payslip: PayslipForPdf, run: PayrollRun
     const pdf = new jsPDF({ unit: "mm", format: "a4" });
     renderPayslip(pdf, payslip, run, business);
     const filename = `payslip-${payslip.employee_number}-${run.period_year}-${String(run.period_month).padStart(2, "0")}.pdf`;
-    pdf.save(filename);
-    toast.success("Payslip PDF downloaded", { description: filename });
+    const bytes = new Uint8Array(pdf.output("arraybuffer") as ArrayBuffer);
+    const { downloadBytes } = await import("@/services/pdf-brand");
+    downloadBytes(bytes, filename);
   } catch (e) {
     toast.error("Couldn't generate payslip PDF", { description: e instanceof Error ? e.message : String(e) });
   }
@@ -235,8 +236,10 @@ export async function downloadPayrollRunPdf(payslips: PayslipForPdf[], run: Payr
       renderPayslip(pdf, p, run, business);
     });
     const filename = `payroll-${run.period_year}-${String(run.period_month).padStart(2, "0")}.pdf`;
-    pdf.save(filename);
-    toast.success(`Payroll batch downloaded (${payslips.length} payslip${payslips.length === 1 ? "" : "s"})`, {
+    const bytes = new Uint8Array(pdf.output("arraybuffer") as ArrayBuffer);
+    const { downloadBytes } = await import("@/services/pdf-brand");
+    downloadBytes(bytes, filename);
+    toast.success(`Payroll batch ready (${payslips.length} payslip${payslips.length === 1 ? "" : "s"})`, {
       description: filename,
     });
   } catch (e) {
@@ -248,5 +251,6 @@ export async function previewPayslipPdf(payslip: PayslipForPdf, run: PayrollRun)
   const business = await getBusinessInfo();
   const pdf = new jsPDF({ unit: "mm", format: "a4" });
   renderPayslip(pdf, payslip, run, business);
-  pdf.output("dataurlnewwindow");
+  const { previewBytes } = await import("@/services/pdf-brand");
+  previewBytes(new Uint8Array(pdf.output("arraybuffer") as ArrayBuffer));
 }

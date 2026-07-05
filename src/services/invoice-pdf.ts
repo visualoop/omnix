@@ -445,10 +445,9 @@ export async function renderQuotationPdfBytes(
 
 export async function downloadInvoicePdf(invoice: Invoice, items: DocumentItem[], payments?: PdfPayment[]) {
   try {
-    const pdf = await generateInvoicePdf(invoice, items, payments);
-    const filename = `${invoice.invoice_number}.pdf`;
-    pdf.save(filename);
-    toast.success("Invoice PDF downloaded", { description: filename });
+    const bytes = await renderInvoicePdfBytes(invoice, items, payments);
+    const { downloadBytes } = await import("@/services/pdf-brand");
+    downloadBytes(bytes, `${invoice.invoice_number}.pdf`);
   } catch (e) {
     toast.error("Couldn't generate invoice PDF", { description: e instanceof Error ? e.message : String(e) });
   }
@@ -456,22 +455,33 @@ export async function downloadInvoicePdf(invoice: Invoice, items: DocumentItem[]
 
 export async function downloadQuotationPdf(quotation: Quotation, items: DocumentItem[]) {
   try {
-    const pdf = await generateQuotationPdf(quotation, items);
-    const filename = `${quotation.quotation_number}.pdf`;
-    pdf.save(filename);
-    toast.success("Quotation PDF downloaded", { description: filename });
+    const bytes = await renderQuotationPdfBytes(quotation, items);
+    const { downloadBytes } = await import("@/services/pdf-brand");
+    downloadBytes(bytes, `${quotation.quotation_number}.pdf`);
   } catch (e) {
     toast.error("Couldn't generate quotation PDF", { description: e instanceof Error ? e.message : String(e) });
   }
 }
 
-/** Open in new tab for preview (Tauri webview shows native PDF viewer). */
+/** Open the PDF in a viewer. jsPDF's dataurlnewwindow no-ops in the Tauri
+ *  WebView, so route bytes through previewBytes (blob URL + window.open with
+ *  a pop-up-blocked fallback toast). */
 export async function previewInvoicePdf(invoice: Invoice, items: DocumentItem[], payments?: PdfPayment[]) {
-  const pdf = await generateInvoicePdf(invoice, items, payments);
-  pdf.output("dataurlnewwindow");
+  try {
+    const bytes = await renderInvoicePdfBytes(invoice, items, payments);
+    const { previewBytes } = await import("@/services/pdf-brand");
+    previewBytes(bytes);
+  } catch (e) {
+    toast.error("Couldn't preview invoice PDF", { description: e instanceof Error ? e.message : String(e) });
+  }
 }
 
 export async function previewQuotationPdf(quotation: Quotation, items: DocumentItem[]) {
-  const pdf = await generateQuotationPdf(quotation, items);
-  pdf.output("dataurlnewwindow");
+  try {
+    const bytes = await renderQuotationPdfBytes(quotation, items);
+    const { previewBytes } = await import("@/services/pdf-brand");
+    previewBytes(bytes);
+  } catch (e) {
+    toast.error("Couldn't preview quotation PDF", { description: e instanceof Error ? e.message : String(e) });
+  }
 }
