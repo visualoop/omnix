@@ -140,7 +140,13 @@ export function QuotationDetailPage() {
         sort_order: idx,
       }));
       const pdf = await generateQuotationPdf(q, documentItems);
-      pdf.save(`${quote.quotation_number}.pdf`);
+      // jsPDF's pdf.save() relies on a <a download> that silently no-ops in
+      // the Tauri WebView. Route the bytes through the app's standard
+      // downloadBytes (used by every other PDF export) which reliably
+      // triggers the save.
+      const buf = pdf.output("arraybuffer") as ArrayBuffer;
+      const { downloadBytes } = await import("@/services/pdf-brand");
+      downloadBytes(new Uint8Array(buf), `${quote.quotation_number}.pdf`);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : String(e));
     } finally {

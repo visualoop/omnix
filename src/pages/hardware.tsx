@@ -186,18 +186,24 @@ export function HardwareQuotationsPage() {
               .map((q) => {
               const canSend = q.status === "draft" || q.status === "sent" || q.status === "accepted";
               return (
-                <tr key={q.id} className="border-t border-border hover:bg-accent/30 transition-colors">
+                <tr
+                  key={q.id}
+                  className="border-t border-border hover:bg-accent/30 transition-colors cursor-pointer"
+                  onClick={() => navigate(`/hardware/quotations/${q.id}`)}
+                >
                   <td className="px-3 py-2 font-mono">{q.quotation_number}</td>
                   <td className="px-3 py-2"><Badge variant="outline" className={cn("text-[10px]", STATUS_STYLE[q.status])}>{q.status}</Badge></td>
                   <td className="px-3 py-2 text-right font-mono tabular-nums">{KES(q.total)}</td>
                   <td className="px-3 py-2 text-muted-foreground">{q.valid_until ?? "—"}</td>
-                  <td className="px-3 py-2 text-right">
+                  <td className="px-3 py-2 text-right" onClick={(e) => e.stopPropagation()}>
                     {canSend ? (
                       <Button size="sm" variant="outline" disabled={busy === q.id} onClick={() => sendToPos(q)} className="cursor-pointer">
                         {busy === q.id ? "Loading…" : "Send to POS"}
                       </Button>
                     ) : (
-                      <span className="text-[11px] text-muted-foreground">{q.status}</span>
+                      <Button size="sm" variant="ghost" onClick={() => navigate(`/hardware/quotations/${q.id}`)} className="cursor-pointer text-muted-foreground">
+                        View
+                      </Button>
                     )}
                   </td>
                 </tr>
