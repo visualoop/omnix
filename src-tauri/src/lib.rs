@@ -634,6 +634,12 @@ fn run_inner() {
             sql: include_str!("../migrations/088_delivery_note_source.sql"),
             kind: MigrationKind::Up,
         },
+        Migration {
+            version: 89,
+            description: "Customers address column",
+            sql: include_str!("../migrations/089_customer_address.sql"),
+            kind: MigrationKind::Up,
+        },
     ];
 
     tauri::Builder::default()

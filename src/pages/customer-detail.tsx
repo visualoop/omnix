@@ -127,6 +127,7 @@ function OverviewTab({ customer }: { customer: Customer }) {
     <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
       <Field label="Phone" value={customer.phone} />
       <Field label="Email" value={customer.email} />
+      <Field label="Address" value={customer.address} className="md:col-span-2" />
       <Field label="Credit limit" value={customer.credit_limit ? KES(customer.credit_limit) : null} />
       <Field label="Balance" value={KES(customer.balance ?? 0)} />
       <Field label="Notes" value={customer.notes} className="md:col-span-2" />

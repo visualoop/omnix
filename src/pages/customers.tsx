@@ -277,6 +277,14 @@ function CustomerForm({ open, customer, onClose, onSaved }: {
               <Input type="email" value={form.email || ""} onChange={(e) => setForm({ ...form, email: e.target.value })} />
             </Field>
           </div>
+          <Field label="Address">
+            <Textarea
+              value={form.address || ""}
+              onChange={(e) => setForm({ ...form, address: e.target.value })}
+              rows={2}
+              placeholder="Physical / delivery address — flows onto quotes and delivery notes"
+            />
+          </Field>
           <Field label="Credit Limit (KES)">
             <Input
               type="number"

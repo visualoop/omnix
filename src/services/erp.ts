@@ -85,6 +85,7 @@ export interface Customer {
   name: string;
   phone: string | null;
   email: string | null;
+  address: string | null;
   customer_group_id: string | null;
   credit_limit: number;
   balance: number;          // amount owed to us (positive = customer owes us)
@@ -113,17 +114,17 @@ export async function upsertCustomer(input: Partial<Customer> & { name: string }
   const id = input.id || crypto.randomUUID();
   if (input.id) {
     await execute(
-      `UPDATE customers SET name=?1, phone=?2, email=?3, credit_limit=?4, notes=?5,
-         active=COALESCE(?6, active) WHERE id=?7`,
-      [input.name, input.phone || null, input.email || null,
+      `UPDATE customers SET name=?1, phone=?2, email=?3, address=?4, credit_limit=?5, notes=?6,
+         active=COALESCE(?7, active) WHERE id=?8`,
+      [input.name, input.phone || null, input.email || null, input.address || null,
        input.credit_limit ?? 0, input.notes || null,
        input.active === undefined ? null : input.active, input.id]
     );
   } else {
     await execute(
-      `INSERT INTO customers (id, name, phone, email, credit_limit, notes)
-       VALUES (?1, ?2, ?3, ?4, ?5, ?6)`,
-      [id, input.name, input.phone || null, input.email || null,
+      `INSERT INTO customers (id, name, phone, email, address, credit_limit, notes)
+       VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)`,
+      [id, input.name, input.phone || null, input.email || null, input.address || null,
        input.credit_limit ?? 0, input.notes || null]
     );
   }
