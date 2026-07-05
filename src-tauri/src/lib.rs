@@ -628,6 +628,12 @@ fn run_inner() {
             sql: include_str!("../migrations/087_retail_pricing_convergence.sql"),
             kind: MigrationKind::Up,
         },
+        Migration {
+            version: 88,
+            description: "Delivery note source_quotation_id link (generate delivery notes from accepted quotes)",
+            sql: include_str!("../migrations/088_delivery_note_source.sql"),
+            kind: MigrationKind::Up,
+        },
     ];
 
     tauri::Builder::default()

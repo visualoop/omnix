@@ -272,7 +272,7 @@ export function HardwareDeliveryNotesPage() {
         />
       ) : null}
       {loading ? <ModuleSpinner /> : notes.length === 0 ? (
-        <ModuleEmpty icon={Truck} title="No delivery notes yet" hint="Delivery notes are created when an order is dispatched." />
+        <ModuleEmpty icon={Truck} title="No delivery notes yet" hint="Raise a delivery note against an accepted quotation to dispatch its goods." />
       ) : (
         <>
           <div className="flex flex-wrap items-center gap-2 mb-3">

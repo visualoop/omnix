@@ -300,6 +300,7 @@ export async function markQuotePaidFromPos(quoteId: string, saleId: string): Pro
 export async function createDeliveryNote(input: {
   customerId: string | null;
   saleId?: string | null;
+  sourceQuotationId?: string | null;
   address?: string;
   items: Array<{ product_id?: string; name: string; uom?: string; quantity: number }>;
 }): Promise<string> {
@@ -308,9 +309,9 @@ export async function createDeliveryNote(input: {
   const id = uid();
   const number = await nextNumber("delivery_notes", "DN");
   await execute(
-    `INSERT INTO delivery_notes (id, note_number, branch_id, customer_id, sale_id, status, delivery_address)
-     VALUES (?1, ?2, ?3, ?4, ?5, 'pending', ?6)`,
-    [id, number, getActiveBranchId(), input.customerId, input.saleId ?? null, input.address ?? null],
+    `INSERT INTO delivery_notes (id, note_number, branch_id, customer_id, sale_id, source_quotation_id, status, delivery_address)
+     VALUES (?1, ?2, ?3, ?4, ?5, ?6, 'pending', ?7)`,
+    [id, number, getActiveBranchId(), input.customerId, input.saleId ?? null, input.sourceQuotationId ?? null, input.address ?? null],
   );
   for (const it of input.items) {
     await execute(
@@ -320,6 +321,82 @@ export async function createDeliveryNote(input: {
     );
   }
   return id;
+}
+
+export interface DeliverableQuotation {
+  id: string;
+  quotation_number: string;
+  customer_id: string | null;
+  customer_name: string;
+  total: number;
+  created_at: string;
+}
+
+/** Quotations eligible to generate a delivery note: sent or accepted
+ *  (i.e. the customer has committed) and not cancelled/expired. */
+export async function listDeliverableQuotations(): Promise<DeliverableQuotation[]> {
+  return query<DeliverableQuotation>(
+    `SELECT id, quotation_number, customer_id, customer_name, total, created_at
+       FROM quotations
+      WHERE status IN ('sent', 'accepted', 'converted')
+      ORDER BY created_at DESC
+      LIMIT 100`,
+  );
+}
+
+export interface DeliverableQuoteDetail {
+  quotation_id: string;
+  quotation_number: string;
+  customer_id: string | null;
+  customer_name: string;
+  customer_address: string | null;
+  items: Array<{ product_id: string | null; name: string; uom: string; quantity: number }>;
+}
+
+/** Load a quotation's customer + address + line items, shaped for
+ *  pre-filling a delivery note (physical goods only — pricing is
+ *  irrelevant on a delivery note). */
+export async function getQuotationForDelivery(quotationId: string): Promise<DeliverableQuoteDetail | null> {
+  const [q] = await query<{
+    quotation_number: string; customer_id: string | null; customer_name: string; customer_address: string | null;
+  }>(
+    `SELECT quotation_number, customer_id, customer_name, customer_address FROM quotations WHERE id = ?1`,
+    [quotationId],
+  );
+  if (!q) return null;
+  const items = await query<{ product_id: string | null; name: string; uom: string | null; quantity: number }>(
+    `SELECT product_id, description AS name, unit AS uom, quantity
+       FROM quotation_items WHERE quotation_id = ?1 ORDER BY sort_order`,
+    [quotationId],
+  );
+  return {
+    quotation_id: quotationId,
+    quotation_number: q.quotation_number,
+    customer_id: q.customer_id,
+    customer_name: q.customer_name,
+    customer_address: q.customer_address,
+    items: items.map((i) => ({ product_id: i.product_id, name: i.name, uom: i.uom ?? "pcs", quantity: i.quantity })),
+  };
+}
+
+/** Generate a delivery note from an accepted quotation. Lines default to
+ *  the quote's quantities but the caller can pass reduced quantities for a
+ *  partial delivery. Links back via source_quotation_id. */
+export async function createDeliveryNoteFromQuotation(input: {
+  quotationId: string;
+  address?: string;
+  items: Array<{ product_id?: string | null; name: string; uom?: string; quantity: number }>;
+}): Promise<string> {
+  const detail = await getQuotationForDelivery(input.quotationId);
+  if (!detail) throw new Error("Quotation not found");
+  const lines = input.items.filter((l) => l.name && l.quantity > 0);
+  if (lines.length === 0) throw new Error("Add at least one line to deliver");
+  return createDeliveryNote({
+    customerId: detail.customer_id,
+    sourceQuotationId: input.quotationId,
+    address: input.address ?? detail.customer_address ?? undefined,
+    items: lines.map((l) => ({ product_id: l.product_id ?? undefined, name: l.name, uom: l.uom, quantity: l.quantity })),
+  });
 }
 
 export async function markDispatched(noteId: string, vehicle?: string, driver?: string): Promise<void> {
