@@ -177,14 +177,14 @@ export function SaveQuoteSheet({ open, onClose }: Props) {
 
           {/* Validity */}
           <div className="space-y-1.5">
-            <label className="text-xs font-medium text-foreground/85">
+            <label className="block text-xs font-medium text-foreground/85">
               Valid until
             </label>
             <Input
               type="date"
               value={validUntil}
               onChange={(e) => setValidUntil(e.target.value)}
-              className="max-w-[220px] font-mono"
+              className="w-full max-w-[220px] font-mono"
             />
             <p className="text-[10px] text-muted-foreground">
               Default is 30 days from today.

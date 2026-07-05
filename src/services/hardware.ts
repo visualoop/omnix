@@ -83,15 +83,16 @@ export async function createQuotation(input: {
   let customerEmail: string | null = null;
   let customerAddress: string | null = null;
   if (input.customerId) {
-    const [c] = await query<{ name: string; phone: string | null; email: string | null; address: string | null }>(
-      `SELECT name, phone, email, address FROM customers WHERE id = ?1`,
+    // customers has no address column — quotations.customer_address is
+    // captured on the delivery note instead. Only pull the fields that exist.
+    const [c] = await query<{ name: string; phone: string | null; email: string | null }>(
+      `SELECT name, phone, email FROM customers WHERE id = ?1`,
       [input.customerId],
     );
     if (c) {
       customerName = c.name;
       customerPhone = c.phone ?? null;
       customerEmail = c.email ?? null;
-      customerAddress = c.address ?? null;
     }
   }
 
