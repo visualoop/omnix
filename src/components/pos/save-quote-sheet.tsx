@@ -107,7 +107,7 @@ export function SaveQuoteSheet({ open, onClose }: Props) {
       onClose();
       navigate(`/hardware/quotations/${id}`);
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Failed to save quote");
+      toast.error(e instanceof Error ? e.message : (typeof e === "string" ? e : "Failed to save quote"));
     } finally {
       setSaving(false);
     }

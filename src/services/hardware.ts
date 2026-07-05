@@ -95,29 +95,51 @@ export async function createQuotation(input: {
     }
   }
 
-  await execute(
-    `INSERT INTO quotations
-       (id, quotation_number, branch_id, customer_id, customer_name, customer_phone, customer_email, customer_address, status, valid_until,
-        subtotal, discount_amount, tax_amount, total, salesperson_id, notes, user_id)
-     VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, 'draft', ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16)`,
-    [
-      id, number, getActiveBranchId(), input.customerId, customerName,
-      customerPhone, customerEmail, customerAddress, validUntil,
-      subtotal, discount, taxAmount, total, input.salespersonId ?? null,
-      input.notes ?? null, input.userId,
-    ],
-  );
-  let sortOrder = 0;
-  for (const l of lines) {
+  // branch_id has an FK to branches(id). getActiveBranchId() falls back to
+  // 'default-branch'; if that row is missing (or the active id is stale) the
+  // insert would fail with a raw FK error. Resolve to a real branch or NULL.
+  let branchId: string | null = getActiveBranchId();
+  const branchRows = await query<{ id: string }>(`SELECT id FROM branches WHERE id = ?1`, [branchId]);
+  if (!branchRows[0]) {
+    const [anyBranch] = await query<{ id: string }>(`SELECT id FROM branches WHERE active = 1 ORDER BY is_default DESC LIMIT 1`);
+    branchId = anyBranch?.id ?? null;
+  }
+
+  try {
     await execute(
-      `INSERT INTO quotation_items
-         (id, quotation_id, product_id, description, quantity, unit, unit_price, tax_rate, discount_amount, line_total, sort_order)
-       VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)`,
+      `INSERT INTO quotations
+         (id, quotation_number, branch_id, customer_id, customer_name, customer_phone, customer_email, customer_address, status, valid_until,
+          subtotal, discount_amount, tax_amount, total, salesperson_id, notes, user_id)
+       VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, 'draft', ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16)`,
       [
-        uid(), id, l.product_id ?? null, l.name, l.quantity,
-        l.uom ?? "pcs", l.unit_price, l.tax_rate, l.discount, l.line_total, sortOrder++,
+        id, number, branchId, input.customerId, customerName,
+        customerPhone, customerEmail, customerAddress, validUntil,
+        subtotal, discount, taxAmount, total, input.salespersonId ?? null,
+        input.notes ?? null, input.userId,
       ],
     );
+  } catch (e) {
+    // Tauri SQL errors reject with a raw string, not an Error — wrap it so
+    // the UI surfaces the actual cause instead of a generic message.
+    throw new Error(`Could not save quote header: ${e instanceof Error ? e.message : String(e)}`);
+  }
+  let sortOrder = 0;
+  try {
+    for (const l of lines) {
+      await execute(
+        `INSERT INTO quotation_items
+           (id, quotation_id, product_id, description, quantity, unit, unit_price, tax_rate, discount_amount, line_total, sort_order)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)`,
+        [
+          uid(), id, l.product_id ?? null, l.name || "Item", l.quantity,
+          l.uom ?? "pcs", l.unit_price, l.tax_rate, l.discount, l.line_total, sortOrder++,
+        ],
+      );
+    }
+  } catch (e) {
+    // Roll back the orphaned header so a retry doesn't collide, then surface.
+    await execute(`DELETE FROM quotations WHERE id = ?1`, [id]).catch(() => {});
+    throw new Error(`Could not save quote lines: ${e instanceof Error ? e.message : String(e)}`);
   }
   return id;
 }
