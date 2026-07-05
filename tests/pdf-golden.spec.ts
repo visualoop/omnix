@@ -14,7 +14,7 @@
  * (template logic changes, missing rows, wrong totals) without churning
  * the snapshot every commit.
  */
-import { describe, it, expect } from "vitest"
+import { describe, it, expect, beforeAll, afterAll, vi } from "vitest"
 import { renderZReportPdf, renderHardwareQuotePdf } from "@/services/reports-pdf"
 import type { BrandHeader } from "@/services/pdf-engine"
 
@@ -38,6 +38,14 @@ function stripVolatile(bytes: Uint8Array): string {
     .replace(/<[A-F0-9]{32}>/g, "<HASH>")
     .replace(/\/ID\s*\[\s*<[A-F0-9]+>\s*<[A-F0-9]+>\s*\]/g, "/ID [<HASH> <HASH>]")
 }
+
+beforeAll(() => {
+  vi.useFakeTimers()
+  vi.setSystemTime(new Date("2026-06-12T12:00:00Z"))
+})
+afterAll(() => {
+  vi.useRealTimers()
+})
 
 describe("Z-report golden snapshot", () => {
   const input = {
