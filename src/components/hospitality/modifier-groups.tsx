@@ -5,6 +5,7 @@
  * price deltas. Group `type` is single (radio) or multiple (checkboxes).
  */
 import { useEffect, useState } from "react";
+import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import { Plus, Trash, PencilSimple, Check } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
@@ -326,10 +327,9 @@ function AddGroupForm({ menuItemId, onCancel, onDone }: { menuItemId: string; on
             Pick any
           </label>
           <label className="text-xs flex items-center gap-1.5 cursor-pointer ml-auto">
-            <input
-              type="checkbox"
+            <Checkbox
               checked={required}
-              onChange={(e) => setRequired(e.target.checked)}
+              onCheckedChange={(v) => setRequired(v === true)}
             />
             Required
           </label>

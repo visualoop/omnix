@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Buildings,
   CloudArrowUp,
@@ -88,10 +89,9 @@ export function SettingsPpbPage() {
       <Card>
         <CardContent className="p-4 space-y-3">
           <label className="flex items-center gap-2 text-sm">
-            <input
-              type="checkbox"
+            <Checkbox
               checked={!!settings.enabled}
-              onChange={(e) => setSettings({ ...settings, enabled: e.target.checked ? 1 : 0 })}
+              onCheckedChange={(v) => setSettings({ ...settings, enabled: v === true ? 1 : 0 })}
             />
             <span className="font-medium">Enable automatic quarterly submission</span>
           </label>

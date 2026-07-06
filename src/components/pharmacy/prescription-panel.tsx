@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -459,10 +460,9 @@ export function PrescriptionPanel({ open, onClose, onSaved }: Props) {
           <div className="pt-4 border-t border-border space-y-2">
             {needsAcknowledgement && (
               <label className="flex items-start gap-2 text-xs cursor-pointer">
-                <input
-                  type="checkbox"
+                <Checkbox
                   checked={acknowledgeWarn}
-                  onChange={(e) => setAcknowledgeWarn(e.target.checked)}
+                  onCheckedChange={(v) => setAcknowledgeWarn(v === true)}
                   className="mt-0.5"
                 />
                 <span>

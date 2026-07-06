@@ -4,6 +4,7 @@
  * button or "Edit" per row) and from the contractor detail page.
  */
 import { useEffect, useState } from "react";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -110,10 +111,9 @@ export function ContractorAccountDialog({ open, onClose, onSaved, customerId }: 
             </Field>
           </div>
           <label className="flex items-center gap-2 text-sm cursor-pointer">
-            <input
-              type="checkbox"
+            <Checkbox
               checked={onHold}
-              onChange={(e) => setOnHold(e.target.checked)}
+              onCheckedChange={(v) => setOnHold(v === true)}
             />
             <span>Put account on hold (block new charges)</span>
           </label>

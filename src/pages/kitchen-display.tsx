@@ -14,6 +14,7 @@
  * All prefs persist to localStorage per device.
  */
 import { useEffect, useState, useCallback, useRef, useMemo } from "react";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   CookingPot,
   Timer,
@@ -337,11 +338,9 @@ export function KitchenDisplayPage() {
           </div>
 
           <label className="flex items-center gap-2 text-[12px]">
-            <input
-              type="checkbox"
+            <Checkbox
               checked={prefs.forceDark}
-              onChange={(e) => setPrefs({ forceDark: e.target.checked })}
-              className="rounded border-border"
+              onCheckedChange={(v) => setPrefs({ forceDark: v === true })}
             />
             Force dark mode
           </label>

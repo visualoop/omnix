@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { CheckCircle, ChatCircleText } from "@phosphor-icons/react";
@@ -97,10 +98,9 @@ export function CounsellingSheet({
                       const isWarning = p.field === "warnings";
                       return (
                         <li key={key} className="flex items-start gap-2">
-                          <input
-                            type="checkbox"
+                          <Checkbox
                             checked={!!checked[key]}
-                            onChange={(e) => setChecked({ ...checked, [key]: e.target.checked })}
+                            onCheckedChange={(v) => setChecked({ ...checked, [key]: v === true })}
                             className="mt-0.5"
                           />
                           <div className={`text-xs ${isWarning ? "text-destructive" : ""}`}>
@@ -119,10 +119,9 @@ export function CounsellingSheet({
           {templates.length > 0 && (
             <>
               <label className="flex items-start gap-2 text-xs cursor-pointer border-t border-border pt-3">
-                <input
-                  type="checkbox"
+                <Checkbox
                   checked={acknowledged}
-                  onChange={(e) => setAcknowledged(e.target.checked)}
+                  onCheckedChange={(v) => setAcknowledged(v === true)}
                   className="mt-0.5"
                 />
                 <span>Patient confirmed understanding of the above.</span>

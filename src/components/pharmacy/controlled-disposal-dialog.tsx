@@ -4,6 +4,7 @@
  * PPB notification, then writes off the batch and posts the register row.
  */
 import { useEffect, useState } from "react";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -88,7 +89,7 @@ export function ControlledDisposalDialog({ item, onClose, onSaved }: Props) {
             <Field label="Witness 2 license"><Input value={w2lic} onChange={(e) => setW2lic(e.target.value)} placeholder="PPB / KMPDC #" /></Field>
           </div>
           <label className="flex items-center gap-2 text-sm">
-            <input type="checkbox" checked={ppbNotified} onChange={(e) => setPpbNotified(e.target.checked)} />
+            <Checkbox checked={ppbNotified} onCheckedChange={(v) => setPpbNotified(v === true)} />
             <span>PPB notified of this destruction</span>
           </label>
           {ppbNotified && (

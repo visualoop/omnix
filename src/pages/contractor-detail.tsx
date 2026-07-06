@@ -10,7 +10,8 @@
  */
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, CurrencyDollar, PencilSimple, Warning, FileText, Truck } from "@phosphor-icons/react";
+import { BackButton } from "@/components/ui/back-button";
+import { CurrencyDollar, PencilSimple, Warning, FileText, Truck } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
@@ -101,12 +102,7 @@ export function ContractorDetailPage() {
   return (
     <div className="space-y-6 max-w-5xl mx-auto">
       <div className="flex items-center justify-between">
-        <button
-          onClick={() => navigate("/hardware?tab=accounts")}
-          className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
-        >
-          <ArrowLeft className="h-4 w-4" /> Back to accounts
-        </button>
+        <BackButton fallback="/hardware?tab=accounts" label="Back to accounts" />
         <div className="flex gap-2">
           <Button size="sm" variant="outline" onClick={() => setPaymentOpen(true)}>
             <CurrencyDollar className="h-3.5 w-3.5 mr-1.5" /> Record payment
