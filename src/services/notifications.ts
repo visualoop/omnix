@@ -23,6 +23,7 @@ export type NotificationKind =
   | "cold_chain"
   | "po_ready"
   | "refill_due"
+  | "license_expiry"
   | "variance"
   | "system";
 

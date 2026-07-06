@@ -15,6 +15,7 @@ import { query } from "@/lib/db";
 import { renderControlledRegisterPdf } from "@/services/reports-pdf";
 import { loadBrandHeader, downloadBytes } from "@/services/pdf-brand";
 import { intlLocale } from "@/lib/intl";
+import { listControlledDisposals, type ControlledDisposal } from "@/services/controlled-disposal";
 
 import { BackButton } from "@/components/ui/back-button";
 interface ControlledEntry {
@@ -41,6 +42,7 @@ export function ControlledRegisterPage() {
   const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [entries, setEntries] = useState<ControlledEntry[]>([]);
   const [loading, setLoading] = useState(true);
+  const [disposals, setDisposals] = useState<ControlledDisposal[]>([]);
   const printRef = useRef<HTMLDivElement>(null);
 
   const load = async () => {
@@ -62,6 +64,7 @@ export function ControlledRegisterPage() {
     } finally { setLoading(false); }
   };
   useEffect(() => { load(); }, [date]);
+  useEffect(() => { listControlledDisposals(50).then(setDisposals).catch(() => setDisposals([])); }, []);
 
   const totalDispensed = entries
     .filter((e) => e.action === "dispense")
@@ -233,6 +236,50 @@ export function ControlledRegisterPage() {
           </tbody>
         </table>
       </div>
+
+      {disposals.length > 0 && (
+        <Card>
+          <CardContent className="p-4">
+            <h2 className="font-semibold text-sm mb-3 flex items-center gap-1.5">
+              <ShieldAlert className="h-4 w-4 text-rose-600" /> Witnessed destruction records
+            </h2>
+            <div className="border border-border rounded-md overflow-hidden">
+              <table className="w-full text-sm">
+                <thead className="bg-muted/30 border-b border-border">
+                  <tr>
+                    <th className="text-left px-2 py-2 text-[10.5px] font-semibold uppercase tracking-wider text-muted-foreground">Date</th>
+                    <th className="text-left px-2 py-2 text-[10.5px] font-semibold uppercase tracking-wider text-muted-foreground">Drug</th>
+                    <th className="text-right px-2 py-2 text-[10.5px] font-semibold uppercase tracking-wider text-muted-foreground">Qty</th>
+                    <th className="text-left px-2 py-2 text-[10.5px] font-semibold uppercase tracking-wider text-muted-foreground">Method</th>
+                    <th className="text-left px-2 py-2 text-[10.5px] font-semibold uppercase tracking-wider text-muted-foreground">Witnesses</th>
+                    <th className="text-center px-2 py-2 text-[10.5px] font-semibold uppercase tracking-wider text-muted-foreground">PPB</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {disposals.map((d) => (
+                    <tr key={d.id} className="border-b border-border/60">
+                      <td className="px-2 py-1.5 text-xs text-muted-foreground whitespace-nowrap">
+                        {new Date(d.disposed_at).toLocaleDateString(intlLocale(), { day: "2-digit", month: "short", year: "numeric" })}
+                      </td>
+                      <td className="px-2 py-1.5 text-xs font-medium">{d.product_name}{d.batch_number ? <span className="text-muted-foreground font-mono"> · {d.batch_number}</span> : null}</td>
+                      <td className="px-2 py-1.5 text-right text-xs font-mono tabular-nums">{d.quantity}</td>
+                      <td className="px-2 py-1.5 text-xs">{d.method}</td>
+                      <td className="px-2 py-1.5 text-xs text-muted-foreground">{d.witness_1_name} + {d.witness_2_name}</td>
+                      <td className="px-2 py-1.5 text-center">
+                        {d.ppb_notified ? (
+                          <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-700" title={d.ppb_notification_ref ?? undefined}>Notified</span>
+                        ) : (
+                          <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-100 text-amber-700">Pending</span>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       <Card>
         <CardContent className="p-4 text-xs leading-relaxed">

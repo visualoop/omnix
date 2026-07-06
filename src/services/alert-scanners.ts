@@ -98,31 +98,103 @@ async function scanUnpaidInvoices(): Promise<void> {
   }
 }
 
-interface RefillRow { id: string; patient_name: string; drug_name: string; refill_date: string; }
+interface RefillRow { id: string; patient_name: string; drug_summary: string; due_on: string; }
+
+async function tableExists(name: string): Promise<boolean> {
+  const rows = await query<{ n: number }>(
+    `SELECT COUNT(*) AS n FROM sqlite_master WHERE type='table' AND name=?1`,
+    [name],
+  ).catch(() => [{ n: 0 }]);
+  return (rows[0]?.n ?? 0) > 0;
+}
 
 async function scanRefillsDue(): Promise<void> {
-  // Only run if the pharmacy table exists (installer may lack it).
-  const check = await query<{ n: number }>(
-    `SELECT COUNT(*) AS n FROM sqlite_master WHERE type='table' AND name='refills'`,
-  ).catch(() => [{ n: 0 }]);
-  if ((check[0]?.n ?? 0) === 0) return;
-
+  // Refills are tracked in prescriptions/refill_reminders — there is no
+  // `refills` table (the old query silently no-op'd). Read the pending
+  // refill_reminders the daily job stages.
+  if (!(await tableExists("refill_reminders"))) return;
   const rows = await query<RefillRow>(
-    `SELECT r.id, r.patient_name, r.drug_name, r.refill_date
-     FROM refills r
-     WHERE r.status = 'pending'
-       AND r.refill_date <= date('now', '+3 days')
-     ORDER BY r.refill_date ASC
+    `SELECT id, patient_name, drug_summary, due_on
+     FROM refill_reminders
+     WHERE sent_at IS NULL AND date(due_on) <= date('now', '+3 days')
+     ORDER BY due_on ASC
      LIMIT 30`,
   ).catch(() => []);
   for (const r of rows) {
     await emit({
       kind: "refill_due",
       severity: "info",
-      title: `Refill due: ${r.drug_name}`,
-      body: `${r.patient_name} — ${new Date(r.refill_date).toLocaleDateString()}. Send a WhatsApp reminder?`,
+      title: `Refill due: ${r.drug_summary}`,
+      body: `${r.patient_name} — due ${new Date(r.due_on).toLocaleDateString()}. Send a reminder?`,
       link: "/pharmacy/refills",
       dedupeKey: `refill_due:${r.id}`,
+    });
+  }
+}
+
+interface LicenseRow { id: string; license_type: string; license_number: string; expires_at: string; days_left: number; }
+
+async function scanLicenseExpiry(): Promise<void> {
+  // Pharmacy premises + practising licences lapsing → PPB inspection risk.
+  if (!(await tableExists("pharmacy_licenses"))) return;
+  const rows = await query<LicenseRow>(
+    `SELECT id, license_type, license_number, expires_at,
+            CAST(julianday(expires_at) - julianday('now') AS INTEGER) AS days_left
+     FROM pharmacy_licenses
+     WHERE status != 'renewed'
+       AND julianday(expires_at) - julianday('now') <= 60
+     ORDER BY expires_at ASC
+     LIMIT 20`,
+  ).catch(() => []);
+  for (const r of rows) {
+    const expired = r.days_left < 0;
+    await emit({
+      kind: "license_expiry",
+      severity: expired || r.days_left <= 14 ? "critical" : "warning",
+      title: expired
+        ? `${labelForLicense(r.license_type)} EXPIRED`
+        : `${labelForLicense(r.license_type)} expires in ${r.days_left} day${r.days_left === 1 ? "" : "s"}`,
+      body: `Licence ${r.license_number}. Renew before ${new Date(r.expires_at).toLocaleDateString()} to avoid a PPB compliance finding.`,
+      link: "/settings/pharmacy-licenses",
+      dedupeKey: `license_expiry:${r.id}:${expired ? "expired" : "soon"}`,
+      metadata: { license_id: r.id },
+    });
+  }
+}
+
+function labelForLicense(t: string): string {
+  const map: Record<string, string> = {
+    premises: "Premises registration",
+    pharmacist: "Pharmacist practising licence",
+    ppb_annual: "PPB annual retention",
+    superintendent: "Superintendent attachment",
+    controlled_permit: "Controlled-substances permit",
+    other: "Licence",
+  };
+  return map[t] ?? "Licence";
+}
+
+interface ColdChainRow { id: string; root_cause: string; peak_temperature_c: number; excursion_start: string; }
+
+async function scanColdChain(): Promise<void> {
+  // Unreviewed cold-chain excursions — vaccine/insulin integrity at risk.
+  if (!(await tableExists("cold_chain_analyses"))) return;
+  const rows = await query<ColdChainRow>(
+    `SELECT id, root_cause, peak_temperature_c, excursion_start
+     FROM cold_chain_analyses
+     WHERE reviewed_at IS NULL
+     ORDER BY excursion_start DESC
+     LIMIT 20`,
+  ).catch(() => []);
+  for (const r of rows) {
+    await emit({
+      kind: "cold_chain",
+      severity: "critical",
+      title: `Cold-chain excursion — peak ${r.peak_temperature_c.toFixed(1)}°C`,
+      body: `Likely cause: ${r.root_cause.replace(/_/g, " ")}. Review + confirm affected stock before dispensing.`,
+      link: "/pharmacy/cold-chain",
+      dedupeKey: `cold_chain:${r.id}`,
+      metadata: { analysis_id: r.id },
     });
   }
 }
@@ -136,5 +208,7 @@ export async function runAllScanners(): Promise<void> {
     scanLowStock(),
     scanUnpaidInvoices(),
     scanRefillsDue(),
+    scanLicenseExpiry(),
+    scanColdChain(),
   ]);
 }
