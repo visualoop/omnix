@@ -57,6 +57,31 @@ export async function writeOffBatch(input: WriteOffInput): Promise<void> {
   await execute(`UPDATE batches SET quantity = 0 WHERE id = ?1`, [batch.id])
 }
 
+/**
+ * Bulk write-off of every EXPIRED batch (expiry_date already past). Skips
+ * controlled substances — those require a witnessed-destruction record
+ * (see services/controlled-disposal.ts), not a silent write-off. Returns
+ * how many were written off and how many controlled batches were skipped.
+ */
+export async function writeOffExpiredBatches(userId: string): Promise<{ written: number; skippedControlled: number }> {
+  const rows = await query<{ id: string; is_controlled: number }>(
+    `SELECT b.id AS id, COALESCE(pp.is_controlled, 0) AS is_controlled
+       FROM batches b
+       LEFT JOIN pharmacy_products pp ON pp.product_id = b.product_id
+      WHERE b.quantity > 0
+        AND b.expiry_date IS NOT NULL
+        AND date(b.expiry_date) < date('now')`,
+  );
+  let written = 0;
+  let skippedControlled = 0;
+  for (const r of rows) {
+    if (r.is_controlled === 1) { skippedControlled++; continue; }
+    await writeOffBatch({ batchId: r.id, reason: "expired", userId });
+    written++;
+  }
+  return { written, skippedControlled };
+}
+
 export interface WastageRow {
   reason: WriteOffReason | "unknown"
   product_id: string

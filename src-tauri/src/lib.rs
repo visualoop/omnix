@@ -640,6 +640,12 @@ fn run_inner() {
             sql: include_str!("../migrations/089_customer_address.sql"),
             kind: MigrationKind::Up,
         },
+        Migration {
+            version: 90,
+            description: "Controlled-substance witnessed-destruction disposal records",
+            sql: include_str!("../migrations/090_controlled_disposals.sql"),
+            kind: MigrationKind::Up,
+        },
     ];
 
     tauri::Builder::default()

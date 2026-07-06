@@ -5,7 +5,10 @@ import {
   Trash as Trash2,
 } from "@phosphor-icons/react";
 import { getExpiringItems, type ExpiryItem } from "@/services/pharmacy";
-import { writeOffBatch, type WriteOffReason } from "@/services/wastage";
+import { writeOffBatch, writeOffExpiredBatches, type WriteOffReason } from "@/services/wastage";
+import { confirm } from "@/components/ui/confirm-dialog";
+import { ControlledDisposalDialog } from "@/components/pharmacy/controlled-disposal-dialog";
+import { ShieldWarning } from "@phosphor-icons/react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
@@ -18,6 +21,7 @@ export function ExpiryPage() {
   const [items, setItems] = useState<ExpiryItem[]>([]);
   const [window, setWindow] = useState(90);
   const [target, setTarget] = useState<ExpiryItem | null>(null);
+  const [disposeTarget, setDisposeTarget] = useState<ExpiryItem | null>(null);
   const userId = useAuthStore((s) => s.user?.id ?? null);
 
   const load = () => getExpiringItems(window).then(setItems);
@@ -38,6 +42,36 @@ export function ExpiryPage() {
             to zero the stock and record the loss in the Wastage report.
           </p>
         </div>
+        <div className="flex items-center gap-2">
+        {expired.length > 0 && (
+          <Button
+            size="sm"
+            variant="outline"
+            className="text-destructive border-destructive/40 hover:bg-destructive/10"
+            onClick={async () => {
+              if (!userId) { toast.error("Not signed in"); return; }
+              const ok = await confirm({
+                title: `Write off all ${expired.length} expired batch${expired.length === 1 ? "" : "es"}?`,
+                description: "Zeroes their stock and records the loss in Wastage. Controlled substances are skipped — dispose of those via a witnessed-destruction record.",
+                confirmText: "Write off expired",
+                cancelText: "Cancel",
+              });
+              if (!ok) return;
+              try {
+                const r = await writeOffExpiredBatches(userId);
+                toast.success(
+                  `Wrote off ${r.written} expired batch${r.written === 1 ? "" : "es"}` +
+                  (r.skippedControlled > 0 ? ` · ${r.skippedControlled} controlled skipped (needs witnessed destruction)` : ""),
+                );
+                load();
+              } catch (e) {
+                toast.error(String(e));
+              }
+            }}
+          >
+            <Trash2 className="h-3.5 w-3.5 mr-1.5" /> Write off all expired ({expired.length})
+          </Button>
+        )}
         <div className="flex gap-1 border border-border rounded-md p-0.5">
           {[30, 60, 90, 180].map((d) => (
             <button
@@ -50,6 +84,7 @@ export function ExpiryPage() {
               {d}d
             </button>
           ))}
+        </div>
         </div>
       </div>
 
@@ -94,14 +129,26 @@ export function ExpiryPage() {
                     )}
                   </td>
                   <td className="px-4 py-2.5 text-right">
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      className="h-7 text-[11px] text-muted-foreground hover:text-destructive"
-                      onClick={() => setTarget(item)}
-                    >
-                      <Trash2 className="h-3 w-3 mr-1" /> Write off
-                    </Button>
+                    {item.is_controlled ? (
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-7 text-[11px] text-amber-700 hover:text-amber-800"
+                        onClick={() => setDisposeTarget(item)}
+                        title="Controlled substance — requires witnessed destruction"
+                      >
+                        <ShieldWarning className="h-3 w-3 mr-1" /> Dispose (witnessed)
+                      </Button>
+                    ) : (
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-7 text-[11px] text-muted-foreground hover:text-destructive"
+                        onClick={() => setTarget(item)}
+                      >
+                        <Trash2 className="h-3 w-3 mr-1" /> Write off
+                      </Button>
+                    )}
                   </td>
                 </tr>
               ))}
@@ -115,6 +162,11 @@ export function ExpiryPage() {
         onClose={() => setTarget(null)}
         onSaved={() => { setTarget(null); load(); }}
         userId={userId}
+      />
+      <ControlledDisposalDialog
+        item={disposeTarget}
+        onClose={() => setDisposeTarget(null)}
+        onSaved={() => { setDisposeTarget(null); load(); }}
       />
     </div>
   );

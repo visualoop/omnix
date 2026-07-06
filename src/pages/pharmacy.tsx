@@ -300,7 +300,7 @@ export function PharmacyPage() {
                                 duration: 8000,
                                 action: {
                                   label: "Configure printer",
-                                  onClick: () => navigate("/settings/print"),
+                                  onClick: () => navigate("/settings/printing"),
                                 },
                               });
                             } else {

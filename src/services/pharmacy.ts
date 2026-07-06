@@ -375,6 +375,7 @@ export interface ExpiryItem {
   quantity: number;
   expiry_date: string;
   days_to_expiry: number;
+  is_controlled: number;
 }
 
 export async function getExpiringItems(daysWindow: number = 90): Promise<ExpiryItem[]> {
@@ -386,9 +387,11 @@ export async function getExpiringItems(daysWindow: number = 90): Promise<ExpiryI
        COALESCE(b.batch_number, '—') as batch_number,
        b.quantity,
        b.expiry_date,
-       CAST(julianday(b.expiry_date) - julianday('now') AS INTEGER) as days_to_expiry
+       CAST(julianday(b.expiry_date) - julianday('now') AS INTEGER) as days_to_expiry,
+       COALESCE(pp.is_controlled, 0) as is_controlled
      FROM batches b
      JOIN products p ON p.id = b.product_id
+     LEFT JOIN pharmacy_products pp ON pp.product_id = p.id
      WHERE b.expiry_date IS NOT NULL 
        AND b.quantity > 0
        AND julianday(b.expiry_date) - julianday('now') <= ?1
