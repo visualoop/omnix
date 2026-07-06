@@ -34,7 +34,7 @@ async function scanExpiring(): Promise<void> {
       severity: r.days_left < 7 ? "critical" : "warning",
       title: `${r.product_name} expires in ${r.days_left} day${r.days_left === 1 ? "" : "s"}`,
       body: `Batch on shelf. Consider discount or write-off before ${new Date(r.expiry_date).toLocaleDateString()}.`,
-      link: "/expiry",
+      link: "/pharmacy/expiry",
       dedupeKey: `expiry:${r.batch_id}`,
       metadata: { batch_id: r.batch_id, sku: r.sku },
     });
@@ -121,7 +121,7 @@ async function scanRefillsDue(): Promise<void> {
       severity: "info",
       title: `Refill due: ${r.drug_name}`,
       body: `${r.patient_name} — ${new Date(r.refill_date).toLocaleDateString()}. Send a WhatsApp reminder?`,
-      link: "/refills",
+      link: "/pharmacy/refills",
       dedupeKey: `refill_due:${r.id}`,
     });
   }
