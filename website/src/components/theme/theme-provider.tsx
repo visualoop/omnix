@@ -6,7 +6,7 @@
  * Decisions:
  *   - attribute="class" — flips a `.dark` class on <html>. Matches the
  *     globals.css structure (light = default, dark = .dark override).
- *   - defaultTheme="light" — Kenyan SME owners shop in daylight on
+ *   - defaultTheme="dark" — Kenyan SME owners shop in daylight on
  *     uncalibrated screens; cream + espresso is the more legible
  *     starting point. Users can opt into dark via the header toggle or
  *     OS preference (when enableSystem is true).
@@ -22,7 +22,7 @@ export function ThemeProvider({ children, ...props }: ThemeProviderProps) {
   return (
     <NextThemesProvider
       attribute="class"
-      defaultTheme="light"
+      defaultTheme="dark"
       enableSystem
       disableTransitionOnChange
       {...props}
