@@ -471,7 +471,7 @@ export function POSSalePage() {
       {quoteMode ? (
         <div className="flex items-center gap-3 px-5 py-1.5 text-[12px] bg-amber-500/15 border-b border-amber-500/30 text-amber-950 dark:text-amber-200 flex-shrink-0">
           <span className="inline-flex items-center gap-1.5 font-medium">
-            <span className="inline-block h-1.5 w-1.5 rounded-full bg-amber-500 animate-pulse" />
+            <span className="inline-block h-1.5 w-1.5 rounded-full bg-amber-500" />
             Quotation mode
           </span>
           <span className="text-amber-900/70 dark:text-amber-200/70">
@@ -569,23 +569,28 @@ export function POSSalePage() {
 
         {/* Quick action toolbar */}
         <div className="px-4 pb-2 flex items-center gap-1.5 flex-wrap">
+          {/* Shift */}
           {!shift ? (
             <ActionPill icon={Unlock} label="Open Shift" onClick={() => setOpenShiftDialog(true)} variant="success" />
           ) : (
             <ActionPill icon={Lock} label="Close Day" onClick={() => setCloseShiftDialog(true)} />
           )}
+          <ToolbarDivider />
+          {/* Current sale */}
           <ActionPill icon={Pause} label="Park" hotkey="F2" badge={heldCount} onClick={() => setHeldOpen(true)} />
-          <ActionPill icon={RotateCcw} label="Returns" onClick={() => setReturnOpen(true)} />
           <ActionPill icon={Percent} label="Discount" hotkey="F3" onClick={() => setDiscountOpen(true)} disabled={items.length === 0} />
           <ActionPill icon={Tag} label="Promo" onClick={() => setPromoOpen(true)} disabled={items.length === 0} />
-          <ActionPill icon={Banknote} label="Petty Cash" onClick={() => setPettyCashDialog(true)} disabled={!shift} />
           <ActionPill icon={Heart} label="Tip" onClick={() => setTipDialog(true)} disabled={items.length === 0} value={tip > 0 ? KES(tip) : undefined} />
-          <ActionPill icon={Monitor} label="Customer Display" onClick={() => openCustomerDisplay().catch(console.error)} />
-          <ActionPill icon={FileText} label="Z-Report" onClick={() => navigate("/reports/zreport")} />
           <ActionPill icon={Calculator} label="Qty ×N"
             value={qtyMultiplier > 1 ? `×${qtyMultiplier}` : undefined}
             onClick={() => setQtyMultiplierOpen(true)}
           />
+          <ToolbarDivider />
+          {/* Tools */}
+          <ActionPill icon={RotateCcw} label="Returns" onClick={() => setReturnOpen(true)} />
+          <ActionPill icon={Banknote} label="Petty Cash" onClick={() => setPettyCashDialog(true)} disabled={!shift} />
+          <ActionPill icon={Monitor} label="Customer Display" onClick={() => openCustomerDisplay().catch(console.error)} />
+          <ActionPill icon={FileText} label="Z-Report" onClick={() => navigate("/reports/zreport")} />
           <div className="flex-1" />
           <ActionPill icon={Trash2} label="Clear" hotkey="F1" onClick={clear} disabled={items.length === 0} variant="danger" />
         </div>
@@ -643,7 +648,7 @@ export function POSSalePage() {
                 </button>
               ) : (
                 <span className="inline-flex items-center gap-1 px-1.5 text-[10px] text-muted-foreground select-none shrink-0">
-                  <span className="size-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                  <span className="size-1.5 rounded-full bg-emerald-500" />
                   Scanner ready
                 </span>
               )}
@@ -869,6 +874,10 @@ function Stat({ icon: Icon, label, value }: { icon: typeof Receipt; label: strin
       </span>
     </div>
   );
+}
+
+function ToolbarDivider() {
+  return <span className="mx-1 h-5 w-px self-center bg-white/15" aria-hidden />;
 }
 
 function ActionPill({

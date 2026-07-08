@@ -50,7 +50,7 @@ export function ServicePeriodBadge({ className }: { className?: string }) {
       >
         {session ? (
           <>
-            <span className="inline-block h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+            <span className="inline-block h-1.5 w-1.5 rounded-full bg-emerald-500" />
             <span className="font-medium">{session.period_name ?? "Shift"}</span>
             <Badge variant="outline" className="text-[9px]">open</Badge>
           </>
