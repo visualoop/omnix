@@ -12,6 +12,13 @@ export interface CartItem {
   /** When this line came from a hospitality menu item, the menu_items.id —
    *  used to consume recipe ingredients on sale completion (kind=menu_item). */
   menu_item_id?: string | null;
+  /** When this line is a serialized equipment unit, the equipment_units.id.
+   *  After the sale completes, this unit is flipped to `sold` with a per-unit
+   *  warranty (see finalizeEquipmentSale). Serial-tracked lines are always
+   *  qty 1 and never merge with another line. */
+  equipment_unit_id?: string | null;
+  /** Serial number of the equipment unit on this line (display + receipt). */
+  serial?: string | null;
   name: string;
   quantity: number;
   unit_price: number;

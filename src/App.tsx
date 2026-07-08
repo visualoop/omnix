@@ -161,7 +161,7 @@ import { ModulesPage } from "@/pages/modules";
 import { AppearanceSettingsPage } from "@/pages/settings-appearance";
 import {
   HardwareQuotationsPage, HardwareDeliveryNotesPage,
-  HardwareAccountsPage, HardwareCommissionsPage, HardwareReportsPage,
+  HardwareAccountsPage, HardwareCommissionsPage, HardwareReportsPage, HardwareFleetPage,
 } from "@/pages/hardware";
 import { HardwareSettingsPage } from "@/pages/settings-hardware";
 import {
@@ -474,6 +474,7 @@ function AppContent() {
           <Route path="/hardware/accounts" element={<RequireRole permission="hardware.accounts.manage"><HardwareAccountsPage /></RequireRole>} />
           <Route path="/hardware/commissions" element={<RequireRole permission="hardware.commissions.view"><HardwareCommissionsPage /></RequireRole>} />
           <Route path="/hardware/reports" element={<RequireRole permission="hardware.reports.view"><HardwareReportsPage /></RequireRole>} />
+          <Route path="/hardware/fleet" element={<RequireRole permission="hardware.equipment.manage"><HardwareFleetPage /></RequireRole>} />
           {/* Hospitality module */}
           <Route path="/hospitality/dashboard" element={<RequireRole permission="hospitality.reports.view"><HospitalityDashboardPage /></RequireRole>} />
           <Route path="/hospitality/tables" element={<RequireRole permission="hospitality.tables.manage"><HospitalityTablesPage /></RequireRole>} />

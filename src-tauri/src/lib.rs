@@ -646,6 +646,12 @@ fn run_inner() {
             sql: include_str!("../migrations/090_controlled_disposals.sql"),
             kind: MigrationKind::Up,
         },
+        Migration {
+            version: 91,
+            description: "Equipment units registry + product serial/warranty/specs fields",
+            sql: include_str!("../migrations/091_equipment_units.sql"),
+            kind: MigrationKind::Up,
+        },
     ];
 
     tauri::Builder::default()

@@ -300,6 +300,17 @@ export function PaymentModal({ open, onClose }: Props) {
         await markQuotePaidFromPos(saleSnapshot.sourceId, saleId);
       }
 
+      // Serialized equipment: flip each unit on the ticket to `sold` with a
+      // per-unit warranty. Best-effort — never fails the completed sale.
+      if (saleSnapshot.items.some((it) => it.equipment_unit_id)) {
+        try {
+          const { finalizeEquipmentSale } = await import("@/services/equipment");
+          await finalizeEquipmentSale(saleSnapshot.items, saleId, saleSnapshot.customerId);
+        } catch (e) {
+          console.error("finalizeEquipmentSale failed", e);
+        }
+      }
+
       // Hardware contractor credit: post charge to account ledger
       const creditPayments = finalPayments.filter((p) => p.method_id === "credit");
       if (creditPayments.length > 0 && saleSnapshot.customerId) {

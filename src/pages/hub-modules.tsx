@@ -36,6 +36,7 @@ import {
   Users as UsersIcon,
   Wallet as WalletIcon,
   Flame,
+  Wrench,
 } from "@phosphor-icons/react";
 import { HubLayout } from "@/components/layout/hub-layout";
 import { useCountry } from "@/stores/country";
@@ -60,6 +61,7 @@ import { ShrinkagePage } from "@/pages/retail-shrinkage";
 import {
   HardwareDashboardPage, HardwareQuotationsPage, HardwareDeliveryNotesPage,
   HardwareAccountsPage, HardwareCommissionsPage, HardwareReportsPage,
+  HardwareFleetPage,
 } from "@/pages/hardware";
 
 import {
@@ -165,6 +167,7 @@ export function HardwareHubPage() {
         { id: "overview", label: "Overview", icon: LayoutDashboard, component: HardwareDashboardPage, permission: "hardware.reports.view" },
         { id: "quotations", label: "Quotations", icon: FileText, component: HardwareQuotationsPage, permission: "hardware.quotations.manage" },
         { id: "delivery-notes", label: "Delivery notes", icon: FileSignature, component: HardwareDeliveryNotesPage, permission: "hardware.delivery_notes.manage" },
+        { id: "fleet", label: "Fleet & Units", icon: Wrench, component: HardwareFleetPage, permission: "hardware.equipment.manage" },
         { id: "accounts", label: "Accounts", icon: UsersIcon, component: HardwareAccountsPage, permission: "hardware.accounts.manage" },
         { id: "commissions", label: "Commissions", icon: WalletIcon, component: HardwareCommissionsPage, permission: "hardware.accounts.manage" },
         { id: "reports", label: "Reports", icon: BarChart3, component: HardwareReportsPage, permission: "hardware.reports.view" },

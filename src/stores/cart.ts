@@ -23,6 +23,11 @@ interface CartProduct {
   variant_label?: string;
   /** Category id — drives the per-line accent strip + lettermark colour. */
   category_id?: string | null;
+  /** Serialized equipment unit id — when set, the line is a unique physical
+   *  unit (qty 1, never merged) that will be flipped to `sold` after checkout. */
+  equipment_unit_id?: string;
+  /** Serial number for the equipment unit (display). */
+  serial?: string;
 }
 
 interface CartPayload {
@@ -173,6 +178,33 @@ export const useCartStore = create<CartState>()(
 
       addItemWithQuantity: (product, quantity) => {
         const qty = Math.max(1, quantity || 1);
+        // Serialized equipment: one physical unit per line. Never merge with
+        // an existing line, never exceed qty 1 — each unit is unique.
+        if (product.equipment_unit_id) {
+          set((state) => {
+            if (state.items.some((i) => i.equipment_unit_id === product.equipment_unit_id)) {
+              return state; // that exact unit is already on the ticket
+            }
+            const item: CartItem = {
+              id: crypto.randomUUID(),
+              product_id: product.id,
+              variant_id: product.variant_id ?? null,
+              equipment_unit_id: product.equipment_unit_id,
+              serial: product.serial ?? null,
+              name: product.serial ? `${product.name} · SN ${product.serial}` : product.name,
+              quantity: 1,
+              unit_price: product.selling_price,
+              discount: 0,
+              tax_rate: product.tax_rate,
+              total: product.selling_price,
+              stock_qty: 1,
+              variant_label: product.variant_label,
+              category_id: product.category_id ?? null,
+            };
+            return { items: [...state.items, item], revision: nextRevision(state) };
+          });
+          return;
+        }
         set((state) => {
           const existing = state.items.find((i) => i.product_id === product.id && i.unit_price === product.selling_price);
           // Stock cap: a finite stock_qty caps the total cart line.

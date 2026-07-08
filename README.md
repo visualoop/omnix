@@ -14,10 +14,11 @@ licensing, multi-device sync).
 |--------|--------|-------------|
 | **Core** | ✅ Built | Inventory, POS, customers, suppliers, purchases, accounting, reports |
 | **Dawa** (Pharmacy) | ✅ Built | Prescriptions, expiry, drug interactions, controlled substances, patient profiles |
-| **Hardware Store** | 🗓️ Planned | Bulk pricing tiers, parts catalog, contractor accounts |
+| **Retail** (Soko) | ✅ Built | Variants, price lists, loyalty, promotions, layby, shelf labels |
+| **Hardware & Equipment** | ✅ Built | Bulk pricing, contractor accounts, quotations, delivery notes — plus serialized equipment units, specs, per-unit warranty & rental |
+| **Hospitality** | ✅ Built | Tables, KOT/kitchen, recipe costing, rooms, bookings, folios |
 | **Electronics** | 🗓️ Planned | IMEI/serial tracking, warranty, repairs |
 | **Salon / Spa** | 🗓️ Planned | Appointments, services, staff commissions |
-| **Restaurant** | 🗓️ Planned | KOT, table management, recipe costing |
 
 The first module shipping is **Dawa** because pharmacy compliance (KRA eTIMS + SHA insurance)
 is the most demanding regulatory load in Kenya — get that right and other verticals fall out

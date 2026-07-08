@@ -34,6 +34,7 @@ import {
 } from "@/services/retail";
 import { useActiveModule } from "@/stores/active-module";
 import { execute } from "@/lib/db";
+import { setProductEquipment, parseSpecs, type EquipmentSpecs } from "@/services/equipment";
 
 interface Props {
   open: boolean;
@@ -44,6 +45,7 @@ interface Props {
 
 export function ProductPanel({ open, onClose, productId, onSaved }: Props) {
   const activeModule = useActiveModule((s) => s.active);
+  const eqSpecs = (p: unknown): EquipmentSpecs => parseSpecs((p as { specs_json?: string | null }).specs_json);
   const [categories, setCategories] = useState<Category[]>([]);
   const [brands, setBrands] = useState<BrandWithStats[]>([]);
   const [variants, setVariants] = useState<ProductVariant[]>([]);
@@ -59,12 +61,17 @@ export function ProductPanel({ open, onClose, productId, onSaved }: Props) {
     // retail extras
     brand_id: "" as string | null, sku_short: "",
     unit_of_sale: "piece", sold_by_weight: false, price_per_unit: "",
+    // equipment (hardware & equipment module)
+    equip_tracked: false, equip_warranty_months: "",
+    equip_make: "", equip_model: "", equip_category: "",
+    equip_engine_power: "", equip_fuel: "", equip_weight: "", equip_rating: "",
   });
   const [pharma, setPharma] = useState({
     generic_name: "", brand_name: "", dosage_form: "", strength: "",
     manufacturer: "", requires_prescription: false, is_controlled: false,
   });
   const [saving, setSaving] = useState(false);
+  const [wasEquip, setWasEquip] = useState(false);   // product was serial-tracked when loaded
   const isEdit = !!effectiveProductId;
 
   // Sync prop → state when the panel is opened with a different product
@@ -97,7 +104,17 @@ export function ProductPanel({ open, onClose, productId, onSaved }: Props) {
             unit_of_sale: (p as any).unit_of_sale || "piece",
             sold_by_weight: (p as any).sold_by_weight === 1,
             price_per_unit: (p as any).price_per_unit ? String((p as any).price_per_unit) : "",
+            equip_tracked: (p as any).tracked_by_serial === 1,
+            equip_warranty_months: (p as any).warranty_months != null ? String((p as any).warranty_months) : "",
+            equip_make: eqSpecs(p).make || "",
+            equip_model: eqSpecs(p).model || "",
+            equip_category: eqSpecs(p).category || "",
+            equip_engine_power: eqSpecs(p).engine_power || "",
+            equip_fuel: eqSpecs(p).fuel || "",
+            equip_weight: eqSpecs(p).operating_weight || "",
+            equip_rating: eqSpecs(p).rating || "",
           });
+          setWasEquip((p as any).tracked_by_serial === 1);
         });
         getPharmacyProduct(productId).then((pp) => {
           if (pp) setPharma({
@@ -116,8 +133,12 @@ export function ProductPanel({ open, onClose, productId, onSaved }: Props) {
           buying_price: "", selling_price: "", reorder_level: "10", initial_stock: "",
           brand_id: "", sku_short: "", unit_of_sale: "piece",
           sold_by_weight: false, price_per_unit: "",
+          equip_tracked: false, equip_warranty_months: "",
+          equip_make: "", equip_model: "", equip_category: "",
+          equip_engine_power: "", equip_fuel: "", equip_weight: "", equip_rating: "",
         });
         setPharma({ generic_name: "", brand_name: "", dosage_form: "", strength: "", manufacturer: "", requires_prescription: false, is_controlled: false });
+        setWasEquip(false);
         setVariants([]);
       }
       setTab("general");
@@ -192,6 +213,25 @@ export function ProductPanel({ open, onClose, productId, onSaved }: Props) {
           cold_chain: 0,
         });
       }
+
+      // Equipment config (hardware & equipment module). Only touched when
+      // the product is/was serial-tracked, so ordinary catalog edits never
+      // require the equipment permission.
+      if (savedId && activeModule === "hardware" && (form.equip_tracked || wasEquip)) {
+        const specs: EquipmentSpecs = {};
+        if (form.equip_make) specs.make = form.equip_make;
+        if (form.equip_model) specs.model = form.equip_model;
+        if (form.equip_category) specs.category = form.equip_category;
+        if (form.equip_engine_power) specs.engine_power = form.equip_engine_power;
+        if (form.equip_fuel) specs.fuel = form.equip_fuel;
+        if (form.equip_weight) specs.operating_weight = form.equip_weight;
+        if (form.equip_rating) specs.rating = form.equip_rating;
+        await setProductEquipment(savedId, {
+          tracked_by_serial: form.equip_tracked,
+          warranty_months: form.equip_warranty_months ? parseInt(form.equip_warranty_months) : null,
+          specs,
+        });
+      }
       const wasCreate = !isEdit;
       onSaved(savedId ?? undefined);
       if (wasCreate && activeModule === "retail" && savedId) {
@@ -232,6 +272,7 @@ export function ProductPanel({ open, onClose, productId, onSaved }: Props) {
               {activeModule === "retail" && (
                 <TabsTrigger value="uoms">Cartons / Packs</TabsTrigger>
               )}
+              {activeModule === "hardware" && <TabsTrigger value="equipment">Equipment</TabsTrigger>}
             </TabsList>
 
             <TabsPanel value="general" className="mt-3 space-y-3">
@@ -487,6 +528,70 @@ export function ProductPanel({ open, onClose, productId, onSaved }: Props) {
                       Pack / carton barcodes, weights, and per-pack pricing are stored per product. Click <strong>Create</strong> first — then come back to add packs.
                     </p>
                   </div>
+                )}
+              </TabsPanel>
+            )}
+
+            {activeModule === "hardware" && (
+              <TabsPanel value="equipment" className="mt-3 space-y-4">
+                <div className="flex items-start justify-between gap-3 rounded-lg border border-border p-3">
+                  <div className="space-y-0.5">
+                    <div className="text-[13px] font-medium">Track by serial number</div>
+                    <p className="text-[11px] text-muted-foreground max-w-sm leading-relaxed">
+                      For machines and equipment. Each physical unit is received and sold
+                      by its own serial number, with a per-unit warranty and service history.
+                    </p>
+                  </div>
+                  <Switch
+                    checked={form.equip_tracked}
+                    onCheckedChange={(c: boolean) => update("equip_tracked", c)}
+                  />
+                </div>
+
+                {form.equip_tracked && (
+                  <>
+                    <Field label="Default warranty (months)">
+                      <Input
+                        type="number"
+                        min="0"
+                        value={form.equip_warranty_months}
+                        onChange={(e) => update("equip_warranty_months", e.target.value)}
+                        placeholder="e.g. 12"
+                        className="max-w-[160px]"
+                      />
+                    </Field>
+
+                    <div className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground pt-1">
+                      Specifications
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <Field label="Make">
+                        <Input value={form.equip_make} onChange={(e) => update("equip_make", e.target.value)} placeholder="e.g. Caterpillar" />
+                      </Field>
+                      <Field label="Model">
+                        <Input value={form.equip_model} onChange={(e) => update("equip_model", e.target.value)} placeholder="e.g. 320D" />
+                      </Field>
+                      <Field label="Category">
+                        <Input value={form.equip_category} onChange={(e) => update("equip_category", e.target.value)} placeholder="e.g. Excavator, Generator" />
+                      </Field>
+                      <Field label="Rating / capacity">
+                        <Input value={form.equip_rating} onChange={(e) => update("equip_rating", e.target.value)} placeholder="e.g. 30 kVA, 0.9 m³" />
+                      </Field>
+                      <Field label="Engine power">
+                        <Input value={form.equip_engine_power} onChange={(e) => update("equip_engine_power", e.target.value)} placeholder="e.g. 90 kW / 121 HP" />
+                      </Field>
+                      <Field label="Fuel">
+                        <Input value={form.equip_fuel} onChange={(e) => update("equip_fuel", e.target.value)} placeholder="diesel / petrol / electric" />
+                      </Field>
+                      <Field label="Operating weight">
+                        <Input value={form.equip_weight} onChange={(e) => update("equip_weight", e.target.value)} placeholder="e.g. 20,000 kg" />
+                      </Field>
+                    </div>
+                    <p className="text-[11px] text-muted-foreground leading-relaxed">
+                      Specs describe the model. Serial, engine/chassis number, year and hours
+                      are captured per unit when you receive stock.
+                    </p>
+                  </>
                 )}
               </TabsPanel>
             )}

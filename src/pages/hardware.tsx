@@ -7,6 +7,9 @@ import {
   Plus,
   Truck,
   Users,
+  Wrench,
+  ShieldCheck,
+  MagnifyingGlass as Search,
 } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -30,6 +33,12 @@ import { CommissionRuleDialog } from "@/components/hardware/commission-rule-dial
 import { DeliveryNoteDialog } from "@/components/hardware/delivery-note-dialog";
 import { DispatchDialog } from "@/components/hardware/dispatch-dialog";
 import { AgingBucketSheet } from "@/components/hardware/aging-bucket-sheet";
+import { ReceiveUnitsDialog } from "@/components/hardware/receive-units-dialog";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import {
+  listUnits, countByStatus, warrantyState, warrantyDaysRemaining, specSummary,
+  parseSpecs, type EquipmentUnit, type UnitStatus, type WarrantyState,
+} from "@/services/equipment";
 import {
   moduleAccent, ModuleMasthead, ModuleStat, ModuleTable, ModuleTHead,
   ModuleEmpty, ModuleSpinner,
@@ -681,6 +690,212 @@ export function HardwareReportsPage() {
         </Card>
       )}
       <AgingBucketSheet open={reportBucket !== null} onClose={() => setReportBucket(null)} bucket={reportBucket} />
+    </div>
+  );
+}
+
+
+// ─── Equipment fleet / units ─────────────────────────────────────────────────
+
+const UNIT_STATUS_STYLE: Record<UnitStatus, string> = {
+  in_stock: "bg-emerald-500/10 text-emerald-600",
+  reserved: "bg-amber-500/10 text-amber-600",
+  sold: "bg-blue-500/10 text-blue-600",
+  rented: "bg-violet-500/10 text-violet-600",
+  in_service: "bg-orange-500/10 text-orange-600",
+  written_off: "bg-red-500/10 text-red-600",
+};
+
+const WARRANTY_STYLE: Record<WarrantyState, string> = {
+  none: "bg-muted text-muted-foreground",
+  active: "bg-emerald-500/10 text-emerald-600",
+  expiring: "bg-amber-500/10 text-amber-600",
+  expired: "bg-red-500/10 text-red-600",
+};
+
+function warrantyLabel(u: EquipmentUnit): { state: WarrantyState; text: string } {
+  const state = warrantyState(u.warranty_expiry);
+  if (state === "none") return { state, text: "—" };
+  const days = warrantyDaysRemaining(u.warranty_expiry);
+  if (state === "expired") return { state, text: "Expired" };
+  return { state, text: days != null ? `${days}d left` : "Active" };
+}
+
+export function HardwareFleetPage() {
+  const [units, setUnits] = useState<EquipmentUnit[]>([]);
+  const [counts, setCounts] = useState<Record<UnitStatus, number> | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState<UnitStatus | null>(null);
+  const [receiveOpen, setReceiveOpen] = useState(false);
+  const [detail, setDetail] = useState<EquipmentUnit | null>(null);
+  const user = useAuthStore((s) => s.user);
+  const canManage = hasPermission(user, "hardware.equipment.manage");
+
+  const load = () => {
+    setLoading(true);
+    Promise.all([
+      listUnits({ search: search.trim() || undefined, status: statusFilter ?? undefined, limit: 500 }),
+      countByStatus(),
+    ])
+      .then(([u, c]) => { setUnits(u); setCounts(c); })
+      .finally(() => setLoading(false));
+  };
+  // Reload on filter/search change (search is server-side).
+  useEffect(() => {
+    const t = setTimeout(load, search ? 200 : 0);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [search, statusFilter]);
+
+  return (
+    <div>
+      <ModuleMasthead
+        accent={ACCENT}
+        eyebrow="Hardware · Equipment"
+        title="Fleet & Units"
+        subtitle="Every serialized machine — stock, warranty and service status."
+        actions={canManage ? (
+          <Button size="sm" className={cn("cursor-pointer", BRAND_BTN)} onClick={() => setReceiveOpen(true)}>
+            <Plus className="h-3.5 w-3.5 mr-1.5" /> Receive units
+          </Button>
+        ) : undefined}
+      />
+
+      <ReceiveUnitsDialog open={receiveOpen} onClose={() => setReceiveOpen(false)} onSaved={load} />
+      <UnitDetailSheet unit={detail} onClose={() => setDetail(null)} />
+
+      {/* Warranty lookup + filters */}
+      <div className="flex flex-wrap items-center gap-2 mb-3">
+        <div className="relative max-w-[280px] w-full">
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
+          <Input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Warranty lookup — serial, engine, chassis…"
+            className="h-8 text-xs pl-8"
+          />
+        </div>
+        <div className="flex flex-wrap items-center gap-1">
+          <StatusChip label="All" active={statusFilter === null} onClick={() => setStatusFilter(null)} />
+          {(["in_stock", "reserved", "sold", "rented", "in_service"] as const).map((s) => (
+            <StatusChip
+              key={s}
+              label={`${s.replace("_", " ")}${counts ? ` ${counts[s]}` : ""}`}
+              active={statusFilter === s}
+              onClick={() => setStatusFilter(s)}
+            />
+          ))}
+        </div>
+      </div>
+
+      {loading ? <ModuleSpinner /> : units.length === 0 ? (
+        <ModuleEmpty
+          icon={Wrench}
+          title={search ? "No unit matches that serial" : "No units yet"}
+          hint={search ? "Check the serial number, or receive the unit first." : "Turn on “Track by serial” on an equipment product, then receive units here."}
+        />
+      ) : (
+        <ModuleTable>
+          <ModuleTHead>
+            <tr>
+              <th className="text-left px-3 py-2">Serial</th>
+              <th className="text-left px-3 py-2">Product</th>
+              <th className="text-left px-3 py-2">Specs</th>
+              <th className="text-left px-3 py-2">Status</th>
+              <th className="text-left px-3 py-2">Warranty</th>
+            </tr>
+          </ModuleTHead>
+          <tbody>
+            {units.map((u) => {
+              const w = warrantyLabel(u);
+              return (
+                <tr
+                  key={u.id}
+                  onClick={() => setDetail(u)}
+                  className="border-t border-border hover:bg-accent/30 transition-colors cursor-pointer"
+                >
+                  <td className="px-3 py-2 font-mono">{u.serial_number}</td>
+                  <td className="px-3 py-2">{u.product_name}</td>
+                  <td className="px-3 py-2 text-muted-foreground truncate max-w-[220px]">{specSummary(u.specs_json) || "—"}</td>
+                  <td className="px-3 py-2"><Badge variant="outline" className={cn("text-[10px] capitalize", UNIT_STATUS_STYLE[u.status])}>{u.status.replace("_", " ")}</Badge></td>
+                  <td className="px-3 py-2"><Badge variant="outline" className={cn("text-[10px]", WARRANTY_STYLE[w.state])}>{w.text}</Badge></td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </ModuleTable>
+      )}
+    </div>
+  );
+}
+
+function UnitDetailSheet({ unit, onClose }: { unit: EquipmentUnit | null; onClose: () => void }) {
+  if (!unit) return null;
+  const specs = parseSpecs(unit.specs_json);
+  const w = warrantyLabel(unit);
+  const specRows = Object.entries(specs).filter(([, v]) => v);
+  return (
+    <Sheet open={!!unit} onOpenChange={(v) => !v && onClose()}>
+      <SheetContent className="w-full sm:w-[480px] sm:max-w-[480px]">
+        <SheetHeader>
+          <SheetTitle className="flex items-center gap-2">
+            <Wrench className="h-4 w-4 text-primary" />
+            <span className="font-mono">{unit.serial_number}</span>
+          </SheetTitle>
+        </SheetHeader>
+        <div className="flex-1 overflow-auto px-1 py-3 space-y-4 text-[13px]">
+          <div className="flex items-center gap-2">
+            <Badge variant="outline" className={cn("text-[10px] capitalize", UNIT_STATUS_STYLE[unit.status])}>{unit.status.replace("_", " ")}</Badge>
+            <Badge variant="outline" className={cn("text-[10px]", WARRANTY_STYLE[w.state])}>
+              <ShieldCheck className="h-3 w-3 mr-1" />Warranty {w.text}
+            </Badge>
+          </div>
+
+          <DetailRow label="Product" value={unit.product_name ?? "—"} />
+          {unit.engine_number ? <DetailRow label="Engine no." value={unit.engine_number} mono /> : null}
+          {unit.chassis_number ? <DetailRow label="Chassis no." value={unit.chassis_number} mono /> : null}
+          {unit.year_of_manufacture ? <DetailRow label="Year" value={String(unit.year_of_manufacture)} /> : null}
+          <DetailRow label="Condition" value={unit.condition} />
+          {unit.meter_value != null ? <DetailRow label="Meter" value={`${unit.meter_value} ${unit.meter_unit ?? ""}`} /> : null}
+          {unit.acquisition_cost != null ? <DetailRow label="Acquisition cost" value={KES(unit.acquisition_cost)} /> : null}
+
+          {specRows.length > 0 && (
+            <div className="pt-1">
+              <div className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1.5">Specifications</div>
+              <div className="rounded-md border border-border divide-y divide-border">
+                {specRows.map(([k, v]) => (
+                  <DetailRow key={k} label={k.replace(/_/g, " ")} value={String(v)} inset />
+                ))}
+              </div>
+            </div>
+          )}
+
+          {unit.status === "sold" && (
+            <div className="pt-1">
+              <div className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1.5">Sale & warranty</div>
+              <div className="rounded-md border border-border divide-y divide-border">
+                {unit.customer_name ? <DetailRow label="Sold to" value={unit.customer_name} inset /> : null}
+                {unit.sold_at ? <DetailRow label="Sold on" value={unit.sold_at.slice(0, 10)} inset /> : null}
+                {unit.warranty_months != null ? <DetailRow label="Warranty" value={`${unit.warranty_months} months`} inset /> : null}
+                {unit.warranty_start ? <DetailRow label="Starts" value={unit.warranty_start.slice(0, 10)} inset /> : null}
+                {unit.warranty_expiry ? <DetailRow label="Expires" value={unit.warranty_expiry.slice(0, 10)} inset /> : null}
+              </div>
+            </div>
+          )}
+
+          {unit.notes ? <DetailRow label="Notes" value={unit.notes} /> : null}
+        </div>
+      </SheetContent>
+    </Sheet>
+  );
+}
+
+function DetailRow({ label, value, mono, inset }: { label: string; value: string; mono?: boolean; inset?: boolean }) {
+  return (
+    <div className={cn("flex items-baseline justify-between gap-3", inset ? "px-3 py-2" : "")}>
+      <span className="text-[11px] uppercase tracking-wider text-muted-foreground capitalize shrink-0">{label}</span>
+      <span className={cn("text-right", mono && "font-mono")}>{value}</span>
     </div>
   );
 }

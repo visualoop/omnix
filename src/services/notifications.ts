@@ -24,6 +24,7 @@ export type NotificationKind =
   | "po_ready"
   | "refill_due"
   | "license_expiry"
+  | "warranty_expiry"
   | "variance"
   | "system";
 

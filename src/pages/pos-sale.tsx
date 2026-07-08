@@ -54,6 +54,8 @@ import { DiscountDialog } from "@/components/pos/discount-dialog";
 import { CustomerPicker } from "@/components/pos/customer-picker";
 import { AllergyAlertBanner } from "@/components/pos/allergy-alert-banner";
 import { VariantPickerDialog } from "@/components/pos/variant-picker";
+import { UnitPickerDialog } from "@/components/pos/unit-picker";
+import { listEquipmentProducts, type EquipmentUnit } from "@/services/equipment";
 import { SubstitutionsDialog } from "@/components/pos/substitutions-dialog";
 import { QtyMultiplierDialog } from "@/components/pos/qty-multiplier-dialog";
 import { OpenShiftDialog, CloseShiftDialog, PettyCashDialog } from "@/components/pos/cash-dialogs";
@@ -143,6 +145,8 @@ export function POSSalePage() {
   const [qtyMultiplier, setQtyMultiplier] = useState(1);
   const [qtyMultiplierOpen, setQtyMultiplierOpen] = useState(false);
   const [pendingVariantPick, setPendingVariantPick] = useState<Product | null>(null);
+  const [equipTrackedIds, setEquipTrackedIds] = useState<Set<string>>(new Set());
+  const [unitPickerFor, setUnitPickerFor] = useState<Product | null>(null);
   const [now, setNow] = useState(new Date());
   const [openShiftDialog, setOpenShiftDialog] = useState(false);
   const [closeShiftDialog, setCloseShiftDialog] = useState(false);
@@ -242,6 +246,13 @@ export function POSSalePage() {
   }, [payOpen]);
 
   useEffect(() => { countHeldSales().then(setHeldCount); }, [heldOpen, payOpen]);
+
+  // Which products are serial-tracked equipment — so adds route through
+  // the unit picker. Loaded once; only relevant in the hardware module.
+  useEffect(() => {
+    if (activeModule !== "hardware") { setEquipTrackedIds(new Set()); return; }
+    listEquipmentProducts().then((ps) => setEquipTrackedIds(new Set(ps.map((p) => p.id)))).catch(() => {});
+  }, [activeModule]);
 
   // Customer price-list resolution (RT-3): when the attached customer changes,
   // re-resolve each cart line's unit price from their assigned price list.
@@ -829,6 +840,14 @@ export function POSSalePage() {
             return;
           }
 
+          // Serial-tracked equipment: route to the unit picker instead of a
+          // plain add, so the cashier chooses which physical unit is sold.
+          if (!variant && equipTrackedIds.has(p.id)) {
+            setUnitPickerFor(p);
+            setPendingVariantPick(null);
+            return;
+          }
+
           if (variant) {
             addItemWithQuantity({
               id: p.id,                                      // PARENT product id (so completeSale can deduct variant stock by joining via the line.variant_id below)
@@ -845,6 +864,27 @@ export function POSSalePage() {
           }
           setQtyMultiplier(1);
           setPendingVariantPick(null);
+        }}
+      />
+      <UnitPickerDialog
+        open={!!unitPickerFor}
+        productId={unitPickerFor?.id ?? null}
+        productName={unitPickerFor?.name ?? ""}
+        onClose={() => setUnitPickerFor(null)}
+        onPick={(unit: EquipmentUnit) => {
+          const p = unitPickerFor;
+          if (p) {
+            addItemWithQuantity({
+              id: p.id,
+              name: p.name,
+              selling_price: p.selling_price,
+              tax_rate: p.tax_rate,
+              category_id: (p as any).category_id ?? null,
+              equipment_unit_id: unit.id,
+              serial: unit.serial_number,
+            }, 1);
+          }
+          setUnitPickerFor(null);
         }}
       />
       <QtyMultiplierDialog

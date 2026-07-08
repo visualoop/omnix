@@ -199,6 +199,41 @@ async function scanColdChain(): Promise<void> {
   }
 }
 
+interface WarrantyRow { id: string; serial_number: string; product_name: string; customer_name: string | null; warranty_expiry: string; days_left: number; }
+
+async function scanWarrantyExpiry(): Promise<void> {
+  // Sold equipment whose per-unit warranty is lapsing → proactive service /
+  // renewal contact before cover ends.
+  if (!(await tableExists("equipment_units"))) return;
+  const rows = await query<WarrantyRow>(
+    `SELECT u.id, u.serial_number, p.name AS product_name, c.name AS customer_name,
+            u.warranty_expiry,
+            CAST(julianday(u.warranty_expiry) - julianday('now') AS INTEGER) AS days_left
+     FROM equipment_units u
+     JOIN products p ON p.id = u.product_id
+     LEFT JOIN customers c ON c.id = u.customer_id
+     WHERE u.warranty_expiry IS NOT NULL
+       AND u.status IN ('sold','in_service','rented')
+       AND julianday(u.warranty_expiry) - julianday('now') <= 30
+     ORDER BY u.warranty_expiry ASC
+     LIMIT 30`,
+  ).catch(() => []);
+  for (const r of rows) {
+    const expired = r.days_left < 0;
+    await emit({
+      kind: "warranty_expiry",
+      severity: expired ? "warning" : r.days_left <= 7 ? "warning" : "info",
+      title: expired
+        ? `Warranty expired — ${r.product_name} (SN ${r.serial_number})`
+        : `Warranty expires in ${r.days_left} day${r.days_left === 1 ? "" : "s"} — ${r.product_name}`,
+      body: `Serial ${r.serial_number}${r.customer_name ? ` · ${r.customer_name}` : ""}. Cover ends ${new Date(r.warranty_expiry).toLocaleDateString()}.`,
+      link: "/hardware/fleet",
+      dedupeKey: `warranty_expiry:${r.id}:${expired ? "expired" : "soon"}`,
+      metadata: { unit_id: r.id },
+    });
+  }
+}
+
 /**
  * Run all scanners. Errors in one don't block others.
  */
@@ -210,5 +245,6 @@ export async function runAllScanners(): Promise<void> {
     scanRefillsDue(),
     scanLicenseExpiry(),
     scanColdChain(),
+    scanWarrantyExpiry(),
   ]);
 }

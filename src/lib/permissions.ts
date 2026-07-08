@@ -102,6 +102,7 @@ export type Permission =
   | "hardware.pricing.manage"
   | "hardware.commissions.view"
   | "hardware.reports.view"
+  | "hardware.equipment.manage"
   // Hospitality
   | "hospitality.tables.manage"
   | "hospitality.orders.take"
@@ -141,7 +142,7 @@ const ALL_PERMISSIONS: Permission[] = [
   "retail.brands.manage", "retail.variants.manage", "retail.price_lists.manage",
   "retail.shrinkage.record", "retail.laybys.use", "retail.special_orders.use",
   "hardware.quotations.manage", "hardware.delivery_notes.manage", "hardware.accounts.manage",
-  "hardware.pricing.manage", "hardware.commissions.view", "hardware.reports.view",
+  "hardware.pricing.manage", "hardware.commissions.view", "hardware.reports.view", "hardware.equipment.manage",
   "hospitality.tables.manage", "hospitality.orders.take", "hospitality.orders.send_kitchen",
   "hospitality.orders.void", "hospitality.kitchen.bump", "hospitality.menu.manage",
   "hospitality.recipes.manage", "hospitality.bookings.manage", "hospitality.checkin.manage",
@@ -176,7 +177,7 @@ const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     "retail.brands.manage", "retail.variants.manage", "retail.price_lists.manage",
     "retail.shrinkage.record", "retail.laybys.use", "retail.special_orders.use",
     "hardware.quotations.manage", "hardware.delivery_notes.manage", "hardware.accounts.manage",
-    "hardware.pricing.manage", "hardware.commissions.view", "hardware.reports.view",
+    "hardware.pricing.manage", "hardware.commissions.view", "hardware.reports.view", "hardware.equipment.manage",
     "hospitality.tables.manage", "hospitality.orders.take", "hospitality.orders.send_kitchen",
     "hospitality.orders.void", "hospitality.kitchen.bump", "hospitality.menu.manage",
     "hospitality.recipes.manage", "hospitality.bookings.manage", "hospitality.checkin.manage",
@@ -320,6 +321,7 @@ export const PERMISSION_CATALOG: PermissionMeta[] = [
   { key: "hardware.pricing.manage", label: "Manage contractor pricing", group: "Hardware", risk: "high" },
   { key: "hardware.commissions.view", label: "View salesperson commissions", group: "Hardware", risk: "normal" },
   { key: "hardware.reports.view", label: "View hardware reports", group: "Hardware", risk: "low" },
+  { key: "hardware.equipment.manage", label: "Manage equipment units, serials & warranty", group: "Hardware", risk: "normal" },
   { key: "hospitality.tables.manage", label: "Manage tables & floor plan", group: "Hospitality", risk: "normal" },
   { key: "hospitality.orders.take", label: "Take orders", group: "Hospitality", risk: "normal" },
   { key: "hospitality.orders.send_kitchen", label: "Send orders to kitchen", group: "Hospitality", risk: "normal" },
