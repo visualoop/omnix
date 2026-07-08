@@ -499,7 +499,7 @@ export function POSSalePage() {
 
       {/* ─── TOP STATUS BAR ─────────────────────────────────────────── */}
       <div className={`${accent.headerBg} text-white flex-shrink-0 shadow-md shadow-black/10`}>
-        <div className="px-5 py-2.5 flex items-center gap-5 text-xs">
+        <div className="px-5 py-3 flex items-center gap-6 text-xs">
           {/* Exit POS — back to dashboard. The fullscreen mode hides the
               sidebar; without this affordance the cashier has no obvious
               way out except keyboard shortcuts. */}
@@ -522,16 +522,14 @@ export function POSSalePage() {
             </span>
           </div>
 
-          {/* Today's stats — bigger, spaced, with live-pulse on revenue */}
-          <div className="flex items-stretch gap-5 text-white/95 pr-2">
+          {/* Today's takings — one calm cluster, hairline-separated. */}
+          <div className="flex items-stretch gap-4 rounded-lg bg-white/[0.06] px-3.5 py-1.5 text-white/95">
             <Stat icon={Receipt} label="Today" value={todayStats ? `${todayStats.count} sales` : "—"} />
-            <div className="relative">
-              <Stat icon={TrendingUp} label="Revenue" value={todayStats ? KES(todayStats.revenue) : "—"} />
-              {todayStats && todayStats.count > 0 ? (
-                <span className="absolute -top-0.5 -right-1.5 h-1.5 w-1.5 rounded-full bg-emerald-300 animate-pulse" />
-              ) : null}
-            </div>
+            <span className="w-px self-stretch bg-white/10" />
+            <Stat icon={TrendingUp} label="Revenue" value={todayStats ? KES(todayStats.revenue) : "—"} />
+            <span className="w-px self-stretch bg-white/10" />
             <Stat icon={Banknote} label="Cash" value={todayStats ? KES(todayStats.cash) : "—"} />
+            <span className="w-px self-stretch bg-white/10" />
             <Stat icon={Smartphone} label="M-Pesa" value={todayStats ? KES(todayStats.mpesa) : "—"} />
           </div>
 
@@ -543,7 +541,7 @@ export function POSSalePage() {
                 className="flex items-center gap-1 bg-accent/50 hover:bg-accent px-2 py-1 rounded transition cursor-pointer"
                 title="Click to close shift / end of day"
               >
-                <span className="h-1.5 w-1.5 rounded-full bg-emerald-300 animate-pulse" />
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-300" />
                 Shift open · {KES(shift.opening_balance)}
               </button>
             ) : (
