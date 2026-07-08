@@ -151,8 +151,8 @@ export function HardwareHubPage() {
   return (
     <HubLayout
       eyebrow="Module"
-      title="Hardware"
-      description="Quotations, deliveries, contractor credit, commissions."
+      title="Hardware & Equipment"
+      description="Sales, quotations, deliveries, contractor credit, commissions — plus equipment, warranty & hire."
       actions={
         has("hardware.quotations.manage") ? (
           <Button onClick={() => navigate("/pos/sale?mode=quote")}>

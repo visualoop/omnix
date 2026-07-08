@@ -75,7 +75,7 @@ export function variantName(v: Variant): string {
     case "hospitality":
       return "Omnix Hospitality";
     case "hardware":
-      return "Omnix Hardware";
+      return "Omnix Hardware & Equipment";
   }
 }
 
@@ -93,7 +93,7 @@ export function variantTagline(v: Variant): string {
     case "hospitality":
       return "Restaurant, bar & lodge POS for Kenya";
     case "hardware":
-      return "Hardware-store POS with quotes & contractors";
+      return "Hardware & equipment: sales, quotes, credit, service & hire";
   }
 }
 

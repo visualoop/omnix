@@ -26,7 +26,7 @@ describe("variant — names + branding", () => {
     expect(variantName("dawa")).toBe("Omnix Dawa");
     expect(variantName("retail")).toBe("Omnix Retail");
     expect(variantName("hospitality")).toBe("Omnix Hospitality");
-    expect(variantName("hardware")).toBe("Omnix Hardware");
+    expect(variantName("hardware")).toBe("Omnix Hardware & Equipment");
   });
 
   it("every variant has a tagline + accent", () => {

@@ -1,12 +1,12 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "Omnix Hardware",
+  "productName": "Omnix Hardware & Equipment",
   "identifier": "co.ke.omnix.hardware",
-  "mainBinaryName": "Omnix Hardware",
+  "mainBinaryName": "Omnix Hardware & Equipment",
   "app": {
     "windows": [
       {
-        "title": "Omnix Hardware",
+        "title": "Omnix Hardware & Equipment",
         "decorations": false,
         "shadow": false
       }
