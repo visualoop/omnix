@@ -61,7 +61,7 @@ import { ShrinkagePage } from "@/pages/retail-shrinkage";
 import {
   HardwareDashboardPage, HardwareQuotationsPage, HardwareDeliveryNotesPage,
   HardwareAccountsPage, HardwareCommissionsPage, HardwareReportsPage,
-  HardwareFleetPage,
+  HardwareFleetPage, HardwareServicePage,
 } from "@/pages/hardware";
 
 import {
@@ -168,6 +168,7 @@ export function HardwareHubPage() {
         { id: "quotations", label: "Quotations", icon: FileText, component: HardwareQuotationsPage, permission: "hardware.quotations.manage" },
         { id: "delivery-notes", label: "Delivery notes", icon: FileSignature, component: HardwareDeliveryNotesPage, permission: "hardware.delivery_notes.manage" },
         { id: "fleet", label: "Fleet & Units", icon: Wrench, component: HardwareFleetPage, permission: "hardware.equipment.manage" },
+        { id: "service", label: "Service", icon: ClipboardList, component: HardwareServicePage, permission: "hardware.equipment.manage" },
         { id: "accounts", label: "Accounts", icon: UsersIcon, component: HardwareAccountsPage, permission: "hardware.accounts.manage" },
         { id: "commissions", label: "Commissions", icon: WalletIcon, component: HardwareCommissionsPage, permission: "hardware.accounts.manage" },
         { id: "reports", label: "Reports", icon: BarChart3, component: HardwareReportsPage, permission: "hardware.reports.view" },

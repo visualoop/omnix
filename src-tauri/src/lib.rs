@@ -652,6 +652,12 @@ fn run_inner() {
             sql: include_str!("../migrations/091_equipment_units.sql"),
             kind: MigrationKind::Up,
         },
+        Migration {
+            version: 92,
+            description: "Service jobs + parts + labour (equipment workshop)",
+            sql: include_str!("../migrations/092_service_jobs.sql"),
+            kind: MigrationKind::Up,
+        },
     ];
 
     tauri::Builder::default()

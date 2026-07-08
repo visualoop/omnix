@@ -34,6 +34,9 @@ import { DeliveryNoteDialog } from "@/components/hardware/delivery-note-dialog";
 import { DispatchDialog } from "@/components/hardware/dispatch-dialog";
 import { AgingBucketSheet } from "@/components/hardware/aging-bucket-sheet";
 import { ReceiveUnitsDialog } from "@/components/hardware/receive-units-dialog";
+import { CreateServiceJobDialog } from "@/components/hardware/service-job-dialog";
+import { ServiceJobSheet } from "@/components/hardware/service-job-sheet";
+import { listServiceJobs, countJobsByStatus, listJobsForUnit, type ServiceJob, type ServiceStatus } from "@/services/service";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import {
   listUnits, countByStatus, warrantyState, warrantyDaysRemaining, specSummary,
@@ -729,6 +732,8 @@ export function HardwareFleetPage() {
   const [statusFilter, setStatusFilter] = useState<UnitStatus | null>(null);
   const [receiveOpen, setReceiveOpen] = useState(false);
   const [detail, setDetail] = useState<EquipmentUnit | null>(null);
+  const [newJobUnit, setNewJobUnit] = useState<EquipmentUnit | null>(null);
+  const [openJobId, setOpenJobId] = useState<string | null>(null);
   const user = useAuthStore((s) => s.user);
   const canManage = hasPermission(user, "hardware.equipment.manage");
 
@@ -763,7 +768,19 @@ export function HardwareFleetPage() {
       />
 
       <ReceiveUnitsDialog open={receiveOpen} onClose={() => setReceiveOpen(false)} onSaved={load} />
-      <UnitDetailSheet unit={detail} onClose={() => setDetail(null)} />
+      <UnitDetailSheet
+        unit={detail}
+        onClose={() => setDetail(null)}
+        onNewJob={(u) => { setDetail(null); setNewJobUnit(u); }}
+        onOpenJob={(jobId) => { setDetail(null); setOpenJobId(jobId); }}
+      />
+      <CreateServiceJobDialog
+        open={!!newJobUnit}
+        unit={newJobUnit}
+        onClose={() => setNewJobUnit(null)}
+        onCreated={(id) => { setNewJobUnit(null); setOpenJobId(id); load(); }}
+      />
+      <ServiceJobSheet jobId={openJobId} onClose={() => setOpenJobId(null)} onChanged={load} />
 
       {/* Warranty lookup + filters */}
       <div className="flex flex-wrap items-center gap-2 mb-3">
@@ -830,7 +847,17 @@ export function HardwareFleetPage() {
   );
 }
 
-function UnitDetailSheet({ unit, onClose }: { unit: EquipmentUnit | null; onClose: () => void }) {
+function UnitDetailSheet({ unit, onClose, onNewJob, onOpenJob }: {
+  unit: EquipmentUnit | null;
+  onClose: () => void;
+  onNewJob: (unit: EquipmentUnit) => void;
+  onOpenJob: (jobId: string) => void;
+}) {
+  const [jobs, setJobs] = useState<ServiceJob[]>([]);
+  useEffect(() => {
+    if (!unit) { setJobs([]); return; }
+    listJobsForUnit(unit.id).then(setJobs).catch(() => setJobs([]));
+  }, [unit]);
   if (!unit) return null;
   const specs = parseSpecs(unit.specs_json);
   const w = warrantyLabel(unit);
@@ -885,6 +912,36 @@ function UnitDetailSheet({ unit, onClose }: { unit: EquipmentUnit | null; onClos
           )}
 
           {unit.notes ? <DetailRow label="Notes" value={unit.notes} /> : null}
+
+          {/* Service history */}
+          <div className="pt-1">
+            <div className="flex items-center justify-between mb-1.5">
+              <span className="text-[10px] uppercase tracking-wider text-muted-foreground">Service history</span>
+              {unit.status !== "written_off" && (
+                <Button variant="outline" size="sm" className="h-7 text-[11px]" onClick={() => onNewJob(unit)}>
+                  <Plus className="h-3 w-3 mr-1" /> New job
+                </Button>
+              )}
+            </div>
+            {jobs.length === 0 ? (
+              <p className="text-[12px] text-muted-foreground">No service jobs yet.</p>
+            ) : (
+              <div className="rounded-md border border-border divide-y divide-border">
+                {jobs.map((j) => (
+                  <button
+                    key={j.id}
+                    type="button"
+                    onClick={() => onOpenJob(j.id)}
+                    className="flex w-full items-center justify-between gap-2 px-3 py-2 text-left hover:bg-accent/40 transition-colors"
+                  >
+                    <span className="font-mono text-[12px]">{j.job_number}</span>
+                    <span className="text-[11px] text-muted-foreground capitalize">{j.status.replace("_", " ")}</span>
+                    <span className="font-mono text-[11px] tabular-nums">{j.is_warranty ? "Warranty" : KES(j.parts_total + j.labour_total)}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       </SheetContent>
     </Sheet>
@@ -896,6 +953,116 @@ function DetailRow({ label, value, mono, inset }: { label: string; value: string
     <div className={cn("flex items-baseline justify-between gap-3", inset ? "px-3 py-2" : "")}>
       <span className="text-[11px] uppercase tracking-wider text-muted-foreground capitalize shrink-0">{label}</span>
       <span className={cn("text-right", mono && "font-mono")}>{value}</span>
+    </div>
+  );
+}
+
+
+// ─── Service / workshop ──────────────────────────────────────────────────────
+
+const JOB_STATUS_STYLE: Record<ServiceStatus, string> = {
+  open: "bg-slate-500/10 text-slate-600",
+  in_progress: "bg-blue-500/10 text-blue-600",
+  awaiting_parts: "bg-amber-500/10 text-amber-600",
+  completed: "bg-emerald-500/10 text-emerald-600",
+  cancelled: "bg-red-500/10 text-red-600",
+  invoiced: "bg-violet-500/10 text-violet-600",
+};
+
+export function HardwareServicePage() {
+  const [jobs, setJobs] = useState<ServiceJob[]>([]);
+  const [counts, setCounts] = useState<Record<ServiceStatus, number> | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState<ServiceStatus | null>(null);
+  const [createOpen, setCreateOpen] = useState(false);
+  const [openJobId, setOpenJobId] = useState<string | null>(null);
+  const user = useAuthStore((s) => s.user);
+  const canManage = hasPermission(user, "hardware.equipment.manage");
+
+  const load = () => {
+    setLoading(true);
+    Promise.all([
+      listServiceJobs({ search: search.trim() || undefined, status: statusFilter ?? undefined }),
+      countJobsByStatus(),
+    ])
+      .then(([j, c]) => { setJobs(j); setCounts(c); })
+      .finally(() => setLoading(false));
+  };
+  useEffect(() => {
+    const t = setTimeout(load, search ? 200 : 0);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [search, statusFilter]);
+
+  return (
+    <div>
+      <ModuleMasthead
+        accent={ACCENT}
+        eyebrow="Hardware · Workshop"
+        title="Service Jobs"
+        subtitle="Repairs and maintenance against tracked machines — parts, labour and warranty."
+        actions={canManage ? (
+          <Button size="sm" className={cn("cursor-pointer", BRAND_BTN)} onClick={() => setCreateOpen(true)}>
+            <Plus className="h-3.5 w-3.5 mr-1.5" /> New job
+          </Button>
+        ) : undefined}
+      />
+
+      <CreateServiceJobDialog open={createOpen} onClose={() => setCreateOpen(false)} onCreated={(id) => { load(); setOpenJobId(id); }} />
+      <ServiceJobSheet jobId={openJobId} onClose={() => setOpenJobId(null)} onChanged={load} />
+
+      <div className="flex flex-wrap items-center gap-2 mb-3">
+        <div className="relative max-w-[280px] w-full">
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
+          <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search job #, serial, customer…" className="h-8 text-xs pl-8" />
+        </div>
+        <div className="flex flex-wrap items-center gap-1">
+          <StatusChip label="All" active={statusFilter === null} onClick={() => setStatusFilter(null)} />
+          {(["open", "in_progress", "awaiting_parts", "completed", "invoiced"] as const).map((s) => (
+            <StatusChip
+              key={s}
+              label={`${s.replace("_", " ")}${counts ? ` ${counts[s]}` : ""}`}
+              active={statusFilter === s}
+              onClick={() => setStatusFilter(s)}
+            />
+          ))}
+        </div>
+      </div>
+
+      {loading ? <ModuleSpinner /> : jobs.length === 0 ? (
+        <ModuleEmpty
+          icon={Wrench}
+          title={search ? "No job matches" : "No service jobs yet"}
+          hint={search ? "Try a different job number or serial." : "Open a job against a machine from here or its unit page."}
+        />
+      ) : (
+        <ModuleTable>
+          <ModuleTHead>
+            <tr>
+              <th className="text-left px-3 py-2">Job #</th>
+              <th className="text-left px-3 py-2">Machine</th>
+              <th className="text-left px-3 py-2">Customer</th>
+              <th className="text-left px-3 py-2">Status</th>
+              <th className="text-right px-3 py-2">Total</th>
+            </tr>
+          </ModuleTHead>
+          <tbody>
+            {jobs.map((j) => (
+              <tr key={j.id} onClick={() => setOpenJobId(j.id)} className="border-t border-border hover:bg-accent/30 transition-colors cursor-pointer">
+                <td className="px-3 py-2 font-mono">{j.job_number}</td>
+                <td className="px-3 py-2">
+                  <span className="truncate">{j.product_name}</span>
+                  <span className="text-muted-foreground font-mono text-[11px] ml-1.5">{j.serial_number}</span>
+                </td>
+                <td className="px-3 py-2 text-muted-foreground">{j.customer_name ?? "—"}</td>
+                <td className="px-3 py-2"><Badge variant="outline" className={cn("text-[10px] capitalize", JOB_STATUS_STYLE[j.status])}>{j.status.replace("_", " ")}</Badge></td>
+                <td className="px-3 py-2 text-right font-mono tabular-nums">{j.is_warranty ? <span className="text-emerald-600">Warranty</span> : KES(j.parts_total + j.labour_total)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </ModuleTable>
+      )}
     </div>
   );
 }
