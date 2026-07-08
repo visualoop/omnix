@@ -37,6 +37,8 @@ import { ReceiveUnitsDialog } from "@/components/hardware/receive-units-dialog";
 import { CreateServiceJobDialog } from "@/components/hardware/service-job-dialog";
 import { ServiceJobSheet } from "@/components/hardware/service-job-sheet";
 import { listServiceJobs, countJobsByStatus, listJobsForUnit, type ServiceJob, type ServiceStatus } from "@/services/service";
+import { CreateRentalDialog, ReturnRentalDialog } from "@/components/hardware/rental-dialogs";
+import { listRentalAgreements, getActiveHireForUnit, type RentalAgreementRow } from "@/services/operations";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import {
   listUnits, countByStatus, warrantyState, warrantyDaysRemaining, specSummary,
@@ -854,9 +856,12 @@ function UnitDetailSheet({ unit, onClose, onNewJob, onOpenJob }: {
   onOpenJob: (jobId: string) => void;
 }) {
   const [jobs, setJobs] = useState<ServiceJob[]>([]);
+  const [hire, setHire] = useState<{ agreement_number: string; customer_name: string | null; ends_at: string } | null>(null);
   useEffect(() => {
-    if (!unit) { setJobs([]); return; }
+    if (!unit) { setJobs([]); setHire(null); return; }
     listJobsForUnit(unit.id).then(setJobs).catch(() => setJobs([]));
+    if (unit.status === "rented") getActiveHireForUnit(unit.id).then(setHire).catch(() => setHire(null));
+    else setHire(null);
   }, [unit]);
   if (!unit) return null;
   const specs = parseSpecs(unit.specs_json);
@@ -878,6 +883,13 @@ function UnitDetailSheet({ unit, onClose, onNewJob, onOpenJob }: {
               <ShieldCheck className="h-3 w-3 mr-1" />Warranty {w.text}
             </Badge>
           </div>
+
+          {hire && (
+            <div className="rounded-md border border-violet-500/30 bg-violet-500/10 px-3 py-2 text-[12px]">
+              <div className="font-medium text-violet-700 dark:text-violet-300">On hire — {hire.agreement_number}</div>
+              <div className="text-muted-foreground">{hire.customer_name ?? "—"} · due back {hire.ends_at.slice(0, 10)}</div>
+            </div>
+          )}
 
           <DetailRow label="Product" value={unit.product_name ?? "—"} />
           {unit.engine_number ? <DetailRow label="Engine no." value={unit.engine_number} mono /> : null}
@@ -1058,6 +1070,112 @@ export function HardwareServicePage() {
                 <td className="px-3 py-2 text-muted-foreground">{j.customer_name ?? "—"}</td>
                 <td className="px-3 py-2"><Badge variant="outline" className={cn("text-[10px] capitalize", JOB_STATUS_STYLE[j.status])}>{j.status.replace("_", " ")}</Badge></td>
                 <td className="px-3 py-2 text-right font-mono tabular-nums">{j.is_warranty ? <span className="text-emerald-600">Warranty</span> : KES(j.parts_total + j.labour_total)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </ModuleTable>
+      )}
+    </div>
+  );
+}
+
+
+// ─── Rentals / hire ──────────────────────────────────────────────────────────
+
+const RENTAL_STATUS_STYLE: Record<string, string> = {
+  active: "bg-violet-500/10 text-violet-600",
+  returned: "bg-emerald-500/10 text-emerald-600",
+  overdue: "bg-red-500/10 text-red-600",
+  lost: "bg-red-500/10 text-red-600",
+};
+
+export function HardwareRentalsPage() {
+  const [rows, setRows] = useState<RentalAgreementRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState<string | null>(null);
+  const [createOpen, setCreateOpen] = useState(false);
+  const [returnId, setReturnId] = useState<string | null>(null);
+  const user = useAuthStore((s) => s.user);
+  const canManage = hasPermission(user, "hardware.equipment.manage");
+
+  const load = () => {
+    setLoading(true);
+    listRentalAgreements({ search: search.trim() || undefined, status: statusFilter ?? undefined })
+      .then(setRows).finally(() => setLoading(false));
+  };
+  useEffect(() => {
+    const t = setTimeout(load, search ? 200 : 0);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [search, statusFilter]);
+
+  const overdue = (r: RentalAgreementRow) => r.status === "active" && r.ends_at < new Date().toISOString().slice(0, 10);
+
+  return (
+    <div>
+      <ModuleMasthead
+        accent={ACCENT}
+        eyebrow="Hardware · Hire"
+        title="Rentals"
+        subtitle="Machines out on hire — rates, deposits, returns and meter readings."
+        actions={canManage ? (
+          <Button size="sm" className={cn("cursor-pointer", BRAND_BTN)} onClick={() => setCreateOpen(true)}>
+            <Plus className="h-3.5 w-3.5 mr-1.5" /> New rental
+          </Button>
+        ) : undefined}
+      />
+
+      <CreateRentalDialog open={createOpen} onClose={() => setCreateOpen(false)} onCreated={load} />
+      <ReturnRentalDialog agreementId={returnId} onClose={() => setReturnId(null)} onReturned={load} />
+
+      <div className="flex flex-wrap items-center gap-2 mb-3">
+        <div className="relative max-w-[280px] w-full">
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
+          <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search agreement # or customer…" className="h-8 text-xs pl-8" />
+        </div>
+        <div className="flex flex-wrap items-center gap-1">
+          <StatusChip label="All" active={statusFilter === null} onClick={() => setStatusFilter(null)} />
+          {(["active", "returned"] as const).map((s) => (
+            <StatusChip key={s} label={s} active={statusFilter === s} onClick={() => setStatusFilter(s)} />
+          ))}
+        </div>
+      </div>
+
+      {loading ? <ModuleSpinner /> : rows.length === 0 ? (
+        <ModuleEmpty icon={Truck} title={search ? "No rental matches" : "No rentals yet"} hint={search ? "Try another agreement number or customer." : "Hire out a machine to create the first rental agreement."} />
+      ) : (
+        <ModuleTable>
+          <ModuleTHead>
+            <tr>
+              <th className="text-left px-3 py-2">Agreement</th>
+              <th className="text-left px-3 py-2">Customer</th>
+              <th className="text-left px-3 py-2">Period</th>
+              <th className="text-left px-3 py-2">Status</th>
+              <th className="text-right px-3 py-2">Rate/day</th>
+              <th className="text-right px-3 py-2">Action</th>
+            </tr>
+          </ModuleTHead>
+          <tbody>
+            {rows.map((r) => (
+              <tr key={r.id} className="border-t border-border hover:bg-accent/30 transition-colors">
+                <td className="px-3 py-2 font-mono">{r.agreement_number}</td>
+                <td className="px-3 py-2">{r.customer_name ?? "—"}</td>
+                <td className="px-3 py-2 text-muted-foreground text-[12px]">{r.starts_at.slice(0, 10)} → {r.ends_at.slice(0, 10)}</td>
+                <td className="px-3 py-2">
+                  <Badge variant="outline" className={cn("text-[10px] capitalize", RENTAL_STATUS_STYLE[overdue(r) ? "overdue" : r.status])}>
+                    {overdue(r) ? "overdue" : r.status}
+                  </Badge>
+                </td>
+                <td className="px-3 py-2 text-right font-mono tabular-nums">{KES(r.daily_total)}</td>
+                <td className="px-3 py-2 text-right">
+                  {canManage && r.status === "active" && (
+                    <Button size="sm" variant="outline" className="cursor-pointer" onClick={() => setReturnId(r.id)}>
+                      <Truck className="h-3 w-3 mr-1" /> Return
+                    </Button>
+                  )}
+                  {r.status === "returned" && <span className="text-[11px] text-emerald-600">Returned</span>}
+                </td>
               </tr>
             ))}
           </tbody>

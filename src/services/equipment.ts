@@ -197,6 +197,17 @@ export async function availableUnits(productId: string): Promise<EquipmentUnit[]
   );
 }
 
+/** Units free to hire out (in stock, not already sold/rented/serviced). */
+export async function listRentableUnits(search?: string): Promise<EquipmentUnit[]> {
+  const like = search?.trim() ? `%${search.trim()}%` : null;
+  return query<EquipmentUnit>(
+    `${SELECT_UNIT} WHERE u.status = 'in_stock'
+       ${like ? "AND (u.serial_number LIKE ?1 OR p.name LIKE ?1)" : ""}
+     ORDER BY p.name ASC, u.serial_number ASC LIMIT 200`,
+    like ? [like] : [],
+  );
+}
+
 export async function countByStatus(): Promise<Record<UnitStatus, number>> {
   const rows = await query<{ status: UnitStatus; n: number }>(
     `SELECT status, COUNT(*) AS n FROM equipment_units GROUP BY status`,

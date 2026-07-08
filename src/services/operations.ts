@@ -2,7 +2,7 @@
  * Medium-tier hospitality + delivery + rental services.
  * Batched together to keep the surface tight.
  */
-import { execute, query } from "@/lib/db";
+import { execute, query, transaction } from "@/lib/db";
 
 function newId(): string { return crypto.randomUUID().replace(/-/g, "").slice(0, 16); }
 
@@ -248,7 +248,7 @@ export async function createRentalAgreement(input: {
   starts_at: string;
   ends_at: string;
   deposit_amount?: number;
-  items: Array<{ product_id: string; serial?: string; quantity?: number; daily_rate: number }>;
+  items: Array<{ product_id: string; serial?: string; quantity?: number; daily_rate: number; equipment_unit_id?: string; meter_out?: number }>;
   branch_id?: string;
   notes?: string;
 }): Promise<string> {
@@ -261,34 +261,166 @@ export async function createRentalAgreement(input: {
   );
   const number = `RA-${year}-${String(Number(row?.n ?? 0) + 1).padStart(5, "0")}`;
 
-  await execute(
-    `INSERT INTO rental_agreements
-      (id, agreement_number, customer_id, branch_id, starts_at, ends_at, deposit_amount, notes)
-     VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)`,
-    [id, number, input.customer_id, input.branch_id ?? null, input.starts_at, input.ends_at, input.deposit_amount ?? 0, input.notes ?? null],
-  );
-
-  for (const it of input.items) {
-    await execute(
-      `INSERT INTO rental_items (id, agreement_id, product_id, serial, quantity, daily_rate)
-       VALUES (?1, ?2, ?3, ?4, ?5, ?6)`,
-      [newId(), id, it.product_id, it.serial ?? null, it.quantity ?? 1, it.daily_rate],
+  // Guard: any serialized unit on the agreement must be free to hire.
+  const unitIds = input.items.map((i) => i.equipment_unit_id).filter((x): x is string => !!x);
+  if (unitIds.length) {
+    const rows = await query<{ id: string; status: string }>(
+      `SELECT id, status FROM equipment_units WHERE id IN (${unitIds.map((_, i) => `?${i + 1}`).join(",")})`,
+      unitIds,
     );
+    const blocked = rows.filter((r) => !["in_stock", "sold"].includes(r.status));
+    if (blocked.length) throw new Error(`Unit not available to hire (status ${blocked[0].status}).`);
   }
+
+  const now = new Date().toISOString();
+  const stmts: { sql: string; params: unknown[] }[] = [{
+    sql: `INSERT INTO rental_agreements
+            (id, agreement_number, customer_id, branch_id, starts_at, ends_at, deposit_amount, notes)
+          VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)`,
+    params: [id, number, input.customer_id, input.branch_id ?? null, input.starts_at, input.ends_at, input.deposit_amount ?? 0, input.notes ?? null],
+  }];
+  for (const it of input.items) {
+    stmts.push({
+      sql: `INSERT INTO rental_items (id, agreement_id, product_id, serial, quantity, daily_rate, equipment_unit_id, meter_out)
+            VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)`,
+      params: [newId(), id, it.product_id, it.serial ?? null, it.quantity ?? 1, it.daily_rate, it.equipment_unit_id ?? null, it.meter_out ?? null],
+    });
+    if (it.equipment_unit_id) {
+      stmts.push({
+        sql: `UPDATE equipment_units SET status = 'rented', updated_at = ?2 WHERE id = ?1 AND status IN ('in_stock','sold')`,
+        params: [it.equipment_unit_id, now],
+      });
+    }
+  }
+  await transaction(stmts);
   return id;
 }
 
-export async function returnRental(agreementId: string, damageFee = 0, condition?: string): Promise<void> {
-  await execute(
-    `UPDATE rental_agreements
-     SET status = 'returned', actual_returned_at = datetime('now'), damage_fee = ?2
-     WHERE id = ?1`,
-    [agreementId, damageFee],
+/**
+ * Return a rental. Flips each hired unit back to its resting state (sold if
+ * it had been sold, else in_stock) and records the meter-in reading against
+ * the unit's running total. Damage / late fees + condition are captured on
+ * the agreement.
+ */
+export async function returnRental(
+  agreementId: string,
+  opts?: { damageFee?: number; lateFee?: number; condition?: string; meterIn?: Record<string, number> },
+): Promise<void> {
+  const now = new Date().toISOString();
+  const items = await query<{ id: string; equipment_unit_id: string | null }>(
+    `SELECT id, equipment_unit_id FROM rental_items WHERE agreement_id = ?1`,
+    [agreementId],
   );
-  if (condition) {
-    await execute(
-      `UPDATE rental_items SET condition_on_return = ?2, returned_quantity = quantity WHERE agreement_id = ?1`,
-      [agreementId, condition],
-    );
+  const stmts: { sql: string; params: unknown[] }[] = [{
+    sql: `UPDATE rental_agreements
+          SET status = 'returned', actual_returned_at = ?2, damage_fee = ?3, late_fee = ?4
+          WHERE id = ?1`,
+    params: [agreementId, now, opts?.damageFee ?? 0, opts?.lateFee ?? 0],
+  }];
+  for (const it of items) {
+    const meterIn = opts?.meterIn?.[it.id];
+    stmts.push({
+      sql: `UPDATE rental_items SET condition_on_return = ?2, returned_quantity = quantity, meter_in = ?3 WHERE id = ?1`,
+      params: [it.id, opts?.condition ?? null, meterIn ?? null],
+    });
+    if (it.equipment_unit_id) {
+      // Back to resting state; a machine that had been sold stays 'sold'.
+      stmts.push({
+        sql: `UPDATE equipment_units
+              SET status = CASE WHEN sale_id IS NOT NULL THEN 'sold' ELSE 'in_stock' END,
+                  meter_value = COALESCE(?2, meter_value),
+                  updated_at = ?3
+              WHERE id = ?1 AND status = 'rented'`,
+        params: [it.equipment_unit_id, meterIn ?? null, now],
+      });
+    }
   }
+  await transaction(stmts);
+}
+
+// ─── Rental reads ──────────────────────────────────────
+
+export interface RentalAgreementRow {
+  id: string;
+  agreement_number: string;
+  customer_id: string;
+  customer_name: string | null;
+  starts_at: string;
+  ends_at: string;
+  actual_returned_at: string | null;
+  status: string;
+  deposit_amount: number;
+  damage_fee: number;
+  late_fee: number;
+  item_count: number;
+  daily_total: number;
+}
+
+export async function listRentalAgreements(opts?: { status?: string; search?: string }): Promise<RentalAgreementRow[]> {
+  const where: string[] = [];
+  const params: unknown[] = [];
+  if (opts?.status) { params.push(opts.status); where.push(`a.status = ?${params.length}`); }
+  if (opts?.search) { params.push(`%${opts.search.trim()}%`, `%${opts.search.trim()}%`); where.push(`(a.agreement_number LIKE ?${params.length - 1} OR c.name LIKE ?${params.length})`); }
+  const clause = where.length ? `WHERE ${where.join(" AND ")}` : "";
+  return query<RentalAgreementRow>(
+    `SELECT a.*, c.name AS customer_name,
+            (SELECT COUNT(*) FROM rental_items ri WHERE ri.agreement_id = a.id) AS item_count,
+            (SELECT COALESCE(SUM(ri.daily_rate * ri.quantity), 0) FROM rental_items ri WHERE ri.agreement_id = a.id) AS daily_total
+     FROM rental_agreements a
+     LEFT JOIN customers c ON c.id = a.customer_id
+     ${clause}
+     ORDER BY a.created_at DESC LIMIT 300`,
+    params,
+  );
+}
+
+export interface RentalItemRow {
+  id: string;
+  product_id: string;
+  product_name: string | null;
+  serial: string | null;
+  equipment_unit_id: string | null;
+  quantity: number;
+  daily_rate: number;
+  returned_quantity: number;
+  condition_on_return: string | null;
+  meter_out: number | null;
+  meter_in: number | null;
+}
+
+export async function getRentalAgreement(id: string): Promise<{ agreement: RentalAgreementRow; items: RentalItemRow[] } | null> {
+  const [agreement] = await listRentalAgreementsById(id);
+  if (!agreement) return null;
+  const items = await query<RentalItemRow>(
+    `SELECT ri.*, p.name AS product_name
+     FROM rental_items ri JOIN products p ON p.id = ri.product_id
+     WHERE ri.agreement_id = ?1`,
+    [id],
+  );
+  return { agreement, items };
+}
+
+async function listRentalAgreementsById(id: string): Promise<RentalAgreementRow[]> {
+  return query<RentalAgreementRow>(
+    `SELECT a.*, c.name AS customer_name,
+            (SELECT COUNT(*) FROM rental_items ri WHERE ri.agreement_id = a.id) AS item_count,
+            (SELECT COALESCE(SUM(ri.daily_rate * ri.quantity), 0) FROM rental_items ri WHERE ri.agreement_id = a.id) AS daily_total
+     FROM rental_agreements a LEFT JOIN customers c ON c.id = a.customer_id
+     WHERE a.id = ?1`,
+    [id],
+  );
+}
+
+/** The current active hire for a unit, if any (for the unit detail sheet). */
+export async function getActiveHireForUnit(unitId: string): Promise<{ agreement_number: string; customer_name: string | null; ends_at: string } | null> {
+  const [row] = await query<{ agreement_number: string; customer_name: string | null; ends_at: string }>(
+    `SELECT a.agreement_number, c.name AS customer_name, a.ends_at
+     FROM rental_items ri
+     JOIN rental_agreements a ON a.id = ri.agreement_id
+     LEFT JOIN customers c ON c.id = a.customer_id
+     WHERE ri.equipment_unit_id = ?1 AND a.status = 'active'
+     ORDER BY a.created_at DESC LIMIT 1`,
+    [unitId],
+  );
+  return row ?? null;
 }
