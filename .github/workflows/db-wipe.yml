@@ -1,0 +1,56 @@
+name: DB Wipe (transactional — keep users)
+
+# Manual one-shot: clears purchases + activity to a clean slate while KEEPING
+# user accounts, org/teams, platform settings/media and the release catalog.
+# Runs scripts/wipe-transactional.mts with the production DATABASE_URL secret.
+#
+# Safety: the destructive delete only runs when `confirm` is exactly WIPE.
+# Any other value (or the default) runs a read-only row count.
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: 'Type WIPE to actually delete. Anything else = read-only count.'
+        required: true
+        default: 'count'
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  wipe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          run_install: false
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: pnpm
+          cache-dependency-path: website/pnpm-lock.yaml
+
+      - name: Install
+        working-directory: website
+        run: pnpm install --frozen-lockfile
+
+      - name: Run (count or wipe)
+        working-directory: website
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: |
+          if [ "${{ inputs.confirm }}" = "WIPE" ]; then
+            echo "::warning::Running DESTRUCTIVE transactional wipe (keeping users)"
+            pnpm exec tsx scripts/wipe-transactional.mts wipe
+          else
+            echo "Read-only count (pass confirm=WIPE to delete)"
+            pnpm exec tsx scripts/wipe-transactional.mts count
+          fi
