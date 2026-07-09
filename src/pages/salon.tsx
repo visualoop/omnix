@@ -5,8 +5,9 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   Plus, CircleNotch as Loader2, CaretLeft, CaretRight, Sparkle,
-  CheckCircle, Receipt, Scissors,
+  CheckCircle, Receipt, Scissors, ArrowSquareOut, UsersThree, House,
 } from "@phosphor-icons/react";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -500,12 +501,13 @@ export function SalonStaffPage() {
   const [loading, setLoading] = useState(true);
   const [adding, setAdding] = useState(false);
   const [empId, setEmpId] = useState(""); const [comm, setComm] = useState("");
-  const [employees, setEmployees] = useState<Array<{ id: string; full_name: string }>>([]);
+  const [employees, setEmployees] = useState<Array<{ id: string; full_name: string; job_title: string; phone: string | null }>>([]);
   const [skillsFor, setSkillsFor] = useState<SalonStaff | null>(null);
+  const navigate = useNavigate();
   const load = () => {
     setLoading(true);
     Promise.all([listStaff(true), listServices(), listEmployees({ active: true })])
-      .then(([s, sv, emp]) => { setStaff(s); setServices(sv); setEmployees(emp.map((e) => ({ id: e.id, full_name: e.full_name }))); })
+      .then(([s, sv, emp]) => { setStaff(s); setServices(sv); setEmployees(emp.map((e) => ({ id: e.id, full_name: e.full_name, job_title: e.job_title, phone: e.phone }))); })
       .finally(() => setLoading(false));
   };
   useEffect(() => { load(); }, []);
@@ -519,39 +521,105 @@ export function SalonStaffPage() {
     catch (e) { toast.error(String(e)); }
   };
   return (
-    <div>
-      <ModuleMasthead accent={ACCENT} eyebrow="Salon & Spa · Team" title="Staff" subtitle="Enrol team members (from Staff / HR) as stylists — set their skills & commission."
-        actions={<Button size="sm" className={cn("cursor-pointer", BRAND_BTN)} onClick={() => setAdding((v) => !v)}><Plus className="h-3.5 w-3.5 mr-1.5" /> Enrol staff</Button>} />
-      {adding && (
-        <div className="flex items-end gap-2 mb-3 rounded-md border border-border p-3">
-          <Field label="Team member">
-            <Select value={empId} onValueChange={(v) => setEmpId(v as string)}>
-              <SelectTrigger className="w-56"><SelectValue placeholder={availableEmployees.length ? "Choose from Staff…" : "All staff enrolled"} /></SelectTrigger>
-              <SelectContent>{availableEmployees.map((e) => <SelectItem key={e.id} value={e.id}>{e.full_name}</SelectItem>)}</SelectContent>
-            </Select>
-          </Field>
-          <Field label="Default commission %"><Input type="number" value={comm} onChange={(e) => setComm(e.target.value)} className="w-32 text-right tabular-nums" /></Field>
-          <Button size="sm" onClick={add} disabled={!empId}>Enrol</Button>
+    <div className="space-y-8">
+      <ModuleMasthead accent={ACCENT} eyebrow="Salon & Spa · Team" title="Staff"
+        subtitle="Your stylists & therapists are Staff (HR) records — enrol them here to set skills & commission."
+        actions={<Button size="sm" className={cn("cursor-pointer", BRAND_BTN)} onClick={() => setAdding(true)}><Plus className="h-3.5 w-3.5 mr-1.5" /> Enrol staff</Button>} />
+
+      {/* ── Team ─────────────────────────────────────────────── */}
+      <section className="space-y-3">
+        <div className="flex items-end justify-between gap-4">
+          <div className="flex items-center gap-2">
+            <UsersThree className="h-4 w-4 text-muted-foreground" weight="fill" />
+            <div>
+              <h3 className="text-[13px] font-semibold leading-tight">Team</h3>
+              <p className="text-[11.5px] text-muted-foreground">Enrolled from Staff (HR). Add or edit people in Staff.</p>
+            </div>
+          </div>
+          <button
+            onClick={() => navigate("/hr/employees")}
+            className="inline-flex items-center gap-1 text-[11.5px] text-muted-foreground hover:text-foreground transition-colors shrink-0"
+          >
+            Open Staff <ArrowSquareOut className="h-3.5 w-3.5" />
+          </button>
         </div>
-      )}
+
+        {loading ? <ModuleSpinner /> : staff.length === 0 ? (
+          <ModuleEmpty icon={Scissors} title="No staff enrolled" hint="Click “Enrol staff” to add a stylist or therapist from your Staff (HR) list." />
+        ) : (
+          <ModuleTable>
+            <ModuleTHead><tr>
+              <th className="text-left px-3 py-2">Name</th>
+              <th className="text-left px-3 py-2">Role</th>
+              <th className="text-left px-3 py-2">Phone</th>
+              <th className="text-right px-3 py-2">Commission</th>
+              <th className="text-right px-3 py-2">Skills</th>
+              <th className="text-right px-3 py-2">Status</th>
+            </tr></ModuleTHead>
+            <tbody>
+              {staff.map((s) => {
+                const emp = employees.find((e) => e.id === s.employee_id);
+                return (
+                  <tr key={s.id} className="border-t border-border hover:bg-accent/30">
+                    <td className="px-3 py-2 font-medium">{s.display_name}</td>
+                    <td className="px-3 py-2 text-muted-foreground">{emp?.job_title || "—"}</td>
+                    <td className="px-3 py-2 text-muted-foreground font-mono text-[12px]">{emp?.phone || "—"}</td>
+                    <td className="px-3 py-2 text-right tabular-nums">{s.commission_default_pct}%</td>
+                    <td className="px-3 py-2 text-right">
+                      <Button variant="outline" size="sm" className="h-7" onClick={() => setSkillsFor(s)}><Scissors className="h-3 w-3 mr-1" /> Skills</Button>
+                    </td>
+                    <td className="px-3 py-2 text-right">
+                      {s.active
+                        ? <Badge variant="outline" className="border-emerald-500/40 text-emerald-600 dark:text-emerald-400">Active</Badge>
+                        : <Badge variant="outline" className="text-muted-foreground">Inactive</Badge>}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </ModuleTable>
+        )}
+      </section>
+
+      {/* ── Rooms & resources ────────────────────────────────── */}
+      <section className="space-y-3">
+        <div className="flex items-center gap-2">
+          <House className="h-4 w-4 text-muted-foreground" weight="fill" />
+          <div>
+            <h3 className="text-[13px] font-semibold leading-tight">Rooms & resources</h3>
+            <p className="text-[11.5px] text-muted-foreground">Bookable spaces & stations — assign an appointment to a room, chair, bed or station.</p>
+          </div>
+        </div>
+        <ResourcesManager />
+      </section>
+
+      {/* ── Enrol dialog ─────────────────────────────────────── */}
+      <Dialog open={adding} onOpenChange={setAdding}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-[15px]">Enrol a team member</DialogTitle>
+            <DialogDescription>Pick someone from Staff (HR) and set their default commission. They keep one record across the whole app.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-1">
+            <Field label="Team member">
+              <Select value={empId} onValueChange={(v) => setEmpId(v as string)}>
+                <SelectTrigger><SelectValue placeholder={availableEmployees.length ? "Choose from Staff…" : "Everyone is enrolled"} /></SelectTrigger>
+                <SelectContent>{availableEmployees.map((e) => <SelectItem key={e.id} value={e.id}>{e.full_name}{e.job_title ? ` · ${e.job_title}` : ""}</SelectItem>)}</SelectContent>
+              </Select>
+              {availableEmployees.length === 0 && (
+                <p className="text-[11.5px] text-muted-foreground">All staff are enrolled. Add more people in <button onClick={() => { setAdding(false); navigate("/hr/employees"); }} className="underline hover:text-foreground">Staff</button>.</p>
+              )}
+            </Field>
+            <Field label="Default commission %"><Input type="number" value={comm} onChange={(e) => setComm(e.target.value)} className="text-right tabular-nums" placeholder="0" /></Field>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" size="sm" onClick={() => setAdding(false)}>Cancel</Button>
+            <Button size="sm" className={cn(BRAND_BTN)} onClick={add} disabled={!empId}>Enrol</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <SkillsDialog staff={skillsFor} services={services} onClose={() => setSkillsFor(null)} />
-      {loading ? <ModuleSpinner /> : staff.length === 0 ? (
-        <ModuleEmpty icon={Scissors} title="No staff yet" hint="Add your stylists and therapists here." />
-      ) : (
-        <ModuleTable>
-          <ModuleTHead><tr><th className="text-left px-3 py-2">Name</th><th className="text-right px-3 py-2">Default commission</th><th className="text-right px-3 py-2">Skills</th></tr></ModuleTHead>
-          <tbody>
-            {staff.map((s) => (
-              <tr key={s.id} className="border-t border-border hover:bg-accent/30">
-                <td className="px-3 py-2">{s.display_name}{s.active ? "" : <span className="text-muted-foreground text-[11px]"> · inactive</span>}</td>
-                <td className="px-3 py-2 text-right tabular-nums">{s.commission_default_pct}%</td>
-                <td className="px-3 py-2 text-right"><Button variant="outline" size="sm" onClick={() => setSkillsFor(s)}>Skills</Button></td>
-              </tr>
-            ))}
-          </tbody>
-        </ModuleTable>
-      )}
-      <ResourcesManager />
     </div>
   );
 }
@@ -566,21 +634,27 @@ function ResourcesManager() {
     try { await createResource(name.trim(), type); setName(""); load(); } catch (e) { toast.error(String(e)); }
   };
   return (
-    <div className="mt-6">
-      <div className="text-[11px] uppercase tracking-wider text-muted-foreground mb-2">Rooms & resources</div>
-      <div className="flex items-end gap-2 mb-2">
-        <Field label="Name"><Input value={name} onChange={(e) => setName(e.target.value)} className="w-40" placeholder="e.g. Room 1" /></Field>
+    <div className="space-y-3">
+      <div className="flex items-end gap-2 rounded-lg border border-border bg-muted/30 p-3">
+        <Field label="Name"><Input value={name} onChange={(e) => setName(e.target.value)} className="w-44" placeholder="e.g. Room 1" /></Field>
         <Field label="Type">
           <Select value={type} onValueChange={(v) => setType(v as string)}>
-            <SelectTrigger className="w-28"><SelectValue /></SelectTrigger>
-            <SelectContent>{["room", "chair", "bed", "station"].map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent>
+            <SelectTrigger className="w-32"><SelectValue /></SelectTrigger>
+            <SelectContent>{["room", "chair", "bed", "station"].map((t) => <SelectItem key={t} value={t} className="capitalize">{t}</SelectItem>)}</SelectContent>
           </Select>
         </Field>
-        <Button size="sm" onClick={add}>Add</Button>
+        <Button size="sm" variant="outline" onClick={add}><Plus className="h-3.5 w-3.5 mr-1" /> Add</Button>
       </div>
-      {resources.length > 0 && (
+      {resources.length === 0 ? (
+        <p className="text-[12px] text-muted-foreground px-1">No rooms or resources yet — add your first above.</p>
+      ) : (
         <div className="flex flex-wrap gap-2">
-          {resources.map((r) => <Badge key={r.id} variant="outline" className="capitalize">{r.name} · {r.type}</Badge>)}
+          {resources.map((r) => (
+            <span key={r.id} className="inline-flex items-center gap-1.5 rounded-md border border-border px-2.5 py-1 text-[12px]">
+              <span className="font-medium">{r.name}</span>
+              <span className="text-muted-foreground capitalize">· {r.type}</span>
+            </span>
+          ))}
         </div>
       )}
     </div>
