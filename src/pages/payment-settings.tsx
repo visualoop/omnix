@@ -12,6 +12,8 @@ import { getPaystackConfig, savePaystackConfig, verifyPaystackKey, disablePaysta
 import { getDarajaConfig, saveDarajaConfig, verifyDarajaKey, disableDaraja, getManualMpesaConfig, saveManualMpesaConfig } from "@/services/daraja";
 import { getPaymentFees, savePaymentFees, type PaymentFees } from "@/services/payment-fees";
 import { MpesaIcon, PaystackIcon } from "@/components/icons/payment-brands";
+import { Switch } from "@/components/ui/switch";
+import { listAllPaymentMethods, setPaymentMethodActive, type PaymentMethodRow } from "@/services/sales";
 import { toast } from "sonner";
 
 import { BackButton } from "@/components/ui/back-button";
@@ -54,8 +56,20 @@ export function PaymentSettingsPage() {
   const [paybillAccountHint, setPaybillAccountHint] = useState("");
   const [tillNumber, setTillNumber] = useState("");
   const [savingManual, setSavingManual] = useState(false);
+  const [methods, setMethods] = useState<PaymentMethodRow[]>([]);
+
+  const toggleMethod = async (m: PaymentMethodRow, next: boolean) => {
+    if (!next && methods.filter((x) => x.active === 1).length <= 1) {
+      toast.error("At least one payment method must stay enabled."); return;
+    }
+    try {
+      await setPaymentMethodActive(m.id, next);
+      setMethods((prev) => prev.map((x) => x.id === m.id ? { ...x, active: next ? 1 : 0 } : x));
+    } catch (e) { toast.error(String(e)); }
+  };
 
   const load = async () => {
+    setMethods(await listAllPaymentMethods());
     const config = await getPaystackConfig();
     if (config) {
       setPublicKey(config.public_key || "");
@@ -175,6 +189,26 @@ export function PaymentSettingsPage() {
         <BackButton fallback="/settings" />
         <h1 className="text-xl font-semibold tracking-tight">Payment Settings</h1>
         <p className="text-sm text-muted-foreground mt-1">Configure payment providers for automated processing.</p>
+      </div>
+
+      {/* Enabled payment methods — controls what the POS offers */}
+      <div className="border border-border rounded-lg p-5 space-y-3">
+        <div>
+          <h2 className="font-semibold">Payment methods at the till</h2>
+          <p className="text-sm text-muted-foreground mt-0.5">Turn methods on or off — only enabled ones appear in the POS payment screen.</p>
+        </div>
+        <div className="divide-y divide-border">
+          {methods.map((m) => (
+            <div key={m.id} className="flex items-center justify-between py-2.5">
+              <div>
+                <div className="text-[13px] font-medium">{m.name}</div>
+                <div className="text-[11px] text-muted-foreground capitalize">{m.type.replace(/_/g, " ")}</div>
+              </div>
+              <Switch checked={m.active === 1} onCheckedChange={(c: boolean) => toggleMethod(m, c)} />
+            </div>
+          ))}
+          {methods.length === 0 && <p className="text-[13px] text-muted-foreground py-2">No payment methods found.</p>}
+        </div>
       </div>
 
       {/* Paystack section */}

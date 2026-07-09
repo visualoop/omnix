@@ -69,6 +69,18 @@ export async function getPaymentMethods(): Promise<PaymentMethod[]> {
   return query<PaymentMethod>("SELECT id, name, type FROM payment_methods WHERE active = 1 ORDER BY sort_order");
 }
 
+export interface PaymentMethodRow { id: string; name: string; type: string; active: number; sort_order: number }
+
+/** All payment methods incl. disabled — for the settings toggle list. */
+export async function listAllPaymentMethods(): Promise<PaymentMethodRow[]> {
+  return query<PaymentMethodRow>("SELECT id, name, type, active, sort_order FROM payment_methods ORDER BY sort_order, name");
+}
+
+/** Enable/disable a payment method (controls what the POS offers). */
+export async function setPaymentMethodActive(id: string, active: boolean): Promise<void> {
+  await execute("UPDATE payment_methods SET active = ?2 WHERE id = ?1", [id, active ? 1 : 0]);
+}
+
 export async function getNextSaleNumber(): Promise<number> {
   await execute("UPDATE sequences SET value = value + 1 WHERE name = 'sale_number'");
   const rows = await query<{ value: number }>("SELECT value FROM sequences WHERE name = 'sale_number'");
