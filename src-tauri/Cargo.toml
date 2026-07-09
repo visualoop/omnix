@@ -1,6 +1,6 @@
 [package]
 name = "omnix"
-version = "0.63.0"
+version = "0.63.1"
 description = "Omnix — The desktop ERP for Kenyan businesses"
 authors = ["Omnix"]
 edition = "2021"

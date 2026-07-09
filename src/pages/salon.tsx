@@ -35,6 +35,7 @@ import {
   type ServicePopularityRow, type SalonPackage, type ClientPackage, type SalonResource,
 } from "@/services/salon";
 import { getProducts, type Product } from "@/services/inventory";
+import { listEmployees } from "@/services/employees";
 
 const ACCENT = moduleAccent("salon");
 const BRAND_BTN = `${ACCENT.solid} ${ACCENT.solidHover}`;
@@ -498,24 +499,39 @@ export function SalonStaffPage() {
   const [services, setServices] = useState<SalonService[]>([]);
   const [loading, setLoading] = useState(true);
   const [adding, setAdding] = useState(false);
-  const [name, setName] = useState(""); const [comm, setComm] = useState("");
+  const [empId, setEmpId] = useState(""); const [comm, setComm] = useState("");
+  const [employees, setEmployees] = useState<Array<{ id: string; full_name: string }>>([]);
   const [skillsFor, setSkillsFor] = useState<SalonStaff | null>(null);
-  const load = () => { setLoading(true); Promise.all([listStaff(true), listServices()]).then(([s, sv]) => { setStaff(s); setServices(sv); }).finally(() => setLoading(false)); };
+  const load = () => {
+    setLoading(true);
+    Promise.all([listStaff(true), listServices(), listEmployees({ active: true })])
+      .then(([s, sv, emp]) => { setStaff(s); setServices(sv); setEmployees(emp.map((e) => ({ id: e.id, full_name: e.full_name }))); })
+      .finally(() => setLoading(false));
+  };
   useEffect(() => { load(); }, []);
+  // Employees not already enrolled as salon staff.
+  const enrolledEmpIds = new Set(staff.map((s) => s.employee_id).filter(Boolean));
+  const availableEmployees = employees.filter((e) => !enrolledEmpIds.has(e.id));
   const add = async () => {
-    if (!name.trim()) { toast.error("Name required."); return; }
-    try { await createStaff({ display_name: name.trim(), commission_default_pct: parseFloat(comm) || 0 }); setName(""); setComm(""); setAdding(false); load(); }
+    const emp = employees.find((e) => e.id === empId);
+    if (!emp) { toast.error("Pick a team member from Staff."); return; }
+    try { await createStaff({ display_name: emp.full_name, employee_id: emp.id, commission_default_pct: parseFloat(comm) || 0 }); setEmpId(""); setComm(""); setAdding(false); load(); }
     catch (e) { toast.error(String(e)); }
   };
   return (
     <div>
-      <ModuleMasthead accent={ACCENT} eyebrow="Salon & Spa · Team" title="Staff" subtitle="Stylists & therapists, their skills and commission rates."
-        actions={<Button size="sm" className={cn("cursor-pointer", BRAND_BTN)} onClick={() => setAdding((v) => !v)}><Plus className="h-3.5 w-3.5 mr-1.5" /> Add staff</Button>} />
+      <ModuleMasthead accent={ACCENT} eyebrow="Salon & Spa · Team" title="Staff" subtitle="Enrol team members (from Staff / HR) as stylists — set their skills & commission."
+        actions={<Button size="sm" className={cn("cursor-pointer", BRAND_BTN)} onClick={() => setAdding((v) => !v)}><Plus className="h-3.5 w-3.5 mr-1.5" /> Enrol staff</Button>} />
       {adding && (
         <div className="flex items-end gap-2 mb-3 rounded-md border border-border p-3">
-          <Field label="Name"><Input value={name} onChange={(e) => setName(e.target.value)} className="w-48" /></Field>
+          <Field label="Team member">
+            <Select value={empId} onValueChange={(v) => setEmpId(v as string)}>
+              <SelectTrigger className="w-56"><SelectValue placeholder={availableEmployees.length ? "Choose from Staff…" : "All staff enrolled"} /></SelectTrigger>
+              <SelectContent>{availableEmployees.map((e) => <SelectItem key={e.id} value={e.id}>{e.full_name}</SelectItem>)}</SelectContent>
+            </Select>
+          </Field>
           <Field label="Default commission %"><Input type="number" value={comm} onChange={(e) => setComm(e.target.value)} className="w-32 text-right tabular-nums" /></Field>
-          <Button size="sm" onClick={add}>Add</Button>
+          <Button size="sm" onClick={add} disabled={!empId}>Enrol</Button>
         </div>
       )}
       <SkillsDialog staff={skillsFor} services={services} onClose={() => setSkillsFor(null)} />
