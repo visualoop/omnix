@@ -11,6 +11,7 @@
  * `omnix.palette` for palette so both survive reload.
  */
 import { create } from "zustand";
+import { VARIANT } from "@/lib/variant";
 
 export const THEMES = [
   { id: "classic",  name: "Classic",  description: "Warm off-white • slate dark. The default." },
@@ -22,7 +23,9 @@ export const THEMES = [
   { id: "espresso", name: "Espresso", description: "Latte-tan + espresso-brown. Cafe / patisserie." },
   { id: "mono",     name: "Mono",     description: "Pure black-and-white. Maximum contrast." },
   { id: "peach",    name: "Peach",    description: "Warm rose + aubergine. Salon / spa vibe." },
-  { id: "blossom",  name: "Blossom",  description: "Blush-pink + lavender. Feminine salon / spa / beauty." },
+  { id: "blossom",  name: "Blossom",  description: "Soft blush pink. Feminine salon / spa / beauty." },
+  { id: "rose",     name: "Rosé",     description: "Dusty rose-gold. Premium salon / beauty." },
+  { id: "coral",    name: "Coral",    description: "Vibrant coral-pink. Playful salon / spa." },
   { id: "ocean",    name: "Ocean",    description: "Cool cyan + ocean navy. Clinical / medical." },
 ] as const;
 
@@ -49,8 +52,8 @@ const readLocal = <T,>(key: string, fallback: T): T => {
 };
 
 export const useThemeStore = create<ThemeState>((set) => ({
-  theme: readLocal<Mode>("omnix-theme", "system"),
-  palette: readLocal<PaletteId>("omnix.palette", "classic"),
+  theme: readLocal<Mode>("omnix-theme", "dark"),
+  palette: readLocal<PaletteId>("omnix.palette", VARIANT === "salon" ? "blossom" : "classic"),
   setTheme: (theme) => {
     try { localStorage.setItem("omnix-theme", theme); } catch { /* noop */ }
     applyMode(theme);
@@ -85,12 +88,12 @@ export function applyPalette(palette: PaletteId): void {
  * React first paint. Prevents flash of default theme.
  */
 export function bootstrapTheme(): void {
-  applyMode(readLocal<Mode>("omnix-theme", "system"));
-  applyPalette(readLocal<PaletteId>("omnix.palette", "classic"));
+  applyMode(readLocal<Mode>("omnix-theme", "dark"));
+  applyPalette(readLocal<PaletteId>("omnix.palette", VARIANT === "salon" ? "blossom" : "classic"));
   // Follow OS-level colour scheme changes if the user is on "system".
   if (typeof window !== "undefined" && window.matchMedia) {
     window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => {
-      const current = readLocal<Mode>("omnix-theme", "system");
+      const current = readLocal<Mode>("omnix-theme", "dark");
       if (current === "system") applyMode("system");
     });
   }
@@ -98,6 +101,6 @@ export function bootstrapTheme(): void {
 
 // Kick off on module load — belt and suspenders alongside main.tsx bootstrap.
 if (typeof window !== "undefined") {
-  applyMode(readLocal<Mode>("omnix-theme", "system"));
-  applyPalette(readLocal<PaletteId>("omnix.palette", "classic"));
+  applyMode(readLocal<Mode>("omnix-theme", "dark"));
+  applyPalette(readLocal<PaletteId>("omnix.palette", VARIANT === "salon" ? "blossom" : "classic"));
 }

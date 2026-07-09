@@ -115,11 +115,11 @@ type ModuleId = "core" | "dawa" | "retail" | "hardware" | "hospitality" | "salon
 interface Accent { hex: string }
 function moduleAccent(m: ModuleId): Accent {
   switch (m) {
-    case "dawa": return { hex: "#0F766E" };
+    case "dawa": return { hex: "#059669" };
     case "retail": return { hex: "#B45309" };
-    case "hardware": return { hex: "#C2410C" };
-    case "hospitality": return { hex: "#BE185D" };
-    case "salon": return { hex: "#9333EA" };
+    case "hardware": return { hex: "#2563EB" };
+    case "hospitality": return { hex: "#DC2626" };
+    case "salon": return { hex: "#EC4899" };
     default: return { hex: "#92400E" };
   }
 }

@@ -27,7 +27,7 @@ export function DawaLogo({ size = 32, className = "", rounded = true }: LogoProp
     <svg width={size} height={size} viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg" className={className} aria-label={`${term} module logo`}>
       <defs>
         <linearGradient id={`${id}-bg`} x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0%" stopColor="#0D9488" />
+          <stop offset="0%" stopColor="#10B981" />
           <stop offset="100%" stopColor="#065F46" />
         </linearGradient>
         <linearGradient id={`${id}-pill`} x1="0" y1="0" x2="1" y2="1">
@@ -40,7 +40,7 @@ export function DawaLogo({ size = 32, className = "", rounded = true }: LogoProp
       <g transform="translate(256 256) rotate(-30) translate(-160 -56)">
         <rect x="0" y="0" width="320" height="112" rx="56" fill={`url(#${id}-pill)`} />
         <rect x="160" y="0" width="160" height="112" rx="56" fill="rgba(255,255,255,0.4)" />
-        <line x1="160" y1="0" x2="160" y2="112" stroke="#0D9488" strokeWidth="6" />
+        <line x1="160" y1="0" x2="160" y2="112" stroke="#059669" strokeWidth="6" />
       </g>
     </svg>
   );
@@ -53,22 +53,22 @@ export function HardwareLogo({ size = 32, className = "", rounded = true }: Logo
     <svg width={size} height={size} viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg" className={className} aria-label="Hardware">
       <defs>
         <linearGradient id={`${id}-bg`} x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0%" stopColor="#7C2D12" />
-          <stop offset="100%" stopColor="#451A03" />
+          <stop offset="0%" stopColor="#2563EB" />
+          <stop offset="100%" stopColor="#1E3A8A" />
         </linearGradient>
       </defs>
       <rect x="0" y="0" width="512" height="512" rx={rounded ? ROUNDED_RX : 0} fill={`url(#${id}-bg)`} />
       {/* Wrench */}
-      <g transform="translate(256 256) rotate(-45)" stroke="#FED7AA" strokeWidth="32" strokeLinecap="round" fill="none">
+      <g transform="translate(256 256) rotate(-45)" stroke="#DBEAFE" strokeWidth="32" strokeLinecap="round" fill="none">
         <line x1="-140" y1="0" x2="100" y2="0" />
-        <circle cx="-140" cy="0" r="40" fill="#FB923C" stroke="none" />
+        <circle cx="-140" cy="0" r="40" fill="#60A5FA" stroke="none" />
       </g>
       {/* Hammer */}
-      <g transform="translate(256 256) rotate(45)" stroke="#FED7AA" strokeWidth="32" strokeLinecap="round" fill="none">
+      <g transform="translate(256 256) rotate(45)" stroke="#DBEAFE" strokeWidth="32" strokeLinecap="round" fill="none">
         <line x1="-100" y1="0" x2="100" y2="0" />
-        <rect x="80" y="-50" width="50" height="100" rx="8" fill="#FB923C" stroke="none" />
+        <rect x="80" y="-50" width="50" height="100" rx="8" fill="#60A5FA" stroke="none" />
       </g>
-      <circle cx="256" cy="256" r="22" fill="#FED7AA" />
+      <circle cx="256" cy="256" r="22" fill="#DBEAFE" />
     </svg>
   );
 }
@@ -162,20 +162,31 @@ export function ModuleLogo({ moduleId, size = 32, className = "", rounded = true
   }
 }
 
-// ─── Retail (Omnix) — Shopping Bag with Sparkle ───────────────────────
+// ─── Salon & Spa — Scissors ──────────────────────────────────────────
 export function SalonLogo({ size = 32, className = "", rounded = true }: LogoProps) {
   const id = `salon-${size}`;
   return (
     <svg width={size} height={size} viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg" className={className} aria-label="Omnix Salon & Spa">
       <defs>
         <linearGradient id={`${id}-bg`} x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0%" stopColor="#A855F7" />
-          <stop offset="100%" stopColor="#7C3AED" />
+          <stop offset="0%" stopColor="#EC4899" />
+          <stop offset="100%" stopColor="#9D174D" />
         </linearGradient>
       </defs>
       {rounded ? <rect width="512" height="512" rx={ROUNDED_RX} fill={`url(#${id}-bg)`} /> : <rect width="512" height="512" fill={`url(#${id}-bg)`} />}
-      <path d="M 256 120 C 268 200 312 244 392 256 C 312 268 268 312 256 392 C 244 312 200 268 120 256 C 200 244 244 200 256 120 Z" fill="#FFFFFF" />
-      <path d="M 372 150 C 377 178 392 193 420 198 C 392 203 377 218 372 246 C 367 218 352 203 324 198 C 352 193 367 178 372 150 Z" fill="#FFFFFF" fillOpacity="0.85" />
+      {/* Open scissors */}
+      <g fill="none" stroke="#FFFFFF" strokeWidth="24" strokeLinecap="round" strokeLinejoin="round">
+        <circle cx="192" cy="372" r="42" />
+        <circle cx="320" cy="372" r="42" />
+        <path d="M 224 342 L 368 150" />
+        <path d="M 288 342 L 144 150" />
+      </g>
+      {/* Blade tips */}
+      <circle cx="368" cy="150" r="14" fill="#FBCFE8" />
+      <circle cx="144" cy="150" r="14" fill="#FBCFE8" />
+      {/* Pivot */}
+      <circle cx="256" cy="256" r="18" fill="#FFFFFF" />
+      <circle cx="256" cy="256" r="7" fill="#9D174D" />
     </svg>
   );
 }
@@ -186,12 +197,12 @@ export function RetailLogo({ size = 32, className = "", rounded = true }: LogoPr
     <svg width={size} height={size} viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg" className={className} aria-label="Omnix Retail">
       <defs>
         <linearGradient id={`${id}-bg`} x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0%" stopColor="#F97316" />
-          <stop offset="100%" stopColor="#C2410C" />
+          <stop offset="0%" stopColor="#F59E0B" />
+          <stop offset="100%" stopColor="#B45309" />
         </linearGradient>
         <linearGradient id={`${id}-bag`} x1="0" y1="0" x2="0" y2="1">
           <stop offset="0%" stopColor="#FFFFFF" />
-          <stop offset="100%" stopColor="#FED7AA" />
+          <stop offset="100%" stopColor="#FEF3C7" />
         </linearGradient>
       </defs>
       {rounded && <rect width="512" height="512" rx={ROUNDED_RX} fill={`url(#${id}-bg)`} />}

@@ -111,15 +111,15 @@ export function variantAccent(v: Variant): string {
     case "pro":
       return "#1e40af"; // navy
     case "dawa":
-      return "#0d9488"; // teal
+      return "#059669"; // green
     case "retail":
       return "#d97706"; // amber
     case "hospitality":
-      return "#10b981"; // emerald
+      return "#dc2626"; // crimson
     case "hardware":
-      return "#ea580c"; // orange
+      return "#2563eb"; // steel blue
     case "salon":
-      return "#9333ea"; // purple
+      return "#ec4899"; // rose-pink
   }
 }
 

@@ -43,11 +43,11 @@ const ICNS_FALLBACK = resolve(ICONS_DIR, "icon.icns");
  */
 const VARIANTS = {
   pro:         { dark: "#0F172A", mid: "#1E3A8A", light: "#1E40AF" }, // navy
-  dawa:        { dark: "#042F2E", mid: "#0F766E", light: "#0D9488" }, // teal
+  dawa:        { dark: "#064E3B", mid: "#059669", light: "#34D399" }, // green
   retail:      { dark: "#451A03", mid: "#B45309", light: "#D97706" }, // amber
-  hospitality: { dark: "#022C22", mid: "#047857", light: "#10B981" }, // emerald
-  hardware:    { dark: "#431407", mid: "#C2410C", light: "#EA580C" }, // orange
-  salon:       { dark: "#3B0764", mid: "#7C3AED", light: "#A855F7" }, // purple
+  hospitality: { dark: "#7F1D1D", mid: "#DC2626", light: "#F87171" }, // crimson
+  hardware:    { dark: "#1E3A8A", mid: "#2563EB", light: "#60A5FA" }, // steel blue
+  salon:       { dark: "#831843", mid: "#EC4899", light: "#F9A8D4" }, // rose-pink
 };
 
 const SIZES = [32, 64, 128, 256];

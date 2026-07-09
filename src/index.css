@@ -901,6 +901,148 @@
 }
 
 /* ═════════════════════════════════════════════════════════════════════
+ * THEME: Rosé — dusty rose-gold light + warm plum dark. Premium salon.
+ * ═════════════════════════════════════════════════════════════════════ */
+:root[data-theme="rose"],
+[data-theme="rose"]:not(:root) {
+  --background: oklch(0.972 0.012 20);
+  --foreground: oklch(0.26 0.020 15);
+  --card: oklch(0.986 0.008 20);
+  --card-foreground: oklch(0.26 0.020 15);
+  --popover: oklch(0.986 0.008 20);
+  --popover-foreground: oklch(0.26 0.020 15);
+  --primary: oklch(0.55 0.110 12);
+  --primary-foreground: oklch(0.99 0.008 20);
+  --secondary: oklch(0.93 0.020 20);
+  --secondary-foreground: oklch(0.30 0.030 15);
+  --muted: oklch(0.93 0.015 22);
+  --muted-foreground: oklch(0.53 0.030 18);
+  --accent: oklch(0.90 0.030 18);
+  --accent-foreground: oklch(0.30 0.040 15);
+  --border: oklch(0.89 0.015 20);
+  --input: oklch(0.89 0.015 20);
+  --ring: oklch(0.55 0.110 12);
+  --chart-axis: oklch(0.52 0.030 18);
+  --chart-grid: oklch(0.90 0.015 20);
+  --chart-tooltip-bg: oklch(0.986 0.008 20);
+  --chart-tooltip-fg: oklch(0.26 0.020 15);
+  --chart-tooltip-border: oklch(0.85 0.015 20);
+  --sidebar: oklch(0.95 0.015 20);
+  --sidebar-foreground: oklch(0.26 0.020 15);
+  --sidebar-primary: oklch(0.55 0.110 12);
+  --sidebar-primary-foreground: oklch(0.99 0.008 20);
+  --sidebar-accent: oklch(0.90 0.030 18);
+  --sidebar-accent-foreground: oklch(0.30 0.040 15);
+  --sidebar-border: oklch(0.90 0.015 20);
+  --sidebar-ring: oklch(0.55 0.110 12);
+  --hero-art-opacity: 0.11;
+}
+.dark[data-theme="rose"] {
+  --background: oklch(0.205 0.020 15);
+  --foreground: oklch(0.95 0.015 20);
+  --card: oklch(0.25 0.020 15);
+  --card-foreground: oklch(0.95 0.015 20);
+  --popover: oklch(0.25 0.020 15);
+  --popover-foreground: oklch(0.95 0.015 20);
+  --primary: oklch(0.72 0.100 14);
+  --primary-foreground: oklch(0.19 0.020 15);
+  --secondary: oklch(0.33 0.020 15);
+  --secondary-foreground: oklch(0.95 0.015 20);
+  --muted: oklch(0.33 0.020 15);
+  --muted-foreground: oklch(0.73 0.025 20);
+  --accent: oklch(0.35 0.030 15);
+  --accent-foreground: oklch(0.95 0.015 20);
+  --border: oklch(0.37 0.020 15);
+  --input: oklch(0.37 0.020 15);
+  --ring: oklch(0.72 0.100 14);
+  --chart-axis: oklch(0.68 0.030 20);
+  --chart-grid: oklch(0.38 0.020 15);
+  --chart-tooltip-bg: oklch(0.275 0.020 15);
+  --chart-tooltip-fg: oklch(0.95 0.015 20);
+  --chart-tooltip-border: oklch(0.41 0.020 15);
+  --sidebar: oklch(0.25 0.020 15);
+  --sidebar-foreground: oklch(0.95 0.015 20);
+  --sidebar-primary: oklch(0.72 0.100 14);
+  --sidebar-primary-foreground: oklch(0.19 0.020 15);
+  --sidebar-accent: oklch(0.35 0.030 15);
+  --sidebar-accent-foreground: oklch(0.95 0.015 20);
+  --sidebar-border: oklch(0.37 0.020 15);
+  --sidebar-ring: oklch(0.72 0.100 14);
+  --hero-art-opacity: 0.10;
+}
+
+/* ═════════════════════════════════════════════════════════════════════
+ * THEME: Coral — vibrant coral-pink light + deep berry dark. Playful salon.
+ * ═════════════════════════════════════════════════════════════════════ */
+:root[data-theme="coral"],
+[data-theme="coral"]:not(:root) {
+  --background: oklch(0.975 0.014 25);
+  --foreground: oklch(0.25 0.030 20);
+  --card: oklch(0.988 0.010 25);
+  --card-foreground: oklch(0.25 0.030 20);
+  --popover: oklch(0.988 0.010 25);
+  --popover-foreground: oklch(0.25 0.030 20);
+  --primary: oklch(0.62 0.190 18);
+  --primary-foreground: oklch(0.99 0.010 25);
+  --secondary: oklch(0.93 0.030 25);
+  --secondary-foreground: oklch(0.30 0.050 20);
+  --muted: oklch(0.93 0.020 28);
+  --muted-foreground: oklch(0.53 0.040 22);
+  --accent: oklch(0.90 0.050 24);
+  --accent-foreground: oklch(0.30 0.060 20);
+  --border: oklch(0.89 0.020 25);
+  --input: oklch(0.89 0.020 25);
+  --ring: oklch(0.62 0.190 18);
+  --chart-axis: oklch(0.52 0.040 22);
+  --chart-grid: oklch(0.90 0.020 25);
+  --chart-tooltip-bg: oklch(0.988 0.010 25);
+  --chart-tooltip-fg: oklch(0.25 0.030 20);
+  --chart-tooltip-border: oklch(0.85 0.020 25);
+  --sidebar: oklch(0.95 0.020 25);
+  --sidebar-foreground: oklch(0.25 0.030 20);
+  --sidebar-primary: oklch(0.62 0.190 18);
+  --sidebar-primary-foreground: oklch(0.99 0.010 25);
+  --sidebar-accent: oklch(0.90 0.050 24);
+  --sidebar-accent-foreground: oklch(0.30 0.060 20);
+  --sidebar-border: oklch(0.90 0.020 25);
+  --sidebar-ring: oklch(0.62 0.190 18);
+  --hero-art-opacity: 0.12;
+}
+.dark[data-theme="coral"] {
+  --background: oklch(0.205 0.028 10);
+  --foreground: oklch(0.96 0.020 25);
+  --card: oklch(0.25 0.028 10);
+  --card-foreground: oklch(0.96 0.020 25);
+  --popover: oklch(0.25 0.028 10);
+  --popover-foreground: oklch(0.96 0.020 25);
+  --primary: oklch(0.72 0.170 20);
+  --primary-foreground: oklch(0.19 0.028 10);
+  --secondary: oklch(0.33 0.028 12);
+  --secondary-foreground: oklch(0.96 0.020 25);
+  --muted: oklch(0.33 0.028 12);
+  --muted-foreground: oklch(0.74 0.030 22);
+  --accent: oklch(0.35 0.045 15);
+  --accent-foreground: oklch(0.96 0.020 25);
+  --border: oklch(0.37 0.028 12);
+  --input: oklch(0.37 0.028 12);
+  --ring: oklch(0.72 0.170 20);
+  --chart-axis: oklch(0.68 0.040 22);
+  --chart-grid: oklch(0.38 0.028 12);
+  --chart-tooltip-bg: oklch(0.275 0.028 10);
+  --chart-tooltip-fg: oklch(0.96 0.020 25);
+  --chart-tooltip-border: oklch(0.41 0.028 12);
+  --sidebar: oklch(0.25 0.028 10);
+  --sidebar-foreground: oklch(0.96 0.020 25);
+  --sidebar-primary: oklch(0.72 0.170 20);
+  --sidebar-primary-foreground: oklch(0.19 0.028 10);
+  --sidebar-accent: oklch(0.35 0.045 15);
+  --sidebar-accent-foreground: oklch(0.96 0.020 25);
+  --sidebar-border: oklch(0.37 0.028 12);
+  --sidebar-ring: oklch(0.72 0.170 20);
+  --hero-art-opacity: 0.10;
+}
+
+/* ═════════════════════════════════════════════════════════════════════
  * THEME: Ocean — cool cyan-white light + deep ocean navy dark. Fresh,
  * professional. Good match for medical / clinical / lab settings.
  * ═════════════════════════════════════════════════════════════════════ */

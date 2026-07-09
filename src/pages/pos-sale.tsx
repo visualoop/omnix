@@ -77,11 +77,11 @@ import { intlLocale } from "@/lib/intl";
 function useModuleAccent() {
   const m = useActiveModule((s) => s.active);
   if (m === "dawa") return {
-    pay: "bg-teal-700 hover:bg-teal-800",
-    accentText: "text-teal-700 dark:text-teal-400",
-    accentBg: "bg-teal-500/10",
-    accentRing: "ring-teal-500/30",
-    headerBg: "bg-teal-700",
+    pay: "bg-emerald-700 hover:bg-emerald-800",
+    accentText: "text-emerald-700 dark:text-emerald-400",
+    accentBg: "bg-emerald-500/10",
+    accentRing: "ring-emerald-500/30",
+    headerBg: "bg-emerald-700",
     isPharmacy: true,
     isRetail: false,
   };
@@ -95,20 +95,29 @@ function useModuleAccent() {
     isRetail: true,
   };
   if (m === "hardware") return {
-    pay: "bg-orange-700 hover:bg-orange-800",
-    accentText: "text-orange-700 dark:text-orange-400",
-    accentBg: "bg-orange-500/10",
-    accentRing: "ring-orange-500/30",
-    headerBg: "bg-orange-700",
+    pay: "bg-blue-700 hover:bg-blue-800",
+    accentText: "text-blue-700 dark:text-blue-400",
+    accentBg: "bg-blue-500/10",
+    accentRing: "ring-blue-500/30",
+    headerBg: "bg-blue-700",
     isPharmacy: false,
     isRetail: false,
   };
   if (m === "hospitality") return {
-    pay: "bg-rose-700 hover:bg-rose-800",
-    accentText: "text-rose-700 dark:text-rose-400",
-    accentBg: "bg-rose-500/10",
-    accentRing: "ring-rose-500/30",
-    headerBg: "bg-rose-700",
+    pay: "bg-red-700 hover:bg-red-800",
+    accentText: "text-red-700 dark:text-red-400",
+    accentBg: "bg-red-500/10",
+    accentRing: "ring-red-500/30",
+    headerBg: "bg-red-700",
+    isPharmacy: false,
+    isRetail: false,
+  };
+  if (m === "salon") return {
+    pay: "bg-pink-600 hover:bg-pink-700",
+    accentText: "text-pink-700 dark:text-pink-400",
+    accentBg: "bg-pink-500/10",
+    accentRing: "ring-pink-500/30",
+    headerBg: "bg-pink-600",
     isPharmacy: false,
     isRetail: false,
   };
@@ -553,7 +562,6 @@ export function POSSalePage() {
                 className="flex items-center gap-1 bg-accent/50 hover:bg-accent px-2 py-1 rounded transition cursor-pointer"
                 title="Click to close shift / end of day"
               >
-                <span className="h-1.5 w-1.5 rounded-full bg-emerald-300" />
                 Shift open · {KES(shift.opening_balance)}
               </button>
             ) : (
@@ -561,7 +569,6 @@ export function POSSalePage() {
                 onClick={() => setOpenShiftDialog(true)}
                 className="flex items-center gap-1 bg-rose-500/30 hover:bg-rose-500/50 px-2 py-1 rounded transition"
               >
-                <span className="h-1.5 w-1.5 rounded-full bg-rose-300" />
                 No shift · Open now
               </button>
             )}
@@ -934,7 +941,7 @@ function ActionPill({
   variant?: "default" | "danger" | "success";
 }) {
   const variantClass =
-    variant === "danger" ? "bg-destructive/15 hover:bg-destructive/25 text-destructive" :
+    variant === "danger" ? "bg-red-600 hover:bg-red-700 text-white ring-1 ring-white/25" :
     variant === "success" ? "bg-emerald-500/25 hover:bg-emerald-500/35 text-emerald-100 ring-1 ring-emerald-400/40" :
     "bg-white/10 hover:bg-white/20 text-white";
   return (
