@@ -25,7 +25,6 @@ export const dynamic = 'force-dynamic'
 const PAGE_SIZE = 50
 
 const VARIANT_OPTIONS = [
-  { value: 'pro', label: 'Pro' },
   { value: 'dawa', label: 'Dawa' },
   { value: 'retail', label: 'Retail' },
   { value: 'hardware', label: 'Hardware' },

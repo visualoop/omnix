@@ -11,7 +11,7 @@ on:
   workflow_dispatch:
     inputs:
       confirm:
-        description: 'Type WIPE to actually delete. Anything else = read-only count.'
+        description: 'WIPE = wipe purchases · CLEAR-PRO = strip pro from releases · else = count.'
         required: true
         default: 'count'
         type: string
@@ -50,6 +50,9 @@ jobs:
           if [ "${{ inputs.confirm }}" = "WIPE" ]; then
             echo "::warning::Running DESTRUCTIVE transactional wipe (keeping users)"
             pnpm exec tsx scripts/wipe-transactional.mts wipe
+          elif [ "${{ inputs.confirm }}" = "CLEAR-PRO" ]; then
+            echo "::warning::Stripping 'pro' from all release metadata"
+            pnpm exec tsx scripts/wipe-transactional.mts clear-pro
           else
             echo "Read-only count (pass confirm=WIPE to delete)"
             pnpm exec tsx scripts/wipe-transactional.mts count

@@ -26,7 +26,7 @@ export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
 
 type VariantId = 'pro' | 'dawa' | 'retail' | 'hospitality' | 'hardware' | 'salon'
-const ALLOWED_VARIANTS: VariantId[] = ['pro', 'dawa', 'retail', 'hospitality', 'hardware', 'salon']
+const ALLOWED_VARIANTS: VariantId[] = ['dawa', 'retail', 'hospitality', 'hardware', 'salon']
 
 interface VariantAssets {
   exe?: string

@@ -18,7 +18,7 @@ import { db } from '../src/db/index.ts'
 import {
   activations, licenseSyncLog, payments, resellerCommissions, affiliateCredits,
   supportMessages, licenses, machines, supportTickets, resellers, affiliates,
-  cloudBackups, apiTokens, telemetryEvents, auditLog,
+  cloudBackups, apiTokens, telemetryEvents, auditLog, releases,
 } from '../src/db/schema/index.ts'
 
 // Child-first order so foreign keys never block a delete.
@@ -52,6 +52,23 @@ async function main() {
     console.error('[wipe] no DATABASE_URL — aborting'); process.exit(1)
   }
   console.log(`[wipe] mode=${mode}`)
+
+  // ── clear-pro: strip the `pro` variant from every release's metadata ──
+  if (mode === 'clear-pro') {
+    const rows = await db.select().from(releases)
+    let touched = 0
+    for (const r of rows as Array<{ id: string; metadata: unknown }>) {
+      const meta = (r.metadata ?? {}) as { variants?: Record<string, unknown> }
+      if (meta.variants && 'pro' in meta.variants) {
+        delete meta.variants.pro
+        await db.update(releases).set({ metadata: meta as object }).where(sql`id = ${r.id}`)
+        touched++
+      }
+    }
+    console.log(`[wipe] cleared 'pro' from ${touched} release row(s) of ${rows.length}`)
+    process.exit(0)
+  }
+
   let total = 0
   for (const [name, table] of ORDER) {
     const before = await count(table)

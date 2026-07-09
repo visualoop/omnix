@@ -100,7 +100,7 @@ export async function POST(req: Request) {
   //   Omnix.Hardware_<v>_x64-setup.exe
   //   plus matching .msi files.
   type VariantId = 'pro' | 'dawa' | 'retail' | 'hospitality' | 'hardware' | 'salon'
-  const VARIANTS: VariantId[] = ['pro', 'dawa', 'retail', 'hospitality', 'hardware', 'salon']
+  const VARIANTS: VariantId[] = ['dawa', 'retail', 'hospitality', 'hardware', 'salon']
 
   function detectVariant(assetName: string): VariantId | null {
     const lower = assetName.toLowerCase()
