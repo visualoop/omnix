@@ -18,10 +18,11 @@
  */
 import { useEffect, useState } from "react";
 import { useLocation } from "react-router-dom";
-import { Minus, Square, X, CopySimple, Pill, Storefront, ForkKnife, Wrench, Sparkle } from "@phosphor-icons/react";
+import { Minus, Square, X, CopySimple } from "@phosphor-icons/react";
+import { ModuleLogo } from "@/components/module-logos";
 import { cn } from "@/lib/utils";
 import { BRAND } from "@/lib/brand";
-import { VARIANT, VARIANT_ACCENT } from "@/lib/variant";
+import { VARIANT } from "@/lib/variant";
 import { useActiveModule } from "@/stores/active-module";
 
 const H = 32; // matches Windows default titlebar height
@@ -110,21 +111,8 @@ function routeLabelFromPath(pathname: string): string {
  * Icon for the currently-active module. Trade variants pick from VARIANT;
  * Pro reads the useActiveModule store so switching modules refreshes.
  */
-function ModuleIcon({ moduleId, size = 14 }: { moduleId: string; size?: number }) {
-  const cls = "shrink-0";
-  const style = { color: VARIANT_ACCENT };
-  switch (moduleId) {
-    case "dawa":
-      return <Pill className={cls} size={size} weight="fill" style={style} />;
-    case "retail":
-      return <Storefront className={cls} size={size} weight="fill" style={style} />;
-    case "hospitality":
-      return <ForkKnife className={cls} size={size} weight="fill" style={style} />;
-    case "hardware":
-      return <Wrench className={cls} size={size} weight="fill" style={style} />;
-    default:
-      return <Sparkle className={cls} size={size} weight="fill" style={style} />;
-  }
+function ModuleIcon({ moduleId, size = 16 }: { moduleId: string; size?: number }) {
+  return <ModuleLogo moduleId={moduleId} size={size} rounded className="shrink-0" />;
 }
 
 /** Resolves the module id to render, whether trade-locked or Pro-active. */
@@ -293,7 +281,7 @@ function ModuleIdentity({ title }: { title?: string }) {
       data-tauri-drag-region
       className="flex items-center gap-2 pl-3 pr-2 shrink-0 min-w-[180px]"
     >
-      <ModuleIcon moduleId={moduleId} size={14} />
+      <ModuleIcon moduleId={moduleId} size={18} />
       <span className="text-[11px] font-medium tracking-wide text-foreground/85 truncate">
         {BRAND.name}
       </span>

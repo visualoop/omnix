@@ -69,6 +69,15 @@ const FEATURE_OWNERS: Record<string, Exclude<ModuleId, "core">> = {
   "/settings/hospitality/tables": "hospitality",
   "/settings/hospitality/menu": "hospitality",
   "/settings/hospitality/service-charge": "hospitality",
+
+  // Salon & Spa
+  "/salon": "salon",
+  "/salon/appointments": "salon",
+  "/salon/services": "salon",
+  "/salon/staff": "salon",
+  "/salon/clients": "salon",
+  "/salon/packages": "salon",
+  "/salon/reports": "salon",
 };
 
 /**

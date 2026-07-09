@@ -519,7 +519,7 @@ export function POSSalePage() {
       ) : null}
 
       {/* ─── TOP STATUS BAR ─────────────────────────────────────────── */}
-      <div className={`${accent.headerBg} text-white flex-shrink-0 shadow-md shadow-black/10`}>
+      <div className="bg-card text-foreground border-b border-border flex-shrink-0">
         <div className="px-5 py-3 flex items-center gap-6 text-xs">
           {/* Exit POS — back to dashboard. The fullscreen mode hides the
               sidebar; without this affordance the cashier has no obvious
@@ -527,30 +527,30 @@ export function POSSalePage() {
           <button
             onClick={() => navigate("/")}
             title="Exit POS · back to dashboard"
-            className="flex items-center gap-1.5 -ml-2 px-2 py-1 rounded-md text-white/80 hover:bg-white/10 hover:text-white transition-colors"
+            className="flex items-center gap-1.5 -ml-2 px-2 py-1 rounded-md text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
           >
             <ChevronsLeft className="h-3.5 w-3.5" />
             <span className="text-[11px] font-medium">Exit</span>
           </button>
 
           {/* Brand */}
-          <div className="flex items-center gap-2 font-semibold pr-1 border-r border-white/15">
+          <div className="flex items-center gap-2 font-semibold pr-1 border-r border-border">
             <ShoppingCart className="h-4 w-4" />
             <span className="text-[13px]">POS</span>
-            <span className="text-white/40">·</span>
-            <span className="text-white/85 font-normal">
+            <span className="text-muted-foreground/50">·</span>
+            <span className="text-foreground/80 font-normal">
               {activeModule === "dawa" ? pharmacyTerm(countryCode) : activeModule === "retail" ? "Retail" : "Standard"}
             </span>
           </div>
 
           {/* Today's takings — one calm cluster, hairline-separated. */}
-          <div className="flex items-stretch gap-4 rounded-lg bg-white/[0.06] px-3.5 py-1.5 text-white/95">
+          <div className="flex items-stretch gap-4 rounded-lg bg-muted/40 px-3.5 py-1.5 text-foreground">
             <Stat icon={Receipt} label="Today" value={todayStats ? `${todayStats.count} sales` : "—"} />
-            <span className="w-px self-stretch bg-white/10" />
+            <span className="w-px self-stretch bg-border" />
             <Stat icon={TrendingUp} label="Revenue" value={todayStats ? KES(todayStats.revenue) : "—"} />
-            <span className="w-px self-stretch bg-white/10" />
+            <span className="w-px self-stretch bg-border" />
             <Stat icon={Banknote} label="Cash" value={todayStats ? KES(todayStats.cash) : "—"} />
-            <span className="w-px self-stretch bg-white/10" />
+            <span className="w-px self-stretch bg-border" />
             <Stat icon={Smartphone} label="M-Pesa" value={todayStats ? KES(todayStats.mpesa) : "—"} />
           </div>
 
@@ -573,12 +573,12 @@ export function POSSalePage() {
               </button>
             )}
             {branch && (
-              <span className="text-white/80">
+              <span className="text-muted-foreground">
                 <Package className="inline h-3 w-3 mr-1" />
                 {branch.name}
               </span>
             )}
-            <span className="text-white/80">{user?.full_name}</span>
+            <span className="text-muted-foreground">{user?.full_name}</span>
             <span className="font-mono">
               <Clock className="inline h-3 w-3 mr-1" />
               {now.toLocaleTimeString(intlLocale(), { hour: "2-digit", minute: "2-digit", hour12: false })}
@@ -913,7 +913,7 @@ export function POSSalePage() {
 function Stat({ icon: Icon, label, value }: { icon: typeof Receipt; label: string; value: string }) {
   return (
     <div className="flex flex-col gap-0">
-      <span className="flex items-center gap-1 text-[9px] uppercase tracking-wider text-white/55 font-medium">
+      <span className="flex items-center gap-1 text-[9px] uppercase tracking-wider text-muted-foreground font-medium">
         <Icon className="h-2.5 w-2.5" />
         {label}
       </span>
@@ -925,7 +925,7 @@ function Stat({ icon: Icon, label, value }: { icon: typeof Receipt; label: strin
 }
 
 function ToolbarDivider() {
-  return <span className="mx-1 h-5 w-px self-center bg-white/15" aria-hidden />;
+  return <span className="mx-1 h-5 w-px self-center bg-border" aria-hidden />;
 }
 
 function ActionPill({
@@ -942,8 +942,8 @@ function ActionPill({
 }) {
   const variantClass =
     variant === "danger" ? "bg-red-600 hover:bg-red-700 text-white ring-1 ring-white/25" :
-    variant === "success" ? "bg-emerald-500/25 hover:bg-emerald-500/35 text-emerald-100 ring-1 ring-emerald-400/40" :
-    "bg-white/10 hover:bg-white/20 text-white";
+    variant === "success" ? "bg-emerald-600 hover:bg-emerald-700 text-white" :
+    "bg-muted hover:bg-muted/70 text-foreground";
   return (
     <button
       onClick={onClick}

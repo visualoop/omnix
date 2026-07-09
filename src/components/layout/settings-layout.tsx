@@ -22,18 +22,14 @@ import {
   ArrowLeft,
   MagnifyingGlass as Search,
   X,
-  Pill,
-  Storefront,
-  ForkKnife,
-  Wrench,
-  Sparkle,
 } from "@phosphor-icons/react";
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
+import { ModuleLogo } from "@/components/module-logos";
 import { cn } from "@/lib/utils";
 import { useAuthStore } from "@/stores/auth";
 import { useActiveModule } from "@/stores/active-module";
 import { BRAND } from "@/lib/brand";
-import { VARIANT, VARIANT_ACCENT, IS_PRO } from "@/lib/variant";
+import { VARIANT, IS_PRO } from "@/lib/variant";
 import { hasPermission } from "@/lib/permissions";
 import {
   settingsRegistry,
@@ -225,21 +221,8 @@ interface SidebarRowProps {
  */
 declare const __APP_VERSION__: string;
 
-function moduleIconFor(moduleId: string, size = 20) {
-  const style = { color: VARIANT_ACCENT };
-  const cls = "shrink-0";
-  switch (moduleId) {
-    case "dawa":
-      return <Pill className={cls} size={size} weight="fill" style={style} />;
-    case "retail":
-      return <Storefront className={cls} size={size} weight="fill" style={style} />;
-    case "hospitality":
-      return <ForkKnife className={cls} size={size} weight="fill" style={style} />;
-    case "hardware":
-      return <Wrench className={cls} size={size} weight="fill" style={style} />;
-    default:
-      return <Sparkle className={cls} size={size} weight="fill" style={style} />;
-  }
+function moduleIconFor(moduleId: string, size = 36) {
+  return <ModuleLogo moduleId={moduleId} size={size} rounded className="shrink-0" />;
 }
 
 function SettingsSidebarFooter() {
@@ -250,11 +233,8 @@ function SettingsSidebarFooter() {
   return (
     <div className="border-t border-foreground/10 px-4 py-3 mt-auto">
       <div className="flex items-center gap-2.5">
-        <div
-          className="size-9 rounded-lg grid place-items-center shrink-0"
-          style={{ background: `${VARIANT_ACCENT}14` }}
-        >
-          {moduleIconFor(moduleId, 20)}
+        <div className="size-9 shrink-0">
+          {moduleIconFor(moduleId, 36)}
         </div>
         <div className="min-w-0 flex-1">
           <div

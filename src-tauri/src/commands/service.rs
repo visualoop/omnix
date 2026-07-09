@@ -40,52 +40,49 @@ pub async fn install_windows_service() -> Result<String, String> {
     #[cfg(windows)]
     {
         let exe = service_exe_path()?;
-        // sc create OmnixLAN binPath="..." start=auto DisplayName="Omnix LAN Server"
-        let output = std::process::Command::new("sc.exe")
+        // sc.exe needs an elevated token (OpenSCManager write access) or it
+        // fails with "Access is denied". A plain Command spawn inherits the
+        // app's non-elevated token, so we write the sc commands to a batch
+        // file and launch it elevated via PowerShell Start-Process -Verb RunAs
+        // (single UAC prompt), then verify the result with a (non-elevated)
+        // query.
+        let bat = format!(
+            "@echo off\r\n\
+             sc create OmnixLAN binPath= \"{exe}\" start= auto DisplayName= \"Omnix LAN Server\"\r\n\
+             sc failure OmnixLAN reset= 86400 actions= restart/5000/restart/5000/restart/30000\r\n\
+             sc start OmnixLAN\r\n",
+            exe = exe
+        );
+        let tmp = std::env::temp_dir().join("omnix-install-lan.bat");
+        std::fs::write(&tmp, bat).map_err(|e| format!("write install script: {}", e))?;
+
+        let run = std::process::Command::new("powershell")
             .args([
-                "create",
-                "OmnixLAN",
-                &format!("binPath= \"{}\"", exe),
-                "start=",
-                "auto",
-                "DisplayName=",
-                "Omnix LAN Server",
+                "-NoProfile",
+                "-WindowStyle",
+                "Hidden",
+                "-Command",
+                &format!(
+                    "Start-Process -FilePath '{}' -Verb RunAs -Wait -WindowStyle Hidden",
+                    tmp.display()
+                ),
             ])
-            .output()
-            .map_err(|e| format!("sc.exe create: {}", e))?;
-        if !output.status.success() {
-            let stderr = String::from_utf8_lossy(&output.stderr);
-            let stdout = String::from_utf8_lossy(&output.stdout);
-            return Err(format!(
-                "sc create failed (status {}): stderr={} stdout={}",
-                output.status, stderr, stdout
-            ));
+            .status()
+            .map_err(|e| format!("elevate (powershell): {}", e))?;
+        let _ = std::fs::remove_file(&tmp);
+        if !run.success() {
+            // Non-zero here usually means the user declined the UAC prompt.
+            return Err("Elevation was cancelled or failed — installing a Windows service needs administrator rights.".to_string());
         }
 
-        // Configure auto-restart on failure (services.msc → Recovery)
-        // Restart after 5s on first + second failure, then 30s.
-        let _ = std::process::Command::new("sc.exe")
-            .args([
-                "failure",
-                "OmnixLAN",
-                "reset=",
-                "86400",
-                "actions=",
-                "restart/5000/restart/5000/restart/30000",
-            ])
-            .output();
-
-        // Start it now
-        let start = std::process::Command::new("sc.exe")
-            .args(["start", "OmnixLAN"])
+        // Verify — the elevated process ran detached, so confirm via query.
+        let q = std::process::Command::new("sc.exe")
+            .args(["query", "OmnixLAN"])
             .output()
-            .map_err(|e| format!("sc.exe start: {}", e))?;
-        if !start.status.success() {
-            let stderr = String::from_utf8_lossy(&start.stderr);
-            return Err(format!(
-                "Service installed but failed to start: {}",
-                stderr
-            ));
+            .map_err(|e| format!("sc.exe query: {}", e))?;
+        let qout = String::from_utf8_lossy(&q.stdout);
+        if qout.contains("does not exist") || !q.status.success() {
+            return Err("Service did not install — administrator rights are required (approve the UAC prompt).".to_string());
         }
         Ok("Installed + started".to_string())
     }
@@ -100,18 +97,27 @@ pub async fn uninstall_windows_service() -> Result<String, String> {
     }
     #[cfg(windows)]
     {
-        // Stop first (best-effort)
-        let _ = std::process::Command::new("sc.exe")
-            .args(["stop", "OmnixLAN"])
-            .output();
-
-        let output = std::process::Command::new("sc.exe")
-            .args(["delete", "OmnixLAN"])
-            .output()
-            .map_err(|e| format!("sc.exe delete: {}", e))?;
-        if !output.status.success() {
-            let stderr = String::from_utf8_lossy(&output.stderr);
-            return Err(format!("sc delete failed: {}", stderr));
+        // Elevated stop + delete (SCM write access needs admin), same
+        // batch-and-RunAs approach as install.
+        let bat = "@echo off\r\nsc stop OmnixLAN\r\nsc delete OmnixLAN\r\n";
+        let tmp = std::env::temp_dir().join("omnix-uninstall-lan.bat");
+        std::fs::write(&tmp, bat).map_err(|e| format!("write uninstall script: {}", e))?;
+        let run = std::process::Command::new("powershell")
+            .args([
+                "-NoProfile",
+                "-WindowStyle",
+                "Hidden",
+                "-Command",
+                &format!(
+                    "Start-Process -FilePath '{}' -Verb RunAs -Wait -WindowStyle Hidden",
+                    tmp.display()
+                ),
+            ])
+            .status()
+            .map_err(|e| format!("elevate (powershell): {}", e))?;
+        let _ = std::fs::remove_file(&tmp);
+        if !run.success() {
+            return Err("Elevation was cancelled — removing a Windows service needs administrator rights.".to_string());
         }
         Ok("Uninstalled".to_string())
     }
