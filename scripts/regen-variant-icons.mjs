@@ -47,6 +47,7 @@ const VARIANTS = {
   retail:      { dark: "#451A03", mid: "#B45309", light: "#D97706" }, // amber
   hospitality: { dark: "#022C22", mid: "#047857", light: "#10B981" }, // emerald
   hardware:    { dark: "#431407", mid: "#C2410C", light: "#EA580C" }, // orange
+  salon:       { dark: "#3B0764", mid: "#7C3AED", light: "#A855F7" }, // purple
 };
 
 const SIZES = [32, 64, 128, 256];
