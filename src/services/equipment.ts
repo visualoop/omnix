@@ -13,7 +13,6 @@
  * list in-stock units to sell them).
  */
 import { query, execute, transaction } from "@/lib/db";
-import { assertModuleEntitled } from "@/services/license";
 import { requirePermission } from "@/services/rbac";
 import { getActiveBranchId } from "@/stores/active-branch";
 
@@ -255,7 +254,6 @@ export async function receiveUnits(
   units: ReceiveUnitInput[],
   opts?: { branch_id?: string },
 ): Promise<string[]> {
-  await assertModuleEntitled("hardware");
   await requirePermission("hardware.equipment.manage", { entityType: "equipment_unit" });
   if (units.length === 0) return [];
 
@@ -294,14 +292,12 @@ export async function receiveUnits(
 
 /** Reserve an in-stock unit (e.g. when quoted). Idempotent if already reserved. */
 export async function reserveUnit(unitId: string): Promise<void> {
-  await assertModuleEntitled("hardware");
   await requirePermission("hardware.equipment.manage", { entityType: "equipment_unit", entityId: unitId });
   await setStatus(unitId, "reserved");
 }
 
 /** Release a reserved unit back to stock. */
 export async function releaseUnit(unitId: string): Promise<void> {
-  await assertModuleEntitled("hardware");
   await requirePermission("hardware.equipment.manage", { entityType: "equipment_unit", entityId: unitId });
   await setStatus(unitId, "in_stock");
 }
@@ -329,7 +325,6 @@ export async function markUnitSold(input: {
   saleDate?: string;                 // defaults to now
   warrantyMonths?: number | null;    // overrides the product default
 }): Promise<{ warranty_start: string | null; warranty_expiry: string | null }> {
-  await assertModuleEntitled("hardware");
   await requirePermission("hardware.equipment.manage", { entityType: "equipment_unit", entityId: input.unitId });
 
   const [row] = await query<{ status: UnitStatus; product_id: string }>(
@@ -407,7 +402,6 @@ export async function finalizeEquipmentSale(
 
 /** Record a meter reading (hours/km) on a unit. */
 export async function updateMeter(unitId: string, value: number, unit?: MeterUnit): Promise<void> {
-  await assertModuleEntitled("hardware");
   await requirePermission("hardware.equipment.manage", { entityType: "equipment_unit", entityId: unitId });
   await execute(
     `UPDATE equipment_units SET meter_value = ?2, meter_unit = COALESCE(?3, meter_unit), updated_at = ?4 WHERE id = ?1`,
@@ -417,7 +411,6 @@ export async function updateMeter(unitId: string, value: number, unit?: MeterUni
 
 /** Write off a unit (terminal). */
 export async function writeOffUnit(unitId: string, reason?: string): Promise<void> {
-  await assertModuleEntitled("hardware");
   await requirePermission("hardware.equipment.manage", { entityType: "equipment_unit", entityId: unitId });
   await execute(
     `UPDATE equipment_units SET status = 'written_off', notes = COALESCE(?2, notes), updated_at = ?3 WHERE id = ?1`,
@@ -492,7 +485,6 @@ export async function receiveEquipmentUnits(
   units: ReceiveUnitInput[],
   meta: { userId: string; branchId?: string; supplier?: string; reference?: string },
 ): Promise<string[]> {
-  await assertModuleEntitled("hardware");
   await requirePermission("hardware.equipment.manage", { entityType: "equipment_unit" });
   if (units.length === 0) return [];
 

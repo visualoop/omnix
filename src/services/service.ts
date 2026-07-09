@@ -10,7 +10,6 @@
  * Mutating ops assert the hardware entitlement + hardware.equipment.manage.
  */
 import { query, execute, transaction } from "@/lib/db";
-import { assertModuleEntitled } from "@/services/license";
 import { requirePermission } from "@/services/rbac";
 import { getActiveBranchId } from "@/stores/active-branch";
 import { warrantyState } from "@/services/equipment";
@@ -171,7 +170,6 @@ export async function createServiceJob(input: {
   meter_in?: number | null;
   is_warranty?: boolean;
 }): Promise<{ id: string; job_number: string }> {
-  await assertModuleEntitled("hardware");
   await requirePermission("hardware.equipment.manage", { entityType: "service_job" });
 
   const [unit] = await query<{ status: string; warranty_expiry: string | null; customer_id: string | null }>(
@@ -205,7 +203,6 @@ export async function createServiceJob(input: {
 }
 
 export async function updateJobStatus(id: string, to: ServiceStatus): Promise<void> {
-  await assertModuleEntitled("hardware");
   await requirePermission("hardware.equipment.manage", { entityType: "service_job", entityId: id });
   const [row] = await query<{ status: ServiceStatus }>(`SELECT status FROM service_jobs WHERE id = ?1`, [id]);
   if (!row) throw new Error("Job not found.");
@@ -220,7 +217,6 @@ export async function updateJobFields(id: string, fields: {
   is_warranty?: boolean;
   notes?: string | null;
 }): Promise<void> {
-  await assertModuleEntitled("hardware");
   await requirePermission("hardware.equipment.manage", { entityType: "service_job", entityId: id });
   const sets: string[] = [];
   const params: unknown[] = [id];
@@ -241,7 +237,6 @@ export async function updateJobFields(id: string, fields: {
  * to a resting state (sold if it had been sold, else in_stock).
  */
 export async function completeJob(id: string): Promise<void> {
-  await assertModuleEntitled("hardware");
   await requirePermission("hardware.equipment.manage", { entityType: "service_job", entityId: id });
   const [job] = await query<{ status: ServiceStatus; unit_id: string }>(
     `SELECT status, unit_id FROM service_jobs WHERE id = ?1`, [id],
@@ -282,7 +277,6 @@ export async function addPart(jobId: string, input: {
   quantity: number;
   unit_price?: number;
 }): Promise<void> {
-  await assertModuleEntitled("hardware");
   await requirePermission("hardware.equipment.manage", { entityType: "service_job", entityId: jobId });
   const qty = input.quantity;
   if (!(qty > 0)) throw new Error("Quantity must be greater than zero.");
@@ -333,7 +327,6 @@ export async function addPart(jobId: string, input: {
 
 /** Remove a part from a job, returning the quantity to stock. */
 export async function removePart(partId: string): Promise<void> {
-  await assertModuleEntitled("hardware");
   await requirePermission("hardware.equipment.manage", { entityType: "service_job_part", entityId: partId });
   const [part] = await query<{ job_id: string; product_id: string; batch_id: string | null; quantity: number }>(
     `SELECT job_id, product_id, batch_id, quantity FROM service_job_parts WHERE id = ?1`, [partId],
@@ -368,7 +361,6 @@ export async function addLabour(jobId: string, input: {
   rate: number;
   technician_id?: string | null;
 }): Promise<void> {
-  await assertModuleEntitled("hardware");
   await requirePermission("hardware.equipment.manage", { entityType: "service_job", entityId: jobId });
   const total = (input.hours || 0) * (input.rate || 0);
   await execute(
@@ -380,7 +372,6 @@ export async function addLabour(jobId: string, input: {
 }
 
 export async function removeLabour(labourId: string): Promise<void> {
-  await assertModuleEntitled("hardware");
   await requirePermission("hardware.equipment.manage", { entityType: "service_job_labour", entityId: labourId });
   const [row] = await query<{ job_id: string }>(`SELECT job_id FROM service_job_labour WHERE id = ?1`, [labourId]);
   if (!row) return;
@@ -397,7 +388,6 @@ export async function removeLabour(labourId: string): Promise<void> {
  * consumed when parts were added, so the invoice does not touch inventory.
  */
 export async function invoiceJob(jobId: string, opts: { dueDate: string; userId: string }): Promise<string> {
-  await assertModuleEntitled("hardware");
   await requirePermission("hardware.equipment.manage", { entityType: "service_job", entityId: jobId });
   const detail = await getServiceJob(jobId);
   if (!detail) throw new Error("Job not found.");

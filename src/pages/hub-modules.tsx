@@ -130,6 +130,8 @@ export function RetailHubPage() {
         { id: "laybys", label: "Laybys", icon: WalletIcon, component: LaybysPage, permission: "retail.laybys.use" },
         { id: "special-orders", label: "Special orders", icon: ShoppingBag, component: SpecialOrdersPage, permission: "retail.special_orders.use" },
         { id: "shrinkage", label: "Shrinkage", icon: Boxes, component: ShrinkagePage, permission: "retail.shrinkage.record" },
+        { id: "units", label: "Units", icon: Wrench, component: HardwareFleetPage, permission: "hardware.equipment.manage" },
+        { id: "repairs", label: "Repairs", icon: ClipboardList, component: HardwareServicePage, permission: "hardware.equipment.manage" },
       ]}
       hasPermission={has}
     />
