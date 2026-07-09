@@ -757,6 +757,150 @@
 }
 
 /* ═════════════════════════════════════════════════════════════════════
+ * THEME: Blossom — soft blush-pink light + plum dark, lavender accents.
+ * Feminine / girly. Default for salon & spa (Sanaa) installs.
+ * ═════════════════════════════════════════════════════════════════════ */
+:root[data-theme="blossom"],
+[data-theme="blossom"]:not(:root) {
+  --background: oklch(0.972 0.014 350);
+  --foreground: oklch(0.25 0.030 350);
+  --card: oklch(0.985 0.010 350);
+  --card-foreground: oklch(0.25 0.030 350);
+  --popover: oklch(0.985 0.010 350);
+  --popover-foreground: oklch(0.25 0.030 350);
+  --primary: oklch(0.56 0.170 352);
+  --primary-foreground: oklch(0.99 0.010 350);
+  --secondary: oklch(0.93 0.030 320);
+  --secondary-foreground: oklch(0.30 0.050 350);
+  --muted: oklch(0.93 0.020 340);
+  --muted-foreground: oklch(0.52 0.040 340);
+  --accent: oklch(0.90 0.050 320);
+  --accent-foreground: oklch(0.30 0.060 340);
+  --border: oklch(0.89 0.020 340);
+  --input: oklch(0.89 0.020 340);
+  --ring: oklch(0.56 0.170 352);
+  --chart-axis: oklch(0.52 0.040 340);
+  --chart-grid: oklch(0.90 0.020 340);
+  --chart-tooltip-bg: oklch(0.985 0.010 350);
+  --chart-tooltip-fg: oklch(0.25 0.030 350);
+  --chart-tooltip-border: oklch(0.85 0.020 340);
+  --sidebar: oklch(0.95 0.020 345);
+  --sidebar-foreground: oklch(0.25 0.030 350);
+  --sidebar-primary: oklch(0.56 0.170 352);
+  --sidebar-primary-foreground: oklch(0.99 0.010 350);
+  --sidebar-accent: oklch(0.90 0.050 320);
+  --sidebar-accent-foreground: oklch(0.30 0.060 340);
+  --sidebar-border: oklch(0.90 0.020 340);
+  --sidebar-ring: oklch(0.56 0.170 352);
+  --hero-art-opacity: 0.12;
+}
+.dark[data-theme="blossom"] {
+  --background: oklch(0.20 0.030 340);
+  --foreground: oklch(0.96 0.020 340);
+  --card: oklch(0.245 0.030 340);
+  --card-foreground: oklch(0.96 0.020 340);
+  --popover: oklch(0.245 0.030 340);
+  --popover-foreground: oklch(0.96 0.020 340);
+  --primary: oklch(0.70 0.160 350);
+  --primary-foreground: oklch(0.18 0.030 350);
+  --secondary: oklch(0.32 0.030 330);
+  --secondary-foreground: oklch(0.96 0.020 340);
+  --muted: oklch(0.32 0.030 335);
+  --muted-foreground: oklch(0.74 0.030 340);
+  --accent: oklch(0.34 0.050 320);
+  --accent-foreground: oklch(0.96 0.020 340);
+  --border: oklch(0.36 0.030 335);
+  --input: oklch(0.36 0.030 335);
+  --ring: oklch(0.70 0.160 350);
+  --chart-axis: oklch(0.68 0.040 340);
+  --chart-grid: oklch(0.37 0.030 335);
+  --chart-tooltip-bg: oklch(0.27 0.030 340);
+  --chart-tooltip-fg: oklch(0.96 0.020 340);
+  --chart-tooltip-border: oklch(0.40 0.030 335);
+  --sidebar: oklch(0.245 0.030 340);
+  --sidebar-foreground: oklch(0.96 0.020 340);
+  --sidebar-primary: oklch(0.70 0.160 350);
+  --sidebar-primary-foreground: oklch(0.18 0.030 350);
+  --sidebar-accent: oklch(0.34 0.050 320);
+  --sidebar-accent-foreground: oklch(0.96 0.020 340);
+  --sidebar-border: oklch(0.36 0.030 335);
+  --sidebar-ring: oklch(0.70 0.160 350);
+  --hero-art-opacity: 0.10;
+}
+
+/* ═════════════════════════════════════════════════════════════════════
+ * THEME: Blossom — soft blush-pink light + plum dark, lavender accents.
+ * Feminine / girly. Default for salon & spa (Sanaa) installs.
+ * ═════════════════════════════════════════════════════════════════════ */
+:root[data-theme="blossom"],
+[data-theme="blossom"]:not(:root) {
+  --background: oklch(0.972 0.014 350);
+  --foreground: oklch(0.25 0.030 350);
+  --card: oklch(0.985 0.010 350);
+  --card-foreground: oklch(0.25 0.030 350);
+  --popover: oklch(0.985 0.010 350);
+  --popover-foreground: oklch(0.25 0.030 350);
+  --primary: oklch(0.56 0.170 352);
+  --primary-foreground: oklch(0.99 0.010 350);
+  --secondary: oklch(0.93 0.030 320);
+  --secondary-foreground: oklch(0.30 0.050 350);
+  --muted: oklch(0.93 0.020 340);
+  --muted-foreground: oklch(0.52 0.040 340);
+  --accent: oklch(0.90 0.050 320);
+  --accent-foreground: oklch(0.30 0.060 340);
+  --border: oklch(0.89 0.020 340);
+  --input: oklch(0.89 0.020 340);
+  --ring: oklch(0.56 0.170 352);
+  --chart-axis: oklch(0.52 0.040 340);
+  --chart-grid: oklch(0.90 0.020 340);
+  --chart-tooltip-bg: oklch(0.985 0.010 350);
+  --chart-tooltip-fg: oklch(0.25 0.030 350);
+  --chart-tooltip-border: oklch(0.85 0.020 340);
+  --sidebar: oklch(0.95 0.020 345);
+  --sidebar-foreground: oklch(0.25 0.030 350);
+  --sidebar-primary: oklch(0.56 0.170 352);
+  --sidebar-primary-foreground: oklch(0.99 0.010 350);
+  --sidebar-accent: oklch(0.90 0.050 320);
+  --sidebar-accent-foreground: oklch(0.30 0.060 340);
+  --sidebar-border: oklch(0.90 0.020 340);
+  --sidebar-ring: oklch(0.56 0.170 352);
+  --hero-art-opacity: 0.12;
+}
+.dark[data-theme="blossom"] {
+  --background: oklch(0.20 0.030 340);
+  --foreground: oklch(0.96 0.020 340);
+  --card: oklch(0.245 0.030 340);
+  --card-foreground: oklch(0.96 0.020 340);
+  --popover: oklch(0.245 0.030 340);
+  --popover-foreground: oklch(0.96 0.020 340);
+  --primary: oklch(0.70 0.160 350);
+  --primary-foreground: oklch(0.18 0.030 350);
+  --secondary: oklch(0.32 0.030 330);
+  --secondary-foreground: oklch(0.96 0.020 340);
+  --muted: oklch(0.32 0.030 335);
+  --muted-foreground: oklch(0.74 0.030 340);
+  --accent: oklch(0.34 0.050 320);
+  --accent-foreground: oklch(0.96 0.020 340);
+  --border: oklch(0.36 0.030 335);
+  --input: oklch(0.36 0.030 335);
+  --ring: oklch(0.70 0.160 350);
+  --chart-axis: oklch(0.68 0.040 340);
+  --chart-grid: oklch(0.37 0.030 335);
+  --chart-tooltip-bg: oklch(0.27 0.030 340);
+  --chart-tooltip-fg: oklch(0.96 0.020 340);
+  --chart-tooltip-border: oklch(0.40 0.030 335);
+  --sidebar: oklch(0.245 0.030 340);
+  --sidebar-foreground: oklch(0.96 0.020 340);
+  --sidebar-primary: oklch(0.70 0.160 350);
+  --sidebar-primary-foreground: oklch(0.18 0.030 350);
+  --sidebar-accent: oklch(0.34 0.050 320);
+  --sidebar-accent-foreground: oklch(0.96 0.020 340);
+  --sidebar-border: oklch(0.36 0.030 335);
+  --sidebar-ring: oklch(0.70 0.160 350);
+  --hero-art-opacity: 0.10;
+}
+
+/* ═════════════════════════════════════════════════════════════════════
  * THEME: Ocean — cool cyan-white light + deep ocean navy dark. Fresh,
  * professional. Good match for medical / clinical / lab settings.
  * ═════════════════════════════════════════════════════════════════════ */

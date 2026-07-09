@@ -22,6 +22,7 @@ export const THEMES = [
   { id: "espresso", name: "Espresso", description: "Latte-tan + espresso-brown. Cafe / patisserie." },
   { id: "mono",     name: "Mono",     description: "Pure black-and-white. Maximum contrast." },
   { id: "peach",    name: "Peach",    description: "Warm rose + aubergine. Salon / spa vibe." },
+  { id: "blossom",  name: "Blossom",  description: "Blush-pink + lavender. Feminine salon / spa / beauty." },
   { id: "ocean",    name: "Ocean",    description: "Cool cyan + ocean navy. Clinical / medical." },
 ] as const;
 
