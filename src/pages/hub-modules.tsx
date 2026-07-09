@@ -66,7 +66,7 @@ import {
   HardwareAccountsPage, HardwareCommissionsPage, HardwareReportsPage,
   HardwareFleetPage, HardwareServicePage, HardwareRentalsPage,
 } from "@/pages/hardware";
-import { SalonCalendarPage, SalonServicesPage, SalonStaffPage, SalonReportsPage, SalonClientsPage } from "@/pages/salon";
+import { SalonCalendarPage, SalonServicesPage, SalonStaffPage, SalonReportsPage, SalonClientsPage, SalonPackagesPage } from "@/pages/salon";
 
 import {
   HospitalityDashboardPage, HospitalityTablesPage, HospitalityMenuPage,
@@ -196,6 +196,7 @@ export function SalonHubPage() {
       tabs={[
         { id: "calendar", label: "Appointments", icon: Sparkle, component: SalonCalendarPage, permission: "salon.appointments.manage" },
         { id: "services", label: "Services", icon: Scissors, component: SalonServicesPage, permission: "salon.services.manage" },
+        { id: "packages", label: "Packages", icon: Sparkle, component: SalonPackagesPage, permission: "salon.services.manage" },
         { id: "staff", label: "Staff", icon: UsersIcon, component: SalonStaffPage, permission: "salon.staff.manage" },
         { id: "clients", label: "Clients", icon: UsersIcon, component: SalonClientsPage, permission: "salon.appointments.manage" },
         { id: "reports", label: "Reports", icon: BarChart3, component: SalonReportsPage, permission: "salon.reports.view" },

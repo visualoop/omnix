@@ -361,18 +361,42 @@ export async function checkoutAppointment(input: {
   );
   for (const r of svRows) productMap.set(r.id, { product_id: r.product_id, tax_rate: r.tax_rate });
 
+  // Prepaid packages: cover matching service lines (price → 0), decrementing
+  // a session per covered service.
+  const redeemStmts: { sql: string; params: unknown[] }[] = [];
+  const pkgRemaining = new Map<string, { cpId: string; remaining: number }>(); // service_id → package balance
+  if (appointment.client_id) {
+    const pkgs = await listClientPackages(appointment.client_id, true);
+    for (const pk of pkgs) {
+      if (pk.service_id && !pkgRemaining.has(pk.service_id)) {
+        pkgRemaining.set(pk.service_id, { cpId: pk.id, remaining: pk.sessions_remaining });
+      }
+    }
+  }
+
   const serviceLines: CartItem[] = services.map((s) => {
     const backing = productMap.get(s.service_id);
+    const bal = pkgRemaining.get(s.service_id);
+    let price = s.price;
+    if (bal && bal.remaining > 0) {
+      price = 0;                       // covered by prepaid package
+      bal.remaining -= 1;
+      redeemStmts.push({
+        sql: `UPDATE client_packages SET sessions_remaining = MAX(0, sessions_remaining - 1),
+                active = CASE WHEN sessions_remaining - 1 <= 0 THEN 0 ELSE active END WHERE id = ?1`,
+        params: [bal.cpId],
+      });
+    }
     return {
       id: uid(),
       product_id: backing?.product_id ?? s.service_id,
       service_id: s.service_id,
-      name: s.name,
+      name: bal && price === 0 ? `${s.name} (package)` : s.name,
       quantity: 1,
-      unit_price: s.price,
+      unit_price: price,
       discount: 0,
       tax_rate: backing?.tax_rate ?? 16,
-      total: s.price,
+      total: price,
     };
   });
   const items = [...serviceLines, ...(input.retailItems ?? [])];
@@ -404,6 +428,7 @@ export async function checkoutAppointment(input: {
   // Back-bar: deduct professional products consumed by the services.
   const backBar = await backBarConsumptionStmts(services.map((s) => s.service_id), saleId);
   stmts.push(...backBar);
+  stmts.push(...redeemStmts);
   stmts.push({
     sql: `UPDATE salon_appointments SET status = 'completed', sale_id = ?2, updated_at = ?3 WHERE id = ?1`,
     params: [input.appointment_id, saleId, nowIso()],
@@ -534,5 +559,73 @@ export async function servicePopularity(fromIso: string, toIso: string): Promise
      WHERE a.status = 'completed' AND a.starts_at >= ?1 AND a.starts_at < ?2
      GROUP BY s.service_id ORDER BY count DESC LIMIT 50`,
     [fromIso, toIso],
+  );
+}
+
+// ─── Packages / memberships ───────────────────────────────────────────────────
+
+export interface SalonPackage {
+  id: string; product_id: string | null; name: string; service_id: string | null;
+  service_name?: string | null; sessions: number; price: number; validity_days: number | null; active: number;
+}
+export interface ClientPackage {
+  id: string; client_id: string; package_id: string; service_id: string | null; package_name?: string;
+  sessions_total: number; sessions_remaining: number; purchased_at: string; expires_at: string | null; active: number;
+}
+
+export async function listPackages(includeInactive = false): Promise<SalonPackage[]> {
+  return query<SalonPackage>(
+    `SELECT pk.*, s.name AS service_name FROM salon_packages pk
+     LEFT JOIN salon_services s ON s.id = pk.service_id
+     ${includeInactive ? "" : "WHERE pk.active = 1"} ORDER BY pk.name`,
+  );
+}
+
+export async function createPackage(input: {
+  name: string; service_id: string; sessions: number; price: number; validity_days?: number | null;
+}): Promise<string> {
+  await requirePermission("salon.services.manage", { entityType: "salon_package" });
+  const id = uid();
+  const productId = uid();
+  await transaction([
+    { sql: `INSERT INTO products (id, name, kind, is_service, tax_rate) VALUES (?1, ?2, 'physical', 1, 16.0)`, params: [productId, input.name] },
+    { sql: `INSERT INTO salon_packages (id, product_id, name, service_id, sessions, price, validity_days)
+            VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)`,
+      params: [id, productId, input.name, input.service_id, input.sessions, input.price, input.validity_days ?? null] },
+  ]);
+  return id;
+}
+
+/** Sell a package to a client (prepaid) — books the sale + creates the balance. */
+export async function sellPackage(input: {
+  client_id: string; package_id: string; userId: string; payments: PaymentEntry[];
+}): Promise<{ saleId: string; clientPackageId: string }> {
+  await requirePermission("salon.appointments.manage", { entityType: "client_package" });
+  const [pkg] = await query<SalonPackage>(`SELECT * FROM salon_packages WHERE id = ?1`, [input.package_id]);
+  if (!pkg) throw new Error("Package not found.");
+
+  const { saleId } = await completeSale(
+    [{ id: uid(), product_id: pkg.product_id ?? pkg.id, service_id: pkg.service_id, name: pkg.name, quantity: 1, unit_price: pkg.price, discount: 0, tax_rate: 16, total: pkg.price }],
+    input.payments, input.client_id, input.userId, 0, 0, null, 0, "salon_package", input.package_id,
+  );
+
+  const cpId = uid();
+  const expiresAt = pkg.validity_days ? addMinutesIso(nowIso(), pkg.validity_days * 24 * 60) : null;
+  await execute(
+    `INSERT INTO client_packages (id, client_id, package_id, service_id, sessions_total, sessions_remaining, expires_at, purchase_sale_id)
+     VALUES (?1, ?2, ?3, ?4, ?5, ?5, ?6, ?7)`,
+    [cpId, input.client_id, input.package_id, pkg.service_id, pkg.sessions, expiresAt, saleId],
+  );
+  return { saleId, clientPackageId: cpId };
+}
+
+export async function listClientPackages(clientId: string, redeemableOnly = false): Promise<ClientPackage[]> {
+  return query<ClientPackage>(
+    `SELECT cp.*, pk.name AS package_name FROM client_packages cp
+     JOIN salon_packages pk ON pk.id = cp.package_id
+     WHERE cp.client_id = ?1 AND cp.active = 1
+       ${redeemableOnly ? "AND cp.sessions_remaining > 0 AND (cp.expires_at IS NULL OR cp.expires_at > datetime('now'))" : ""}
+     ORDER BY cp.purchased_at DESC`,
+    [clientId],
   );
 }

@@ -676,6 +676,12 @@ fn run_inner() {
             sql: include_str!("../migrations/095_salon_backbar.sql"),
             kind: MigrationKind::Up,
         },
+        Migration {
+            version: 96,
+            description: "Salon prepaid packages / memberships",
+            sql: include_str!("../migrations/096_salon_packages.sql"),
+            kind: MigrationKind::Up,
+        },
     ];
 
     tauri::Builder::default()

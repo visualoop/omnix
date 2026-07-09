@@ -10,6 +10,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 const query = vi.fn();
 const execute = vi.fn();
 const transaction = vi.fn();
+const completeSale = vi.fn();
 
 vi.mock("@/lib/db", () => ({
   query: (...a: unknown[]) => query(...a),
@@ -18,14 +19,14 @@ vi.mock("@/lib/db", () => ({
 }));
 vi.mock("@/services/rbac", () => ({ requirePermission: vi.fn().mockResolvedValue(undefined) }));
 vi.mock("@/stores/active-branch", () => ({ getActiveBranchId: () => "" }));
-vi.mock("@/services/sales", () => ({ completeSale: vi.fn(), getPaymentMethods: vi.fn() }));
+vi.mock("@/services/sales", () => ({ completeSale: (...a: unknown[]) => completeSale(...a), getPaymentMethods: vi.fn() }));
 
 import {
   timeToMin, addMinutesIso, intervalsOverlap, canTransitionAppt,
-  isStaffAvailable, bookAppointment, setServiceProducts,
+  isStaffAvailable, bookAppointment, setServiceProducts, sellPackage,
 } from "@/services/salon";
 
-beforeEach(() => { query.mockReset(); execute.mockReset(); transaction.mockReset(); });
+beforeEach(() => { query.mockReset(); execute.mockReset(); transaction.mockReset(); completeSale.mockReset(); });
 
 describe("time helpers", () => {
   it("timeToMin parses HH:MM", () => {
@@ -122,5 +123,21 @@ describe("setServiceProducts (back-bar mapping)", () => {
     expect(stmts).toHaveLength(3); // delete + 2 inserts
     expect(stmts[1].params).toContain("p1");
     expect(stmts[1].params).toContain(2);
+  });
+});
+
+
+describe("sellPackage", () => {
+  it("bills the package then records the prepaid balance", async () => {
+    query.mockResolvedValueOnce([{ id: "pk1", product_id: "prod1", name: "10 massages", service_id: "svc1", sessions: 10, price: 9000, validity_days: 90 }]);
+    completeSale.mockResolvedValueOnce({ saleId: "sale1", saleItemIds: [] });
+    execute.mockResolvedValue(undefined);
+    const res = await sellPackage({ client_id: "c1", package_id: "pk1", userId: "u1", payments: [{ method_id: "m1", method_name: "Cash", amount: 9000 }] });
+    expect(res.saleId).toBe("sale1");
+    // client_packages insert: sessions_total = sessions_remaining = 10
+    const params = execute.mock.calls[0][1] as unknown[];
+    expect(params).toContain(10);
+    expect(params).toContain("c1");
+    expect(params).toContain("sale1");
   });
 });

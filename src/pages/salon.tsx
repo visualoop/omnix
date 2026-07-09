@@ -29,8 +29,9 @@ import {
   commissionsByStaff, addMinutesIso,
   getServiceProducts, setServiceProducts, servicePopularity,
   getClientProfile, upsertClientProfile, listClientVisits,
+  listPackages, createPackage, sellPackage, listClientPackages,
   type SalonService, type SalonStaff, type SalonAppointment, type AppointmentStatus, type StaffCommissionRow,
-  type ServicePopularityRow,
+  type ServicePopularityRow, type SalonPackage, type ClientPackage,
 } from "@/services/salon";
 import { getProducts, type Product } from "@/services/inventory";
 
@@ -578,6 +579,55 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
   return <div className="space-y-1.5"><label className="text-[11px] font-medium text-muted-foreground">{label}</label>{children}</div>;
 }
 
+// ─── Packages / memberships page ──────────────────────────────────────────────
+
+export function SalonPackagesPage() {
+  const [packages, setPackages] = useState<SalonPackage[]>([]);
+  const [services, setServices] = useState<SalonService[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [adding, setAdding] = useState(false);
+  const [name, setName] = useState(""); const [serviceId, setServiceId] = useState(""); const [sessions, setSessions] = useState("5"); const [price, setPrice] = useState(""); const [validity, setValidity] = useState("");
+  const load = () => { setLoading(true); Promise.all([listPackages(true), listServices()]).then(([p, s]) => { setPackages(p); setServices(s); }).finally(() => setLoading(false)); };
+  useEffect(() => { load(); }, []);
+  const add = async () => {
+    if (!name.trim() || !serviceId) { toast.error("Name + service required."); return; }
+    try { await createPackage({ name: name.trim(), service_id: serviceId, sessions: parseInt(sessions) || 1, price: parseFloat(price) || 0, validity_days: validity ? parseInt(validity) : null }); setName(""); setServiceId(""); setSessions("5"); setPrice(""); setValidity(""); setAdding(false); load(); }
+    catch (e) { toast.error(String(e)); }
+  };
+  return (
+    <div>
+      <ModuleMasthead accent={ACCENT} eyebrow="Salon & Spa · Memberships" title="Packages" subtitle="Prepaid session bundles — sold to clients, redeemed at checkout."
+        actions={<Button size="sm" className={cn("cursor-pointer", BRAND_BTN)} onClick={() => setAdding((v) => !v)}><Plus className="h-3.5 w-3.5 mr-1.5" /> New package</Button>} />
+      {adding && (
+        <div className="flex flex-wrap items-end gap-2 mb-3 rounded-md border border-border p-3">
+          <Field label="Name"><Input value={name} onChange={(e) => setName(e.target.value)} className="w-44" placeholder="e.g. 10 massages" /></Field>
+          <Field label="Service"><Select value={serviceId} onValueChange={(v) => setServiceId(v as string)}><SelectTrigger className="w-40"><SelectValue placeholder="Choose…" /></SelectTrigger><SelectContent>{services.map((s) => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}</SelectContent></Select></Field>
+          <Field label="Sessions"><Input type="number" value={sessions} onChange={(e) => setSessions(e.target.value)} className="w-20 text-right tabular-nums" /></Field>
+          <Field label="Price"><Input type="number" value={price} onChange={(e) => setPrice(e.target.value)} className="w-24 text-right tabular-nums" /></Field>
+          <Field label="Valid (days)"><Input type="number" value={validity} onChange={(e) => setValidity(e.target.value)} className="w-24 text-right tabular-nums" placeholder="∞" /></Field>
+          <Button size="sm" onClick={add}>Add</Button>
+        </div>
+      )}
+      {loading ? <ModuleSpinner /> : packages.length === 0 ? (
+        <ModuleEmpty icon={Sparkle} title="No packages yet" hint="Create a prepaid bundle (e.g. 10 sessions) to sell to clients." />
+      ) : (
+        <ModuleTable>
+          <ModuleTHead><tr><th className="text-left px-3 py-2">Package</th><th className="text-left px-3 py-2">Service</th><th className="text-right px-3 py-2">Sessions</th><th className="text-right px-3 py-2">Price</th><th className="text-right px-3 py-2">Validity</th></tr></ModuleTHead>
+          <tbody>
+            {packages.map((p) => (
+              <tr key={p.id} className="border-t border-border">
+                <td className="px-3 py-2">{p.name}</td><td className="px-3 py-2 text-muted-foreground">{p.service_name ?? "—"}</td>
+                <td className="px-3 py-2 text-right tabular-nums">{p.sessions}</td><td className="px-3 py-2 text-right font-mono tabular-nums">{KES(p.price)}</td>
+                <td className="px-3 py-2 text-right tabular-nums">{p.validity_days ? `${p.validity_days}d` : "∞"}</td>
+              </tr>
+            ))}
+          </tbody>
+        </ModuleTable>
+      )}
+    </div>
+  );
+}
+
 // ─── Back-bar editor (products a service consumes) ────────────────────────────
 
 function BackBarEditor({ serviceId }: { serviceId: string }) {
@@ -659,17 +709,35 @@ export function SalonClientsPage() {
 function ClientSheet({ client, onClose }: { client: Customer | null; onClose: () => void }) {
   const [prefs, setPrefs] = useState(""); const [allergies, setAllergies] = useState(""); const [formulas, setFormulas] = useState("");
   const [visits, setVisits] = useState<SalonAppointment[]>([]);
+  const [clientPkgs, setClientPkgs] = useState<ClientPackage[]>([]);
+  const [allPkgs, setAllPkgs] = useState<SalonPackage[]>([]);
+  const [methods, setMethods] = useState<PaymentMethod[]>([]);
+  const [sellPkgId, setSellPkgId] = useState(""); const [sellMethodId, setSellMethodId] = useState("");
   const [busy, setBusy] = useState(false);
+  const user = useAuthStore((s) => s.user);
+  const reloadPkgs = (id: string) => listClientPackages(id).then(setClientPkgs);
   useEffect(() => {
     if (!client) return;
     getClientProfile(client.id).then((p) => { setPrefs(p?.preferences ?? ""); setAllergies(p?.allergies ?? ""); setFormulas(p?.formulas ?? ""); });
     listClientVisits(client.id).then(setVisits);
+    reloadPkgs(client.id);
+    listPackages().then((p) => { setAllPkgs(p); setSellPkgId(p[0]?.id ?? ""); });
+    getPaymentMethods().then((m) => { setMethods(m); setSellMethodId(m[0]?.id ?? ""); });
   }, [client]);
   if (!client) return null;
   const save = async () => {
     setBusy(true);
     try { await upsertClientProfile({ client_id: client.id, preferences: prefs, allergies, formulas, notes: null }); toast.success("Profile saved"); }
     catch (e) { toast.error(String(e)); } finally { setBusy(false); }
+  };
+  const sell = async () => {
+    if (!user || !sellPkgId || !sellMethodId) { toast.error("Pick a package + payment."); return; }
+    const pkg = allPkgs.find((p) => p.id === sellPkgId)!; const method = methods.find((m) => m.id === sellMethodId)!;
+    setBusy(true);
+    try {
+      await sellPackage({ client_id: client.id, package_id: sellPkgId, userId: user.id, payments: [{ method_id: method.id, method_name: method.name, amount: pkg.price }] });
+      toast.success("Package sold"); reloadPkgs(client.id);
+    } catch (e) { toast.error(String(e)); } finally { setBusy(false); }
   };
   return (
     <Sheet open={!!client} onOpenChange={(v) => !v && onClose()}>
@@ -680,6 +748,29 @@ function ClientSheet({ client, onClose }: { client: Customer | null; onClose: ()
           <Field label="Allergies / sensitivities"><Textarea value={allergies} onChange={(e) => setAllergies(e.target.value)} rows={2} /></Field>
           <Field label="Formulas (colour, etc.)"><Textarea value={formulas} onChange={(e) => setFormulas(e.target.value)} rows={2} /></Field>
           <Button size="sm" onClick={save} disabled={busy}>Save profile</Button>
+
+          {/* Packages */}
+          <div>
+            <div className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1.5 mt-2">Packages</div>
+            {clientPkgs.length === 0 ? <p className="text-[12px] text-muted-foreground">No packages.</p> : (
+              <div className="rounded-md border border-border divide-y divide-border mb-2">
+                {clientPkgs.map((cp) => (
+                  <div key={cp.id} className="flex items-center justify-between px-3 py-1.5">
+                    <span>{cp.package_name}</span>
+                    <span className={cn("font-mono tabular-nums text-[12px]", cp.sessions_remaining > 0 ? "text-emerald-600" : "text-muted-foreground")}>{cp.sessions_remaining}/{cp.sessions_total} left</span>
+                  </div>
+                ))}
+              </div>
+            )}
+            {allPkgs.length > 0 && (
+              <div className="flex items-end gap-2">
+                <Field label="Sell package"><Select value={sellPkgId} onValueChange={(v) => setSellPkgId(v as string)}><SelectTrigger className="w-40"><SelectValue /></SelectTrigger><SelectContent>{allPkgs.map((p) => <SelectItem key={p.id} value={p.id}>{p.name} · {KES(p.price)}</SelectItem>)}</SelectContent></Select></Field>
+                <Select value={sellMethodId} onValueChange={(v) => setSellMethodId(v as string)}><SelectTrigger className="w-24"><SelectValue /></SelectTrigger><SelectContent>{methods.map((m) => <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>)}</SelectContent></Select>
+                <Button size="sm" onClick={sell} disabled={busy}>Sell</Button>
+              </div>
+            )}
+          </div>
+
           <div>
             <div className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1.5 mt-2">Visit history</div>
             {visits.length === 0 ? <p className="text-[12px] text-muted-foreground">No completed visits yet.</p> : (
