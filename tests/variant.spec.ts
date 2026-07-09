@@ -50,6 +50,7 @@ describe("variant — module gates", () => {
       "retail",
       "hospitality",
       "hardware",
+      "salon",
     ]);
     expect(lockedModuleForVariant("pro")).toBeNull();
   });

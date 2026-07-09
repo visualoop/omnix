@@ -42,7 +42,7 @@ export const IS_PRO: boolean = VARIANT === "pro";
 export function modulesAllowedForVariant(v: Variant): readonly string[] {
   switch (v) {
     case "pro":
-      return ["core", "dawa", "retail", "hospitality", "hardware"];
+      return ["core", "dawa", "retail", "hospitality", "hardware", "salon"];
     case "dawa":
       return ["core", "dawa"];
     case "retail":

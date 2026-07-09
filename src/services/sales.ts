@@ -19,6 +19,10 @@ export interface CartItem {
   equipment_unit_id?: string | null;
   /** Serial number of the equipment unit on this line (display + receipt). */
   serial?: string | null;
+  /** Salon/spa service line — backed by an is_service product. Skips stock
+   *  (no batches), consumes nothing; carries the service for commission +
+   *  appointment linkage. */
+  service_id?: string | null;
   name: string;
   quantity: number;
   unit_price: number;
@@ -117,7 +121,7 @@ export async function completeSale(
   // VARIANT LINES live on product_variants.stock_qty, not batches —
   // the cart sets `variant_id` when a variant was picked. Two queries
   // run independently; both must pass.
-  const physicalLines = items.filter((i) => !i.menu_item_id);
+  const physicalLines = items.filter((i) => !i.menu_item_id && !i.service_id);
   if (physicalLines.length > 0) {
     const variantLines = physicalLines.filter((i) => i.variant_id);
     const productLines = physicalLines.filter((i) => !i.variant_id);
@@ -207,6 +211,9 @@ export async function completeSale(
        VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)`,
       params: [itemId, saleId, item.product_id, item.name, item.quantity, item.unit_price, item.discount, item.tax_rate, round2(item.total), item.menu_item_id ?? null],
     });
+
+    // Salon/spa service line — revenue only, no stock to deduct.
+    if (item.service_id) continue;
 
     if (item.menu_item_id) {
       // Hospitality menu line — consume recipe ingredients (FIFO) instead

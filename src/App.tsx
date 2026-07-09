@@ -107,6 +107,7 @@ import { InventoryHubPage } from "@/pages/hub-inventory";
 import { BankingHubPage } from "@/pages/hub-banking";
 import { AnalyticsHubPage } from "@/pages/hub-analytics";
 import { PharmacyHubPage, RetailHubPage, HardwareHubPage, HospitalityHubPage } from "@/pages/hub-modules";
+import { SalonHubPage } from "@/pages/hub-modules";
 import { PriceListSettingsPage } from "@/pages/settings-price-lists";
 import { BankingPage } from "@/pages/banking";
 import { BankAccountDetailPage } from "@/pages/banking-detail";
@@ -400,6 +401,7 @@ function AppContent() {
           <Route path="/retail" element={<RequireRole permission="reports.view"><RetailHubPage /></RequireRole>} />
           <Route path="/hardware" element={<RequireRole permission="hardware.reports.view"><HardwareHubPage /></RequireRole>} />
           <Route path="/hospitality" element={<RequireRole permission="hospitality.tables.manage"><HospitalityHubPage /></RequireRole>} />
+          <Route path="/salon" element={<RequireRole permission="salon.appointments.manage"><SalonHubPage /></RequireRole>} />
           <Route path="/retail/brands" element={<RequireRole permission="retail.brands.manage"><BrandsPage /></RequireRole>} />
           <Route path="/retail/dashboard" element={<RequireRole permission="reports.view"><RetailDashboardPage /></RequireRole>} />
           <Route path="/inventory/quick-add" element={<RequireRole permission="inventory.edit"><QuickAddProductsPage /></RequireRole>} />

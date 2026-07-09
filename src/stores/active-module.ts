@@ -17,7 +17,7 @@ import { create } from "zustand";
 import { query, execute } from "@/lib/db";
 import { IS_PRO, LOCKED_MODULE, MODULES_ALLOWED } from "@/lib/variant";
 
-export type ModuleId = "dawa" | "retail" | "hardware" | "hospitality" | "core";
+export type ModuleId = "dawa" | "retail" | "hardware" | "hospitality" | "salon" | "core";
 
 export interface ModuleDefinition {
   id: ModuleId;
@@ -97,6 +97,19 @@ export const MODULE_DEFINITIONS: Record<ModuleId, ModuleDefinition> = {
       address: "e.g., Kenyatta Avenue, Nairobi",
       phone: "0700 000 000",
       email: "info@yourplace.co.ke",
+    },
+  },
+  salon: {
+    id: "salon",
+    name: "Omnix Salon & Spa",
+    shortName: "Salon",
+    tagline: "Appointments, staff commissions, services, client history",
+    status: "available",
+    setupPlaceholders: {
+      businessName: "e.g., Glow Salon & Spa",
+      address: "e.g., Ngong Road, Nairobi",
+      phone: "0700 000 000",
+      email: "info@yoursalon.co.ke",
     },
   },
 };

@@ -68,7 +68,7 @@ export async function getProducts(search?: string): Promise<Product[]> {
  * refine your search to find a specific item."
  */
 export async function getProductsPage(search?: string, limit: number = PRODUCTS_PAGE_SIZE): Promise<ProductsPage> {
-  const where = `WHERE p.active = 1 AND p.kind = 'physical'${
+  const where = `WHERE p.active = 1 AND p.kind = 'physical' AND COALESCE(p.is_service, 0) = 0${
     search ? " AND (p.name LIKE ?1 OR p.barcode LIKE ?1 OR p.sku LIKE ?1)" : ""
   }`
   const params = search ? [`%${search}%`] : []

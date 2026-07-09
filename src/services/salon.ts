@@ -1,0 +1,457 @@
+/**
+ * Salon / Spa service — appointments, staff, services, commissions.
+ *
+ * The unit of work is a timed appointment with a named staff member. Services
+ * are backed by lightweight is_service products so they check out through the
+ * normal POS → sale → GL → eTIMS path (no stock). Commission accrues to a
+ * ledger on checkout. Reuses Core: customers = clients, completeSale, products.
+ *
+ * Mutations gate on the relevant salon.* permission.
+ */
+import { query, execute, transaction } from "@/lib/db";
+import { requirePermission } from "@/services/rbac";
+import { getActiveBranchId } from "@/stores/active-branch";
+import { completeSale, type CartItem, type PaymentEntry } from "@/services/sales";
+
+const uid = () => crypto.randomUUID();
+const nowIso = () => new Date().toISOString();
+
+// ─── Types ───────────────────────────────────────────────────────────────────
+
+export type AppointmentStatus =
+  | "booked" | "confirmed" | "checked_in" | "in_service" | "completed" | "no_show" | "cancelled";
+
+export interface SalonService {
+  id: string;
+  product_id: string | null;
+  name: string;
+  category: string | null;
+  duration_min: number;
+  price: number;
+  commission_pct: number | null;
+  requires_room: number;
+  color: string | null;
+  active: number;
+  notes: string | null;
+}
+
+export interface SalonStaff {
+  id: string;
+  employee_id: string | null;
+  user_id: string | null;
+  display_name: string;
+  color: string | null;
+  commission_default_pct: number;
+  active: number;
+}
+
+export interface SalonAppointment {
+  id: string;
+  appt_number: string;
+  client_id: string | null;
+  client_name?: string | null;
+  staff_id: string | null;
+  staff_name?: string | null;
+  starts_at: string;
+  ends_at: string;
+  status: AppointmentStatus;
+  notes: string | null;
+  sale_id: string | null;
+  total: number;
+}
+
+export interface AppointmentService {
+  id: string;
+  appointment_id: string;
+  service_id: string;
+  staff_id: string | null;
+  name: string;
+  price: number;
+  duration_min: number;
+  commission_amount: number;
+}
+
+// ─── Pure time helpers (unit-tested) ─────────────────────────────────────────
+
+/** Minutes since midnight for a 'HH:MM' string. */
+export function timeToMin(hhmm: string): number {
+  const [h, m] = hhmm.split(":").map(Number);
+  return (h || 0) * 60 + (m || 0);
+}
+
+/** ISO of `startIso` + `minutes`. */
+export function addMinutesIso(startIso: string, minutes: number): string {
+  return new Date(new Date(startIso).getTime() + minutes * 60_000).toISOString();
+}
+
+/** Do two [start,end) ISO intervals overlap? */
+export function intervalsOverlap(aStart: string, aEnd: string, bStart: string, bEnd: string): boolean {
+  const as = new Date(aStart).getTime(), ae = new Date(aEnd).getTime();
+  const bs = new Date(bStart).getTime(), be = new Date(bEnd).getTime();
+  return as < be && bs < ae;
+}
+
+// ─── Status transitions ───────────────────────────────────────────────────────
+
+const ALLOWED: Record<AppointmentStatus, AppointmentStatus[]> = {
+  booked: ["confirmed", "checked_in", "cancelled", "no_show"],
+  confirmed: ["checked_in", "cancelled", "no_show"],
+  checked_in: ["in_service", "cancelled", "no_show"],
+  in_service: ["completed", "cancelled"],
+  completed: [],
+  no_show: [],
+  cancelled: [],
+};
+
+export function canTransitionAppt(from: AppointmentStatus, to: AppointmentStatus): boolean {
+  if (from === to) return true;
+  return ALLOWED[from]?.includes(to) ?? false;
+}
+
+// ─── Services catalog ─────────────────────────────────────────────────────────
+
+export async function listServices(includeInactive = false): Promise<SalonService[]> {
+  return query<SalonService>(
+    `SELECT * FROM salon_services ${includeInactive ? "" : "WHERE active = 1"} ORDER BY category, name`,
+  );
+}
+
+export async function createService(input: {
+  name: string; category?: string; duration_min: number; price: number;
+  commission_pct?: number | null; requires_room?: boolean; color?: string; notes?: string;
+}): Promise<string> {
+  await requirePermission("salon.services.manage", { entityType: "salon_service" });
+  const id = uid();
+  const productId = uid();
+  await transaction([
+    // Backing non-stock product so the service checks out as a sale line.
+    { sql: `INSERT INTO products (id, name, kind, is_service, tax_rate) VALUES (?1, ?2, 'physical', 1, 16.0)`,
+      params: [productId, input.name] },
+    { sql: `INSERT INTO salon_services (id, product_id, name, category, duration_min, price, commission_pct, requires_room, color, notes)
+            VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)`,
+      params: [id, productId, input.name, input.category ?? null, input.duration_min, input.price,
+        input.commission_pct ?? null, input.requires_room ? 1 : 0, input.color ?? null, input.notes ?? null] },
+  ]);
+  return id;
+}
+
+export async function updateService(id: string, fields: Partial<{
+  name: string; category: string; duration_min: number; price: number;
+  commission_pct: number | null; requires_room: boolean; color: string; active: boolean; notes: string;
+}>): Promise<void> {
+  await requirePermission("salon.services.manage", { entityType: "salon_service", entityId: id });
+  const sets: string[] = [];
+  const params: unknown[] = [id];
+  const push = (col: string, v: unknown) => { params.push(v); sets.push(`${col} = ?${params.length}`); };
+  if (fields.name !== undefined) push("name", fields.name);
+  if (fields.category !== undefined) push("category", fields.category);
+  if (fields.duration_min !== undefined) push("duration_min", fields.duration_min);
+  if (fields.price !== undefined) push("price", fields.price);
+  if (fields.commission_pct !== undefined) push("commission_pct", fields.commission_pct);
+  if (fields.requires_room !== undefined) push("requires_room", fields.requires_room ? 1 : 0);
+  if (fields.color !== undefined) push("color", fields.color);
+  if (fields.active !== undefined) push("active", fields.active ? 1 : 0);
+  if (fields.notes !== undefined) push("notes", fields.notes);
+  if (sets.length === 0) return;
+  await execute(`UPDATE salon_services SET ${sets.join(", ")} WHERE id = ?1`, params);
+}
+
+// ─── Staff + skills + hours ────────────────────────────────────────────────────
+
+export async function listStaff(includeInactive = false): Promise<SalonStaff[]> {
+  return query<SalonStaff>(
+    `SELECT * FROM salon_staff ${includeInactive ? "" : "WHERE active = 1"} ORDER BY display_name`,
+  );
+}
+
+export async function createStaff(input: {
+  display_name: string; employee_id?: string; user_id?: string; color?: string; commission_default_pct?: number;
+}): Promise<string> {
+  await requirePermission("salon.staff.manage", { entityType: "salon_staff" });
+  const id = uid();
+  await execute(
+    `INSERT INTO salon_staff (id, employee_id, user_id, display_name, color, commission_default_pct)
+     VALUES (?1, ?2, ?3, ?4, ?5, ?6)`,
+    [id, input.employee_id ?? null, input.user_id ?? null, input.display_name, input.color ?? null, input.commission_default_pct ?? 0],
+  );
+  return id;
+}
+
+export async function setStaffSkills(staffId: string, serviceIds: string[]): Promise<void> {
+  await requirePermission("salon.staff.manage", { entityType: "salon_staff", entityId: staffId });
+  const stmts: { sql: string; params: unknown[] }[] = [
+    { sql: `DELETE FROM salon_staff_services WHERE staff_id = ?1`, params: [staffId] },
+  ];
+  for (const sid of serviceIds) {
+    stmts.push({ sql: `INSERT INTO salon_staff_services (staff_id, service_id) VALUES (?1, ?2)`, params: [staffId, sid] });
+  }
+  await transaction(stmts);
+}
+
+export async function listStaffSkills(staffId: string): Promise<string[]> {
+  const rows = await query<{ service_id: string }>(`SELECT service_id FROM salon_staff_services WHERE staff_id = ?1`, [staffId]);
+  return rows.map((r) => r.service_id);
+}
+
+export async function setStaffHours(staffId: string, hours: Array<{ weekday: number; start_time: string; end_time: string }>): Promise<void> {
+  await requirePermission("salon.staff.manage", { entityType: "salon_staff", entityId: staffId });
+  const stmts: { sql: string; params: unknown[] }[] = [
+    { sql: `DELETE FROM salon_staff_hours WHERE staff_id = ?1`, params: [staffId] },
+  ];
+  for (const h of hours) {
+    stmts.push({
+      sql: `INSERT INTO salon_staff_hours (id, staff_id, weekday, start_time, end_time) VALUES (?1, ?2, ?3, ?4, ?5)`,
+      params: [uid(), staffId, h.weekday, h.start_time, h.end_time],
+    });
+  }
+  await transaction(stmts);
+}
+
+// ─── Appointments ──────────────────────────────────────────────────────────────
+
+const SELECT_APPT = `
+  SELECT a.*, c.name AS client_name, s.display_name AS staff_name
+  FROM salon_appointments a
+  LEFT JOIN customers c ON c.id = a.client_id
+  LEFT JOIN salon_staff s ON s.id = a.staff_id`;
+
+export async function listAppointments(opts: { from: string; to: string; staffId?: string }): Promise<SalonAppointment[]> {
+  const params: unknown[] = [opts.from, opts.to];
+  let clause = `WHERE a.starts_at >= ?1 AND a.starts_at < ?2 AND a.status != 'cancelled'`;
+  if (opts.staffId) { params.push(opts.staffId); clause += ` AND a.staff_id = ?${params.length}`; }
+  return query<SalonAppointment>(`${SELECT_APPT} ${clause} ORDER BY a.starts_at ASC`, params);
+}
+
+export async function getAppointment(id: string): Promise<{ appointment: SalonAppointment; services: AppointmentService[] } | null> {
+  const [appointment] = await query<SalonAppointment>(`${SELECT_APPT} WHERE a.id = ?1`, [id]);
+  if (!appointment) return null;
+  const services = await query<AppointmentService>(`SELECT * FROM salon_appointment_services WHERE appointment_id = ?1`, [id]);
+  return { appointment, services };
+}
+
+/** True if the staff member has no conflicting (non-cancelled) appointment. */
+export async function isStaffAvailable(staffId: string, startIso: string, endIso: string, excludeApptId?: string): Promise<boolean> {
+  const rows = await query<{ starts_at: string; ends_at: string }>(
+    `SELECT starts_at, ends_at FROM salon_appointments
+     WHERE staff_id = ?1 AND status NOT IN ('cancelled','no_show','completed')
+       ${excludeApptId ? "AND id != ?2" : ""}`,
+    excludeApptId ? [staffId, excludeApptId] : [staffId],
+  );
+  return !rows.some((r) => intervalsOverlap(startIso, endIso, r.starts_at, r.ends_at));
+}
+
+async function nextApptNumber(): Promise<string> {
+  const year = new Date().getFullYear();
+  const [row] = await query<{ n: string }>(
+    `SELECT COALESCE(MAX(CAST(SUBSTR(appt_number, 9) AS INTEGER)), 0) AS n FROM salon_appointments WHERE appt_number LIKE ?1`,
+    [`AP-${year}-%`],
+  );
+  return `AP-${year}-${String(Number(row?.n ?? 0) + 1).padStart(5, "0")}`;
+}
+
+/** Compute per-service commission using the service pct, else the staff default. */
+function commissionFor(price: number, servicePct: number | null, staffPct: number): number {
+  const pct = servicePct != null ? servicePct : staffPct;
+  return Math.round(price * (pct / 100) * 100) / 100;
+}
+
+/**
+ * Book an appointment. Resolves the services (price + duration + commission),
+ * computes the end time from total duration, checks the staff is free, and
+ * writes the appointment + its service lines atomically.
+ */
+export async function bookAppointment(input: {
+  client_id?: string | null;
+  staff_id: string;
+  starts_at: string;
+  service_ids: string[];
+  notes?: string;
+}): Promise<{ id: string; appt_number: string }> {
+  await requirePermission("salon.appointments.manage", { entityType: "salon_appointment" });
+  if (input.service_ids.length === 0) throw new Error("Add at least one service.");
+
+  const services = await query<SalonService>(
+    `SELECT * FROM salon_services WHERE id IN (${input.service_ids.map((_, i) => `?${i + 1}`).join(",")})`,
+    input.service_ids,
+  );
+  if (services.length === 0) throw new Error("Services not found.");
+  const [staff] = await query<SalonStaff>(`SELECT * FROM salon_staff WHERE id = ?1`, [input.staff_id]);
+  if (!staff) throw new Error("Staff not found.");
+
+  const totalDuration = services.reduce((s, sv) => s + sv.duration_min, 0);
+  const endsAt = addMinutesIso(input.starts_at, totalDuration);
+  const total = services.reduce((s, sv) => s + sv.price, 0);
+
+  if (!(await isStaffAvailable(input.staff_id, input.starts_at, endsAt))) {
+    throw new Error(`${staff.display_name} is already booked in that time slot.`);
+  }
+
+  const id = uid();
+  const apptNumber = await nextApptNumber();
+  const stmts: { sql: string; params: unknown[] }[] = [{
+    sql: `INSERT INTO salon_appointments (id, appt_number, client_id, staff_id, starts_at, ends_at, status, notes, total, branch_id)
+          VALUES (?1, ?2, ?3, ?4, ?5, ?6, 'booked', ?7, ?8, ?9)`,
+    params: [id, apptNumber, input.client_id ?? null, input.staff_id, input.starts_at, endsAt, input.notes ?? null, total, getActiveBranchId() || null],
+  }];
+  // preserve the requested service order
+  for (const sid of input.service_ids) {
+    const sv = services.find((x) => x.id === sid);
+    if (!sv) continue;
+    const commission = commissionFor(sv.price, sv.commission_pct, staff.commission_default_pct);
+    stmts.push({
+      sql: `INSERT INTO salon_appointment_services (id, appointment_id, service_id, staff_id, name, price, duration_min, commission_amount)
+            VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)`,
+      params: [uid(), id, sv.id, input.staff_id, sv.name, sv.price, sv.duration_min, commission],
+    });
+  }
+  await transaction(stmts);
+  return { id, appt_number: apptNumber };
+}
+
+export async function updateAppointmentStatus(id: string, to: AppointmentStatus): Promise<void> {
+  await requirePermission("salon.appointments.manage", { entityType: "salon_appointment", entityId: id });
+  const [row] = await query<{ status: AppointmentStatus }>(`SELECT status FROM salon_appointments WHERE id = ?1`, [id]);
+  if (!row) throw new Error("Appointment not found.");
+  if (!canTransitionAppt(row.status, to)) throw new Error(`Cannot move a ${row.status} appointment to ${to}.`);
+  await execute(`UPDATE salon_appointments SET status = ?2, updated_at = ?3 WHERE id = ?1`, [id, to, nowIso()]);
+}
+
+export async function rescheduleAppointment(id: string, startsAt: string, staffId?: string): Promise<void> {
+  await requirePermission("salon.appointments.manage", { entityType: "salon_appointment", entityId: id });
+  const detail = await getAppointment(id);
+  if (!detail) throw new Error("Appointment not found.");
+  const duration = detail.services.reduce((s, sv) => s + sv.duration_min, 0) || 30;
+  const endsAt = addMinutesIso(startsAt, duration);
+  const staff = staffId ?? detail.appointment.staff_id!;
+  if (!(await isStaffAvailable(staff, startsAt, endsAt, id))) throw new Error("That slot is already booked.");
+  await execute(
+    `UPDATE salon_appointments SET starts_at = ?2, ends_at = ?3, staff_id = ?4, updated_at = ?5 WHERE id = ?1`,
+    [id, startsAt, endsAt, staff, nowIso()],
+  );
+}
+
+// ─── Checkout + commissions ─────────────────────────────────────────────────
+
+/**
+ * Check out an appointment: bill its services (+ optional retail products +
+ * tip) through the POS/GL path, accrue staff commission, and mark the
+ * appointment completed with the sale linked.
+ */
+export async function checkoutAppointment(input: {
+  appointment_id: string;
+  userId: string;
+  payments: PaymentEntry[];
+  tip?: number;
+  retailItems?: CartItem[];
+}): Promise<{ saleId: string }> {
+  await requirePermission("salon.appointments.manage", { entityType: "salon_appointment", entityId: input.appointment_id });
+  const detail = await getAppointment(input.appointment_id);
+  if (!detail) throw new Error("Appointment not found.");
+  const { appointment, services } = detail;
+  if (appointment.sale_id) throw new Error("This appointment is already checked out.");
+  if (services.length === 0) throw new Error("No services to bill.");
+
+  // Backing product + tax for each service line.
+  const productMap = new Map<string, { product_id: string; tax_rate: number }>();
+  const svRows = await query<{ id: string; product_id: string; tax_rate: number }>(
+    `SELECT s.id, s.product_id, COALESCE(p.tax_rate, 16) AS tax_rate
+     FROM salon_services s LEFT JOIN products p ON p.id = s.product_id
+     WHERE s.id IN (${services.map((_, i) => `?${i + 1}`).join(",")})`,
+    services.map((s) => s.service_id),
+  );
+  for (const r of svRows) productMap.set(r.id, { product_id: r.product_id, tax_rate: r.tax_rate });
+
+  const serviceLines: CartItem[] = services.map((s) => {
+    const backing = productMap.get(s.service_id);
+    return {
+      id: uid(),
+      product_id: backing?.product_id ?? s.service_id,
+      service_id: s.service_id,
+      name: s.name,
+      quantity: 1,
+      unit_price: s.price,
+      discount: 0,
+      tax_rate: backing?.tax_rate ?? 16,
+      total: s.price,
+    };
+  });
+  const items = [...serviceLines, ...(input.retailItems ?? [])];
+
+  const { saleId } = await completeSale(
+    items,
+    input.payments,
+    appointment.client_id,
+    input.userId,
+    0,
+    input.tip ?? 0,
+    appointment.staff_id, // tip goes to the appointment's staff
+    0,
+    "salon_appointment",
+    input.appointment_id,
+  );
+
+  // Accrue commissions (service lines) + mark appointment completed.
+  const stmts: { sql: string; params: unknown[] }[] = [];
+  for (const s of services) {
+    if (!s.staff_id || s.commission_amount <= 0) continue;
+    const pct = s.price > 0 ? (s.commission_amount / s.price) * 100 : 0;
+    stmts.push({
+      sql: `INSERT INTO salon_commissions (id, staff_id, appointment_id, sale_id, kind, base_amount, pct, amount)
+            VALUES (?1, ?2, ?3, ?4, 'service', ?5, ?6, ?7)`,
+      params: [uid(), s.staff_id, input.appointment_id, saleId, s.price, Math.round(pct * 100) / 100, s.commission_amount],
+    });
+  }
+  stmts.push({
+    sql: `UPDATE salon_appointments SET status = 'completed', sale_id = ?2, updated_at = ?3 WHERE id = ?1`,
+    params: [input.appointment_id, saleId, nowIso()],
+  });
+  await transaction(stmts);
+  return { saleId };
+}
+
+// ─── Client profile + history ───────────────────────────────────────────────
+
+export interface ClientProfile {
+  client_id: string;
+  preferences: string | null;
+  allergies: string | null;
+  formulas: string | null;
+  notes: string | null;
+}
+
+export async function getClientProfile(clientId: string): Promise<ClientProfile | null> {
+  const [row] = await query<ClientProfile>(`SELECT * FROM salon_client_profiles WHERE client_id = ?1`, [clientId]);
+  return row ?? null;
+}
+
+export async function upsertClientProfile(input: ClientProfile): Promise<void> {
+  await requirePermission("salon.appointments.manage", { entityType: "salon_client", entityId: input.client_id });
+  await execute(
+    `INSERT INTO salon_client_profiles (client_id, preferences, allergies, formulas, notes, updated_at)
+     VALUES (?1, ?2, ?3, ?4, ?5, ?6)
+     ON CONFLICT(client_id) DO UPDATE SET
+       preferences = ?2, allergies = ?3, formulas = ?4, notes = ?5, updated_at = ?6`,
+    [input.client_id, input.preferences ?? null, input.allergies ?? null, input.formulas ?? null, input.notes ?? null, nowIso()],
+  );
+}
+
+export async function listClientVisits(clientId: string): Promise<SalonAppointment[]> {
+  return query<SalonAppointment>(
+    `${SELECT_APPT} WHERE a.client_id = ?1 AND a.status = 'completed' ORDER BY a.starts_at DESC LIMIT 100`,
+    [clientId],
+  );
+}
+
+// ─── Commission reads ─────────────────────────────────────────────────────────
+
+export interface StaffCommissionRow { staff_id: string; display_name: string; jobs: number; total: number; }
+
+export async function commissionsByStaff(fromIso: string, toIso: string): Promise<StaffCommissionRow[]> {
+  return query<StaffCommissionRow>(
+    `SELECT c.staff_id, st.display_name, COUNT(*) AS jobs, COALESCE(SUM(c.amount), 0) AS total
+     FROM salon_commissions c JOIN salon_staff st ON st.id = c.staff_id
+     WHERE c.created_at >= ?1 AND c.created_at < ?2
+     GROUP BY c.staff_id ORDER BY total DESC`,
+    [fromIso, toIso],
+  );
+}

@@ -38,6 +38,8 @@ import {
   Flame,
   Wrench,
   Truck,
+  Sparkle,
+  Scissors,
 } from "@phosphor-icons/react";
 import { HubLayout } from "@/components/layout/hub-layout";
 import { useCountry } from "@/stores/country";
@@ -64,6 +66,7 @@ import {
   HardwareAccountsPage, HardwareCommissionsPage, HardwareReportsPage,
   HardwareFleetPage, HardwareServicePage, HardwareRentalsPage,
 } from "@/pages/hardware";
+import { SalonCalendarPage, SalonServicesPage, SalonStaffPage, SalonReportsPage } from "@/pages/salon";
 
 import {
   HospitalityDashboardPage, HospitalityTablesPage, HospitalityMenuPage,
@@ -176,6 +179,25 @@ export function HardwareHubPage() {
         { id: "accounts", label: "Accounts", icon: UsersIcon, component: HardwareAccountsPage, permission: "hardware.accounts.manage" },
         { id: "commissions", label: "Commissions", icon: WalletIcon, component: HardwareCommissionsPage, permission: "hardware.accounts.manage" },
         { id: "reports", label: "Reports", icon: BarChart3, component: HardwareReportsPage, permission: "hardware.reports.view" },
+      ]}
+      hasPermission={has}
+    />
+  );
+}
+
+export function SalonHubPage() {
+  const user = useAuthStore((s) => s.user);
+  const has = (perm: string) => hasPermission(user, perm as Permission);
+  return (
+    <HubLayout
+      eyebrow="Module"
+      title="Salon & Spa"
+      description="Appointments, staff commissions, services and client history."
+      tabs={[
+        { id: "calendar", label: "Appointments", icon: Sparkle, component: SalonCalendarPage, permission: "salon.appointments.manage" },
+        { id: "services", label: "Services", icon: Scissors, component: SalonServicesPage, permission: "salon.services.manage" },
+        { id: "staff", label: "Staff", icon: UsersIcon, component: SalonStaffPage, permission: "salon.staff.manage" },
+        { id: "reports", label: "Reports", icon: BarChart3, component: SalonReportsPage, permission: "salon.reports.view" },
       ]}
       hasPermission={has}
     />

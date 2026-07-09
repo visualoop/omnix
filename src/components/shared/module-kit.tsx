@@ -85,6 +85,15 @@ const ACCENTS: Record<ModuleId, ModuleAccent> = {
     rule: "bg-primary",
     eyebrow: "Omnix",
   },
+  salon: {
+    text: "text-pink-700 dark:text-pink-400",
+    wash: "bg-pink-500/10",
+    solid: "bg-pink-600 text-white",
+    solidHover: "hover:bg-pink-700",
+    border: "border-pink-500/40",
+    rule: "bg-pink-600",
+    eyebrow: "Salon & Spa",
+  },
 };
 
 export function moduleAccent(id: ModuleId): ModuleAccent {

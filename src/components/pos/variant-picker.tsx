@@ -111,7 +111,7 @@ export function VariantPickerDialog({ product, onClose, onPick }: Props) {
  *    trade module. Mirrors useModuleAccent() in pos-sale.tsx — kept inline
  *    here to avoid pulling a circular dep.
  */
-type ModuleId = "core" | "dawa" | "retail" | "hardware" | "hospitality";
+type ModuleId = "core" | "dawa" | "retail" | "hardware" | "hospitality" | "salon";
 interface Accent { hex: string }
 function moduleAccent(m: ModuleId): Accent {
   switch (m) {
@@ -119,6 +119,7 @@ function moduleAccent(m: ModuleId): Accent {
     case "retail": return { hex: "#B45309" };
     case "hardware": return { hex: "#C2410C" };
     case "hospitality": return { hex: "#BE185D" };
+    case "salon": return { hex: "#DB2777" };
     default: return { hex: "#92400E" };
   }
 }

@@ -79,6 +79,7 @@ const MODULE_NAV_ENTRIES: Partial<Record<ModuleId, NavItem>> = {
   retail: { to: "/retail", icon: ShoppingBag, label: "Retail", permissions: ["reports.view"] },
   hardware: { to: "/hardware", icon: Wrench, label: "Hardware", permissions: ["hardware.reports.view"] },
   hospitality: { to: "/hospitality", icon: UtensilsCrossed, label: "Hospitality", permissions: ["hospitality.tables.manage"] },
+  salon: { to: "/salon", icon: Sparkle, label: "Salon & Spa", permissions: ["salon.appointments.manage"] },
 };
 
 export function Sidebar({ onCommandOpen }: { onCommandOpen: () => void }) {

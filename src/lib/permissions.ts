@@ -116,7 +116,11 @@ export type Permission =
   | "hospitality.folios.manage"
   | "hospitality.housekeeping.manage"
   | "hospitality.service_charge.manage"
-  | "hospitality.reports.view";
+  | "hospitality.reports.view"
+  | "salon.appointments.manage"
+  | "salon.services.manage"
+  | "salon.staff.manage"
+  | "salon.reports.view";
 
 const ALL_PERMISSIONS: Permission[] = [
   "pos.use", "sales.view", "sales.refund", "sales.void",
@@ -148,6 +152,7 @@ const ALL_PERMISSIONS: Permission[] = [
   "hospitality.recipes.manage", "hospitality.bookings.manage", "hospitality.checkin.manage",
   "hospitality.folios.manage", "hospitality.housekeeping.manage", "hospitality.service_charge.manage",
   "hospitality.reports.view",
+  "salon.appointments.manage", "salon.services.manage", "salon.staff.manage", "salon.reports.view",
 ];
 
 /** Permission matrix. Each role gets exactly the permissions it should have. */
@@ -183,6 +188,7 @@ const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     "hospitality.recipes.manage", "hospitality.bookings.manage", "hospitality.checkin.manage",
     "hospitality.folios.manage", "hospitality.housekeeping.manage", "hospitality.service_charge.manage",
     "hospitality.reports.view",
+    "salon.appointments.manage", "salon.services.manage", "salon.staff.manage", "salon.reports.view",
   ],
 
   // Cashier: POS-focused. Can sell, take customer payments, view today's sales.
@@ -235,7 +241,8 @@ export type PermissionGroup =
   | "Banking"
   | "Retail"
   | "Hardware"
-  | "Hospitality";
+  | "Hospitality"
+  | "Salon";
 
 export type PermissionRisk = "low" | "normal" | "high" | "critical";
 
@@ -335,6 +342,10 @@ export const PERMISSION_CATALOG: PermissionMeta[] = [
   { key: "hospitality.housekeeping.manage", label: "Update housekeeping status", group: "Hospitality", risk: "low" },
   { key: "hospitality.service_charge.manage", label: "Manage service charge", group: "Hospitality", risk: "high" },
   { key: "hospitality.reports.view", label: "View hospitality reports", group: "Hospitality", risk: "low" },
+  { key: "salon.appointments.manage", label: "Book & manage appointments", group: "Salon", risk: "normal" },
+  { key: "salon.services.manage", label: "Manage services catalog", group: "Salon", risk: "normal" },
+  { key: "salon.staff.manage", label: "Manage staff, skills & commissions", group: "Salon", risk: "normal" },
+  { key: "salon.reports.view", label: "View salon reports", group: "Salon", risk: "low" },
 ];
 
 export const ROLES: Role[] = ["owner", "manager", "cashier", "viewer"];
