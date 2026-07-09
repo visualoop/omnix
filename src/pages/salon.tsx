@@ -27,8 +27,12 @@ import {
   listServices, createService, updateService, listStaff, createStaff, setStaffSkills, listStaffSkills,
   listAppointments, getAppointment, bookAppointment, updateAppointmentStatus, checkoutAppointment,
   commissionsByStaff, addMinutesIso,
+  getServiceProducts, setServiceProducts, servicePopularity,
+  getClientProfile, upsertClientProfile, listClientVisits,
   type SalonService, type SalonStaff, type SalonAppointment, type AppointmentStatus, type StaffCommissionRow,
+  type ServicePopularityRow,
 } from "@/services/salon";
+import { getProducts, type Product } from "@/services/inventory";
 
 const ACCENT = moduleAccent("salon");
 const BRAND_BTN = `${ACCENT.solid} ${ACCENT.solidHover}`;
@@ -436,6 +440,7 @@ function ServiceDialog({ target, onClose, onSaved }: { target: SalonService | "n
             <Field label="Price (KES)"><Input type="number" value={price} onChange={(e) => setPrice(e.target.value)} className="text-right tabular-nums" /></Field>
             <Field label="Commission % (blank = staff default)"><Input type="number" value={commission} onChange={(e) => setCommission(e.target.value)} className="text-right tabular-nums" /></Field>
           </div>
+          {svc && <BackBarEditor serviceId={svc.id} />}
         </div>
         <DialogFooter>
           <Button variant="outline" size="sm" onClick={onClose} disabled={busy}>Cancel</Button>
@@ -522,24 +527,127 @@ function SkillsDialog({ staff, services, onClose }: { staff: SalonStaff | null; 
 
 export function SalonReportsPage() {
   const [rows, setRows] = useState<StaffCommissionRow[]>([]);
+  const [pop, setPop] = useState<ServicePopularityRow[]>([]);
   const [loading, setLoading] = useState(true);
   const load = () => {
     setLoading(true);
     const to = new Date(); const from = new Date(); from.setDate(from.getDate() - 30);
-    commissionsByStaff(from.toISOString(), addMinutesIso(to.toISOString(), 1)).then(setRows).finally(() => setLoading(false));
+    const toIso = addMinutesIso(to.toISOString(), 1);
+    Promise.all([commissionsByStaff(from.toISOString(), toIso), servicePopularity(from.toISOString(), toIso)])
+      .then(([c, p]) => { setRows(c); setPop(p); }).finally(() => setLoading(false));
   };
   useEffect(() => { load(); }, []);
   return (
     <div>
-      <ModuleMasthead accent={ACCENT} eyebrow="Salon & Spa · Reports" title="Staff commissions" subtitle="Commission earned per staff member — last 30 days." />
-      {loading ? <ModuleSpinner /> : rows.length === 0 ? (
-        <ModuleEmpty icon={Receipt} title="No commissions yet" hint="Complete a checkout to accrue commission." />
+      <ModuleMasthead accent={ACCENT} eyebrow="Salon & Spa · Reports" title="Reports" subtitle="Staff commissions + service popularity — last 30 days." />
+      {loading ? <ModuleSpinner /> : (
+        <div className="space-y-6">
+          <div>
+            <div className="text-[11px] uppercase tracking-wider text-muted-foreground mb-2">Staff commissions</div>
+            {rows.length === 0 ? <p className="text-[13px] text-muted-foreground">No commissions yet.</p> : (
+              <ModuleTable>
+                <ModuleTHead><tr><th className="text-left px-3 py-2">Staff</th><th className="text-right px-3 py-2">Jobs</th><th className="text-right px-3 py-2">Commission</th></tr></ModuleTHead>
+                <tbody>
+                  {rows.map((r) => (
+                    <tr key={r.staff_id} className="border-t border-border"><td className="px-3 py-2">{r.display_name}</td><td className="px-3 py-2 text-right tabular-nums">{r.jobs}</td><td className="px-3 py-2 text-right font-mono tabular-nums">{KES(r.total)}</td></tr>
+                  ))}
+                </tbody>
+              </ModuleTable>
+            )}
+          </div>
+          <div>
+            <div className="text-[11px] uppercase tracking-wider text-muted-foreground mb-2">Most popular services</div>
+            {pop.length === 0 ? <p className="text-[13px] text-muted-foreground">No completed services yet.</p> : (
+              <ModuleTable>
+                <ModuleTHead><tr><th className="text-left px-3 py-2">Service</th><th className="text-right px-3 py-2">Booked</th><th className="text-right px-3 py-2">Revenue</th></tr></ModuleTHead>
+                <tbody>
+                  {pop.map((r) => (
+                    <tr key={r.service_id} className="border-t border-border"><td className="px-3 py-2">{r.name}</td><td className="px-3 py-2 text-right tabular-nums">{r.count}</td><td className="px-3 py-2 text-right font-mono tabular-nums">{KES(r.revenue)}</td></tr>
+                  ))}
+                </tbody>
+              </ModuleTable>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  return <div className="space-y-1.5"><label className="text-[11px] font-medium text-muted-foreground">{label}</label>{children}</div>;
+}
+
+// ─── Back-bar editor (products a service consumes) ────────────────────────────
+
+function BackBarEditor({ serviceId }: { serviceId: string }) {
+  const [items, setItems] = useState<Array<{ product_id: string; product_name?: string; quantity: number }>>([]);
+  const [search, setSearch] = useState("");
+  const [results, setResults] = useState<Product[]>([]);
+  const load = () => getServiceProducts(serviceId).then((rows) => setItems(rows.map((r) => ({ product_id: r.product_id, product_name: r.product_name, quantity: r.quantity }))));
+  useEffect(() => { load(); /* eslint-disable-next-line */ }, [serviceId]);
+  useEffect(() => {
+    if (!search.trim()) { setResults([]); return; }
+    let c = false; getProducts(search).then((p) => { if (!c) setResults(p.slice(0, 6)); }); return () => { c = true; };
+  }, [search]);
+
+  const persist = async (next: typeof items) => {
+    setItems(next);
+    try { await setServiceProducts(serviceId, next.map((i) => ({ product_id: i.product_id, quantity: i.quantity }))); }
+    catch (e) { toast.error(String(e)); }
+  };
+  const add = (p: Product) => { if (items.some((i) => i.product_id === p.id)) return; persist([...items, { product_id: p.id, product_name: p.name, quantity: 1 }]); setSearch(""); setResults([]); };
+  const setQty = (id: string, q: number) => persist(items.map((i) => i.product_id === id ? { ...i, quantity: q } : i));
+  const remove = (id: string) => persist(items.filter((i) => i.product_id !== id));
+
+  return (
+    <div className="rounded-md border border-border p-3 space-y-2">
+      <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Back-bar products consumed</div>
+      {items.map((i) => (
+        <div key={i.product_id} className="flex items-center justify-between gap-2">
+          <span className="text-[13px] truncate">{i.product_name}</span>
+          <div className="flex items-center gap-2 shrink-0">
+            <Input type="number" value={i.quantity} onChange={(e) => setQty(i.product_id, parseFloat(e.target.value) || 0)} className="h-7 w-16 text-right tabular-nums" />
+            <Button variant="ghost" size="icon-xs" onClick={() => remove(i.product_id)}>×</Button>
+          </div>
+        </div>
+      ))}
+      <div className="relative">
+        <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Add a product used in this service…" className="h-8 text-xs" />
+        {results.length > 0 && (
+          <div className="absolute z-20 left-0 right-0 mt-1 max-h-40 overflow-auto rounded-md border border-border bg-popover shadow-md">
+            {results.map((p) => <button key={p.id} type="button" onClick={() => add(p)} className="block w-full px-3 py-1.5 text-left text-[12px] hover:bg-accent">{p.name}</button>)}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ─── Clients page ─────────────────────────────────────────────────────────────
+
+export function SalonClientsPage() {
+  const [clients, setClients] = useState<Customer[]>([]);
+  const [search, setSearch] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [openClient, setOpenClient] = useState<Customer | null>(null);
+  const load = () => { setLoading(true); listCustomers(search.trim() || undefined).then(setClients).finally(() => setLoading(false)); };
+  useEffect(() => { const t = setTimeout(load, search ? 200 : 0); return () => clearTimeout(t); /* eslint-disable-next-line */ }, [search]);
+  return (
+    <div>
+      <ModuleMasthead accent={ACCENT} eyebrow="Salon & Spa · Clients" title="Clients" subtitle="Client profiles, preferences and visit history." />
+      <div className="mb-3 max-w-[280px]"><Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search clients…" className="h-8 text-xs" /></div>
+      <ClientSheet client={openClient} onClose={() => setOpenClient(null)} />
+      {loading ? <ModuleSpinner /> : clients.length === 0 ? (
+        <ModuleEmpty icon={Sparkle} title="No clients" hint="Clients are your Core customers — add them from the customer list or at booking." />
       ) : (
         <ModuleTable>
-          <ModuleTHead><tr><th className="text-left px-3 py-2">Staff</th><th className="text-right px-3 py-2">Jobs</th><th className="text-right px-3 py-2">Commission</th></tr></ModuleTHead>
+          <ModuleTHead><tr><th className="text-left px-3 py-2">Name</th><th className="text-left px-3 py-2">Phone</th></tr></ModuleTHead>
           <tbody>
-            {rows.map((r) => (
-              <tr key={r.staff_id} className="border-t border-border"><td className="px-3 py-2">{r.display_name}</td><td className="px-3 py-2 text-right tabular-nums">{r.jobs}</td><td className="px-3 py-2 text-right font-mono tabular-nums">{KES(r.total)}</td></tr>
+            {clients.map((c) => (
+              <tr key={c.id} onClick={() => setOpenClient(c)} className="border-t border-border hover:bg-accent/30 cursor-pointer">
+                <td className="px-3 py-2">{c.name}</td><td className="px-3 py-2 text-muted-foreground">{c.phone ?? "—"}</td>
+              </tr>
             ))}
           </tbody>
         </ModuleTable>
@@ -548,6 +656,45 @@ export function SalonReportsPage() {
   );
 }
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return <div className="space-y-1.5"><label className="text-[11px] font-medium text-muted-foreground">{label}</label>{children}</div>;
+function ClientSheet({ client, onClose }: { client: Customer | null; onClose: () => void }) {
+  const [prefs, setPrefs] = useState(""); const [allergies, setAllergies] = useState(""); const [formulas, setFormulas] = useState("");
+  const [visits, setVisits] = useState<SalonAppointment[]>([]);
+  const [busy, setBusy] = useState(false);
+  useEffect(() => {
+    if (!client) return;
+    getClientProfile(client.id).then((p) => { setPrefs(p?.preferences ?? ""); setAllergies(p?.allergies ?? ""); setFormulas(p?.formulas ?? ""); });
+    listClientVisits(client.id).then(setVisits);
+  }, [client]);
+  if (!client) return null;
+  const save = async () => {
+    setBusy(true);
+    try { await upsertClientProfile({ client_id: client.id, preferences: prefs, allergies, formulas, notes: null }); toast.success("Profile saved"); }
+    catch (e) { toast.error(String(e)); } finally { setBusy(false); }
+  };
+  return (
+    <Sheet open={!!client} onOpenChange={(v) => !v && onClose()}>
+      <SheetContent className="w-full sm:w-[440px] sm:max-w-[440px]">
+        <SheetHeader><SheetTitle>{client.name}</SheetTitle></SheetHeader>
+        <div className="flex-1 overflow-auto px-1 py-3 space-y-3 text-[13px]">
+          <Field label="Preferences"><Textarea value={prefs} onChange={(e) => setPrefs(e.target.value)} rows={2} /></Field>
+          <Field label="Allergies / sensitivities"><Textarea value={allergies} onChange={(e) => setAllergies(e.target.value)} rows={2} /></Field>
+          <Field label="Formulas (colour, etc.)"><Textarea value={formulas} onChange={(e) => setFormulas(e.target.value)} rows={2} /></Field>
+          <Button size="sm" onClick={save} disabled={busy}>Save profile</Button>
+          <div>
+            <div className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1.5 mt-2">Visit history</div>
+            {visits.length === 0 ? <p className="text-[12px] text-muted-foreground">No completed visits yet.</p> : (
+              <div className="rounded-md border border-border divide-y divide-border">
+                {visits.map((v) => (
+                  <div key={v.id} className="flex items-center justify-between px-3 py-1.5">
+                    <span>{new Date(v.starts_at).toLocaleDateString()} · {v.staff_name}</span>
+                    <span className="font-mono tabular-nums">{KES(v.total)}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      </SheetContent>
+    </Sheet>
+  );
 }

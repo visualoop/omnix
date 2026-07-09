@@ -22,7 +22,7 @@ vi.mock("@/services/sales", () => ({ completeSale: vi.fn(), getPaymentMethods: v
 
 import {
   timeToMin, addMinutesIso, intervalsOverlap, canTransitionAppt,
-  isStaffAvailable, bookAppointment,
+  isStaffAvailable, bookAppointment, setServiceProducts,
 } from "@/services/salon";
 
 beforeEach(() => { query.mockReset(); execute.mockReset(); transaction.mockReset(); });
@@ -106,5 +106,21 @@ describe("bookAppointment", () => {
       bookAppointment({ staff_id: "st1", starts_at: "2026-07-09T08:00:00.000Z", service_ids: ["s1"] }),
     ).rejects.toThrow(/already booked/i);
     expect(transaction).not.toHaveBeenCalled();
+  });
+});
+
+
+describe("setServiceProducts (back-bar mapping)", () => {
+  it("replaces the mapping: delete then insert each product", async () => {
+    transaction.mockResolvedValueOnce(undefined);
+    await setServiceProducts("svc1", [
+      { product_id: "p1", quantity: 2 },
+      { product_id: "p2", quantity: 0.5 },
+    ]);
+    const stmts = transaction.mock.calls[0][0] as { sql: string; params: unknown[] }[];
+    expect(stmts[0].sql).toMatch(/DELETE FROM salon_service_products/);
+    expect(stmts).toHaveLength(3); // delete + 2 inserts
+    expect(stmts[1].params).toContain("p1");
+    expect(stmts[1].params).toContain(2);
   });
 });

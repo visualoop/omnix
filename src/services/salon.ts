@@ -401,6 +401,9 @@ export async function checkoutAppointment(input: {
       params: [uid(), s.staff_id, input.appointment_id, saleId, s.price, Math.round(pct * 100) / 100, s.commission_amount],
     });
   }
+  // Back-bar: deduct professional products consumed by the services.
+  const backBar = await backBarConsumptionStmts(services.map((s) => s.service_id), saleId);
+  stmts.push(...backBar);
   stmts.push({
     sql: `UPDATE salon_appointments SET status = 'completed', sale_id = ?2, updated_at = ?3 WHERE id = ?1`,
     params: [input.appointment_id, saleId, nowIso()],
@@ -452,6 +455,84 @@ export async function commissionsByStaff(fromIso: string, toIso: string): Promis
      FROM salon_commissions c JOIN salon_staff st ON st.id = c.staff_id
      WHERE c.created_at >= ?1 AND c.created_at < ?2
      GROUP BY c.staff_id ORDER BY total DESC`,
+    [fromIso, toIso],
+  );
+}
+
+// ─── Back-bar consumption ─────────────────────────────────────────────────────
+
+export interface BackBarProduct { id: string; service_id: string; product_id: string; product_name?: string; quantity: number; }
+
+export async function getServiceProducts(serviceId: string): Promise<BackBarProduct[]> {
+  return query<BackBarProduct>(
+    `SELECT sp.*, p.name AS product_name FROM salon_service_products sp
+     JOIN products p ON p.id = sp.product_id WHERE sp.service_id = ?1`,
+    [serviceId],
+  );
+}
+
+/** Replace the back-bar product list for a service. */
+export async function setServiceProducts(serviceId: string, items: Array<{ product_id: string; quantity: number }>): Promise<void> {
+  await requirePermission("salon.services.manage", { entityType: "salon_service", entityId: serviceId });
+  const stmts: { sql: string; params: unknown[] }[] = [
+    { sql: `DELETE FROM salon_service_products WHERE service_id = ?1`, params: [serviceId] },
+  ];
+  for (const it of items) {
+    stmts.push({
+      sql: `INSERT INTO salon_service_products (id, service_id, product_id, quantity) VALUES (?1, ?2, ?3, ?4)`,
+      params: [uid(), serviceId, it.product_id, it.quantity],
+    });
+  }
+  await transaction(stmts);
+}
+
+/**
+ * Build FEFO stock-deduction statements for the back-bar products consumed by
+ * a set of services. Best-effort: a product with no stock is skipped (a
+ * back-bar shortfall must never block a customer's checkout).
+ */
+async function backBarConsumptionStmts(serviceIds: string[], saleId: string): Promise<{ sql: string; params: unknown[] }[]> {
+  if (serviceIds.length === 0) return [];
+  const rows = await query<{ product_id: string; quantity: number }>(
+    `SELECT product_id, SUM(quantity) AS quantity FROM salon_service_products
+     WHERE service_id IN (${serviceIds.map((_, i) => `?${i + 1}`).join(",")})
+     GROUP BY product_id`,
+    serviceIds,
+  );
+  const stmts: { sql: string; params: unknown[] }[] = [];
+  for (const r of rows) {
+    let remaining = r.quantity;
+    const batches = await query<{ id: string; quantity: number }>(
+      `SELECT id, quantity FROM batches WHERE product_id = ?1 AND quantity > 0
+       ORDER BY expiry_date ASC NULLS LAST, received_at ASC`,
+      [r.product_id],
+    );
+    for (const b of batches) {
+      if (remaining <= 0) break;
+      const deduct = Math.min(remaining, b.quantity);
+      stmts.push({ sql: `UPDATE batches SET quantity = MAX(0, quantity - ?1) WHERE id = ?2`, params: [deduct, b.id] });
+      stmts.push({
+        sql: `INSERT INTO stock_movements (id, product_id, batch_id, type, quantity, reference_type, reference_id, notes)
+              VALUES (?1, ?2, ?3, 'adjustment', ?4, 'salon_backbar', ?5, 'Back-bar consumption')`,
+        params: [uid(), r.product_id, b.id, -deduct, saleId],
+      });
+      remaining -= deduct;
+    }
+  }
+  return stmts;
+}
+
+// ─── Reports ──────────────────────────────────────────────────────────────────
+
+export interface ServicePopularityRow { service_id: string; name: string; count: number; revenue: number; }
+
+export async function servicePopularity(fromIso: string, toIso: string): Promise<ServicePopularityRow[]> {
+  return query<ServicePopularityRow>(
+    `SELECT s.service_id, s.name, COUNT(*) AS count, COALESCE(SUM(s.price), 0) AS revenue
+     FROM salon_appointment_services s
+     JOIN salon_appointments a ON a.id = s.appointment_id
+     WHERE a.status = 'completed' AND a.starts_at >= ?1 AND a.starts_at < ?2
+     GROUP BY s.service_id ORDER BY count DESC LIMIT 50`,
     [fromIso, toIso],
   );
 }

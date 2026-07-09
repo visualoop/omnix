@@ -670,6 +670,12 @@ fn run_inner() {
             sql: include_str!("../migrations/094_salon.sql"),
             kind: MigrationKind::Up,
         },
+        Migration {
+            version: 95,
+            description: "Salon back-bar product consumption mapping",
+            sql: include_str!("../migrations/095_salon_backbar.sql"),
+            kind: MigrationKind::Up,
+        },
     ];
 
     tauri::Builder::default()
