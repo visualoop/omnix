@@ -6,7 +6,7 @@ import { createId } from '@/lib/ids'
 
 export const dynamic = 'force-dynamic'
 
-const VARIANTS = ['pro', 'dawa', 'retail', 'hospitality', 'hardware'] as const
+const VARIANTS = ['pro', 'dawa', 'retail', 'hospitality', 'hardware', 'salon'] as const
 type Variant = (typeof VARIANTS)[number]
 
 const TRIAL_DAYS = 30
@@ -14,7 +14,7 @@ const TRIAL_DAYS = 30
 /**
  * POST /api/dashboard/trial
  *
- * Body: { variant: 'pro' | 'dawa' | 'retail' | 'hospitality' | 'hardware' }
+ * Body: { variant: 'pro' | 'dawa' | 'retail' | 'hospitality' | 'hardware' | 'salon' }
  *
  * Provisions a 30-day trial licence for the signed-in customer. If they
  * already have a non-lapsed licence for the same variant, returns that
@@ -72,7 +72,7 @@ export async function POST(req: Request) {
     variant,
     tier: 'trial',
     status: 'trial',
-    modules: variant === 'pro' ? ['dawa', 'retail', 'hospitality', 'hardware'] : [variant],
+    modules: variant === 'pro' ? ['dawa', 'retail', 'hospitality', 'hardware', 'salon'] : [variant],
     maxBranches: 1,
     maxMachines: 3,
     trialStartedAt: now,
@@ -118,6 +118,7 @@ function makeLicenseKey(variant: Variant): string {
     retail: 'RETAIL',
     hospitality: 'HOSP',
     hardware: 'HW',
+    salon: 'SALON',
   }
   const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
   const groups: string[] = []

@@ -69,7 +69,7 @@ export default async function CheckoutPage({
               licence is KES 30,000 once — perpetual, no subscription.
             </p>
             <div className="mt-7 grid grid-cols-1 gap-3 sm:grid-cols-2">
-              {(['dawa', 'retail', 'hospitality', 'hardware'] as const).map((v) => (
+              {(['dawa', 'retail', 'hospitality', 'hardware', 'salon'] as const).map((v) => (
                 <Link
                   key={v}
                   href={`/buy?variant=${v}`}

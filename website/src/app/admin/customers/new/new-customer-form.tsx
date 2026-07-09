@@ -3,12 +3,13 @@
 import { useState } from 'react'
 import { CheckCircle, Copy } from '@phosphor-icons/react'
 
-type Variant = 'dawa' | 'retail' | 'hospitality' | 'hardware'
+type Variant = 'dawa' | 'retail' | 'hospitality' | 'hardware' | 'salon'
 const VARIANTS: Array<{ id: Variant; label: string }> = [
   { id: 'dawa', label: 'Omnix Dawa (Pharmacy)' },
   { id: 'retail', label: 'Omnix Retail' },
   { id: 'hospitality', label: 'Omnix Hospitality' },
   { id: 'hardware', label: 'Omnix Hardware' },
+  { id: 'salon', label: 'Omnix Salon & Spa' },
 ]
 
 interface Result {

@@ -5,7 +5,7 @@ import { db, releases } from '@/db'
 import { desc, eq } from 'drizzle-orm'
 import { PageHeading } from '@/components/dashboard/status-utils'
 
-const VARIANTS = ['pro', 'dawa', 'retail', 'hospitality', 'hardware'] as const
+const VARIANTS = ['pro', 'dawa', 'retail', 'hospitality', 'hardware', 'salon'] as const
 
 export default async function DownloadsVariantPage({ params }: { params: Promise<{ variant: string }> }) {
   const { variant } = await params

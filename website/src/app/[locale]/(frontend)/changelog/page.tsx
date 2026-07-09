@@ -11,7 +11,7 @@ export const metadata: Metadata = {
 export const dynamic = 'force-dynamic'
 export const revalidate = 60
 
-type VariantId = 'pro' | 'dawa' | 'retail' | 'hospitality' | 'hardware'
+type VariantId = 'pro' | 'dawa' | 'retail' | 'hospitality' | 'hardware' | 'salon'
 
 interface ReleaseRow {
   id: string | number
@@ -35,7 +35,7 @@ interface VersionGroup {
   variants: Record<VariantId, ReleaseRow | undefined>
 }
 
-const VARIANT_ORDER: VariantId[] = ['pro', 'dawa', 'retail', 'hospitality', 'hardware']
+const VARIANT_ORDER: VariantId[] = ['pro', 'dawa', 'retail', 'hospitality', 'hardware', 'salon']
 
 const VARIANT_LABEL: Record<VariantId, string> = {
   pro: 'Pro',
@@ -43,6 +43,7 @@ const VARIANT_LABEL: Record<VariantId, string> = {
   retail: 'Retail',
   hospitality: 'Hospitality',
   hardware: 'Hardware',
+  salon: 'Salon & Spa',
 }
 
 /**

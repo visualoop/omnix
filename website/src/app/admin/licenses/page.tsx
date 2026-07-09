@@ -29,6 +29,7 @@ const VARIANT_OPTIONS = [
   { value: 'dawa', label: 'Dawa' },
   { value: 'retail', label: 'Retail' },
   { value: 'hardware', label: 'Hardware' },
+  { value: 'salon', label: 'Salon & Spa' },
   { value: 'hospitality', label: 'Hospitality' },
 ]
 

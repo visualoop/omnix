@@ -11,7 +11,7 @@
  *   phoneNumber?: string,
  *   country?: string,
  *   currency?: string,
- *   issueTrialVariant?: 'dawa' | 'retail' | 'hospitality' | 'hardware'
+ *   issueTrialVariant?: 'dawa' | 'retail' | 'hospitality' | 'hardware' | 'salon'
  * }
  *
  * Returns:
@@ -47,7 +47,7 @@ async function requireAdmin() {
   return { error: null, session }
 }
 
-const ALLOWED_VARIANTS = ['dawa', 'retail', 'hospitality', 'hardware'] as const
+const ALLOWED_VARIANTS = ['dawa', 'retail', 'hospitality', 'hardware', 'salon'] as const
 type Variant = (typeof ALLOWED_VARIANTS)[number]
 
 interface CreateBody {

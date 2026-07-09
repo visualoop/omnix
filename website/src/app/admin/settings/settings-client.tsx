@@ -61,7 +61,7 @@ const CATEGORY_DESCRIPTIONS: Record<string, string> = {
   feature_flags: 'Quick toggles. No redeploy needed.',
   analytics: 'GA4 measurement tag.',
   landing_hero: 'Edit the homepage hero without a deploy. Leave any field blank to fall back to the shipped default. Cache TTL: ~5 minutes.',
-  landing_variant_video: 'Short muted loops on module landing pages (/dawa, /retail, /hospitality, /hardware). Upload via /admin/media then paste the URL here. Poster is a still frame shown before the video loads. Keep videos under 3 MB — H.264 or AV1, 10-25 seconds, no audio needed.',
+  landing_variant_video: 'Short muted loops on module landing pages (/dawa, /retail, /hospitality, /hardware, /salon). Upload via /admin/media then paste the URL here. Poster is a still frame shown before the video loads. Keep videos under 3 MB — H.264 or AV1, 10-25 seconds, no audio needed.',
   landing_one_price: 'Edit the price section eyebrow + italic commitment line.',
   landing_founder: 'Edit the founder note. Separate paragraphs with a blank line in the body field.',
   landing_closing: 'Edit the final full-bleed call to action.',

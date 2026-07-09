@@ -40,7 +40,7 @@ export default async function DashboardOverviewPage({
 
   const sp = (await searchParams) ?? {}
   const requestedVariant = sp.variant?.toLowerCase()
-  const VALID_VARIANTS = ['pro', 'dawa', 'retail', 'hospitality', 'hardware'] as const
+  const VALID_VARIANTS = ['pro', 'dawa', 'retail', 'hospitality', 'hardware', 'salon'] as const
   type Variant = (typeof VALID_VARIANTS)[number]
   const defaultVariant: Variant = (VALID_VARIANTS as readonly string[]).includes(requestedVariant ?? '')
     ? (requestedVariant as Variant)
@@ -322,7 +322,7 @@ export default async function DashboardOverviewPage({
   )
 }
 
-const ALL_VARIANTS = ['pro', 'dawa', 'retail', 'hospitality', 'hardware'] as const
+const ALL_VARIANTS = ['pro', 'dawa', 'retail', 'hospitality', 'hardware', 'salon'] as const
 function pickFirstUntakenVariant(taken: (string | null)[]): typeof ALL_VARIANTS[number] | null {
   const set = new Set(taken.filter(Boolean))
   for (const v of ALL_VARIANTS) {

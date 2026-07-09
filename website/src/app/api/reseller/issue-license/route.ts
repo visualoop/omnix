@@ -19,7 +19,7 @@
  *   customerPhone?: string
  *   country?: string            // default 'KE'
  *   currency?: string           // default from reseller.commissionCurrency
- *   variant: 'dawa' | 'retail' | 'hospitality' | 'hardware'
+ *   variant: 'dawa' | 'retail' | 'hospitality' | 'hardware' | 'salon'
  * }
  */
 import { NextRequest, NextResponse } from 'next/server'
@@ -35,7 +35,7 @@ import { modulesForVariant } from '@/lib/license-modules'
 
 export const runtime = 'nodejs'
 
-const ALLOWED_VARIANTS = ['dawa', 'retail', 'hospitality', 'hardware'] as const
+const ALLOWED_VARIANTS = ['dawa', 'retail', 'hospitality', 'hardware', 'salon'] as const
 type Variant = (typeof ALLOWED_VARIANTS)[number]
 
 interface Body {

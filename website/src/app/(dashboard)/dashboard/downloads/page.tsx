@@ -8,7 +8,7 @@ import { PageHeading } from '@/components/dashboard/status-utils'
 export const metadata = { title: 'Downloads' }
 export const dynamic = 'force-dynamic'
 
-type VariantId = 'pro' | 'dawa' | 'retail' | 'hospitality' | 'hardware'
+type VariantId = 'pro' | 'dawa' | 'retail' | 'hospitality' | 'hardware' | 'salon'
 interface VariantUrls { exe?: string; msi?: string }
 
 const VARIANT_LABELS: Record<VariantId, string> = {
@@ -17,6 +17,7 @@ const VARIANT_LABELS: Record<VariantId, string> = {
   retail: 'Retail — duka',
   hospitality: 'Hospitality — restaurant',
   hardware: 'Hardware store',
+  salon: 'Salon & Spa',
 }
 
 /**
@@ -81,7 +82,7 @@ export default async function DashboardDownloadsPage() {
   //     fallback array when it goes back on sale.
   const visibleVariants: readonly VariantId[] = ownsPro
     ? (['pro'] as const)
-    : (['dawa', 'retail', 'hospitality', 'hardware'] as const)
+    : (['dawa', 'retail', 'hospitality', 'hardware', 'salon'] as const)
   const finalVariants = visibleVariants
 
   const ownedList = [...ownedSet]
@@ -100,6 +101,7 @@ export default async function DashboardDownloadsPage() {
     retail: 'Omnix.Retail',
     hospitality: 'Omnix.Hospitality',
     hardware: 'Omnix.Hardware',
+    salon: 'Omnix.Salon',
   }
 
   function githubAssetUrl(v: VariantId, kind: 'exe' | 'msi'): string | undefined {

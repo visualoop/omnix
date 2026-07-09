@@ -44,9 +44,9 @@ export default async function BuyEntryPage({
   const isCustomer = Boolean(session?.user?.id)
   const customerId = isCustomer ? (session!.user.id as string) : null
 
-  const requestedVariant = variant && ['pro','dawa','retail','hospitality','hardware'].includes(variant)
+  const requestedVariant = variant && ['pro','dawa','retail','hospitality','hardware','salon'].includes(variant)
     ? variant
-    : (mod === 'dawa' || mod === 'retail' || mod === 'hospitality' || mod === 'hardware' ? mod : 'dawa')
+    : (mod === 'dawa' || mod === 'retail' || mod === 'hospitality' || mod === 'hardware' || mod === 'salon' ? mod : 'dawa')
 
   // Pro is no longer on sale publicly. If the caller asked for Pro and
   // the user doesn't already have an existing Pro licence row, redirect
