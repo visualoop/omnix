@@ -30,8 +30,9 @@ import {
   getServiceProducts, setServiceProducts, servicePopularity,
   getClientProfile, upsertClientProfile, listClientVisits,
   listPackages, createPackage, sellPackage, listClientPackages,
+  listResources, createResource,
   type SalonService, type SalonStaff, type SalonAppointment, type AppointmentStatus, type StaffCommissionRow,
-  type ServicePopularityRow, type SalonPackage, type ClientPackage,
+  type ServicePopularityRow, type SalonPackage, type ClientPackage, type SalonResource,
 } from "@/services/salon";
 import { getProducts, type Product } from "@/services/inventory";
 
@@ -64,28 +65,31 @@ function fmtTime(iso: string) { return new Date(iso).toLocaleTimeString([], { ho
 
 export function SalonCalendarPage() {
   const [date, setDate] = useState(() => { const d = new Date(); d.setHours(0, 0, 0, 0); return d; });
+  const [view, setView] = useState<"day" | "week">("day");
   const [staff, setStaff] = useState<SalonStaff[]>([]);
   const [appts, setAppts] = useState<SalonAppointment[]>([]);
   const [loading, setLoading] = useState(true);
   const [booking, setBooking] = useState<{ staffId?: string; startIso?: string } | null>(null);
   const [openApptId, setOpenApptId] = useState<string | null>(null);
 
+  const weekDays = useMemo(() => {
+    const start = new Date(date); start.setDate(start.getDate() - start.getDay()); // Sunday
+    return Array.from({ length: 7 }, (_, i) => { const d = new Date(start); d.setDate(start.getDate() + i); return d; });
+  }, [date]);
+
   const load = () => {
     setLoading(true);
-    const { from, to } = dayBounds(date);
+    let from: string, to: string;
+    if (view === "week") { from = weekDays[0].toISOString(); const end = new Date(weekDays[6]); end.setDate(end.getDate() + 1); to = end.toISOString(); }
+    else { const b = dayBounds(date); from = b.from; to = b.to; }
     Promise.all([listStaff(), listAppointments({ from, to })])
       .then(([st, ap]) => { setStaff(st); setAppts(ap); })
       .finally(() => setLoading(false));
   };
-  useEffect(() => { load(); /* eslint-disable-next-line */ }, [date]);
+  useEffect(() => { load(); /* eslint-disable-next-line */ }, [date, view]);
 
-  const hours = useMemo(() => {
-    const out: number[] = [];
-    for (let m = DAY_START_MIN; m <= DAY_END_MIN; m += 60) out.push(m);
-    return out;
-  }, []);
-
-  const shiftDay = (n: number) => { const d = new Date(date); d.setDate(d.getDate() + n); setDate(d); };
+  const hours = useMemo(() => { const out: number[] = []; for (let m = DAY_START_MIN; m <= DAY_END_MIN; m += 60) out.push(m); return out; }, []);
+  const shiftDay = (n: number) => { const d = new Date(date); d.setDate(d.getDate() + (view === "week" ? n * 7 : n)); setDate(d); };
   const isToday = date.toDateString() === new Date().toDateString();
 
   return (
@@ -102,20 +106,45 @@ export function SalonCalendarPage() {
         }
       />
 
-      <div className="flex items-center gap-2 mb-3">
+      <div className="flex items-center gap-2 mb-3 flex-wrap">
         <Button variant="outline" size="icon-sm" onClick={() => shiftDay(-1)}><CaretLeft className="h-4 w-4" /></Button>
-        <Button variant={isToday ? "default" : "outline"} size="sm" onClick={() => { const d = new Date(); d.setHours(0,0,0,0); setDate(d); }}>Today</Button>
+        <Button variant={isToday && view === "day" ? "default" : "outline"} size="sm" onClick={() => { const d = new Date(); d.setHours(0,0,0,0); setDate(d); }}>Today</Button>
         <Button variant="outline" size="icon-sm" onClick={() => shiftDay(1)}><CaretRight className="h-4 w-4" /></Button>
         <Input type="date" value={date.toISOString().slice(0, 10)} onChange={(e) => e.target.value && setDate(new Date(e.target.value + "T00:00:00"))} className="h-8 text-xs w-[150px]" />
-        <span className="text-sm font-medium ml-1">{date.toLocaleDateString([], { weekday: "long", day: "numeric", month: "long" })}</span>
+        <div className="ml-auto flex items-center gap-1 rounded-md border border-border p-0.5">
+          <Button variant={view === "day" ? "default" : "ghost"} size="sm" className="h-7" onClick={() => setView("day")}>Day</Button>
+          <Button variant={view === "week" ? "default" : "ghost"} size="sm" className="h-7" onClick={() => setView("week")}>Week</Button>
+        </div>
       </div>
 
-      {loading ? <ModuleSpinner /> : staff.length === 0 ? (
+      {loading ? <ModuleSpinner /> : view === "week" ? (
+        <div className="rounded-lg border border-border overflow-auto">
+          <div className="grid grid-cols-7 min-w-[840px]">
+            {weekDays.map((d) => {
+              const dayAppts = appts.filter((a) => new Date(a.starts_at).toDateString() === d.toDateString());
+              const dToday = d.toDateString() === new Date().toDateString();
+              return (
+                <div key={d.toISOString()} className="border-r border-border last:border-r-0 min-h-[220px]">
+                  <div className={cn("border-b border-border px-2 py-1.5 text-[11px] font-medium text-center", dToday && "bg-accent")}>{d.toLocaleDateString([], { weekday: "short", day: "numeric" })}</div>
+                  <div className="p-1.5 space-y-1">
+                    {dayAppts.length === 0 ? <div className="text-[10px] text-muted-foreground text-center py-2">—</div> :
+                      dayAppts.map((a) => (
+                        <button key={a.id} onClick={() => setOpenApptId(a.id)} className={cn("block w-full rounded px-1.5 py-1 text-left text-[10px] leading-tight border border-current/20", STATUS_STYLE[a.status])}>
+                          <div className="font-medium truncate">{fmtTime(a.starts_at)} {a.client_name ?? "Walk-in"}</div>
+                          <div className="truncate opacity-80">{a.staff_name}</div>
+                        </button>
+                      ))}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      ) : staff.length === 0 ? (
         <ModuleEmpty icon={Scissors} title="No staff yet" hint="Add staff on the Staff tab before booking appointments." />
       ) : (
         <div className="rounded-lg border border-border overflow-auto">
           <div className="flex min-w-[640px]">
-            {/* time gutter */}
             <div className="w-14 shrink-0 border-r border-border">
               <div className="h-9 border-b border-border" />
               <div className="relative" style={{ height: (DAY_END_MIN - DAY_START_MIN) * PX_PER_MIN }}>
@@ -126,7 +155,6 @@ export function SalonCalendarPage() {
                 ))}
               </div>
             </div>
-            {/* staff columns */}
             {staff.map((st) => {
               const col = appts.filter((a) => a.staff_id === st.id);
               return (
@@ -176,6 +204,8 @@ function BookingDialog({ open, preset, onClose, onBooked }: {
   const [clients, setClients] = useState<Customer[]>([]);
   const [clientId, setClientId] = useState("");
   const [staffId, setStaffId] = useState("");
+  const [resources, setResources] = useState<SalonResource[]>([]);
+  const [resourceId, setResourceId] = useState("");
   const [pickedServices, setPickedServices] = useState<string[]>([]);
   const [startIso, setStartIso] = useState("");
   const [notes, setNotes] = useState("");
@@ -186,9 +216,10 @@ function BookingDialog({ open, preset, onClose, onBooked }: {
     listServices().then(setServices);
     listStaff().then(setStaff);
     listCustomers().then(setClients);
+    listResources().then(setResources);
     setStaffId(preset.staffId ?? "");
     setStartIso(preset.startIso ?? defaultStart());
-    setClientId(""); setPickedServices([]); setNotes("");
+    setClientId(""); setPickedServices([]); setNotes(""); setResourceId("");
   }, [open, preset.staffId, preset.startIso]);
 
   const totalDuration = services.filter((s) => pickedServices.includes(s.id)).reduce((s, sv) => s + sv.duration_min, 0);
@@ -201,7 +232,7 @@ function BookingDialog({ open, preset, onClose, onBooked }: {
     if (pickedServices.length === 0) { toast.error("Pick at least one service."); return; }
     setSubmitting(true);
     try {
-      await bookAppointment({ client_id: clientId || undefined, staff_id: staffId, starts_at: new Date(startIso).toISOString(), service_ids: pickedServices, notes: notes.trim() || undefined });
+      await bookAppointment({ client_id: clientId || undefined, staff_id: staffId, starts_at: new Date(startIso).toISOString(), service_ids: pickedServices, resource_id: resourceId || undefined, notes: notes.trim() || undefined });
       toast.success("Appointment booked");
       onBooked();
     } catch (e) { toast.error(String(e)); }
@@ -233,6 +264,14 @@ function BookingDialog({ open, preset, onClose, onBooked }: {
           <Field label="Start">
             <Input type="datetime-local" value={startIso.slice(0, 16)} onChange={(e) => setStartIso(e.target.value)} />
           </Field>
+          {resources.length > 0 && (
+            <Field label="Room / resource (optional)">
+              <Select value={resourceId} onValueChange={(v) => setResourceId(v as string)}>
+                <SelectTrigger><SelectValue placeholder="None" /></SelectTrigger>
+                <SelectContent>{resources.map((r) => <SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>)}</SelectContent>
+              </Select>
+            </Field>
+          )}
           <Field label={`Services${totalDuration ? ` · ${totalDuration} min · ${KES(totalPrice)}` : ""}`}>
             <div className="max-h-44 overflow-auto rounded-md border border-border divide-y divide-border">
               {services.length === 0 ? <p className="p-3 text-[12px] text-muted-foreground">No services yet — add them on the Services tab.</p> :
@@ -495,6 +534,38 @@ export function SalonStaffPage() {
             ))}
           </tbody>
         </ModuleTable>
+      )}
+      <ResourcesManager />
+    </div>
+  );
+}
+
+function ResourcesManager() {
+  const [resources, setResources] = useState<SalonResource[]>([]);
+  const [name, setName] = useState(""); const [type, setType] = useState("room");
+  const load = () => listResources(true).then(setResources);
+  useEffect(() => { load(); }, []);
+  const add = async () => {
+    if (!name.trim()) { toast.error("Name required."); return; }
+    try { await createResource(name.trim(), type); setName(""); load(); } catch (e) { toast.error(String(e)); }
+  };
+  return (
+    <div className="mt-6">
+      <div className="text-[11px] uppercase tracking-wider text-muted-foreground mb-2">Rooms & resources</div>
+      <div className="flex items-end gap-2 mb-2">
+        <Field label="Name"><Input value={name} onChange={(e) => setName(e.target.value)} className="w-40" placeholder="e.g. Room 1" /></Field>
+        <Field label="Type">
+          <Select value={type} onValueChange={(v) => setType(v as string)}>
+            <SelectTrigger className="w-28"><SelectValue /></SelectTrigger>
+            <SelectContent>{["room", "chair", "bed", "station"].map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent>
+          </Select>
+        </Field>
+        <Button size="sm" onClick={add}>Add</Button>
+      </div>
+      {resources.length > 0 && (
+        <div className="flex flex-wrap gap-2">
+          {resources.map((r) => <Badge key={r.id} variant="outline" className="capitalize">{r.name} · {r.type}</Badge>)}
+        </div>
       )}
     </div>
   );

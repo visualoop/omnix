@@ -234,6 +234,34 @@ async function scanWarrantyExpiry(): Promise<void> {
   }
 }
 
+interface UpcomingApptRow { id: string; appt_number: string; client_name: string | null; staff_name: string | null; starts_at: string; }
+
+async function scanUpcomingAppointments(): Promise<void> {
+  // Salon/spa: remind staff of bookings in the next 24h (in-app; SMS is a
+  // separate connectivity-gated feature).
+  if (!(await tableExists("salon_appointments"))) return;
+  const rows = await query<UpcomingApptRow>(
+    `SELECT a.id, a.appt_number, c.name AS client_name, s.display_name AS staff_name, a.starts_at
+     FROM salon_appointments a
+     LEFT JOIN customers c ON c.id = a.client_id
+     LEFT JOIN salon_staff s ON s.id = a.staff_id
+     WHERE a.status IN ('booked','confirmed')
+       AND a.starts_at >= datetime('now') AND a.starts_at <= datetime('now', '+1 day')
+     ORDER BY a.starts_at ASC LIMIT 50`,
+  ).catch(() => []);
+  for (const r of rows) {
+    await emit({
+      kind: "appointment_reminder",
+      severity: "info",
+      title: `Upcoming: ${r.client_name ?? "Walk-in"} at ${new Date(r.starts_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`,
+      body: `${r.appt_number}${r.staff_name ? ` · ${r.staff_name}` : ""} · ${new Date(r.starts_at).toLocaleDateString()}`,
+      link: "/salon",
+      dedupeKey: `appt_reminder:${r.id}`,
+      metadata: { appointment_id: r.id },
+    });
+  }
+}
+
 /**
  * Run all scanners. Errors in one don't block others.
  */
@@ -246,5 +274,6 @@ export async function runAllScanners(): Promise<void> {
     scanLicenseExpiry(),
     scanColdChain(),
     scanWarrantyExpiry(),
+    scanUpcomingAppointments(),
   ]);
 }

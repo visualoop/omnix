@@ -23,7 +23,7 @@ vi.mock("@/services/sales", () => ({ completeSale: (...a: unknown[]) => complete
 
 import {
   timeToMin, addMinutesIso, intervalsOverlap, canTransitionAppt,
-  isStaffAvailable, bookAppointment, setServiceProducts, sellPackage,
+  isStaffAvailable, bookAppointment, setServiceProducts, sellPackage, isResourceAvailable,
 } from "@/services/salon";
 
 beforeEach(() => { query.mockReset(); execute.mockReset(); transaction.mockReset(); completeSale.mockReset(); });
@@ -87,7 +87,7 @@ describe("bookAppointment", () => {
     expect(res.appt_number).toMatch(/^AP-\d{4}-00004$/);
     const stmts = transaction.mock.calls[0][0] as { sql: string; params: unknown[] }[];
     // appointment insert ends_at = start + 30m
-    expect(stmts[0].params[5]).toBe("2026-07-09T08:30:00.000Z");
+    expect(stmts[0].params[6]).toBe("2026-07-09T08:30:00.000Z");
     // service line commission = 1000 * 10%
     expect(stmts[1].sql).toMatch(/salon_appointment_services/);
     expect(stmts[1].params[7]).toBe(100);
@@ -139,5 +139,25 @@ describe("sellPackage", () => {
     expect(params).toContain(10);
     expect(params).toContain("c1");
     expect(params).toContain("sale1");
+  });
+});
+
+
+describe("resources", () => {
+  it("isResourceAvailable is busy when a booking overlaps", async () => {
+    query.mockResolvedValueOnce([{ starts_at: "2026-07-09T10:00:00Z", ends_at: "2026-07-09T11:00:00Z" }]);
+    expect(await isResourceAvailable("r1", "2026-07-09T10:30:00Z", "2026-07-09T11:30:00Z")).toBe(false);
+  });
+
+  it("bookAppointment refuses a double-booked resource", async () => {
+    query
+      .mockResolvedValueOnce([{ id: "s1", name: "Massage", price: 2000, duration_min: 60, commission_pct: 10 }]) // services
+      .mockResolvedValueOnce([{ id: "st1", display_name: "Amina", commission_default_pct: 20 }])                 // staff
+      .mockResolvedValueOnce([])                                                                                  // staff availability (free)
+      .mockResolvedValueOnce([{ starts_at: "2026-07-09T08:00:00.000Z", ends_at: "2026-07-09T09:00:00.000Z" }]); // resource busy
+    await expect(
+      bookAppointment({ staff_id: "st1", starts_at: "2026-07-09T08:00:00.000Z", service_ids: ["s1"], resource_id: "r1" }),
+    ).rejects.toThrow(/room \/ resource is already booked/i);
+    expect(transaction).not.toHaveBeenCalled();
   });
 });

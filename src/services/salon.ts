@@ -52,6 +52,8 @@ export interface SalonAppointment {
   client_name?: string | null;
   staff_id: string | null;
   staff_name?: string | null;
+  resource_id?: string | null;
+  resource_name?: string | null;
   starts_at: string;
   ends_at: string;
   status: AppointmentStatus;
@@ -210,16 +212,27 @@ export async function setStaffHours(staffId: string, hours: Array<{ weekday: num
 // ─── Appointments ──────────────────────────────────────────────────────────────
 
 const SELECT_APPT = `
-  SELECT a.*, c.name AS client_name, s.display_name AS staff_name
+  SELECT a.*, c.name AS client_name, s.display_name AS staff_name, r.name AS resource_name
   FROM salon_appointments a
   LEFT JOIN customers c ON c.id = a.client_id
-  LEFT JOIN salon_staff s ON s.id = a.staff_id`;
+  LEFT JOIN salon_staff s ON s.id = a.staff_id
+  LEFT JOIN salon_resources r ON r.id = a.resource_id`;
 
 export async function listAppointments(opts: { from: string; to: string; staffId?: string }): Promise<SalonAppointment[]> {
   const params: unknown[] = [opts.from, opts.to];
   let clause = `WHERE a.starts_at >= ?1 AND a.starts_at < ?2 AND a.status != 'cancelled'`;
   if (opts.staffId) { params.push(opts.staffId); clause += ` AND a.staff_id = ?${params.length}`; }
   return query<SalonAppointment>(`${SELECT_APPT} ${clause} ORDER BY a.starts_at ASC`, params);
+}
+
+/** Upcoming (not-yet-serviced) appointments within `hours` — for reminders. */
+export async function listUpcomingAppointments(hours = 24): Promise<SalonAppointment[]> {
+  const from = new Date().toISOString();
+  const to = new Date(Date.now() + hours * 3_600_000).toISOString();
+  return query<SalonAppointment>(
+    `${SELECT_APPT} WHERE a.starts_at >= ?1 AND a.starts_at <= ?2 AND a.status IN ('booked','confirmed') ORDER BY a.starts_at ASC LIMIT 100`,
+    [from, to],
+  );
 }
 
 export async function getAppointment(id: string): Promise<{ appointment: SalonAppointment; services: AppointmentService[] } | null> {
@@ -238,6 +251,28 @@ export async function isStaffAvailable(staffId: string, startIso: string, endIso
     excludeApptId ? [staffId, excludeApptId] : [staffId],
   );
   return !rows.some((r) => intervalsOverlap(startIso, endIso, r.starts_at, r.ends_at));
+}
+
+/** True if the resource (room/chair) is free in the window. */
+export async function isResourceAvailable(resourceId: string, startIso: string, endIso: string, excludeApptId?: string): Promise<boolean> {
+  const rows = await query<{ starts_at: string; ends_at: string }>(
+    `SELECT starts_at, ends_at FROM salon_appointments
+     WHERE resource_id = ?1 AND status NOT IN ('cancelled','no_show','completed')
+       ${excludeApptId ? "AND id != ?2" : ""}`,
+    excludeApptId ? [resourceId, excludeApptId] : [resourceId],
+  );
+  return !rows.some((r) => intervalsOverlap(startIso, endIso, r.starts_at, r.ends_at));
+}
+
+export interface SalonResource { id: string; name: string; type: string; active: number; }
+export async function listResources(includeInactive = false): Promise<SalonResource[]> {
+  return query<SalonResource>(`SELECT * FROM salon_resources ${includeInactive ? "" : "WHERE active = 1"} ORDER BY name`);
+}
+export async function createResource(name: string, type = "room"): Promise<string> {
+  await requirePermission("salon.staff.manage", { entityType: "salon_resource" });
+  const id = uid();
+  await execute(`INSERT INTO salon_resources (id, name, type) VALUES (?1, ?2, ?3)`, [id, name, type]);
+  return id;
 }
 
 async function nextApptNumber(): Promise<string> {
@@ -265,6 +300,7 @@ export async function bookAppointment(input: {
   staff_id: string;
   starts_at: string;
   service_ids: string[];
+  resource_id?: string | null;
   notes?: string;
 }): Promise<{ id: string; appt_number: string }> {
   await requirePermission("salon.appointments.manage", { entityType: "salon_appointment" });
@@ -285,13 +321,16 @@ export async function bookAppointment(input: {
   if (!(await isStaffAvailable(input.staff_id, input.starts_at, endsAt))) {
     throw new Error(`${staff.display_name} is already booked in that time slot.`);
   }
+  if (input.resource_id && !(await isResourceAvailable(input.resource_id, input.starts_at, endsAt))) {
+    throw new Error("That room / resource is already booked in that slot.");
+  }
 
   const id = uid();
   const apptNumber = await nextApptNumber();
   const stmts: { sql: string; params: unknown[] }[] = [{
-    sql: `INSERT INTO salon_appointments (id, appt_number, client_id, staff_id, starts_at, ends_at, status, notes, total, branch_id)
-          VALUES (?1, ?2, ?3, ?4, ?5, ?6, 'booked', ?7, ?8, ?9)`,
-    params: [id, apptNumber, input.client_id ?? null, input.staff_id, input.starts_at, endsAt, input.notes ?? null, total, getActiveBranchId() || null],
+    sql: `INSERT INTO salon_appointments (id, appt_number, client_id, staff_id, resource_id, starts_at, ends_at, status, notes, total, branch_id)
+          VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, 'booked', ?8, ?9, ?10)`,
+    params: [id, apptNumber, input.client_id ?? null, input.staff_id, input.resource_id ?? null, input.starts_at, endsAt, input.notes ?? null, total, getActiveBranchId() || null],
   }];
   // preserve the requested service order
   for (const sid of input.service_ids) {

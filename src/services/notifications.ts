@@ -25,6 +25,7 @@ export type NotificationKind =
   | "refill_due"
   | "license_expiry"
   | "warranty_expiry"
+  | "appointment_reminder"
   | "variance"
   | "system";
 
