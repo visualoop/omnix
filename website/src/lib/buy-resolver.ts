@@ -20,10 +20,10 @@ export function buildSignupNext(machine?: string | null, mod?: string | null): s
   return qs ? `/buy?${qs}` : '/buy'
 }
 
-const VALID_MODULES = ['core', 'dawa', 'retail', 'hardware', 'hospitality'] as const
+const VALID_MODULES = ['core', 'dawa', 'retail', 'hardware', 'hospitality', 'salon'] as const
 export type ValidModule = (typeof VALID_MODULES)[number]
 
-const VALID_VARIANTS = ['pro', 'dawa', 'retail', 'hospitality', 'hardware'] as const
+const VALID_VARIANTS = ['pro', 'dawa', 'retail', 'hospitality', 'hardware', 'salon'] as const
 export type ValidVariant = (typeof VALID_VARIANTS)[number]
 
 /**
@@ -37,7 +37,7 @@ export function trialModulesFor(mod?: string | null): ValidModule[] {
   if (mod && mod !== 'pro' && mod !== 'core' && (VALID_MODULES as readonly string[]).includes(mod)) {
     return ['core', mod as ValidModule]
   }
-  return ['core', 'dawa', 'retail', 'hardware', 'hospitality']
+  return ['core', 'dawa', 'retail', 'hardware', 'hospitality', 'salon']
 }
 
 /**

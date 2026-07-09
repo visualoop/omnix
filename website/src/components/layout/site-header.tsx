@@ -30,6 +30,7 @@ const NAV: readonly NavItem[] = [
       { label: 'Omnix Retail', href: '/retail', description: 'Shops, mini-marts, dukas' },
       { label: 'Omnix Hospitality', href: '/hospitality', description: 'Restaurants, bars, lodges' },
       { label: 'Omnix Hardware', href: '/hardware', description: 'Hardware stores, contractors' },
+      { label: 'Omnix Salon & Spa', href: '/salon', description: 'Salons, barbershops, spas' },
     ],
   },
   { labelKey: 'ai', href: '/ai' },

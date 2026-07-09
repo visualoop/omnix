@@ -403,6 +403,7 @@ export const ILLUSTRATIONS = {
   retail: RetailIllo,
   hospitality: HospitalityIllo,
   hardware: HardwareIllo,
+  salon: RetailIllo,
   backup: BackupIllo,
   multibranch: MultiBranchIllo,
   drugLabel: DrugLabelIllo,

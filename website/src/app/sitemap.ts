@@ -31,6 +31,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     '/retail',
     '/hospitality',
     '/hardware',
+    '/salon',
     '/etims',
     '/mpesa',
     '/sha',

@@ -62,7 +62,7 @@ export async function OrgJsonLd({ brandUrl = 'https://omnix.co.ke' }: Partial<Or
 }
 
 interface SoftwareProps {
-  variant: 'pro' | 'dawa' | 'retail' | 'hospitality' | 'hardware'
+  variant: 'pro' | 'dawa' | 'retail' | 'hospitality' | 'hardware' | 'salon'
   currency: SupportedCurrency
   brandUrl?: string
   locale: string
@@ -74,6 +74,7 @@ const VARIANT_NAMES: Record<SoftwareProps['variant'], string> = {
   retail: 'Omnix Retail',
   hospitality: 'Omnix Hospitality',
   hardware: 'Omnix Hardware',
+  salon: 'Omnix Salon & Spa',
 }
 
 const VARIANT_DESCRIPTIONS: Record<SoftwareProps['variant'], string> = {
@@ -82,6 +83,7 @@ const VARIANT_DESCRIPTIONS: Record<SoftwareProps['variant'], string> = {
   retail: 'Retail POS with M-Pesa for shops, mini-marts and dukas. Lipa na M-Pesa, barcode scanning, layby, customer credit, KRA eTIMS. Offline-first.',
   hospitality: 'Restaurant & bar POS with M-Pesa for Kenya. Lipa na M-Pesa at the table, KOT, recipe costing, room folios, KRA eTIMS. Offline-first.',
   hardware: 'Hardware-store POS with M-Pesa. Lipa na M-Pesa, bulk pricing, quotations, contractor accounts, delivery notes, KRA eTIMS. Offline-first.',
+  salon: 'Salon & spa POS with M-Pesa for Kenya. Lipa na M-Pesa, appointment diary, staff commissions, packages & memberships, back-bar stock, client history, KRA eTIMS. Offline-first.',
 }
 
 export function SoftwareJsonLd({ variant, currency, locale, brandUrl = 'https://omnix.co.ke' }: SoftwareProps) {

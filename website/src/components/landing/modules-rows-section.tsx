@@ -73,6 +73,17 @@ const ROWS: ModuleRow[] = [
     size: '1280×800',
     for: 'restaurants · bars · hotels · lodges',
   },
+  {
+    slug: 'salon',
+    pageHref: '/salon',
+    name: 'Salon & Spa',
+    tagline: 'Appointments to commissions.',
+    body:
+      'An appointment diary that never double-books, staff skills and commissions, prepaid packages and memberships, back-bar stock, and full client history with formulas. Book, serve, checkout — one calm flow.',
+    status: 'live',
+    size: '1440×900',
+    for: 'salons · barbershops · nail bars · spas',
+  },
 ]
 
 export function ModulesRowsSection({ images = {} }: { images?: Record<string, string> }) {

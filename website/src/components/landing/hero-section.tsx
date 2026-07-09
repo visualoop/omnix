@@ -204,6 +204,7 @@ export function HeroSection({
             { href: '/retail', label: 'Retail & duka POS' },
             { href: '/hospitality', label: 'Restaurant & bar POS' },
             { href: '/hardware', label: 'Hardware store POS' },
+            { href: '/salon', label: 'Salon & spa POS' },
           ].map((p) => (
             <Link
               key={p.href}

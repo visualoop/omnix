@@ -13,7 +13,7 @@ export const metadata: Metadata = {
 export const dynamic = 'force-dynamic'
 export const revalidate = 60
 
-type VariantId = 'pro' | 'dawa' | 'retail' | 'hospitality' | 'hardware'
+type VariantId = 'pro' | 'dawa' | 'retail' | 'hospitality' | 'hardware' | 'salon'
 
 interface VariantInfo {
   id: VariantId
@@ -57,6 +57,14 @@ const VARIANTS: VariantInfo[] = [
     copy: 'Bulk pricing, quotations, delivery notes, contractor accounts, parts catalog. Built for heavy stock and heavy margins.',
     ctaHref: '/buy?variant=hardware',
     accent: 'orange',
+  },
+  {
+    id: 'salon',
+    name: 'Omnix Salon & Spa',
+    tagline: 'Salons & spas',
+    copy: 'Appointment diary, staff commissions, packages & memberships, back-bar stock, client history. Book, serve and checkout in one flow.',
+    ctaHref: '/buy?variant=salon',
+    accent: 'purple',
   },
 ]
 
@@ -105,7 +113,7 @@ export default async function DownloadsPage() {
     .limit(1)
   const r = rows[0]
 
-  type VariantId = 'pro' | 'dawa' | 'retail' | 'hospitality' | 'hardware'
+  type VariantId = 'pro' | 'dawa' | 'retail' | 'hospitality' | 'hardware' | 'salon'
   interface VariantUrls { exe?: string; msi?: string }
 
   const meta = (r?.metadata ?? {}) as { variants?: Partial<Record<VariantId, VariantUrls>> }
@@ -128,6 +136,7 @@ export default async function DownloadsPage() {
     retail: 'Omnix.Retail',
     hospitality: 'Omnix.Hospitality',
     hardware: 'Omnix.Hardware',
+    salon: 'Omnix.Salon',
   }
 
   function githubAssetUrl(v: VariantId, kind: 'exe' | 'msi'): string | undefined {
@@ -174,6 +183,7 @@ export default async function DownloadsPage() {
     retail:      baseRow ? { ...baseRow, ...urlsFor('retail'),      windowsNsisUrl: urlsFor('retail').exe,      windowsMsiUrl: urlsFor('retail').msi } : null,
     hospitality: baseRow ? { ...baseRow, ...urlsFor('hospitality'), windowsNsisUrl: urlsFor('hospitality').exe, windowsMsiUrl: urlsFor('hospitality').msi } : null,
     hardware:    baseRow ? { ...baseRow, ...urlsFor('hardware'),    windowsNsisUrl: urlsFor('hardware').exe,    windowsMsiUrl: urlsFor('hardware').msi } : null,
+    salon:       baseRow ? { ...baseRow, ...urlsFor('salon'),       windowsNsisUrl: urlsFor('salon').exe,       windowsMsiUrl: urlsFor('salon').msi } : null,
   }
 
   const proRelease = latestByVariant.pro

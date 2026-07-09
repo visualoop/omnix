@@ -3,10 +3,10 @@
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import {
-  Pill, Storefront, ForkKnife, Hammer, ArrowRight, CheckCircle, Copy,
+  Pill, Storefront, ForkKnife, Hammer, Sparkle, ArrowRight, CheckCircle, Copy,
 } from '@phosphor-icons/react'
 
-type Variant = 'pro' | 'dawa' | 'retail' | 'hospitality' | 'hardware'
+type Variant = 'pro' | 'dawa' | 'retail' | 'hospitality' | 'hardware' | 'salon'
 
 interface VariantOption {
   id: Variant
@@ -27,6 +27,7 @@ const VARIANTS: VariantOption[] = [
   { id: 'retail',      name: 'Omnix Retail',      tagline: 'Shops, mini-marts, dukas',                  Icon: Storefront },
   { id: 'hospitality', name: 'Omnix Hospitality', tagline: 'Restaurants, bars, lodges',                 Icon: ForkKnife },
   { id: 'hardware',    name: 'Omnix Hardware',    tagline: 'Hardware stores, contractors',              Icon: Hammer },
+  { id: 'salon',       name: 'Omnix Salon & Spa', tagline: 'Salons, barbershops, spas',                  Icon: Sparkle },
 ]
 
 interface StartedLicense {

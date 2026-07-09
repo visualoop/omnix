@@ -103,6 +103,8 @@ export const SETTING_DEFINITIONS = [
   { key: 'landing.hospitality.video_poster', category: 'landing_variant_video', label: 'Hospitality video poster', sensitive: false, envFallback: undefined, description: 'Still frame for the Hospitality hero video.' },
   { key: 'landing.hardware.video_url',    category: 'landing_variant_video', label: 'Hardware video URL',       sensitive: false, envFallback: undefined, description: 'Short muted loop for the Hardware Store landing page hero.' },
   { key: 'landing.hardware.video_poster', category: 'landing_variant_video', label: 'Hardware video poster',    sensitive: false, envFallback: undefined, description: 'Still frame for the Hardware Store hero video.' },
+  { key: 'landing.salon.video_url',       category: 'landing_variant_video', label: 'Salon video URL',          sensitive: false, envFallback: undefined, description: 'Short muted loop for the Salon & Spa landing page hero.' },
+  { key: 'landing.salon.video_poster',    category: 'landing_variant_video', label: 'Salon video poster',       sensitive: false, envFallback: undefined, description: 'Still frame for the Salon & Spa hero video.' },
 
   // ── Landing page — one-price section ─
   { key: 'landing.one_price.eyebrow',           category: 'landing_one_price', label: 'One-price eyebrow',           sensitive: false, envFallback: undefined, description: 'Small caps label above the price. Empty = "Pricing".' },

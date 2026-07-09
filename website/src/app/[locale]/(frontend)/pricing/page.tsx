@@ -54,6 +54,7 @@ function buildVariants(currency: SupportedCurrency): ReadonlyArray<VariantTile> 
     { id: 'retail', name: 'Omnix Retail', tagline: 'Shops, mini-marts, dukas', price: tradePrice, href: '/retail' },
     { id: 'hospitality', name: 'Omnix Hospitality', tagline: 'Restaurants, bars, lodges', price: tradePrice, href: '/hospitality' },
     { id: 'hardware', name: 'Omnix Hardware', tagline: 'Hardware stores, contractors', price: tradePrice, href: '/hardware' },
+    { id: 'salon', name: 'Omnix Salon & Spa', tagline: 'Salons, barbershops, spas', price: tradePrice, href: '/salon' },
   ]
 }
 

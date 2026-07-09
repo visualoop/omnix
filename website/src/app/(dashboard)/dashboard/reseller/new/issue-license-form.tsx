@@ -3,12 +3,13 @@
 import { useState } from 'react'
 import { CheckCircle } from '@phosphor-icons/react'
 
-type Variant = 'dawa' | 'retail' | 'hospitality' | 'hardware'
+type Variant = 'dawa' | 'retail' | 'hospitality' | 'hardware' | 'salon'
 const VARIANTS: Array<{ id: Variant; label: string; desc: string }> = [
   { id: 'dawa', label: 'Dawa', desc: 'Pharmacy — prescriptions, expiry, SHA + private insurance, controlled subs' },
   { id: 'retail', label: 'Retail', desc: 'General retail — supermarket, mini-mart, salon, spa' },
   { id: 'hospitality', label: 'Hospitality', desc: 'Restaurants, bars, quick-service — KOT, tables, recipe cost' },
   { id: 'hardware', label: 'Hardware', desc: 'Hardware store — bulk pricing, contractor accounts, quote-to-invoice' },
+  { id: 'salon', label: 'Salon & Spa', desc: 'Salons, barbershops, spas — appointments, staff commissions, packages' },
 ]
 
 interface Props {

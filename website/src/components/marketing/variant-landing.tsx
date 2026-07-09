@@ -9,7 +9,7 @@ import { ClosingCtaSection } from '@/components/landing/closing-cta-section'
 import { getSiteSettings } from '@/lib/site-settings'
 import { SoftwareJsonLd } from '@/components/seo/jsonld'
 
-export type VariantId = 'dawa' | 'retail' | 'hospitality' | 'hardware' | 'pro'
+export type VariantId = 'dawa' | 'retail' | 'hospitality' | 'hardware' | 'salon' | 'pro'
 
 interface VariantData {
   productName?: string
@@ -326,6 +326,62 @@ const FALLBACK: Record<VariantId, VariantData> = {
     ],
     pricingNote: 'One-time licence per device — perpetual licence, no annual fees, no subscription.',
     cta: { buyHref: '/buy?variant=hardware', downloadHref: '/signup?variant=hardware', buyLabel: 'Buy Omnix Hardware', trialLabel: 'Start 30-day free trial' },
+  },
+  salon: {
+    tagline: 'POS + appointments for salons and spas',
+    hero: {
+      eyebrow: 'Omnix Salon & Spa',
+      titlePrefix: 'Salon booking + POS with ',
+      titleEmphasis: 'M-Pesa',
+      titleSuffix: ' for Kenya',
+      description:
+        'Lipa na M-Pesa (STK push, Paybill & Till), an appointment diary that never double-books, staff commissions, prepaid packages, back-bar stock and KRA eTIMS — for salons, barbershops, nail bars and spas.',
+    },
+    whoFor: {
+      eyebrow: 'Built for',
+      items: [
+        { label: 'Hair salons' },
+        { label: 'Barbershops' },
+        { label: 'Nail bars' },
+        { label: 'Spas & wellness studios' },
+        { label: 'Beauty parlours' },
+        { label: 'Multi-branch salon chains' },
+      ],
+    },
+    signatureFeatures: [
+      { title: 'Appointment diary', description: 'Day and week views by staff. Tap a slot to book. Automatic clash detection so no stylist or room is ever double-booked.' },
+      { title: 'Staff skills & commissions', description: 'Assign which services each stylist performs. Commission accrues automatically at checkout — per-service rate or a staff default. Pay from the report, not memory.' },
+      { title: 'Packages & memberships', description: 'Sell a "10 sessions" bundle up front. Sessions redeem themselves at checkout — the covered service rings at zero automatically.' },
+      { title: 'Client history & formulas', description: 'Every past visit, colour formula, preference and allergy on one card. Walk-in becomes a regular.' },
+      { title: 'Back-bar stock', description: 'Products used during a service deduct from inventory on checkout — retail and professional stock, one ledger.' },
+      { title: 'KRA eTIMS, every receipt', description: 'Every service + retail sale signed and submitted. M-Pesa STK / Paybill / Till reconciled at the till.' },
+      { title: 'AI for the salon', description: '"Who is my top stylist this month?" "Which service rebooked most?" Plain-English answers over live data.' },
+    ],
+    compliance: [
+      { item: 'KRA eTIMS auto-signing' },
+      { item: 'KRA VAT3 return generator' },
+      { item: 'M-Pesa STK + Till' },
+      { item: 'County single business permit reminders' },
+      { item: 'Per-machine signed licence' },
+      { item: 'Offline-first — works without internet' },
+    ],
+    workflow: [
+      { step: '01', title: 'Client books in', body: 'Book by staff on the day or week diary — the slot checks the clash for you, so nobody is double-booked and no room is over-subscribed.' },
+      { step: '02', title: 'Check in on arrival', body: 'Mark them checked-in, then in-service. The stylist sees the client card: preferences, allergies and last visit\u2019s colour formula.' },
+      { step: '03', title: 'Add services + retail', body: 'Add extra services or take-home products at checkout. Back-bar products used during the service deduct from stock automatically.' },
+      { step: '04', title: 'Take payment', body: 'M-Pesa STK / Paybill / Till, cash or card. A prepaid package covers its service at zero. eTIMS signs the receipt in the background.' },
+      { step: '05', title: 'Commission + rebook', body: 'Commission accrues to the stylist automatically. Reminders go out for the next visit. The report shows top stylists and best-selling services.' },
+    ],
+    faq: [
+      { q: 'Does it stop double-bookings?', a: 'Yes. Every booking checks the staff member (and the room/resource, if set) for a clash before it saves. The diary refuses to overlap two appointments for the same stylist.' },
+      { q: 'How do staff commissions work?', a: 'Assign a commission rate per service, or a default per staff member. When you check an appointment out, commission accrues automatically to the stylist who did the work. Pay from the commission report at month-end.' },
+      { q: 'Can I sell packages or memberships?', a: 'Sell prepaid bundles (e.g. 10 sessions of a service) up front. Sessions are stored against the client and redeem themselves at checkout — the covered service rings at zero and the balance drops by one.' },
+      { q: 'Does it track products used during a service?', a: 'Yes — back-bar consumption. Map the professional products a service uses; on checkout they deduct from stock as an inventory adjustment. Retail take-home products sell as normal lines.' },
+      { q: 'Does it handle walk-ins as well as appointments?', a: 'Both. Ring a walk-in straight through the till, or book it into the diary first. Either way it becomes a client record with full history for next time.' },
+      { q: 'Is it offline-first?', a: 'Yes. The diary, checkout and client history all work with zero internet. M-Pesa, eTIMS and updates sync when the connection returns.' },
+    ],
+    pricingNote: 'One-time licence per device — perpetual licence, no annual fees, no subscription.',
+    cta: { buyHref: '/buy?variant=salon', downloadHref: '/signup?variant=salon', buyLabel: 'Buy Omnix Salon & Spa', trialLabel: 'Start 30-day free trial' },
   },
 }
 
@@ -781,6 +837,16 @@ const VARIANT_SEO: Record<VariantId, { title: string; description: string; canon
       'hardware store POS Kenya', 'building materials POS Kenya', 'contractor account software',
       'M-Pesa hardware POS', 'bulk pricing software Kenya', 'quotation software Kenya',
       'delivery note software', 'aged receivables Kenya', 'KRA eTIMS hardware',
+    ],
+  },
+  salon: {
+    title: 'Salon & spa POS for Kenya · appointments, staff commissions, packages — Omnix Salon & Spa',
+    description: 'Salon & spa POS for Kenya. Lipa na M-Pesa, an appointment diary that never double-books, staff commissions, prepaid packages and memberships, back-bar stock, client history and KRA eTIMS. Built for salons, barbershops, nail bars and spas.',
+    canonical: '/salon',
+    keywords: [
+      'salon POS Kenya', 'salon booking software Kenya', 'spa software Kenya', 'barbershop POS Kenya',
+      'M-Pesa salon POS', 'appointment booking software Kenya', 'staff commission software',
+      'salon membership packages', 'nail bar POS Kenya', 'KRA eTIMS salon',
     ],
   },
 }

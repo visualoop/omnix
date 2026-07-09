@@ -39,6 +39,7 @@ const VARIANTS = [
   { value: 'retail', label: 'Retail', tagline: 'Shops, mini-marts, dukas — variants, brands, layby' },
   { value: 'hardware', label: 'Hardware', tagline: 'Hardware stores — bulk pricing, contractors, parts' },
   { value: 'hospitality', label: 'Hospitality', tagline: 'Restaurants, bars — KOT, tables, recipe costing' },
+  { value: 'salon', label: 'Salon & Spa', tagline: 'Salons, barbershops, spas — appointments, commissions, packages' },
   { value: 'pro', label: 'Pro', tagline: 'Generic services — invoicing, expenses, no inventory' },
 ]
 
