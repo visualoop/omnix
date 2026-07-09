@@ -1,12 +1,12 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "Omnix Salon & Spa",
+  "productName": "Omnix Salon and Spa",
   "identifier": "co.ke.omnix.salon",
-  "mainBinaryName": "Omnix Salon & Spa",
+  "mainBinaryName": "Omnix Salon and Spa",
   "app": {
     "windows": [
       {
-        "title": "Omnix Salon & Spa",
+        "title": "Omnix Salon and Spa",
         "decorations": false,
         "shadow": false
       }
@@ -28,8 +28,8 @@
       "icons/variants/salon/icon.icns",
       "icons/variants/salon/icon.ico"
     ],
-    "shortDescription": "Salon & spa POS with appointments & commissions",
-    "longDescription": "Omnix Salon & Spa is the offline-first booking + POS app for Kenyan salons, barbershops, nail bars and spas. Appointment diary, staff skills & commissions, packages & memberships, back-bar stock, client history, KRA eTIMS, M-Pesa via Daraja and Paystack, multi-branch LAN sync. Pay once, own it forever.",
+    "shortDescription": "Salon and spa POS with appointments and commissions",
+    "longDescription": "Omnix Salon and Spa is the offline-first booking + POS app for Kenyan salons, barbershops, nail bars and spas. Appointment diary, staff skills and commissions, packages and memberships, back-bar stock, client history, KRA eTIMS, M-Pesa via Daraja and Paystack, multi-branch LAN sync. Pay once, own it forever.",
     "windows": {
       "nsis": {
         "installerIcon": "icons/variants/salon/icon.ico"
