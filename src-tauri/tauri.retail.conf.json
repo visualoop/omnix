@@ -8,7 +8,15 @@
       {
         "title": "Omnix Retail",
         "decorations": false,
-        "shadow": false
+        "shadow": false,
+        "width": 1280,
+        "height": 800,
+        "minWidth": 1024,
+        "minHeight": 600,
+        "resizable": true,
+        "maximizable": true,
+        "minimizable": true,
+        "fullscreen": false
       }
     ]
   },
