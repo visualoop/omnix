@@ -29,16 +29,13 @@ jobs:
     permissions:
       contents: write
 
-    # 4 binaries per release — one per trade variant. The legacy `pro`
-    # multi-module variant is intentionally NOT built right now: it's not
-    # sold publicly and existing Pro licensees keep using the v0.16.0
-    # installer, so wasting ~5 min of CI on a bundle nobody downloads
-    # makes the release loop slower for everyone. Re-add `pro` to this
-    # matrix when we resume selling it.
+    # One binary per trade variant. The legacy `pro` multi-module variant
+    # is no longer built or sold — it's kept in the code for existing
+    # licensees but is not a release target and is intentionally omitted.
     strategy:
       fail-fast: false
       matrix:
-        variant: [dawa, retail, hospitality, hardware]
+        variant: [dawa, retail, hospitality, hardware, salon]
 
     steps:
       - name: Checkout
@@ -91,7 +88,7 @@ jobs:
         with:
           workspaces: src-tauri
           key: ${{ matrix.variant }}
-          save-if: ${{ matrix.variant == 'pro' }}
+          save-if: ${{ matrix.variant == 'dawa' }}
 
       - name: Install frontend dependencies
         run: pnpm install --frozen-lockfile
@@ -107,8 +104,8 @@ jobs:
           VITE_OMNIX_VARIANT: ${{ matrix.variant }}
         run: pnpm exec tsc --noEmit
 
-      - name: Run Rust unit tests (pro only — same Rust code for all variants)
-        if: matrix.variant == 'pro'
+      - name: Run Rust unit tests (dawa only — same Rust code for all variants)
+        if: matrix.variant == 'dawa'
         working-directory: src-tauri
         run: cargo test --lib
 
