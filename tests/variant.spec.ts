@@ -27,6 +27,7 @@ describe("variant — names + branding", () => {
     expect(variantName("retail")).toBe("Omnix Retail");
     expect(variantName("hospitality")).toBe("Omnix Hospitality");
     expect(variantName("hardware")).toBe("Omnix Hardware & Equipment");
+    expect(variantName("salon")).toBe("Omnix Salon & Spa");
   });
 
   it("every variant has a tagline + accent", () => {
@@ -60,6 +61,7 @@ describe("variant — module gates", () => {
     expect(modulesAllowedForVariant("retail")).toEqual(["core", "retail"]);
     expect(modulesAllowedForVariant("hospitality")).toEqual(["core", "hospitality"]);
     expect(modulesAllowedForVariant("hardware")).toEqual(["core", "hardware"]);
+    expect(modulesAllowedForVariant("salon")).toEqual(["core", "salon"]);
   });
 
   it("locked module matches the variant for trades", () => {

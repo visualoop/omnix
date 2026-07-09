@@ -380,6 +380,58 @@ export const MODULES_SEED: ModuleSeed[] = [
       note: 'Included in Business licence.',
     },
   },
+  {
+    slug: 'salon',
+    moduleId: 'salon',
+    name: 'Salon & Spa',
+    shortName: 'Salon',
+    tagline: 'Appointments to commissions. One calm diary.',
+    status: 'live',
+    priority: 5,
+    shortDescription:
+      'Appointment diary, staff skills & commissions, packages & memberships, back-bar stock, client history.',
+    for: [
+      'Hair salons and barbershops',
+      'Nail bars and beauty parlours',
+      'Spas and wellness studios',
+    ],
+    features: [
+      {
+        title: 'Appointment diary',
+        description: 'Day + week views by staff, tap-to-book, automatic clash detection so nobody is double-booked.',
+        icon: 'Calendar',
+      },
+      {
+        title: 'Staff skills & commissions',
+        description: 'Assign services per stylist; commission accrues automatically at checkout.',
+        icon: 'Percent',
+      },
+      {
+        title: 'Packages & memberships',
+        description: 'Sell prepaid session bundles; sessions redeem themselves at checkout.',
+        icon: 'Ticket',
+      },
+      {
+        title: 'Back-bar + client history',
+        description: 'Products used deduct from stock; every client keeps formulas, preferences and past visits.',
+        icon: 'Sparkles',
+      },
+    ],
+    compliance: [
+      'KRA eTIMS auto-receipt',
+      'M-Pesa Till + Paybill reconciliation',
+    ],
+    whatYouNeed: [
+      { label: 'KRA PIN', body: 'For receipts and statutory.' },
+      { label: 'M-Pesa Till or Paybill', body: 'For collections and reconciliation.' },
+      { label: 'Service menu + staff', body: 'Services, durations, prices and your team.' },
+    ],
+    pricing: {
+      from: 100000,
+      cadence: 'one-time',
+      note: 'Included in Business licence.',
+    },
+  },
 ]
 
 export function moduleBySlug(slug: string): ModuleSeed | null {

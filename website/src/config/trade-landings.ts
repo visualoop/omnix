@@ -88,6 +88,22 @@ export const tradeLandings: Record<string, TradeLandingShape> = {
     ctaSecondary: { label: 'See the modules', href: '/modules' },
     pricingCallout: 'KSh 30,000 one-time + KSh 12,000/year for compliance updates',
   },
+  salon: {
+    hero: {
+      eyebrow: 'Salon & Spa',
+      title: 'Run your salon from one calm diary.',
+      subtitle: 'Appointments, staff commissions, packages and client history — built for Kenyan salons, barbershops, nail bars and spas.',
+    },
+    features: [
+      { title: 'Appointment diary', body: 'Book by staff, day or week. No double-bookings — the diary checks the clash for you.' },
+      { title: 'Staff commissions', body: 'Per-service or default rate, accrued automatically at checkout. Pay from the report, not memory.' },
+      { title: 'Packages & memberships', body: 'Sell a 10-session bundle up front; sessions redeem themselves at checkout.' },
+      { title: 'Client history & back-bar', body: 'Formulas, preferences and every past visit. Products used deduct from stock.' },
+    ],
+    ctaPrimary: { label: 'Try it free for 14 days', href: '/buy?variant=salon' },
+    ctaSecondary: { label: 'See the modules', href: '/modules' },
+    pricingCallout: 'KSh 30,000 one-time + KSh 12,000/year for compliance updates',
+  },
 }
 
 export function getTradeLanding(variant: string): TradeLandingShape | null {

@@ -15,7 +15,7 @@ export default defineConfig(async ({ mode }) => {
   const env = loadEnv(mode, process.cwd(), "");
   // @ts-expect-error process is a nodejs global
   const variant = (process.env.VITE_OMNIX_VARIANT ?? env.VITE_OMNIX_VARIANT ?? "pro").toLowerCase();
-  const validVariants = ["pro", "dawa", "retail", "hospitality", "hardware"];
+  const validVariants = ["pro", "dawa", "retail", "hospitality", "hardware", "salon"];
   const resolvedVariant = validVariants.includes(variant) ? variant : "pro";
 
   // Log so CI logs make it obvious which variant is being built.

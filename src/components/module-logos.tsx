@@ -155,12 +155,31 @@ export function ModuleLogo({ moduleId, size = 32, className = "", rounded = true
     case "restaurant":
     case "hospitality":
       return <RestaurantLogo size={size} className={className} rounded={rounded} />;
+    case "salon":
+      return <SalonLogo size={size} className={className} rounded={rounded} />;
     default:
       return null;
   }
 }
 
 // ─── Retail (Omnix) — Shopping Bag with Sparkle ───────────────────────
+export function SalonLogo({ size = 32, className = "", rounded = true }: LogoProps) {
+  const id = `salon-${size}`;
+  return (
+    <svg width={size} height={size} viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg" className={className} aria-label="Omnix Salon & Spa">
+      <defs>
+        <linearGradient id={`${id}-bg`} x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stopColor="#A855F7" />
+          <stop offset="100%" stopColor="#7C3AED" />
+        </linearGradient>
+      </defs>
+      {rounded ? <rect width="512" height="512" rx={ROUNDED_RX} fill={`url(#${id}-bg)`} /> : <rect width="512" height="512" fill={`url(#${id}-bg)`} />}
+      <path d="M 256 120 C 268 200 312 244 392 256 C 312 268 268 312 256 392 C 244 312 200 268 120 256 C 200 244 244 200 256 120 Z" fill="#FFFFFF" />
+      <path d="M 372 150 C 377 178 392 193 420 198 C 392 203 377 218 372 246 C 367 218 352 203 324 198 C 352 193 367 178 372 150 Z" fill="#FFFFFF" fillOpacity="0.85" />
+    </svg>
+  );
+}
+
 export function RetailLogo({ size = 32, className = "", rounded = true }: LogoProps) {
   const id = `retail-${size}`;
   return (

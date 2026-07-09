@@ -78,6 +78,17 @@ export const VARIANT_PLACEHOLDERS: Record<Variant, VariantPlaceholders> = {
     promotionName: "e.g. Bulk discount 100+ bags",
     supplierName: "e.g. Bamburi Cement, Mabati Rolling Mills",
   },
+  salon: {
+    productName: "e.g. Ladies' cut & blow-dry, Gel manicure, Swedish massage",
+    productSku: "e.g. SVC-CUT-BLOW",
+    productCategory: "e.g. Hair, Nails, Massage, Facial, Barber",
+    productDescription: "Duration, what's included, aftercare notes…",
+    customerName: "e.g. Wanjiku Kamau",
+    customerEmail: "client@example.co.ke",
+    inventorySearch: "Search retail products & back-bar stock…",
+    promotionName: "e.g. 10-session massage package",
+    supplierName: "e.g. L'Oréal, Dark & Lovely distributor",
+  },
 };
 
 /** Convenience accessor — placeholders for the build-time variant. */

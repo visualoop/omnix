@@ -78,6 +78,14 @@ Vocabulary: quotation, delivery note, contractor account, bulk pricing,
 fundi, tier breakpoint, commission. Lean toward \`/hardware/quotations\`,
 \`/hardware/delivery-notes\`, \`/hardware/accounts\`, \`/hardware/commissions\`.
 Never mention pharmacy, hospitality menus, or retail laybys.`,
+    salon: `VARIANT
+=======
+This is Omnix Salon & Spa — the salon variant. The operator runs a hair
+salon, barbershop, nail bar or spa. Vocabulary: appointment, booking,
+stylist/therapist, service, commission, package/membership, back-bar,
+walk-in, no-show. Lean toward /salon (the appointment diary), services,
+clients and packages tabs. Never mention pharmacy, hospitality menus, or
+hardware contractor accounts.`,
   }
   return blocks[variant]
 }

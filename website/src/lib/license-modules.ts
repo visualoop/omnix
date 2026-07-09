@@ -17,14 +17,14 @@
  * migration script. Whenever it fires we also know the row needs a
  * later UPDATE to backfill — see `licensing/repair-modules.ts`.
  */
-export type Variant = 'pro' | 'dawa' | 'retail' | 'hospitality' | 'hardware'
+export type Variant = 'pro' | 'dawa' | 'retail' | 'hospitality' | 'hardware' | 'salon'
 
-const TRADES: ReadonlyArray<Exclude<Variant, 'pro'>> = ['dawa', 'retail', 'hospitality', 'hardware']
+const TRADES: ReadonlyArray<Exclude<Variant, 'pro'>> = ['dawa', 'retail', 'hospitality', 'hardware', 'salon']
 
 export function modulesForVariant(variant: string | null | undefined): string[] {
   const v = (variant ?? '').toLowerCase() as Variant | ''
   if (v === 'pro') return [...TRADES]
-  if (v === 'dawa' || v === 'retail' || v === 'hospitality' || v === 'hardware') return [v]
+  if (v === 'dawa' || v === 'retail' || v === 'hospitality' || v === 'hardware' || v === 'salon') return [v]
   return []
 }
 

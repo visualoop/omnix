@@ -14,7 +14,7 @@
  * the exported helpers.
  */
 
-export const VARIANTS = ["pro", "dawa", "retail", "hospitality", "hardware"] as const;
+export const VARIANTS = ["pro", "dawa", "retail", "hospitality", "hardware", "salon"] as const;
 export type Variant = (typeof VARIANTS)[number];
 
 // Resolved at build time by vite.config.ts via `define`. The redundant
@@ -51,6 +51,8 @@ export function modulesAllowedForVariant(v: Variant): readonly string[] {
       return ["core", "hospitality"];
     case "hardware":
       return ["core", "hardware"];
+    case "salon":
+      return ["core", "salon"];
   }
 }
 
@@ -76,6 +78,8 @@ export function variantName(v: Variant): string {
       return "Omnix Hospitality";
     case "hardware":
       return "Omnix Hardware & Equipment";
+    case "salon":
+      return "Omnix Salon & Spa";
   }
 }
 
@@ -94,6 +98,8 @@ export function variantTagline(v: Variant): string {
       return "Restaurant, bar & lodge POS for Kenya";
     case "hardware":
       return "Hardware & equipment: sales, quotes, credit, service & hire";
+    case "salon":
+      return "Salon & spa: appointments, staff commissions, packages";
   }
 }
 
@@ -112,6 +118,8 @@ export function variantAccent(v: Variant): string {
       return "#10b981"; // emerald
     case "hardware":
       return "#ea580c"; // orange
+    case "salon":
+      return "#9333ea"; // purple
   }
 }
 
@@ -130,6 +138,8 @@ export function variantLicensePrefix(v: Variant): string {
       return "OMNIX-HOSP";
     case "hardware":
       return "OMNIX-HW";
+    case "salon":
+      return "OMNIX-SALON";
   }
 }
 
@@ -141,6 +151,7 @@ export const ALL_LICENSE_PREFIXES = [
   "OMNIX-RETAIL",
   "OMNIX-HOSP",
   "OMNIX-HW",
+  "OMNIX-SALON",
   "OMNIX-PRO",
 ] as const;
 
@@ -151,6 +162,7 @@ export function variantFromLicenseKey(key: string): Variant | null {
   if (upper.startsWith("OMNIX-RETAIL")) return "retail";
   if (upper.startsWith("OMNIX-HOSP")) return "hospitality";
   if (upper.startsWith("OMNIX-HW")) return "hardware";
+  if (upper.startsWith("OMNIX-SALON")) return "salon";
   if (upper.startsWith("OMNIX-PRO")) return "pro";
   return null;
 }

@@ -119,7 +119,7 @@ function moduleAccent(m: ModuleId): Accent {
     case "retail": return { hex: "#B45309" };
     case "hardware": return { hex: "#C2410C" };
     case "hospitality": return { hex: "#BE185D" };
-    case "salon": return { hex: "#DB2777" };
+    case "salon": return { hex: "#9333EA" };
     default: return { hex: "#92400E" };
   }
 }
