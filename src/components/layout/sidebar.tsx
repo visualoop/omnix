@@ -38,6 +38,7 @@ import { useCountry } from "@/stores/country";
 import { pharmacyTerm } from "@/lib/locale";
 
 interface NavItem {
+  moduleId?: ModuleId;
   to: string;
   icon: typeof LayoutDashboard;
   label: string;
@@ -75,11 +76,11 @@ const CORE_NAV: NavItem[] = [
  * The hub page shows all child screens as tabs.
  */
 const MODULE_NAV_ENTRIES: Partial<Record<ModuleId, NavItem>> = {
-  dawa: { to: "/pharmacy", icon: Pill, label: "Pharmacy", permissions: ["pharmacy.dispense"] },
-  retail: { to: "/retail", icon: ShoppingBag, label: "Retail", permissions: ["reports.view"] },
-  hardware: { to: "/hardware", icon: Wrench, label: "Hardware", permissions: ["hardware.reports.view"] },
-  hospitality: { to: "/hospitality", icon: UtensilsCrossed, label: "Hospitality", permissions: ["hospitality.tables.manage"] },
-  salon: { to: "/salon", icon: Sparkle, label: "Salon & Spa", permissions: ["salon.appointments.manage"] },
+  dawa: { moduleId: "dawa", to: "/pharmacy", icon: Pill, label: "Pharmacy", permissions: ["pharmacy.dispense"] },
+  retail: { moduleId: "retail", to: "/retail", icon: ShoppingBag, label: "Retail", permissions: ["reports.view"] },
+  hardware: { moduleId: "hardware", to: "/hardware", icon: Wrench, label: "Hardware", permissions: ["hardware.reports.view"] },
+  hospitality: { moduleId: "hospitality", to: "/hospitality", icon: UtensilsCrossed, label: "Hospitality", permissions: ["hospitality.tables.manage"] },
+  salon: { moduleId: "salon", to: "/salon", icon: Sparkle, label: "Salon & Spa", permissions: ["salon.appointments.manage"] },
 };
 
 export function Sidebar({ onCommandOpen }: { onCommandOpen: () => void }) {
@@ -260,7 +261,7 @@ function NavRow({ item, collapsed }: { item: NavItem; collapsed: boolean }) {
               className="absolute left-0 top-1.5 bottom-1.5 w-[2px] rounded-r-full bg-primary"
             />
           ) : null}
-          <item.icon className="h-4 w-4 shrink-0" />
+          {item.moduleId ? <ModuleLogo moduleId={item.moduleId} size={18} rounded className="shrink-0" /> : <item.icon className="h-4 w-4 shrink-0" />}
           {!collapsed && <span>{item.label}</span>}
         </>
       )}
