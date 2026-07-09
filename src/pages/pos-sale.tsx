@@ -56,6 +56,7 @@ import { AllergyAlertBanner } from "@/components/pos/allergy-alert-banner";
 import { VariantPickerDialog } from "@/components/pos/variant-picker";
 import { UnitPickerDialog } from "@/components/pos/unit-picker";
 import { listEquipmentProducts, type EquipmentUnit } from "@/services/equipment";
+import { moduleTracksSerials } from "@/lib/capabilities";
 import { SubstitutionsDialog } from "@/components/pos/substitutions-dialog";
 import { QtyMultiplierDialog } from "@/components/pos/qty-multiplier-dialog";
 import { OpenShiftDialog, CloseShiftDialog, PettyCashDialog } from "@/components/pos/cash-dialogs";
@@ -250,7 +251,7 @@ export function POSSalePage() {
   // Which products are serial-tracked equipment — so adds route through
   // the unit picker. Loaded once; only relevant in the hardware module.
   useEffect(() => {
-    if (activeModule !== "hardware") { setEquipTrackedIds(new Set()); return; }
+    if (!moduleTracksSerials(activeModule)) { setEquipTrackedIds(new Set()); return; }
     listEquipmentProducts().then((ps) => setEquipTrackedIds(new Set(ps.map((p) => p.id)))).catch(() => {});
   }, [activeModule]);
 

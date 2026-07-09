@@ -35,6 +35,7 @@ import {
 import { useActiveModule } from "@/stores/active-module";
 import { execute } from "@/lib/db";
 import { setProductEquipment, parseSpecs, type EquipmentSpecs } from "@/services/equipment";
+import { moduleTracksSerials, serialTabLabel } from "@/lib/capabilities";
 
 interface Props {
   open: boolean;
@@ -217,7 +218,7 @@ export function ProductPanel({ open, onClose, productId, onSaved }: Props) {
       // Equipment config (hardware & equipment module). Only touched when
       // the product is/was serial-tracked, so ordinary catalog edits never
       // require the equipment permission.
-      if (savedId && activeModule === "hardware" && (form.equip_tracked || wasEquip)) {
+      if (savedId && moduleTracksSerials(activeModule) && (form.equip_tracked || wasEquip)) {
         const specs: EquipmentSpecs = {};
         if (form.equip_make) specs.make = form.equip_make;
         if (form.equip_model) specs.model = form.equip_model;
@@ -272,7 +273,7 @@ export function ProductPanel({ open, onClose, productId, onSaved }: Props) {
               {activeModule === "retail" && (
                 <TabsTrigger value="uoms">Cartons / Packs</TabsTrigger>
               )}
-              {activeModule === "hardware" && <TabsTrigger value="equipment">Equipment</TabsTrigger>}
+              {moduleTracksSerials(activeModule) && <TabsTrigger value="equipment">{serialTabLabel(activeModule)}</TabsTrigger>}
             </TabsList>
 
             <TabsPanel value="general" className="mt-3 space-y-3">
@@ -532,7 +533,7 @@ export function ProductPanel({ open, onClose, productId, onSaved }: Props) {
               </TabsPanel>
             )}
 
-            {activeModule === "hardware" && (
+            {moduleTracksSerials(activeModule) && (
               <TabsPanel value="equipment" className="mt-3 space-y-4">
                 <div className="flex items-start justify-between gap-3 rounded-lg border border-border p-3">
                   <div className="space-y-0.5">

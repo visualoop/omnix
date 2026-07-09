@@ -42,6 +42,7 @@ import {
 } from "@/services/pharmacy-extras"
 import { execute, query } from "@/lib/db"
 import { listVariants, type ProductVariant } from "@/services/retail"
+import { listUnits, warrantyState, warrantyDaysRemaining, type EquipmentUnit } from "@/services/equipment"
 import { useEntityHistory } from "@/hooks/use-entity-history"
 import { Pencil, PlusCircle, Stack as Layers, ImageSquare, Check, X as XIcon, Folder } from "@phosphor-icons/react"
 import { format, isAfter, isBefore, addDays } from "date-fns"
@@ -203,6 +204,9 @@ export function ProductDetailPage() {
           { id: "overview", label: "Overview", render: () => <OverviewTab product={product} editing={editing} onSaved={() => { setEditing(false); reload() }} /> },
           { id: "stock", label: "Stock", count: batches.length, render: () => <BatchesTab batches={batches} /> },
           { id: "variants", label: "Variants", count: variants.length, render: () => <VariantsTab variants={variants} onManage={() => setVariantsOpen(true)} /> },
+          ...(((product as unknown as { tracked_by_serial?: number }).tracked_by_serial === 1)
+            ? [{ id: "units", label: "Units", render: () => <UnitsTab productId={product.id} /> }]
+            : []),
           { id: "substitutes", label: "Substitutes", render: () => <SubstitutesTab product={product} /> },
           { id: "images", label: "Images", render: () => <ImagesTab product={product} onSaved={reload} /> },
           { id: "sales", label: "Sales", render: () => <SalesTab id={product.id} /> },
@@ -919,5 +923,48 @@ function ImagesTab({ product, onSaved }: { product: Product; onSaved: () => void
         </div>
       </div>
     </div>
+  )
+}
+
+
+function UnitsTab({ productId }: { productId: string }) {
+  const [units, setUnits] = useState<EquipmentUnit[]>([])
+  const [loading, setLoading] = useState(true)
+  useEffect(() => {
+    listUnits({ productId, limit: 500 }).then(setUnits).finally(() => setLoading(false))
+  }, [productId])
+
+  const STATUS: Record<string, string> = {
+    in_stock: "text-emerald-600", reserved: "text-amber-600", sold: "text-blue-600",
+    rented: "text-violet-600", in_service: "text-orange-600", written_off: "text-red-600",
+  }
+
+  if (loading) return <p className="text-sm text-muted-foreground">Loading units…</p>
+  if (units.length === 0) return <p className="text-sm text-muted-foreground">No serialized units received yet.</p>
+  return (
+    <table className="w-full text-[13px]">
+      <thead>
+        <tr className="border-b border-foreground/10 font-mono text-[10px] uppercase tracking-[0.16em] text-muted-foreground">
+          <th className="text-left py-2 font-normal">Serial</th>
+          <th className="text-left py-2 font-normal">Status</th>
+          <th className="text-left py-2 font-normal">Warranty</th>
+        </tr>
+      </thead>
+      <tbody>
+        {units.map((u) => {
+          const ws = warrantyState(u.warranty_expiry)
+          const days = warrantyDaysRemaining(u.warranty_expiry)
+          const wtext = ws === "none" ? "—" : ws === "expired" ? "Expired" : days != null ? `${days}d left` : "Active"
+          const wcls = ws === "expired" ? "text-red-600" : ws === "expiring" ? "text-amber-600" : ws === "active" ? "text-emerald-600" : "text-muted-foreground"
+          return (
+            <tr key={u.id} className="border-b border-foreground/5">
+              <td className="py-2.5 font-mono">{u.serial_number}</td>
+              <td className={`py-2.5 capitalize ${STATUS[u.status] ?? ""}`}>{u.status.replace("_", " ")}</td>
+              <td className={`py-2.5 ${wcls}`}>{wtext}</td>
+            </tr>
+          )
+        })}
+      </tbody>
+    </table>
   )
 }

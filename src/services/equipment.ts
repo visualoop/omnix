@@ -444,13 +444,14 @@ export function specSummary(specsJson: string | null | undefined): string {
   return parts.join(" · ");
 }
 
-/** Configure a product as serial-tracked equipment with catalog specs. */
+/** Configure a product as serial-tracked equipment with catalog specs.
+ *  This is catalog configuration, so it's gated on inventory.edit (Core) —
+ *  available wherever serials are tracked, not only the hardware module. */
 export async function setProductEquipment(
   productId: string,
   cfg: { tracked_by_serial: boolean; warranty_months?: number | null; specs?: EquipmentSpecs },
 ): Promise<void> {
-  await assertModuleEntitled("hardware");
-  await requirePermission("hardware.equipment.manage", { entityType: "product", entityId: productId });
+  await requirePermission("inventory.edit", { entityType: "product", entityId: productId });
   await execute(
     `UPDATE products SET tracked_by_serial = ?2, warranty_months = ?3, specs_json = ?4 WHERE id = ?1`,
     [productId, cfg.tracked_by_serial ? 1 : 0, cfg.warranty_months ?? null,
