@@ -19,9 +19,13 @@ import { Textarea } from "@/components/ui/textarea";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Badge } from "@/components/ui/badge";
 import {
-  listCustomers, upsertCustomer, getCustomerStats,
+  upsertCustomer, getCustomerStats,
   type Customer,
 } from "@/services/erp";
+import { pageCustomers } from "@/services/paged";
+import { useListData } from "@/hooks/use-list-data";
+import { PaginationBar } from "@/components/pagination-bar";
+import { query } from "@/lib/db";
 import { recordCustomerPayment } from "@/services/settlement";
 import { useAuthStore } from "@/stores/auth";
 import { PaymentRecordDialog } from "@/components/payment-record-dialog";
@@ -30,19 +34,27 @@ import { intlLocale } from "@/lib/intl";
 import { money } from "@/lib/money";
 
 export function CustomersPage() {
-  const [customers, setCustomers] = useState<Customer[]>([]);
-  const [search, setSearch] = useState("");
   const [editing, setEditing] = useState<Customer | null>(null);
   const [creating, setCreating] = useState(false);
   const [payingCustomer, setPayingCustomer] = useState<Customer | null>(null);
   const navigate = useNavigate();
   const userId = useAuthStore((s) => s.user?.id);
 
-  const load = async () => setCustomers(await listCustomers(search));
-  useEffect(() => { load(); }, [search]);
-
-  const totalOwed = customers.reduce((s, c) => s + c.balance, 0);
-  const overLimit = customers.filter((c) => c.credit_limit > 0 && c.balance > c.credit_limit).length;
+  const list = useListData((q) => pageCustomers(q), { pageSize: 50 });
+  // Aggregate stats over ALL customers (not just the current page).
+  const [stats, setStats] = useState({ owed: 0, overLimit: 0 });
+  const [statsTick, setStatsTick] = useState(0);
+  useEffect(() => {
+    (async () => {
+      const [r] = await query<{ owed: number; over: number }>(
+        `SELECT COALESCE(SUM(balance), 0) AS owed,
+           COALESCE(SUM(CASE WHEN credit_limit > 0 AND balance > credit_limit THEN 1 ELSE 0 END), 0) AS over
+         FROM customers WHERE active = 1`
+      );
+      setStats({ owed: r?.owed ?? 0, overLimit: r?.over ?? 0 });
+    })();
+  }, [statsTick]);
+  const refreshAll = () => { list.refresh(); setStatsTick((t) => t + 1); };
 
   return (
     <div className="space-y-5">
@@ -59,26 +71,26 @@ export function CustomersPage() {
       />
 
       <div className="grid grid-cols-3 gap-3">
-        <StatCard label="Total Customers" value={String(customers.length)} icon={Users} />
-        <StatCard label="Total Receivable" value={money(totalOwed)} icon={CreditCard} highlight={totalOwed > 0} />
-        <StatCard label="Over Credit Limit" value={String(overLimit)} icon={CreditCard} highlight={overLimit > 0} danger />
+        <StatCard label="Total Customers" value={String(list.total)} icon={Users} />
+        <StatCard label="Total Receivable" value={money(stats.owed)} icon={CreditCard} highlight={stats.owed > 0} />
+        <StatCard label="Over Credit Limit" value={String(stats.overLimit)} icon={CreditCard} highlight={stats.overLimit > 0} danger />
       </div>
 
       <div className="relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
         <Input
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
+          value={list.search}
+          onChange={(e) => list.setSearch(e.target.value)}
           placeholder="Search by name, phone, email..."
           className="pl-9"
         />
       </div>
 
-      {customers.length === 0 ? (
+      {list.rows.length === 0 ? (
         <div className="border border-border rounded-lg p-12 text-center text-muted-foreground">
           <Users className="h-10 w-10 mx-auto mb-2 opacity-30" />
-          <p className="text-sm">No customers found</p>
-          <p className="text-xs mt-1">Add your first customer to track sales and credit</p>
+          <p className="text-sm">{list.search ? "No customers match your search" : "No customers found"}</p>
+          <p className="text-xs mt-1">{list.search ? "Try a different name, phone, or email" : "Add your first customer to track sales and credit"}</p>
         </div>
       ) : (
         <div className="border border-border rounded-lg overflow-hidden">
@@ -93,7 +105,7 @@ export function CustomersPage() {
               </tr>
             </thead>
             <tbody>
-              {customers.map((c) => {
+              {list.rows.map((c) => {
                 const overLim = c.credit_limit > 0 && c.balance > c.credit_limit;
                 return (
                   <tr
@@ -155,11 +167,13 @@ export function CustomersPage() {
         </div>
       )}
 
+      <PaginationBar list={list} />
+
       <CustomerForm
         open={creating || !!editing}
         customer={editing}
         onClose={() => { setCreating(false); setEditing(null); }}
-        onSaved={() => { setCreating(false); setEditing(null); load(); }}
+        onSaved={() => { setCreating(false); setEditing(null); refreshAll(); }}
       />
 
       <PaymentRecordDialog
@@ -172,7 +186,7 @@ export function CustomersPage() {
           if (!payingCustomer || !userId) return;
           await recordCustomerPayment(payingCustomer.id, amount, method, userId, reference, note);
           toast.success(`Payment of KES ${amount.toFixed(2)} recorded`);
-          load();
+          refreshAll();
         }}
       />
     </div>

@@ -66,7 +66,7 @@ import { openCustomerDisplay } from "@/lib/customer-display";
 import { countHeldSales } from "@/services/held-sales";
 import { categoryColor } from "@/lib/category-colors";
 import { VARIANT_ACCENT } from "@/lib/variant";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams, useLocation } from "react-router-dom";
 import { money as KES } from "@/lib/money";
 import { useCountry } from "@/stores/country";
 import { pharmacyTerm } from "@/lib/locale";
@@ -135,6 +135,19 @@ function useModuleAccent() {
 export function POSSalePage() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
+  const location = useLocation();
+
+  // Preload the customer when arriving from a customer's "New Sale" button
+  // (navigate("/pos/sale", { state: { customerId } })).
+  useEffect(() => {
+    const incoming = (location.state as { customerId?: string } | null)?.customerId;
+    if (incoming) {
+      useCartStore.getState().setCustomer(incoming);
+      // Clear nav state so a refresh/back doesn't silently re-apply it.
+      window.history.replaceState({}, "");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const accent = useModuleAccent();
   const countryCode = useCountry((s) => s.code);
   const [search, setSearch] = useState("");

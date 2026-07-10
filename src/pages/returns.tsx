@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   ArrowCounterClockwise as RotateCcw,
   ArrowLeft,
@@ -166,6 +166,7 @@ export function NewReturnPage() {
   const [submitting, setSubmitting] = useState(false);
   const navigate = useNavigate();
   const userId = useAuthStore((s) => s.user?.id);
+  const [searchParams] = useSearchParams();
 
   const searchSales = async () => {
     if (!saleSearch.trim()) return;
@@ -192,6 +193,23 @@ export function NewReturnPage() {
     setItems(saleItems);
     setReturnQtys({});
   };
+
+  // Preload the sale when arriving from a sale's "Return" button
+  // (/returns?sale=<id>) so the cashier doesn't have to search for it again.
+  useEffect(() => {
+    const saleId = searchParams.get("sale");
+    if (!saleId) return;
+    (async () => {
+      const rows = await query<SaleSummary>(
+        `SELECT s.id, s.sale_number, s.created_at, s.total, s.customer_id, c.name as customer_name
+         FROM sales s LEFT JOIN customers c ON c.id = s.customer_id
+         WHERE s.id = ?1 LIMIT 1`,
+        [saleId]
+      );
+      if (rows[0]) selectSale(rows[0]);
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
 
   const updateQty = (itemId: string, delta: number) => {
     const item = items.find((i) => i.id === itemId);

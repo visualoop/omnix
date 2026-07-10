@@ -11,6 +11,21 @@
  */
 import { pagedQuery } from "@/lib/paged-query";
 import type { ListPage, ListQuery } from "@/lib/list-types";
+import type { Customer } from "@/services/erp";
+
+// ─── Customers ─────────────────────────────────────────────────
+export async function pageCustomers(q: ListQuery): Promise<ListPage<Customer>> {
+  return pagedQuery<Customer>(
+    {
+      table: "customers",
+      searchColumns: ["name", "phone", "email"],
+      orderBy: "name",
+      extraWhere: ["active = 1"],
+      extraParams: [],
+    },
+    q,
+  );
+}
 
 // ─── Invoicing ─────────────────────────────────────────────────
 export interface InvoiceRow {
