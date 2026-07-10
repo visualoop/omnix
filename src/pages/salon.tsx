@@ -32,8 +32,8 @@ import {
   getServiceProducts, setServiceProducts, servicePopularity,
   getClientProfile, upsertClientProfile, listClientVisits,
   listPackages, createPackage, updatePackage, sellPackage, listClientPackages,
-  listResources, createResource,
-  listEnrollableStaff, enrolStaff,
+  listResources, createResource, updateResource,
+  listEnrollableStaff, enrolStaff, updateStaff,
   type SalonService, type SalonStaff, type SalonAppointment, type AppointmentStatus, type StaffCommissionRow,
   type ServicePopularityRow, type SalonPackage, type ClientPackage, type SalonResource, type EnrollablePerson,
 } from "@/services/salon";
@@ -516,7 +516,7 @@ export function SalonStaffPage() {
   const [pickedKey, setPickedKey] = useState(""); const [comm, setComm] = useState("");
   const [employees, setEmployees] = useState<Array<{ id: string; full_name: string; job_title: string; phone: string | null }>>([]);
   const [enrollable, setEnrollable] = useState<EnrollablePerson[]>([]);
-  const [skillsFor, setSkillsFor] = useState<SalonStaff | null>(null);
+  const [detailStaff, setDetailStaff] = useState<SalonStaff | null>(null);
   const navigate = useNavigate();
   const load = () => {
     setLoading(true);
@@ -571,26 +571,24 @@ export function SalonStaffPage() {
               <th className="text-left px-3 py-2">Role</th>
               <th className="text-left px-3 py-2">Phone</th>
               <th className="text-right px-3 py-2">Commission</th>
-              <th className="text-right px-3 py-2">Skills</th>
               <th className="text-right px-3 py-2">Status</th>
+              <th className="text-right px-3 py-2 w-8"></th>
             </tr></ModuleTHead>
             <tbody>
               {staff.map((s) => {
                 const emp = employees.find((e) => e.id === s.employee_id);
                 return (
-                  <tr key={s.id} className="border-t border-border hover:bg-accent/30">
+                  <tr key={s.id} onClick={() => setDetailStaff(s)} className="border-t border-border hover:bg-accent/30 cursor-pointer">
                     <td className="px-3 py-2 font-medium">{s.display_name}</td>
                     <td className="px-3 py-2 text-muted-foreground">{emp?.job_title || "—"}</td>
                     <td className="px-3 py-2 text-muted-foreground font-mono text-[12px]">{emp?.phone || "—"}</td>
                     <td className="px-3 py-2 text-right tabular-nums">{s.commission_default_pct}%</td>
                     <td className="px-3 py-2 text-right">
-                      <Button variant="outline" size="sm" className="h-7" onClick={() => setSkillsFor(s)}><Scissors className="h-3 w-3 mr-1" /> Skills</Button>
-                    </td>
-                    <td className="px-3 py-2 text-right">
                       {s.active
                         ? <Badge variant="outline" className="border-emerald-500/40 text-emerald-600 dark:text-emerald-400">Active</Badge>
                         : <Badge variant="outline" className="text-muted-foreground">Inactive</Badge>}
                     </td>
+                    <td className="px-3 py-2 text-right text-muted-foreground"><CaretRight className="h-3.5 w-3.5 inline" /></td>
                   </tr>
                 );
               })}
@@ -660,69 +658,178 @@ export function SalonStaffPage() {
         </DialogContent>
       </Dialog>
 
-      <SkillsDialog staff={skillsFor} services={services} onClose={() => setSkillsFor(null)} />
+      <StaffDetailSheet
+        staff={detailStaff}
+        services={services}
+        emp={employees.find((e) => e.id === detailStaff?.employee_id)}
+        onClose={() => setDetailStaff(null)}
+        onChanged={load}
+        onOpenHr={() => navigate("/hr/employees")}
+      />
     </div>
   );
 }
 
 function ResourcesManager() {
   const [resources, setResources] = useState<SalonResource[]>([]);
-  const [name, setName] = useState(""); const [type, setType] = useState("room");
+  const [target, setTarget] = useState<SalonResource | "new" | null>(null);
   const load = () => listResources(true).then(setResources);
   useEffect(() => { load(); }, []);
-  const add = async () => {
-    if (!name.trim()) { toast.error("Name required."); return; }
-    try { await createResource(name.trim(), type); setName(""); load(); } catch (e) { toast.error(String(e)); }
-  };
   return (
     <div className="space-y-3">
-      <div className="flex items-end gap-2 rounded-lg border border-border bg-muted/30 p-3">
-        <Field label="Name"><Input value={name} onChange={(e) => setName(e.target.value)} className="w-44" placeholder="e.g. Room 1" /></Field>
-        <Field label="Type">
-          <Select value={type} onValueChange={(v) => setType(v as string)}>
-            <SelectTrigger className="w-32"><SelectValue /></SelectTrigger>
-            <SelectContent>{["room", "chair", "bed", "station"].map((t) => <SelectItem key={t} value={t} className="capitalize">{t}</SelectItem>)}</SelectContent>
-          </Select>
-        </Field>
-        <Button size="sm" variant="outline" onClick={add}><Plus className="h-3.5 w-3.5 mr-1" /> Add</Button>
+      <div className="flex justify-end">
+        <Button size="sm" variant="outline" onClick={() => setTarget("new")}><Plus className="h-3.5 w-3.5 mr-1" /> Add resource</Button>
       </div>
       {resources.length === 0 ? (
-        <p className="text-[12px] text-muted-foreground px-1">No rooms or resources yet — add your first above.</p>
-      ) : (
-        <div className="flex flex-wrap gap-2">
-          {resources.map((r) => (
-            <span key={r.id} className="inline-flex items-center gap-1.5 rounded-md border border-border px-2.5 py-1 text-[12px]">
-              <span className="font-medium">{r.name}</span>
-              <span className="text-muted-foreground capitalize">· {r.type}</span>
-            </span>
-          ))}
+        <div className="rounded-lg border border-dashed border-border px-4 py-6 text-center">
+          <House className="h-6 w-6 mx-auto mb-2 text-muted-foreground" weight="fill" />
+          <p className="text-[12px] text-muted-foreground">No rooms or resources yet — add your first bookable space.</p>
         </div>
+      ) : (
+        <ModuleTable>
+          <ModuleTHead><tr>
+            <th className="text-left px-3 py-2">Name</th>
+            <th className="text-left px-3 py-2">Type</th>
+            <th className="text-right px-3 py-2">Status</th>
+            <th className="text-right px-3 py-2 w-8"></th>
+          </tr></ModuleTHead>
+          <tbody>
+            {resources.map((r) => (
+              <tr key={r.id} onClick={() => setTarget(r)} className="border-t border-border hover:bg-accent/30 cursor-pointer">
+                <td className="px-3 py-2 font-medium">{r.name}</td>
+                <td className="px-3 py-2 text-muted-foreground capitalize">{r.type}</td>
+                <td className="px-3 py-2 text-right">
+                  {r.active
+                    ? <Badge variant="outline" className="border-emerald-500/40 text-emerald-600 dark:text-emerald-400">Active</Badge>
+                    : <Badge variant="outline" className="text-muted-foreground">Inactive</Badge>}
+                </td>
+                <td className="px-3 py-2 text-right text-muted-foreground"><CaretRight className="h-3.5 w-3.5 inline" /></td>
+              </tr>
+            ))}
+          </tbody>
+        </ModuleTable>
       )}
+      <ResourceDialog target={target} onClose={() => setTarget(null)} onSaved={() => { setTarget(null); load(); }} />
     </div>
   );
 }
 
-function SkillsDialog({ staff, services, onClose }: { staff: SalonStaff | null; services: SalonService[]; onClose: () => void }) {
-  const [picked, setPicked] = useState<string[]>([]);
+function ResourceDialog({ target, onClose, onSaved }: { target: SalonResource | "new" | null; onClose: () => void; onSaved: () => void }) {
+  const isNew = target === "new";
+  const res = target && target !== "new" ? target : null;
+  const [name, setName] = useState(""); const [type, setType] = useState("room"); const [active, setActive] = useState(true);
   const [busy, setBusy] = useState(false);
-  useEffect(() => { if (staff) listStaffSkills(staff.id).then(setPicked); }, [staff]);
-  if (!staff) return null;
-  const toggle = (id: string) => setPicked((p) => p.includes(id) ? p.filter((x) => x !== id) : [...p, id]);
-  const save = async () => { setBusy(true); try { await setStaffSkills(staff.id, picked); toast.success("Skills saved"); onClose(); } catch (e) { toast.error(String(e)); } finally { setBusy(false); } };
+  useEffect(() => {
+    if (res) { setName(res.name); setType(res.type); setActive(res.active === 1); }
+    else if (isNew) { setName(""); setType("room"); setActive(true); }
+  }, [target]); // eslint-disable-line
+  const save = async () => {
+    if (!name.trim()) { toast.error("Name is required."); return; }
+    setBusy(true);
+    try {
+      if (res) await updateResource(res.id, { name: name.trim(), type, active });
+      else await createResource(name.trim(), type);
+      toast.success(res ? "Resource updated" : "Resource added"); onSaved();
+    } catch (e) { toast.error(String(e)); } finally { setBusy(false); }
+  };
   return (
-    <Dialog open={!!staff} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader><DialogTitle className="text-[15px]">{staff.display_name} — services</DialogTitle></DialogHeader>
-        <div className="max-h-72 overflow-auto rounded-md border border-border divide-y divide-border">
-          {services.map((s) => (
-            <button key={s.id} type="button" onClick={() => toggle(s.id)} className={cn("flex w-full items-center gap-2 px-3 py-2 text-left text-[13px] hover:bg-accent", picked.includes(s.id) && "bg-accent")}>
-              {picked.includes(s.id) ? "✓" : "○"} {s.name}
-            </button>
-          ))}
+    <Dialog open={target !== null} onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="sm:max-w-sm">
+        <DialogHeader>
+          <DialogTitle className="text-[15px]">{res ? "Edit resource" : "Add resource"}</DialogTitle>
+          <DialogDescription>A bookable space or station — a room, chair, bed or station appointments can be assigned to.</DialogDescription>
+        </DialogHeader>
+        <div className="space-y-3 py-1">
+          <Field label="Name"><Input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Room 1" autoFocus /></Field>
+          <Field label="Type">
+            <Select value={type} onValueChange={(v) => setType(v as string)}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>{["room", "chair", "bed", "station"].map((t) => <SelectItem key={t} value={t} className="capitalize">{t}</SelectItem>)}</SelectContent>
+            </Select>
+          </Field>
+          {res && (
+            <label className="flex items-center gap-2 text-[13px] cursor-pointer">
+              <input type="checkbox" checked={active} onChange={(e) => setActive(e.target.checked)} className="accent-primary" /> Active (bookable)
+            </label>
+          )}
         </div>
-        <DialogFooter><Button variant="outline" size="sm" onClick={onClose} disabled={busy}>Cancel</Button><Button size="sm" onClick={save} disabled={busy}>Save</Button></DialogFooter>
+        <DialogFooter>
+          <Button variant="outline" size="sm" onClick={onClose} disabled={busy}>Cancel</Button>
+          <Button size="sm" className={cn(BRAND_BTN)} onClick={save} disabled={busy}>{res ? "Save" : "Add"}</Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
+  );
+}
+
+function StaffDetailSheet({ staff, services, emp, onClose, onChanged, onOpenHr }: {
+  staff: SalonStaff | null; services: SalonService[];
+  emp?: { id: string; full_name: string; job_title: string; phone: string | null };
+  onClose: () => void; onChanged: () => void; onOpenHr: () => void;
+}) {
+  const [name, setName] = useState("");
+  const [comm, setComm] = useState("");
+  const [active, setActive] = useState(true);
+  const [skills, setSkills] = useState<string[]>([]);
+  const [busy, setBusy] = useState(false);
+  useEffect(() => {
+    if (staff) {
+      setName(staff.display_name);
+      setComm(String(staff.commission_default_pct));
+      setActive(staff.active === 1);
+      listStaffSkills(staff.id).then(setSkills);
+    }
+  }, [staff]);
+  if (!staff) return null;
+  const toggle = (id: string) => setSkills((p) => p.includes(id) ? p.filter((x) => x !== id) : [...p, id]);
+  const save = async () => {
+    if (!name.trim()) { toast.error("Name is required."); return; }
+    setBusy(true);
+    try {
+      await updateStaff(staff.id, { display_name: name.trim(), commission_default_pct: parseFloat(comm) || 0, active });
+      await setStaffSkills(staff.id, skills);
+      toast.success("Staff updated");
+      onChanged(); onClose();
+    } catch (e) { toast.error(String(e)); } finally { setBusy(false); }
+  };
+  return (
+    <Sheet open={!!staff} onOpenChange={(o) => !o && onClose()}>
+      <SheetContent className="w-full sm:w-[440px] sm:max-w-[440px] overflow-y-auto">
+        <SheetHeader><SheetTitle className="flex items-center gap-2"><Scissors className="h-4 w-4 text-primary" /> {staff.display_name}</SheetTitle></SheetHeader>
+        <div className="space-y-5 py-4">
+          <div className="rounded-lg border border-border bg-muted/30 p-3 text-[12px] space-y-1">
+            <div className="flex items-center justify-between">
+              <span className="font-medium">Staff (HR) record</span>
+              <button onClick={onOpenHr} className="inline-flex items-center gap-1 text-muted-foreground hover:text-foreground">Open <ArrowSquareOut className="h-3 w-3" /></button>
+            </div>
+            <div className="text-muted-foreground">{emp?.job_title || "—"} · {emp?.phone || "no phone"}</div>
+          </div>
+
+          <Field label="Display name"><Input value={name} onChange={(e) => setName(e.target.value)} /></Field>
+          <Field label="Default commission %"><Input type="number" value={comm} onChange={(e) => setComm(e.target.value)} className="text-right tabular-nums" /></Field>
+          <label className="flex items-center gap-2 text-[13px] cursor-pointer">
+            <input type="checkbox" checked={active} onChange={(e) => setActive(e.target.checked)} className="accent-primary" /> Active (bookable)
+          </label>
+
+          <div className="space-y-2">
+            <div className="text-[11px] uppercase tracking-wider text-muted-foreground">Skills — services this person can perform</div>
+            <div className="max-h-64 overflow-auto rounded-md border border-border divide-y divide-border">
+              {services.length === 0 ? <p className="p-3 text-[12px] text-muted-foreground">No services yet — add them on the Services tab.</p> :
+                services.map((sv) => (
+                  <button key={sv.id} type="button" onClick={() => toggle(sv.id)} className={cn("flex w-full items-center gap-2 px-3 py-2 text-left text-[13px] hover:bg-accent", skills.includes(sv.id) && "bg-accent")}>
+                    <span className={cn("grid place-items-center size-4 rounded border text-[10px]", skills.includes(sv.id) ? "bg-primary border-primary text-primary-foreground" : "border-border")}>{skills.includes(sv.id) ? "✓" : ""}</span>
+                    {sv.name}
+                  </button>
+                ))}
+            </div>
+          </div>
+        </div>
+        <div className="flex justify-end gap-2 border-t border-border pt-3">
+          <Button variant="outline" size="sm" onClick={onClose} disabled={busy}>Cancel</Button>
+          <Button size="sm" className={cn(BRAND_BTN)} onClick={save} disabled={busy}>Save</Button>
+        </div>
+      </SheetContent>
+    </Sheet>
   );
 }
 
@@ -1002,10 +1109,20 @@ function ClientSheet({ client, onClose }: { client: Customer | null; onClose: ()
               </div>
             )}
             {allPkgs.length > 0 && (
-              <div className="flex items-end gap-2">
-                <Field label="Sell package"><Combobox value={sellPkgId} onChange={setSellPkgId} options={allPkgs.map((p) => ({ value: p.id, label: `${p.name} · ${KES(p.price)}` }))} placeholder="Choose package…" searchPlaceholder="Search packages…" className="w-40" /></Field>
-                <Select value={sellMethodId} onValueChange={(v) => setSellMethodId(v as string)}><SelectTrigger className="w-24"><SelectValue /></SelectTrigger><SelectContent>{methods.map((m) => <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>)}</SelectContent></Select>
-                <Button size="sm" onClick={sell} disabled={busy}>Sell</Button>
+              <div className="rounded-lg border border-border bg-muted/30 p-3 space-y-3">
+                <div className="text-[11px] font-medium">Sell a package</div>
+                <Field label="Package">
+                  <Combobox value={sellPkgId} onChange={setSellPkgId} options={allPkgs.map((p) => ({ value: p.id, label: `${p.name} · ${KES(p.price)}` }))} placeholder="Choose package…" searchPlaceholder="Search packages…" className="w-full" />
+                </Field>
+                <div className="flex items-end gap-2">
+                  <Field label="Pay with">
+                    <Select value={sellMethodId} onValueChange={(v) => setSellMethodId(v as string)}>
+                      <SelectTrigger className="w-40"><SelectValue placeholder="Method" /></SelectTrigger>
+                      <SelectContent>{methods.map((m) => <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>)}</SelectContent>
+                    </Select>
+                  </Field>
+                  <Button size="sm" className={cn(BRAND_BTN)} onClick={sell} disabled={busy}>Sell</Button>
+                </div>
               </div>
             )}
           </div>

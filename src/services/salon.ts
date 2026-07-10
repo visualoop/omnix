@@ -315,6 +315,26 @@ export async function createResource(name: string, type = "room"): Promise<strin
   return id;
 }
 
+export async function updateResource(id: string, fields: { name?: string; type?: string; active?: boolean }): Promise<void> {
+  await requirePermission("salon.staff.manage", { entityType: "salon_resource", entityId: id });
+  const sets: string[] = []; const params: unknown[] = [id];
+  if (fields.name !== undefined) { sets.push(`name = ?${params.length + 1}`); params.push(fields.name); }
+  if (fields.type !== undefined) { sets.push(`type = ?${params.length + 1}`); params.push(fields.type); }
+  if (fields.active !== undefined) { sets.push(`active = ?${params.length + 1}`); params.push(fields.active ? 1 : 0); }
+  if (sets.length === 0) return;
+  await execute(`UPDATE salon_resources SET ${sets.join(", ")} WHERE id = ?1`, params);
+}
+
+export async function updateStaff(id: string, fields: { display_name?: string; commission_default_pct?: number; active?: boolean }): Promise<void> {
+  await requirePermission("salon.staff.manage", { entityType: "salon_staff", entityId: id });
+  const sets: string[] = []; const params: unknown[] = [id];
+  if (fields.display_name !== undefined) { sets.push(`display_name = ?${params.length + 1}`); params.push(fields.display_name); }
+  if (fields.commission_default_pct !== undefined) { sets.push(`commission_default_pct = ?${params.length + 1}`); params.push(fields.commission_default_pct); }
+  if (fields.active !== undefined) { sets.push(`active = ?${params.length + 1}`); params.push(fields.active ? 1 : 0); }
+  if (sets.length === 0) return;
+  await execute(`UPDATE salon_staff SET ${sets.join(", ")} WHERE id = ?1`, params);
+}
+
 async function nextApptNumber(): Promise<string> {
   const year = new Date().getFullYear();
   const [row] = await query<{ n: string }>(
