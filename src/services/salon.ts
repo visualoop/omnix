@@ -451,54 +451,7 @@ export async function checkoutAppointment(input: {
   if (appointment.sale_id) throw new Error("This appointment is already checked out.");
   if (services.length === 0) throw new Error("No services to bill.");
 
-  // Backing product + tax for each service line.
-  const productMap = new Map<string, { product_id: string; tax_rate: number }>();
-  const svRows = await query<{ id: string; product_id: string; tax_rate: number }>(
-    `SELECT s.id, s.product_id, COALESCE(p.tax_rate, 16) AS tax_rate
-     FROM salon_services s LEFT JOIN products p ON p.id = s.product_id
-     WHERE s.id IN (${services.map((_, i) => `?${i + 1}`).join(",")})`,
-    services.map((s) => s.service_id),
-  );
-  for (const r of svRows) productMap.set(r.id, { product_id: r.product_id, tax_rate: r.tax_rate });
-
-  // Prepaid packages: cover matching service lines (price → 0), decrementing
-  // a session per covered service.
-  const redeemStmts: { sql: string; params: unknown[] }[] = [];
-  const pkgRemaining = new Map<string, { cpId: string; remaining: number }>(); // service_id → package balance
-  if (appointment.client_id) {
-    const pkgs = await listClientPackages(appointment.client_id, true);
-    for (const pk of pkgs) {
-      if (pk.service_id && !pkgRemaining.has(pk.service_id)) {
-        pkgRemaining.set(pk.service_id, { cpId: pk.id, remaining: pk.sessions_remaining });
-      }
-    }
-  }
-
-  const serviceLines: CartItem[] = services.map((s) => {
-    const backing = productMap.get(s.service_id);
-    const bal = pkgRemaining.get(s.service_id);
-    let price = s.price;
-    if (bal && bal.remaining > 0) {
-      price = 0;                       // covered by prepaid package
-      bal.remaining -= 1;
-      redeemStmts.push({
-        sql: `UPDATE client_packages SET sessions_remaining = MAX(0, sessions_remaining - 1),
-                active = CASE WHEN sessions_remaining - 1 <= 0 THEN 0 ELSE active END WHERE id = ?1`,
-        params: [bal.cpId],
-      });
-    }
-    return {
-      id: uid(),
-      product_id: backing?.product_id ?? s.service_id,
-      service_id: s.service_id,
-      name: bal && price === 0 ? `${s.name} (package)` : s.name,
-      quantity: 1,
-      unit_price: price,
-      discount: 0,
-      tax_rate: backing?.tax_rate ?? 16,
-      total: price,
-    };
-  });
+  const { serviceLines, redeemStmts } = await buildServiceLines(detail);
   const items = [...serviceLines, ...(input.retailItems ?? [])];
 
   const { saleId } = await completeSale(
@@ -535,6 +488,126 @@ export async function checkoutAppointment(input: {
   });
   await transaction(stmts);
   return { saleId };
+}
+
+/**
+ * Build the POS cart line items for an appointment's services, applying prepaid
+ * package coverage (covered lines drop to price 0) and returning the matching
+ * client_packages decrement statements. Pure of side effects — the caller
+ * decides when to run redeemStmts (checkout runs them in its transaction;
+ * prepare-for-POS ignores them and finalize re-derives + runs them post-sale).
+ */
+async function buildServiceLines(
+  detail: { appointment: SalonAppointment; services: AppointmentService[] },
+): Promise<{ serviceLines: CartItem[]; redeemStmts: { sql: string; params: unknown[] }[] }> {
+  const { appointment, services } = detail;
+  const productMap = new Map<string, { product_id: string; tax_rate: number }>();
+  if (services.length > 0) {
+    const svRows = await query<{ id: string; product_id: string; tax_rate: number }>(
+      `SELECT s.id, s.product_id, COALESCE(p.tax_rate, 16) AS tax_rate
+       FROM salon_services s LEFT JOIN products p ON p.id = s.product_id
+       WHERE s.id IN (${services.map((_, i) => `?${i + 1}`).join(",")})`,
+      services.map((s) => s.service_id),
+    );
+    for (const r of svRows) productMap.set(r.id, { product_id: r.product_id, tax_rate: r.tax_rate });
+  }
+
+  const redeemStmts: { sql: string; params: unknown[] }[] = [];
+  const pkgRemaining = new Map<string, { cpId: string; remaining: number }>();
+  if (appointment.client_id) {
+    const pkgs = await listClientPackages(appointment.client_id, true);
+    for (const pk of pkgs) {
+      if (pk.service_id && !pkgRemaining.has(pk.service_id)) {
+        pkgRemaining.set(pk.service_id, { cpId: pk.id, remaining: pk.sessions_remaining });
+      }
+    }
+  }
+
+  const serviceLines: CartItem[] = services.map((s) => {
+    const backing = productMap.get(s.service_id);
+    const bal = pkgRemaining.get(s.service_id);
+    let price = s.price;
+    if (bal && bal.remaining > 0) {
+      price = 0;
+      bal.remaining -= 1;
+      redeemStmts.push({
+        sql: `UPDATE client_packages SET sessions_remaining = MAX(0, sessions_remaining - 1),
+                active = CASE WHEN sessions_remaining - 1 <= 0 THEN 0 ELSE active END WHERE id = ?1`,
+        params: [bal.cpId],
+      });
+    }
+    return {
+      id: uid(),
+      product_id: backing?.product_id ?? s.service_id,
+      service_id: s.service_id,
+      name: bal && price === 0 ? `${s.name} (package)` : s.name,
+      quantity: 1,
+      unit_price: price,
+      discount: 0,
+      tax_rate: backing?.tax_rate ?? 16,
+      total: price,
+    };
+  });
+  return { serviceLines, redeemStmts };
+}
+
+/**
+ * Load an appointment into the POS cart for completion through the standard
+ * POS payment flow (same pattern as hardware quotes). Returns the service line
+ * items (with package coverage applied) + who to bill + the tip recipient.
+ * Package sessions are NOT decremented here — that happens in
+ * {@link finalizeSalonAppointment} once the sale actually completes.
+ */
+export async function prepareAppointmentForPos(appointmentId: string): Promise<{
+  items: CartItem[];
+  customerId: string | null;
+  tipEmployeeId: string | null;
+  label: string;
+}> {
+  await requirePermission("salon.appointments.manage", { entityType: "salon_appointment", entityId: appointmentId });
+  const detail = await getAppointment(appointmentId);
+  if (!detail) throw new Error("Appointment not found.");
+  if (detail.appointment.sale_id) throw new Error("This appointment is already checked out.");
+  if (detail.services.length === 0) throw new Error("No services to bill — add a service to the appointment first.");
+  const { serviceLines } = await buildServiceLines(detail);
+  return {
+    items: serviceLines,
+    customerId: detail.appointment.client_id,
+    tipEmployeeId: detail.appointment.staff_id,
+    label: `${detail.appointment.client_name ?? "Walk-in"} · ${detail.appointment.appt_number}`,
+  };
+}
+
+/**
+ * Finalize an appointment after its POS sale completes: accrue commissions,
+ * deduct back-bar products, redeem prepaid package sessions, and mark the
+ * appointment completed + linked to the sale. Idempotent — a no-op if the
+ * appointment is already linked to a sale. Called from the POS payment modal.
+ */
+export async function finalizeSalonAppointment(appointmentId: string, saleId: string): Promise<void> {
+  const detail = await getAppointment(appointmentId);
+  if (!detail || detail.appointment.sale_id) return; // gone or already finalized
+  const { services } = detail;
+  const { redeemStmts } = await buildServiceLines(detail);
+
+  const stmts: { sql: string; params: unknown[] }[] = [];
+  for (const s of services) {
+    if (!s.staff_id || s.commission_amount <= 0) continue;
+    const pct = s.price > 0 ? (s.commission_amount / s.price) * 100 : 0;
+    stmts.push({
+      sql: `INSERT INTO salon_commissions (id, staff_id, appointment_id, sale_id, kind, base_amount, pct, amount)
+            VALUES (?1, ?2, ?3, ?4, 'service', ?5, ?6, ?7)`,
+      params: [uid(), s.staff_id, appointmentId, saleId, s.price, Math.round(pct * 100) / 100, s.commission_amount],
+    });
+  }
+  const backBar = await backBarConsumptionStmts(services.map((s) => s.service_id), saleId);
+  stmts.push(...backBar);
+  stmts.push(...redeemStmts);
+  stmts.push({
+    sql: `UPDATE salon_appointments SET status = 'completed', sale_id = ?2, updated_at = ?3 WHERE id = ?1`,
+    params: [appointmentId, saleId, nowIso()],
+  });
+  await transaction(stmts);
 }
 
 // ─── Client profile + history ───────────────────────────────────────────────

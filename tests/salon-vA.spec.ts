@@ -33,7 +33,7 @@ vi.mock("@/services/employees", () => ({
 import {
   timeToMin, addMinutesIso, intervalsOverlap, canTransitionAppt,
   isStaffAvailable, bookAppointment, setServiceProducts, sellPackage, isResourceAvailable,
-  listEnrollableStaff, enrolStaff, updatePackage,
+  listEnrollableStaff, enrolStaff, updatePackage, finalizeSalonAppointment,
 } from "@/services/salon";
 
 beforeEach(() => { query.mockReset(); execute.mockReset(); transaction.mockReset(); completeSale.mockReset(); upsertEmployee.mockReset(); listEmployees.mockReset(); listLinkableUsers.mockReset(); });
@@ -77,6 +77,35 @@ describe("updatePackage", () => {
     expect(updPkg?.[1]).toContain(8);
     const updProd = execute.mock.calls.find((c) => String(c[0]).includes("UPDATE products"));
     expect(updProd?.[1]).toEqual(["prod-1", "New Bundle"]);
+  });
+});
+
+describe("finalizeSalonAppointment (POS completion)", () => {
+  it("accrues commissions + marks the appointment checked out against the sale", async () => {
+    query
+      .mockResolvedValueOnce([{ id: "appt1", sale_id: null, client_id: null, staff_id: "st1", appt_number: "A1" }]) // getAppointment: appt
+      .mockResolvedValueOnce([{ id: "as1", service_id: "sv1", staff_id: "st1", name: "Cut", price: 500, duration_min: 30, commission_amount: 50 }]) // appt services
+      .mockResolvedValueOnce([{ id: "sv1", product_id: "p1", tax_rate: 16 }]) // buildServiceLines productMap
+      .mockResolvedValueOnce([]); // backBarConsumptionStmts (no back-bar products)
+    transaction.mockResolvedValue(undefined);
+
+    await finalizeSalonAppointment("appt1", "sale1");
+
+    expect(transaction).toHaveBeenCalledTimes(1);
+    const stmts = transaction.mock.calls[0][0] as Array<{ sql: string; params: unknown[] }>;
+    const mark = stmts.find((s) => s.sql.includes("UPDATE salon_appointments SET status = 'completed', sale_id"));
+    expect(mark?.params).toContain("sale1");
+    const comm = stmts.find((s) => s.sql.includes("INSERT INTO salon_commissions"));
+    expect(comm?.params).toContain(50);   // commission amount
+    expect(comm?.params).toContain("sale1");
+  });
+
+  it("is a no-op when the appointment is already linked to a sale", async () => {
+    query
+      .mockResolvedValueOnce([{ id: "appt1", sale_id: "existing", client_id: null, staff_id: "st1" }])
+      .mockResolvedValueOnce([]);
+    await finalizeSalonAppointment("appt1", "sale2");
+    expect(transaction).not.toHaveBeenCalled();
   });
 });
 

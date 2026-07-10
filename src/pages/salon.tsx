@@ -20,6 +20,7 @@ import { cn } from "@/lib/utils";
 import { money as KES } from "@/lib/money";
 import { toast } from "sonner";
 import { useAuthStore } from "@/stores/auth";
+import { useCartStore } from "@/stores/cart";
 import { listCustomers, type Customer } from "@/services/erp";
 import { getPaymentMethods, type PaymentMethod } from "@/services/sales";
 import {
@@ -27,7 +28,7 @@ import {
 } from "@/components/shared/module-kit";
 import {
   listServices, createService, updateService, listStaff, setStaffSkills, listStaffSkills,
-  listAppointments, getAppointment, bookAppointment, updateAppointmentStatus, checkoutAppointment,
+  listAppointments, getAppointment, bookAppointment, updateAppointmentStatus, prepareAppointmentForPos,
   commissionsByStaff, addMinutesIso,
   getServiceProducts, setServiceProducts, servicePopularity,
   getClientProfile, upsertClientProfile, listClientVisits,
@@ -323,17 +324,14 @@ function AppointmentSheet({ apptId, onClose, onChanged }: { apptId: string | nul
   const [detail, setDetail] = useState<Awaited<ReturnType<typeof getAppointment>>>(null);
   const [loading, setLoading] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [methods, setMethods] = useState<PaymentMethod[]>([]);
-  const [methodId, setMethodId] = useState("");
-  const [tip, setTip] = useState("");
-  const user = useAuthStore((s) => s.user);
+  const navigate = useNavigate();
 
   const load = () => {
     if (!apptId) return;
     setLoading(true);
     getAppointment(apptId).then(setDetail).finally(() => setLoading(false));
   };
-  useEffect(() => { if (apptId) { load(); getPaymentMethods().then((m) => { setMethods(m); setMethodId(m[0]?.id ?? ""); }); } else setDetail(null); /* eslint-disable-next-line */ }, [apptId]);
+  useEffect(() => { if (apptId) load(); else setDetail(null); /* eslint-disable-next-line */ }, [apptId]);
 
   if (!apptId) return null;
   const appt = detail?.appointment;
@@ -347,19 +345,22 @@ function AppointmentSheet({ apptId, onClose, onChanged }: { apptId: string | nul
     catch (e) { toast.error(String(e)); } finally { setBusy(false); }
   };
 
-  const checkout = async () => {
-    if (!appt || !user || !methodId) { toast.error("Pick a payment method."); return; }
-    const method = methods.find((m) => m.id === methodId)!;
+  // Send the appointment to POS for completion — same pattern as hardware
+  // quotes. The service lines (with package coverage) load into the cart; the
+  // sale completes through the standard payment modal, which finalizes the
+  // appointment (commissions, back-bar, package redemption, mark checked out).
+  const sendToPos = async () => {
+    if (!appt) return;
     setBusy(true);
     try {
-      const tipN = parseFloat(tip) || 0;
-      await checkoutAppointment({
-        appointment_id: appt.id, userId: user.id,
-        payments: [{ method_id: method.id, method_name: method.name, amount: total + tipN }],
-        tip: tipN,
+      const payload = await prepareAppointmentForPos(appt.id);
+      useCartStore.getState().loadSnapshot(payload.items, 0, payload.customerId, {
+        tipEmployeeId: payload.tipEmployeeId,
+        source: { type: "salon_appointment", id: appt.id, label: payload.label },
       });
-      toast.success("Checked out");
-      load(); onChanged();
+      toast.success("Loaded in POS — take payment to complete the sale");
+      onClose();
+      navigate("/pos/sale");
     } catch (e) { toast.error(String(e)); } finally { setBusy(false); }
   };
 
@@ -408,20 +409,14 @@ function AppointmentSheet({ apptId, onClose, onChanged }: { apptId: string | nul
               </div>
             )}
 
-            {/* Checkout */}
+            {/* Checkout — POS is the single place a sale is completed. */}
             {!appt.sale_id && ["checked_in", "in_service", "confirmed", "booked"].includes(appt.status) && (
               <div className="rounded-md border border-border p-3 space-y-2">
                 <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Checkout</div>
-                <div className="grid grid-cols-2 gap-2">
-                  <Field label="Payment">
-                    <Select value={methodId} onValueChange={(v) => setMethodId(v as string)}>
-                      <SelectTrigger><SelectValue placeholder="Method" /></SelectTrigger>
-                      <SelectContent>{methods.map((m) => <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>)}</SelectContent>
-                    </Select>
-                  </Field>
-                  <Field label="Tip"><Input type="number" value={tip} onChange={(e) => setTip(e.target.value)} placeholder="0" className="text-right tabular-nums" /></Field>
-                </div>
-                <Button size="sm" className="w-full" disabled={busy} onClick={checkout}><Receipt className="size-4" /> Take payment · {KES(total + (parseFloat(tip) || 0))}</Button>
+                <p className="text-[12px] text-muted-foreground">Complete this appointment in POS — add any retail products, then take payment (cash, M-Pesa, split).</p>
+                <Button size="sm" className={cn("w-full", BRAND_BTN)} disabled={busy} onClick={sendToPos}>
+                  <Receipt className="size-4 mr-1.5" /> Complete in POS · {KES(total)}
+                </Button>
               </div>
             )}
             {appt.sale_id && <div className="flex items-center gap-2 text-emerald-600 text-[13px]"><CheckCircle className="size-4" /> Checked out</div>}

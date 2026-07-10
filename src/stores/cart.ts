@@ -44,7 +44,7 @@ interface CartPayload {
   /** Tax mode — propagates across windows so the customer display shows
    *  the correct totals when the cashier flips inclusive / exclusive / off. */
   taxMode: "off" | "inclusive" | "exclusive";
-  sourceType: "hospitality_order" | "prescription" | "layby" | "special_order" | "folio" | "hardware_quote" | null;
+  sourceType: "hospitality_order" | "prescription" | "layby" | "special_order" | "folio" | "hardware_quote" | "salon_appointment" | null;
   sourceId: string | null;
   sourceLabel: string | null;
   quoteMode: boolean;
@@ -109,7 +109,7 @@ interface CartState {
   tip: number;
   tipEmployeeId: string | null;
   serviceChargeAmount: number;
-  sourceType: "hospitality_order" | "prescription" | "layby" | "special_order" | "folio" | "hardware_quote" | null;
+  sourceType: "hospitality_order" | "prescription" | "layby" | "special_order" | "folio" | "hardware_quote" | "salon_appointment" | null;
   sourceId: string | null;
   sourceLabel: string | null;
   /** Quote mode — POS defers the sale, stashes the cart as a hardware quotation on Save. */
@@ -127,7 +127,7 @@ interface CartState {
   setCustomer: (id: string | null) => void;
   /** Re-price a single cart line (used by customer price-list resolution). */
   setLinePrice: (id: string, unitPrice: number) => void;
-  setSource: (source: { type: "hospitality_order" | "prescription" | "layby" | "special_order" | "folio" | "hardware_quote"; id: string; label: string } | null) => void;
+  setSource: (source: { type: "hospitality_order" | "prescription" | "layby" | "special_order" | "folio" | "hardware_quote" | "salon_appointment"; id: string; label: string } | null) => void;
   /** Tax mode for live cart math. POS pushes from settings on mount. */
   taxMode: "off" | "inclusive" | "exclusive";
   setTaxMode: (mode: "off" | "inclusive" | "exclusive") => void;
@@ -139,7 +139,7 @@ interface CartState {
       tip?: number;
       tipEmployeeId?: string | null;
       serviceChargeAmount?: number;
-      source?: { type: "hospitality_order" | "prescription" | "layby" | "special_order" | "folio" | "hardware_quote"; id: string; label: string } | null;
+      source?: { type: "hospitality_order" | "prescription" | "layby" | "special_order" | "folio" | "hardware_quote" | "salon_appointment"; id: string; label: string } | null;
     },
   ) => void;
   clear: () => void;
