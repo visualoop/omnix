@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from "react";
-import { ArrowCircleUp as ReorderIcon, ArrowClockwise as Refresh, Package } from "@phosphor-icons/react";
+import { useNavigate } from "react-router-dom";
+import { ArrowCircleUp as ReorderIcon, ArrowClockwise as Refresh, Package, ShoppingCart } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import {
@@ -28,6 +29,18 @@ export function ReorderSuggestionsPage() {
   const [items, setItems] = useState<ReorderSuggestion[]>([]);
   const [loading, setLoading] = useState(true);
   const [regenerating, setRegenerating] = useState(false);
+  const navigate = useNavigate();
+
+  const createPO = () => {
+    const seedItems = items.map((s) => ({
+      product_id: s.product_id,
+      product_name: s.product_name,
+      quantity: Math.max(1, s.suggested_qty || 1),
+      unit_cost: 0,
+    }));
+    if (seedItems.length === 0) { toast.error("No suggestions to order"); return; }
+    navigate("/purchase-orders/new", { state: { poSeed: { items: seedItems } } });
+  };
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -61,10 +74,17 @@ export function ReorderSuggestionsPage() {
             Velocity-based reorder recommendations. Regenerate any time — usually run daily.
           </p>
         </div>
-        <Button onClick={handleRegenerate} disabled={regenerating}>
-          <Refresh className={`h-4 w-4 mr-1.5 ${regenerating ? "animate-spin" : ""}`} />
-          {regenerating ? "Regenerating…" : "Regenerate now"}
-        </Button>
+        <div className="flex items-center gap-2">
+          {items.length > 0 && (
+            <Button variant="outline" onClick={createPO}>
+              <ShoppingCart className="h-4 w-4 mr-1.5" /> Create purchase order ({items.length})
+            </Button>
+          )}
+          <Button onClick={handleRegenerate} disabled={regenerating}>
+            <Refresh className={`h-4 w-4 mr-1.5 ${regenerating ? "animate-spin" : ""}`} />
+            {regenerating ? "Regenerating…" : "Regenerate now"}
+          </Button>
+        </div>
       </header>
 
       {loading ? (
