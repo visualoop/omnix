@@ -22,7 +22,7 @@
  * is append-only, stock_qty is computed via SUM).
  */
 import { useEffect, useState } from "react"
-import { useParams } from "react-router-dom"
+import { useParams, useNavigate } from "react-router-dom"
 import { Breadcrumbs } from "@/components/ui/breadcrumbs"
 import { BackButton } from "@/components/ui/back-button"
 import { EntityHero } from "@/components/ui/entity-hero"
@@ -44,7 +44,7 @@ import { execute, query } from "@/lib/db"
 import { listVariants, type ProductVariant } from "@/services/retail"
 import { listUnits, warrantyState, warrantyDaysRemaining, type EquipmentUnit } from "@/services/equipment"
 import { useEntityHistory } from "@/hooks/use-entity-history"
-import { Pencil, PlusCircle, Stack as Layers, ImageSquare, Check, X as XIcon, Folder } from "@phosphor-icons/react"
+import { Pencil, PlusCircle, Stack as Layers, ImageSquare, Check, X as XIcon, Folder, ShoppingCart } from "@phosphor-icons/react"
 import { format, isAfter, isBefore, addDays } from "date-fns"
 import { ReceiveStockDialog } from "@/components/inventory/receive-stock-dialog"
 import { VariantsDrawer } from "@/components/inventory/variants-drawer"
@@ -75,6 +75,7 @@ interface SupplierAggregate {
 
 export function ProductDetailPage() {
   const { id } = useParams<{ id: string }>()
+  const navigate = useNavigate()
   const [product, setProduct] = useState<Product | null>(null)
   const [batches, setBatches] = useState<BatchRow[]>([])
   const [suppliers, setSuppliers] = useState<SupplierAggregate[]>([])
@@ -179,6 +180,10 @@ export function ProductDetailPage() {
             <Button size="sm" onClick={() => setReceiveOpen(true)}>
               <PlusCircle className="h-3.5 w-3.5" />
               Receive stock
+            </Button>
+            <Button size="sm" variant="outline" onClick={() => navigate("/purchase-orders/new", { state: { poSeed: { items: [{ product_id: product.id, product_name: product.name, quantity: Math.max(1, product.reorder_level - onHand), unit_cost: product.buying_price || 0 }] } } })}>
+              <ShoppingCart className="h-3.5 w-3.5" />
+              Reorder
             </Button>
             <Button size="sm" variant="outline" onClick={() => setVariantsOpen(true)}>
               <Layers className="h-3.5 w-3.5" />

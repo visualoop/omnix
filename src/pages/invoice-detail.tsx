@@ -6,8 +6,6 @@ import {
   Check,
   CircleNotch as Loader2,
   CurrencyDollar as DollarSign,
-  Download,
-  Eye,
   FileText,
   PaperPlaneTilt as Send,
   X,
@@ -24,8 +22,9 @@ import {
   type Invoice, type Quotation, type DocumentItem, type InvoiceStatus, type QuotationStatus,
 } from "@/services/invoicing";
 import {
-  downloadInvoicePdf, downloadQuotationPdf, previewInvoicePdf, previewQuotationPdf,
+  renderInvoicePdfBytes, renderQuotationPdfBytes,
 } from "@/services/invoice-pdf";
+import { ShareDocMenu } from "@/components/share-doc-menu";
 import { useAuthStore } from "@/stores/auth";
 import { toast } from "sonner";
 import { money as KES } from "@/lib/money";
@@ -176,18 +175,16 @@ export function DocumentDetailPage({ type }: Props) {
             )}
           </>
         )}
-        <Button variant="outline" onClick={async () => {
-          if (isInvoice) await previewInvoicePdf(data.invoice!, data.items, data.payments);
-          else await previewQuotationPdf(data.quotation!, data.items);
-        }}>
-          <Eye className="h-3.5 w-3.5 mr-1.5" /> Preview PDF
-        </Button>
-        <Button variant="outline" onClick={async () => {
-          if (isInvoice) await downloadInvoicePdf(data.invoice!, data.items, data.payments);
-          else await downloadQuotationPdf(data.quotation!, data.items);
-        }}>
-          <Download className="h-3.5 w-3.5 mr-1.5" /> Download PDF
-        </Button>
+        <ShareDocMenu
+          getPdf={() => isInvoice
+            ? renderInvoicePdfBytes(data.invoice!, data.items, data.payments)
+            : renderQuotationPdfBytes(data.quotation!, data.items)}
+          filename={number}
+          phone={doc.customer_phone}
+          email={doc.customer_email}
+          subject={`${isInvoice ? "Invoice" : "Quotation"} ${number}`}
+          message={`Hello ${doc.customer_name}, please find ${isInvoice ? "invoice" : "quotation"} ${number} (total ${KES(doc.total)}). The PDF is attached.`}
+        />
       </div>
 
       {/* Document body */}
