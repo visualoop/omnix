@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, useLocation } from "react-router-dom";
 import {
   ArrowLeft,
   CaretRight as ChevronRight,
@@ -158,6 +158,20 @@ export function NewPurchaseOrderPage() {
   const [submitting, setSubmitting] = useState(false);
   const navigate = useNavigate();
   const userId = useAuthStore((s) => s.user?.id);
+  const location = useLocation();
+
+  // Preload line items + supplier when arriving from a reorder / "Create PO"
+  // action (inventory bulk, low-stock, POS, reorder suggestions).
+  useEffect(() => {
+    const seed = (location.state as { poSeed?: { supplierId?: string; items?: CartItem[] } } | null)?.poSeed;
+    if (seed) {
+      if (seed.supplierId) setSupplierId(seed.supplierId);
+      if (seed.items?.length) setItems(seed.items);
+      // Clear nav state so a refresh/back doesn't silently re-seed.
+      window.history.replaceState({}, "");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     listSuppliers().then(setSuppliers);

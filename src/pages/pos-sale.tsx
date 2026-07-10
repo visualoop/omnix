@@ -740,7 +740,14 @@ export function POSSalePage() {
                 ))}
               </div>
               <button
-                onClick={() => navigate("/purchase-orders/new")}
+                onClick={() => navigate("/purchase-orders/new", {
+                  state: { poSeed: { items: lowStock.map((p) => ({
+                    product_id: p.id,
+                    product_name: p.name,
+                    quantity: Math.max(1, (p.reorder_level || 0) - (p.stock_qty || 0)),
+                    unit_cost: 0,
+                  })) } },
+                })}
                 className="text-xs text-rose-800 underline mt-1.5"
               >
                 Create purchase order →
