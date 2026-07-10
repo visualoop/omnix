@@ -12,6 +12,8 @@ import {
   Plus,
   Stack as Layers,
   UploadSimple as Upload,
+  ShoppingCart,
+  Archive,
 } from "@phosphor-icons/react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -19,7 +21,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Combobox } from "@/components/ui/combobox";
-import { getProductsPage, getCategories, type Product, type Category, PRODUCTS_PAGE_SIZE } from "@/services/inventory";
+import { getProductsPage, getCategories, deleteProduct, type Product, type Category, PRODUCTS_PAGE_SIZE } from "@/services/inventory";
 import { ProductPanel } from "@/components/inventory/product-panel";
 import { BulkEditDialog } from "@/components/inventory/bulk-edit-dialog";
 import { ReceiveStockDialog } from "@/components/inventory/receive-stock-dialog";
@@ -40,6 +42,7 @@ export function InventoryPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [variantsProduct, setVariantsProduct] = useState<Product | null>(null);
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [stockFilter, setStockFilter] = useState<"all" | "low" | "out">("all");
 
   const load = useCallback(async () => {
     const [page, cats] = await Promise.all([
@@ -76,6 +79,30 @@ export function InventoryPage() {
   const openEdit = (id: string) => { setEditingId(id); setPanelOpen(true); };
   const navigate = useNavigate();
 
+  // Seed a purchase order with the given products (suggested qty = the gap to
+  // the reorder level, min 1; unit cost = last buying price).
+  const seedPO = (list: Product[]) => {
+    const items = list.map((p) => ({
+      product_id: p.id,
+      product_name: p.name,
+      quantity: Math.max(1, (p.reorder_level || 0) - (p.stock_qty || 0)),
+      unit_cost: p.buying_price || 0,
+    }));
+    if (items.length === 0) { toast.error("Nothing to reorder"); return; }
+    navigate("/purchase-orders/new", { state: { poSeed: { items } } });
+  };
+  const bulkCreatePO = () => seedPO(products.filter((p) => selected.has(p.id)));
+  const bulkArchive = async () => {
+    const ids = Array.from(selected);
+    if (ids.length === 0) return;
+    try {
+      for (const id of ids) await deleteProduct(id);
+      toast.success(`Archived ${ids.length} product${ids.length === 1 ? "" : "s"}`);
+      setSelected(new Set());
+      load();
+    } catch (e) { toast.error(String(e)); }
+  };
+
   return (
     <div className="space-y-4">
       {/* Header */}
@@ -84,11 +111,21 @@ export function InventoryPage() {
         <h1 className="text-xl font-semibold tracking-tight">Inventory</h1>
         <div className="flex gap-2">
           {selected.size > 0 && (
-            <Can permission="inventory.bulk_edit">
-              <Button size="sm" variant="outline" onClick={() => setBulkOpen(true)}>
-                <Edit3 className="h-4 w-4 mr-1" /> Bulk Edit ({selected.size})
-              </Button>
-            </Can>
+            <>
+              <Can permission="inventory.bulk_edit">
+                <Button size="sm" variant="outline" onClick={() => setBulkOpen(true)}>
+                  <Edit3 className="h-4 w-4 mr-1" /> Bulk Edit ({selected.size})
+                </Button>
+              </Can>
+              <Can permission="inventory.edit">
+                <Button size="sm" variant="outline" onClick={bulkCreatePO}>
+                  <ShoppingCart className="h-4 w-4 mr-1" /> Create PO ({selected.size})
+                </Button>
+                <Button size="sm" variant="outline" onClick={bulkArchive} className="text-amber-700 dark:text-amber-400">
+                  <Archive className="h-4 w-4 mr-1" /> Archive
+                </Button>
+              </Can>
+            </>
           )}
           <Can permission="inventory.edit">
             <Button size="sm" variant="outline" onClick={() => setReceiveOpen(true)}>
@@ -153,6 +190,17 @@ export function InventoryPage() {
             Clear filter
           </button>
         )}
+        <div className="flex items-center gap-0.5 rounded-md border border-border p-0.5 text-[12px]">
+          {([["all", "All stock"], ["low", "Low stock"], ["out", "Out of stock"]] as const).map(([f, lbl]) => (
+            <button
+              key={f}
+              onClick={() => setStockFilter(f)}
+              className={`px-2.5 py-1 rounded transition-colors ${stockFilter === f ? "bg-accent text-foreground font-medium" : "text-muted-foreground hover:text-foreground"}`}
+            >
+              {lbl}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* Truncation banner — the inventory query caps at PRODUCTS_PAGE_SIZE
@@ -194,6 +242,7 @@ export function InventoryPage() {
             <tbody>
               {products
                 .filter((p) => !categoryFilter || p.category_id === categoryFilter)
+                .filter((p) => stockFilter === "all" ? true : stockFilter === "out" ? p.stock_qty <= 0 : p.stock_qty <= p.reorder_level)
                 .map((p) => (
                 <tr
                   key={p.id}
@@ -239,6 +288,15 @@ export function InventoryPage() {
                       <Badge variant="default" className="text-xs">OK</Badge>
                     )}
                     <Can permission="inventory.edit">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={(e) => { e.stopPropagation(); seedPO([p]); }}
+                        className="ml-1 h-7 w-7 p-0 cursor-pointer"
+                        title="Reorder — create a purchase order for this item"
+                      >
+                        <ShoppingCart className="h-3 w-3" />
+                      </Button>
                       <Button
                         variant="ghost"
                         size="sm"
