@@ -33,7 +33,7 @@ vi.mock("@/services/employees", () => ({
 import {
   timeToMin, addMinutesIso, intervalsOverlap, canTransitionAppt,
   isStaffAvailable, bookAppointment, setServiceProducts, sellPackage, isResourceAvailable,
-  listEnrollableStaff, enrolStaff,
+  listEnrollableStaff, enrolStaff, updatePackage,
 } from "@/services/salon";
 
 beforeEach(() => { query.mockReset(); execute.mockReset(); transaction.mockReset(); completeSale.mockReset(); upsertEmployee.mockReset(); listEmployees.mockReset(); listLinkableUsers.mockReset(); });
@@ -64,6 +64,19 @@ describe("staff enrolment (source = employees ∪ users)", () => {
     expect(upsertEmployee).not.toHaveBeenCalled();
     const insert = execute.mock.calls.find((c) => String(c[0]).includes("INSERT INTO salon_staff"));
     expect(insert?.[1]).toContain("emp-9");
+  });
+});
+
+describe("updatePackage", () => {
+  it("updates the package row and syncs the backing product name", async () => {
+    query.mockResolvedValueOnce([{ product_id: "prod-1" }]);
+    execute.mockResolvedValue(undefined);
+    await updatePackage("pkg-1", { name: "New Bundle", service_id: "svc-1", sessions: 8, price: 4000, validity_days: 90 });
+    const updPkg = execute.mock.calls.find((c) => String(c[0]).includes("UPDATE salon_packages"));
+    expect(updPkg?.[1]).toContain("New Bundle");
+    expect(updPkg?.[1]).toContain(8);
+    const updProd = execute.mock.calls.find((c) => String(c[0]).includes("UPDATE products"));
+    expect(updProd?.[1]).toEqual(["prod-1", "New Bundle"]);
   });
 });
 

@@ -675,6 +675,21 @@ export async function createPackage(input: {
   return id;
 }
 
+export async function updatePackage(id: string, fields: {
+  name: string; service_id: string; sessions: number; price: number; validity_days?: number | null; active?: boolean;
+}): Promise<void> {
+  await requirePermission("salon.services.manage", { entityType: "salon_package", entityId: id });
+  const [pkg] = await query<{ product_id: string | null }>(`SELECT product_id FROM salon_packages WHERE id = ?1`, [id]);
+  await execute(
+    `UPDATE salon_packages SET name = ?2, service_id = ?3, sessions = ?4, price = ?5, validity_days = ?6, active = ?7 WHERE id = ?1`,
+    [id, fields.name, fields.service_id, fields.sessions, fields.price, fields.validity_days ?? null, fields.active === false ? 0 : 1],
+  );
+  // Keep the backing is_service product's name in sync.
+  if (pkg?.product_id) {
+    await execute(`UPDATE products SET name = ?2 WHERE id = ?1`, [pkg.product_id, fields.name]);
+  }
+}
+
 /** Sell a package to a client (prepaid) — books the sale + creates the balance. */
 export async function sellPackage(input: {
   client_id: string; package_id: string; userId: string; payments: PaymentEntry[];

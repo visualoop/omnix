@@ -31,7 +31,7 @@ import {
   commissionsByStaff, addMinutesIso,
   getServiceProducts, setServiceProducts, servicePopularity,
   getClientProfile, upsertClientProfile, listClientVisits,
-  listPackages, createPackage, sellPackage, listClientPackages,
+  listPackages, createPackage, updatePackage, sellPackage, listClientPackages,
   listResources, createResource,
   listEnrollableStaff, enrolStaff,
   type SalonService, type SalonStaff, type SalonAppointment, type AppointmentStatus, type StaffCommissionRow,
@@ -787,29 +787,14 @@ export function SalonPackagesPage() {
   const [packages, setPackages] = useState<SalonPackage[]>([]);
   const [services, setServices] = useState<SalonService[]>([]);
   const [loading, setLoading] = useState(true);
-  const [adding, setAdding] = useState(false);
-  const [name, setName] = useState(""); const [serviceId, setServiceId] = useState(""); const [sessions, setSessions] = useState("5"); const [price, setPrice] = useState(""); const [validity, setValidity] = useState("");
+  const [editing, setEditing] = useState<SalonPackage | "new" | null>(null);
   const load = () => { setLoading(true); Promise.all([listPackages(true), listServices()]).then(([p, s]) => { setPackages(p); setServices(s); }).finally(() => setLoading(false)); };
   useEffect(() => { load(); }, []);
-  const add = async () => {
-    if (!name.trim() || !serviceId) { toast.error("Name + service required."); return; }
-    try { await createPackage({ name: name.trim(), service_id: serviceId, sessions: parseInt(sessions) || 1, price: parseFloat(price) || 0, validity_days: validity ? parseInt(validity) : null }); setName(""); setServiceId(""); setSessions("5"); setPrice(""); setValidity(""); setAdding(false); load(); }
-    catch (e) { toast.error(String(e)); }
-  };
   return (
     <div>
       <ModuleMasthead accent={ACCENT} eyebrow="Salon & Spa · Memberships" title="Packages" subtitle="Prepaid session bundles — sold to clients, redeemed at checkout."
-        actions={<Button size="sm" className={cn("cursor-pointer", BRAND_BTN)} onClick={() => setAdding((v) => !v)}><Plus className="h-3.5 w-3.5 mr-1.5" /> New package</Button>} />
-      {adding && (
-        <div className="flex flex-wrap items-end gap-2 mb-3 rounded-md border border-border p-3">
-          <Field label="Name"><Input value={name} onChange={(e) => setName(e.target.value)} className="w-44" placeholder="e.g. 10 massages" /></Field>
-          <Field label="Service"><Combobox value={serviceId} onChange={setServiceId} options={services.map((s) => ({ value: s.id, label: s.name }))} placeholder="Choose…" searchPlaceholder="Search services…" className="w-40" /></Field>
-          <Field label="Sessions"><Input type="number" value={sessions} onChange={(e) => setSessions(e.target.value)} className="w-20 text-right tabular-nums" /></Field>
-          <Field label="Price"><Input type="number" value={price} onChange={(e) => setPrice(e.target.value)} className="w-24 text-right tabular-nums" /></Field>
-          <Field label="Valid (days)"><Input type="number" value={validity} onChange={(e) => setValidity(e.target.value)} className="w-24 text-right tabular-nums" placeholder="∞" /></Field>
-          <Button size="sm" onClick={add}>Add</Button>
-        </div>
-      )}
+        actions={<Button size="sm" className={cn("cursor-pointer", BRAND_BTN)} onClick={() => setEditing("new")}><Plus className="h-3.5 w-3.5 mr-1.5" /> New package</Button>} />
+      <PackageDialog target={editing} services={services} onClose={() => setEditing(null)} onSaved={() => { setEditing(null); load(); }} />
       {loading ? <ModuleSpinner /> : packages.length === 0 ? (
         <ModuleEmpty icon={Sparkle} title="No packages yet" hint="Create a prepaid bundle (e.g. 10 sessions) to sell to clients." />
       ) : (
@@ -817,8 +802,9 @@ export function SalonPackagesPage() {
           <ModuleTHead><tr><th className="text-left px-3 py-2">Package</th><th className="text-left px-3 py-2">Service</th><th className="text-right px-3 py-2">Sessions</th><th className="text-right px-3 py-2">Price</th><th className="text-right px-3 py-2">Validity</th></tr></ModuleTHead>
           <tbody>
             {packages.map((p) => (
-              <tr key={p.id} className="border-t border-border">
-                <td className="px-3 py-2">{p.name}</td><td className="px-3 py-2 text-muted-foreground">{p.service_name ?? "—"}</td>
+              <tr key={p.id} onClick={() => setEditing(p)} className="border-t border-border hover:bg-accent/30 cursor-pointer">
+                <td className="px-3 py-2">{p.name}{p.active ? "" : <span className="text-muted-foreground text-[11px]"> · inactive</span>}</td>
+                <td className="px-3 py-2 text-muted-foreground">{p.service_name ?? "—"}</td>
                 <td className="px-3 py-2 text-right tabular-nums">{p.sessions}</td><td className="px-3 py-2 text-right font-mono tabular-nums">{KES(p.price)}</td>
                 <td className="px-3 py-2 text-right tabular-nums">{p.validity_days ? `${p.validity_days}d` : "∞"}</td>
               </tr>
@@ -827,6 +813,57 @@ export function SalonPackagesPage() {
         </ModuleTable>
       )}
     </div>
+  );
+}
+
+function PackageDialog({ target, services, onClose, onSaved }: { target: SalonPackage | "new" | null; services: SalonService[]; onClose: () => void; onSaved: () => void }) {
+  const isNew = target === "new";
+  const pkg = target && target !== "new" ? target : null;
+  const [name, setName] = useState(""); const [serviceId, setServiceId] = useState(""); const [sessions, setSessions] = useState("5");
+  const [price, setPrice] = useState(""); const [validity, setValidity] = useState(""); const [active, setActive] = useState(true);
+  const [busy, setBusy] = useState(false);
+  useEffect(() => {
+    if (pkg) { setName(pkg.name); setServiceId(pkg.service_id ?? ""); setSessions(String(pkg.sessions)); setPrice(String(pkg.price)); setValidity(pkg.validity_days != null ? String(pkg.validity_days) : ""); setActive(pkg.active === 1); }
+    else if (isNew) { setName(""); setServiceId(""); setSessions("5"); setPrice(""); setValidity(""); setActive(true); }
+  }, [target]); // eslint-disable-line
+  const save = async () => {
+    if (!name.trim() || !serviceId) { toast.error("Name and service are required."); return; }
+    setBusy(true);
+    try {
+      const payload = { name: name.trim(), service_id: serviceId, sessions: parseInt(sessions) || 1, price: parseFloat(price) || 0, validity_days: validity ? parseInt(validity) : null };
+      if (pkg) await updatePackage(pkg.id, { ...payload, active });
+      else await createPackage(payload);
+      toast.success(pkg ? "Package updated" : "Package created"); onSaved();
+    } catch (e) { toast.error(String(e)); } finally { setBusy(false); }
+  };
+  return (
+    <Dialog open={target !== null} onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle className="text-[15px]">{pkg ? "Edit package" : "New package"}</DialogTitle>
+          <DialogDescription>A prepaid bundle of sessions for one service. Clients buy it once and redeem sessions at checkout.</DialogDescription>
+        </DialogHeader>
+        <div className="space-y-3 py-1">
+          <Field label="Name *"><Input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. 10 massages" autoFocus /></Field>
+          <Field label="Service *"><Combobox value={serviceId} onChange={setServiceId} options={services.map((s) => ({ value: s.id, label: s.name }))} placeholder="Choose a service…" searchPlaceholder="Search services…" /></Field>
+          <div className="grid grid-cols-3 gap-3">
+            <Field label="Sessions"><Input type="number" value={sessions} onChange={(e) => setSessions(e.target.value)} className="text-right tabular-nums" /></Field>
+            <Field label="Price (KES)"><Input type="number" value={price} onChange={(e) => setPrice(e.target.value)} className="text-right tabular-nums" /></Field>
+            <Field label="Valid (days)"><Input type="number" value={validity} onChange={(e) => setValidity(e.target.value)} className="text-right tabular-nums" placeholder="∞" /></Field>
+          </div>
+          {pkg && (
+            <label className="flex items-center gap-2 text-[13px] cursor-pointer">
+              <input type="checkbox" checked={active} onChange={(e) => setActive(e.target.checked)} className="accent-primary" />
+              Active (available to sell)
+            </label>
+          )}
+        </div>
+        <DialogFooter>
+          <Button variant="outline" size="sm" onClick={onClose} disabled={busy}>Cancel</Button>
+          <Button size="sm" className={cn(BRAND_BTN)} onClick={save} disabled={busy}>{pkg ? "Save" : "Create"}</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 
