@@ -4,6 +4,7 @@ import { cn } from "@/lib/utils";
 import { Sidebar } from "./sidebar";
 import { Topbar } from "./topbar";
 import { WindowTitlebar, TITLEBAR_HEIGHT_PX } from "./window-titlebar";
+import { useFullscreenStore } from "@/stores/fullscreen";
 import { TrialLifecycleBanner } from "@/components/trial-lifecycle";
 import { CommandPalette } from "@/components/layout/command-palette";
 import { RouteErrorBoundary } from "@/components/route-error-boundary";
@@ -33,10 +34,14 @@ export function AppShell() {
   const isSettingsRoute = location.pathname.startsWith("/settings");
   // Fullscreen-canvas routes — POS sale interface, customer display.
   // Sidebar + topbar hide so cashier has the entire screen for selling.
-  const isFullscreen =
+  const immersiveRoute =
     location.pathname === "/pos/sale" ||
     location.pathname.startsWith("/pos/sale/") ||
     location.pathname.startsWith("/customer-display");
+  // Also hide chrome when the OS window itself is fullscreen (F11), so the
+  // content fills the screen with no leftover titlebar strip / bottom gap.
+  const windowFullscreen = useFullscreenStore((s) => s.isFullscreen);
+  const isFullscreen = immersiveRoute || windowFullscreen;
 
   useAutoCloudBackup();
 

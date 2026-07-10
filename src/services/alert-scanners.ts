@@ -45,26 +45,28 @@ interface LowStockRow { product_id: string; sku: string; name: string; qty: numb
 
 async function scanLowStock(): Promise<void> {
   const rows = await query<LowStockRow>(
-    `SELECT p.id AS product_id, p.sku, p.name, p.reorder_level,
+    `SELECT p.id AS product_id, p.sku, p.name, COALESCE(p.reorder_level, 0) AS reorder_level,
             COALESCE(SUM(b.quantity), 0) AS qty
      FROM products p
      LEFT JOIN batches b ON b.product_id = p.id
      WHERE p.deleted_at IS NULL
        AND COALESCE(p.is_service, 0) = 0
-       AND p.reorder_level IS NOT NULL
-       AND p.reorder_level > 0
+       AND COALESCE(p.active, 1) = 1
      GROUP BY p.id
-     HAVING qty <= p.reorder_level * ?1
-     ORDER BY (qty * 1.0 / p.reorder_level) ASC
+     HAVING qty <= 0
+        OR (p.reorder_level IS NOT NULL AND p.reorder_level > 0 AND qty <= p.reorder_level * ?1)
+     ORDER BY qty ASC
      LIMIT 50`,
     [LOW_STOCK_MARGIN],
   );
   for (const r of rows) {
     await emit({
       kind: "low_stock",
-      severity: r.qty === 0 ? "critical" : "warning",
-      title: r.qty === 0 ? `${r.name} — out of stock` : `${r.name} — running low (${r.qty} left)`,
-      body: `Reorder level is ${r.reorder_level}. Consider creating a purchase order.`,
+      severity: r.qty <= 0 ? "critical" : "warning",
+      title: r.qty <= 0 ? `${r.name} — out of stock` : `${r.name} — running low (${r.qty} left)`,
+      body: r.reorder_level > 0
+        ? `Reorder level is ${r.reorder_level}. Consider creating a purchase order.`
+        : `Stock has run out. Consider creating a purchase order.`,
       link: "/inventory",
       dedupeKey: `low_stock:${r.product_id}`,
       metadata: { product_id: r.product_id, sku: r.sku, qty: r.qty, reorder_level: r.reorder_level },
