@@ -50,6 +50,7 @@ async function scanLowStock(): Promise<void> {
      FROM products p
      LEFT JOIN batches b ON b.product_id = p.id
      WHERE p.deleted_at IS NULL
+       AND COALESCE(p.is_service, 0) = 0
        AND p.reorder_level IS NOT NULL
        AND p.reorder_level > 0
      GROUP BY p.id

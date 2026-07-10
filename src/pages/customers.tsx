@@ -32,6 +32,11 @@ import { PaymentRecordDialog } from "@/components/payment-record-dialog";
 import { toast } from "sonner";
 import { intlLocale } from "@/lib/intl";
 import { money } from "@/lib/money";
+import { MODULES_ALLOWED } from "@/lib/variant";
+
+// Patient profiles are a Dawa (pharmacy) concept — only surface them when the
+// pharmacy module is actually installed, not on Salon/Retail/etc.
+const DAWA_ENABLED = MODULES_ALLOWED.includes("dawa");
 
 export function CustomersPage() {
   const [editing, setEditing] = useState<Customer | null>(null);
@@ -62,7 +67,7 @@ export function CustomersPage() {
         back={{ fallback: "/" }}
         eyebrow="Directory"
         title="Customers"
-        description="Manage customer accounts, credit, and patient profiles."
+        description={`Manage customer accounts, credit${DAWA_ENABLED ? ", and patient profiles" : ""}.`}
         actions={
           <Button onClick={() => setCreating(true)}>
             <Plus className="h-4 w-4 mr-2" /> Add customer
@@ -151,9 +156,11 @@ export function CustomersPage() {
                             <Wallet className="h-3.5 w-3.5" />
                           </Button>
                         )}
-                        <Button variant="ghost" size="sm" onClick={() => navigate(`/patients/${c.id}`)} title="Patient profile">
-                          <Pill className="h-3.5 w-3.5" />
-                        </Button>
+                        {DAWA_ENABLED && (
+                          <Button variant="ghost" size="sm" onClick={() => navigate(`/patients/${c.id}`)} title="Patient profile">
+                            <Pill className="h-3.5 w-3.5" />
+                          </Button>
+                        )}
                         <Button variant="ghost" size="sm" onClick={() => setEditing(c)} title="Edit">
                           <Edit3 className="h-3.5 w-3.5" />
                         </Button>
@@ -333,7 +340,7 @@ function CustomerForm({ open, customer, onClose, onSaved }: {
             </Button>
           </div>
 
-          {customer && (
+          {customer && DAWA_ENABLED && (
             <Button
               variant="outline"
               onClick={() => { onClose(); navigate(`/patients/${customer.id}`); }}

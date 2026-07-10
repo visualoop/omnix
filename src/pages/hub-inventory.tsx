@@ -45,7 +45,7 @@ async function loadKpis(): Promise<Kpis> {
   // One SQL trip per KPI keeps it readable. Errors on any query short-circuit
   // to zero for that field so the header never fails to render.
   const [productsRow] = await query<{ n: number }>(
-    `SELECT COUNT(*) AS n FROM products WHERE active = 1 AND COALESCE(kind, 'physical') = 'physical'`,
+    `SELECT COUNT(*) AS n FROM products WHERE active = 1 AND COALESCE(kind, 'physical') = 'physical' AND COALESCE(is_service, 0) = 0`,
   ).catch(() => [{ n: 0 }]);
   const [unitsRow] = await query<{ n: number; v: number }>(
     `SELECT COALESCE(SUM(quantity), 0) AS n, COALESCE(SUM(quantity * buying_price), 0) AS v FROM batches WHERE quantity > 0`,
@@ -53,6 +53,7 @@ async function loadKpis(): Promise<Kpis> {
   const [lowRow] = await query<{ n: number }>(
     `SELECT COUNT(*) AS n FROM products p
        WHERE p.active = 1 AND COALESCE(p.kind, 'physical') = 'physical'
+         AND COALESCE(p.is_service, 0) = 0
          AND (
            SELECT COALESCE(SUM(quantity), 0) FROM batches WHERE product_id = p.id
          ) <= COALESCE(p.reorder_level, 0)
