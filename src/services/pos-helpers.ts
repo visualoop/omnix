@@ -99,6 +99,7 @@ export async function getPopularProducts(limit = 24): Promise<PopularProduct[]> 
      LEFT JOIN categories c ON c.id = p.category_id
      WHERE p.active = 1
      AND COALESCE(p.kind, 'retail') != 'menu_item'
+     AND COALESCE(p.is_service, 0) = 0
      ORDER BY units_sold DESC, p.name
      LIMIT ?1`,
     [limit],
@@ -113,6 +114,7 @@ export async function getLowStockProducts(limit = 10): Promise<Array<{ id: strin
      FROM products p
      WHERE p.active = 1
      AND COALESCE(p.kind, 'retail') != 'menu_item'
+     AND COALESCE(p.is_service, 0) = 0
      AND COALESCE((SELECT SUM(b.quantity) FROM batches b WHERE b.product_id = p.id), 0) <= p.reorder_level
      AND p.reorder_level > 0
      ORDER BY (stock_qty * 1.0 / NULLIF(p.reorder_level, 0)) ASC
@@ -139,7 +141,7 @@ export async function getProductsForCategory(categoryId: string | null, limit = 
      FROM products p
      LEFT JOIN product_prices pp ON pp.product_id = p.id AND pp.price_list_id = 'default'
      LEFT JOIN categories c ON c.id = p.category_id
-     WHERE p.active = 1 AND COALESCE(p.kind, 'retail') != 'menu_item' AND ${where}
+     WHERE p.active = 1 AND COALESCE(p.kind, 'retail') != 'menu_item' AND COALESCE(p.is_service, 0) = 0 AND ${where}
      ORDER BY p.name
      LIMIT ?${categoryId ? 2 : 1}`,
     categoryId ? [categoryId, limit] : [limit],

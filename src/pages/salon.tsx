@@ -601,20 +601,35 @@ export function SalonStaffPage() {
             <DialogDescription>Pick someone from Staff (HR) and set their default commission. They keep one record across the whole app.</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-1">
-            <Field label="Team member">
-              <Select value={empId} onValueChange={(v) => setEmpId(v as string)}>
-                <SelectTrigger><SelectValue placeholder={availableEmployees.length ? "Choose from Staff…" : "Everyone is enrolled"} /></SelectTrigger>
-                <SelectContent>{availableEmployees.map((e) => <SelectItem key={e.id} value={e.id}>{e.full_name}{e.job_title ? ` · ${e.job_title}` : ""}</SelectItem>)}</SelectContent>
-              </Select>
-              {availableEmployees.length === 0 && (
-                <p className="text-[11.5px] text-muted-foreground">All staff are enrolled. Add more people in <button onClick={() => { setAdding(false); navigate("/hr/employees"); }} className="underline hover:text-foreground">Staff</button>.</p>
-              )}
-            </Field>
-            <Field label="Default commission %"><Input type="number" value={comm} onChange={(e) => setComm(e.target.value)} className="text-right tabular-nums" placeholder="0" /></Field>
+            {employees.length === 0 ? (
+              <div className="rounded-lg border border-dashed border-border px-4 py-6 text-center space-y-3">
+                <UsersThree className="h-7 w-7 mx-auto text-muted-foreground" weight="fill" />
+                <div className="space-y-1">
+                  <p className="text-[13px] font-medium">No staff yet</p>
+                  <p className="text-[12px] text-muted-foreground leading-relaxed">Stylists and therapists live in Staff (HR). Create a person there first, then come back to enrol them here.</p>
+                </div>
+                <Button size="sm" className={cn(BRAND_BTN)} onClick={() => { setAdding(false); navigate("/hr/employees"); }}>
+                  <Plus className="h-3.5 w-3.5 mr-1.5" /> Create staff
+                </Button>
+              </div>
+            ) : (
+              <>
+                <Field label="Team member">
+                  <Select value={empId} onValueChange={(v) => setEmpId(v as string)}>
+                    <SelectTrigger><SelectValue placeholder={availableEmployees.length ? "Choose from Staff…" : "Everyone is enrolled"} /></SelectTrigger>
+                    <SelectContent>{availableEmployees.map((e) => <SelectItem key={e.id} value={e.id}>{e.full_name}{e.job_title ? ` · ${e.job_title}` : ""}</SelectItem>)}</SelectContent>
+                  </Select>
+                  {availableEmployees.length === 0 && (
+                    <p className="text-[11.5px] text-muted-foreground">Everyone in Staff is already enrolled. Add more people in <button onClick={() => { setAdding(false); navigate("/hr/employees"); }} className="underline hover:text-foreground">Staff</button>.</p>
+                  )}
+                </Field>
+                <Field label="Default commission %"><Input type="number" value={comm} onChange={(e) => setComm(e.target.value)} className="text-right tabular-nums" placeholder="0" /></Field>
+              </>
+            )}
           </div>
           <DialogFooter>
             <Button variant="outline" size="sm" onClick={() => setAdding(false)}>Cancel</Button>
-            <Button size="sm" className={cn(BRAND_BTN)} onClick={add} disabled={!empId}>Enrol</Button>
+            {employees.length > 0 && <Button size="sm" className={cn(BRAND_BTN)} onClick={add} disabled={!empId}>Enrol</Button>}
           </DialogFooter>
         </DialogContent>
       </Dialog>

@@ -6,7 +6,7 @@ import { TouchKeypad } from "@/components/ui/touch-keypad";
 import { useIsTouch } from "@/stores/density";
 import { useCartStore } from "@/stores/cart";
 import { useAuthStore } from "@/stores/auth";
-import { completeSale, getPaymentMethods, type CartItem, type PaymentMethod, type PaymentEntry } from "@/services/sales";
+import { completeSale, getPaymentMethods, buildFinalTenders, type CartItem, type PaymentMethod, type PaymentEntry } from "@/services/sales";
 import { getPaystackConfig } from "@/services/paystack";
 import { getDarajaConfig, getManualMpesaConfig, type ManualMpesaConfig } from "@/services/daraja";
 import { payByPaystackPopup } from "@/services/paystack-popup";
@@ -228,11 +228,21 @@ export function PaymentModal({ open, onClose }: Props) {
       return;
     }
 
-    const finalPayments = payments.length > 0 ? payments : [{
-      method_id: selectedMethod,
-      method_name: methods.find((m) => m.id === selectedMethod)?.name || "Cash",
-      amount: parseFloat(amount) || saleSnapshot.total,
-    }];
+    // Flush any pending typed-but-not-"Added" tender so the final split
+    // chunk (e.g. the M-Pesa remainder + code) isn't silently dropped.
+    const pendingMethod = methods.find((m) => m.id === selectedMethod);
+    const pendingIsAsync =
+      (selectedMethod === "mpesa-manual" && (darajaActive || paystackActive)) ||
+      (selectedMethod === "card" && paystackActive);
+    const finalPayments = buildFinalTenders({
+      addedPayments: payments,
+      pendingAmount: parseFloat(amount) || 0,
+      pendingMethodId: selectedMethod,
+      pendingMethodName: pendingMethod?.name || "Cash",
+      pendingReference: reference,
+      pendingIsAsync,
+      saleTotal: saleSnapshot.total,
+    });
 
     const creditPayments = finalPayments.filter((p) => p.method_id === "credit");
     if (creditPayments.length > 0) {

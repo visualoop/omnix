@@ -91,7 +91,7 @@ export function InventoryPage() {
             </Can>
           )}
           <Can permission="inventory.edit">
-            <Button size="sm" variant="outline" onClick={() => setReceiveOpen(true)} className="bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100">
+            <Button size="sm" variant="outline" onClick={() => setReceiveOpen(true)}>
               <PackagePlus className="h-4 w-4 mr-1" /> Receive Stock
             </Button>
             <Button size="sm" variant="outline" onClick={() => navigate("/inventory/quick-add")}>

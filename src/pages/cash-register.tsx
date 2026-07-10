@@ -7,10 +7,9 @@ import {
 } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/layout/page-header";
-import { Input } from "@/components/ui/input";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { getOpenShift, openShift, closeShift, getRecentShifts, type CashShift } from "@/services/accounting";
+import { getOpenShift, getRecentShifts, type CashShift } from "@/services/accounting";
+import { OpenShiftDialog, CloseShiftDialog } from "@/components/pos/cash-dialogs";
 import { printShiftHandover } from "@/services/shift-handover";
 import { useAuthStore } from "@/stores/auth";
 import { toast } from "sonner";
@@ -21,9 +20,6 @@ export function CashRegisterPage() {
   const [shifts, setShifts] = useState<CashShift[]>([]);
   const [openDialog, setOpenDialog] = useState(false);
   const [closeDialog, setCloseDialog] = useState(false);
-  const [openingBalance, setOpeningBalance] = useState("");
-  const [actualCash, setActualCash] = useState("");
-  const [notes, setNotes] = useState("");
 
   const load = async () => {
     if (!user) return;
@@ -36,28 +32,6 @@ export function CashRegisterPage() {
   };
 
   useEffect(() => { load(); }, [user]);
-
-  const handleOpen = async () => {
-    const balance = parseFloat(openingBalance);
-    if (isNaN(balance) || balance < 0) { toast.error("Enter valid opening balance"); return; }
-    await openShift(user!.id, balance);
-    toast.success("Shift opened");
-    setOpenDialog(false);
-    setOpeningBalance("");
-    load();
-  };
-
-  const handleClose = async () => {
-    if (!openShiftData) return;
-    const actual = parseFloat(actualCash);
-    if (isNaN(actual) || actual < 0) { toast.error("Enter actual cash count"); return; }
-    await closeShift(openShiftData.id, actual, notes || undefined);
-    toast.success("Shift closed");
-    setCloseDialog(false);
-    setActualCash("");
-    setNotes("");
-    load();
-  };
 
   return (
     <div className="space-y-6">
@@ -168,51 +142,17 @@ export function CashRegisterPage() {
         )}
       </div>
 
-      {/* Open shift dialog */}
-      <Dialog open={openDialog} onOpenChange={setOpenDialog}>
-        <DialogContent className="sm:max-w-[380px]">
-          <DialogHeader><DialogTitle>Open Shift</DialogTitle></DialogHeader>
-          <div className="space-y-4">
-            <div className="space-y-1.5">
-              <label className="text-xs font-medium text-muted-foreground">Opening Cash Balance</label>
-              <Input
-                type="number"
-                value={openingBalance}
-                onChange={(e) => setOpeningBalance(e.target.value)}
-                placeholder="0.00"
-                autoFocus
-              />
-              <p className="text-xs text-muted-foreground">Cash physically present in the till</p>
-            </div>
-            <Button onClick={handleOpen} className="w-full">Open Shift</Button>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* Close shift dialog */}
-      <Dialog open={closeDialog} onOpenChange={setCloseDialog}>
-        <DialogContent className="sm:max-w-[380px]">
-          <DialogHeader><DialogTitle>Close Shift</DialogTitle></DialogHeader>
-          <div className="space-y-4">
-            <div className="space-y-1.5">
-              <label className="text-xs font-medium text-muted-foreground">Actual Cash Count</label>
-              <Input
-                type="number"
-                value={actualCash}
-                onChange={(e) => setActualCash(e.target.value)}
-                placeholder="Count physical cash and enter total"
-                autoFocus
-              />
-              <p className="text-xs text-muted-foreground">Variance will be calculated automatically</p>
-            </div>
-            <div className="space-y-1.5">
-              <label className="text-xs font-medium text-muted-foreground">Notes (optional)</label>
-              <Input value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Any cash discrepancy reason..." />
-            </div>
-            <Button onClick={handleClose} className="w-full">Close Shift</Button>
-          </div>
-        </DialogContent>
-      </Dialog>
+      {/* Shared shift dialogs — identical to POS (expected-vs-actual + variance). */}
+      <OpenShiftDialog
+        open={openDialog}
+        onClose={() => setOpenDialog(false)}
+        onOpened={() => { setOpenDialog(false); load(); }}
+      />
+      <CloseShiftDialog
+        open={closeDialog}
+        onClose={() => setCloseDialog(false)}
+        onClosed={() => { setCloseDialog(false); load(); }}
+      />
     </div>
   );
 }

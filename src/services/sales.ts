@@ -45,6 +45,66 @@ export interface PaymentEntry {
   reference?: string;
 }
 
+/**
+ * Build the final tender list submitted to {@link completeSale} from the
+ * payment modal's state.
+ *
+ * Fixes the split-payment money bug: once a cashier "Added" one split chunk
+ * (e.g. cash), the pending amount still typed in the input (e.g. the M-Pesa
+ * remainder + confirmation code) was silently dropped on Complete, so the sale
+ * was saved with only the cash tender and marked `partial`. We now flush that
+ * pending input into the tender list.
+ *
+ * Guardrails:
+ *  - Async methods (M-Pesa STK / Paystack popup) are NOT flushed here — their
+ *    tender is only appended after the push/popup actually succeeds, so
+ *    flushing would fabricate a payment that never happened.
+ *  - Cash may legitimately over-tender (change due); a flushed cash tender is
+ *    capped at the remaining balance so change is never booked as revenue.
+ */
+export function buildFinalTenders(opts: {
+  addedPayments: PaymentEntry[];
+  pendingAmount: number;
+  pendingMethodId: string;
+  pendingMethodName: string;
+  pendingReference?: string;
+  pendingIsAsync: boolean;
+  saleTotal: number;
+}): PaymentEntry[] {
+  const {
+    addedPayments, pendingAmount, pendingMethodId, pendingMethodName,
+    pendingReference, pendingIsAsync, saleTotal,
+  } = opts;
+
+  // No split chunks added yet — legacy single-payment behaviour: use the
+  // typed amount (or the full total if the cashier just hit Pay).
+  if (addedPayments.length === 0) {
+    return [{
+      method_id: pendingMethodId,
+      method_name: pendingMethodName || "Cash",
+      amount: pendingAmount > 0 ? pendingAmount : saleTotal,
+      reference: pendingReference || undefined,
+    }];
+  }
+
+  const out = [...addedPayments];
+  if (pendingAmount > 0 && !pendingIsAsync) {
+    const paidBefore = addedPayments.reduce((s, p) => s + p.amount, 0);
+    const remaining = Math.max(0, saleTotal - paidBefore);
+    const isCash = pendingMethodId === "cash";
+    const recordAmt = isCash ? Math.min(pendingAmount, remaining) : pendingAmount;
+    if (recordAmt > 0) {
+      out.push({
+        method_id: pendingMethodId,
+        method_name: pendingMethodName,
+        amount: recordAmt,
+        reference: pendingReference || undefined,
+      });
+    }
+  }
+  return out;
+}
+
 export interface PaymentMethod {
   id: string;
   name: string;

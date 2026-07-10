@@ -123,6 +123,12 @@ Component composition     File system operations
 - Compact option: 32px row height
 - POS screen: optimized for speed, larger touch targets
 
+### Data tables & selection (ALWAYS — no exceptions)
+- **Every data table must be searchable AND paginated.** Never render an unbounded list of rows. Add a search/filter input and pagination (or virtualized/infinite scroll) from the start — even if the current dataset is small, it will grow.
+- **Never use a plain `<Select>` for lists that can grow large** (staff, customers, products, suppliers, accounts, etc.). Use a **searchable combobox** (type-to-filter). Plain selects are only acceptable for short, fixed enums (e.g. status, unit type).
+- Empty states are procedural: when a picker/table has nothing to choose, show a CTA that creates the missing thing (and routes the user there), never a dead empty dropdown.
+- Forms: do not cram multiple inputs/selects into a single tight row. Group related fields, give them room (labels above inputs, sensible widths), and prefer a dialog or well-spaced section over an inline strip of controls.
+
 ---
 
 ## 4. Code Conventions
