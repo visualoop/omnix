@@ -13,6 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Combobox } from "@/components/ui/combobox";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
@@ -252,16 +253,24 @@ function BookingDialog({ open, preset, onClose, onBooked }: {
         <div className="space-y-3">
           <div className="grid grid-cols-2 gap-3">
             <Field label="Client">
-              <Select value={clientId} onValueChange={(v) => setClientId(v as string)}>
-                <SelectTrigger><SelectValue placeholder="Walk-in" /></SelectTrigger>
-                <SelectContent>{clients.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent>
-              </Select>
+              <Combobox
+                value={clientId}
+                onChange={setClientId}
+                options={clients.map((c) => ({ value: c.id, label: c.name }))}
+                placeholder="Walk-in"
+                searchPlaceholder="Search clients…"
+                emptyText="No clients match"
+              />
             </Field>
             <Field label="Staff *">
-              <Select value={staffId} onValueChange={(v) => setStaffId(v as string)}>
-                <SelectTrigger><SelectValue placeholder="Choose…" /></SelectTrigger>
-                <SelectContent>{staff.map((s) => <SelectItem key={s.id} value={s.id}>{s.display_name}</SelectItem>)}</SelectContent>
-              </Select>
+              <Combobox
+                value={staffId}
+                onChange={setStaffId}
+                options={staff.map((s) => ({ value: s.id, label: s.display_name }))}
+                placeholder="Choose staff…"
+                searchPlaceholder="Search staff…"
+                emptyText="No staff match"
+              />
             </Field>
           </div>
           <Field label="Start">
@@ -269,10 +278,13 @@ function BookingDialog({ open, preset, onClose, onBooked }: {
           </Field>
           {resources.length > 0 && (
             <Field label="Room / resource (optional)">
-              <Select value={resourceId} onValueChange={(v) => setResourceId(v as string)}>
-                <SelectTrigger><SelectValue placeholder="None" /></SelectTrigger>
-                <SelectContent>{resources.map((r) => <SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>)}</SelectContent>
-              </Select>
+              <Combobox
+                value={resourceId}
+                onChange={setResourceId}
+                options={resources.map((r) => ({ value: r.id, label: r.name, hint: r.type }))}
+                placeholder="None"
+                searchPlaceholder="Search rooms…"
+              />
             </Field>
           )}
           <Field label={`Services${totalDuration ? ` · ${totalDuration} min · ${KES(totalPrice)}` : ""}`}>
@@ -621,16 +633,18 @@ export function SalonStaffPage() {
             ) : (
               <>
                 <Field label="Team member">
-                  <Select value={pickedKey} onValueChange={(v) => setPickedKey(v as string)}>
-                    <SelectTrigger><SelectValue placeholder={available.length ? "Choose a person…" : "Everyone is enrolled"} /></SelectTrigger>
-                    <SelectContent>
-                      {available.map((p) => (
-                        <SelectItem key={`${p.kind}:${p.id}`} value={`${p.kind}:${p.id}`}>
-                          {p.full_name}{p.subtitle ? ` · ${p.subtitle}` : ""}{p.kind === "user" ? "  (login)" : ""}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <Combobox
+                    value={pickedKey}
+                    onChange={setPickedKey}
+                    options={available.map((p) => ({
+                      value: `${p.kind}:${p.id}`,
+                      label: `${p.full_name}${p.subtitle ? ` · ${p.subtitle}` : ""}`,
+                      hint: p.kind === "user" ? "login" : undefined,
+                    }))}
+                    placeholder={available.length ? "Choose a person…" : "Everyone is enrolled"}
+                    searchPlaceholder="Search people…"
+                    emptyText="No matches"
+                  />
                   {available.length === 0 && (
                     <p className="text-[11.5px] text-muted-foreground">Everyone you've added is already enrolled. Add more people in <button onClick={() => { setAdding(false); navigate("/hr/employees"); }} className="underline hover:text-foreground">Staff</button>.</p>
                   )}
@@ -789,7 +803,7 @@ export function SalonPackagesPage() {
       {adding && (
         <div className="flex flex-wrap items-end gap-2 mb-3 rounded-md border border-border p-3">
           <Field label="Name"><Input value={name} onChange={(e) => setName(e.target.value)} className="w-44" placeholder="e.g. 10 massages" /></Field>
-          <Field label="Service"><Select value={serviceId} onValueChange={(v) => setServiceId(v as string)}><SelectTrigger className="w-40"><SelectValue placeholder="Choose…" /></SelectTrigger><SelectContent>{services.map((s) => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}</SelectContent></Select></Field>
+          <Field label="Service"><Combobox value={serviceId} onChange={setServiceId} options={services.map((s) => ({ value: s.id, label: s.name }))} placeholder="Choose…" searchPlaceholder="Search services…" className="w-40" /></Field>
           <Field label="Sessions"><Input type="number" value={sessions} onChange={(e) => setSessions(e.target.value)} className="w-20 text-right tabular-nums" /></Field>
           <Field label="Price"><Input type="number" value={price} onChange={(e) => setPrice(e.target.value)} className="w-24 text-right tabular-nums" /></Field>
           <Field label="Valid (days)"><Input type="number" value={validity} onChange={(e) => setValidity(e.target.value)} className="w-24 text-right tabular-nums" placeholder="∞" /></Field>
@@ -952,7 +966,7 @@ function ClientSheet({ client, onClose }: { client: Customer | null; onClose: ()
             )}
             {allPkgs.length > 0 && (
               <div className="flex items-end gap-2">
-                <Field label="Sell package"><Select value={sellPkgId} onValueChange={(v) => setSellPkgId(v as string)}><SelectTrigger className="w-40"><SelectValue /></SelectTrigger><SelectContent>{allPkgs.map((p) => <SelectItem key={p.id} value={p.id}>{p.name} · {KES(p.price)}</SelectItem>)}</SelectContent></Select></Field>
+                <Field label="Sell package"><Combobox value={sellPkgId} onChange={setSellPkgId} options={allPkgs.map((p) => ({ value: p.id, label: `${p.name} · ${KES(p.price)}` }))} placeholder="Choose package…" searchPlaceholder="Search packages…" className="w-40" /></Field>
                 <Select value={sellMethodId} onValueChange={(v) => setSellMethodId(v as string)}><SelectTrigger className="w-24"><SelectValue /></SelectTrigger><SelectContent>{methods.map((m) => <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>)}</SelectContent></Select>
                 <Button size="sm" onClick={sell} disabled={busy}>Sell</Button>
               </div>
