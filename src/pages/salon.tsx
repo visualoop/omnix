@@ -25,15 +25,16 @@ import {
   moduleAccent, ModuleMasthead, ModuleTable, ModuleTHead, ModuleEmpty, ModuleSpinner,
 } from "@/components/shared/module-kit";
 import {
-  listServices, createService, updateService, listStaff, createStaff, setStaffSkills, listStaffSkills,
+  listServices, createService, updateService, listStaff, setStaffSkills, listStaffSkills,
   listAppointments, getAppointment, bookAppointment, updateAppointmentStatus, checkoutAppointment,
   commissionsByStaff, addMinutesIso,
   getServiceProducts, setServiceProducts, servicePopularity,
   getClientProfile, upsertClientProfile, listClientVisits,
   listPackages, createPackage, sellPackage, listClientPackages,
   listResources, createResource,
+  listEnrollableStaff, enrolStaff,
   type SalonService, type SalonStaff, type SalonAppointment, type AppointmentStatus, type StaffCommissionRow,
-  type ServicePopularityRow, type SalonPackage, type ClientPackage, type SalonResource,
+  type ServicePopularityRow, type SalonPackage, type ClientPackage, type SalonResource, type EnrollablePerson,
 } from "@/services/salon";
 import { getProducts, type Product } from "@/services/inventory";
 import { listEmployees } from "@/services/employees";
@@ -500,24 +501,29 @@ export function SalonStaffPage() {
   const [services, setServices] = useState<SalonService[]>([]);
   const [loading, setLoading] = useState(true);
   const [adding, setAdding] = useState(false);
-  const [empId, setEmpId] = useState(""); const [comm, setComm] = useState("");
+  const [pickedKey, setPickedKey] = useState(""); const [comm, setComm] = useState("");
   const [employees, setEmployees] = useState<Array<{ id: string; full_name: string; job_title: string; phone: string | null }>>([]);
+  const [enrollable, setEnrollable] = useState<EnrollablePerson[]>([]);
   const [skillsFor, setSkillsFor] = useState<SalonStaff | null>(null);
   const navigate = useNavigate();
   const load = () => {
     setLoading(true);
-    Promise.all([listStaff(true), listServices(), listEmployees({ active: true })])
-      .then(([s, sv, emp]) => { setStaff(s); setServices(sv); setEmployees(emp.map((e) => ({ id: e.id, full_name: e.full_name, job_title: e.job_title, phone: e.phone }))); })
+    Promise.all([listStaff(true), listServices(), listEnrollableStaff(), listEmployees({ active: true })])
+      .then(([s, sv, enr, emp]) => {
+        setStaff(s); setServices(sv); setEnrollable(enr);
+        setEmployees(emp.map((e) => ({ id: e.id, full_name: e.full_name, job_title: e.job_title, phone: e.phone })));
+      })
       .finally(() => setLoading(false));
   };
   useEffect(() => { load(); }, []);
-  // Employees not already enrolled as salon staff.
+  // People available to enrol: employees not already enrolled, plus any login
+  // user without an employee record (they materialize one on enrol).
   const enrolledEmpIds = new Set(staff.map((s) => s.employee_id).filter(Boolean));
-  const availableEmployees = employees.filter((e) => !enrolledEmpIds.has(e.id));
+  const available = enrollable.filter((p) => (p.kind === "user" ? true : !enrolledEmpIds.has(p.id)));
   const add = async () => {
-    const emp = employees.find((e) => e.id === empId);
-    if (!emp) { toast.error("Pick a team member from Staff."); return; }
-    try { await createStaff({ display_name: emp.full_name, employee_id: emp.id, commission_default_pct: parseFloat(comm) || 0 }); setEmpId(""); setComm(""); setAdding(false); load(); }
+    const person = available.find((p) => `${p.kind}:${p.id}` === pickedKey);
+    if (!person) { toast.error("Pick a team member."); return; }
+    try { await enrolStaff(person, parseFloat(comm) || 0); setPickedKey(""); setComm(""); setAdding(false); load(); }
     catch (e) { toast.error(String(e)); }
   };
   return (
@@ -598,15 +604,15 @@ export function SalonStaffPage() {
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="text-[15px]">Enrol a team member</DialogTitle>
-            <DialogDescription>Pick someone from Staff (HR) and set their default commission. They keep one record across the whole app.</DialogDescription>
+            <DialogDescription>Pick anyone you've added — from Staff (HR) or Settings → Users — and set their default commission. Everyone keeps one record across the app.</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-1">
-            {employees.length === 0 ? (
+            {enrollable.length === 0 ? (
               <div className="rounded-lg border border-dashed border-border px-4 py-6 text-center space-y-3">
                 <UsersThree className="h-7 w-7 mx-auto text-muted-foreground" weight="fill" />
                 <div className="space-y-1">
-                  <p className="text-[13px] font-medium">No staff yet</p>
-                  <p className="text-[12px] text-muted-foreground leading-relaxed">Stylists and therapists live in Staff (HR). Create a person there first, then come back to enrol them here.</p>
+                  <p className="text-[13px] font-medium">No people to enrol yet</p>
+                  <p className="text-[12px] text-muted-foreground leading-relaxed">Add a team member first — then come back to enrol them as a stylist or therapist.</p>
                 </div>
                 <Button size="sm" className={cn(BRAND_BTN)} onClick={() => { setAdding(false); navigate("/hr/employees"); }}>
                   <Plus className="h-3.5 w-3.5 mr-1.5" /> Create staff
@@ -615,12 +621,18 @@ export function SalonStaffPage() {
             ) : (
               <>
                 <Field label="Team member">
-                  <Select value={empId} onValueChange={(v) => setEmpId(v as string)}>
-                    <SelectTrigger><SelectValue placeholder={availableEmployees.length ? "Choose from Staff…" : "Everyone is enrolled"} /></SelectTrigger>
-                    <SelectContent>{availableEmployees.map((e) => <SelectItem key={e.id} value={e.id}>{e.full_name}{e.job_title ? ` · ${e.job_title}` : ""}</SelectItem>)}</SelectContent>
+                  <Select value={pickedKey} onValueChange={(v) => setPickedKey(v as string)}>
+                    <SelectTrigger><SelectValue placeholder={available.length ? "Choose a person…" : "Everyone is enrolled"} /></SelectTrigger>
+                    <SelectContent>
+                      {available.map((p) => (
+                        <SelectItem key={`${p.kind}:${p.id}`} value={`${p.kind}:${p.id}`}>
+                          {p.full_name}{p.subtitle ? ` · ${p.subtitle}` : ""}{p.kind === "user" ? "  (login)" : ""}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
                   </Select>
-                  {availableEmployees.length === 0 && (
-                    <p className="text-[11.5px] text-muted-foreground">Everyone in Staff is already enrolled. Add more people in <button onClick={() => { setAdding(false); navigate("/hr/employees"); }} className="underline hover:text-foreground">Staff</button>.</p>
+                  {available.length === 0 && (
+                    <p className="text-[11.5px] text-muted-foreground">Everyone you've added is already enrolled. Add more people in <button onClick={() => { setAdding(false); navigate("/hr/employees"); }} className="underline hover:text-foreground">Staff</button>.</p>
                   )}
                 </Field>
                 <Field label="Default commission %"><Input type="number" value={comm} onChange={(e) => setComm(e.target.value)} className="text-right tabular-nums" placeholder="0" /></Field>
@@ -629,7 +641,7 @@ export function SalonStaffPage() {
           </div>
           <DialogFooter>
             <Button variant="outline" size="sm" onClick={() => setAdding(false)}>Cancel</Button>
-            {employees.length > 0 && <Button size="sm" className={cn(BRAND_BTN)} onClick={add} disabled={!empId}>Enrol</Button>}
+            {enrollable.length > 0 && <Button size="sm" className={cn(BRAND_BTN)} onClick={add} disabled={!pickedKey}>Enrol</Button>}
           </DialogFooter>
         </DialogContent>
       </Dialog>

@@ -12,6 +12,7 @@ import { query, execute, transaction } from "@/lib/db";
 import { requirePermission } from "@/services/rbac";
 import { getActiveBranchId } from "@/stores/active-branch";
 import { completeSale, type CartItem, type PaymentEntry } from "@/services/sales";
+import { listEmployees, listLinkableUsers, upsertEmployee } from "@/services/employees";
 
 const uid = () => crypto.randomUUID();
 const nowIso = () => new Date().toISOString();
@@ -177,6 +178,45 @@ export async function createStaff(input: {
     [id, input.employee_id ?? null, input.user_id ?? null, input.display_name, input.color ?? null, input.commission_default_pct ?? 0],
   );
   return id;
+}
+
+export interface EnrollablePerson {
+  kind: "employee" | "user";
+  id: string;
+  full_name: string;
+  subtitle: string | null; // job title (employee) or role (login user)
+}
+
+/**
+ * People who can be enrolled as salon staff: active HR employees PLUS login
+ * users who don't yet have an employee record. This is the fix for "I added
+ * staff in Settings but can't select them" — whoever you create (Settings →
+ * Users or HR → Employees) shows up here.
+ */
+export async function listEnrollableStaff(): Promise<EnrollablePerson[]> {
+  const [emps, users] = await Promise.all([listEmployees({ active: true }), listLinkableUsers()]);
+  return [
+    ...emps.map((e) => ({ kind: "employee" as const, id: e.id, full_name: e.full_name, subtitle: e.job_title || null })),
+    ...users.map((u) => ({ kind: "user" as const, id: u.id, full_name: u.full_name || u.username, subtitle: u.role || null })),
+  ];
+}
+
+/**
+ * Enrol a person as salon staff. For a login-only user we first materialize a
+ * linked HR employee (so salon_staff.employee_id stays valid and commissions /
+ * reports keep working), then create the staff row — no duplicate people.
+ */
+export async function enrolStaff(person: EnrollablePerson, commissionPct: number): Promise<string> {
+  await requirePermission("salon.staff.manage", { entityType: "salon_staff" });
+  let employeeId = person.id;
+  if (person.kind === "user") {
+    employeeId = await upsertEmployee({
+      full_name: person.full_name,
+      job_title: person.subtitle || "Stylist",
+      user_id: person.id,
+    });
+  }
+  return createStaff({ display_name: person.full_name, employee_id: employeeId, commission_default_pct: commissionPct });
 }
 
 export async function setStaffSkills(staffId: string, serviceIds: string[]): Promise<void> {

@@ -21,12 +21,51 @@ vi.mock("@/services/rbac", () => ({ requirePermission: vi.fn().mockResolvedValue
 vi.mock("@/stores/active-branch", () => ({ getActiveBranchId: () => "" }));
 vi.mock("@/services/sales", () => ({ completeSale: (...a: unknown[]) => completeSale(...a), getPaymentMethods: vi.fn() }));
 
+const upsertEmployee = vi.fn();
+const listEmployees = vi.fn();
+const listLinkableUsers = vi.fn();
+vi.mock("@/services/employees", () => ({
+  upsertEmployee: (...a: unknown[]) => upsertEmployee(...a),
+  listEmployees: (...a: unknown[]) => listEmployees(...a),
+  listLinkableUsers: (...a: unknown[]) => listLinkableUsers(...a),
+}));
+
 import {
   timeToMin, addMinutesIso, intervalsOverlap, canTransitionAppt,
   isStaffAvailable, bookAppointment, setServiceProducts, sellPackage, isResourceAvailable,
+  listEnrollableStaff, enrolStaff,
 } from "@/services/salon";
 
-beforeEach(() => { query.mockReset(); execute.mockReset(); transaction.mockReset(); completeSale.mockReset(); });
+beforeEach(() => { query.mockReset(); execute.mockReset(); transaction.mockReset(); completeSale.mockReset(); upsertEmployee.mockReset(); listEmployees.mockReset(); listLinkableUsers.mockReset(); });
+
+describe("staff enrolment (source = employees ∪ users)", () => {
+  it("lists active employees and login-users-without-employee together", async () => {
+    listEmployees.mockResolvedValue([{ id: "emp-1", full_name: "Amina", job_title: "Stylist" }]);
+    listLinkableUsers.mockResolvedValue([{ id: "user-1", full_name: "Brian", username: "brian", role: "cashier" }]);
+    const people = await listEnrollableStaff();
+    expect(people).toEqual([
+      { kind: "employee", id: "emp-1", full_name: "Amina", subtitle: "Stylist" },
+      { kind: "user", id: "user-1", full_name: "Brian", subtitle: "cashier" },
+    ]);
+  });
+
+  it("materializes a linked employee for a login-only user, then creates staff", async () => {
+    upsertEmployee.mockResolvedValue("emp-new");
+    execute.mockResolvedValue(undefined);
+    await enrolStaff({ kind: "user", id: "user-1", full_name: "Jane", subtitle: "cashier" }, 10);
+    expect(upsertEmployee).toHaveBeenCalledWith(expect.objectContaining({ full_name: "Jane", user_id: "user-1" }));
+    const insert = execute.mock.calls.find((c) => String(c[0]).includes("INSERT INTO salon_staff"));
+    expect(insert?.[1]).toContain("emp-new"); // salon_staff.employee_id
+  });
+
+  it("enrols an existing employee directly without creating a new employee", async () => {
+    execute.mockResolvedValue(undefined);
+    await enrolStaff({ kind: "employee", id: "emp-9", full_name: "Bob", subtitle: null }, 5);
+    expect(upsertEmployee).not.toHaveBeenCalled();
+    const insert = execute.mock.calls.find((c) => String(c[0]).includes("INSERT INTO salon_staff"));
+    expect(insert?.[1]).toContain("emp-9");
+  });
+});
 
 describe("time helpers", () => {
   it("timeToMin parses HH:MM", () => {
