@@ -4,7 +4,7 @@
  */
 import { useEffect, useMemo, useState } from "react";
 import {
-  Plus, CircleNotch as Loader2, CaretLeft, CaretRight, Sparkle,
+  Plus, CircleNotch as Loader2, CaretLeft, CaretRight,
   CheckCircle, Receipt, Scissors, ArrowSquareOut, UsersThree, House,
 } from "@phosphor-icons/react";
 import { useNavigate } from "react-router-dom";
@@ -247,7 +247,7 @@ function BookingDialog({ open, preset, onClose, onBooked }: {
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2 text-[15px]"><Sparkle className="size-4 text-primary" /> New appointment</DialogTitle>
+          <DialogTitle className="flex items-center gap-2 text-[15px]"><Scissors className="size-4 text-primary" /> New appointment</DialogTitle>
           <DialogDescription className="text-[12px]">Book a client with a staff member. End time is set from the services' duration.</DialogDescription>
         </DialogHeader>
         <div className="space-y-3">
@@ -304,7 +304,7 @@ function BookingDialog({ open, preset, onClose, onBooked }: {
         <DialogFooter>
           <Button variant="outline" size="sm" onClick={onClose} disabled={submitting}>Cancel</Button>
           <Button size="sm" onClick={submit} disabled={submitting || !staffId || pickedServices.length === 0}>
-            {submitting ? <Loader2 className="size-4 animate-spin" /> : <Sparkle className="size-4" />} Book
+            {submitting ? <Loader2 className="size-4 animate-spin" /> : <Scissors className="size-4" />} Book
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -366,7 +366,7 @@ function AppointmentSheet({ apptId, onClose, onChanged }: { apptId: string | nul
   return (
     <Sheet open={!!apptId} onOpenChange={(v) => !v && onClose()}>
       <SheetContent className="w-full sm:w-[440px] sm:max-w-[440px]">
-        <SheetHeader><SheetTitle className="flex items-center gap-2"><Sparkle className="h-4 w-4 text-primary" /><span className="font-mono">{appt?.appt_number ?? "…"}</span></SheetTitle></SheetHeader>
+        <SheetHeader><SheetTitle className="flex items-center gap-2"><Scissors className="h-4 w-4 text-primary" /><span className="font-mono">{appt?.appt_number ?? "…"}</span></SheetTitle></SheetHeader>
         {loading || !appt ? <div className="flex justify-center py-16"><Loader2 className="size-5 animate-spin" /></div> : (
           <div className="flex-1 overflow-auto px-1 py-3 space-y-4 text-[13px]">
             <Badge variant="outline" className={cn("text-[10px] capitalize", STATUS_STYLE[appt.status])}>{appt.status.replace("_", " ")}</Badge>
@@ -796,7 +796,7 @@ export function SalonPackagesPage() {
         actions={<Button size="sm" className={cn("cursor-pointer", BRAND_BTN)} onClick={() => setEditing("new")}><Plus className="h-3.5 w-3.5 mr-1.5" /> New package</Button>} />
       <PackageDialog target={editing} services={services} onClose={() => setEditing(null)} onSaved={() => { setEditing(null); load(); }} />
       {loading ? <ModuleSpinner /> : packages.length === 0 ? (
-        <ModuleEmpty icon={Sparkle} title="No packages yet" hint="Create a prepaid bundle (e.g. 10 sessions) to sell to clients." />
+        <ModuleEmpty icon={Scissors} title="No packages yet" hint="Create a prepaid bundle (e.g. 10 sessions) to sell to clients." />
       ) : (
         <ModuleTable>
           <ModuleTHead><tr><th className="text-left px-3 py-2">Package</th><th className="text-left px-3 py-2">Service</th><th className="text-right px-3 py-2">Sessions</th><th className="text-right px-3 py-2">Price</th><th className="text-right px-3 py-2">Validity</th></tr></ModuleTHead>
@@ -928,7 +928,7 @@ export function SalonClientsPage() {
       <div className="mb-3 max-w-[280px]"><Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search clients…" className="h-8 text-xs" /></div>
       <ClientSheet client={openClient} onClose={() => setOpenClient(null)} />
       {loading ? <ModuleSpinner /> : clients.length === 0 ? (
-        <ModuleEmpty icon={Sparkle} title="No clients" hint="Clients are your Core customers — add them from the customer list or at booking." />
+        <ModuleEmpty icon={Scissors} title="No clients" hint="Clients are your Core customers — add them from the customer list or at booking." />
       ) : (
         <ModuleTable>
           <ModuleTHead><tr><th className="text-left px-3 py-2">Name</th><th className="text-left px-3 py-2">Phone</th></tr></ModuleTHead>
