@@ -40,7 +40,7 @@ export function CustomersPage() {
   const navigate = useNavigate();
   const userId = useAuthStore((s) => s.user?.id);
 
-  const list = useListData((q) => pageCustomers(q), { pageSize: 50 });
+  const list = useListData(pageCustomers, { pageSize: 50 });
   // Aggregate stats over ALL customers (not just the current page).
   const [stats, setStats] = useState({ owed: 0, overLimit: 0 });
   const [statsTick, setStatsTick] = useState(0);

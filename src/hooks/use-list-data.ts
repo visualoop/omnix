@@ -2,7 +2,14 @@
  * useListData — the single hook every paginated list page uses.
  *
  * Contract:
- *   const list = useListData((q) => listSuppliers(q), { pageSize: 50 });
+ *   // Pass a STABLE fetcher: a module-level page fn directly, or a
+ *   // useCallback when it captures filter state. An inline arrow that is
+ *   // recreated every render will refetch in a loop (the effect depends on
+ *   // the fetcher identity so filter changes can trigger a refetch).
+ *   const list = useListData(pageSuppliers, { pageSize: 50 });
+ *   // or, with a captured filter:
+ *   const fetcher = useCallback((q) => pageSales({ ...q, status }), [status]);
+ *   const list = useListData(fetcher, { pageSize: 50 });
  *
  *   list.rows       - current page of records
  *   list.loading    - true while a fetch is in flight
