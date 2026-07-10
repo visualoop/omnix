@@ -370,9 +370,15 @@ function AppointmentSheet({ apptId, onClose, onChanged }: { apptId: string | nul
         {loading || !appt ? <div className="flex justify-center py-16"><Loader2 className="size-5 animate-spin" /></div> : (
           <div className="flex-1 overflow-auto px-1 py-3 space-y-4 text-[13px]">
             <Badge variant="outline" className={cn("text-[10px] capitalize", STATUS_STYLE[appt.status])}>{appt.status.replace("_", " ")}</Badge>
-            <div className="rounded-md border border-border bg-muted/30 p-3 space-y-0.5">
-              <div className="font-medium">{appt.client_name ?? "Walk-in"}</div>
-              <div className="text-[12px] text-muted-foreground">{appt.staff_name} · {fmtTime(appt.starts_at)}–{fmtTime(appt.ends_at)}</div>
+            <div className="rounded-md border border-border bg-muted/30 p-3 space-y-1">
+              <div className="flex items-center justify-between gap-2">
+                <div className="font-medium">{appt.client_name ?? "Walk-in"}</div>
+                {appt.client_phone && <a href={`tel:${appt.client_phone}`} className="font-mono text-[12px] text-muted-foreground hover:text-foreground">{appt.client_phone}</a>}
+              </div>
+              <div className="text-[12px] text-muted-foreground">
+                {new Date(appt.starts_at).toLocaleDateString([], { weekday: "short", day: "numeric", month: "short" })} · {fmtTime(appt.starts_at)}–{fmtTime(appt.ends_at)}
+              </div>
+              <div className="text-[12px] text-muted-foreground">with {appt.staff_name}{appt.resource_name ? ` · ${appt.resource_name}` : ""}</div>
             </div>
             <div>
               <div className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">Services</div>

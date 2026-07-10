@@ -51,6 +51,7 @@ export interface SalonAppointment {
   appt_number: string;
   client_id: string | null;
   client_name?: string | null;
+  client_phone?: string | null;
   staff_id: string | null;
   staff_name?: string | null;
   resource_id?: string | null;
@@ -252,7 +253,7 @@ export async function setStaffHours(staffId: string, hours: Array<{ weekday: num
 // ─── Appointments ──────────────────────────────────────────────────────────────
 
 const SELECT_APPT = `
-  SELECT a.*, c.name AS client_name, s.display_name AS staff_name, r.name AS resource_name
+  SELECT a.*, c.name AS client_name, c.phone AS client_phone, s.display_name AS staff_name, r.name AS resource_name
   FROM salon_appointments a
   LEFT JOIN customers c ON c.id = a.client_id
   LEFT JOIN salon_staff s ON s.id = a.staff_id
