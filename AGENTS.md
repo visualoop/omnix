@@ -6,11 +6,20 @@ Every AI agent working on this project must follow these rules without exception
 
 ## 0. Product Identity
 
-- **Product:** Omnix
-- **First Module:** Dawa (Pharmacy Management)
-- **Architecture:** Tauri v2 desktop app + React (Vite) frontend + SQLite backend
-- **Target:** Kenyan SME pharmacies (single + same-network chains)
-- **Pricing:** Single tier, per-device license. No Standard/Pro/Enterprise.
+- **Product:** Omnix — an **offline-first ERP platform for Kenyan SMEs**, delivered as a Tauri v2 desktop app.
+- **Shape:** A shared **Core** (inventory, POS, customers, suppliers, purchasing, accounting, payments, tax/eTIMS, licensing, LAN multi-device sync, backups, audit) with **vertical modules** that plug into it. A single install runs one business; the shipped binary is branded per vertical (a "variant"), or Pro exposes several modules.
+- **Modules:**
+  - **Core** — inventory, POS, customers, suppliers, purchases, accounting, reports (every install)
+  - **Dawa** (Pharmacy) — prescriptions, expiry, interactions, controlled register, SHA/insurance, patient profiles
+  - **Retail (Soko)** — variants, price lists, loyalty, promotions, layby, shelf labels
+  - **Hardware & Equipment** — bulk pricing, contractor accounts, quotations, delivery notes, serialized units, per-unit warranty & rental
+  - **Hospitality** — tables, KOT/kitchen, recipe costing, rooms, bookings, folios
+  - **Salon / Spa** — appointments, day/week calendar, services, staff skills & commissions, packages/memberships, checkout
+  - **Electronics** — planned (IMEI/serial, warranty, repairs)
+- **Architecture:** Tauri v2 desktop shell + React (Vite) frontend + SQLite (via tauri-plugin-sql) backend. Rust handles DB, licensing, LAN server, printing, crypto.
+- **Target:** Kenyan SMEs (single shop + same-network chains). Dawa shipped first because pharmacy compliance (KRA eTIMS + SHA) is the hardest regulatory load.
+- **Pricing:** Single tier, per-device license (KES 30,000 one-time + KES 12,000/yr compliance). No Standard/Pro/Enterprise SKUs.
+- **Design bar:** Linear/Notion-grade desktop app. Distinct, non-"AI-slop" identity per module (crafted SVG marks, one distinct accent colour per module). Default dark mode.
 
 ---
 
@@ -86,6 +95,12 @@ Component composition     File system operations
 ---
 
 ## 3. UI Design Rules
+
+### Working method (do this every time — no exceptions)
+- **Before building or reshaping ANY UI, load the design skill first** (`.kiro/skills/frontend-design/SKILL.md`; use `hallmark` for greenfield pages/landing/redesigns, `emil-design-eng` for polish/interaction detail). Apply it — don't ship templated defaults.
+- **Anti-AI-slop is a hard requirement:** no purple, no random gradients, no generic library icons where a module identity shows, no unexplained green. Each module keeps its one distinct accent + crafted SVG mark. Default dark mode.
+- **Reuse before building:** check `src/components/ui` first (there is already a searchable `<Combobox>`, `<PaginationBar>`, `useListData`, entity pickers, shared shift dialogs, etc.). Don't reinvent a component that exists.
+- **Verify before shipping:** `npx tsc --noEmit`, `npx vitest run`, `node scripts/audit-codebase.mjs`, `npx vite build` (and `cd website && npx next build` for website changes) must all pass before a version bump + tag.
 
 ### Style: Linear/Notion-grade desktop app
 
