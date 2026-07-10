@@ -20,13 +20,14 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import {
-  getPurchaseOrder, createPurchaseOrder, updatePOStatus,
-  createGoodsReceipt, listSuppliers,
+  getPurchaseOrder, createPurchaseOrder, updatePOStatus,  createGoodsReceipt, listSuppliers,
   type PurchaseOrder, type Supplier,
 } from "@/services/erp";
 import { pagePurchaseOrders } from "@/services/paged";
 import { useListData } from "@/hooks/use-list-data";
 import { PaginationBar } from "@/components/pagination-bar";
+import { ShareDocMenu } from "@/components/share-doc-menu";
+import { buildPurchaseOrderPdf } from "@/services/purchase-order-pdf";
 import { getProducts, type Product } from "@/services/inventory";
 import { useAuthStore } from "@/stores/auth";
 import { toast } from "sonner";
@@ -381,6 +382,15 @@ export function PurchaseOrderDetailPage() {
         </div>
         <div className="flex items-center gap-2">
           <POStatusBadge status={po.status} />
+          <ShareDocMenu
+            getPdf={() => buildPurchaseOrderPdf(po, items)}
+            filename={`PO-${po.po_number}`}
+            phone={po.supplier_phone}
+            email={po.supplier_email}
+            subject={`Purchase Order ${po.po_number}`}
+            message={`Hello ${po.supplier_name ?? ""}, please find our purchase order ${po.po_number} (total ${money(po.total)}). The PDF is attached.`}
+            label="Send to supplier"
+          />
           {canReceive && (
             <Button onClick={() => setShowReceive(true)}>
               <PackageCheck className="h-4 w-4 mr-2" /> Receive Goods

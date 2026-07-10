@@ -188,6 +188,8 @@ export interface PurchaseOrder {
   created_at: string;
   // Joined
   supplier_name?: string;
+  supplier_phone?: string | null;
+  supplier_email?: string | null;
   user_name?: string;
   item_count?: number;
 }
@@ -224,7 +226,7 @@ export async function listPurchaseOrders(filter?: { status?: string; supplier_id
 
 export async function getPurchaseOrder(id: string): Promise<{ po: PurchaseOrder; items: POItem[] } | null> {
   const pos = await query<PurchaseOrder>(
-    `SELECT po.*, s.name as supplier_name, u.full_name as user_name
+    `SELECT po.*, s.name as supplier_name, s.phone as supplier_phone, s.email as supplier_email, u.full_name as user_name
      FROM purchase_orders po
      LEFT JOIN suppliers s ON s.id = po.supplier_id
      LEFT JOIN users u ON u.id = po.user_id
