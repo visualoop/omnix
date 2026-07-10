@@ -71,6 +71,15 @@ const CORE_NAV: NavItem[] = [
   { to: "/analytics", icon: BarChart3, label: "Analytics", permissions: ["reports.view","reports.pnl","etims.view"] },
 ];
 
+/** Settings entry — shown only to roles with at least one settings permission
+ * (owner/manager). Cashiers/viewers have none, so it's hidden entirely. */
+const SETTINGS_NAV: NavItem = {
+  to: "/settings",
+  icon: Settings,
+  label: "Settings",
+  permissions: ["settings.business", "settings.network", "settings.backup", "settings.modules"],
+};
+
 /**
  * Module verticals — each lands on its hub page directly.
  * The hub page shows all child screens as tabs.
@@ -205,18 +214,13 @@ export function Sidebar({ onCommandOpen }: { onCommandOpen: () => void }) {
 
         {/* Settings — pinned to the bottom of the rail, separated by a
             hairline rule. Settings is the boundary between every-day work
-            (above) and configuration (below). */}
-        <div className="mt-auto pt-2 border-t border-border/40">
-          <NavRow
-            item={{
-              to: "/settings",
-              icon: Settings,
-              label: "Settings",
-              permissions: ["settings.business"],
-            }}
-            collapsed={collapsed}
-          />
-        </div>
+            (above) and configuration (below). Hidden for roles without any
+            settings permission (e.g. cashiers). */}
+        {itemVisible(SETTINGS_NAV) && (
+          <div className="mt-auto pt-2 border-t border-border/40">
+            <NavRow item={SETTINGS_NAV} collapsed={collapsed} />
+          </div>
+        )}
       </nav>
 
       {/* Collapse toggle */}

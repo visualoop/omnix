@@ -75,18 +75,19 @@ describe("ProfilePicker", () => {
     expect(screen.queryByText("Use a different account")).toBeNull()
   })
 
-  it("uses a 1-column grid for ≤2 users, 2-column for 3-4, 3-column for 5+", () => {
+  it("renders one row per user in a compact scrollable list (scales without a grid)", () => {
     const onPick = vi.fn()
-    const { container, rerender } = render(<ProfilePicker users={USERS.slice(0, 1)} onPick={onPick} />)
-    expect(container.querySelector("ul")?.className).toContain("grid-cols-1")
+    const { container, rerender } = render(<ProfilePicker users={USERS.slice(0, 2)} onPick={onPick} />)
+    expect(container.querySelectorAll("li").length).toBe(2)
 
-    rerender(<ProfilePicker users={USERS.slice(0, 2)} onPick={onPick} />)
-    expect(container.querySelector("ul")?.className).toContain("grid-cols-1")
-
-    rerender(<ProfilePicker users={USERS.slice(0, 3)} onPick={onPick} />)
-    expect(container.querySelector("ul")?.className).toContain("grid-cols-2")
-
-    rerender(<ProfilePicker users={[...USERS, { id: "u4", username: "v", full_name: "V", role: "viewer", active: 1 }, { id: "u5", username: "v2", full_name: "V2", role: "viewer", active: 1 }]} onPick={onPick} />)
-    expect(container.querySelector("ul")?.className).toContain("grid-cols-3")
+    const manyUsers = [
+      ...USERS,
+      { id: "u4", username: "v", full_name: "V", role: "viewer", active: 1 } as User,
+      { id: "u5", username: "v2", full_name: "V2", role: "viewer", active: 1 } as User,
+    ]
+    rerender(<ProfilePicker users={manyUsers} onPick={onPick} />)
+    expect(container.querySelectorAll("li").length).toBe(5)
+    // Stays a compact, scrollable list regardless of count — no exploding grid.
+    expect(container.querySelector("ul")?.className).toContain("overflow-y-auto")
   })
 })
