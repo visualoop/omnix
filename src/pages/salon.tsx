@@ -249,6 +249,28 @@ function BookingDialog({ open, preset, onClose, onBooked }: {
     finally { setSubmitting(false); }
   };
 
+  // Walk-in: book the appointment for now + send straight to POS to take
+  // payment. Reuses the appointment→POS path so commissions + package
+  // coverage still run on completion — no separate "instant sale" code path.
+  const bookNavigate = useNavigate();
+  const submitAndPay = async () => {
+    if (!staffId) { toast.error("Choose a staff member."); return; }
+    if (pickedServices.length === 0) { toast.error("Pick at least one service."); return; }
+    setSubmitting(true);
+    try {
+      const { id } = await bookAppointment({ client_id: clientId || undefined, staff_id: staffId, starts_at: new Date(startIso).toISOString(), service_ids: pickedServices, resource_id: resourceId || undefined, notes: notes.trim() || undefined });
+      const payload = await prepareAppointmentForPos(id);
+      useCartStore.getState().loadSnapshot(payload.items, 0, payload.customerId, {
+        tipEmployeeId: payload.tipEmployeeId,
+        source: { type: "salon_appointment", id, label: payload.label },
+      });
+      toast.success("Booked — take payment in POS");
+      onBooked();
+      bookNavigate("/pos/sale");
+    } catch (e) { toast.error(String(e)); }
+    finally { setSubmitting(false); }
+  };
+
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="sm:max-w-lg">
@@ -314,8 +336,11 @@ function BookingDialog({ open, preset, onClose, onBooked }: {
         </div>
         <DialogFooter>
           <Button variant="outline" size="sm" onClick={onClose} disabled={submitting}>Cancel</Button>
-          <Button size="sm" onClick={submit} disabled={submitting || !staffId || pickedServices.length === 0}>
+          <Button variant="outline" size="sm" onClick={submit} disabled={submitting || !staffId || pickedServices.length === 0}>
             {submitting ? <Loader2 className="size-4 animate-spin" /> : <Scissors className="size-4" />} Book
+          </Button>
+          <Button size="sm" className={cn(BRAND_BTN)} onClick={submitAndPay} disabled={submitting || !staffId || pickedServices.length === 0} title="Book now and take payment in POS (walk-in)">
+            <Receipt className="size-4 mr-1" /> Book &amp; pay in POS
           </Button>
         </DialogFooter>
       </DialogContent>
