@@ -33,7 +33,7 @@ vi.mock("@/services/employees", () => ({
 import {
   timeToMin, addMinutesIso, intervalsOverlap, canTransitionAppt,
   isStaffAvailable, bookAppointment, setServiceProducts, sellPackage, isResourceAvailable,
-  listEnrollableStaff, enrolStaff, updatePackage, finalizeSalonAppointment, finalizeSalonPackageSale,
+  listEnrollableStaff, enrolStaff, updatePackage, finalizeSalonAppointment, finalizeSalonPackageSale, prepareAppointmentForPos,
 } from "@/services/salon";
 
 beforeEach(() => { query.mockReset(); execute.mockReset(); transaction.mockReset(); completeSale.mockReset(); upsertEmployee.mockReset(); listEmployees.mockReset(); listLinkableUsers.mockReset(); });
@@ -106,6 +106,21 @@ describe("finalizeSalonAppointment (POS completion)", () => {
       .mockResolvedValueOnce([]);
     await finalizeSalonAppointment("appt1", "sale2");
     expect(transaction).not.toHaveBeenCalled();
+  });
+});
+
+describe("prepareAppointmentForPos (FK-787 guard)", () => {
+  it("resolves the tip recipient to the staff's employee id, not the salon_staff id", async () => {
+    query
+      .mockResolvedValueOnce([{ id: "appt1", sale_id: null, client_id: null, staff_id: "staff-row-1", appt_number: "A1", client_name: "Jane" }]) // getAppointment: appt
+      .mockResolvedValueOnce([{ id: "as1", service_id: "sv1", staff_id: "staff-row-1", name: "Cut", price: 500, duration_min: 30, commission_amount: 50 }]) // appt services
+      .mockResolvedValueOnce([{ id: "sv1", product_id: "prod1", tax_rate: 16 }]) // buildServiceLines productMap
+      .mockResolvedValueOnce([{ employee_id: "emp-99" }]); // staffEmployeeId lookup
+    const res = await prepareAppointmentForPos("appt1");
+    // sales.tip_employee_id FKs employees(id) — must be the employee, not the staff row id.
+    expect(res.tipEmployeeId).toBe("emp-99");
+    expect(res.items).toHaveLength(1);
+    expect(res.items[0]).toMatchObject({ service_id: "sv1", unit_price: 500 });
   });
 });
 
