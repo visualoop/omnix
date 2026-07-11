@@ -11,9 +11,9 @@
  */
 import { pagedQuery } from "@/lib/paged-query";
 import type { ListPage, ListQuery } from "@/lib/list-types";
-import type { Customer } from "@/services/erp";
-import type { DhaEprescription } from "@/services/dha-eprescriptions";
+import type { Customer, StockTake } from "@/services/erp";import type { DhaEprescription } from "@/services/dha-eprescriptions";
 import type { DebitNote } from "@/services/debit-notes";
+import type { FixedAsset } from "@/services/fixed-assets";
 
 // ─── Customers ─────────────────────────────────────────────────
 export async function pageCustomers(q: ListQuery): Promise<ListPage<Customer>> {
@@ -50,6 +50,37 @@ export async function pageDebitNotes(q: ListQuery): Promise<ListPage<DebitNote>>
       table: "debit_notes",
       searchColumns: ["note_number"],
       orderBy: "issue_date DESC",
+      extraWhere: [],
+      extraParams: [],
+    },
+    q,
+  );
+}
+
+// ─── Stock takes ───────────────────────────────────────────────
+export async function pageStockTakes(q: ListQuery): Promise<ListPage<StockTake>> {
+  return pagedQuery<StockTake>(
+    {
+      baseSql: `SELECT st.*, u.full_name as user_name,
+                  (SELECT COUNT(*) FROM stock_take_items WHERE stock_take_id = st.id) AS item_count
+                FROM stock_takes st LEFT JOIN users u ON u.id = st.user_id`,
+      countSql: `SELECT COUNT(*) AS n FROM stock_takes st`,
+      searchColumns: ["st.reference", "st.notes"],
+      orderBy: "st.started_at DESC",
+      extraWhere: [],
+      extraParams: [],
+    },
+    q,
+  );
+}
+
+// ─── Fixed assets ──────────────────────────────────────────────
+export async function pageFixedAssets(q: ListQuery): Promise<ListPage<FixedAsset>> {
+  return pagedQuery<FixedAsset>(
+    {
+      table: "fixed_assets",
+      searchColumns: ["asset_code", "name", "category"],
+      orderBy: "acquired_date DESC",
       extraWhere: [],
       extraParams: [],
     },

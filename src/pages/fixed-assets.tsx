@@ -1,7 +1,11 @@
-import { useEffect, useState, useCallback } from "react";
-import { Buildings, Plus } from "@phosphor-icons/react";
+import { useState } from "react";
+import { Buildings, Plus, MagnifyingGlass } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
-import { listAssets, runMonthlyDepreciation, type FixedAsset } from "@/services/fixed-assets";
+import { Input } from "@/components/ui/input";
+import { runMonthlyDepreciation, type FixedAsset } from "@/services/fixed-assets";
+import { pageFixedAssets } from "@/services/paged";
+import { useListData } from "@/hooks/use-list-data";
+import { PaginationBar } from "@/components/pagination-bar";
 import { toast } from "sonner";
 import { intlLocale } from "@/lib/intl";
 
@@ -12,23 +16,15 @@ function currentPeriod(): string {
 }
 
 export function FixedAssetsPage() {
-  const [items, setItems] = useState<FixedAsset[]>([]);
-  const [loading, setLoading] = useState(true);
+  const list = useListData(pageFixedAssets, { pageSize: 50 });
   const [running, setRunning] = useState(false);
-
-  const load = useCallback(async () => {
-    setLoading(true);
-    try { setItems(await listAssets()); } finally { setLoading(false); }
-  }, []);
-
-  useEffect(() => { load(); }, [load]);
 
   const handleRunDep = async () => {
     setRunning(true);
     try {
       const n = await runMonthlyDepreciation(currentPeriod());
       toast.success(`Depreciation posted for ${n} asset${n === 1 ? "" : "s"}`);
-      load();
+      list.refresh();
     } catch (e) {
       toast.error(String(e));
     } finally { setRunning(false); }
@@ -58,13 +54,18 @@ export function FixedAssetsPage() {
         </div>
       </header>
 
-      {loading ? (
+      <div className="relative max-w-sm">
+        <MagnifyingGlass className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        <Input value={list.search} onChange={(e) => list.setSearch(e.target.value)} placeholder="Search by code, name, category…" className="pl-9" />
+      </div>
+
+      {list.loading ? (
         <div className="py-12 text-center text-sm text-muted-foreground">Loading…</div>
-      ) : items.length === 0 ? (
+      ) : list.rows.length === 0 ? (
         <div className="py-12 text-center">
           <Buildings className="h-8 w-8 mx-auto mb-3 opacity-30" />
           <div className="text-sm text-muted-foreground">
-            No fixed assets registered yet.
+            {list.search ? "No assets match your search." : "No fixed assets registered yet."}
           </div>
         </div>
       ) : (
@@ -82,7 +83,7 @@ export function FixedAssetsPage() {
             </tr>
           </thead>
           <tbody>
-            {items.map((a) => {
+            {list.rows.map((a: FixedAsset) => {
               const book = a.cost - a.accumulated_depreciation;
               return (
                 <tr key={a.id} className="border-t border-border/50">
@@ -100,6 +101,8 @@ export function FixedAssetsPage() {
           </tbody>
         </table>
       )}
+
+      <PaginationBar list={list} />
     </div>
   );
 }

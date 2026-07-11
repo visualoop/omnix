@@ -19,18 +19,18 @@ import {
   listStockTakes, createStockTake, getStockTakeItems, recordCount, completeStockTake,
   type StockTake, type StockTakeItem,
 } from "@/services/erp";
+import { pageStockTakes } from "@/services/paged";
+import { useListData } from "@/hooks/use-list-data";
+import { PaginationBar } from "@/components/pagination-bar";
 import { useAuthStore } from "@/stores/auth";
 import { toast } from "sonner";
 import { intlLocale } from "@/lib/intl";
 
 export function StockTakesPage() {
-  const [takes, setTakes] = useState<StockTake[]>([]);
   const [creating, setCreating] = useState(false);
   const navigate = useNavigate();
   const userId = useAuthStore((s) => s.user?.id);
-
-  const load = async () => setTakes(await listStockTakes());
-  useEffect(() => { load(); }, []);
+  const list = useListData(pageStockTakes, { pageSize: 50 });
 
   const handleCreate = async () => {
     if (!userId) return;
@@ -74,10 +74,17 @@ export function StockTakesPage() {
         </div>
       </div>
 
-      {takes.length === 0 ? (
+      <div className="relative max-w-sm">
+        <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        <Input value={list.search} onChange={(e) => list.setSearch(e.target.value)} placeholder="Search by reference or notes…" className="pl-9" />
+      </div>
+
+      {list.loading ? (
+        <div className="border border-border rounded-lg p-12 text-center text-sm text-muted-foreground">Loading…</div>
+      ) : list.rows.length === 0 ? (
         <div className="border border-border rounded-lg p-12 text-center text-muted-foreground">
           <ClipboardCheck className="h-10 w-10 mx-auto mb-2 opacity-30" />
-          <p className="text-sm">No stock takes yet</p>
+          <p className="text-sm">{list.search ? "No stock takes match your search" : "No stock takes yet"}</p>
         </div>
       ) : (
         <div className="border border-border rounded-lg overflow-hidden">
@@ -94,7 +101,7 @@ export function StockTakesPage() {
               </tr>
             </thead>
             <tbody>
-              {takes.map((t) => (
+              {list.rows.map((t: StockTake) => (
                 <tr key={t.id} className="border-b border-border last:border-0 hover:bg-muted/30 cursor-pointer"
                     onClick={() => navigate(`/stock-take/${t.id}`)}>
                   <td className="px-3 py-2.5 font-mono text-xs">{t.reference}</td>
@@ -124,6 +131,8 @@ export function StockTakesPage() {
           </table>
         </div>
       )}
+
+      <PaginationBar list={list} />
     </div>
   );
 }
