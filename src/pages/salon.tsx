@@ -215,6 +215,12 @@ function BookingDialog({ open, preset, onClose, onBooked }: {
   const [startIso, setStartIso] = useState("");
   const [notes, setNotes] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [clientPkgs, setClientPkgs] = useState<ClientPackage[]>([]);
+
+  useEffect(() => {
+    if (!clientId) { setClientPkgs([]); return; }
+    listClientPackages(clientId, true).then(setClientPkgs).catch(() => setClientPkgs([]));
+  }, [clientId]);
 
   useEffect(() => {
     if (!open) return;
@@ -262,6 +268,11 @@ function BookingDialog({ open, preset, onClose, onBooked }: {
                 searchPlaceholder="Search clients…"
                 emptyText="No clients match"
               />
+              {clientPkgs.length > 0 && (
+                <p className="text-[11px] text-muted-foreground mt-1">
+                  Has {clientPkgs.length} active package{clientPkgs.length === 1 ? "" : "s"} — a matching service is auto-covered at checkout.
+                </p>
+              )}
             </Field>
             <Field label="Staff *">
               <Combobox
@@ -1115,15 +1126,13 @@ function ClientSheet({ client, onClose }: { client: Customer | null; onClose: ()
                 <Field label="Package">
                   <Combobox value={sellPkgId} onChange={setSellPkgId} options={allPkgs.map((p) => ({ value: p.id, label: `${p.name} · ${KES(p.price)}` }))} placeholder="Choose package…" searchPlaceholder="Search packages…" className="w-full" />
                 </Field>
-                <div className="flex items-end gap-2">
-                  <Field label="Pay with">
-                    <Select value={sellMethodId} onValueChange={(v) => setSellMethodId(v as string)}>
-                      <SelectTrigger className="w-40"><SelectValue placeholder="Method" /></SelectTrigger>
-                      <SelectContent>{methods.map((m) => <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>)}</SelectContent>
-                    </Select>
-                  </Field>
-                  <Button size="sm" className={cn(BRAND_BTN)} onClick={sell} disabled={busy}>Sell</Button>
-                </div>
+                <Field label="Pay with">
+                  <Select value={sellMethodId} onValueChange={(v) => setSellMethodId(v as string)}>
+                    <SelectTrigger className="w-full"><SelectValue placeholder="Method" /></SelectTrigger>
+                    <SelectContent>{methods.map((m) => <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>)}</SelectContent>
+                  </Select>
+                </Field>
+                <Button size="sm" className={cn("w-full", BRAND_BTN)} onClick={sell} disabled={busy || !sellPkgId}>Sell package</Button>
               </div>
             )}
           </div>
