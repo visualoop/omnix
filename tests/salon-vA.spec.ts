@@ -33,7 +33,7 @@ vi.mock("@/services/employees", () => ({
 import {
   timeToMin, addMinutesIso, intervalsOverlap, canTransitionAppt,
   isStaffAvailable, bookAppointment, setServiceProducts, sellPackage, isResourceAvailable,
-  listEnrollableStaff, enrolStaff, updatePackage, finalizeSalonAppointment,
+  listEnrollableStaff, enrolStaff, updatePackage, finalizeSalonAppointment, finalizeSalonPackageSale,
 } from "@/services/salon";
 
 beforeEach(() => { query.mockReset(); execute.mockReset(); transaction.mockReset(); completeSale.mockReset(); upsertEmployee.mockReset(); listEmployees.mockReset(); listLinkableUsers.mockReset(); });
@@ -106,6 +106,32 @@ describe("finalizeSalonAppointment (POS completion)", () => {
       .mockResolvedValueOnce([]);
     await finalizeSalonAppointment("appt1", "sale2");
     expect(transaction).not.toHaveBeenCalled();
+  });
+});
+
+describe("finalizeSalonPackageSale (POS package sale)", () => {
+  const pkgRow = { id: "pk1", product_id: "prod1", name: "10 massages", service_id: "svc1", sessions: 10, price: 9000, validity_days: 90 };
+
+  it("grants the client's package balance after the POS sale completes", async () => {
+    query.mockResolvedValueOnce([]);         // no existing balance for this sale
+    query.mockResolvedValueOnce([pkgRow]);   // grantClientPackage: load package
+    execute.mockResolvedValue(undefined);
+    await finalizeSalonPackageSale("pk1", "c1", "sale1");
+    const insert = execute.mock.calls.find((c) => String(c[0]).includes("INSERT INTO client_packages"));
+    expect(insert?.[1]).toContain("c1");
+    expect(insert?.[1]).toContain("sale1");
+    expect(insert?.[1]).toContain(10);       // sessions_total = sessions_remaining
+  });
+
+  it("is a no-op for a walk-in (no client to own the package)", async () => {
+    await finalizeSalonPackageSale("pk1", null, "sale1");
+    expect(execute).not.toHaveBeenCalled();
+  });
+
+  it("is idempotent when a balance already exists for the sale", async () => {
+    query.mockResolvedValueOnce([{ id: "cp-existing" }]);
+    await finalizeSalonPackageSale("pk1", "c1", "sale1");
+    expect(execute).not.toHaveBeenCalled();
   });
 });
 
@@ -210,8 +236,10 @@ describe("setServiceProducts (back-bar mapping)", () => {
 
 describe("sellPackage", () => {
   it("bills the package then records the prepaid balance", async () => {
-    query.mockResolvedValueOnce([{ id: "pk1", product_id: "prod1", name: "10 massages", service_id: "svc1", sessions: 10, price: 9000, validity_days: 90 }]);
+    const pkgRow = { id: "pk1", product_id: "prod1", name: "10 massages", service_id: "svc1", sessions: 10, price: 9000, validity_days: 90 };
+    query.mockResolvedValueOnce([pkgRow]);   // sellPackage: load package
     completeSale.mockResolvedValueOnce({ saleId: "sale1", saleItemIds: [] });
+    query.mockResolvedValueOnce([pkgRow]);   // grantClientPackage: re-load package
     execute.mockResolvedValue(undefined);
     const res = await sellPackage({ client_id: "c1", package_id: "pk1", userId: "u1", payments: [{ method_id: "m1", method_name: "Cash", amount: 9000 }] });
     expect(res.saleId).toBe("sale1");

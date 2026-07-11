@@ -797,7 +797,9 @@ export async function updatePackage(id: string, fields: {
   }
 }
 
-/** Sell a package to a client (prepaid) — books the sale + creates the balance. */
+/** Sell a package to a client (prepaid) — books the sale + creates the balance.
+ * Kept for programmatic use; the UI now routes through POS (preparePackageForPos
+ * + finalizeSalonPackageSale). */
 export async function sellPackage(input: {
   client_id: string; package_id: string; userId: string; payments: PaymentEntry[];
 }): Promise<{ saleId: string; clientPackageId: string }> {
@@ -810,14 +812,64 @@ export async function sellPackage(input: {
     input.payments, input.client_id, input.userId, 0, 0, null, 0, "salon_package", input.package_id,
   );
 
+  const clientPackageId = await grantClientPackage(input.client_id, input.package_id, saleId);
+  return { saleId, clientPackageId };
+}
+
+/** Create a client's prepaid package balance. Shared by sellPackage (direct)
+ * and finalizeSalonPackageSale (POS). Returns the new client_package id. */
+async function grantClientPackage(clientId: string, packageId: string, saleId: string): Promise<string> {
+  const [pkg] = await query<SalonPackage>(`SELECT * FROM salon_packages WHERE id = ?1`, [packageId]);
+  if (!pkg) throw new Error("Package not found.");
   const cpId = uid();
   const expiresAt = pkg.validity_days ? addMinutesIso(nowIso(), pkg.validity_days * 24 * 60) : null;
   await execute(
     `INSERT INTO client_packages (id, client_id, package_id, service_id, sessions_total, sessions_remaining, expires_at, purchase_sale_id)
      VALUES (?1, ?2, ?3, ?4, ?5, ?5, ?6, ?7)`,
-    [cpId, input.client_id, input.package_id, pkg.service_id, pkg.sessions, expiresAt, saleId],
+    [cpId, clientId, packageId, pkg.service_id, pkg.sessions, expiresAt, saleId],
   );
-  return { saleId, clientPackageId: cpId };
+  return cpId;
+}
+
+/**
+ * Load a package into the POS cart for sale through the standard payment flow.
+ * The line carries service_id so completeSale skips stock (the backing product
+ * has no batches). On completion, finalizeSalonPackageSale grants the balance.
+ */
+export async function preparePackageForPos(packageId: string): Promise<{ item: CartItem; label: string }> {
+  await requirePermission("salon.appointments.manage", { entityType: "client_package" });
+  const [pkg] = await query<SalonPackage>(`SELECT * FROM salon_packages WHERE id = ?1`, [packageId]);
+  if (!pkg) throw new Error("Package not found.");
+  return {
+    item: {
+      id: uid(),
+      product_id: pkg.product_id ?? pkg.id,
+      service_id: pkg.service_id,   // revenue-only line — skip stock in completeSale
+      name: pkg.name,
+      quantity: 1,
+      unit_price: pkg.price,
+      discount: 0,
+      tax_rate: 16,
+      total: pkg.price,
+    },
+    label: pkg.name,
+  };
+}
+
+/**
+ * Grant the client their package balance after the POS sale completes. Called
+ * from the payment modal's finalize hook (sourceType 'salon_package').
+ * Idempotent — a no-op if a balance for this sale already exists, or when the
+ * sale had no customer (a package needs a client to belong to).
+ */
+export async function finalizeSalonPackageSale(packageId: string, clientId: string | null, saleId: string): Promise<void> {
+  if (!clientId) return;
+  const [existing] = await query<{ id: string }>(
+    `SELECT id FROM client_packages WHERE purchase_sale_id = ?1 LIMIT 1`,
+    [saleId],
+  );
+  if (existing) return;
+  await grantClientPackage(clientId, packageId, saleId);
 }
 
 export async function listClientPackages(clientId: string, redeemableOnly = false): Promise<ClientPackage[]> {

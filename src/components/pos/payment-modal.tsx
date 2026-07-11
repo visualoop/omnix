@@ -41,7 +41,7 @@ interface PaymentSnapshot {
   tip: number;
   tipEmployeeId: string | null;
   serviceChargeAmount: number;
-  sourceType: "hospitality_order" | "prescription" | "layby" | "special_order" | "folio" | "hardware_quote" | "salon_appointment" | null;
+  sourceType: "hospitality_order" | "prescription" | "layby" | "special_order" | "folio" | "hardware_quote" | "salon_appointment" | "salon_package" | null;
   sourceId: string | null;
   promoId: string | null;
 }
@@ -313,6 +313,11 @@ export function PaymentModal({ open, onClose }: Props) {
       if (saleSnapshot.sourceType === "salon_appointment" && saleSnapshot.sourceId) {
         const { finalizeSalonAppointment } = await import("@/services/salon");
         await finalizeSalonAppointment(saleSnapshot.sourceId, saleId);
+      }
+
+      if (saleSnapshot.sourceType === "salon_package" && saleSnapshot.sourceId) {
+        const { finalizeSalonPackageSale } = await import("@/services/salon");
+        await finalizeSalonPackageSale(saleSnapshot.sourceId, saleSnapshot.customerId, saleId);
       }
 
       // Serialized equipment: flip each unit on the ticket to `sold` with a

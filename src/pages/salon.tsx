@@ -22,7 +22,6 @@ import { toast } from "sonner";
 import { useAuthStore } from "@/stores/auth";
 import { useCartStore } from "@/stores/cart";
 import { listCustomers, type Customer } from "@/services/erp";
-import { getPaymentMethods, type PaymentMethod } from "@/services/sales";
 import {
   moduleAccent, ModuleMasthead, ModuleTable, ModuleTHead, ModuleEmpty, ModuleSpinner,
 } from "@/components/shared/module-kit";
@@ -32,7 +31,7 @@ import {
   commissionsByStaff, addMinutesIso,
   getServiceProducts, setServiceProducts, servicePopularity,
   getClientProfile, upsertClientProfile, listClientVisits,
-  listPackages, createPackage, updatePackage, sellPackage, listClientPackages,
+  listPackages, createPackage, updatePackage, preparePackageForPos, listClientPackages,
   listResources, createResource, updateResource,
   listEnrollableStaff, enrolStaff, updateStaff,
   type SalonService, type SalonStaff, type SalonAppointment, type AppointmentStatus, type StaffCommissionRow,
@@ -1069,10 +1068,9 @@ function ClientSheet({ client, onClose }: { client: Customer | null; onClose: ()
   const [visits, setVisits] = useState<SalonAppointment[]>([]);
   const [clientPkgs, setClientPkgs] = useState<ClientPackage[]>([]);
   const [allPkgs, setAllPkgs] = useState<SalonPackage[]>([]);
-  const [methods, setMethods] = useState<PaymentMethod[]>([]);
-  const [sellPkgId, setSellPkgId] = useState(""); const [sellMethodId, setSellMethodId] = useState("");
+  const [sellPkgId, setSellPkgId] = useState("");
   const [busy, setBusy] = useState(false);
-  const user = useAuthStore((s) => s.user);
+  const navigate = useNavigate();
   const reloadPkgs = (id: string) => listClientPackages(id).then(setClientPkgs);
   useEffect(() => {
     if (!client) return;
@@ -1080,7 +1078,6 @@ function ClientSheet({ client, onClose }: { client: Customer | null; onClose: ()
     listClientVisits(client.id).then(setVisits);
     reloadPkgs(client.id);
     listPackages().then((p) => { setAllPkgs(p); setSellPkgId(p[0]?.id ?? ""); });
-    getPaymentMethods().then((m) => { setMethods(m); setSellMethodId(m[0]?.id ?? ""); });
   }, [client]);
   if (!client) return null;
   const save = async () => {
@@ -1088,13 +1085,17 @@ function ClientSheet({ client, onClose }: { client: Customer | null; onClose: ()
     try { await upsertClientProfile({ client_id: client.id, preferences: prefs, allergies, formulas, notes: null }); toast.success("Profile saved"); }
     catch (e) { toast.error(String(e)); } finally { setBusy(false); }
   };
-  const sell = async () => {
-    if (!user || !sellPkgId || !sellMethodId) { toast.error("Pick a package + payment."); return; }
-    const pkg = allPkgs.find((p) => p.id === sellPkgId)!; const method = methods.find((m) => m.id === sellMethodId)!;
+  const sellViaPos = async () => {
+    if (!sellPkgId) { toast.error("Pick a package."); return; }
     setBusy(true);
     try {
-      await sellPackage({ client_id: client.id, package_id: sellPkgId, userId: user.id, payments: [{ method_id: method.id, method_name: method.name, amount: pkg.price }] });
-      toast.success("Package sold"); reloadPkgs(client.id);
+      const { item, label } = await preparePackageForPos(sellPkgId);
+      useCartStore.getState().loadSnapshot([item], 0, client.id, {
+        source: { type: "salon_package", id: sellPkgId, label: `Package · ${label}` },
+      });
+      toast.success("Loaded in POS — take payment to complete the sale");
+      onClose();
+      navigate("/pos/sale");
     } catch (e) { toast.error(String(e)); } finally { setBusy(false); }
   };
   return (
@@ -1126,13 +1127,9 @@ function ClientSheet({ client, onClose }: { client: Customer | null; onClose: ()
                 <Field label="Package">
                   <Combobox value={sellPkgId} onChange={setSellPkgId} options={allPkgs.map((p) => ({ value: p.id, label: `${p.name} · ${KES(p.price)}` }))} placeholder="Choose package…" searchPlaceholder="Search packages…" className="w-full" />
                 </Field>
-                <Field label="Pay with">
-                  <Select value={sellMethodId} onValueChange={(v) => setSellMethodId(v as string)}>
-                    <SelectTrigger className="w-full"><SelectValue placeholder="Method" /></SelectTrigger>
-                    <SelectContent>{methods.map((m) => <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>)}</SelectContent>
-                  </Select>
-                </Field>
-                <Button size="sm" className={cn("w-full", BRAND_BTN)} onClick={sell} disabled={busy || !sellPkgId}>Sell package</Button>
+                <Button size="sm" className={cn("w-full", BRAND_BTN)} onClick={sellViaPos} disabled={busy || !sellPkgId}>
+                  <Receipt className="h-3.5 w-3.5 mr-1.5" /> Sell in POS
+                </Button>
               </div>
             )}
           </div>
