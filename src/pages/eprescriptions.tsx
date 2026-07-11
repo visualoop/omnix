@@ -6,19 +6,24 @@ import {
   CheckCircle,
   DownloadSimple,
   FileText,
+  MagnifyingGlass,
   Prescription as PrescriptionIcon,
   X,
 } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { TableRowSkeleton } from "@/components/ui/skeletons";
 import { BackButton } from "@/components/ui/back-button";
+import { PaginationBar } from "@/components/pagination-bar";
+import { useListData } from "@/hooks/use-list-data";
+import { pageEprescriptions } from "@/services/paged";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import {
-  listEprescriptions,
   getEprescriptionItems,
+  countPendingEprescriptions,
   pullEprescriptions,
   importEprescription,
   rejectEprescription,
@@ -31,22 +36,18 @@ import { intlLocale } from "@/lib/intl";
 import { toast } from "sonner";
 
 export function EprescriptionsPage() {
-  const [rows, setRows] = useState<DhaEprescription[]>([]);
-  const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
   const [detail, setDetail] = useState<DhaEprescription | null>(null);
   const [detailItems, setDetailItems] = useState<DhaEprescriptionItem[]>([]);
   const [importing, setImporting] = useState(false);
+  const [pending, setPending] = useState(0);
   const userId = useAuthStore((s) => s.user?.id);
   const navigate = useNavigate();
 
-  const load = async () => {
-    setLoading(true);
-    try {
-      setRows(await listEprescriptions());
-    } finally { setLoading(false); }
-  };
-  useEffect(() => { load(); }, []);
+  const list = useListData(pageEprescriptions, { pageSize: 50 });
+  const refreshPending = () => { countPendingEprescriptions().then(setPending).catch(() => {}); };
+  useEffect(() => { refreshPending(); }, [list.total]);
+  const refreshAll = () => { list.refresh(); refreshPending(); };
 
   useEffect(() => {
     if (!detail) { setDetailItems([]); return; }
@@ -66,7 +67,7 @@ export function EprescriptionsPage() {
       const result = await pullEprescriptions(sha.id);
       if (result.ok) {
         toast.success(`Synced ${result.imported} e-prescription${result.imported === 1 ? "" : "s"}`);
-        load();
+        refreshAll();
       } else {
         toast.error(result.error || "Sync failed");
       }
@@ -80,7 +81,7 @@ export function EprescriptionsPage() {
       const rxId = await importEprescription(detail.id, userId);
       toast.success("Imported to prescriptions");
       setDetail(null);
-      load();
+      refreshAll();
       navigate(`/pharmacy/prescriptions/${rxId}`);
     } catch (e) {
       toast.error(String(e));
@@ -88,8 +89,6 @@ export function EprescriptionsPage() {
       setImporting(false);
     }
   };
-
-  const pending = rows.filter((r) => r.status === "pending").length;
 
   return (
     <div className="space-y-5">
@@ -118,16 +117,26 @@ export function EprescriptionsPage() {
         </Card>
       )}
 
-      {loading ? (
+      <div className="relative max-w-sm">
+        <MagnifyingGlass className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        <Input
+          value={list.search}
+          onChange={(e) => list.setSearch(e.target.value)}
+          placeholder="Search patient, prescriber, DHA ref…"
+          className="pl-9"
+        />
+      </div>
+
+      {list.loading ? (
         <div className="border border-border rounded-lg overflow-hidden">
           <table className="w-full text-sm"><tbody><TableRowSkeleton cells={6} rows={4} /></tbody></table>
         </div>
-      ) : rows.length === 0 ? (
+      ) : list.rows.length === 0 ? (
         <EmptyState
           icon={PrescriptionIcon}
-          title="No e-prescriptions yet"
-          description="Sync from AfyaLink to pull e-scripts issued to this pharmacy's facility code."
-          cta={{ label: "Sync from AfyaLink", onClick: sync, icon: Sync }}
+          title={list.search ? "No matching e-prescriptions" : "No e-prescriptions yet"}
+          description={list.search ? "Try a different patient, prescriber, or DHA reference." : "Sync from AfyaLink to pull e-scripts issued to this pharmacy's facility code."}
+          cta={list.search ? undefined : { label: "Sync from AfyaLink", onClick: sync, icon: Sync }}
         />
       ) : (
         <div className="border border-border rounded-lg overflow-hidden">
@@ -143,7 +152,7 @@ export function EprescriptionsPage() {
               </tr>
             </thead>
             <tbody>
-              {rows.map((r) => (
+              {list.rows.map((r) => (
                 <tr
                   key={r.id}
                   className="border-b border-border last:border-0 hover:bg-muted/30 cursor-pointer"
@@ -168,6 +177,8 @@ export function EprescriptionsPage() {
           </table>
         </div>
       )}
+
+      <PaginationBar list={list} />
 
       <Sheet open={!!detail} onOpenChange={(o) => !o && setDetail(null)}>
         <SheetContent side="right" className="w-[520px] sm:max-w-[520px] overflow-y-auto">
@@ -228,7 +239,7 @@ export function EprescriptionsPage() {
                       await rejectEprescription(detail.id, "Rejected by pharmacist");
                       toast.success("Rejected");
                       setDetail(null);
-                      load();
+                      refreshAll();
                     }}
                   >
                     <X className="h-3.5 w-3.5" />

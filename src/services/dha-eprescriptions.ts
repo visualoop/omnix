@@ -207,6 +207,13 @@ export async function listEprescriptions(status?: DhaEprescription["status"]): P
   );
 }
 
+export async function countPendingEprescriptions(): Promise<number> {
+  const [r] = await query<{ n: number }>(
+    `SELECT COUNT(*) AS n FROM dha_eprescriptions WHERE status = 'pending'`,
+  );
+  return r?.n ?? 0;
+}
+
 export async function getEprescriptionItems(eprescriptionId: string): Promise<DhaEprescriptionItem[]> {
   return query<DhaEprescriptionItem>(
     `SELECT * FROM dha_eprescription_items WHERE eprescription_id = ?1`,

@@ -12,6 +12,7 @@
 import { pagedQuery } from "@/lib/paged-query";
 import type { ListPage, ListQuery } from "@/lib/list-types";
 import type { Customer } from "@/services/erp";
+import type { DhaEprescription } from "@/services/dha-eprescriptions";
 
 // ─── Customers ─────────────────────────────────────────────────
 export async function pageCustomers(q: ListQuery): Promise<ListPage<Customer>> {
@@ -21,6 +22,20 @@ export async function pageCustomers(q: ListQuery): Promise<ListPage<Customer>> {
       searchColumns: ["name", "phone", "email"],
       orderBy: "name",
       extraWhere: ["active = 1"],
+      extraParams: [],
+    },
+    q,
+  );
+}
+
+// ─── DHA e-prescriptions ───────────────────────────────────────
+export async function pageEprescriptions(q: ListQuery): Promise<ListPage<DhaEprescription>> {
+  return pagedQuery<DhaEprescription>(
+    {
+      table: "dha_eprescriptions",
+      searchColumns: ["patient_name", "prescriber_name", "dha_id"],
+      orderBy: "issued_at DESC",
+      extraWhere: [],
       extraParams: [],
     },
     q,
