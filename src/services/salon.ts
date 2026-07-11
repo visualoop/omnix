@@ -461,7 +461,7 @@ export async function checkoutAppointment(input: {
     input.userId,
     0,
     input.tip ?? 0,
-    appointment.staff_id, // tip goes to the appointment's staff
+    await staffEmployeeId(appointment.staff_id), // tip goes to the appointment's staff (resolve to employee id — sales.tip_employee_id FKs employees)
     0,
     "salon_appointment",
     input.appointment_id,
@@ -573,9 +573,22 @@ export async function prepareAppointmentForPos(appointmentId: string): Promise<{
   return {
     items: serviceLines,
     customerId: detail.appointment.client_id,
-    tipEmployeeId: detail.appointment.staff_id,
+    // sales.tip_employee_id FKs to employees(id) — resolve the staff's linked
+    // employee (staff_id is a salon_staff id, not an employee id).
+    tipEmployeeId: await staffEmployeeId(detail.appointment.staff_id),
     label: `${detail.appointment.client_name ?? "Walk-in"} · ${detail.appointment.appt_number}`,
   };
+}
+
+/** Resolve a salon_staff id to its linked HR employee id (for sales.tip_employee_id
+ * / salesperson_id, which FK to employees). Null when the staff isn't linked. */
+async function staffEmployeeId(staffId: string | null): Promise<string | null> {
+  if (!staffId) return null;
+  const [r] = await query<{ employee_id: string | null }>(
+    `SELECT employee_id FROM salon_staff WHERE id = ?1`,
+    [staffId],
+  );
+  return r?.employee_id ?? null;
 }
 
 /**

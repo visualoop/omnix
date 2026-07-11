@@ -1,20 +1,15 @@
-import { useEffect, useState, useCallback } from "react";
-import { Receipt, Plus } from "@phosphor-icons/react";
+import { Receipt, Plus, MagnifyingGlass } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
-import { listDebitNotes, type DebitNote } from "@/services/debit-notes";
+import { Input } from "@/components/ui/input";
+import { type DebitNote } from "@/services/debit-notes";
+import { pageDebitNotes } from "@/services/paged";
+import { useListData } from "@/hooks/use-list-data";
+import { PaginationBar } from "@/components/pagination-bar";
 import { intlLocale } from "@/lib/intl";
 
 import { BackButton } from "@/components/ui/back-button";
 export function DebitNotesPage() {
-  const [items, setItems] = useState<DebitNote[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  const load = useCallback(async () => {
-    setLoading(true);
-    try { setItems(await listDebitNotes()); } finally { setLoading(false); }
-  }, []);
-
-  useEffect(() => { load(); }, [load]);
+  const list = useListData(pageDebitNotes, { pageSize: 50 });
 
   const fmt = (n: number) => n.toLocaleString(intlLocale(), { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
@@ -35,13 +30,18 @@ export function DebitNotesPage() {
         </Button>
       </header>
 
-      {loading ? (
+      <div className="relative max-w-sm">
+        <MagnifyingGlass className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        <Input value={list.search} onChange={(e) => list.setSearch(e.target.value)} placeholder="Search by note number…" className="pl-9" />
+      </div>
+
+      {list.loading ? (
         <div className="py-12 text-center text-sm text-muted-foreground">Loading…</div>
-      ) : items.length === 0 ? (
+      ) : list.rows.length === 0 ? (
         <div className="py-12 text-center">
           <Receipt className="h-8 w-8 mx-auto mb-3 opacity-30" />
           <div className="text-sm text-muted-foreground">
-            No debit notes yet. Issue one against a purchase order when a supplier over-invoices you.
+            {list.search ? "No debit notes match your search." : "No debit notes yet. Issue one against a purchase order when a supplier over-invoices you."}
           </div>
         </div>
       ) : (
@@ -56,7 +56,7 @@ export function DebitNotesPage() {
             </tr>
           </thead>
           <tbody>
-            {items.map((n) => (
+            {list.rows.map((n: DebitNote) => (
               <tr key={n.id} className="border-t border-border/50">
                 <td className="px-3 py-2 font-mono text-[12px]">{n.note_number}</td>
                 <td className="px-3 py-2">{new Date(n.issue_date).toLocaleDateString(intlLocale())}</td>
@@ -68,6 +68,8 @@ export function DebitNotesPage() {
           </tbody>
         </table>
       )}
+
+      <PaginationBar list={list} />
     </div>
   );
 }

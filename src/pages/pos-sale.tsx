@@ -288,7 +288,10 @@ export function POSSalePage() {
       if (cart.items.length === 0) return;
       const { resolvePrice } = await import("@/services/retail");
       for (const line of cart.items) {
-        if (line.menu_item_id) continue;
+        // Menu items + salon service lines carry their own price (recipe /
+        // service price), not a product price-list entry — never re-price them
+        // (the backing product has no price list, so it would wipe to 0).
+        if (line.menu_item_id || line.service_id) continue;
         const resolved = await resolvePrice({
           product_id: line.product_id,
           variant_id: line.variant_id ?? undefined,
