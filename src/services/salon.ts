@@ -501,15 +501,15 @@ async function buildServiceLines(
   detail: { appointment: SalonAppointment; services: AppointmentService[] },
 ): Promise<{ serviceLines: CartItem[]; redeemStmts: { sql: string; params: unknown[] }[] }> {
   const { appointment, services } = detail;
-  const productMap = new Map<string, { product_id: string; tax_rate: number }>();
+  const productMap = new Map<string, { product_id: string; tax_rate: number; current_price: number }>();
   if (services.length > 0) {
-    const svRows = await query<{ id: string; product_id: string; tax_rate: number }>(
-      `SELECT s.id, s.product_id, COALESCE(p.tax_rate, 16) AS tax_rate
+    const svRows = await query<{ id: string; product_id: string; tax_rate: number; current_price: number }>(
+      `SELECT s.id, s.product_id, COALESCE(p.tax_rate, 16) AS tax_rate, s.price AS current_price
        FROM salon_services s LEFT JOIN products p ON p.id = s.product_id
        WHERE s.id IN (${services.map((_, i) => `?${i + 1}`).join(",")})`,
       services.map((s) => s.service_id),
     );
-    for (const r of svRows) productMap.set(r.id, { product_id: r.product_id, tax_rate: r.tax_rate });
+    for (const r of svRows) productMap.set(r.id, { product_id: r.product_id, tax_rate: r.tax_rate, current_price: r.current_price });
   }
 
   const redeemStmts: { sql: string; params: unknown[] }[] = [];
@@ -526,7 +526,10 @@ async function buildServiceLines(
   const serviceLines: CartItem[] = services.map((s) => {
     const backing = productMap.get(s.service_id);
     const bal = pkgRemaining.get(s.service_id);
-    let price = s.price;
+    // Price: prefer the CURRENT service price (so editing a service's price is
+    // reflected even on an already-booked appointment); fall back to the price
+    // snapshotted at booking. Package coverage then zeroes it below.
+    let price = (backing && backing.current_price > 0) ? backing.current_price : s.price;
     if (bal && bal.remaining > 0) {
       price = 0;
       bal.remaining -= 1;

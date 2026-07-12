@@ -122,6 +122,16 @@ describe("prepareAppointmentForPos (FK-787 guard)", () => {
     expect(res.items).toHaveLength(1);
     expect(res.items[0]).toMatchObject({ service_id: "sv1", unit_price: 500 });
   });
+
+  it("uses the CURRENT service price, not the stale booking snapshot", async () => {
+    query
+      .mockResolvedValueOnce([{ id: "appt1", sale_id: null, client_id: null, staff_id: "st1", appt_number: "A1", client_name: "Jane" }])
+      .mockResolvedValueOnce([{ id: "as1", service_id: "sv1", staff_id: "st1", name: "Cut", price: 0, duration_min: 30, commission_amount: 0 }]) // snapshot price 0 (booked before price was set)
+      .mockResolvedValueOnce([{ id: "sv1", product_id: "prod1", tax_rate: 16, current_price: 800 }]) // current price 800
+      .mockResolvedValueOnce([{ employee_id: "emp-1" }]);
+    const res = await prepareAppointmentForPos("appt1");
+    expect(res.items[0].unit_price).toBe(800); // not 0
+  });
 });
 
 describe("finalizeSalonPackageSale (POS package sale)", () => {
