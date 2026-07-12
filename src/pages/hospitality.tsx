@@ -10,6 +10,7 @@ import {
   BookOpen,
   CalendarDots as CalendarDays,
   CaretRight as ChevronRight,
+  CaretLeft as ChevronLeft,
   ChartBar as BarChart3,
   ChefHat,
   ClipboardText as ClipboardList,
@@ -1023,6 +1024,8 @@ export function HospitalityBookingsPage() {
   const [bookingDialog, setBookingDialog] = useState(false);
   const [bookingSearch, setBookingSearch] = useState("");
   const [bookingFilter, setBookingFilter] = useState<"all" | "arriving" | "in_house" | "departing">("all");
+  const [bookingView, setBookingView] = useState<"list" | "calendar">("list");
+  const [calStart, setCalStart] = useState(() => { const d = new Date(); d.setHours(0, 0, 0, 0); return d; });
   const load = () => Promise.all([listBookings(), listRoomTypes(), listRooms()]).then(([b, t, r]) => { setBookings(b); setTypes(t); setRooms(r); }).finally(() => setLoading(false));
   useEffect(() => { load(); }, []);
 
@@ -1078,7 +1081,12 @@ export function HospitalityBookingsPage() {
             </button>
           ))}
         </div>
-        <div className="ml-auto text-[11px] text-muted-foreground font-mono tabular-nums">
+        <div className="ml-auto flex items-center gap-2">
+          <div className="flex items-center gap-0.5 rounded-md border border-border p-0.5">
+            <button onClick={() => setBookingView("list")} className={cn("text-[11px] px-2 py-0.5 rounded transition-colors", bookingView === "list" ? "bg-accent text-foreground font-medium" : "text-muted-foreground hover:text-foreground")}>List</button>
+            <button onClick={() => setBookingView("calendar")} className={cn("text-[11px] px-2 py-0.5 rounded transition-colors", bookingView === "calendar" ? "bg-accent text-foreground font-medium" : "text-muted-foreground hover:text-foreground")}>Calendar</button>
+          </div>
+          <span className="text-[11px] text-muted-foreground font-mono tabular-nums">
           {(() => {
             const todayStr = new Date().toISOString().slice(0, 10);
             return bookings.filter((b) => {
@@ -1092,9 +1100,12 @@ export function HospitalityBookingsPage() {
               return true;
             }).length;
           })()} of {bookings.length}
+          </span>
         </div>
       </div>
-      {bookings.length === 0 ? <EmptyHint text="No active bookings." /> : (
+      {bookingView === "calendar" ? (
+        <BookingsCalendar bookings={bookings} rooms={rooms} types={types} start={calStart} onShift={(n) => { const d = new Date(calStart); d.setDate(d.getDate() + n); setCalStart(d); }} onToday={() => { const d = new Date(); d.setHours(0,0,0,0); setCalStart(d); }} />
+      ) : bookings.length === 0 ? <EmptyHint text="No active bookings." /> : (
         <div className="border border-border rounded-lg overflow-hidden">
           <table className="w-full text-[13px]">
             <thead className="bg-muted/30 text-[11px] uppercase tracking-wide text-muted-foreground">
@@ -1135,6 +1146,97 @@ export function HospitalityBookingsPage() {
           </table>
         </div>
       )}
+    </div>
+  );
+}
+
+// ─── Bookings occupancy calendar ─────────────────────────────────────────────
+// Rooms (rows, grouped by type) × a 14-night window (columns). Each active
+// booking paints its assigned room's cells from check-in to (but not incl.)
+// check-out, with the guest name on the first visible night. Unassigned
+// reserved bookings show in a strip above the grid.
+function BookingsCalendar({ bookings, rooms, types, start, onShift, onToday }: {
+  bookings: Array<Booking & { guest_name: string; room_number: string | null }>;
+  rooms: Room[];
+  types: RoomType[];
+  start: Date;
+  onShift: (days: number) => void;
+  onToday: () => void;
+}) {
+  const DAYS = 14;
+  const days = Array.from({ length: DAYS }, (_, i) => { const d = new Date(start); d.setDate(start.getDate() + i); return d; });
+  const iso = (d: Date) => d.toISOString().slice(0, 10);
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const typeName = (id: string) => types.find((t) => t.id === id)?.name ?? "—";
+  const rangeLabel = `${days[0].toLocaleDateString([], { day: "numeric", month: "short" })} – ${days[DAYS - 1].toLocaleDateString([], { day: "numeric", month: "short" })}`;
+
+  // Rooms sorted by type then number; unassigned reserved bookings listed separately.
+  const sortedRooms = [...rooms].sort((a, b) => (a.room_type_id.localeCompare(b.room_type_id)) || a.room_number.localeCompare(b.room_number, undefined, { numeric: true }));
+  const unassigned = bookings.filter((b) => !b.room_id && b.status === "reserved");
+
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center gap-2">
+        <Button variant="outline" size="icon-sm" onClick={() => onShift(-DAYS)}><ChevronLeft className="h-4 w-4" /></Button>
+        <Button variant="outline" size="sm" onClick={onToday}>Today</Button>
+        <Button variant="outline" size="icon-sm" onClick={() => onShift(DAYS)}><ChevronRight className="h-4 w-4" /></Button>
+        <span className="text-[12px] text-muted-foreground font-medium ml-1">{rangeLabel}</span>
+      </div>
+
+      {unassigned.length > 0 && (
+        <div className="rounded-md border border-amber-500/30 bg-amber-500/5 px-3 py-2 text-[11.5px]">
+          <span className="font-medium text-amber-700 dark:text-amber-400">{unassigned.length} reserved, room not yet assigned:</span>{" "}
+          {unassigned.map((b) => `${b.guest_name} (${b.check_in_date}→${b.check_out_date})`).join(", ")}
+        </div>
+      )}
+
+      {sortedRooms.length === 0 ? <EmptyHint text="No rooms yet — add rooms on the Rooms page." /> : (
+        <div className="border border-border rounded-lg overflow-auto">
+          <div className="min-w-[860px]">
+            {/* Header row */}
+            <div className="grid" style={{ gridTemplateColumns: `160px repeat(${DAYS}, 1fr)` }}>
+              <div className="border-b border-r border-border px-2 py-1.5 text-[11px] font-medium text-muted-foreground bg-muted/30">Room</div>
+              {days.map((d) => (
+                <div key={iso(d)} className={cn("border-b border-border px-1 py-1.5 text-center text-[10px] leading-tight", iso(d) === todayStr ? "bg-accent font-semibold" : "bg-muted/30 text-muted-foreground")}>
+                  <div>{d.toLocaleDateString([], { weekday: "narrow" })}</div>
+                  <div className="tabular-nums">{d.getDate()}</div>
+                </div>
+              ))}
+            </div>
+            {/* Room rows */}
+            {sortedRooms.map((room) => {
+              const roomBookings = bookings.filter((b) => b.room_id === room.id);
+              return (
+                <div key={room.id} className="grid" style={{ gridTemplateColumns: `160px repeat(${DAYS}, 1fr)` }}>
+                  <div className="border-b border-r border-border px-2 py-2 text-[12px] bg-background">
+                    <span className="font-medium">{room.room_number}</span>
+                    <span className="text-muted-foreground text-[10.5px] block truncate">{typeName(room.room_type_id)}</span>
+                  </div>
+                  {days.map((d) => {
+                    const ds = iso(d);
+                    const b = roomBookings.find((bk) => bk.check_in_date <= ds && ds < bk.check_out_date);
+                    const isStart = b && (b.check_in_date === ds || ds === iso(days[0]));
+                    return (
+                      <div key={ds} className={cn("border-b border-border/60 h-11 relative", iso(d) === todayStr && "bg-accent/30")}>
+                        {b && (
+                          <div className={cn("absolute inset-y-1 inset-x-0.5 rounded flex items-center px-1 overflow-hidden",
+                            b.status === "checked_in" ? "bg-red-600/85 text-white" : "bg-red-500/25 text-red-800 dark:text-red-200 border border-red-500/40")}>
+                            {isStart && <span className="text-[10px] font-medium truncate">{b.guest_name}</span>}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+      <div className="flex items-center gap-4 text-[10.5px] text-muted-foreground pl-1">
+        <span className="inline-flex items-center gap-1"><span className="inline-block h-2.5 w-2.5 rounded bg-red-600/85" /> Checked in</span>
+        <span className="inline-flex items-center gap-1"><span className="inline-block h-2.5 w-2.5 rounded bg-red-500/25 border border-red-500/40" /> Reserved</span>
+      </div>
     </div>
   );
 }
