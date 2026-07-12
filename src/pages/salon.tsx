@@ -357,6 +357,7 @@ function defaultStart(): string {
 
 function AppointmentSheet({ apptId, onClose, onChanged }: { apptId: string | null; onClose: () => void; onChanged: () => void }) {
   const [detail, setDetail] = useState<Awaited<ReturnType<typeof getAppointment>>>(null);
+  const [preview, setPreview] = useState<Awaited<ReturnType<typeof prepareAppointmentForPos>>["items"] | null>(null);
   const [loading, setLoading] = useState(false);
   const [busy, setBusy] = useState(false);
   const navigate = useNavigate();
@@ -364,14 +365,23 @@ function AppointmentSheet({ apptId, onClose, onChanged }: { apptId: string | nul
   const load = () => {
     if (!apptId) return;
     setLoading(true);
-    getAppointment(apptId).then(setDetail).finally(() => setLoading(false));
+    getAppointment(apptId).then((d) => {
+      setDetail(d);
+      // Preview the exact lines POS will charge (current prices + package
+      // coverage) so the sheet total matches POS — no side effects.
+      if (d && !d.appointment.sale_id && d.services.length > 0) {
+        prepareAppointmentForPos(apptId).then((p) => setPreview(p.items)).catch(() => setPreview(null));
+      } else setPreview(null);
+    }).finally(() => setLoading(false));
   };
-  useEffect(() => { if (apptId) load(); else setDetail(null); /* eslint-disable-next-line */ }, [apptId]);
+  useEffect(() => { if (apptId) load(); else { setDetail(null); setPreview(null); } /* eslint-disable-next-line */ }, [apptId]);
 
   if (!apptId) return null;
   const appt = detail?.appointment;
   const services = detail?.services ?? [];
-  const total = services.reduce((s, x) => s + x.price, 0);
+  // Total to charge = preview (reflects current price + package coverage) when
+  // available, else the booking snapshot.
+  const total = preview ? preview.reduce((s, x) => s + x.total, 0) : services.reduce((s, x) => s + x.price, 0);
 
   const setStatus = async (to: AppointmentStatus) => {
     if (!appt) return;
@@ -419,12 +429,19 @@ function AppointmentSheet({ apptId, onClose, onChanged }: { apptId: string | nul
             <div>
               <div className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">Services</div>
               <div className="rounded-md border border-border divide-y divide-border">
-                {services.map((s) => (
-                  <div key={s.id} className="flex items-center justify-between px-3 py-1.5">
-                    <span>{s.name} <span className="text-muted-foreground">· {s.duration_min}m</span></span>
-                    <span className="font-mono tabular-nums">{KES(s.price)}</span>
-                  </div>
-                ))}
+                {services.map((s, i) => {
+                  const pv = preview?.[i];
+                  const covered = pv ? pv.total === 0 && /\(package\)/.test(pv.name) : false;
+                  const charge = pv ? pv.total : s.price;
+                  return (
+                    <div key={s.id} className="flex items-center justify-between px-3 py-1.5">
+                      <span>{s.name} <span className="text-muted-foreground">· {s.duration_min}m</span></span>
+                      {covered
+                        ? <span className="text-[11px] font-medium text-emerald-600 dark:text-emerald-400">Covered by package</span>
+                        : <span className="font-mono tabular-nums">{KES(charge)}</span>}
+                    </div>
+                  );
+                })}
                 <div className="flex items-center justify-between px-3 py-2 font-medium bg-muted/40">
                   <span>Total</span><span className="font-mono tabular-nums">{KES(total)}</span>
                 </div>
