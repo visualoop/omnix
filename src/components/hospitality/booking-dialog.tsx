@@ -35,9 +35,11 @@ interface Props {
   onCreated: () => void;
   roomTypes: RoomType[];
   userId?: string;
+  /** Prefill from the calendar: a specific room + check-in night. */
+  preset?: { roomId?: string; roomTypeId?: string; roomNumber?: string; checkIn?: string } | null;
 }
 
-export function BookingDialog({ open, onClose, onCreated, roomTypes, userId }: Props) {
+export function BookingDialog({ open, onClose, onCreated, roomTypes, userId, preset }: Props) {
   const [guest, setGuest] = useState<Guest | null>(null);
   const [typeId, setTypeId] = useState<string>("");
   const [preferredRoom, setPreferredRoom] = useState<{ roomId: string; roomNumber: string; needsTurnaround: boolean } | null>(null);
@@ -52,14 +54,17 @@ export function BookingDialog({ open, onClose, onCreated, roomTypes, userId }: P
   useEffect(() => {
     if (!open) return;
     setGuest(null);
-    setTypeId(roomTypes[0]?.id ?? "");
-    setPreferredRoom(null);
-    setCheckIn(isoDaysAhead(0));
-    setCheckOut(isoDaysAhead(1));
+    setTypeId(preset?.roomTypeId ?? roomTypes[0]?.id ?? "");
+    setPreferredRoom(preset?.roomId && preset?.roomNumber ? { roomId: preset.roomId, roomNumber: preset.roomNumber, needsTurnaround: false } : null);
+    const ci = preset?.checkIn ?? isoDaysAhead(0);
+    setCheckIn(ci);
+    // default check-out to the night after check-in
+    const co = new Date(ci); co.setDate(co.getDate() + 1);
+    setCheckOut(co.toISOString().slice(0, 10));
     setRateOverride("");
     setAdults("1");
     setNotes("");
-  }, [open, roomTypes]);
+  }, [open, roomTypes, preset]);
 
   const selectedType = roomTypes.find((t) => t.id === typeId) ?? null;
   // Show KES 0/night rather than "undefined" when base_rate is missing (H6).

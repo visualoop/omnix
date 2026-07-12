@@ -1026,6 +1026,9 @@ export function HospitalityBookingsPage() {
   const [bookingFilter, setBookingFilter] = useState<"all" | "arriving" | "in_house" | "departing">("all");
   const [bookingView, setBookingView] = useState<"list" | "calendar">("list");
   const [calStart, setCalStart] = useState(() => { const d = new Date(); d.setHours(0, 0, 0, 0); return d; });
+  const [calDays, setCalDays] = useState<14 | 30>(14);
+  const [bookingPreset, setBookingPreset] = useState<{ roomId?: string; roomTypeId?: string; roomNumber?: string; checkIn?: string } | null>(null);
+  const [calBooking, setCalBooking] = useState<(Booking & { guest_name: string; room_number: string | null }) | null>(null);
   const load = () => Promise.all([listBookings(), listRoomTypes(), listRooms()]).then(([b, t, r]) => { setBookings(b); setTypes(t); setRooms(r); }).finally(() => setLoading(false));
   useEffect(() => { load(); }, []);
 
@@ -1052,10 +1055,11 @@ export function HospitalityBookingsPage() {
 
       <BookingDialog
         open={bookingDialog}
-        onClose={() => setBookingDialog(false)}
+        onClose={() => { setBookingDialog(false); setBookingPreset(null); }}
         onCreated={load}
         roomTypes={types}
         userId={userId}
+        preset={bookingPreset}
       />
       {/* Search + arrival/in-house/departing filter chips */}
       <div className="flex flex-wrap items-center gap-2 mb-3">
@@ -1104,7 +1108,14 @@ export function HospitalityBookingsPage() {
         </div>
       </div>
       {bookingView === "calendar" ? (
-        <BookingsCalendar bookings={bookings} rooms={rooms} types={types} start={calStart} onShift={(n) => { const d = new Date(calStart); d.setDate(d.getDate() + n); setCalStart(d); }} onToday={() => { const d = new Date(); d.setHours(0,0,0,0); setCalStart(d); }} />
+        <BookingsCalendar
+          bookings={bookings} rooms={rooms} types={types} start={calStart} days={calDays}
+          onShift={(n) => { const d = new Date(calStart); d.setDate(d.getDate() + n); setCalStart(d); }}
+          onToday={() => { const d = new Date(); d.setHours(0,0,0,0); setCalStart(d); }}
+          onDays={setCalDays}
+          onBar={(b) => setCalBooking(b)}
+          onCell={(room, ds) => { setBookingPreset({ roomId: room.id, roomTypeId: room.room_type_id, roomNumber: room.room_number, checkIn: ds }); setBookingDialog(true); }}
+        />
       ) : bookings.length === 0 ? <EmptyHint text="No active bookings." /> : (
         <div className="border border-border rounded-lg overflow-hidden">
           <table className="w-full text-[13px]">
@@ -1146,6 +1157,31 @@ export function HospitalityBookingsPage() {
           </table>
         </div>
       )}
+
+      {/* Calendar bar click → booking detail + check-in/out */}
+      <Dialog open={!!calBooking} onOpenChange={(o) => !o && setCalBooking(null)}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="text-[15px] flex items-center gap-2">
+              <span className="font-mono">{calBooking?.booking_number}</span>
+              {calBooking && <Badge variant="outline" className="text-[10px] capitalize">{calBooking.status.replace("_", " ")}</Badge>}
+            </DialogTitle>
+          </DialogHeader>
+          {calBooking && (
+            <div className="space-y-2 text-[13px] py-1">
+              <div className="flex justify-between"><span className="text-muted-foreground">Guest</span><span className="font-medium">{calBooking.guest_name}</span></div>
+              <div className="flex justify-between"><span className="text-muted-foreground">Room</span><span>{calBooking.room_number ?? "— (unassigned)"}</span></div>
+              <div className="flex justify-between"><span className="text-muted-foreground">Dates</span><span>{calBooking.check_in_date} → {calBooking.check_out_date}</span></div>
+              <div className="flex justify-between"><span className="text-muted-foreground">Rate/night</span><span className="font-mono tabular-nums">{KES(calBooking.rate_per_night)}</span></div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" size="sm" onClick={() => setCalBooking(null)}>Close</Button>
+            {calBooking?.status === "reserved" && <Button size="sm" className={cn(BRAND_BTN)} onClick={() => { const b = calBooking; setCalBooking(null); if (b) doCheckIn(b); }}>Check in</Button>}
+            {calBooking?.status === "checked_in" && <Button size="sm" className={cn(BRAND_BTN)} onClick={() => { const b = calBooking; setCalBooking(null); if (b) doCheckOut(b); }}>Check out</Button>}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
@@ -1155,15 +1191,18 @@ export function HospitalityBookingsPage() {
 // booking paints its assigned room's cells from check-in to (but not incl.)
 // check-out, with the guest name on the first visible night. Unassigned
 // reserved bookings show in a strip above the grid.
-function BookingsCalendar({ bookings, rooms, types, start, onShift, onToday }: {
+function BookingsCalendar({ bookings, rooms, types, start, days: DAYS, onShift, onToday, onDays, onBar, onCell }: {
   bookings: Array<Booking & { guest_name: string; room_number: string | null }>;
   rooms: Room[];
   types: RoomType[];
   start: Date;
+  days: 14 | 30;
   onShift: (days: number) => void;
   onToday: () => void;
+  onDays: (d: 14 | 30) => void;
+  onBar: (b: Booking & { guest_name: string; room_number: string | null }) => void;
+  onCell: (room: Room, dateStr: string) => void;
 }) {
-  const DAYS = 14;
   const days = Array.from({ length: DAYS }, (_, i) => { const d = new Date(start); d.setDate(start.getDate() + i); return d; });
   const iso = (d: Date) => d.toISOString().slice(0, 10);
   const todayStr = new Date().toISOString().slice(0, 10);
@@ -1181,6 +1220,10 @@ function BookingsCalendar({ bookings, rooms, types, start, onShift, onToday }: {
         <Button variant="outline" size="sm" onClick={onToday}>Today</Button>
         <Button variant="outline" size="icon-sm" onClick={() => onShift(DAYS)}><ChevronRight className="h-4 w-4" /></Button>
         <span className="text-[12px] text-muted-foreground font-medium ml-1">{rangeLabel}</span>
+        <div className="ml-auto flex items-center gap-0.5 rounded-md border border-border p-0.5">
+          <button onClick={() => onDays(14)} className={cn("text-[11px] px-2 py-0.5 rounded transition-colors", DAYS === 14 ? "bg-accent text-foreground font-medium" : "text-muted-foreground hover:text-foreground")}>2 weeks</button>
+          <button onClick={() => onDays(30)} className={cn("text-[11px] px-2 py-0.5 rounded transition-colors", DAYS === 30 ? "bg-accent text-foreground font-medium" : "text-muted-foreground hover:text-foreground")}>Month</button>
+        </div>
       </div>
 
       {unassigned.length > 0 && (
@@ -1192,7 +1235,7 @@ function BookingsCalendar({ bookings, rooms, types, start, onShift, onToday }: {
 
       {sortedRooms.length === 0 ? <EmptyHint text="No rooms yet — add rooms on the Rooms page." /> : (
         <div className="border border-border rounded-lg overflow-auto">
-          <div className="min-w-[860px]">
+          <div style={{ minWidth: 160 + DAYS * 50 }}>
             {/* Header row */}
             <div className="grid" style={{ gridTemplateColumns: `160px repeat(${DAYS}, 1fr)` }}>
               <div className="border-b border-r border-border px-2 py-1.5 text-[11px] font-medium text-muted-foreground bg-muted/30">Room</div>
@@ -1218,11 +1261,20 @@ function BookingsCalendar({ bookings, rooms, types, start, onShift, onToday }: {
                     const isStart = b && (b.check_in_date === ds || ds === iso(days[0]));
                     return (
                       <div key={ds} className={cn("border-b border-border/60 h-11 relative", iso(d) === todayStr && "bg-accent/30")}>
-                        {b && (
-                          <div className={cn("absolute inset-y-1 inset-x-0.5 rounded flex items-center px-1 overflow-hidden",
-                            b.status === "checked_in" ? "bg-red-600/85 text-white" : "bg-red-500/25 text-red-800 dark:text-red-200 border border-red-500/40")}>
+                        {b ? (
+                          <button
+                            onClick={() => onBar(b)}
+                            title={`${b.guest_name} · ${b.check_in_date}→${b.check_out_date}`}
+                            className={cn("absolute inset-y-1 inset-x-0.5 rounded flex items-center px-1 overflow-hidden cursor-pointer text-left",
+                              b.status === "checked_in" ? "bg-red-600/85 text-white hover:bg-red-600" : "bg-red-500/25 text-red-800 dark:text-red-200 border border-red-500/40 hover:bg-red-500/35")}>
                             {isStart && <span className="text-[10px] font-medium truncate">{b.guest_name}</span>}
-                          </div>
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => onCell(room, ds)}
+                            title={`New booking · ${room.room_number} · ${ds}`}
+                            className="absolute inset-0 w-full h-full hover:bg-accent/40 transition-colors cursor-pointer"
+                          />
                         )}
                       </div>
                     );
