@@ -327,3 +327,51 @@ jobs:
           cat /tmp/payload-resp.json || true
           echo
           [ "$HTTP_CODE" = "200" ] || { echo "Payload notify failed (HTTP $HTTP_CODE)"; exit 1; }
+
+  # ─── R2 retention: keep only the latest N release versions ──────────────
+  # Installers are large; without pruning the omnix-media bucket grows without
+  # bound (every version × 5 variants × 4 files) and crosses Cloudflare's
+  # billing threshold. GitHub Releases retain the full history, so R2 only
+  # needs the current + previous version for the in-app updater + public
+  # download links. Runs after all variants have uploaded.
+  prune-r2:
+    needs: build
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v'))
+    env:
+      KEEP: "2"
+      S3_ACCESS_KEY_ID: ${{ secrets.S3_ACCESS_KEY_ID }}
+      S3_SECRET_ACCESS_KEY: ${{ secrets.S3_SECRET_ACCESS_KEY }}
+      S3_ENDPOINT: ${{ vars.S3_ENDPOINT || secrets.S3_ENDPOINT }}
+      S3_BUCKET: ${{ vars.S3_BUCKET || 'omnix-media' }}
+      S3_REGION: ${{ vars.S3_REGION || 'auto' }}
+    steps:
+      - name: Prune old release versions from R2 (keep latest N)
+        run: |
+          set -euo pipefail
+          if [ -z "${S3_ACCESS_KEY_ID:-}" ] || [ -z "${S3_SECRET_ACCESS_KEY:-}" ] || [ -z "${S3_ENDPOINT:-}" ]; then
+            echo "R2 secrets missing — skipping retention."; exit 0
+          fi
+          export AWS_ACCESS_KEY_ID="$S3_ACCESS_KEY_ID"
+          export AWS_SECRET_ACCESS_KEY="$S3_SECRET_ACCESS_KEY"
+          export AWS_DEFAULT_REGION="${S3_REGION:-auto}"
+
+          # List version folders under releases/ (e.g. v0.69.2)
+          aws s3api list-objects-v2 --bucket "$S3_BUCKET" --prefix "releases/" --delimiter / \
+            --endpoint-url "$S3_ENDPOINT" --query 'CommonPrefixes[].Prefix' --output text \
+            | tr '\t' '\n' | sed 's#releases/##; s#/##' | grep -E '^v[0-9]' > /tmp/vers.txt || true
+
+          COUNT=$(grep -c . /tmp/vers.txt || echo 0)
+          echo "Found $COUNT release versions in R2; keeping latest $KEEP."
+          if [ "$COUNT" -le "$KEEP" ]; then echo "Nothing to prune."; exit 0; fi
+
+          KEEP_LIST=$(sort -V /tmp/vers.txt | tail -n "$KEEP")
+          echo "Keeping: $KEEP_LIST"
+          grep -vxF "$KEEP_LIST" /tmp/vers.txt | sort -V > /tmp/del.txt
+
+          while IFS= read -r v; do
+            [ -z "$v" ] && continue
+            echo "Deleting releases/$v/"
+            aws s3 rm "s3://$S3_BUCKET/releases/$v/" --recursive --endpoint-url "$S3_ENDPOINT" --only-show-errors
+          done < /tmp/del.txt
+          echo "Retention complete — $(grep -c . /tmp/del.txt) old version(s) removed."
