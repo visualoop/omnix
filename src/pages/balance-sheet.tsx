@@ -20,10 +20,10 @@ export function BalanceSheetPage() {
   const fmt = (n: number) => n.toLocaleString(intlLocale(), { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
   return (
-    <div className="max-w-5xl space-y-5">
+    <div className="max-w-5xl mx-auto w-full space-y-5">
       <header className="flex items-start justify-between">
         <div>
-          <BackButton fallback="/reports" />
+          <BackButton fallback="/analytics" />
           <h1 className="text-xl font-semibold flex items-center gap-2">
             <Scales className="h-5 w-5 text-primary" /> Balance Sheet
           </h1>

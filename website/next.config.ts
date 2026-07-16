@@ -79,7 +79,7 @@ const nextConfig: NextConfig = {
       "object-src 'none'",
       "base-uri 'self'",
       "form-action 'self'",
-      "frame-ancestors 'self' https://studio.blyss.co.ke https://*.vercel.app", // allow embed in studio + Vercel previews
+      "frame-ancestors 'self' https://webdesignkenya.co.ke https://studio.blyss.co.ke https://*.vercel.app", // allow embed in Kenya Web Studio + Vercel previews
       "upgrade-insecure-requests",
     ].join('; ')
     return [

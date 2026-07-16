@@ -14,6 +14,8 @@ import {
   ChartBar as BarChart3,
   ChartLine as LineChart,
   ClipboardText as ClipboardList,
+  Scales,
+  BookOpen,
   Coins,
   FileText,
   FileXls as FileSpreadsheet,
@@ -29,6 +31,8 @@ import { ReportsIndexPage } from "@/pages/reports-index";
 import { InventoryReportsPage } from "@/pages/inventory-reports";
 import { ZReportPage } from "@/pages/zreport";
 import { PnLPage } from "@/pages/pnl";
+import { BalanceSheetPage } from "@/pages/balance-sheet";
+import { TrialBalancePage } from "@/pages/trial-balance";
 import { DailyOperationsPage } from "@/pages/daily-operations";
 import { VatReportPage } from "@/pages/vat-report";
 import { EtimsQueuePage } from "@/pages/etims-queue";
@@ -49,6 +53,8 @@ export function AnalyticsHubPage() {
         { id: "inventory", label: "Inventory reports", icon: Boxes, component: InventoryReportsPage, permission: "reports.view" },
         { id: "zreport", label: "Z-Report", icon: FileText, component: ZReportPage, permission: "reports.zreport" },
         { id: "pnl", label: "P&L", icon: LineChart, component: PnLPage, permission: "reports.pnl" },
+        { id: "balance-sheet", label: "Balance Sheet", icon: Scales, component: BalanceSheetPage, permission: "reports.pnl" },
+        { id: "trial-balance", label: "Trial Balance", icon: BookOpen, component: TrialBalancePage, permission: "reports.pnl" },
         { id: "daily-ops", label: "Daily ops", icon: ClipboardList, component: DailyOperationsPage, permission: "reports.view" },
         { id: "vat", label: "VAT report", icon: FileSpreadsheet, component: VatReportPage, permission: "reports.view" },
         { id: "etims", label: "eTIMS", icon: Send, component: EtimsQueuePage, permission: "etims.view" },

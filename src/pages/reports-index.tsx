@@ -65,8 +65,29 @@ const reports: ReportLink[] = [
   {
     to: "/pnl",
     title: "Profit & Loss",
-    description: "Full P&L statement with margin analysis",
+    description: "Revenue minus expenses over a period — are you making money?",
+    icon: TrendingUp,
+    category: "finance",
+  },
+  {
+    to: "/accounting/balance-sheet",
+    title: "Balance Sheet",
+    description: "What you own, owe, and are worth as of a date. Assets = Liabilities + Equity.",
     icon: Scale,
+    category: "finance",
+  },
+  {
+    to: "/accounting/trial-balance",
+    title: "Trial Balance",
+    description: "Every account's debits and credits — confirms the books balance.",
+    icon: BookOpen,
+    category: "finance",
+  },
+  {
+    to: "/accounting/period-close",
+    title: "Period Close",
+    description: "Lock a month once reconciled so figures can't change after filing.",
+    icon: Calendar,
     category: "finance",
   },
   {

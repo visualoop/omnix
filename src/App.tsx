@@ -34,7 +34,6 @@ import { WastageReportPage } from "@/pages/wastage-report";
 import { ReportsPage } from "@/pages/reports";
 import { AiWorkspacePage } from "@/pages/ai-workspace";
 import { AiChatV2Page } from "@/pages/ai-chat-v2";
-import { ReportsIndexPage } from "@/pages/reports-index";
 import { InventoryReportsPage } from "@/pages/inventory-reports";
 import { ZReportPage } from "@/pages/zreport";
 import { TipsReportPage } from "@/pages/tips-report";
@@ -92,7 +91,6 @@ import { FixedAssetsPage } from "@/pages/fixed-assets";
 import { CurrenciesPage } from "@/pages/currencies";
 import { FollowUpsPage } from "@/pages/follow-ups";
 import { RoomStatusPage } from "@/pages/room-status";
-import { AnalyticsPage } from "@/pages/analytics";
 import { LanServicePage } from "@/pages/lan-service";
 import { StockAgingPage, DeadStockPage } from "@/pages/stock-aging";
 import { DataQualityPage, CostCentresPage, DeliveriesPage, AnomaliesPage } from "@/pages/platform-pages";
@@ -334,7 +332,7 @@ function AppContent() {
           <Route path="/pharmacy/prescriptions/:id" element={<RequireRole permission="pharmacy.dispense"><PrescriptionDetailPage /></RequireRole>} />
           <Route path="/pharmacy/eprescriptions" element={<RequireRole permission="pharmacy.dispense"><EprescriptionsPage /></RequireRole>} />
           <Route path="/pharmacy/expiry" element={<RequireRole permission="inventory.view"><ExpiryPage /></RequireRole>} />
-          <Route path="/reports" element={<RequireRole permission={["reports.view", "reports.zreport"]}><ReportsIndexPage /></RequireRole>} />
+          <Route path="/reports" element={<Navigate to="/analytics" replace />} />
           <Route path="/notifications" element={<NotificationsPage />} />
           <Route path="/accounting/chart-of-accounts" element={<RequireRole permission="reports.pnl"><ChartOfAccountsPage /></RequireRole>} />
           <Route path="/accounting/trial-balance" element={<RequireRole permission="reports.pnl"><TrialBalancePage /></RequireRole>} />
@@ -351,7 +349,7 @@ function AppContent() {
           <Route path="/reports/dead-stock" element={<RequireRole permission="reports.view"><DeadStockPage /></RequireRole>} />
           <Route path="/crm/follow-ups" element={<RequireRole permission="customers.view"><FollowUpsPage /></RequireRole>} />
           <Route path="/hospitality/rooms" element={<RequireRole permission="hospitality.housekeeping.manage"><RoomStatusPage /></RequireRole>} />
-          <Route path="/reports/analytics" element={<RequireRole permission="reports.view"><AnalyticsPage /></RequireRole>} />
+          <Route path="/reports/analytics" element={<Navigate to="/analytics" replace />} />
           <Route path="/reports/stock-aging" element={<RequireRole permission="reports.view"><StockAgingPage /></RequireRole>} />
           <Route path="/data-quality" element={<RequireRole permission="audit.view"><DataQualityPage /></RequireRole>} />
           <Route path="/accounting/cost-centres" element={<RequireRole permission="reports.pnl"><CostCentresPage /></RequireRole>} />
