@@ -688,6 +688,12 @@ fn run_inner() {
             sql: include_str!("../migrations/097_salon_resources.sql"),
             kind: MigrationKind::Up,
         },
+        Migration {
+            version: 98,
+            description: "Salon commission payouts (daily staff pay)",
+            sql: include_str!("../migrations/098_salon_commission_payouts.sql"),
+            kind: MigrationKind::Up,
+        },
     ];
 
     tauri::Builder::default()

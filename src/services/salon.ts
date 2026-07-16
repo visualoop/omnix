@@ -661,16 +661,172 @@ export async function listClientVisits(clientId: string): Promise<SalonAppointme
 
 // ─── Commission reads ─────────────────────────────────────────────────────────
 
-export interface StaffCommissionRow { staff_id: string; display_name: string; jobs: number; total: number; }
+export interface StaffCommissionRow {
+  staff_id: string; display_name: string; jobs: number;
+  total: number;        // accrued in the period
+  paid: number;         // of that, already paid out
+  outstanding: number;  // accrued − paid (what's still owed)
+}
 
 export async function commissionsByStaff(fromIso: string, toIso: string): Promise<StaffCommissionRow[]> {
   return query<StaffCommissionRow>(
-    `SELECT c.staff_id, st.display_name, COUNT(*) AS jobs, COALESCE(SUM(c.amount), 0) AS total
+    `SELECT c.staff_id, st.display_name,
+            COUNT(*) AS jobs,
+            COALESCE(SUM(c.amount), 0) AS total,
+            COALESCE(SUM(CASE WHEN c.payout_id IS NOT NULL THEN c.amount ELSE 0 END), 0) AS paid,
+            COALESCE(SUM(CASE WHEN c.payout_id IS NULL THEN c.amount ELSE 0 END), 0) AS outstanding
      FROM salon_commissions c JOIN salon_staff st ON st.id = c.staff_id
      WHERE c.created_at >= ?1 AND c.created_at < ?2
      GROUP BY c.staff_id ORDER BY total DESC`,
     [fromIso, toIso],
   );
+}
+
+// ─── Daily P&L summary + reconciliation ──────────────────────────────────────
+
+export interface SalonDailySummary {
+  sales_count: number;
+  gross_revenue: number;     // sale totals before commission (what clients paid)
+  service_revenue: number;   // revenue from salon service lines only
+  commissions: number;       // commission accrued in the period
+  net_after_commission: number;
+  tips: number;
+  reconciled: boolean;       // does salon-sourced sale revenue tie to service lines?
+  variance: number;          // sale revenue − service-line revenue (unrecorded/mismatch)
+}
+
+/**
+ * Period summary for the salon: revenue before + after commissions, tips, and
+ * a reconciliation check that flags if salon-sourced sales don't tie out to the
+ * recorded service lines (i.e. money taken but not attributed to a service).
+ */
+export async function salonDailySummary(fromIso: string, toIso: string): Promise<SalonDailySummary> {
+  const [sales] = await query<{ n: number; gross: number; tips: number }>(
+    `SELECT COUNT(*) AS n, COALESCE(SUM(total), 0) AS gross, COALESCE(SUM(tip_amount), 0) AS tips
+     FROM sales
+     WHERE source_type = 'salon_appointment' AND status != 'voided'
+       AND created_at >= ?1 AND created_at < ?2`,
+    [fromIso, toIso],
+  );
+  const [svc] = await query<{ rev: number }>(
+    `SELECT COALESCE(SUM(si.total), 0) AS rev
+     FROM sale_items si JOIN sales s ON s.id = si.sale_id
+     WHERE s.source_type = 'salon_appointment' AND s.status != 'voided'
+       AND s.created_at >= ?1 AND s.created_at < ?2`,
+    [fromIso, toIso],
+  );
+  const [comm] = await query<{ amt: number }>(
+    `SELECT COALESCE(SUM(amount), 0) AS amt FROM salon_commissions
+     WHERE created_at >= ?1 AND created_at < ?2`,
+    [fromIso, toIso],
+  );
+  const gross = sales?.gross ?? 0;
+  const serviceRev = svc?.rev ?? 0;
+  const commissions = comm?.amt ?? 0;
+  const tips = sales?.tips ?? 0;
+  // Reconciliation: salon sale totals (excl. tips) should equal the service +
+  // retail line totals on those sales. A gap means money was taken without a
+  // matching line (or a voided/edited sale) — surface it rather than hide it.
+  const variance = Math.round(((gross - tips) - serviceRev) * 100) / 100;
+  return {
+    sales_count: sales?.n ?? 0,
+    gross_revenue: gross,
+    service_revenue: serviceRev,
+    commissions,
+    net_after_commission: Math.round((gross - tips - commissions) * 100) / 100,
+    tips,
+    reconciled: Math.abs(variance) < 0.01,
+    variance,
+  };
+}
+
+// ─── Staff earnings (drill-down) ─────────────────────────────────────────────
+
+export interface StaffEarningDay { day: string; jobs: number; earned: number; paid: number; }
+export interface StaffCommissionLine {
+  id: string; created_at: string; kind: string; service_name: string | null;
+  client_name: string | null; base_amount: number; pct: number; amount: number;
+  paid_at: string | null;
+}
+
+/** Per-day earnings for one staff member over a period (from auto-earned commissions). */
+export async function staffEarningsByDay(staffId: string, fromIso: string, toIso: string): Promise<StaffEarningDay[]> {
+  return query<StaffEarningDay>(
+    `SELECT substr(created_at, 1, 10) AS day, COUNT(*) AS jobs,
+            COALESCE(SUM(amount), 0) AS earned,
+            COALESCE(SUM(CASE WHEN payout_id IS NOT NULL THEN amount ELSE 0 END), 0) AS paid
+     FROM salon_commissions
+     WHERE staff_id = ?1 AND created_at >= ?2 AND created_at < ?3
+     GROUP BY day ORDER BY day DESC`,
+    [staffId, fromIso, toIso],
+  );
+}
+
+/** Every commission line for a staff member in the period (with service + client). */
+export async function staffCommissionLines(staffId: string, fromIso: string, toIso: string): Promise<StaffCommissionLine[]> {
+  return query<StaffCommissionLine>(
+    `SELECT c.id, c.created_at, c.kind,
+            sv.name AS service_name, cu.name AS client_name,
+            c.base_amount, c.pct, c.amount, c.paid_at
+     FROM salon_commissions c
+     LEFT JOIN salon_appointment_services aps ON aps.appointment_id = c.appointment_id AND aps.staff_id = c.staff_id
+     LEFT JOIN salon_services sv ON sv.id = aps.service_id
+     LEFT JOIN salon_appointments a ON a.id = c.appointment_id
+     LEFT JOIN customers cu ON cu.id = a.client_id
+     WHERE c.staff_id = ?1 AND c.created_at >= ?2 AND c.created_at < ?3
+     GROUP BY c.id ORDER BY c.created_at DESC`,
+    [staffId, fromIso, toIso],
+  );
+}
+
+// ─── Commission payouts (daily staff pay) ────────────────────────────────────
+
+export interface StaffOutstanding { staff_id: string; display_name: string; outstanding: number; count: number; }
+
+/** Staff with unpaid (outstanding) commissions, optionally up to a date. */
+export async function outstandingByStaff(uptoIso?: string): Promise<StaffOutstanding[]> {
+  const clause = uptoIso ? "AND c.created_at < ?1" : "";
+  return query<StaffOutstanding>(
+    `SELECT c.staff_id, st.display_name, COALESCE(SUM(c.amount), 0) AS outstanding, COUNT(*) AS count
+     FROM salon_commissions c JOIN salon_staff st ON st.id = c.staff_id
+     WHERE c.payout_id IS NULL ${clause}
+     GROUP BY c.staff_id HAVING outstanding > 0 ORDER BY outstanding DESC`,
+    uptoIso ? [uptoIso] : [],
+  );
+}
+
+/**
+ * Pay a staff member: settle all their outstanding (unpaid) commissions
+ * created before `uptoIso`, recording a payout row and stamping each covered
+ * commission with the payout id + paid_at. Returns the payout amount.
+ * `periodDate` (YYYY-MM-DD) records which business day this pay covers.
+ */
+export async function payStaffCommissions(input: {
+  staff_id: string; uptoIso: string; userId: string; periodDate?: string | null; notes?: string;
+}): Promise<{ payoutId: string; amount: number; count: number }> {
+  await requirePermission("salon.staff.manage", { entityType: "salon_commission_payout" });
+  const unpaid = await query<{ id: string; amount: number }>(
+    `SELECT id, amount FROM salon_commissions
+     WHERE staff_id = ?1 AND payout_id IS NULL AND created_at < ?2`,
+    [input.staff_id, input.uptoIso],
+  );
+  if (unpaid.length === 0) throw new Error("No outstanding commissions to pay for this staff member.");
+  const amount = Math.round(unpaid.reduce((s, r) => s + r.amount, 0) * 100) / 100;
+  const payoutId = uid();
+  const now = nowIso();
+  const stmts: { sql: string; params: unknown[] }[] = [{
+    sql: `INSERT INTO salon_commission_payouts (id, staff_id, amount, period_date, commission_count, paid_by, notes)
+          VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)`,
+    params: [payoutId, input.staff_id, amount, input.periodDate ?? null, unpaid.length, input.userId, input.notes ?? null],
+  }];
+  for (const c of unpaid) {
+    stmts.push({
+      sql: `UPDATE salon_commissions SET payout_id = ?2, paid_at = ?3 WHERE id = ?1`,
+      params: [c.id, payoutId, now],
+    });
+  }
+  await transaction(stmts);
+  return { payoutId, amount, count: unpaid.length };
 }
 
 // ─── Back-bar consumption ─────────────────────────────────────────────────────

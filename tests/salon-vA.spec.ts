@@ -34,6 +34,7 @@ import {
   timeToMin, addMinutesIso, intervalsOverlap, canTransitionAppt,
   isStaffAvailable, bookAppointment, setServiceProducts, sellPackage, isResourceAvailable,
   listEnrollableStaff, enrolStaff, updatePackage, finalizeSalonAppointment, finalizeSalonPackageSale, prepareAppointmentForPos,
+  salonDailySummary, payStaffCommissions,
 } from "@/services/salon";
 
 beforeEach(() => { query.mockReset(); execute.mockReset(); transaction.mockReset(); completeSale.mockReset(); upsertEmployee.mockReset(); listEmployees.mockReset(); listLinkableUsers.mockReset(); });
@@ -157,6 +158,48 @@ describe("finalizeSalonPackageSale (POS package sale)", () => {
     query.mockResolvedValueOnce([{ id: "cp-existing" }]);
     await finalizeSalonPackageSale("pk1", "c1", "sale1");
     expect(execute).not.toHaveBeenCalled();
+  });
+});
+
+describe("salon reports: summary + payouts", () => {
+  it("salonDailySummary flags a reconciliation variance when sales don't tie to service lines", async () => {
+    query
+      .mockResolvedValueOnce([{ n: 3, gross: 3000, tips: 200 }]) // sales
+      .mockResolvedValueOnce([{ rev: 2500 }])                    // service lines
+      .mockResolvedValueOnce([{ amt: 500 }]);                    // commissions
+    const s = await salonDailySummary("A", "B");
+    expect(s.gross_revenue).toBe(3000);
+    expect(s.net_after_commission).toBe(2300); // 3000 - 200 tips - 500 comm
+    // sales excl tips (2800) vs service lines (2500) → variance 300, not reconciled
+    expect(s.reconciled).toBe(false);
+    expect(s.variance).toBe(300);
+  });
+
+  it("salonDailySummary reconciles when sales (excl tips) equal service lines", async () => {
+    query
+      .mockResolvedValueOnce([{ n: 1, gross: 1200, tips: 200 }])
+      .mockResolvedValueOnce([{ rev: 1000 }])
+      .mockResolvedValueOnce([{ amt: 100 }]);
+    const s = await salonDailySummary("A", "B");
+    expect(s.reconciled).toBe(true);
+    expect(s.variance).toBe(0);
+  });
+
+  it("payStaffCommissions settles all outstanding commissions + records a payout", async () => {
+    query.mockResolvedValueOnce([{ id: "c1", amount: 300 }, { id: "c2", amount: 200 }]); // unpaid
+    transaction.mockResolvedValue(undefined);
+    const res = await payStaffCommissions({ staff_id: "st1", uptoIso: "2026-07-16T23:59:59Z", userId: "u1" });
+    expect(res.amount).toBe(500);
+    expect(res.count).toBe(2);
+    const stmts = transaction.mock.calls[0][0] as Array<{ sql: string; params: unknown[] }>;
+    expect(stmts.find((s) => s.sql.includes("INSERT INTO salon_commission_payouts"))?.params).toContain(500);
+    // each commission stamped with the payout id
+    expect(stmts.filter((s) => s.sql.includes("UPDATE salon_commissions SET payout_id")).length).toBe(2);
+  });
+
+  it("payStaffCommissions throws when nothing is outstanding", async () => {
+    query.mockResolvedValueOnce([]);
+    await expect(payStaffCommissions({ staff_id: "st1", uptoIso: "Z", userId: "u1" })).rejects.toThrow(/no outstanding/i);
   });
 });
 

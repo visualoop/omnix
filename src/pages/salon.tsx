@@ -7,7 +7,8 @@ import {
   Plus, CircleNotch as Loader2, CaretLeft, CaretRight,
   CheckCircle, Receipt, Scissors, ArrowSquareOut, UsersThree, House,
 } from "@phosphor-icons/react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
+import { confirm } from "@/components/ui/confirm-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -28,7 +29,8 @@ import {
 import {
   listServices, createService, updateService, listStaff, setStaffSkills, listStaffSkills,
   listAppointments, getAppointment, bookAppointment, updateAppointmentStatus, prepareAppointmentForPos,
-  commissionsByStaff, addMinutesIso,
+  commissionsByStaff,
+  salonDailySummary, staffEarningsByDay, staffCommissionLines, payStaffCommissions,
   getServiceProducts, setServiceProducts, servicePopularity,
   getClientProfile, upsertClientProfile, listClientVisits,
   listPackages, createPackage, updatePackage, preparePackageForPos, listClientPackages,
@@ -36,6 +38,7 @@ import {
   listEnrollableStaff, enrolStaff, updateStaff,
   type SalonService, type SalonStaff, type SalonAppointment, type AppointmentStatus, type StaffCommissionRow,
   type ServicePopularityRow, type SalonPackage, type ClientPackage, type SalonResource, type EnrollablePerson,
+  type SalonDailySummary, type StaffEarningDay, type StaffCommissionLine,
 } from "@/services/salon";
 import { getProducts, type Product } from "@/services/inventory";
 import { listEmployees } from "@/services/employees";
@@ -891,33 +894,130 @@ function StaffDetailSheet({ staff, services, emp, onClose, onChanged, onOpenHr }
 export function SalonReportsPage() {
   const [rows, setRows] = useState<StaffCommissionRow[]>([]);
   const [pop, setPop] = useState<ServicePopularityRow[]>([]);
+  const [summary, setSummary] = useState<SalonDailySummary | null>(null);
+  const [range, setRange] = useState<"today" | "week" | "month" | "custom">("today");
+  const [customFrom, setCustomFrom] = useState(new Date().toISOString().slice(0, 10));
+  const [customTo, setCustomTo] = useState(new Date().toISOString().slice(0, 10));
   const [loading, setLoading] = useState(true);
+  const [paying, setPaying] = useState<string | null>(null);
+  const navigate = useNavigate();
+  const user = useAuthStore((s) => s.user);
+
+  const bounds = () => {
+    const to = new Date(); to.setHours(23, 59, 59, 999);
+    const from = new Date(); from.setHours(0, 0, 0, 0);
+    if (range === "week") from.setDate(from.getDate() - 6);
+    else if (range === "month") from.setDate(from.getDate() - 29);
+    else if (range === "custom") {
+      return { fromIso: new Date(customFrom + "T00:00:00").toISOString(), toIso: new Date(customTo + "T23:59:59").toISOString() };
+    }
+    return { fromIso: from.toISOString(), toIso: to.toISOString() };
+  };
+
   const load = () => {
     setLoading(true);
-    const to = new Date(); const from = new Date(); from.setDate(from.getDate() - 30);
-    const toIso = addMinutesIso(to.toISOString(), 1);
-    Promise.all([commissionsByStaff(from.toISOString(), toIso), servicePopularity(from.toISOString(), toIso)])
-      .then(([c, p]) => { setRows(c); setPop(p); }).finally(() => setLoading(false));
+    const { fromIso, toIso } = bounds();
+    Promise.all([
+      commissionsByStaff(fromIso, toIso),
+      servicePopularity(fromIso, toIso),
+      salonDailySummary(fromIso, toIso),
+    ]).then(([c, p, s]) => { setRows(c); setPop(p); setSummary(s); }).finally(() => setLoading(false));
   };
-  useEffect(() => { load(); }, []);
+  useEffect(() => { load(); /* eslint-disable-next-line */ }, [range, customFrom, customTo]);
+
+  const payStaff = async (staffId: string, name: string) => {
+    if (!user?.id) return;
+    if (!(await confirm({ title: `Pay ${name}?`, description: "Marks all their outstanding commissions in this range as paid and records the payout." }))) return;
+    setPaying(staffId);
+    try {
+      const { fromIso, toIso } = bounds();
+      void fromIso;
+      const res = await payStaffCommissions({ staff_id: staffId, uptoIso: toIso, userId: user.id, periodDate: new Date().toISOString().slice(0, 10) });
+      toast.success(`Paid ${name} ${KES(res.amount)} (${res.count} commission${res.count === 1 ? "" : "s"})`);
+      load();
+    } catch (e) { toast.error(String(e)); } finally { setPaying(null); }
+  };
+
+  const rangeLabel = range === "today" ? "Today" : range === "week" ? "Last 7 days" : range === "month" ? "Last 30 days" : "Custom range";
+
   return (
-    <div>
-      <ModuleMasthead accent={ACCENT} eyebrow="Salon & Spa · Reports" title="Reports" subtitle="Staff commissions + service popularity — last 30 days." />
+    <div className="space-y-6">
+      <ModuleMasthead accent={ACCENT} eyebrow="Salon & Spa · Reports" title="Reports" subtitle="Daily takings, staff commissions & payouts, and service performance." />
+
+      {/* Date range */}
+      <div className="flex flex-wrap items-center gap-2">
+        <div className="flex items-center gap-0.5 rounded-md border border-border p-0.5">
+          {(["today", "week", "month", "custom"] as const).map((r) => (
+            <button key={r} onClick={() => setRange(r)} className={cn("text-[12px] px-2.5 py-1 rounded capitalize transition-colors", range === r ? "bg-accent text-foreground font-medium" : "text-muted-foreground hover:text-foreground")}>
+              {r === "today" ? "Today" : r === "week" ? "Week" : r === "month" ? "Month" : "Custom"}
+            </button>
+          ))}
+        </div>
+        {range === "custom" && (
+          <div className="flex items-center gap-1.5">
+            <Input type="date" value={customFrom} onChange={(e) => setCustomFrom(e.target.value)} className="h-8 w-[150px] text-xs" />
+            <span className="text-muted-foreground text-xs">→</span>
+            <Input type="date" value={customTo} onChange={(e) => setCustomTo(e.target.value)} className="h-8 w-[150px] text-xs" />
+          </div>
+        )}
+        <span className="text-[11px] text-muted-foreground ml-auto">{rangeLabel}</span>
+      </div>
+
       {loading ? <ModuleSpinner /> : (
         <div className="space-y-6">
+          {/* Daily P&L summary */}
+          {summary && (
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              <SummaryStat label="Sales" value={String(summary.sales_count)} />
+              <SummaryStat label="Revenue (before commission)" value={KES(summary.gross_revenue)} />
+              <SummaryStat label="Commissions" value={KES(summary.commissions)} tone="warning" />
+              <SummaryStat label="Net after commission" value={KES(summary.net_after_commission)} tone="positive" />
+            </div>
+          )}
+          {summary && (
+            <div className={cn("rounded-md px-3 py-2 text-[12.5px] flex items-center gap-2",
+              summary.reconciled ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400" : "bg-red-500/10 text-red-700 dark:text-red-400")}>
+              {summary.reconciled
+                ? <><CheckCircle className="h-4 w-4" /> Balanced — every shilling taken ties to a recorded service/product{summary.tips > 0 ? ` (+ ${KES(summary.tips)} tips)` : ""}.</>
+                : <>⚠ Off by {KES(Math.abs(summary.variance))} — sales revenue doesn't match recorded service lines. Check for edited/voided sales or unrecorded items.</>}
+            </div>
+          )}
+
+          {/* Staff commissions + payouts */}
           <div>
-            <div className="text-[11px] uppercase tracking-wider text-muted-foreground mb-2">Staff commissions</div>
-            {rows.length === 0 ? <p className="text-[13px] text-muted-foreground">No commissions yet.</p> : (
+            <div className="text-[11px] uppercase tracking-wider text-muted-foreground mb-2">Staff commissions & payouts</div>
+            {rows.length === 0 ? <p className="text-[13px] text-muted-foreground">No commissions in this range. Complete a sale through POS to accrue commissions.</p> : (
               <ModuleTable>
-                <ModuleTHead><tr><th className="text-left px-3 py-2">Staff</th><th className="text-right px-3 py-2">Jobs</th><th className="text-right px-3 py-2">Commission</th></tr></ModuleTHead>
+                <ModuleTHead><tr>
+                  <th className="text-left px-3 py-2">Staff</th>
+                  <th className="text-right px-3 py-2">Jobs</th>
+                  <th className="text-right px-3 py-2">Earned</th>
+                  <th className="text-right px-3 py-2">Paid</th>
+                  <th className="text-right px-3 py-2">Outstanding</th>
+                  <th className="text-right px-3 py-2">Action</th>
+                </tr></ModuleTHead>
                 <tbody>
                   {rows.map((r) => (
-                    <tr key={r.staff_id} className="border-t border-border"><td className="px-3 py-2">{r.display_name}</td><td className="px-3 py-2 text-right tabular-nums">{r.jobs}</td><td className="px-3 py-2 text-right font-mono tabular-nums">{KES(r.total)}</td></tr>
+                    <tr key={r.staff_id} className="border-t border-border hover:bg-accent/30 cursor-pointer" onClick={() => navigate(`/salon/staff/${r.staff_id}/earnings`)}>
+                      <td className="px-3 py-2 font-medium">{r.display_name}</td>
+                      <td className="px-3 py-2 text-right tabular-nums">{r.jobs}</td>
+                      <td className="px-3 py-2 text-right font-mono tabular-nums">{KES(r.total)}</td>
+                      <td className="px-3 py-2 text-right font-mono tabular-nums text-muted-foreground">{KES(r.paid)}</td>
+                      <td className="px-3 py-2 text-right font-mono tabular-nums font-medium">{r.outstanding > 0 ? <span className="text-amber-600 dark:text-amber-400">{KES(r.outstanding)}</span> : <span className="text-muted-foreground">—</span>}</td>
+                      <td className="px-3 py-2 text-right" onClick={(e) => e.stopPropagation()}>
+                        {r.outstanding > 0
+                          ? <Button size="sm" className={cn("h-7", BRAND_BTN)} disabled={paying === r.staff_id} onClick={() => payStaff(r.staff_id, r.display_name)}>{paying === r.staff_id ? "…" : `Pay ${KES(r.outstanding)}`}</Button>
+                          : <span className="text-[11px] text-emerald-600 dark:text-emerald-400">Settled</span>}
+                      </td>
+                    </tr>
                   ))}
                 </tbody>
               </ModuleTable>
             )}
+            <p className="text-[11px] text-muted-foreground mt-1.5">Tap a staff member to see their daily earnings breakdown.</p>
           </div>
+
+          {/* Popular services */}
           <div>
             <div className="text-[11px] uppercase tracking-wider text-muted-foreground mb-2">Most popular services</div>
             {pop.length === 0 ? <p className="text-[13px] text-muted-foreground">No completed services yet.</p> : (
@@ -926,6 +1026,102 @@ export function SalonReportsPage() {
                 <tbody>
                   {pop.map((r) => (
                     <tr key={r.service_id} className="border-t border-border"><td className="px-3 py-2">{r.name}</td><td className="px-3 py-2 text-right tabular-nums">{r.count}</td><td className="px-3 py-2 text-right font-mono tabular-nums">{KES(r.revenue)}</td></tr>
+                  ))}
+                </tbody>
+              </ModuleTable>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function SummaryStat({ label, value, tone }: { label: string; value: string; tone?: "positive" | "warning" }) {
+  return (
+    <div className="rounded-lg border border-border p-3">
+      <div className="text-[10.5px] uppercase tracking-wider text-muted-foreground">{label}</div>
+      <div className={cn("text-[18px] font-semibold tabular-nums mt-0.5",
+        tone === "positive" && "text-emerald-600 dark:text-emerald-400",
+        tone === "warning" && "text-amber-600 dark:text-amber-400")}>{value}</div>
+    </div>
+  );
+}
+
+// ─── Staff earnings detail (drill-down) ───────────────────────────────────────
+
+export function SalonStaffEarningsPage() {
+  const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
+  const [staff, setStaff] = useState<SalonStaff | null>(null);
+  const [days, setDays] = useState<StaffEarningDay[]>([]);
+  const [lines, setLines] = useState<StaffCommissionLine[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!id) return;
+    setLoading(true);
+    const to = new Date(); to.setHours(23, 59, 59, 999);
+    const from = new Date(); from.setDate(from.getDate() - 29); from.setHours(0, 0, 0, 0);
+    Promise.all([
+      listStaff(true).then((s) => s.find((x) => x.id === id) ?? null),
+      staffEarningsByDay(id, from.toISOString(), to.toISOString()),
+      staffCommissionLines(id, from.toISOString(), to.toISOString()),
+    ]).then(([st, d, l]) => { setStaff(st); setDays(d); setLines(l); }).finally(() => setLoading(false));
+  }, [id]);
+
+  const totalEarned = days.reduce((s, d) => s + d.earned, 0);
+  const totalPaid = days.reduce((s, d) => s + d.paid, 0);
+
+  return (
+    <div className="space-y-5">
+      <div>
+        <button onClick={() => navigate("/salon")} className="inline-flex items-center gap-1 text-[12px] text-muted-foreground hover:text-foreground mb-2"><CaretLeft className="h-3.5 w-3.5" /> Back to salon</button>
+        <ModuleMasthead accent={ACCENT} eyebrow="Salon & Spa · Staff earnings" title={staff?.display_name ?? "Staff"} subtitle="Daily earnings from auto-earned commissions — last 30 days." />
+      </div>
+      {loading ? <ModuleSpinner /> : (
+        <div className="space-y-6">
+          <div className="grid grid-cols-3 gap-3">
+            <SummaryStat label="Earned (30d)" value={KES(totalEarned)} />
+            <SummaryStat label="Paid" value={KES(totalPaid)} />
+            <SummaryStat label="Outstanding" value={KES(Math.max(0, totalEarned - totalPaid))} tone="warning" />
+          </div>
+
+          <div>
+            <div className="text-[11px] uppercase tracking-wider text-muted-foreground mb-2">Daily earnings</div>
+            {days.length === 0 ? <p className="text-[13px] text-muted-foreground">No earnings in the last 30 days.</p> : (
+              <ModuleTable>
+                <ModuleTHead><tr><th className="text-left px-3 py-2">Day</th><th className="text-right px-3 py-2">Jobs</th><th className="text-right px-3 py-2">Earned</th><th className="text-right px-3 py-2">Paid</th><th className="text-right px-3 py-2">Status</th></tr></ModuleTHead>
+                <tbody>
+                  {days.map((d) => (
+                    <tr key={d.day} className="border-t border-border">
+                      <td className="px-3 py-2">{new Date(d.day).toLocaleDateString([], { weekday: "short", day: "numeric", month: "short" })}</td>
+                      <td className="px-3 py-2 text-right tabular-nums">{d.jobs}</td>
+                      <td className="px-3 py-2 text-right font-mono tabular-nums">{KES(d.earned)}</td>
+                      <td className="px-3 py-2 text-right font-mono tabular-nums text-muted-foreground">{KES(d.paid)}</td>
+                      <td className="px-3 py-2 text-right">{d.paid >= d.earned - 0.01 ? <span className="text-[11px] text-emerald-600 dark:text-emerald-400">Paid</span> : <Badge variant="outline" className="text-[10px] border-amber-500/40 text-amber-600 dark:text-amber-400">Owed {KES(d.earned - d.paid)}</Badge>}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </ModuleTable>
+            )}
+          </div>
+
+          <div>
+            <div className="text-[11px] uppercase tracking-wider text-muted-foreground mb-2">Commission lines</div>
+            {lines.length === 0 ? <p className="text-[13px] text-muted-foreground">No commission lines.</p> : (
+              <ModuleTable>
+                <ModuleTHead><tr><th className="text-left px-3 py-2">Date</th><th className="text-left px-3 py-2">Service</th><th className="text-left px-3 py-2">Client</th><th className="text-right px-3 py-2">Base</th><th className="text-right px-3 py-2">%</th><th className="text-right px-3 py-2">Earned</th></tr></ModuleTHead>
+                <tbody>
+                  {lines.map((l) => (
+                    <tr key={l.id} className="border-t border-border">
+                      <td className="px-3 py-2 text-[12px]">{new Date(l.created_at).toLocaleDateString([], { day: "numeric", month: "short" })}</td>
+                      <td className="px-3 py-2">{l.service_name ?? (l.kind === "retail" ? "Retail" : "—")}</td>
+                      <td className="px-3 py-2 text-muted-foreground">{l.client_name ?? "Walk-in"}</td>
+                      <td className="px-3 py-2 text-right font-mono tabular-nums text-muted-foreground">{KES(l.base_amount)}</td>
+                      <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">{l.pct}%</td>
+                      <td className="px-3 py-2 text-right font-mono tabular-nums font-medium">{KES(l.amount)}</td>
+                    </tr>
                   ))}
                 </tbody>
               </ModuleTable>
