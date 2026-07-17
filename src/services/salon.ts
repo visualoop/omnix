@@ -181,6 +181,13 @@ export async function createStaff(input: {
   return id;
 }
 
+/** Resolve a Core employee to their salon_staff row (if enrolled). Lets the
+ *  unified employee profile show salon earnings without knowing the staff id. */
+export async function getSalonStaffByEmployee(employeeId: string): Promise<SalonStaff | null> {
+  const [row] = await query<SalonStaff>(`SELECT * FROM salon_staff WHERE employee_id = ?1 LIMIT 1`, [employeeId]);
+  return row ?? null;
+}
+
 export interface EnrollablePerson {
   kind: "employee" | "user";
   id: string;
@@ -662,7 +669,7 @@ export async function listClientVisits(clientId: string): Promise<SalonAppointme
 // ─── Commission reads ─────────────────────────────────────────────────────────
 
 export interface StaffCommissionRow {
-  staff_id: string; display_name: string; jobs: number;
+  staff_id: string; employee_id: string | null; display_name: string; jobs: number;
   total: number;        // accrued in the period
   paid: number;         // of that, already paid out
   outstanding: number;  // accrued − paid (what's still owed)
@@ -670,7 +677,7 @@ export interface StaffCommissionRow {
 
 export async function commissionsByStaff(fromIso: string, toIso: string): Promise<StaffCommissionRow[]> {
   return query<StaffCommissionRow>(
-    `SELECT c.staff_id, st.display_name,
+    `SELECT c.staff_id, st.employee_id, st.display_name,
             COUNT(*) AS jobs,
             COALESCE(SUM(c.amount), 0) AS total,
             COALESCE(SUM(CASE WHEN c.payout_id IS NOT NULL THEN c.amount ELSE 0 END), 0) AS paid,

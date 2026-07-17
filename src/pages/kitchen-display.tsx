@@ -247,8 +247,8 @@ export function KitchenDisplayPage() {
     : parseInt(prefs.columns, 10);
 
   return (
-    <div className={cn("min-h-screen bg-background p-4 space-y-3", prefs.forceDark && "dark")}>
-      <div className={cn(prefs.forceDark && "bg-background text-foreground -m-4 p-4 min-h-screen")}>
+    <div className={cn("min-h-[100dvh] bg-background p-4 space-y-3", prefs.forceDark && "dark")}>
+      <div className={cn(prefs.forceDark && "bg-background text-foreground -m-4 p-4 min-h-[100dvh]")}>
       <header className="flex items-center justify-between pb-2 border-b border-border/60">
         <div className="flex items-center gap-3">
           <div className="flex items-center justify-center h-8 w-8 rounded-lg bg-primary/10">

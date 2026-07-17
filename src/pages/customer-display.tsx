@@ -301,7 +301,7 @@ export function CustomerDisplayPage() {
   // ── Payment success ──────────────────────────────────────────────
   if (paidTotal !== null) {
     return (
-      <div className="relative min-h-screen bg-background text-foreground flex flex-col items-center justify-center p-12 overflow-hidden">
+      <div className="relative min-h-[100dvh] bg-background text-foreground flex flex-col items-center justify-center p-12 overflow-hidden">
         {/* Atmospheric ambient glow — module-tinted */}
         <div aria-hidden className="pointer-events-none absolute inset-0">
           <div className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 h-[60vmin] w-[60vmin] rounded-full ${cfg.accentLine} opacity-20 blur-[140px]`} />
@@ -324,7 +324,7 @@ export function CustomerDisplayPage() {
     const slide = playlist[slideIdx];
     if (slide) {
       return (
-        <div className="relative min-h-screen bg-background text-foreground/85 overflow-hidden">
+        <div className="relative min-h-[100dvh] bg-background text-foreground/85 overflow-hidden">
           {slide.type === "image" ? (
             <img src={slide.url} alt="" className="absolute inset-0 h-full w-full object-cover" />
           ) : slide.type === "video" || slide.type === "iframe" ? (
@@ -348,7 +348,7 @@ export function CustomerDisplayPage() {
     }
 
     return (
-      <div className="relative min-h-screen bg-background text-foreground/85 flex flex-col items-center justify-center p-12 overflow-hidden">
+      <div className="relative min-h-[100dvh] bg-background text-foreground/85 flex flex-col items-center justify-center p-12 overflow-hidden">
         {/* Ambient module-tinted glow */}
         <div aria-hidden className="pointer-events-none absolute inset-0">
           <div className={`absolute top-[15%] left-[15%] h-[40vmin] w-[40vmin] rounded-full ${cfg.accentLine} opacity-10 blur-[160px]`} />
@@ -380,7 +380,7 @@ export function CustomerDisplayPage() {
 
   // ── Active order ─────────────────────────────────────────────────
   return (
-    <div className="min-h-screen bg-background text-foreground/85 flex flex-col">
+    <div className="min-h-[100dvh] bg-background text-foreground/85 flex flex-col">
       <div className="flex-shrink-0">
         <div className={`h-1 ${cfg.accentLine}`} />
         <div className="px-10 py-5 flex items-center justify-between border-b border-border">

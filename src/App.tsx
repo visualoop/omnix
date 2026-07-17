@@ -5,6 +5,7 @@ import { ConfirmDialogHost } from "@/components/ui/confirm-dialog";
 import { TouchTextKeyboardProvider } from "@/components/ui/touch-text-keyboard-provider";
 import { useAuthStore } from "@/stores/auth";
 import { useF11Fullscreen } from "@/hooks/use-f11-fullscreen";
+import { useFullscreenStore } from "@/stores/fullscreen";
 import { WindowTitlebar, TITLEBAR_HEIGHT_PX } from "@/components/layout/window-titlebar";
 import { useAutoUpdate } from "@/hooks/use-auto-update";
 import { useLanAutostart } from "@/hooks/use-lan-autostart";
@@ -195,10 +196,11 @@ function App() {
  *  expectation of a standard Windows app. */
 function CustomerDisplayShell() {
   useF11Fullscreen();
+  const fs = useFullscreenStore((s) => s.isFullscreen);
   return (
     <BrowserRouter>
-      <WindowTitlebar title="Customer Display" />
-      <div style={{ marginTop: TITLEBAR_HEIGHT_PX }}>
+      <WindowTitlebar title="Customer Display" hidden={fs} />
+      <div style={{ marginTop: fs ? 0 : TITLEBAR_HEIGHT_PX }}>
         <Routes>
           <Route path="/customer-display/queue" element={<CustomerDisplayQueuePage />} />
           <Route path="*" element={<CustomerDisplayPage />} />
@@ -211,10 +213,11 @@ function CustomerDisplayShell() {
 /** Kitchen Display window — chrome-less, fullscreen-friendly. */
 function KitchenDisplayShell() {
   useF11Fullscreen();
+  const fs = useFullscreenStore((s) => s.isFullscreen);
   return (
     <BrowserRouter>
-      <WindowTitlebar title="Kitchen Display" />
-      <div style={{ marginTop: TITLEBAR_HEIGHT_PX }}>
+      <WindowTitlebar title="Kitchen Display" hidden={fs} />
+      <div style={{ marginTop: fs ? 0 : TITLEBAR_HEIGHT_PX }}>
         <Routes>
           <Route path="*" element={<KitchenDisplayPage />} />
         </Routes>

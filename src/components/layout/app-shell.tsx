@@ -4,6 +4,7 @@ import { cn } from "@/lib/utils";
 import { Sidebar } from "./sidebar";
 import { Topbar } from "./topbar";
 import { WindowTitlebar, TITLEBAR_HEIGHT_PX } from "./window-titlebar";
+import { useFullscreenStore } from "@/stores/fullscreen";
 import { TrialLifecycleBanner } from "@/components/trial-lifecycle";
 import { CommandPalette } from "@/components/layout/command-palette";
 import { RouteErrorBoundary } from "@/components/route-error-boundary";
@@ -37,6 +38,10 @@ export function AppShell() {
     location.pathname === "/pos/sale" ||
     location.pathname.startsWith("/pos/sale/") ||
     location.pathname.startsWith("/customer-display");
+  // Window (F11) fullscreen hides ONLY the titlebar strip — not the sidebar —
+  // so the window fills the screen without the app reflowing.
+  const windowFullscreen = useFullscreenStore((s) => s.isFullscreen);
+  const chromeHidden = isFullscreen || windowFullscreen;
 
   useAutoCloudBackup();
 
@@ -59,11 +64,11 @@ export function AppShell() {
   }, [location.pathname]);
 
   return (
-    <div className="flex flex-col h-screen w-full overflow-hidden bg-background text-foreground">
-      <WindowTitlebar hidden={isFullscreen} />
+    <div className="flex flex-col h-[100dvh] w-full overflow-hidden bg-background text-foreground">
+      <WindowTitlebar hidden={chromeHidden} />
       <div
         className="flex flex-1 overflow-hidden"
-        style={{ marginTop: isFullscreen ? 0 : TITLEBAR_HEIGHT_PX }}
+        style={{ marginTop: chromeHidden ? 0 : TITLEBAR_HEIGHT_PX }}
       >
         {!isSettingsRoute && !isFullscreen && <Sidebar onCommandOpen={openCmd} />}
         <div className="flex flex-col flex-1 overflow-hidden">

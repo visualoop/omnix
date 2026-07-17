@@ -14,6 +14,16 @@ import { getEmployee, type Employee } from "@/services/employees"
 import { Pencil } from "@phosphor-icons/react"
 import { format, differenceInYears } from "date-fns"
 import { query } from "@/lib/db"
+import { MODULES_ALLOWED } from "@/lib/variant"
+import { Badge } from "@/components/ui/badge"
+import { toast } from "sonner"
+import { useAuthStore } from "@/stores/auth"
+import { confirm } from "@/components/ui/confirm-dialog"
+import {
+  getSalonStaffByEmployee, staffEarningsByDay, staffCommissionLines, payStaffCommissions,
+  type SalonStaff, type StaffEarningDay, type StaffCommissionLine,
+} from "@/services/salon"
+const SALON_ENABLED = MODULES_ALLOWED.includes("salon")
 
 const KES = (n: number) =>
   new Intl.NumberFormat("en-KE", { style: "currency", currency: "KES", maximumFractionDigits: 0 }).format(n)
@@ -111,10 +121,112 @@ export function EmployeeDetailPage() {
         tabs={[
           { id: "profile", label: "Profile", render: () => <ProfileTab employee={employee} /> },
           { id: "compensation", label: "Compensation", render: () => <CompTab employee={employee} /> },
+          ...(SALON_ENABLED ? [{ id: "earnings", label: "Earnings", render: () => <EarningsTab employeeId={employee.id} /> }] : []),
           { id: "kin", label: "Next of kin", render: () => <KinTab employee={employee} /> },
           { id: "documents", label: "Documents", render: () => <DocumentsTab employee={employee} /> },
         ]}
       />
+      </div>
+    </div>
+  )
+}
+
+function EarningsTab({ employeeId }: { employeeId: string }) {
+  const [staff, setStaff] = useState<SalonStaff | null>(null)
+  const [days, setDays] = useState<StaffEarningDay[]>([])
+  const [lines, setLines] = useState<StaffCommissionLine[]>([])
+  const [loading, setLoading] = useState(true)
+  const [paying, setPaying] = useState(false)
+  const userId = useAuthStore((s) => s.user?.id)
+
+  const load = () => {
+    setLoading(true)
+    getSalonStaffByEmployee(employeeId).then((st) => {
+      setStaff(st)
+      if (!st) { setLoading(false); return }
+      const to = new Date(); to.setHours(23, 59, 59, 999)
+      const from = new Date(); from.setDate(from.getDate() - 29); from.setHours(0, 0, 0, 0)
+      Promise.all([
+        staffEarningsByDay(st.id, from.toISOString(), to.toISOString()),
+        staffCommissionLines(st.id, from.toISOString(), to.toISOString()),
+      ]).then(([d, l]) => { setDays(d); setLines(l) }).finally(() => setLoading(false))
+    }).catch(() => setLoading(false))
+  }
+  useEffect(() => { load() /* eslint-disable-line */ }, [employeeId])
+
+  if (loading) return <div className="py-8 text-center text-sm text-muted-foreground">Loading…</div>
+  if (!staff) return <div className="py-8 text-center text-sm text-muted-foreground">This employee isn't enrolled as salon staff, so there are no salon earnings.</div>
+
+  const earned = days.reduce((s, d) => s + d.earned, 0)
+  const paid = days.reduce((s, d) => s + d.paid, 0)
+  const outstanding = Math.max(0, earned - paid)
+
+  const payOut = async () => {
+    if (!userId || outstanding <= 0) return
+    if (!(await confirm({ title: `Pay ${staff.display_name}?`, description: `Marks their outstanding salon commissions (${KES(outstanding)}) as paid and records the payout.` }))) return
+    setPaying(true)
+    try {
+      const to = new Date(); to.setHours(23, 59, 59, 999)
+      const res = await payStaffCommissions({ staff_id: staff.id, uptoIso: to.toISOString(), userId, periodDate: new Date().toISOString().slice(0, 10) })
+      toast.success(`Paid ${KES(res.amount)} (${res.count} commission${res.count === 1 ? "" : "s"})`)
+      load()
+    } catch (e) { toast.error(String(e)) } finally { setPaying(false) }
+  }
+
+  return (
+    <div className="space-y-5">
+      <div className="flex items-center justify-between gap-3">
+        <div className="text-[11px] uppercase tracking-wider text-muted-foreground">Salon earnings · last 30 days</div>
+        {outstanding > 0 && <Button size="sm" disabled={paying} onClick={payOut}>{paying ? "…" : `Pay ${KES(outstanding)}`}</Button>}
+      </div>
+      <div className="grid grid-cols-3 gap-3">
+        <div className="rounded-lg border border-border p-3"><div className="text-[10.5px] uppercase tracking-wider text-muted-foreground">Earned</div><div className="text-[18px] font-semibold tabular-nums mt-0.5">{KES(earned)}</div></div>
+        <div className="rounded-lg border border-border p-3"><div className="text-[10.5px] uppercase tracking-wider text-muted-foreground">Paid</div><div className="text-[18px] font-semibold tabular-nums mt-0.5 text-muted-foreground">{KES(paid)}</div></div>
+        <div className="rounded-lg border border-border p-3"><div className="text-[10.5px] uppercase tracking-wider text-muted-foreground">Outstanding</div><div className="text-[18px] font-semibold tabular-nums mt-0.5 text-amber-600 dark:text-amber-400">{KES(outstanding)}</div></div>
+      </div>
+
+      <div>
+        <div className="text-[11px] uppercase tracking-wider text-muted-foreground mb-2">Daily earnings</div>
+        {days.length === 0 ? <p className="text-[13px] text-muted-foreground">No earnings in the last 30 days.</p> : (
+          <div className="border border-border rounded-lg overflow-hidden">
+            <table className="w-full text-[13px]">
+              <thead className="bg-muted/30 text-[11px] uppercase tracking-wide text-muted-foreground"><tr><th className="text-left px-3 py-2">Day</th><th className="text-right px-3 py-2">Jobs</th><th className="text-right px-3 py-2">Earned</th><th className="text-right px-3 py-2">Paid</th></tr></thead>
+              <tbody>
+                {days.map((d) => (
+                  <tr key={d.day} className="border-t border-border">
+                    <td className="px-3 py-2">{new Date(d.day).toLocaleDateString([], { weekday: "short", day: "numeric", month: "short" })}</td>
+                    <td className="px-3 py-2 text-right tabular-nums">{d.jobs}</td>
+                    <td className="px-3 py-2 text-right font-mono tabular-nums">{KES(d.earned)}</td>
+                    <td className="px-3 py-2 text-right font-mono tabular-nums text-muted-foreground">{d.paid >= d.earned - 0.01 ? "Paid" : KES(d.paid)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      <div>
+        <div className="text-[11px] uppercase tracking-wider text-muted-foreground mb-2">Commission lines</div>
+        {lines.length === 0 ? <p className="text-[13px] text-muted-foreground">No commission lines.</p> : (
+          <div className="border border-border rounded-lg overflow-hidden">
+            <table className="w-full text-[13px]">
+              <thead className="bg-muted/30 text-[11px] uppercase tracking-wide text-muted-foreground"><tr><th className="text-left px-3 py-2">Date</th><th className="text-left px-3 py-2">Service</th><th className="text-left px-3 py-2">Client</th><th className="text-right px-3 py-2">%</th><th className="text-right px-3 py-2">Earned</th><th className="text-right px-3 py-2">Status</th></tr></thead>
+              <tbody>
+                {lines.map((l) => (
+                  <tr key={l.id} className="border-t border-border">
+                    <td className="px-3 py-2 text-[12px]">{new Date(l.created_at).toLocaleDateString([], { day: "numeric", month: "short" })}</td>
+                    <td className="px-3 py-2">{l.service_name ?? (l.kind === "retail" ? "Retail" : "—")}</td>
+                    <td className="px-3 py-2 text-muted-foreground">{l.client_name ?? "Walk-in"}</td>
+                    <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">{l.pct}%</td>
+                    <td className="px-3 py-2 text-right font-mono tabular-nums font-medium">{KES(l.amount)}</td>
+                    <td className="px-3 py-2 text-right">{l.paid_at ? <span className="text-[11px] text-emerald-600 dark:text-emerald-400">Paid</span> : <Badge variant="outline" className="text-[10px] border-amber-500/40 text-amber-600 dark:text-amber-400">Owed</Badge>}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
     </div>
   )

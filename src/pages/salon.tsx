@@ -721,7 +721,7 @@ export function SalonStaffPage() {
         onClose={() => setDetailStaff(null)}
         onChanged={load}
         onOpenHr={() => navigate("/hr/employees")}
-        onViewEarnings={() => detailStaff && navigate(`/salon/staff/${detailStaff.id}/earnings`)}
+        onViewEarnings={() => detailStaff?.employee_id ? navigate(`/hr/employees/${detailStaff.employee_id}`) : toast.error("This staff member isn't linked to an employee record yet.")}
       />
     </div>
   );
@@ -862,8 +862,8 @@ function StaffDetailSheet({ staff, services, emp, onClose, onChanged, onOpenHr, 
             <div className="text-muted-foreground">{emp?.job_title || "—"} · {emp?.phone || "no phone"}</div>
           </div>
 
-          <button onClick={onViewEarnings} className="w-full flex items-center justify-between rounded-lg border border-border p-3 text-left hover:bg-accent/30 transition-colors">
-            <span className="flex items-center gap-2 text-[13px] font-medium"><Receipt className="h-4 w-4 text-primary" /> View earnings & commissions</span>
+          <button onClick={onViewEarnings} className="w-full flex items-center justify-between rounded-lg border border-primary/40 bg-primary/[0.04] p-3 text-left hover:bg-primary/[0.08] transition-colors">
+            <span className="flex items-center gap-2 text-[13px] font-medium"><ArrowSquareOut className="h-4 w-4 text-primary" /> Open full profile — earnings, pay & documents</span>
             <CaretRight className="h-4 w-4 text-muted-foreground" />
           </button>
 
@@ -1004,7 +1004,7 @@ export function SalonReportsPage() {
                 </tr></ModuleTHead>
                 <tbody>
                   {rows.map((r) => (
-                    <tr key={r.staff_id} className="border-t border-border hover:bg-accent/30 cursor-pointer" onClick={() => navigate(`/salon/staff/${r.staff_id}/earnings`)}>
+                    <tr key={r.staff_id} className="border-t border-border hover:bg-accent/30 cursor-pointer" onClick={() => r.employee_id ? navigate(`/hr/employees/${r.employee_id}`) : navigate(`/salon/staff/${r.staff_id}/earnings`)}>
                       <td className="px-3 py-2 font-medium">{r.display_name}</td>
                       <td className="px-3 py-2 text-right tabular-nums">{r.jobs}</td>
                       <td className="px-3 py-2 text-right font-mono tabular-nums">{KES(r.total)}</td>
@@ -1020,7 +1020,7 @@ export function SalonReportsPage() {
                 </tbody>
               </ModuleTable>
             )}
-            <p className="text-[11px] text-muted-foreground mt-1.5">Tap a staff member to see their daily earnings breakdown.</p>
+            <p className="text-[11px] text-muted-foreground mt-1.5">Tap a staff member to open their full profile — earnings, pay & documents.</p>
           </div>
 
           {/* Popular services */}
