@@ -351,6 +351,28 @@ export async function groupMemberIds(groupId: string): Promise<string[]> {
   return rows.map((r) => r.user_id);
 }
 
+/** Role ids assigned to a group. */
+export async function groupRoleIds(groupId: string): Promise<string[]> {
+  const rows = await query<{ role_id: string }>(`SELECT DISTINCT role_id FROM group_roles WHERE group_id = ?1`, [groupId]);
+  return rows.map((r) => r.role_id);
+}
+
+/** Assign a role to a group (global scope). Members inherit the role's
+ *  permissions via getEffectivePermissions (group_members → group_roles). */
+export async function addGroupRole(groupId: string, roleId: string): Promise<void> {
+  await requirePermission("users.manage", { entityType: "group", entityId: groupId, metadata: { roleId } });
+  // Composite PK includes branch/module; NULLs aren't deduped by the PK, so
+  // clear any existing global link first, then insert one with NULL scope
+  // (NULL = applies to all branches/modules, which the resolver matches).
+  await execute(`DELETE FROM group_roles WHERE group_id = ?1 AND role_id = ?2 AND branch_id IS NULL AND module_id IS NULL`, [groupId, roleId]);
+  await execute(`INSERT INTO group_roles (group_id, role_id, branch_id, module_id) VALUES (?1, ?2, NULL, NULL)`, [groupId, roleId]);
+}
+
+export async function removeGroupRole(groupId: string, roleId: string): Promise<void> {
+  await requirePermission("users.manage", { entityType: "group", entityId: groupId, metadata: { roleId } });
+  await execute(`DELETE FROM group_roles WHERE group_id = ?1 AND role_id = ?2`, [groupId, roleId]);
+}
+
 /** Assign a role directly to a user (optionally branch/module scoped). */
 export async function assignUserRole(userId: string, roleId: string, branchId: string | null = null, moduleId: string | null = null): Promise<void> {
   await requirePermission("users.manage", { entityType: "user", entityId: userId, metadata: { roleId } });

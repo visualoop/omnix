@@ -11,7 +11,8 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import {
   listGroups, createGroup, groupMemberIds, addGroupMember, removeGroupMember,
-  type GroupRow,
+  groupRoleIds, addGroupRole, removeGroupRole, listRoles,
+  type GroupRow, type RoleRow,
 } from "@/services/rbac";
 import { listUsers, type User } from "@/services/auth";
 import { prompt } from "@/components/ui/confirm-dialog";
@@ -19,24 +20,28 @@ import { prompt } from "@/components/ui/confirm-dialog";
 export function SettingsGroupsPage() {
   const [groups, setGroups] = useState<GroupRow[]>([]);
   const [users, setUsers] = useState<User[]>([]);
+  const [roles, setRoles] = useState<RoleRow[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [memberIds, setMemberIds] = useState<Set<string>>(new Set());
+  const [roleIds, setRoleIds] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
 
   const selected = groups.find((g) => g.id === selectedId) ?? null;
 
   const loadGroups = async () => {
-    const [g, u] = await Promise.all([listGroups(), listUsers()]);
+    const [g, u, r] = await Promise.all([listGroups(), listUsers(), listRoles()]);
     setGroups(g);
     setUsers(u);
+    setRoles(r);
     setSelectedId((cur) => cur ?? g[0]?.id ?? null);
     setLoading(false);
   };
 
   useEffect(() => { loadGroups(); }, []);
   useEffect(() => {
-    if (!selectedId) { setMemberIds(new Set()); return; }
+    if (!selectedId) { setMemberIds(new Set()); setRoleIds(new Set()); return; }
     groupMemberIds(selectedId).then((ids) => setMemberIds(new Set(ids)));
+    groupRoleIds(selectedId).then((ids) => setRoleIds(new Set(ids)));
   }, [selectedId]);
 
   const handleCreate = async () => {
@@ -50,8 +55,28 @@ export function SettingsGroupsPage() {
     } catch (e) { toast.error(String(e)); }
   };
 
-  const toggleMember = async (userId: string) => {
+  const toggleRole = async (roleId: string) => {
     if (!selected) return;
+    const has = roleIds.has(roleId);
+    setRoleIds((prev) => {
+      const next = new Set(prev);
+      has ? next.delete(roleId) : next.add(roleId);
+      return next;
+    });
+    try {
+      if (has) await removeGroupRole(selected.id, roleId);
+      else await addGroupRole(selected.id, roleId);
+    } catch (e) {
+      toast.error(String(e));
+      setRoleIds((prev) => {
+        const next = new Set(prev);
+        has ? next.add(roleId) : next.delete(roleId);
+        return next;
+      });
+    }
+  };
+
+  const toggleMember = async (userId: string) => {    if (!selected) return;
     const isMember = memberIds.has(userId);
     setMemberIds((prev) => {
       const next = new Set(prev);
@@ -108,9 +133,39 @@ export function SettingsGroupsPage() {
             <div className="flex items-center gap-2">
               <Users className="h-4 w-4 text-primary" />
               <h2 className="text-sm font-semibold">{selected.name}</h2>
-              <span className="text-xs text-muted-foreground">{memberIds.size} member{memberIds.size === 1 ? "" : "s"}</span>
+              <span className="text-xs text-muted-foreground">{memberIds.size} member{memberIds.size === 1 ? "" : "s"} · {roleIds.size} role{roleIds.size === 1 ? "" : "s"}</span>
             </div>
-            <p className="text-xs text-muted-foreground">Tap a user to add or remove them from this group. Assign roles to the group from Users &amp; Permissions.</p>
+
+            {/* Roles assigned to this group — members inherit these permissions. */}
+            <div className="space-y-2">
+              <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Roles for this group</div>
+              <p className="text-xs text-muted-foreground">Pick the roles everyone in this group should have. Members automatically get every permission from these roles.</p>
+              {roles.length === 0 ? (
+                <p className="text-xs text-muted-foreground">No roles yet — create roles under Settings → Roles &amp; Permissions first.</p>
+              ) : (
+                <div className="flex flex-wrap gap-2">
+                  {roles.map((r) => {
+                    const on = roleIds.has(r.id);
+                    return (
+                      <button
+                        key={r.id}
+                        onClick={() => toggleRole(r.id)}
+                        className={cn(
+                          "inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-[12px] transition-colors cursor-pointer",
+                          on ? "border-primary bg-primary/10 text-foreground font-medium" : "border-border text-muted-foreground hover:text-foreground hover:border-foreground/30",
+                        )}
+                      >
+                        {on ? <X className="h-3 w-3" /> : <Plus className="h-3 w-3" />}
+                        {r.name}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground pt-1">Members</div>
+            <p className="text-xs text-muted-foreground">Tap a user to add or remove them from this group.</p>
             <div className="border border-border rounded-lg divide-y divide-border">
               {users.map((u) => {
                 const isMember = memberIds.has(u.id);

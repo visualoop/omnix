@@ -721,6 +721,7 @@ export function SalonStaffPage() {
         onClose={() => setDetailStaff(null)}
         onChanged={load}
         onOpenHr={() => navigate("/hr/employees")}
+        onViewEarnings={() => detailStaff && navigate(`/salon/staff/${detailStaff.id}/earnings`)}
       />
     </div>
   );
@@ -818,10 +819,10 @@ function ResourceDialog({ target, onClose, onSaved }: { target: SalonResource | 
   );
 }
 
-function StaffDetailSheet({ staff, services, emp, onClose, onChanged, onOpenHr }: {
+function StaffDetailSheet({ staff, services, emp, onClose, onChanged, onOpenHr, onViewEarnings }: {
   staff: SalonStaff | null; services: SalonService[];
   emp?: { id: string; full_name: string; job_title: string; phone: string | null };
-  onClose: () => void; onChanged: () => void; onOpenHr: () => void;
+  onClose: () => void; onChanged: () => void; onOpenHr: () => void; onViewEarnings: () => void;
 }) {
   const [name, setName] = useState("");
   const [comm, setComm] = useState("");
@@ -860,6 +861,11 @@ function StaffDetailSheet({ staff, services, emp, onClose, onChanged, onOpenHr }
             </div>
             <div className="text-muted-foreground">{emp?.job_title || "—"} · {emp?.phone || "no phone"}</div>
           </div>
+
+          <button onClick={onViewEarnings} className="w-full flex items-center justify-between rounded-lg border border-border p-3 text-left hover:bg-accent/30 transition-colors">
+            <span className="flex items-center gap-2 text-[13px] font-medium"><Receipt className="h-4 w-4 text-primary" /> View earnings & commissions</span>
+            <CaretRight className="h-4 w-4 text-muted-foreground" />
+          </button>
 
           <Field label="Display name"><Input value={name} onChange={(e) => setName(e.target.value)} /></Field>
           <Field label="Default commission %"><Input type="number" value={comm} onChange={(e) => setComm(e.target.value)} className="text-right tabular-nums" /></Field>
