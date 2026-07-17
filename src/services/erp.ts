@@ -606,14 +606,19 @@ export async function createStockTake(userId: string, notes?: string): Promise<s
     [id, ref, userId, notes || null, getActiveBranchId()]
   );
 
-  // Snapshot current stock for all active products
+  // Snapshot current stock for all active STOCKABLE products only. Salon
+  // services/packages (is_service=1) and hospitality menu items (kind!=
+  // 'physical') aren't stock, so they must never appear in a stock take —
+  // same filter the inventory list uses.
   const products = await query<{ id: string; current_stock: number; buying_price: number }>(
     `SELECT p.id,
        COALESCE((SELECT SUM(b.quantity) FROM batches b WHERE b.product_id = p.id), 0) as current_stock,
        COALESCE(pp.buying_price, 0) as buying_price
      FROM products p
      LEFT JOIN product_prices pp ON pp.product_id = p.id
-     WHERE p.active = 1`
+     WHERE p.active = 1
+       AND COALESCE(p.kind, 'physical') = 'physical'
+       AND COALESCE(p.is_service, 0) = 0`
   );
 
   for (const p of products) {
