@@ -21,6 +21,7 @@ import {
   createUser,
   changePassword,
   deactivateUser,
+  setUserRole,
   type User,
   type CreateUserInput,
 } from "@/services/auth";
@@ -303,8 +304,25 @@ function EditUserForm({
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [role, setRole] = useState<User["role"]>(user.role);
+  const [savingRole, setSavingRole] = useState(false);
 
   const isSelf = currentUserId === user.id;
+
+  const handleSaveRole = async () => {
+    if (role === user.role) return;
+    setSavingRole(true);
+    try {
+      await setUserRole(user.id, role);
+      toast.success(`Role changed to ${ROLE_LABELS[role].label}`);
+      onSaved();
+    } catch (e) {
+      toast.error(String(e));
+      setRole(user.role);
+    } finally {
+      setSavingRole(false);
+    }
+  };
 
   const handleChangePassword = async () => {
     setError(null);
@@ -361,6 +379,34 @@ function EditUserForm({
             <Badge variant="secondary">Inactive</Badge>
           )}
         </div>
+      </div>
+
+      {/* Change role */}
+      <div className="space-y-2">
+        <div className="flex items-center gap-2">
+          <ShieldCheck className="h-4 w-4 text-primary" />
+          <h3 className="text-sm font-medium">Role</h3>
+        </div>
+        {isOnlyOwner ? (
+          <p className="text-xs text-muted-foreground">This is the only owner — their role can't be changed (it would lock everyone out of admin settings).</p>
+        ) : (
+          <>
+            <Select value={role} onValueChange={(v) => setRole(v as User["role"])}>
+              <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {(["owner", "manager", "cashier", "viewer"] as const).map((r) => (
+                  <SelectItem key={r} value={r}>{ROLE_LABELS[r].label} — {ROLE_LABELS[r].description}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Button onClick={handleSaveRole} disabled={savingRole || role === user.role} className="w-full" variant="outline">
+              {savingRole ? "Saving…" : role === user.role ? "Save role" : `Change to ${ROLE_LABELS[role].label}`}
+            </Button>
+            {isSelf && role !== user.role && (
+              <p className="text-[11px] text-amber-600 dark:text-amber-400">You're changing your own role — you may lose access to this page.</p>
+            )}
+          </>
+        )}
       </div>
 
       {/* Change password */}

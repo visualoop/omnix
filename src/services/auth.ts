@@ -174,6 +174,20 @@ export async function deactivateUser(userId: string): Promise<void> {
   await execute("UPDATE users SET active = 0 WHERE id = ?1", [userId]);
 }
 
+/** Change a user's base role. Blocks demoting the last active owner (which
+ *  would lock everyone out of owner-only settings). */
+export async function setUserRole(userId: string, role: User["role"]): Promise<void> {
+  const [current] = await query<{ role: string }>("SELECT role FROM users WHERE id = ?1", [userId]);
+  if (current?.role === "owner" && role !== "owner") {
+    const [others] = await query<{ count: number }>(
+      "SELECT COUNT(*) as count FROM users WHERE role = 'owner' AND active = 1 AND id != ?1",
+      [userId]
+    );
+    if ((others?.count ?? 0) === 0) throw new Error("Cannot change the last owner's role.");
+  }
+  await execute("UPDATE users SET role = ?1 WHERE id = ?2", [role, userId]);
+}
+
 export async function getActiveUsernames(): Promise<string[]> {
   const rows = await query<{ username: string }>(
     "SELECT username FROM users WHERE active = 1 ORDER BY username"
