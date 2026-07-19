@@ -7,6 +7,8 @@ import { Button } from '@/components/ui/button'
 import { Container, SectionHeader } from '@/components/ui/section'
 import { PageHero } from '@/components/marketing/page-hero'
 import { moduleBySlug, moduleSlugs, MODULES_SEED } from '@/lib/modules-seed'
+import { SoftwareJsonLd } from '@/components/seo/jsonld'
+import { currencyForCountry } from '@/lib/currency'
 
 interface V10Highlight {
   eyebrow: string
@@ -112,16 +114,21 @@ export async function generateMetadata({
 export default async function ModuleDetailPage({
   params,
 }: {
-  params: Promise<{ slug: string }>
+  params: Promise<{ locale: string; slug: string }>
 }) {
-  const { slug } = await params
+  const { slug, locale } = await params
   const module = moduleBySlug(slug)
   if (!module) notFound()
 
   const others = MODULES_SEED.filter((m) => m.slug !== slug && m.status !== 'planned').slice(0, 3)
 
+  // Structured data: each shippable module is a SoftwareApplication offering.
+  const VARIANTS = ["dawa", "retail", "hardware", "hospitality", "salon"] as const
+  const variant = (VARIANTS as readonly string[]).includes(slug) ? (slug as (typeof VARIANTS)[number]) : null
+
   return (
     <>
+      {variant && <SoftwareJsonLd variant={variant} currency={currencyForCountry(locale)} locale={locale} />}
       <PageHero
         eyebrow={module.shortName}
         title={module.tagline}
