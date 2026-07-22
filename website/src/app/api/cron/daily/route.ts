@@ -40,11 +40,13 @@ export async function GET() {
   const reqHeaders = await headers()
   const cronSecret = await getSetting('cron.secret')
 
-  if (cronSecret) {
-    const auth = reqHeaders.get('authorization')
-    if (auth !== `Bearer ${cronSecret}`) {
-      return new Response('Unauthorized', { status: 401 })
-    }
+  if (!cronSecret) {
+    return Response.json({ error: 'cron_not_configured' }, { status: 503 })
+  }
+
+  const auth = reqHeaders.get('authorization')
+  if (auth !== `Bearer ${cronSecret}`) {
+    return new Response('Unauthorized', { status: 401 })
   }
 
   const now = new Date()
@@ -105,7 +107,7 @@ export async function GET() {
         await markReminderSent(row.licenseId, meta, milestoneKey)
         trialEndingSent++
       } catch (e) {
-        console.error(`[cron] trial-${days}d reminder failed for ${row.email}:`, e)
+        console.error(`[cron] trial-${days}d reminder failed for license ${row.licenseId}:`, e instanceof Error ? e.name : 'unknown')
       }
     }
   }
@@ -153,7 +155,7 @@ export async function GET() {
         await markReminderSent(row.licenseId, meta, milestoneKey)
         maintEndingSent++
       } catch (e) {
-        console.error(`[cron] maint-${days}d reminder failed for ${row.email}:`, e)
+        console.error(`[cron] maint-${days}d reminder failed for license ${row.licenseId}:`, e instanceof Error ? e.name : 'unknown')
       }
     }
   }
@@ -198,7 +200,7 @@ export async function GET() {
         await markReminderSent(row.licenseId, meta, milestoneKey)
         maintLapsedSent++
       } catch (e) {
-        console.error(`[cron] maint-lapsed notification failed for ${row.email}:`, e)
+        console.error(`[cron] maint-lapsed notification failed for license ${row.licenseId}:`, e instanceof Error ? e.name : 'unknown')
       }
     }
   }
@@ -244,7 +246,7 @@ export async function GET() {
         await markReminderSent(row.licenseId, meta, milestoneKey)
         cloudEndingSent++
       } catch (e) {
-        console.error(`[cron] cloud-${days}d reminder failed for ${row.email}:`, e)
+        console.error(`[cron] cloud-${days}d reminder failed for license ${row.licenseId}:`, e instanceof Error ? e.name : 'unknown')
       }
     }
   }

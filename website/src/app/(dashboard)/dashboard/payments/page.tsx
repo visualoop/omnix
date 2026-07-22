@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { and, count, desc, eq, ilike } from 'drizzle-orm'
 import { db, payments } from '@/db'
 import { auth } from '@/lib/auth'
-import { PageHeading } from '@/components/dashboard/status-utils'
+import { PageHeader } from '@/components/layout/page-header'
 import {
   Table,
   TableBody,
@@ -13,11 +13,9 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import {
-  AdminPagination,
-  AdminSearch,
-  AdminSelectFilter,
-} from '@/components/admin/data-controls'
+import { EmptyState, StatusPill } from '@/components/dashboard/status-utils'
+import { FilteredEmptyState } from '@/components/ui/state-view'
+import { ListPagination, ListSearch, ListSelectFilter } from '@/components/dashboard/list-controls'
 
 export const metadata = { title: 'Payments' }
 
@@ -27,23 +25,9 @@ const STATUS_OPTIONS = [
   { value: 'success', label: 'Paid' },
   { value: 'pending', label: 'Pending' },
   { value: 'failed', label: 'Failed' },
+  { value: 'reversed', label: 'Reversed' },
+  { value: 'refunded', label: 'Refunded' },
 ]
-
-function StatusPill({ status }: { status: string }) {
-  const tone =
-    status === 'success'
-      ? 'text-emerald-700 dark:text-emerald-300 bg-emerald-500/10 border-emerald-500/30'
-      : status === 'pending'
-        ? 'text-amber-700 dark:text-amber-300 bg-amber-500/10 border-amber-500/30'
-        : 'text-rose-700 dark:text-rose-300 bg-rose-500/10 border-rose-500/30'
-  return (
-    <span
-      className={`inline-flex items-center rounded-md border px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-[0.18em] ${tone}`}
-    >
-      {status === 'success' ? 'Paid' : status}
-    </span>
-  )
-}
 
 export default async function PaymentsPage({
   searchParams,
@@ -58,6 +42,8 @@ export default async function PaymentsPage({
   const q = sp.q?.trim() ?? ''
   const status = sp.status ?? ''
 
+  // Scoped to the signed-in customer; the reference search and status
+  // filter only ever narrow within that owned set.
   const whereClauses = [
     eq(payments.userId, session.user.id),
     q ? ilike(payments.paystackReference, `%${q}%`) : null,
@@ -78,22 +64,32 @@ export default async function PaymentsPage({
   ])
 
   const total = totalRow[0]?.n ?? 0
+  const filtered = Boolean(q || status)
 
   return (
-    <div className="space-y-6">
-      <PageHeading title="Payments" subtitle="Every charge from Paystack — successes, failures, refunds." />
+    <div className="flex flex-col gap-8">
+      <PageHeader
+        eyebrow="Payments"
+        title="Payments"
+        description="Every charge from Paystack against your account — successes, pending attempts, failures and refunds. Open any row for its receipt."
+      />
 
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <AdminSearch placeholder="Search by reference…" />
-        <AdminSelectFilter paramName="status" label="Status" options={STATUS_OPTIONS} />
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+        <ListSearch label="Search payments" placeholder="Search by reference…" />
+        <ListSelectFilter label="Status" paramName="status" options={STATUS_OPTIONS} />
       </div>
 
-      {rows.length === 0 && total === 0 ? (
-        <div className="rounded-lg border border-dashed border-[var(--color-border)] px-4 py-12 text-center text-[13px] text-[var(--color-fg-muted)]">
-          {q || status ? 'No payments match that filter.' : 'No payments yet.'}
-        </div>
+      {rows.length === 0 ? (
+        filtered ? (
+          <FilteredEmptyState query={q || undefined} clearHref="/dashboard/payments" entityLabel="payments" />
+        ) : (
+          <EmptyState
+            title="No payments yet"
+            body="When you buy or renew a licence, every Paystack charge and its receipt shows up here."
+          />
+        )
       ) : (
-        <>
+        <div className="flex flex-col">
           <Table>
             <TableHeader>
               <TableRow>
@@ -102,28 +98,30 @@ export default async function PaymentsPage({
                 <TableHead>Status</TableHead>
                 <TableHead className="text-right">Amount</TableHead>
                 <TableHead>Date</TableHead>
-                <TableHead className="w-12 text-right">·</TableHead>
+                <TableHead className="w-16 text-right">
+                  <span className="sr-only">Receipt</span>
+                </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {rows.map((p) => (
                 <TableRow key={p.id}>
-                  <TableCell className="font-medium">
+                  <TableCell className="font-medium capitalize">
                     {p.purpose.replace(/_/g, ' ')}
                   </TableCell>
                   <TableCell>
                     <Link
                       href={`/dashboard/payments/${p.id}`}
-                      className="font-mono text-[11px] hover:text-[var(--color-accent)] underline-offset-4 hover:underline truncate block max-w-[200px]"
+                      className="block max-w-[200px] truncate font-mono text-[11px] underline-offset-4 hover:text-[var(--color-accent)] hover:underline"
                     >
                       {p.paystackReference}
                     </Link>
                   </TableCell>
                   <TableCell>
-                    <StatusPill status={p.status} />
+                    <StatusPill kind="payment" status={p.status} />
                   </TableCell>
                   <TableCell className="text-right font-mono tabular-nums">
-                    <span className="text-[var(--color-fg-subtle)] mr-1 text-[10px]">{p.currency}</span>
+                    <span className="mr-1 text-[10px] text-[var(--color-fg-subtle)]">{p.currency}</span>
                     {Number(p.amount).toLocaleString()}
                   </TableCell>
                   <TableCell className="font-mono text-[11px] tabular-nums text-[var(--color-fg-muted)]">
@@ -132,17 +130,17 @@ export default async function PaymentsPage({
                   <TableCell className="text-right">
                     <Link
                       href={`/dashboard/payments/${p.id}`}
-                      className="font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--color-fg-muted)] hover:text-[var(--color-fg)]"
+                      className="font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--color-fg-muted)] transition-colors hover:text-[var(--color-fg)]"
                     >
-                      Open →
+                      Receipt →
                     </Link>
                   </TableCell>
                 </TableRow>
               ))}
             </TableBody>
           </Table>
-          <AdminPagination page={page} pageSize={PAGE_SIZE} total={total} />
-        </>
+          <ListPagination page={page} pageSize={PAGE_SIZE} total={total} label="Payment pages" />
+        </div>
       )}
     </div>
   )

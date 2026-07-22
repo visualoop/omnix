@@ -1,6 +1,7 @@
 import { auth } from '@/lib/auth'
 import { sendTestEmail, sendMagicLinkEmail } from '@/lib/email'
 import { resendConfig } from '@/lib/platform-settings'
+import { hasValidBootstrapToken } from '@/lib/bootstrap-auth'
 
 export const dynamic = 'force-dynamic'
 
@@ -21,8 +22,7 @@ export const dynamic = 'force-dynamic'
  *     Returns the rendered HTML for previewing without sending.
  */
 export async function POST(req: Request) {
-  const token = req.headers.get('authorization')?.replace(/^Bearer /, '')
-  if (token !== process.env.BOOTSTRAP_TOKEN) {
+  if (!hasValidBootstrapToken(req)) {
     return Response.json({ error: 'unauthorized' }, { status: 401 })
   }
 

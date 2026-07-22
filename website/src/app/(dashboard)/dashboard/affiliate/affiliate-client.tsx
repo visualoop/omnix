@@ -2,7 +2,22 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Copy } from '@phosphor-icons/react'
+import { Copy } from '@/components/icons'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Field } from '@/components/ui/field'
+import { Label } from '@/components/ui/label'
+import { Alert } from '@/components/ui/alert'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
+import { EmptyState, StatusPill } from '@/components/dashboard/status-utils'
+import { cn } from '@/lib/cn'
 
 interface Affiliate {
   id: string
@@ -57,7 +72,8 @@ export function AffiliateClient({ initialAffiliate, referralUrl, credits, fmtDat
           displayName: displayName.trim() || undefined,
           contactPhone: contactPhone.trim() || undefined,
           payoutMethod: payoutMethod || undefined,
-          payoutDetails: payoutMethod === 'mpesa_number' && mpesaNumber.trim() ? { mpesa: mpesaNumber.trim() } : undefined,
+          payoutDetails:
+            payoutMethod === 'mpesa_number' && mpesaNumber.trim() ? { mpesa: mpesaNumber.trim() } : undefined,
         }),
       })
       const j = await res.json()
@@ -78,182 +94,191 @@ export function AffiliateClient({ initialAffiliate, referralUrl, credits, fmtDat
       await navigator.clipboard.writeText(referralUrl)
       setCopied(true)
       setTimeout(() => setCopied(false), 2000)
-    } catch { /* ignore */ }
+    } catch {
+      /* ignore */
+    }
   }
+
+  const selectClass = cn(
+    'h-11 w-full rounded-[var(--radius-md)] border border-[var(--color-border-strong)] bg-[var(--color-bg)] px-3',
+    'font-sans text-[14px] text-[var(--color-fg)] outline-none',
+    'transition-[border-color,box-shadow] duration-[var(--duration-fast)] ease-[var(--ease-out)]',
+    'hover:border-[var(--color-fg-subtle)] focus-visible:border-[var(--color-accent)] focus-visible:ring-2 focus-visible:ring-[var(--color-accent-line)]',
+  )
 
   if (!initialAffiliate) {
     return (
-      <div className="max-w-2xl space-y-4">
-        <div className="rounded-lg border border-primary/30 bg-primary/5 p-5 text-sm">
-          <div className="font-medium">Earn one third of any licence you refer</div>
-          <p className="mt-1 text-xs text-muted-foreground">
-            You&rsquo;ll get a unique link. Share it with businesses that need Omnix. When they
-            pay for their licence, you earn 33% of their first purchase. No compounding on
-            renewals, so nobody games it. Payouts monthly by M-Pesa (or bank Transfer when we
-            wire it).
-          </p>
-        </div>
+      <form
+        className="flex max-w-2xl flex-col gap-5"
+        onSubmit={(e) => {
+          e.preventDefault()
+          signup()
+        }}
+      >
+        <Alert variant="info" title="Earn a third of any licence you refer">
+          You&rsquo;ll get a unique link. Share it with businesses that need Omnix. When they pay for
+          their licence, you earn 33% of their first purchase — no compounding on renewals, so nobody
+          games it. Payouts monthly by M-Pesa (or bank transfer when we wire it).
+        </Alert>
 
-        <div className="grid grid-cols-2 gap-3">
-          <label className="block">
-            <span className="text-xs">Display name (public, optional)</span>
-            <input
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <Field label="Display name" optional>
+            <Input
               value={displayName}
               onChange={(e) => setDisplayName(e.target.value)}
               placeholder="Your name or business"
-              className="mt-1 h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
             />
-          </label>
-          <label className="block">
-            <span className="text-xs">Phone (for us to reach you)</span>
-            <input
+          </Field>
+          <Field label="Phone" description="So we can reach you about payouts." optional>
+            <Input
               value={contactPhone}
               onChange={(e) => setContactPhone(e.target.value)}
               placeholder="+254 700 000 000"
-              className="mt-1 h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
             />
-          </label>
-          <label className="block col-span-2">
-            <span className="text-xs">How would you like to be paid?</span>
-            <select
-              value={payoutMethod}
-              onChange={(e) => setPayoutMethod(e.target.value as typeof payoutMethod)}
-              className="mt-1 h-10 w-full rounded-md border border-input bg-background px-2 text-sm"
-            >
-              <option value="">Decide later</option>
-              <option value="mpesa_number">M-Pesa (phone number)</option>
-              <option value="paystack_transfer">Paystack Transfer (bank)</option>
-            </select>
-          </label>
-          {payoutMethod === 'mpesa_number' ? (
-            <label className="block col-span-2">
-              <span className="text-xs">M-Pesa number</span>
-              <input
-                value={mpesaNumber}
-                onChange={(e) => setMpesaNumber(e.target.value)}
-                placeholder="0712345678"
-                className="mt-1 h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
-              />
-            </label>
-          ) : null}
+          </Field>
         </div>
 
-        {error ? <div className="text-sm text-destructive">{error}</div> : null}
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="affiliate-payout">How would you like to be paid?</Label>
+          <select
+            id="affiliate-payout"
+            value={payoutMethod}
+            onChange={(e) => setPayoutMethod(e.target.value as typeof payoutMethod)}
+            className={selectClass}
+          >
+            <option value="">Decide later</option>
+            <option value="mpesa_number">M-Pesa (phone number)</option>
+            <option value="paystack_transfer">Paystack Transfer (bank)</option>
+          </select>
+        </div>
 
-        <button
-          onClick={signup}
-          disabled={busy}
-          className="inline-flex h-10 items-center rounded-md bg-primary px-5 text-sm font-medium text-primary-foreground disabled:opacity-50"
-        >
-          {busy ? 'Signing up…' : 'Get my referral link'}
-        </button>
-      </div>
+        {payoutMethod === 'mpesa_number' ? (
+          <Field label="M-Pesa number">
+            <Input value={mpesaNumber} onChange={(e) => setMpesaNumber(e.target.value)} placeholder="0712345678" />
+          </Field>
+        ) : null}
+
+        {error ? (
+          <Alert variant="error" title="Could not sign up">
+            {error}
+          </Alert>
+        ) : null}
+
+        <div>
+          <Button type="submit" disabled={busy}>
+            {busy ? 'Signing up…' : 'Get my referral link'}
+          </Button>
+        </div>
+      </form>
     )
   }
 
   const aff = initialAffiliate
-  const suspended = aff.blocked
   const money = (n: number) => `${aff.commissionCurrency} ${Math.round(n).toLocaleString()}`
 
   return (
-    <div className="space-y-6">
-      {suspended ? (
-        <div className="rounded-lg border border-destructive/40 bg-destructive/5 p-4 text-sm text-destructive">
-          Your affiliate account is blocked{aff.blockedReason ? `: ${aff.blockedReason}` : '.'}
-        </div>
+    <div className="flex flex-col gap-8">
+      {aff.blocked ? (
+        <Alert variant="error" title="Affiliate account blocked">
+          {aff.blockedReason ? aff.blockedReason : 'Contact support to restore your affiliate account.'}
+        </Alert>
       ) : null}
 
-      <div className="rounded-lg border border-border p-4">
-        <div className="text-xs uppercase tracking-wider text-muted-foreground">Your referral link</div>
-        <div className="mt-2 flex items-center gap-2">
-          <code className="flex-1 select-all text-sm font-mono text-foreground">{referralUrl}</code>
-          <button
-            onClick={copy}
-            className="inline-flex items-center gap-1.5 rounded-md border border-border px-3 py-1.5 text-xs hover:border-primary/40"
-          >
+      <section className="flex flex-col gap-3 rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-surface)] p-4">
+        <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--color-fg-subtle)]">
+          Your referral link
+        </div>
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+          <code className="min-w-0 flex-1 select-all break-all font-mono text-[13px] text-[var(--color-fg)]">
+            {referralUrl}
+          </code>
+          <Button type="button" size="sm" variant="outline" onClick={copy} className="shrink-0 max-sm:w-full">
             <Copy className="size-3.5" />
             {copied ? 'Copied' : 'Copy'}
-          </button>
+          </Button>
         </div>
-        <p className="mt-2 text-[11px] text-muted-foreground">
-          Share this link anywhere. When someone clicks it and buys a licence within 30 days, you earn {aff.commissionPercent}% of their first purchase.
-          Your ref code: <code className="font-mono">{aff.refCode}</code>
+        <p className="text-[11px] leading-6 text-[var(--color-fg-muted)]">
+          Share this link anywhere. When someone clicks it and buys a licence within 30 days, you earn{' '}
+          {aff.commissionPercent}% of their first purchase. Your ref code:{' '}
+          <code className="font-mono text-[var(--color-fg)]">{aff.refCode}</code>
         </p>
-      </div>
+      </section>
 
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-        <Stat label="Referrals credited" value={aff.totalReferralsCredited.toString()} />
-        <Stat label="Commission earned" value={money(aff.totalCommissionEarned)} accent />
+      <dl className="grid grid-cols-[repeat(auto-fit,minmax(9rem,1fr))] gap-x-8 gap-y-4 border-y border-[var(--color-border)] py-5">
+        <Stat label="Referrals credited" value={aff.totalReferralsCredited.toLocaleString()} />
+        <Stat label="Commission earned" value={money(aff.totalCommissionEarned)} tone="positive" />
         <Stat label="Unpaid balance" value={money(aff.unpaidBalance)} note="Paid out monthly" />
-      </div>
+      </dl>
 
-      <section>
-        <h2 className="mb-2 text-sm font-semibold">Recent credits</h2>
+      <section className="flex flex-col gap-3">
+        <h2 className="font-display text-[18px] font-semibold tracking-[-0.02em] text-[var(--color-fg)]">
+          Recent credits
+        </h2>
         {credits.length === 0 ? (
-          <div className="rounded-lg border border-border p-6 text-center text-sm text-muted-foreground">
-            No credits yet. Share your link.
-          </div>
+          <EmptyState
+            title="No credits yet"
+            body="Share your referral link with a business that needs Omnix — your first credit lands here when they pay."
+          />
         ) : (
-          <div className="overflow-hidden rounded-lg border border-border">
-            <table className="w-full text-sm">
-              <thead className="bg-muted/40">
-                <tr>
-                  <Th>Date</Th>
-                  <Th>Gross</Th>
-                  <Th>Your commission</Th>
-                  <Th>Status</Th>
-                </tr>
-              </thead>
-              <tbody>
-                {credits.map((c) => (
-                  <tr key={c.id} className="border-t border-border">
-                    <Td className="text-xs text-muted-foreground">{fmtDate(c.createdAt)}</Td>
-                    <Td className="tabular-nums">{c.currency} {Math.round(c.gross).toLocaleString()}</Td>
-                    <Td className="tabular-nums font-medium">{c.currency} {Math.round(c.commission).toLocaleString()}</Td>
-                    <Td>
-                      <StatusPill status={c.status} />
-                    </Td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Date</TableHead>
+                <TableHead className="text-right">Gross</TableHead>
+                <TableHead className="text-right">Your commission</TableHead>
+                <TableHead>Status</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {credits.map((c) => (
+                <TableRow key={c.id}>
+                  <TableCell className="font-mono text-[11px] tabular-nums text-[var(--color-fg-muted)]">
+                    {fmtDate(c.createdAt)}
+                  </TableCell>
+                  <TableCell className="text-right font-mono tabular-nums">
+                    {c.currency} {Math.round(c.gross).toLocaleString()}
+                  </TableCell>
+                  <TableCell className="text-right font-mono font-medium tabular-nums">
+                    {c.currency} {Math.round(c.commission).toLocaleString()}
+                  </TableCell>
+                  <TableCell>
+                    <StatusPill kind="commission" status={c.status} />
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
         )}
       </section>
     </div>
   )
 }
 
-function Stat({ label, value, accent, note }: { label: string; value: string; accent?: boolean; note?: string }) {
+function Stat({
+  label,
+  value,
+  tone,
+  note,
+}: {
+  label: string
+  value: string
+  tone?: 'positive'
+  note?: string
+}) {
   return (
-    <div className={`rounded-lg border p-4 ${accent ? 'border-primary/40 bg-primary/5' : 'border-border'}`}>
-      <div className="text-[11px] uppercase tracking-wider text-muted-foreground">{label}</div>
-      <div className="mt-1 text-xl font-semibold tabular-nums">{value}</div>
-      {note ? <div className="mt-1 text-[11px] text-muted-foreground">{note}</div> : null}
+    <div className="min-w-0">
+      <dt className="font-mono text-[10px] uppercase tracking-[0.14em] text-[var(--color-fg-subtle)]">
+        {label}
+      </dt>
+      <dd
+        className={cn(
+          'mt-1 font-mono text-[20px] font-medium leading-tight tabular-nums',
+          tone === 'positive' ? 'text-[var(--color-positive)]' : 'text-[var(--color-fg)]',
+        )}
+      >
+        {value}
+      </dd>
+      {note ? <p className="mt-0.5 text-[11px] text-[var(--color-fg-subtle)]">{note}</p> : null}
     </div>
   )
-}
-
-function Th({ children }: { children: React.ReactNode }) {
-  return <th className="px-3 py-2 text-left text-[11px] font-medium uppercase tracking-wider text-muted-foreground">{children}</th>
-}
-function Td({ children, className = '' }: { children: React.ReactNode; className?: string }) {
-  return <td className={`px-3 py-2 ${className}`}>{children}</td>
-}
-function StatusPill({ status }: { status: string }) {
-  const map: Record<string, string> = {
-    pending: 'bg-amber-500/10 text-amber-700 dark:text-amber-400',
-    paid: 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400',
-    reversed: 'bg-destructive/10 text-destructive',
-    rejected_self_referral: 'bg-muted text-muted-foreground',
-    rejected_repeat: 'bg-muted text-muted-foreground',
-  }
-  const label: Record<string, string> = {
-    pending: 'Pending',
-    paid: 'Paid out',
-    reversed: 'Reversed',
-    rejected_self_referral: 'Rejected · self',
-    rejected_repeat: 'Rejected · repeat',
-  }
-  return <span className={`inline-block rounded px-1.5 py-0.5 text-[11px] ${map[status] ?? 'bg-muted text-muted-foreground'}`}>{label[status] ?? status}</span>
 }

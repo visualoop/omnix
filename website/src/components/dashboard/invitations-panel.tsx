@@ -4,7 +4,18 @@ import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { confirm } from '@/components/ui/dialog-imperative'
 import { formatDate } from '@/lib/format-date'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Alert } from '@/components/ui/alert'
+import { EmptyState } from '@/components/dashboard/status-utils'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 
 interface Invite {
   id: string
@@ -15,13 +26,17 @@ interface Invite {
 }
 
 /**
- * Invitations panel — list pending invites with Resend / Cancel + a
+ * Invitations panel — list pending invites with Resend / Cancel plus a
  * compact invite form (email + role).
  *
- * Calls:
+ * Preserves the Better Auth organisation invitation lifecycle endpoints:
  *   POST   /api/dashboard/team/invitations            { email, role }
  *   POST   /api/dashboard/team/invitations/[id]/resend
  *   DELETE /api/dashboard/team/invitations/[id]
+ *
+ * The server owns anti-enumeration and duplicate handling; this panel only
+ * renders the outcome. Management controls are gated on `canManage`, but
+ * that gate is UI-only — the API enforces authorization independently.
  */
 export function InvitationsPanel({
   invites: initial,
@@ -79,7 +94,15 @@ export function InvitationsPanel({
   }
 
   async function cancel(id: string, email: string) {
-    if (!(await confirm({ title: `Cancel invitation to ${email}?`, description: 'The link in their email will stop working.', variant: 'destructive', confirmText: 'Cancel invitation' }))) return
+    if (
+      !(await confirm({
+        title: `Cancel invitation to ${email}?`,
+        description: 'The link in their email will stop working.',
+        variant: 'destructive',
+        confirmText: 'Cancel invitation',
+      }))
+    )
+      return
     setError(null)
     setBusy(id)
     try {
@@ -98,55 +121,57 @@ export function InvitationsPanel({
 
   return (
     <div className="flex flex-col gap-5">
-      {/* Compose row */}
       {canManage ? (
         <form
           onSubmit={invite}
-          className="flex flex-col gap-3 rounded-md border border-foreground/10 bg-foreground/[0.02] p-4 sm:flex-row sm:items-end"
+          className="flex flex-col gap-4 rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-surface)] p-4 sm:flex-row sm:items-end"
         >
-          <div className="flex flex-col gap-1.5 flex-1 min-w-0">
-            <label className="font-mono text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
-              Invite teammate to {orgName}
-            </label>
-            <input
+          <div className="flex min-w-0 flex-1 flex-col gap-1.5">
+            <Label htmlFor="invite-email">Invite a teammate to {orgName}</Label>
+            <Input
+              id="invite-email"
               type="email"
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="teammate@example.com"
-              className="h-9 w-full rounded-md border border-foreground/15 bg-background px-3 text-[13px] outline-none focus-visible:border-foreground/40"
             />
           </div>
           <div className="flex flex-col gap-1.5">
-            <label className="font-mono text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
-              Role
-            </label>
-            <Select value={role} onValueChange={(v) => setRole(String(v) as 'admin' | 'member')}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>
-              <SelectItem value="member">Member</SelectItem>
-              <SelectItem value="admin">Admin</SelectItem>
-            </SelectContent></Select>
+            <Label htmlFor="invite-role">Role</Label>
+            <Select value={role} onValueChange={(v) => setRole(String(v) as 'admin' | 'member')}>
+              <SelectTrigger id="invite-role" className="sm:w-40">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="member">Member</SelectItem>
+                <SelectItem value="admin">Admin</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
-          <button
-            type="submit"
-            disabled={busy === '__invite' || !email.trim()}
-            className="h-9 rounded-md bg-foreground px-4 font-mono text-[11px] uppercase tracking-[0.18em] text-background hover:bg-foreground/90 disabled:opacity-50 cursor-pointer"
-          >
+          <Button type="submit" disabled={busy === '__invite' || !email.trim()} className="max-sm:w-full">
             {busy === '__invite' ? 'Sending…' : 'Send invite'}
-          </button>
+          </Button>
         </form>
       ) : null}
 
       {error ? (
-        <p className="rounded-md border border-rose-500/30 bg-rose-500/5 px-3 py-2 font-mono text-[11px] text-rose-700 dark:text-rose-300">
+        <Alert variant="error" title="Invitation action failed">
           {error}
-        </p>
+        </Alert>
       ) : null}
 
-      {/* Invitations list */}
       {invites.length === 0 ? (
-        <p className="text-[13px] text-muted-foreground">No invitations yet.</p>
+        <EmptyState
+          title="No invitations yet"
+          body={
+            canManage
+              ? 'Invite a teammate above and they will show up here until they accept.'
+              : 'Your organisation owner can invite teammates from here.'
+          }
+        />
       ) : (
-        <ul className="flex flex-col divide-y divide-foreground/5 rounded-md border border-foreground/10 overflow-hidden">
+        <ul className="flex flex-col divide-y divide-[var(--color-border)] overflow-hidden rounded-[var(--radius-md)] border border-[var(--color-border)]">
           {invites.map((inv) => {
             const isPending = inv.status === 'pending'
             return (
@@ -154,29 +179,34 @@ export function InvitationsPanel({
                 key={inv.id}
                 className="flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between"
               >
-                <div className="flex flex-col gap-0.5 min-w-0">
-                  <span className="text-[13px] font-medium truncate">{inv.email}</span>
-                  <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+                <div className="flex min-w-0 flex-col gap-0.5">
+                  <span className="truncate text-[13px] font-medium text-[var(--color-fg)]">{inv.email}</span>
+                  <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--color-fg-muted)]">
                     {inv.role ?? 'member'} · {inv.status}
                     {isPending ? ` · expires ${formatDate(inv.expiresAt)}` : ''}
                   </span>
                 </div>
                 {canManage && isPending ? (
-                  <div className="flex items-center gap-2 shrink-0">
-                    <button
+                  <div className="flex shrink-0 items-center gap-2">
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
                       onClick={() => resend(inv.id)}
                       disabled={busy === inv.id}
-                      className="rounded-md border border-foreground/15 px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.18em] text-foreground hover:bg-foreground/[0.04] disabled:opacity-50 cursor-pointer"
                     >
                       {busy === inv.id ? 'Sending…' : 'Resend'}
-                    </button>
-                    <button
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="ghost"
                       onClick={() => cancel(inv.id, inv.email)}
                       disabled={busy === inv.id}
-                      className="rounded-md border border-rose-500/30 bg-rose-500/5 px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.18em] text-rose-700 hover:bg-rose-500/10 disabled:opacity-50 cursor-pointer dark:text-rose-300"
+                      className="text-[var(--color-negative)] hover:bg-[var(--color-negative)]/10 hover:text-[var(--color-negative)]"
                     >
                       Cancel
-                    </button>
+                    </Button>
                   </div>
                 ) : null}
               </li>

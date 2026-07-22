@@ -1,0 +1,500 @@
+/* Hallmark · pre-emit critique: P5 H5 E5 S5 R5 V5
+ * Hallmark · macrostructure: Field Worksheet · tone: candid procedural · theme: Working Counter
+ * Buyer guide is a decision worksheet: contents rail, fit lists, day walk, local/connected
+ * ledger, derived platform facts, question stacks, product handoff.
+ * enrichment: none — the checklist is the visual thesis · responsive: 320/375/414/768/1440
+ */
+.page {
+  background: var(--color-bg);
+  color: var(--color-fg);
+  overflow-x: clip;
+}
+.container {
+  width: min(100%, var(--w-wide));
+  margin-inline: auto;
+  padding-inline: clamp(var(--space-4), 5vw, var(--space-12));
+}
+.hero,
+.audience,
+.workflow,
+.boundary,
+.facts,
+.migration,
+.evaluation {
+  border-block-end: 1px solid var(--color-border-strong);
+}
+.hero {
+  padding-block: clamp(var(--space-10), 7vw, var(--space-20));
+}
+.crumbs {
+  display: flex;
+  flex-flow: row wrap;
+  gap: var(--space-2);
+  align-items: center;
+  margin-block-end: var(--space-8);
+  color: var(--color-fg-subtle);
+  font-family: var(--font-mono);
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+.crumbs a:hover {
+  color: var(--color-accent);
+}
+.crumbs a:focus-visible,
+.contents a:focus-visible {
+  outline: 3px solid var(--color-accent);
+  outline-offset: 3px;
+}
+.heroGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(19rem, 0.7fr);
+  gap: clamp(var(--space-10), 8vw, var(--space-24));
+  align-items: start;
+}
+.heroGrid > *,
+.sectionHeading > *,
+.workflowGrid > *,
+.migrationGrid > *,
+.productPanel > * {
+  min-width: 0;
+}
+.kicker {
+  margin: 0;
+  color: var(--color-accent);
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+.hero h1 {
+  max-width: 16ch;
+  margin-block: var(--space-5) 0;
+  font-size: clamp(2.5rem, 6vw, 5.4rem);
+  font-weight: 680;
+  letter-spacing: -0.06em;
+  line-height: 0.95;
+  overflow-wrap: anywhere;
+}
+.hero h1 span {
+  color: var(--color-accent);
+}
+.lede {
+  max-width: 60ch;
+  margin-block: var(--space-6) 0;
+  color: var(--color-fg-muted);
+  font-size: clamp(1rem, 1.4vw, 1.15rem);
+  line-height: 1.7;
+}
+.actions {
+  display: flex;
+  flex-flow: row wrap;
+  gap: var(--space-3);
+  align-items: center;
+  margin-block-start: var(--space-8);
+}
+.primaryAction,
+.secondaryAction {
+  display: inline-flex;
+  min-height: 3rem;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  border: 1px solid transparent;
+  border-radius: var(--radius-pill);
+  padding-inline: var(--space-6);
+  font-size: 0.875rem;
+  font-weight: 700;
+  line-height: 1;
+  white-space: nowrap;
+  transition:
+    background-color var(--duration-ui) var(--ease-out),
+    border-color var(--duration-ui) var(--ease-out),
+    transform var(--duration-fast) var(--ease-out);
+}
+.primaryAction {
+  background: var(--color-accent);
+  color: var(--color-accent-foreground);
+}
+.primaryAction:hover {
+  background: var(--color-accent-hover);
+}
+.primaryAction svg {
+  width: 1rem;
+  height: 1rem;
+}
+.secondaryAction {
+  border-color: var(--color-border-strong);
+  background: var(--color-bg);
+  color: var(--color-fg);
+}
+.secondaryAction:hover {
+  border-color: var(--color-fg);
+}
+.primaryAction:active,
+.secondaryAction:active {
+  transform: scale(0.98);
+}
+.primaryAction:focus-visible,
+.secondaryAction:focus-visible,
+.textAction:focus-visible {
+  outline: 3px solid var(--color-accent);
+  outline-offset: 3px;
+}
+.textAction {
+  display: inline-flex;
+  align-items: center;
+  min-height: 3rem;
+  font-size: 0.875rem;
+  font-weight: 700;
+  white-space: nowrap;
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+.textAction:hover {
+  color: var(--color-accent);
+}
+.contents {
+  position: relative;
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  padding: clamp(var(--space-5), 4vw, var(--space-8));
+}
+.contentsTop {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-4);
+  border-block-start: 4px solid var(--color-accent);
+  padding-block-start: var(--space-4);
+  color: var(--color-fg-subtle);
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.contents h2 {
+  margin-block: var(--space-5) var(--space-4);
+  font-size: clamp(1.4rem, 2.4vw, 1.9rem);
+  letter-spacing: -0.04em;
+  line-height: 1;
+}
+.contents ol {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  counter-reset: toc;
+}
+.contents li {
+  counter-increment: toc;
+  border-block-start: 1px solid var(--color-border);
+}
+.contents a {
+  display: grid;
+  grid-template-columns: 2rem minmax(0, 1fr);
+  gap: var(--space-3);
+  align-items: baseline;
+  padding-block: var(--space-3);
+  font-size: 0.86rem;
+  line-height: 1.4;
+}
+.contents a::before {
+  content: counter(toc, decimal-leading-zero);
+  color: var(--color-accent);
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  font-weight: 700;
+}
+.contents a:hover {
+  color: var(--color-accent);
+}
+.audience,
+.facts,
+.evaluation {
+  padding-block: clamp(var(--space-16), 9vw, var(--space-24));
+}
+.workflow,
+.boundary,
+.migration {
+  padding-block: clamp(var(--space-16), 9vw, var(--space-24));
+  background: var(--color-surface);
+}
+.sectionHeading {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.75fr);
+  gap: clamp(var(--space-6), 9vw, var(--space-20));
+  align-items: end;
+  margin-block-end: clamp(var(--space-10), 6vw, var(--space-16));
+}
+.sectionHeading h2 {
+  max-width: 18ch;
+  margin-block: var(--space-4) 0;
+  font-size: clamp(1.9rem, 4vw, 3.4rem);
+  font-weight: 670;
+  letter-spacing: -0.05em;
+  line-height: 1;
+}
+.sectionHeading > p,
+.workflowGrid header > p,
+.migrationGrid header > p {
+  margin: 0;
+  color: var(--color-fg-muted);
+  line-height: 1.7;
+}
+.audienceGrid,
+.boundaryGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  border-block: 1px solid var(--color-border-strong);
+}
+.audienceColumn,
+.boundaryColumn {
+  min-width: 0;
+  padding: clamp(var(--space-5), 3vw, var(--space-8));
+}
+.audienceColumn + .audienceColumn,
+.boundaryColumn + .boundaryColumn {
+  border-inline-start: 1px solid var(--color-border);
+}
+.columnLabel {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--color-fg);
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.columnLabel svg {
+  width: 1rem;
+  height: 1rem;
+  color: var(--color-positive);
+}
+[data-column='not'] .columnLabel svg,
+[data-column='connected'] .columnLabel svg {
+  color: var(--color-caution);
+}
+.audienceColumn ul,
+.boundaryColumn ul {
+  margin: var(--space-5) 0 0;
+  padding: 0;
+  list-style: none;
+}
+.audienceColumn li,
+.boundaryColumn li {
+  padding-block: var(--space-4);
+  border-block-start: 1px solid var(--color-border);
+  color: var(--color-fg-muted);
+  font-size: 0.9rem;
+  line-height: 1.6;
+}
+.workflowGrid,
+.migrationGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 0.72fr) minmax(0, 1.28fr);
+  gap: clamp(var(--space-10), 10vw, var(--space-24));
+}
+.workflowGrid header > p,
+.migrationGrid header > p {
+  max-width: 44ch;
+  margin-block-start: var(--space-5);
+}
+.workflowGrid header h2,
+.migrationGrid header h2 {
+  max-width: 14ch;
+  margin-block: var(--space-4) 0;
+  font-size: clamp(1.9rem, 4vw, 3.4rem);
+  font-weight: 670;
+  letter-spacing: -0.05em;
+  line-height: 1;
+}
+.workflowList {
+  margin: 0;
+  padding: 0;
+  border-block-start: 2px solid var(--color-fg);
+  list-style: none;
+}
+.workflowList li {
+  display: grid;
+  grid-template-columns: 5rem minmax(0, 1fr);
+  gap: var(--space-5);
+  padding-block: var(--space-5);
+  border-block-end: 1px solid var(--color-border);
+}
+.workflowList li > span {
+  color: var(--color-accent);
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.workflowList h3 {
+  font-size: 1.05rem;
+  letter-spacing: -0.02em;
+}
+.workflowList p {
+  margin-block: var(--space-2) 0;
+  color: var(--color-fg-muted);
+  font-size: 0.88rem;
+  line-height: 1.65;
+}
+.factList {
+  margin: 0;
+  border-block-start: 2px solid var(--color-fg);
+}
+.factList div {
+  display: grid;
+  grid-template-columns: minmax(9rem, 0.32fr) minmax(0, 1fr);
+  gap: var(--space-6);
+  padding-block: var(--space-5);
+  border-block-end: 1px solid var(--color-border);
+}
+.factList dt {
+  font-family: var(--font-mono);
+  font-size: 0.67rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--color-accent);
+}
+.factList dd {
+  margin: 0;
+  color: var(--color-fg-muted);
+  font-size: 0.9rem;
+  line-height: 1.6;
+}
+.questionList {
+  margin: 0;
+  padding: 0;
+  border-block-start: 2px solid var(--color-fg);
+  list-style: none;
+}
+.questionList li {
+  display: grid;
+  grid-template-columns: 1.3rem minmax(0, 1fr);
+  gap: var(--space-4);
+  padding-block: var(--space-5);
+  border-block-end: 1px solid var(--color-border);
+}
+.questionList li svg {
+  width: 1.1rem;
+  height: 1.1rem;
+  color: var(--color-accent);
+}
+.questionList li span {
+  font-size: 0.95rem;
+  line-height: 1.6;
+}
+.product {
+  padding-block: clamp(var(--space-16), 9vw, var(--space-24));
+}
+.productPanel {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, 0.8fr);
+  gap: clamp(var(--space-8), 6vw, var(--space-16));
+  align-items: start;
+  border-block-start: 3px solid var(--color-accent);
+  padding-block-start: clamp(var(--space-8), 5vw, var(--space-12));
+}
+.productCopy h2 {
+  margin-block: var(--space-4) 0;
+  font-size: clamp(1.9rem, 4vw, 3.2rem);
+  font-weight: 670;
+  letter-spacing: -0.05em;
+  line-height: 1;
+}
+.productIntro {
+  margin-block: var(--space-5) var(--space-4);
+  color: var(--color-fg);
+  font-size: 1.02rem;
+  line-height: 1.6;
+}
+.productCopy > p:last-child {
+  margin: 0;
+  color: var(--color-fg-muted);
+  font-size: 0.92rem;
+  line-height: 1.7;
+}
+.productActions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  align-items: flex-start;
+}
+.productActions .primaryAction,
+.productActions .secondaryAction {
+  width: 100%;
+}
+@media (max-width: 56rem) {
+  .heroGrid,
+  .sectionHeading,
+  .workflowGrid,
+  .migrationGrid,
+  .productPanel {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .contents {
+    max-width: 34rem;
+  }
+  .productActions {
+    align-items: stretch;
+  }
+  .productActions .primaryAction,
+  .productActions .secondaryAction {
+    width: auto;
+  }
+}
+@media (max-width: 40rem) {
+  .container {
+    padding-inline: var(--space-4);
+  }
+  .hero {
+    padding-block-start: var(--space-10);
+  }
+  .hero h1 {
+    font-size: clamp(2.25rem, 11vw, 3.4rem);
+  }
+  .actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+  .actions .primaryAction,
+  .actions .secondaryAction,
+  .actions .textAction {
+    width: 100%;
+    padding-inline: var(--space-4);
+  }
+  .contentsTop {
+    flex-direction: column;
+    gap: var(--space-1);
+  }
+  .audienceGrid,
+  .boundaryGrid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .audienceColumn + .audienceColumn,
+  .boundaryColumn + .boundaryColumn {
+    border-inline-start: 0;
+    border-block-start: 1px solid var(--color-border);
+  }
+  .workflowList li {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-2);
+  }
+  .factList div {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-2);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .primaryAction,
+  .secondaryAction {
+    transition: none;
+  }
+}

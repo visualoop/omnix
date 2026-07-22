@@ -1,7 +1,7 @@
 {
   "nav": {
     "pricing": "Precios",
-    "ai": "IA",
+    "ai": "Productos",
     "downloads": "Descargas",
     "changelog": "Registro de cambios",
     "modules": "Módulos",
@@ -12,7 +12,7 @@
     "docs": "Documentación",
     "support": "Soporte",
     "signIn": "Iniciar sesión",
-    "startTrial": "Prueba gratis",
+    "startTrial": "Reserva una demostración",
     "products": "Productos",
     "resources": "Recursos"
   },
@@ -30,14 +30,14 @@
   "common": {
     "buyNow": "Comprar ahora",
     "learnMore": "Más información",
-    "tryFree": "Probar gratis",
+    "tryFree": "Reserva una demostración",
     "loading": "Cargando…",
     "error": "Algo salió mal.",
     "retry": "Reintentar"
   },
   "trades": {
-    "pro": "Omnix Pro",
-    "dawa": "Omnix Dawa",
+    "pro": "Productos Omnix",
+    "dawa": "Farmacia",
     "retail": "Omnix Retail",
     "hospitality": "Omnix Hospitality",
     "hardware": "Omnix Hardware"

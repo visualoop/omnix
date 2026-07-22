@@ -1,5 +1,5 @@
 /**
- * Editorial table primitive — hairline rules, no borders, mono header.
+ * Working Counter table primitive — hairline rules, restrained surfaces, mono header.
  *
  * Matches the rest of /admin (espresso paper, no shadows). Use this
  * instead of CardLayout for dense list views like /admin/licenses,
@@ -47,7 +47,7 @@ export function TableHeader({ className, ...props }: SectionProps) {
   return (
     <thead
       className={cn(
-        'border-b border-[var(--color-border)] bg-[var(--color-bg-muted)]/40',
+        'border-b border-[var(--color-border)] bg-[var(--color-surface-hover)]/40',
         className,
       )}
       {...props}
@@ -68,7 +68,7 @@ export function TableFooter({ className, ...props }: SectionProps) {
   return (
     <tfoot
       className={cn(
-        'border-t border-[var(--color-border)] bg-[var(--color-bg-muted)]/30 font-medium',
+        'border-t border-[var(--color-border)] bg-[var(--color-surface-hover)]/30 font-medium',
         className,
       )}
       {...props}
@@ -80,7 +80,7 @@ export function TableRow({ className, ...props }: RowProps) {
   return (
     <tr
       className={cn(
-        'transition-colors hover:bg-[var(--color-bg-muted)]/40 data-[state=selected]:bg-[var(--color-bg-muted)]/60',
+        'transition-colors hover:bg-[var(--color-surface-hover)]/40 data-[state=selected]:bg-[var(--color-surface-hover)]/60',
         className,
       )}
       {...props}

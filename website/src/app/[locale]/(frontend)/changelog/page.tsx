@@ -1,376 +1,287 @@
+/* Hallmark · Working Counter · shipped release ledger */
 import type { Metadata } from 'next'
-import { Icon } from '@/components/icons'
-import { PageHero } from '@/components/marketing/page-hero'
+import Link from 'next/link'
 
-export const metadata: Metadata = {
-  title: 'Changelog — what shipped',
-  description: 'Every Omnix release, newest first. Variant-specific download links and what changed.',
-}
+import { PageContainer } from '@/components/layout/layout-primitives'
+import { Button } from '@/components/ui/button'
+import { buildAlternatesLanguages } from '@/lib/hreflang'
+import { buildSocialMetadata } from '@/lib/seo-metadata'
+
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://omnix.co.ke'
 
 // Re-fetch every minute so a fresh tag shows up quickly without a redeploy.
 export const dynamic = 'force-dynamic'
 export const revalidate = 60
 
-type VariantId = 'pro' | 'dawa' | 'retail' | 'hospitality' | 'hardware' | 'salon'
-
 interface ReleaseRow {
-  id: string | number
   version: string
-  variant?: VariantId
-  publishedAt?: string
-  title?: string
-  summary?: string
-  windowsNsisUrl?: string
-  windowsMsiUrl?: string
-  windowsNsisSize?: number
-  channel?: string
+  title: string
+  summary: string
+  publishedAt: string
 }
 
 interface VersionGroup {
   version: string
   publishedAt: string
-  /** Pro row (or earliest backfill row) used for the headline copy. */
-  headline: ReleaseRow
-  /** All variant rows for this version, in display order. */
-  variants: Record<VariantId, ReleaseRow | undefined>
+  title: string
+  summary: string
 }
 
-const VARIANT_ORDER: VariantId[] = ['pro', 'dawa', 'retail', 'hospitality', 'hardware', 'salon']
-
-const VARIANT_LABEL: Record<VariantId, string> = {
-  pro: 'Pro',
-  dawa: 'Dawa',
-  retail: 'Retail',
-  hospitality: 'Hospitality',
-  hardware: 'Hardware',
-  salon: 'Salon & Spa',
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: string }>
+}): Promise<Metadata> {
+  const { locale } = await params
+  const canonical = `${SITE_URL}/${locale}/changelog`
+  return {
+    title: 'Changelog — every Omnix release',
+    description:
+      'Every shipped Omnix release, newest first. What changed, in plain language — only work that is actually in customers’ hands, never dated promises.',
+    alternates: {
+      canonical,
+      languages: buildAlternatesLanguages('/changelog'),
+    },
+    ...buildSocialMetadata({
+      locale,
+      url: canonical,
+      title: 'Omnix changelog',
+      description: 'Every shipped Omnix release, newest first, in plain language.',
+      type: 'website',
+    }),
+  }
 }
 
 /**
- * Per-version highlight chips. Hand-curated for releases that warrant a
- * bullet recap above and beyond the GitHub-release summary line.
- * Empty by default — the standard summary is enough for most patches.
+ * Per-version highlight recap. Hand-curated for releases that warrant a
+ * bullet list above and beyond the release summary line. Empty by default —
+ * the standard summary is enough for most patches.
  */
 const VERSION_HIGHLIGHTS: Record<string, string[]> = {
   '0.16.0': [
-    'Hospitality customer display redesigned — guests now see their order grouped by course (Starters / Mains / Desserts) with a live status chip on every line (Queued → In kitchen → Cooking → Ready → Served). Table number and server name show in the header so it\'s clear whose order is on screen.',
-    'New Order Board mode for hospitality — a wall-mounted screen showing every active order in two big columns: PREPARING and READY, in the style of fast-food make boards. A short chime plays when an order moves to READY so guests near the screen look up. Open it from Settings → Customer Display.',
+    'Hospitality customer display redesigned — guests see their order grouped by course with a live status chip on every line (Queued → In kitchen → Cooking → Ready → Served), plus table number and server name in the header.',
+    'New Order Board mode for hospitality — a wall-mounted screen showing every active order in two columns, PREPARING and READY, with a short chime when an order moves to READY.',
     'KOT polling on the customer display refreshes every two seconds, so the customer sees the same status the kitchen sees.',
-    'Strict proprietary licence (LICENSE) added — Omnix source is published for security review only; use, modification, redistribution, and reselling all require a signed agreement.',
-    'New /partners page on the website — resellers, integrators, OEMs and referral partners can submit an enquiry through a form that goes straight to the partnerships inbox via Resend (with an auto-acknowledgement back to the submitter).',
+    'Strict proprietary licence added — Omnix source is published for security review only; use, modification, redistribution and reselling require a signed agreement.',
+    'New /partners page — resellers, integrators, OEMs and referral partners can submit an enquiry that reaches the partnerships inbox.',
   ],
   '0.15.4': [
-    'Critical fix: split payments with M-Pesa + another method no longer fail with a foreign-key error after the M-Pesa charge has already been taken. The synthetic M-Pesa method ids the UI uses are now seeded + auto-upserted before the payment row is inserted, so the local sale always lands.',
-    'Variant picker: the parent product card now shows a real SKU (the product\'s own SKU, or a stable synthesised one) instead of the literal "Parent SKU" placeholder.',
-    'Customer display: each line item now shows the product\'s image (or a clean icon placeholder when no image is set). The thumbnail is themed to the active module accent.',
-    'Customer display: when the cashier sets a customer on the sale, their name appears at the top of the display so it\'s clear whose order is on screen.',
+    'Critical fix: split payments with M-Pesa plus another method no longer fail with a foreign-key error after the M-Pesa charge has been taken.',
+    'Variant picker now shows a real SKU on the parent product card instead of the "Parent SKU" placeholder.',
+    'Customer display shows each line item’s image (or a clean icon placeholder), themed to the active module accent.',
+    'Customer display shows the customer’s name at the top of the sale when the cashier sets one.',
   ],
   '0.15.3': [
-    'Native on-screen keyboard — the third-party library was the source of the blank-screen crashes when typing in touch mode. The new one is fully ours; it dismisses cleanly when a dialog closes and never leaves dangling overlays.',
-    'M-Pesa sandbox auto-confirm now actually fires — Daraja\'s sandbox routinely returns a "cancelled" code on the first poll even when nothing was cancelled; we now treat it as pending so the 15-second grace can resolve the test transaction. Production charges unchanged.',
-    'Payment modal shows the running tendered amount inside each method card (e.g. "Cash · KES 100") — no more scrolling to the "Paid so far" list to see how a split is going.',
-    'M-Pesa STK waiting screen shows the real M-Pesa wordmark; Paystack-via-M-Pesa shows both lockups so the customer knows who\'s charging the phone.',
-    'POS search bar redesigned — the magnifier sits in its own slot to the left of the input, not on top of it. Scanner-ready indicator now lives in the same row.',
-    'Variant picker now includes the parent SKU as a sellable option, scrolls when there are many variants, and matches the main POS product card visually with image-first cards.',
-    'Customer display second-screen now reads the right currency on first paint (was flashing $ instead of KES because each Tauri window has its own state tree). Footer URL fixed to omnix.co.ke and the "Omnix Omnix Retail" duplicate is gone.',
-    'Dead-stock insight no longer flags products that were just added — it now floors by product age so a SKU has to have been in the catalogue for the full idle window before being called dead.',
-    'AI assistant\'s tool flow is more resilient — when one provider rate-limits or stalls mid-stream (no narration after a tool result), the chat now falls over to the next configured provider instead of leaving an empty bubble.',
-    'AI workspace (/ai) now has conversation history, a New chat button, and persists chats between sessions — same behaviour as the side panel.',
-    'Assistant won\'t auto-navigate the app when you ask vague questions like "can you add a cashier?" — it answers in chat first; navigation only fires when you\'ve asked to be taken somewhere or accepted a suggestion.',
+    'Native on-screen keyboard replaces the third-party library that caused blank-screen crashes in touch mode.',
+    'M-Pesa sandbox auto-confirm now resolves the test transaction during the 15-second grace; production charges unchanged.',
+    'Payment modal shows the running tendered amount inside each method card.',
+    'POS search bar redesigned — the magnifier sits in its own slot to the left of the input.',
   ],
   '0.15.2': [
-    'Dashboard downloads page now derives the right installer URL for every variant — Pro no longer shows "no .exe / no .msi" when the GitHub release has the binary.',
-    'Error boundary now also catches non-render errors (click-handler crashes, unhandled promise rejections, Tauri plugin failures) so blank screens always surface an error message instead of vanishing silently.',
+    'Dashboard downloads page derives the right installer for every variant.',
+    'Error boundary now catches non-render errors so blank screens always surface a message.',
   ],
   '0.15.1': [
-    'M-Pesa sandbox testing no longer falsely fails — Safaricom\'s sandbox returns a stray "cancelled" code on the first poll; we now ignore it during the 15-second grace so auto-confirm always lands. Production unchanged.',
-    'Payment modal redesigned — wider so cards don\'t clip, focus rings stay inside the dialog, one scroll axis instead of two, the "Complete sale" button is genuinely sticky.',
-    'The M-Pesa / Paystack / Insurance dialogs that open during checkout now share the same masthead + brand colours as the main payment modal (Safaricom green, Paystack cyan, insurance sky-blue) — checkout feels like one continuous flow, not five different screens.',
-    'Brand selector showed the brand id instead of the name when you picked one — fixed in the product panel and quick-add.',
-    'New route error boundary — when something crashes in a deep child the app no longer blanks out; you see the actual error message + stack you can paste in a bug report.',
-  ],
-  '0.15.0': [
-    'Omnix AI grew from a help concierge into a business partner — ask it real questions about your shop and it answers from your live data',
-    'Ask things like "what made the most profit this month?", "what should I reorder and how much?", "which customers have stopped buying?", "why did revenue change?" — grounded in your actual numbers, never guessed',
-    'New "Needs attention" feed on the dashboard: stockouts about to happen, stock expiring soon, dead stock tying up cash, items priced below cost, and revenue dips — each with a one-tap "ask AI why"',
-    'The assistant can now prepare actions for you — draft a purchase order, categorise products, set reorder levels — and nothing changes until you review and approve it',
-    'New full-page Omnix AI workspace (sidebar → Omnix AI) for working with your data and recommendations in one place',
-    'End-of-day Z-report can now write you a plain-language shift summary to share with the team',
-    'M-Pesa sandbox testing no longer hangs — STK test payments auto-confirm so you can trial the till flow end to end (production payments are untouched)',
+    'M-Pesa sandbox testing no longer falsely fails on the first poll; production unchanged.',
+    'Payment modal redesigned — wider, single scroll axis, genuinely sticky "Complete sale" button.',
+    'Checkout dialogs share one masthead and brand colours so the flow feels continuous.',
+    'New route error boundary surfaces the real error and stack instead of blanking out.',
   ],
   '0.14.0': [
-    'Every sale, void, and refund is now all-or-nothing — a power cut or crash mid-transaction can no longer leave a half-written sale, orphaned stock, or money recorded twice',
-    'Voiding a sale now reverses everything: stock returns, the payment is undone, the bank deposit is withdrawn back, and the KRA invoice is flagged for a credit note',
-    'Money is counted in exact cents end to end — receipts, reports, tax back-out, and insurance copay splits always reconcile to the shilling',
-    'Insurance claims guarantee copay + claim equals the bill exactly, so claims stop bouncing on rounding mismatches',
-    'Restaurant stock stays honest: ingredients of a dish that was cooked then comped are written off instead of silently lingering in inventory',
-    'Refunds and layby cancellations now mirror back to the bank automatically, keeping reconciliation clean',
-    'Redesigned module screens — Pharmacy, Retail, Hardware, and Hospitality each get a distinct, disciplined identity (teal, amber, orange, rose) with clearer KPIs and tables',
-  ],
-  '0.13.1': [
-    'Long-term speed: SQLite tuned for production (WAL, memory-mapped reads, bigger cache) so the till stays instant after years of sales',
-    'Daily sales rollup keeps all-time reports fast no matter how much history accumulates',
-    'Automatic background maintenance (planner stats, space reclaim, log pruning) runs quietly once a day',
-    'Marketing images now load everywhere (hero, modules, pricing, social cards)',
+    'Every sale, void and refund is now all-or-nothing — a power cut mid-transaction can no longer leave a half-written sale or money recorded twice.',
+    'Voiding a sale reverses everything: stock returns, payment undone, bank deposit withdrawn, KRA invoice flagged for a credit note.',
+    'Money is counted in exact cents end to end, so receipts, reports, tax back-out and insurance copay splits reconcile to the shilling.',
+    'Redesigned module screens — Pharmacy, Retail, Hardware and Hospitality each get a distinct, disciplined identity.',
   ],
   '0.13.0': [
-    'Auto-update on close — non-major updates download quietly while you work and install when you close the app, like VSCode',
-    'Machines now show every module activated on them (was showing only the last one)',
-    'Full provider-side setup guides — applying for a Daraja Paybill/Till, the Daraja portal flow, Paystack onboarding, and AI keys, step by step',
-    'WhatsApp chat widget polish + Lighthouse SEO/accessibility fixes (valid hreflang, contrast, link/button labels)',
-    'Branded STK push success screens (M-Pesa green pulse, Paystack blue)',
+    'Auto-update on close — non-major updates download quietly while you work and install when you close the app.',
+    'Machines now show every module activated on them.',
+    'Full provider-side setup guides for Daraja and Paystack.',
   ],
   '0.12.0': [
-    'Payment modal rebuilt — remaining always visible, brand-coloured method blocks, single contextual CTA, internal scroll',
-    'Paystack Popup (hosted iframe) for card payments — no PCI scope, no fraud-flag penalty',
-    'Manual M-Pesa Paybill/Till — the no-API flow most Kenyan SMEs use, with confirmation-code capture',
-    'STK push "Mark as paid manually" fallback when Safaricom is slow',
-    'Upgraded payment brand icons (M-Pesa, Paystack, Visa, Mastercard, cash, card)',
-    'Tap a cart quantity to type it; on-screen QWERTY keyboard for touch terminals',
-    'Customer display now carries Omnix branding + your business name + module + www.blyss.co.ke',
-    'Fixed: variants now add from the product page, POS shows product images, SKU is optional',
-    'Fixed: PDFs + receipts now show your real business name (was "Your Business")',
-    'Marketing site leads with M-Pesa: hero, variant landings, SEO keywords, structured data',
-    'In-app setup guides for M-Pesa, Paystack, and AI keys + dashboard setup prompts',
-    'Public Team page (admin-managed) + WhatsApp chat widget',
+    'Payment modal rebuilt — remaining always visible, brand-coloured method blocks, one contextual CTA.',
+    'Paystack Popup for card payments; manual M-Pesa Paybill/Till flow with confirmation-code capture.',
+    'In-app setup guides for M-Pesa and Paystack.',
   ],
-  '0.11.1': [
-    'Touch keypad on every cash dialog (POS terminals)',
-    'Customer display local images now render',
-    'Pharmacy → Patients tab',
-    'Search-and-create patient/doctor pickers in dispense',
-    'Mobile-responsive admin shell',
-    'Editorial tables with search + pagination + filters on every list page',
-    'Schema-stale SQL audit prevents dispense + bulk-edit crashes',
-    '48 native form elements migrated to shadcn primitives',
-  ],
-  '0.11.0': [
-    'Multi-licence per machine — seven activation gates',
-    'Pro covers all four trades, trade variants compose freely',
-    'Local↔cloud licence sync with auto-heal of orphan seats',
-    'Settings → Licences page with module switcher',
-    'Sidebar module switcher (auto-hides single-licence installs)',
-    'Pro pricing fixed: KES 150,000 (was charging trade price)',
-    'Downloads page lists every owned variant',
-    'Dashboard release-seat button',
-  ],
-  '0.10.7': [
-    'Trade variants now KES 30,000 (was 50,000)',
-    'Pro stays at KES 150,000 — all four trades covered',
-    'Checkout page redesigned with bigger total + accent rule',
-  ],
-  '0.10.6': [
-    'POS product cards: image-first when set, module accent throughout',
-    'Inline edit on inventory detail page (Edit toggles every field)',
-  ],
-  '0.10.5': [
-    'YouTube + Vimeo URLs in customer display auto-convert to embed form',
-  ],
-  '0.10.4': [
-    'Customer display playlist supports local images + videos (file picker)',
-    'Toast confirmation on every PDF download',
-  ],
-  '0.10.3': ['Row click drills to detail page (customers, suppliers, sales, employees, branches)'],
-  '0.10.2': ['Product detail page — Variants tab + Images tab'],
-  '0.10.1': ['Login profile picker — tile per active user with avatar + role pill'],
-  '0.10.0': [
-    '16 branded PDFs',
-    'PO lifecycle hardening',
-    'Customer display playlist',
-    '14 entity detail pages',
-    '7-step onboarding wizard',
-    'CSV auto-map (English + Swahili)',
-    'Unified PDF engine',
-    'P&L COGS bug fix',
-  ],
-}
-
-function formatBytes(n?: number): string {
-  if (!n || n <= 0) return ''
-  return `${(n / (1024 * 1024)).toFixed(1)} MB`
 }
 
 function formatDate(d?: string): string {
   if (!d) return ''
-  return new Date(d).toLocaleDateString('en-KE', {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-  })
+  const date = new Date(d)
+  if (Number.isNaN(date.getTime())) return ''
+  return date.toLocaleDateString('en-KE', { year: 'numeric', month: 'long', day: 'numeric' })
 }
 
-/** Strip bare URLs from legacy summaries that embedded the (now-private) GitHub link. */
+/**
+ * Sanitise a database-sourced release note before it reaches the public
+ * changelog. Two jobs:
+ *
+ *   1. Strip bare URLs — legacy notes embedded the now-private GitHub /
+ *      installer links, which must never surface on a public page.
+ *   2. Drop any sentence carrying acquisition-facing positioning we do not
+ *      run on public surfaces: AI marketing, a "Pro" tier, trial-start
+ *      language, or a restated / stale price. Neutral release facts survive.
+ *
+ * Word boundaries keep the "Pro" tier match narrow: "provider",
+ * "professional", "process" and "product" are deliberately left untouched.
+ */
+const FORBIDDEN_SUMMARY_PATTERNS: RegExp[] = [
+  /\bA\.?I\b/i, // AI marketing or "AI keys" positioning
+  /\bPro\b/, // "Pro" tier only (case-sensitive; spares provider/professional)
+  /\b(?:free\s+trial|start(?:ing)?\s+(?:a\s+|your\s+)?trial|trial)\b/i, // trial-start
+  /(?:KES|USD|NGN|GHS|ZAR|Ksh|\$)\s*[\d][\d,]*/i, // restated / stale price positioning
+]
+
+/** Strip URLs and redact acquisition-facing positioning from legacy summaries. */
 function cleanSummary(s?: string): string {
   if (!s) return ''
-  return s
+  const withoutUrls = s
     .replace(/See\s+https?:\/\/\S+\s+for the full changelog\.?/i, '')
     .replace(/https?:\/\/\S+/g, '')
+  return withoutUrls
+    .split(/(?<=[.!?])\s+/)
+    .map((sentence) => sentence.trim())
+    .filter((sentence) => sentence.length > 0)
+    .filter((sentence) => !FORBIDDEN_SUMMARY_PATTERNS.some((re) => re.test(sentence)))
+    .join(' ')
     .replace(/\s{2,}/g, ' ')
     .trim()
 }
 
-/**
- * Group the flat release list by version. v0.3.x rows have variant=pro
- * (default backfilled by migration). v0.4.0+ rows have one row per variant
- * — we collapse those into a single version card with multiple download
- * buttons.
- */
 function groupByVersion(rows: ReleaseRow[]): VersionGroup[] {
   const map = new Map<string, VersionGroup>()
   for (const r of rows) {
-    const v = (r.variant ?? 'pro') as VariantId
-    const existing = map.get(r.version)
-    if (existing) {
-      existing.variants[v] = r
-      // Prefer the Pro variant row's headline copy when available.
-      if (v === 'pro') {
-        existing.headline = r
-      }
-    } else {
-      map.set(r.version, {
-        version: r.version,
-        publishedAt: r.publishedAt ?? '',
-        headline: r,
-        variants: {
-          pro: undefined,
-          dawa: undefined,
-          retail: undefined,
-          hospitality: undefined,
-          hardware: undefined,
-          [v]: r,
-        } as Record<VariantId, ReleaseRow | undefined>,
-      })
-    }
+    if (map.has(r.version)) continue
+    map.set(r.version, {
+      version: r.version,
+      publishedAt: r.publishedAt ?? '',
+      title: r.title,
+      summary: r.summary,
+    })
   }
   return [...map.values()].sort((a, b) =>
     String(b.publishedAt).localeCompare(String(a.publishedAt)),
   )
 }
 
-export default async function ChangelogPage() {
-  const { db, releases } = await import('@/db')
-  const { eq, desc } = await import('drizzle-orm')
-  const drizzleRows = await db
-    .select()
-    .from(releases)
-    .where(eq(releases.channel, 'stable'))
-    .orderBy(desc(releases.publishedAt))
-    .limit(100)
-  // Map Drizzle row → ReleaseRow shape used by the rest of this page.
-  const rows: ReleaseRow[] = drizzleRows.map((r) => ({
-    version: r.version,
-    title: r.notes?.split('\n')[0] ?? `Omnix ${r.version}`,
-    summary: r.notes ?? '',
-    publishedAt: r.publishedAt.toISOString(),
-    variant: 'pro',                                       // single shipped variant per row in the new schema
-    status: 'published',
-    channel: r.channel,
-  })) as unknown as ReleaseRow[]
+export default async function ChangelogPage({
+  params,
+}: {
+  params: Promise<{ locale: string }>
+}) {
+  const { locale } = await params
+  const roadmapHref = `/${locale}/roadmap`
+  const demoHref = `/${locale}/contact?type=demo`
+
+  let rows: ReleaseRow[] = []
+  try {
+    const { db, releases } = await import('@/db')
+    const { eq, desc } = await import('drizzle-orm')
+    const drizzleRows = await db
+      .select()
+      .from(releases)
+      .where(eq(releases.channel, 'stable'))
+      .orderBy(desc(releases.publishedAt))
+      .limit(100)
+    rows = drizzleRows.map((release) => ({
+      version: release.version,
+      title: release.notes?.split('\n')[0] ?? `Omnix ${release.version}`,
+      summary: release.notes ?? '',
+      publishedAt: release.publishedAt.toISOString(),
+    }))
+  } catch {
+    // Public release history fails closed when storage is unavailable.
+  }
   const groups = groupByVersion(rows)
 
   return (
-    <>
-      <PageHero
-        eyebrow="Changelog"
-        title={<>What <em>shipped.</em></>}
-        description="Every Omnix release, newest first. From v0.4.0 onwards each version ships five variants — pick the one you run."
-      />
-
-      <section className="section">
-        <div className="container-default">
-          {groups.length === 0 ? (
-            <p className="text-[15px] text-[var(--color-fg-muted)]">No releases published yet.</p>
-          ) : (
-            <ol className="space-y-14">
-              {groups.map((g, i) => (
-                <li
-                  key={g.version}
-                  className={i === groups.length - 1 ? '' : 'border-b border-[var(--color-border)] pb-14'}
-                >
-                  <ReleaseCard group={g} />
-                </li>
-              ))}
-            </ol>
-          )}
-        </div>
-      </section>
-    </>
-  )
-}
-
-function ReleaseCard({ group }: { group: VersionGroup }) {
-  const { headline, variants, version, publishedAt } = group
-  const presentVariants = VARIANT_ORDER.filter((v) => variants[v])
-  const hasMultiVariant = presentVariants.length > 1
-
-  return (
-    <div className="grid grid-cols-1 gap-6 lg:grid-cols-[auto_minmax(0,1fr)]">
-      <div className="lg:w-36">
-        <div className="caption-mono">{formatDate(publishedAt)}</div>
-        <div className="font-[family-name:var(--font-mono)] mt-2 text-[20px] tabular-nums text-[var(--color-accent)]">
-          v{version}
-        </div>
-        {hasMultiVariant ? (
-          <div className="mt-2 inline-flex items-center gap-1 rounded-full border border-[var(--color-border)] px-2 py-0.5 font-[family-name:var(--font-mono)] text-[10px] uppercase tracking-[0.18em] text-[var(--color-fg-subtle)]">
-            {presentVariants.length} variants
+    <div className="min-w-0 border-b border-[var(--color-border)]">
+      <PageContainer width="wide" className="py-[var(--space-section-tight)] sm:py-[var(--space-section)]">
+        {/* Masthead */}
+        <header className="grid min-w-0 gap-8 border-b border-[var(--color-border)] pb-10 lg:grid-cols-[minmax(0,1.3fr)_minmax(16rem,0.7fr)] lg:items-end lg:gap-16 lg:pb-14">
+          <div className="min-w-0">
+            <p className="caption-mono text-[var(--color-accent)]">Shipped</p>
+            <h1 className="mt-4 max-w-[16ch] text-balance text-[clamp(2.6rem,7vw,6rem)] font-semibold leading-[0.92] tracking-[-0.055em] text-[var(--color-fg)]">
+              Every release, in the open.
+            </h1>
           </div>
-        ) : null}
-      </div>
+          <div className="min-w-0 border-t-2 border-[var(--color-fg)] pt-5">
+            <p className="max-w-[52ch] text-[15px] leading-7 text-[var(--color-fg-muted)] sm:text-[16px]">
+              Only work that is actually in customers&rsquo; hands, newest first. Updates install
+              through the app; there are no public installer links here. For what&rsquo;s planned
+              next, see the roadmap.
+            </p>
+            <div className="mt-6 flex flex-col gap-3 sm:flex-row">
+              <Button asChild variant="outline" size="lg" className="w-full sm:w-auto">
+                <Link href={roadmapHref}>See the roadmap</Link>
+              </Button>
+              <Button asChild variant="ghost" size="lg" className="w-full sm:w-auto">
+                <Link href={demoHref}>Book a demo</Link>
+              </Button>
+            </div>
+          </div>
+        </header>
 
-      <div>
-        <h3 className="font-[family-name:var(--font-display)] text-[clamp(24px,2.2vw,32px)] font-normal leading-tight text-[var(--color-fg)]">
-          {headline.title ?? `Omnix v${version}`}
-        </h3>
-        {cleanSummary(headline.summary) ? (
-          <p className="mt-3 text-[15px] leading-[1.65] text-[var(--color-fg-muted)] max-w-[60ch] break-words">
-            {cleanSummary(headline.summary)}
+        {groups.length === 0 ? (
+          <p className="py-16 text-[15px] leading-7 text-[var(--color-fg-muted)]">
+            No releases published yet. When the first build ships, it will appear here.
           </p>
-        ) : null}
-
-        {/* Hand-curated highlight chips for marquee releases. The fallback
-            is empty (most releases don't need bullet copy beyond the
-            summary above). Add new versions here as they ship. */}
-        {VERSION_HIGHLIGHTS[version] ? (
-          <ul className="mt-5 flex flex-wrap gap-1.5">
-            {VERSION_HIGHLIGHTS[version].map((h) => (
-              <li
-                key={h}
-                className="inline-flex items-center rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-2.5 py-1 font-mono text-[10px] uppercase tracking-[0.16em] text-[var(--color-fg-muted)]"
-              >
-                {h}
-              </li>
-            ))}
-          </ul>
-        ) : null}
-
-        {/* Download grid — one button per variant that has an installer */}
-        {presentVariants.length > 0 ? (
-          <div className="mt-6 flex flex-wrap gap-2">
-            {presentVariants.map((v) => {
-              const r = variants[v]!
-              const url = r.windowsNsisUrl ?? r.windowsMsiUrl
-              if (!url) return null
-              const isMulti = hasMultiVariant
+        ) : (
+          <ol className="min-w-0">
+            {groups.map((group) => {
+              const highlights = VERSION_HIGHLIGHTS[group.version]
+              const summary = cleanSummary(group.summary)
+              // Titles come from the same DB notes, so they pass through the
+              // same guard; fall back to the neutral version label if empty.
+              const title = cleanSummary(group.title) || `Omnix v${group.version}`
               return (
-                <a
-                  key={v}
-                  href={url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  download
-                  className="font-[family-name:var(--font-ui)] inline-flex items-center gap-2 rounded-md border border-[var(--color-border-strong)] px-3.5 py-2 text-[13px] font-medium text-[var(--color-fg)] transition-colors hover:border-[var(--color-accent)] hover:text-[var(--color-accent)] cursor-pointer"
-                  title={`${formatBytes(r.windowsNsisSize) || ''} · Tauri-signed`.trim().replace(/^· /, '')}
+                <li
+                  key={group.version}
+                  className="grid min-w-0 gap-4 border-b border-[var(--color-border)] py-10 sm:py-12 lg:grid-cols-[10rem_minmax(0,1fr)] lg:gap-16"
                 >
-                  <Icon.Download className="size-3.5" weight="bold" />
-                  {isMulti ? VARIANT_LABEL[v] : 'Download'}
-                  {!isMulti && r.windowsNsisSize ? ` (${formatBytes(r.windowsNsisSize)})` : ''}
-                </a>
+                  <div className="min-w-0 lg:sticky lg:top-24 lg:h-fit">
+                    <p className="font-mono text-[clamp(1.25rem,2vw,1.6rem)] tabular-nums leading-none tracking-[-0.02em] text-[var(--color-accent)]">
+                      v{group.version}
+                    </p>
+                    {group.publishedAt ? (
+                      <time
+                        dateTime={group.publishedAt}
+                        className="mt-2 block font-mono text-[10px] uppercase tracking-[0.16em] text-[var(--color-fg-subtle)]"
+                      >
+                        {formatDate(group.publishedAt)}
+                      </time>
+                    ) : null}
+                  </div>
+
+                  <div className="min-w-0">
+                    <h2 className="max-w-[26ch] text-[clamp(1.4rem,2.6vw,2rem)] font-semibold leading-[1.12] tracking-[-0.035em] text-[var(--color-fg)]">
+                      {title}
+                    </h2>
+                    {summary && summary !== title ? (
+                      <p className="mt-3 max-w-[62ch] text-[15px] leading-[1.7] text-[var(--color-fg-muted)]">
+                        {summary}
+                      </p>
+                    ) : null}
+                    {highlights ? (
+                      <ul className="mt-5 space-y-2.5">
+                        {highlights.map((h) => (
+                          <li
+                            key={h}
+                            className="grid grid-cols-[0.75rem_minmax(0,1fr)] gap-3 text-[14px] leading-[1.6] text-[var(--color-fg-muted)]"
+                          >
+                            <span aria-hidden className="mt-[0.6rem] h-px bg-[var(--color-accent)]" />
+                            <span className="max-w-[64ch]">{h}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    ) : null}
+                  </div>
+                </li>
               )
             })}
-          </div>
-        ) : null}
-        <span className="caption-mono mt-3 inline-block">Tauri-signed</span>
-      </div>
+          </ol>
+        )}
+      </PageContainer>
     </div>
   )
 }

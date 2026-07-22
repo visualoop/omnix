@@ -24,7 +24,7 @@ export const DOCS_SEED: DocSeed[] = [
   {
     slug: 'getting-started',
     title: 'Getting started',
-    excerpt: 'Install Omnix, activate your licence or trial, complete the setup wizard, and ring your first sale.',
+    excerpt: 'Install Omnix, activate your licence, complete the setup wizard, and ring your first sale.',
     category: 'Basics',
     icon: 'RocketLaunch',
     body: `Welcome to Omnix — the offline-first POS and business software for Kenyan businesses. This guide takes you from download to your first sale in about ten minutes.
@@ -35,14 +35,11 @@ Get the latest installer from [omnix.co.ke/downloads](https://omnix.co.ke/downlo
 
 Omnix installs per-user (no admin rights needed) and takes about 30 seconds.
 
-## Start a free trial or activate a licence
+## Activate your licence
 
-On first launch you'll see the activation screen. You have two choices:
+On first launch you'll see the activation screen. If you've already bought a licence, paste the licence key — it binds to this machine and you're ready to go.
 
-- **Start a 30-day free trial** — pick the module that fits your trade (Dawa for pharmacy, Retail, Hardware, or Hospitality). No card required.
-- **Activate a licence** — if you've already bought one, paste the licence key. The key binds to this machine.
-
-Already on a trial and ready to buy? Click **Buy now** right on the activation screen — it opens the checkout in your browser, you pay once (KES 100,000, no subscription), and the key arrives by email. Paste it back into Omnix to activate.
+Haven't bought yet? Click **Buy now** right on the activation screen — it opens the checkout in your browser, you pay once (KES 30,000, one-time, no subscription), and the key arrives by email. Paste it back into Omnix to activate.
 
 ## Complete the setup wizard
 
@@ -243,7 +240,7 @@ Calls go directly from your machine to the provider you chose. Omnix never sees 
 
 ## Variant-aware persona
 
-Each Omnix variant biases the assistant toward its trade. Omnix Dawa speaks chemist vocabulary (prescriptions, expiry, controlled register, SHA). Omnix Hospitality speaks chef vocabulary (tables, KOT, recipes, food cost). The Pro variant adapts to whichever module you're currently in.
+Each Omnix variant biases the assistant toward its trade. Omnix Dawa speaks chemist vocabulary (prescriptions, expiry, controlled register, SHA). Omnix Hospitality speaks chef vocabulary (tables, KOT, recipes, food cost). A multi-trade install adapts to whichever module you're currently in.
 
 ## Useful starter prompts
 
@@ -821,7 +818,7 @@ Omnix prorates basic salary by working days. Final-month adjustments (severance,
 
 ## See also
 
-- [Payroll pack landing page](/payroll-pack) — full overview
+- [Omnix products](/modules) — the five products payroll ships inside
 - [Sample P10 PDF](/samples/p10-sample.pdf)
 - [Sample P9 PDF](/samples/p9-sample.pdf)`,
   },
@@ -881,17 +878,17 @@ The customer display window is governed by Tauri's webview. Memory budget: ~150 
     excerpt: 'What the 7-step wizard asks for, what you can skip, where to change everything later.',
     category: 'Basics',
     icon: 'RocketLaunch',
-    body: `When you first sign in to omnix.co.ke after activating your trial or buying a licence, Omnix runs a 7-step onboarding wizard. It captures the minimum needed to issue your licence, set your currency, and start your trial.
+    body: `When you first sign in to omnix.co.ke after buying a licence, Omnix runs a 7-step onboarding wizard. It captures the minimum needed to issue your licence and set your currency.
 
 ## What it asks
 
 1. **Business name** (required) — what shows on receipts, invoices, customer display.
 2. **Country** — picks your currency default. Defaults to Kenya.
 3. **Currency** — auto-fills from country. Three-letter ISO code.
-4. **Team size** (optional, skippable) — used for analytics + recommending the right tier.
+4. **Team size** (optional, skippable) — used for analytics and recommending sensible defaults.
 5. **Phone** (required) — for licence-key SMS and critical alerts.
 6. **KRA PIN / tax ID** (optional, skippable) — required for KRA eTIMS sale signing later, but not at onboarding time.
-7. **Variant** (required) — which module you'll use first. Pick Dawa, Retail, Hardware, Hospitality, or Pro.
+7. **Variant** (required) — which module you'll use first. Pick Dawa, Retail, Hardware, Hospitality, or Salon & Spa.
 
 Steps 4 and 6 have a "Skip for now" button. You can fill them in later from Settings → Profile or your dashboard.
 
@@ -900,14 +897,14 @@ Steps 4 and 6 have a "Skip for now" button. You can fill them in later from Sett
 After step 7, Omnix:
 - Saves your profile to the user record
 - Sends you back to /dashboard with the variant pre-selected
-- Starts a 30-day trial of the chosen variant
+- Prepares your licence for the chosen variant
 - Emails you a licence key to activate the desktop install
 
 ## Where to change things later
 
 - **Business name + phone + country + currency**: /dashboard/profile
 - **KRA PIN + team size + addresses**: /dashboard/profile (under "Compliance + extras")
-- **Variant**: you can run more than one. /dashboard → "Add a trial of another variant"`,
+- **Variant**: you can run more than one. /dashboard → "Add another variant"`,
   },
   {
     slug: 'reports-overview',

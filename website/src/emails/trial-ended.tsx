@@ -11,12 +11,23 @@ import {
   Text,
 } from '@react-email/components'
 import { BRAND_NAME, BRAND } from '@/lib/brand'
+import { pricing } from '@/config/pricing'
 import { containerStyle, brand, h1, p, hr, footer, dot } from './_shared-styles'
+
+// Price is derived from the single source of truth in config, never hardcoded,
+// so this template can never drift from the published starter licence figure.
+const LICENCE_PRICE = `KES ${pricing.starter.oneTimeFee.KES.toLocaleString('en-US')}`
+const COMPLIANCE_PRICE = `KES ${pricing.starter.maintenanceYearly.KES.toLocaleString('en-US')}`
 
 interface Props {
   name: string
 }
 
+/**
+ * Trial-ended notice — retained ONLY to service existing legacy trial records.
+ * The public site no longer starts trials, so this template must not be wired
+ * to any new public trial-start CTA or lifecycle path.
+ */
 export function TrialEnded({ name }: Props) {
   return (
     <Html>
@@ -40,8 +51,12 @@ export function TrialEnded({ name }: Props) {
             state — you can still see all your data, export, and sign back in once you pay.
           </Text>
           <Text style={p}>
-            <strong>One payment of KES 100,000</strong> reactivates everything. No subscription
-            ever.
+            <strong>One payment of {LICENCE_PRICE}</strong> reactivates everything — a one-time,
+            perpetual per-device licence, not a subscription.
+          </Text>
+          <Text style={p}>
+            Annual compliance updates ({COMPLIANCE_PRICE}/year) are optional and billed
+            separately. The perpetual licence keeps working whether or not you renew them.
           </Text>
 
           <Section style={{ marginTop: 28 }}>
@@ -63,8 +78,8 @@ export function TrialEnded({ name }: Props) {
 
           <Hr style={hr} />
           <Text style={footer}>
-            Hit a wall during the trial? Reply to this email — we typically fix what's blocking
-            you within a day. Refunds are generous, but most customers prefer the fix.
+            Your data stays intact and exports from the desktop app at any time. Reply to this
+            email with any questions.
           </Text>
         </Container>
       </Body>

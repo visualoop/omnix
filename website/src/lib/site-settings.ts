@@ -6,6 +6,7 @@
  *
  * Hot-reloads via the platform-settings 60-second cache.
  */
+import { cache } from 'react'
 import { siteBranding } from '@/lib/platform-settings'
 
 export interface SiteSettings {
@@ -33,7 +34,15 @@ export interface SiteSettings {
   }
 }
 
-export async function getSiteSettings(): Promise<SiteSettings> {
+/**
+ * Public site branding for the marketing chrome. Wrapped in React `cache()` so
+ * that the marketing layout and the page it wraps share a single resolution per
+ * render instead of hitting {@link siteBranding} twice on one request. Returns
+ * only public branding (name, tagline, contact, socials) — never secrets — so
+ * memoizing it is safe. Cross-request freshness is handled by the 60s in-process
+ * cache inside {@link siteBranding}.
+ */
+export const getSiteSettings = cache(async (): Promise<SiteSettings> => {
   try {
     const b = await siteBranding()
     return {
@@ -69,4 +78,4 @@ export async function getSiteSettings(): Promise<SiteSettings> {
       social: { twitter: null, linkedin: null, facebook: null, youtube: null, instagram: null, github: null },
     }
   }
-}
+})

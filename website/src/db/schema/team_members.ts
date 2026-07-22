@@ -1,14 +1,9 @@
 /**
- * team_members — the public-facing marketing team shown on /team.
- *
- * Distinct from the `user` / platform-staff tables (those are login
- * accounts with roles). A team member here is just content the admin
- * curates: name, role, bio, photo, and a sort order. No auth, no login.
- *
- * Photos are uploaded to R2 via /api/admin/media and the resulting
- * public URL is stored in `photo_url`.
+ * Public marketing-team records. Photos reference governed platform media;
+ * the legacy photo_url column remains only in the database for migration.
  */
-import { pgTable, text, integer, boolean, timestamp, index } from 'drizzle-orm/pg-core'
+import { boolean, index, integer, pgTable, text, timestamp } from 'drizzle-orm/pg-core'
+import { platformMedia } from './platform_media'
 
 export const teamMembers = pgTable(
   'team_members',
@@ -17,7 +12,7 @@ export const teamMembers = pgTable(
     name: text('name').notNull(),
     role: text('role').notNull(),
     bio: text('bio'),
-    photoUrl: text('photo_url'),
+    mediaId: text('media_id').references(() => platformMedia.id, { onDelete: 'set null' }),
     /** Optional links shown on the card. */
     linkedinUrl: text('linkedin_url'),
     /** Lower sorts first. */
@@ -29,5 +24,6 @@ export const teamMembers = pgTable(
   (t) => ({
     activeIdx: index('team_members_active_idx').on(t.active),
     sortIdx: index('team_members_sort_idx').on(t.sortOrder),
+    mediaIdx: index('team_members_media_idx').on(t.mediaId),
   }),
 )

@@ -24,6 +24,7 @@ import { useEffect, useState, useSyncExternalStore } from 'react'
 import * as Dialog from '@radix-ui/react-dialog'
 import { X } from '@phosphor-icons/react/dist/ssr'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/cn'
 
 // ─── Types ─────────────────────────────────────────────────────────
@@ -190,8 +191,7 @@ export function DialogHost() {
           ) : null}
 
           {current.kind === 'prompt' ? (
-            <input
-              type="text"
+            <Input
               autoFocus
               value={promptValue}
               onChange={(e) => setPromptValue(e.target.value)}
@@ -202,7 +202,7 @@ export function DialogHost() {
                   handleConfirm()
                 }
               }}
-              className="mt-4 w-full rounded-md border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-2 text-[13px] outline-none focus:border-[var(--color-fg-subtle)]"
+              className="mt-4"
             />
           ) : null}
 

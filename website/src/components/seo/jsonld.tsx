@@ -1,17 +1,53 @@
 /**
  * JSON-LD structured-data components.
  *
- * Two scopes:
+ * Scopes:
  *
- *   <OrgJsonLd />              site-wide. Mounted in the [locale] layout.
- *   <SoftwareJsonLd variant /> per-product. Mounted on /{c}/{variant}.
+ *   <OrgJsonLd />                  site-wide. Mounted in the [locale] layout.
+ *   <SoftwareJsonLd product />     per-product. Mounted on the five canonical
+ *                                  product pages (/pharmacy, /retail, …).
+ *   <ArticleJsonLd />              blog posts, docs, guides, location hubs.
+ *   <BreadcrumbJsonLd />           index + detail trails.
+ *   <FAQJsonLd />                  only where the rendered Q&A matches exactly.
  *
- * Designed to be cheap (no client bundle) — they render server-side as a
- * <script type="application/ld+json"> tag with the right shape per the
- * SEO strategy doc §6.
+ * Honesty rules (Task 28 §6):
+ *   - SoftwareApplication/Offer price is derived from @/config/pricing, never
+ *     hand-typed; operatingSystem is Windows; the Offer states price only —
+ *     no stock status, no rating, no reviews, no customer counts, no address
+ *     or local office and no fabricated dates.
+ *   - Location hubs use Article + Breadcrumb only — never a local-business,
+ *     address, review or rating type.
+ *   - Every payload is serialized through {@link safeJsonLd} so a stray "<" /
+ *     "</script>" or U+2028/U+2029 in the data can never terminate the inline
+ *     <script> or break the document.
  */
-import { siteBranding } from '@/lib/platform-settings'
 import { pricing, type SupportedCurrency } from '@/config/pricing'
+import { siteBranding } from '@/lib/platform-settings'
+
+/**
+ * Serialize a JSON-LD object for safe embedding inside an inline
+ * <script type="application/ld+json">. Escaping "<" defeats `</script>`
+ * injection; escaping the line/paragraph separators keeps the JS string
+ * grammar valid.
+ */
+export function safeJsonLd(data: unknown): string {
+  return JSON.stringify(data)
+    .replace(/</g, '\\u003c')
+    .replace(/>/g, '\\u003e')
+    .replace(/&/g, '\\u0026')
+    .replace(/\u2028/g, '\\u2028')
+    .replace(/\u2029/g, '\\u2029')
+}
+
+function JsonLdScript({ data }: { data: unknown }) {
+  return (
+    <script
+      type="application/ld+json"
+      // eslint-disable-next-line react/no-danger
+      dangerouslySetInnerHTML={{ __html: safeJsonLd(data) }}
+    />
+  )
+}
 
 interface OrgProps {
   brandUrl: string
@@ -52,74 +88,76 @@ export async function OrgJsonLd({ brandUrl = 'https://omnix.co.ke' }: Partial<Or
     contactPoint: contactPoints,
   }
 
-  return (
-    <script
-      type="application/ld+json"
-      // eslint-disable-next-line react/no-danger
-      dangerouslySetInnerHTML={{ __html: JSON.stringify(data) }}
-    />
-  )
+  return <JsonLdScript data={data} />
 }
 
-interface SoftwareProps {
-  variant: 'pro' | 'dawa' | 'retail' | 'hospitality' | 'hardware' | 'salon'
-  currency: SupportedCurrency
-  brandUrl?: string
-  locale: string
-}
+/**
+ * The five public products. Each maps to its canonical product route so the
+ * SoftwareApplication `url` and its Offer `url` point at a real, indexable,
+ * non-redirecting page — never /buy, /dawa or /modules/[slug].
+ */
+export type ProductId = 'pharmacy' | 'retail' | 'hospitality' | 'hardware' | 'salon'
 
-const VARIANT_NAMES: Record<SoftwareProps['variant'], string> = {
-  pro: 'Omnix Pro',
-  dawa: 'Omnix Dawa',
+const PRODUCT_NAMES: Record<ProductId, string> = {
+  pharmacy: 'Omnix Pharmacy',
   retail: 'Omnix Retail',
   hospitality: 'Omnix Hospitality',
-  hardware: 'Omnix Hardware',
+  hardware: 'Omnix Hardware & Equipment',
   salon: 'Omnix Salon & Spa',
 }
 
-const VARIANT_DESCRIPTIONS: Record<SoftwareProps['variant'], string> = {
-  pro: 'Multi-trade POS + business platform for pharmacy, retail, hospitality and hardware. Lipa na M-Pesa, KRA eTIMS, offline-first. One binary, perpetual licence.',
-  dawa: 'Pharmacy POS with M-Pesa (STK push, Paybill & Till), KRA eTIMS receipts, SHA insurance billing, prescriptions, expiry tracking and controlled-substance register. Offline-first.',
-  retail: 'Retail POS with M-Pesa for shops, mini-marts and dukas. Lipa na M-Pesa, barcode scanning, layby, customer credit, KRA eTIMS. Offline-first.',
-  hospitality: 'Restaurant & bar POS with M-Pesa for Kenya. Lipa na M-Pesa at the table, KOT, recipe costing, room folios, KRA eTIMS. Offline-first.',
-  hardware: 'Hardware-store POS with M-Pesa. Lipa na M-Pesa, bulk pricing, quotations, contractor accounts, delivery notes, KRA eTIMS. Offline-first.',
-  salon: 'Salon & spa POS with M-Pesa for Kenya. Lipa na M-Pesa, appointment diary, staff commissions, packages & memberships, back-bar stock, client history, KRA eTIMS. Offline-first.',
+const PRODUCT_DESCRIPTIONS: Record<ProductId, string> = {
+  pharmacy:
+    'Pharmacy software and pharmacy POS with dispensing, prescriptions and patient records, batch and expiry stock, controlled register, M-Pesa, KRA eTIMS, SHA and private insurance workflows. Offline-first Windows desktop app.',
+  retail:
+    'Retail POS and inventory for shops, mini-marts and dukas: variants, returns, held sales, promotions, restock alerts, M-Pesa and KRA eTIMS. Offline-first Windows desktop app.',
+  hospitality:
+    'Restaurant, bar and hotel POS: kitchen orders, tables, recipe costing, rooms, bookings and guest folios, M-Pesa and KRA eTIMS. Offline-first Windows desktop app.',
+  hardware:
+    'Hardware and equipment POS: quotations, delivery notes, contractor credit, bulk pricing and serialized units, M-Pesa and KRA eTIMS. Offline-first Windows desktop app.',
+  salon:
+    'Salon and spa software: appointment diary, service checkout, staff skills and commissions, packages and memberships, back-bar stock, M-Pesa and KRA eTIMS. Offline-first Windows desktop app.',
 }
 
-export function SoftwareJsonLd({ variant, currency, locale, brandUrl = 'https://omnix.co.ke' }: SoftwareProps) {
-  const tier = variant === 'pro' ? pricing.business : pricing.starter
-  const priceValue = tier.oneTimeFee[currency]
+interface SoftwareProps {
+  product: ProductId
+  currency: SupportedCurrency
+  locale: string
+  brandUrl?: string
+}
+
+/**
+ * SoftwareApplication + Offer for one canonical product page. Price comes
+ * from the shared pricing config (starter, perpetual one-time licence) in the
+ * visitor's currency. Price only — no stock status, rating or review is claimed.
+ */
+export function SoftwareJsonLd({ product, currency, locale, brandUrl = 'https://omnix.co.ke' }: SoftwareProps) {
+  const priceValue = pricing.starter.oneTimeFee[currency]
+  const productUrl = `${brandUrl}/${locale}/${product}`
 
   const data = {
     '@context': 'https://schema.org',
     '@type': 'SoftwareApplication',
-    name: VARIANT_NAMES[variant],
+    name: PRODUCT_NAMES[product],
     applicationCategory: 'BusinessApplication',
-    applicationSubCategory: 'EnterpriseResourcePlanning',
     operatingSystem: 'Windows 10, Windows 11',
-    description: VARIANT_DESCRIPTIONS[variant],
-    url: `${brandUrl}/${locale}/${variant}`,
+    description: PRODUCT_DESCRIPTIONS[product],
+    url: productUrl,
     publisher: { '@id': `${brandUrl}/#org` },
     offers: {
       '@type': 'Offer',
       price: String(priceValue),
       priceCurrency: currency,
-      availability: 'https://schema.org/InStock',
-      url: `${brandUrl}/${locale}/buy?variant=${variant}`,
+      url: productUrl,
     },
   }
 
-  return (
-    <script
-      type="application/ld+json"
-      // eslint-disable-next-line react/no-danger
-      dangerouslySetInnerHTML={{ __html: JSON.stringify(data) }}
-    />
-  )
+  return <JsonLdScript data={data} />
 }
 
 /**
- * FAQPage JSON-LD — pricing + key blog posts.
+ * FAQPage JSON-LD. Only render this when the entries match the Q&A actually
+ * rendered on the page, one-for-one.
  */
 interface FAQEntry {
   question: string
@@ -135,18 +173,11 @@ export function FAQJsonLd({ entries }: { entries: FAQEntry[] }) {
       acceptedAnswer: { '@type': 'Answer', text: e.answer },
     })),
   }
-  return (
-    <script
-      type="application/ld+json"
-      // eslint-disable-next-line react/no-danger
-      dangerouslySetInnerHTML={{ __html: JSON.stringify(data) }}
-    />
-  )
+  return <JsonLdScript data={data} />
 }
 
 /**
- * BreadcrumbList JSON-LD — helps Google render the breadcrumb trail in
- * results. Pass the ordered crumbs (label + absolute url).
+ * BreadcrumbList JSON-LD — the ordered crumbs (label + absolute url).
  */
 export function BreadcrumbJsonLd({ items }: { items: Array<{ name: string; url: string }> }) {
   const data = {
@@ -159,18 +190,12 @@ export function BreadcrumbJsonLd({ items }: { items: Array<{ name: string; url: 
       item: it.url,
     })),
   }
-  return (
-    <script
-      type="application/ld+json"
-      // eslint-disable-next-line react/no-danger
-      dangerouslySetInnerHTML={{ __html: JSON.stringify(data) }}
-    />
-  )
+  return <JsonLdScript data={data} />
 }
 
 /**
- * Article JSON-LD — for blog posts + docs. Improves rich-result
- * eligibility and gives the article an author/publisher graph.
+ * Article JSON-LD — blog posts, docs, guides and location hubs. Dates are
+ * passed by the caller from authored source data, never build-time now().
  */
 export function ArticleJsonLd({
   headline,
@@ -202,11 +227,5 @@ export function ArticleJsonLd({
     author: { '@id': `${brandUrl}/#org` },
     publisher: { '@id': `${brandUrl}/#org` },
   }
-  return (
-    <script
-      type="application/ld+json"
-      // eslint-disable-next-line react/no-danger
-      dangerouslySetInnerHTML={{ __html: JSON.stringify(data) }}
-    />
-  )
+  return <JsonLdScript data={data} />
 }

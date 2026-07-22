@@ -1,12 +1,19 @@
 'use client'
 
+import Link from 'next/link'
 import { useState } from 'react'
-import { CheckCircle } from '@phosphor-icons/react'
+import { CheckCircle2 } from '@/components/icons'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Field } from '@/components/ui/field'
+import { Label } from '@/components/ui/label'
+import { Alert } from '@/components/ui/alert'
+import { cn } from '@/lib/cn'
 
 type Variant = 'dawa' | 'retail' | 'hospitality' | 'hardware' | 'salon'
 const VARIANTS: Array<{ id: Variant; label: string; desc: string }> = [
   { id: 'dawa', label: 'Dawa', desc: 'Pharmacy — prescriptions, expiry, SHA + private insurance, controlled subs' },
-  { id: 'retail', label: 'Retail', desc: 'General retail — supermarket, mini-mart, salon, spa' },
+  { id: 'retail', label: 'Retail', desc: 'General retail — supermarket, mini-mart, duka' },
   { id: 'hospitality', label: 'Hospitality', desc: 'Restaurants, bars, quick-service — KOT, tables, recipe cost' },
   { id: 'hardware', label: 'Hardware', desc: 'Hardware store — bulk pricing, contractor accounts, quote-to-invoice' },
   { id: 'salon', label: 'Salon & Spa', desc: 'Salons, barbershops, spas — appointments, staff commissions, packages' },
@@ -74,62 +81,61 @@ export function IssueLicenseForm(props: Props) {
     }
   }
 
+  const selectClass = cn(
+    'h-11 w-full rounded-[var(--radius-md)] border border-[var(--color-border-strong)] bg-[var(--color-bg)] px-3',
+    'font-sans text-[14px] text-[var(--color-fg)] outline-none',
+    'transition-[border-color,box-shadow] duration-[var(--duration-fast)] ease-[var(--ease-out)]',
+    'hover:border-[var(--color-fg-subtle)] focus-visible:border-[var(--color-accent)] focus-visible:ring-2 focus-visible:ring-[var(--color-accent-line)]',
+  )
+
   if (result) {
     return (
-      <div className="space-y-5">
-        <div className="rounded-lg border border-emerald-500/40 bg-emerald-500/5 p-5">
-          <div className="flex items-center gap-2 text-emerald-700 dark:text-emerald-400 mb-2">
-            <CheckCircle weight="fill" className="size-5" />
-            <span className="text-sm font-medium">Licence issued (pending payment)</span>
-          </div>
-          <p className="text-xs text-muted-foreground leading-relaxed">
-            Click <strong>Pay now</strong> below to complete the wholesale purchase. On successful
-            payment the customer gets an activated licence emailed to them, and your commission is
-            credited to your ledger.
-          </p>
-        </div>
+      <div className="flex flex-col gap-5">
+        <Alert variant="success" title="Licence issued (pending payment)">
+          <span className="inline-flex items-center gap-1.5">
+            <CheckCircle2 className="size-4 text-[var(--color-positive)]" />
+            Click <strong>Pay now</strong> to complete the wholesale purchase. On successful payment the
+            customer gets an activated licence emailed to them, and your commission is credited.
+          </span>
+        </Alert>
 
-        <div className="rounded-lg border border-border p-4 space-y-1 text-sm">
+        <dl className="flex flex-col gap-2 rounded-[var(--radius-md)] border border-[var(--color-border)] p-4 text-[14px]">
           <div className="flex justify-between">
-            <span className="text-muted-foreground">Retail price</span>
-            <span className="tabular-nums line-through">
+            <dt className="text-[var(--color-fg-muted)]">Retail price</dt>
+            <dd className="font-mono tabular-nums line-through">
               {props.symbol} {result.retail.toLocaleString()}
-            </span>
+            </dd>
           </div>
           <div className="flex justify-between font-medium">
-            <span>You pay (wholesale)</span>
-            <span className="tabular-nums text-primary">
+            <dt>You pay (wholesale)</dt>
+            <dd className="font-mono tabular-nums text-[var(--color-accent)]">
               {props.symbol} {result.wholesale.toLocaleString()}
-            </span>
+            </dd>
           </div>
-          <div className="flex justify-between text-emerald-700 dark:text-emerald-400">
-            <span>Your margin</span>
-            <span className="tabular-nums">{props.symbol} {result.savings.toLocaleString()}</span>
+          <div className="flex justify-between text-[var(--color-positive)]">
+            <dt>Your margin</dt>
+            <dd className="font-mono tabular-nums">
+              {props.symbol} {result.savings.toLocaleString()}
+            </dd>
           </div>
+        </dl>
+
+        <div className="flex flex-wrap gap-2">
+          <Button asChild>
+            <a href={result.paystack.authorizationUrl} target="_blank" rel="noopener noreferrer">
+              Pay now →
+            </a>
+          </Button>
+          <Button asChild variant="outline">
+            <Link href="/dashboard/reseller">Back to dashboard</Link>
+          </Button>
         </div>
 
-        <div className="flex gap-3">
-          <a
-            href={result.paystack.authorizationUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex h-10 items-center rounded-md bg-primary px-5 text-sm font-medium text-primary-foreground hover:opacity-90"
-          >
-            Pay now →
-          </a>
-          <a
-            href="/dashboard/reseller"
-            className="inline-flex h-10 items-center rounded-md border border-border px-5 text-sm hover:bg-accent"
-          >
-            Back to dashboard
-          </a>
-        </div>
-
-        <p className="text-[11px] text-muted-foreground">
-          Reference: <code className="font-mono">{result.paystack.reference}</code>
+        <p className="text-[11px] leading-6 text-[var(--color-fg-muted)]">
+          Reference: <code className="font-mono text-[var(--color-fg)]">{result.paystack.reference}</code>
           <br />
-          If the customer already had an Omnix account with the email you provided, the licence
-          was added to that account. Otherwise a new account was created for them.
+          If the customer already had an Omnix account with the email you provided, the licence was added
+          to that account. Otherwise a new account was created for them.
         </p>
       </div>
     )
@@ -137,124 +143,114 @@ export function IssueLicenseForm(props: Props) {
 
   return (
     <form
-      className="space-y-4"
+      className="flex flex-col gap-5"
       onSubmit={(e) => {
         e.preventDefault()
         submit()
       }}
     >
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <Field label="Customer / organisation" required>
-          <input
+          <Input
             required
             value={customerName}
             onChange={(e) => setCustomerName(e.target.value)}
             placeholder="e.g. Naivas Chemist Kilifi"
-            className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
           />
         </Field>
-        <Field label="Phone (optional)">
-          <input
+        <Field label="Phone" optional>
+          <Input
             value={customerPhone}
             onChange={(e) => setCustomerPhone(e.target.value)}
             placeholder="+254 700 000 000"
-            className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
           />
         </Field>
-        <Field label="Email (optional)" help="If provided, receives the licence key + download link.">
-          <input
+        <Field
+          label="Email"
+          description="If provided, receives the licence key + download link."
+          optional
+        >
+          <Input
             type="email"
             value={customerEmail}
             onChange={(e) => setCustomerEmail(e.target.value)}
             placeholder="owner@example.com"
-            className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
           />
         </Field>
-        <Field label="Country">
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="issue-country">Country</Label>
           <select
+            id="issue-country"
             value={country}
             onChange={(e) => setCountry(e.target.value)}
-            className="h-10 w-full rounded-md border border-input bg-background px-2 text-sm"
+            className={selectClass}
           >
             {['KE', 'UG', 'TZ', 'RW', 'NG', 'GH', 'ZA'].map((c) => (
-              <option key={c} value={c}>{c}</option>
+              <option key={c} value={c}>
+                {c}
+              </option>
             ))}
           </select>
-        </Field>
+        </div>
       </div>
 
-      <Field label="Which module?">
-        <div className="grid grid-cols-2 gap-2">
-          {VARIANTS.map((v) => (
-            <button
-              type="button"
-              key={v.id}
-              onClick={() => setVariant(v.id)}
-              className={`rounded-md border p-3 text-left ${
-                variant === v.id ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/40'
-              }`}
-            >
-              <div className="text-sm font-medium">Omnix {v.label}</div>
-              <div className="mt-1 text-[11px] text-muted-foreground leading-relaxed">{v.desc}</div>
-            </button>
-          ))}
+      <fieldset className="flex flex-col gap-2">
+        <legend className="mb-1 font-ui text-[12px] font-semibold leading-5 text-[var(--color-fg)]">
+          Which product?
+        </legend>
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+          {VARIANTS.map((v) => {
+            const selected = variant === v.id
+            return (
+              <button
+                type="button"
+                key={v.id}
+                onClick={() => setVariant(v.id)}
+                aria-pressed={selected}
+                className={cn(
+                  'rounded-[var(--radius-md)] border p-3 text-left transition-colors duration-[var(--duration-fast)]',
+                  selected
+                    ? 'border-[var(--color-accent)] bg-[var(--color-accent-soft)]'
+                    : 'border-[var(--color-border)] hover:border-[var(--color-fg-subtle)]',
+                )}
+              >
+                <div className="text-[14px] font-medium text-[var(--color-fg)]">Omnix {v.label}</div>
+                <div className="mt-1 text-[11px] leading-5 text-[var(--color-fg-muted)]">{v.desc}</div>
+              </button>
+            )
+          })}
         </div>
-      </Field>
+      </fieldset>
 
-      <div className="rounded-lg border border-border p-4 text-sm space-y-1">
+      <dl className="flex flex-col gap-2 rounded-[var(--radius-md)] border border-[var(--color-border)] p-4 text-[14px]">
         <div className="flex justify-between">
-          <span className="text-muted-foreground">Retail (customer sees)</span>
-          <span className="tabular-nums line-through">{props.symbol} {props.retail.toLocaleString()}</span>
+          <dt className="text-[var(--color-fg-muted)]">Retail (customer sees)</dt>
+          <dd className="font-mono tabular-nums line-through">
+            {props.symbol} {props.retail.toLocaleString()}
+          </dd>
         </div>
         <div className="flex justify-between font-medium">
-          <span>You pay ({props.discountPercent}% off)</span>
-          <span className="tabular-nums text-primary">{props.symbol} {props.wholesale.toLocaleString()}</span>
+          <dt>You pay ({props.discountPercent}% off)</dt>
+          <dd className="font-mono tabular-nums text-[var(--color-accent)]">
+            {props.symbol} {props.wholesale.toLocaleString()}
+          </dd>
         </div>
-      </div>
+      </dl>
 
       {error ? (
-        <div className="rounded-md border border-destructive/40 bg-destructive/5 px-3 py-2 text-sm text-destructive">
+        <Alert variant="error" title="Could not create licence">
           {error}
-        </div>
+        </Alert>
       ) : null}
 
-      <div className="flex justify-end gap-2">
-        <a
-          href="/dashboard/reseller"
-          className="h-10 grid place-items-center px-4 rounded-md border border-border text-sm hover:bg-accent"
-        >
-          Cancel
-        </a>
-        <button
-          type="submit"
-          disabled={busy}
-          className="h-10 rounded-md bg-primary px-5 text-sm font-medium text-primary-foreground hover:opacity-90 disabled:opacity-50"
-        >
+      <div className="flex flex-wrap justify-end gap-2">
+        <Button asChild variant="outline">
+          <Link href="/dashboard/reseller">Cancel</Link>
+        </Button>
+        <Button type="submit" disabled={busy}>
           {busy ? 'Creating…' : 'Continue to payment →'}
-        </button>
+        </Button>
       </div>
     </form>
-  )
-}
-
-function Field({
-  label,
-  help,
-  required,
-  children,
-}: {
-  label: string
-  help?: string
-  required?: boolean
-  children: React.ReactNode
-}) {
-  return (
-    <label className="block">
-      <span className="text-xs font-medium text-foreground">
-        {label} {required ? <span className="text-destructive">*</span> : null}
-      </span>
-      {help ? <span className="mt-0.5 block text-[11px] text-muted-foreground">{help}</span> : null}
-      <div className="mt-1">{children}</div>
-    </label>
   )
 }

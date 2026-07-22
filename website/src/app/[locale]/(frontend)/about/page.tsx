@@ -1,91 +1,130 @@
 import type { Metadata } from 'next'
-import { PageHero } from '@/components/marketing/page-hero'
-import { ClosingCtaSection } from '@/components/landing/closing-cta-section'
-import { getSiteSettings } from '@/lib/site-settings'
-import { UnifiedPlatformIllo, AnalyticsIllo } from '@/components/marketing/illustrations'
 
-export const metadata: Metadata = {
-  title: 'About — who builds Omnix',
-  description: 'A small team in Nairobi building software for Kenyan owner-operators. Every line of code is ours.',
+import {
+  TrustClosing,
+  TrustHero,
+  TrustList,
+  TrustPage,
+  TrustProse,
+  TrustSection,
+} from '@/components/marketing/trust-pages'
+import { buildAlternatesLanguages } from '@/lib/hreflang'
+import { buildSocialMetadata } from '@/lib/seo-metadata'
+import { getSiteSettings } from '@/lib/site-settings'
+
+export const dynamic = 'force-dynamic'
+export const revalidate = 300
+
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://omnix.co.ke'
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: string }>
+}): Promise<Metadata> {
+  const { locale } = await params
+  const canonical = `${SITE_URL}/${locale}/about`
+
+  return {
+    title: 'About Omnix — owned business software for owner-operators',
+    description:
+      'Omnix is offline-first Windows business software you buy once and run on your own device. Read how the product is built and where the boundaries sit before you commit.',
+    alternates: {
+      canonical,
+      languages: buildAlternatesLanguages('/about'),
+    },
+    ...buildSocialMetadata({
+      locale,
+      url: canonical,
+      title: 'About Omnix — software your business owns',
+      description:
+        'Why Omnix is built offline-first for owner-operators, and what stays on your device versus what needs a connection.',
+      type: 'website',
+    }),
+  }
 }
 
-export default async function AboutPage() {
-  const settings = await getSiteSettings()
+const APPROACH = [
+  {
+    term: 'Owned, not rented',
+    detail:
+      'Omnix is a one-time Windows licence, not a monthly subscription. The software keeps working on your device whether or not you renew annual compliance updates.',
+  },
+  {
+    term: 'Offline-first',
+    detail:
+      'The point of sale, inventory, customers, and reports read and write a local database, so the counter keeps moving when the internet line drops.',
+  },
+  {
+    term: 'One working record',
+    detail:
+      'Sales, stock, purchasing, and accounting share the same local record instead of living in separate spreadsheets and a paper book.',
+  },
+  {
+    term: 'Honest about limits',
+    detail:
+      'Connected services — payments, tax submission, insurance verification — are described as connected, with the configuration and provider accounts they require named up front.',
+  },
+] as const
+
+export default async function AboutPage({
+  params,
+}: {
+  params: Promise<{ locale: string }>
+}) {
+  const [{ locale }, settings] = await Promise.all([params, getSiteSettings()])
+  const whatsappMessage = 'Hi Omnix, I would like to learn more about Omnix for my business.'
+
   return (
-    <>
-      <PageHero
-        eyebrow="About"
-        title={<>Built in Nairobi. <em>For Nairobi.</em></>}
-        description="A small team building software for Kenyan owner-operators. Every line of code is ours."
+    <TrustPage>
+      <TrustHero
+        kicker="About Omnix"
+        title="Business software your shop"
+        accent="actually owns."
+        lede="Omnix is offline-first Windows software for owner-operators: point of sale, inventory, customers, suppliers, purchasing, and accounting in one local record. You buy the licence once and run it on your own device."
+        factsTitle="What Omnix is"
+        facts={[
+          { label: 'Licence', value: 'One-time purchase, no subscription' },
+          { label: 'Platform', value: 'Windows desktop' },
+          { label: 'Data', value: 'Stored in a local database on your device' },
+          { label: 'Works', value: 'Offline-first; connected services are optional' },
+        ]}
+        locale={locale}
+        whatsappUrl={settings.whatsappUrl}
+        whatsappMessage={whatsappMessage}
       />
 
-      <section className="section">
-        <div className="container-text">
-          <div className="space-y-6 text-[17px] leading-[1.65] text-[var(--color-fg-muted)]">
-            <p>We built Omnix after watching shop owners we know — pharmacies in Westlands, mini-marts in Kisumu, hardware shops in Eldoret — fight the same software all day and still close the till at midnight not knowing what they made.</p>
-            <p>The brief was simple. One Windows app you download once. Runs offline. Files KRA receipts when the line comes back. Owns its own data on its own machine. Costs less than two months of any subscription.</p>
-            <p>We&rsquo;re a small team in Nairobi. Every line of code is ours. If something breaks, you can write to me.</p>
-          </div>
+      <TrustSection
+        id="why-omnix"
+        kicker="Why Omnix exists"
+        title="Built for the counter, not the boardroom."
+        intro="The software is shaped around a single shop that has to keep serving customers whether or not the line is up."
+      >
+        <TrustProse
+          paragraphs={[
+            'Many small businesses in Kenya run on a mix of a subscription till, a spreadsheet, and a paper book — and still close the day unsure of what they made. Omnix exists to replace that with one Windows application the business installs once and owns.',
+            'The design brief is deliberately narrow: run the whole shop from one local record, keep working when the internet drops, and file with the relevant authorities correctly when a connection is available. Where a task needs the internet, a provider account, or a statutory registration, the product says so plainly rather than implying everything happens by magic.',
+          ]}
+        />
+      </TrustSection>
 
-          <div className="mt-12 flex flex-col items-start">
-            <span className="font-[family-name:var(--font-display)] text-[20px] italic font-normal text-[var(--color-fg)]">— Justin</span>
-            <span className="caption-mono mt-2">Founder · Nairobi</span>
-          </div>
-        </div>
-      </section>
+      <TrustSection
+        id="how-we-build"
+        alt
+        kicker="How Omnix is built"
+        title="Four commitments the product keeps."
+        intro="These are the rules the software is measured against — not marketing promises about speed or scale."
+      >
+        <TrustList items={APPROACH} />
+      </TrustSection>
 
-      <section className="section-tight">
-        <div className="container-text grid grid-cols-1 gap-12 md:grid-cols-2 md:gap-16">
-          <div>
-            <span className="text-[var(--color-accent)]"><UnifiedPlatformIllo size={36} /></span>
-            <span className="eyebrow mt-5">Why we exist</span>
-            <h2 className="headline-sub mt-3">The honest version.</h2>
-            <p className="mt-5 text-[16px] leading-[1.7] text-[var(--color-fg-muted)]">
-              Kenyan SMEs deserve software that doesn&rsquo;t rent itself back to
-              them every month. Software that works when the line drops, files
-              with KRA correctly the first time, and runs the whole business
-              from one app — not five spreadsheets and a paper book.
-            </p>
-          </div>
-          <div>
-            <span className="text-[var(--color-accent)]"><AnalyticsIllo size={36} /></span>
-            <span className="eyebrow mt-5">Where we&rsquo;re going</span>
-            <h2 className="headline-sub mt-3">The next decade.</h2>
-            <p className="mt-5 text-[16px] leading-[1.7] text-[var(--color-fg-muted)]">
-              One platform that grows with the business — from a single till in
-              Kisumu to a multi-branch operation with kitchen, pharmacy and
-              warehouse running side by side. An AI that earns its keep, not
-              one that demos well. Yours to own, forever.
-            </p>
-          </div>
-        </div>
-      </section>
-
-      <section className="section-tight bg-[var(--color-surface)]/40">
-        <div className="container-default">
-          <div className="mb-12">
-            <span className="eyebrow">The studio&rsquo;s beliefs</span>
-            <h2 className="headline-section mt-5">Five <em>principles.</em></h2>
-          </div>
-
-          <ol className="space-y-8">
-            {[
-              'Software you own is better than software you rent.',
-              'Offline-first is not a feature. It is the only honest architecture for a country where the line drops.',
-              'A business should never lose its data because it forgot to update a credit card.',
-              'The receipt the cashier prints should be the entry KRA reads. No batch upload, no month-end scramble.',
-              'If we can&rsquo;t explain it to your grandmother, we built it wrong.',
-            ].map((belief, i) => (
-              <li key={i} className="flex items-start gap-6">
-                <span className="font-[family-name:var(--font-display)] text-[clamp(48px,5vw,72px)] font-light leading-none text-[var(--color-accent)]">{String(i + 1).padStart(2, '0')}</span>
-                <p className="font-[family-name:var(--font-display)] flex-1 text-[clamp(20px,2vw,28px)] italic font-light leading-snug text-[var(--color-fg)]">{belief}</p>
-              </li>
-            ))}
-          </ol>
-        </div>
-      </section>
-
-      <ClosingCtaSection whatsappUrl={settings.whatsappUrl} />
-    </>
+      <TrustClosing
+        kicker="See it for yourself"
+        title="Bring a real working day to a demo."
+        locale={locale}
+        whatsappUrl={settings.whatsappUrl}
+        whatsappMessage={whatsappMessage}
+      />
+    </TrustPage>
   )
 }

@@ -17,6 +17,34 @@ export interface BlogPostSeed {
 
 export const POSTS_SEED: BlogPostSeed[] = [
   {
+    slug: 'offline-first-architecture',
+    title: 'What offline-first means in Omnix',
+    excerpt:
+      'A practical account of which Omnix records stay on the Windows device, which tasks need connectivity, and how the desktop boundary works.',
+    category: 'product',
+    author: 'Omnix',
+    publishedAt: '2026-07-21',
+    readTime: 4,
+    featured: true,
+    body: `Omnix is a Windows desktop application. Its operational database is SQLite and lives on the device, so the core records used at the counter do not depend on a browser session or a hosted web database.
+
+## What stays on the device
+
+Sales, stock, customers, suppliers, purchasing, accounting records, and the enabled trade module use the local desktop database. The application reads and writes those records locally during normal operation.
+
+## What still needs connectivity
+
+Some services cross the desktop boundary: initial licence activation, software updates, configured digital-payment requests, eTIMS submission, SHA or insurer exchanges, email delivery, and optional remote backup. Each of those depends on the relevant provider, credentials, and an internet connection. A provider outage does not turn the local database into a cloud dependency.
+
+## One installation, one business
+
+A licensed installation is for one business on its Windows device. Where a business uses supported same-network devices, they connect through the product's LAN workflow rather than a public multi-tenant database.
+
+## The commercial boundary
+
+The Windows licence costs KES 30,000 once and remains perpetual. Annual compliance updates cost KES 12,000 and are optional; not renewing them does not deactivate the perpetual licence. A demo is the right place to confirm the product, hardware, provider, and compliance setup for a particular business.`,
+  },
+  {
     slug: 'omnix-rebrand',
     title: "We're Omnix now",
     excerpt:
@@ -90,7 +118,7 @@ The output is three files: a bank batch CSV ready to upload to your business ban
 
 **Honest caveat.** First-time setup takes about 2 hours per branch — you have to enter staff, contracts, and statutory bands. That's a one-time cost. After that, every month is ten minutes.
 
-The module is included in the Business tier (KES 75,000 one-time). If you have the Starter tier and want it, add the Business upgrade for KES 45,000 (the difference).`,
+Multi-branch payroll is part of the Omnix licence — one KES 30,000 one-time purchase per device, with no separate tier or upgrade to unlock it.`,
   },
   {
     slug: 'offline-first-why',
@@ -230,19 +258,31 @@ If you have a feature you've been waiting for, the fastest way is to email **fou
   },
 ] as const
 
+/**
+ * Explicit editorial publication gate. Legacy seeds remain available for
+ * rewrite, but they cannot render, generate static params, or enter the
+ * sitemap until their slug is deliberately reviewed and added here.
+ */
+const PUBLISHED_BLOG_SLUGS = new Set<string>(['offline-first-architecture'])
+
+export function publishedPosts(): BlogPostSeed[] {
+  return POSTS_SEED.filter((post) => PUBLISHED_BLOG_SLUGS.has(post.slug))
+}
+
 export function postBySlug(slug: string): BlogPostSeed | null {
-  return POSTS_SEED.find((p) => p.slug === slug) ?? null
+  return publishedPosts().find((post) => post.slug === slug) ?? null
 }
 
 export function postSlugs(): string[] {
-  return POSTS_SEED.map((p) => p.slug)
+  return publishedPosts().map((post) => post.slug)
 }
 
 export function relatedPosts(slug: string, count = 3): BlogPostSeed[] {
   const current = postBySlug(slug)
   if (!current) return []
-  return POSTS_SEED
-    .filter((p) => p.slug !== slug && p.category === current.category)
-    .concat(POSTS_SEED.filter((p) => p.slug !== slug && p.category !== current.category))
+  const posts = publishedPosts()
+  return posts
+    .filter((post) => post.slug !== slug && post.category === current.category)
+    .concat(posts.filter((post) => post.slug !== slug && post.category !== current.category))
     .slice(0, count)
 }

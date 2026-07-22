@@ -1,4 +1,16 @@
+import type { ReactNode } from 'react'
 import { cn } from '@/lib/cn'
+
+/**
+ * Working Counter status vocabulary for the customer account portal.
+ *
+ * Every status is a token-backed pill that always carries a text label —
+ * colour is a reinforcement, never the sole signal (accessibility + the
+ * house "no colour-only differentiation" rule). Hues come from the
+ * semantic design tokens (`--color-positive/caution/negative`, the accent
+ * soft wash, and the neutral surface) so nothing drifts into off-brand
+ * Tailwind palette colours.
+ */
 
 const LICENSE_STATUS: Record<string, { label: string; className: string }> = {
   active: {
@@ -21,6 +33,10 @@ const LICENSE_STATUS: Record<string, { label: string; className: string }> = {
     label: 'Cancelled',
     className: 'bg-[var(--color-negative)]/15 text-[var(--color-negative)]',
   },
+  revoked: {
+    label: 'Revoked',
+    className: 'bg-[var(--color-negative)]/15 text-[var(--color-negative)]',
+  },
   maintenance_expired: {
     label: 'Maintenance expired',
     className: 'bg-[var(--color-caution)]/15 text-[var(--color-caution)]',
@@ -29,7 +45,7 @@ const LICENSE_STATUS: Record<string, { label: string; className: string }> = {
 
 const PAYMENT_STATUS: Record<string, { label: string; className: string }> = {
   success: {
-    label: 'Success',
+    label: 'Paid',
     className: 'bg-[var(--color-positive)]/15 text-[var(--color-positive)]',
   },
   pending: {
@@ -46,18 +62,22 @@ const PAYMENT_STATUS: Record<string, { label: string; className: string }> = {
   },
   refunded: {
     label: 'Refunded',
-    className: 'bg-[var(--color-fg-subtle)]/15 text-[var(--color-fg-subtle)]',
+    className: 'bg-[var(--color-surface-2)] text-[var(--color-fg-muted)]',
   },
 }
 
 const MACHINE_STATUS: Record<string, { label: string; className: string }> = {
+  online: {
+    label: 'Online',
+    className: 'bg-[var(--color-positive)]/15 text-[var(--color-positive)]',
+  },
   active: {
     label: 'Active',
     className: 'bg-[var(--color-positive)]/15 text-[var(--color-positive)]',
   },
   idle: {
     label: 'Idle',
-    className: 'bg-[var(--color-fg-subtle)]/15 text-[var(--color-fg-subtle)]',
+    className: 'bg-[var(--color-surface-2)] text-[var(--color-fg-muted)]',
   },
   offline: {
     label: 'Offline',
@@ -67,9 +87,17 @@ const MACHINE_STATUS: Record<string, { label: string; className: string }> = {
     label: 'Deactivated',
     className: 'bg-[var(--color-negative)]/15 text-[var(--color-negative)]',
   },
+  revoked: {
+    label: 'Revoked',
+    className: 'bg-[var(--color-negative)]/15 text-[var(--color-negative)]',
+  },
 }
 
 const TICKET_STATUS: Record<string, { label: string; className: string }> = {
+  open: {
+    label: 'Open',
+    className: 'bg-[var(--color-accent-soft)] text-[var(--color-accent-hover)]',
+  },
   new: {
     label: 'New',
     className: 'bg-[var(--color-accent-soft)] text-[var(--color-accent-hover)]',
@@ -88,7 +116,43 @@ const TICKET_STATUS: Record<string, { label: string; className: string }> = {
   },
   closed: {
     label: 'Closed',
-    className: 'bg-[var(--color-fg-subtle)]/15 text-[var(--color-fg-subtle)]',
+    className: 'bg-[var(--color-surface-2)] text-[var(--color-fg-muted)]',
+  },
+}
+
+/** Affiliate + reseller commission ledger states. */
+const COMMISSION_STATUS: Record<string, { label: string; className: string }> = {
+  pending: {
+    label: 'Pending',
+    className: 'bg-[var(--color-caution)]/15 text-[var(--color-caution)]',
+  },
+  paid: {
+    label: 'Paid out',
+    className: 'bg-[var(--color-positive)]/15 text-[var(--color-positive)]',
+  },
+  reversed: {
+    label: 'Reversed',
+    className: 'bg-[var(--color-negative)]/15 text-[var(--color-negative)]',
+  },
+  rejected_self_referral: {
+    label: 'Rejected · self',
+    className: 'bg-[var(--color-surface-2)] text-[var(--color-fg-muted)]',
+  },
+  rejected_repeat: {
+    label: 'Rejected · repeat',
+    className: 'bg-[var(--color-surface-2)] text-[var(--color-fg-muted)]',
+  },
+}
+
+/** Reseller channel account state. */
+const RESELLER_STATUS: Record<string, { label: string; className: string }> = {
+  active: {
+    label: 'Active',
+    className: 'bg-[var(--color-positive)]/15 text-[var(--color-positive)]',
+  },
+  suspended: {
+    label: 'Suspended',
+    className: 'bg-[var(--color-caution)]/15 text-[var(--color-caution)]',
   },
 }
 
@@ -97,17 +161,22 @@ const REGISTRY = {
   payment: PAYMENT_STATUS,
   machine: MACHINE_STATUS,
   ticket: TICKET_STATUS,
+  commission: COMMISSION_STATUS,
+  reseller: RESELLER_STATUS,
 } as const
 
 export type StatusKind = keyof typeof REGISTRY
 
 export function StatusPill({ kind, status }: { kind: StatusKind; status: string }) {
   const map = REGISTRY[kind]
-  const meta = map[status] ?? { label: status, className: 'bg-[var(--color-surface-hover)]' }
+  const meta = map[status] ?? {
+    label: status.replace(/_/g, ' '),
+    className: 'bg-[var(--color-surface-2)] text-[var(--color-fg-muted)]',
+  }
   return (
     <span
       className={cn(
-        'rounded-full px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] whitespace-nowrap',
+        'inline-flex items-center whitespace-nowrap rounded-[var(--radius-pill)] px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em]',
         meta.className,
       )}
     >
@@ -116,6 +185,10 @@ export function StatusPill({ kind, status }: { kind: StatusKind; status: string 
   )
 }
 
+/**
+ * @deprecated Prefer the shared `PageHeader` (`@/components/layout/page-header`)
+ * or `EntityHero` primitive. Retained for backwards compatibility.
+ */
 export function PageHeading({
   title,
   subtitle,
@@ -123,7 +196,7 @@ export function PageHeading({
 }: {
   title: string
   subtitle?: string
-  actions?: React.ReactNode
+  actions?: ReactNode
 }) {
   return (
     <header className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-end">
@@ -132,9 +205,7 @@ export function PageHeading({
           {title}
         </h1>
         {subtitle ? (
-          <p className="mt-2 max-w-2xl text-[14px] text-[var(--color-fg-muted)]">
-            {subtitle}
-          </p>
+          <p className="mt-2 max-w-2xl text-[14px] text-[var(--color-fg-muted)]">{subtitle}</p>
         ) : null}
       </div>
       {actions ? <div className="flex flex-wrap gap-2">{actions}</div> : null}
@@ -142,6 +213,14 @@ export function PageHeading({
   )
 }
 
+/**
+ * Procedural empty state: never a dead end. Callers pass a real next
+ * action (a Button/Link) so an empty list becomes an invitation to act.
+ *
+ * Kept as a small route-specific wrapper (rather than delegating to the
+ * shared <StateView>) so the customer portal keeps its own copy voice; it
+ * shares the same quiet, dashed, token-backed shape.
+ */
 export function EmptyState({
   title,
   body,
@@ -149,17 +228,17 @@ export function EmptyState({
 }: {
   title: string
   body: string
-  action?: React.ReactNode
+  action?: ReactNode
 }) {
   return (
-    <div className="rounded-2xl border border-dashed border-[var(--color-border-strong)] bg-[var(--color-surface)] p-12 text-center">
-      <h3 className="font-display text-[18px] font-medium text-[var(--color-fg)]">
+    <div className="rounded-[var(--radius-md)] border border-dashed border-[var(--color-border-strong)] bg-[var(--color-surface)] px-6 py-12 text-center">
+      <h3 className="font-display text-[17px] font-semibold tracking-[-0.02em] text-[var(--color-fg)]">
         {title}
       </h3>
-      <p className="mx-auto mt-2 max-w-md text-[13px] leading-[1.5] text-[var(--color-fg-muted)]">
+      <p className="mx-auto mt-2 max-w-md text-[13px] leading-6 text-[var(--color-fg-muted)]">
         {body}
       </p>
-      {action ? <div className="mt-5">{action}</div> : null}
+      {action ? <div className="mt-5 flex justify-center">{action}</div> : null}
     </div>
   )
 }

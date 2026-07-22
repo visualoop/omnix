@@ -17,18 +17,10 @@
  * attributes through Next's metadata API or a per-locale wrapper.
  */
 import type { Metadata } from 'next'
-import { Fraunces, Geist, JetBrains_Mono, Plus_Jakarta_Sans } from 'next/font/google'
+import { Geist, JetBrains_Mono, Plus_Jakarta_Sans } from 'next/font/google'
 import './globals.css'
 import { ThemeProvider } from '@/components/theme/theme-provider'
 import { DialogHost } from '@/components/ui/dialog-imperative'
-
-const fraunces = Fraunces({
-  subsets: ['latin'],
-  variable: '--font-fraunces',
-  display: 'swap',
-  style: ['normal', 'italic'],
-  axes: ['SOFT', 'WONK', 'opsz'],
-})
 
 const geist = Geist({
   subsets: ['latin'],
@@ -58,7 +50,7 @@ export const metadata: Metadata = {
   title: { default: 'Omnix', template: '%s · Omnix' },
 }
 
-const FONT_VARIABLES = `${fraunces.variable} ${geist.variable} ${jakarta.variable} ${jetbrainsMono.variable}`
+const FONT_VARIABLES = `${geist.variable} ${jakarta.variable} ${jetbrainsMono.variable}`
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (

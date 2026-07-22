@@ -1,27 +1,47 @@
 'use client'
 
 import * as React from 'react'
+import { authClient } from '@/lib/auth-client'
+import { safeNextPath } from '@/lib/safe-redirect'
 import { ArrowRight } from '@/components/icons'
+import { Alert } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
+import { Field } from '@/components/ui/field'
+import { Input } from '@/components/ui/input'
 
-export function ForgotPasswordForm() {
+interface Props {
+  next?: string
+}
+
+/**
+ * Recover access on a passwordless site.
+ *
+ * There is no password to reset — regaining access means requesting a
+ * fresh magic link. The response is identical whether or not the address
+ * maps to an account, so this never discloses account existence.
+ */
+export function ForgotPasswordForm({ next }: Props) {
+  const [email, setEmail] = React.useState('')
   const [submitting, setSubmitting] = React.useState(false)
   const [submitted, setSubmitted] = React.useState(false)
+  const inputRef = React.useRef<HTMLInputElement>(null)
+
+  const callbackURL = safeNextPath(next)
 
   async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
+    const address = email.trim()
+    if (!address) {
+      inputRef.current?.focus()
+      return
+    }
     setSubmitting(true)
-    const formData = new FormData(event.currentTarget)
-    const email = formData.get('email') as string
-
     try {
-      await fetch('/api/customers/forgot-password', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email }),
-      })
+      // Fire the magic link. We deliberately ignore the outcome so the
+      // confirmation is byte-for-byte identical for known and unknown
+      // addresses (anti-enumeration).
+      await authClient.signIn.magicLink({ email: address, callbackURL }).catch(() => undefined)
     } finally {
-      // Generic confirmation regardless of email validity (anti-enumeration)
       setSubmitted(true)
       setSubmitting(false)
     }
@@ -29,44 +49,51 @@ export function ForgotPasswordForm() {
 
   if (submitted) {
     return (
-      <div className="rounded-xl border border-[var(--color-accent)] bg-[var(--color-accent-soft)] p-6 text-center">
-        <div className="font-display text-[20px] font-medium text-[var(--color-fg)]">
-          Check your email.
-        </div>
-        <p className="mt-2 text-[13px] leading-[1.55] text-[var(--color-fg-muted)]">
-          If we have an account with that email, a reset link is on its way. Links expire after
-          1 hour.
+      <Alert variant="success" title="Check your email">
+        <p>
+          If an Omnix account can use that address, a sign-in link is on its way. It expires 15
+          minutes after it was sent.
         </p>
-        <p className="mt-3 text-[12px] text-[var(--color-fg-subtle)]">
-          Nothing in your inbox after 5 minutes? Check spam, or WhatsApp the owner.
+        <p className="mt-2 text-[12px] text-[var(--color-fg-subtle)]">
+          Nothing after a few minutes? Check spam, then request another link.
         </p>
-      </div>
+      </Alert>
     )
   }
 
   return (
-    <form onSubmit={onSubmit} className="grid grid-cols-1 gap-4">
-      <div className="flex flex-col gap-1.5">
-        <label
-          htmlFor="email"
-          className="text-[12px] font-semibold uppercase tracking-[0.12em] text-[var(--color-fg-subtle)]"
-        >
-          Email <span className="text-[var(--color-accent)]">*</span>
-        </label>
-        <input
-          id="email"
+    <form onSubmit={onSubmit} className="grid grid-cols-1 gap-4" noValidate>
+      <Field label="Email" required>
+        <Input
+          ref={inputRef}
           name="email"
           type="email"
-          required
+          inputMode="email"
           autoComplete="email"
-          placeholder="you@example.co.ke"
-          className="rounded-md border border-[var(--color-border-strong)] bg-[var(--color-bg)] px-3 py-2.5 text-[14px] text-[var(--color-fg)] outline-none placeholder:text-[var(--color-fg-subtle)] focus:border-[var(--color-accent)] focus:ring-1 focus:ring-[var(--color-accent)]"
+          autoCapitalize="none"
+          spellCheck={false}
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          placeholder="you@business.co.ke"
+          disabled={submitting}
         />
-      </div>
+      </Field>
 
-      <Button type="submit" size="lg" disabled={submitting} className="mt-2 w-full">
-        {submitting ? 'Sending link...' : 'Send reset link'}
-        <ArrowRight className="size-4" />
+      <Button
+        type="submit"
+        size="lg"
+        disabled={submitting || !email.trim()}
+        aria-busy={submitting}
+        className="mt-1 w-full"
+      >
+        {submitting ? (
+          'Sending…'
+        ) : (
+          <>
+            Email me a sign-in link
+            <ArrowRight className="size-4" />
+          </>
+        )}
       </Button>
     </form>
   )

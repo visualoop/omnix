@@ -3,6 +3,7 @@ import { eq } from 'drizzle-orm'
 import { auth } from '@/lib/auth'
 import { db, releases, auditLog } from '@/db'
 import { createId } from '@/lib/ids'
+import { hasValidBootstrapToken } from '@/lib/bootstrap-auth'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 60
@@ -56,8 +57,7 @@ interface GhRelease {
 }
 
 async function authorize(req: Request): Promise<{ ok: boolean; status?: number; actor: string | null }> {
-  const bearer = req.headers.get('authorization')?.replace(/^Bearer /, '')
-  if (bearer && bearer === process.env.BOOTSTRAP_TOKEN) return { ok: true, actor: null }
+  if (hasValidBootstrapToken(req)) return { ok: true, actor: null }
 
   const session = await auth.api.getSession({ headers: await headers() }).catch(() => null)
   if (!session) return { ok: false, status: 401, actor: null }

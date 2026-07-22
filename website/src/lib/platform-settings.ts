@@ -72,8 +72,9 @@ export const SETTING_DEFINITIONS = [
   { key: 's3.bucket',               category: 'storage',   label: 'S3 bucket',                  sensitive: false, envFallback: 'S3_BUCKET',            description: 'Bucket where encrypted backups land.' },
   { key: 's3.access_key_id',        category: 'storage',   label: 'S3 access key ID',           sensitive: true,  envFallback: 'S3_ACCESS_KEY_ID',     description: '' },
   { key: 's3.secret_access_key',    category: 'storage',   label: 'S3 secret access key',       sensitive: true,  envFallback: 'S3_SECRET_ACCESS_KEY', description: '' },
-  { key: 's3.media_bucket',         category: 'storage',   label: 'Media bucket name',          sensitive: false, envFallback: 'S3_BUCKET',            description: 'Bucket for marketing images (separate from encrypted backups, public-read).' },
-  { key: 's3.public_url',           category: 'storage',   label: 'Media public base URL',      sensitive: false, envFallback: 'S3_PUBLIC_URL',        description: 'CDN URL prefix for served images, e.g. "https://media.omnix.co.ke" or the R2 pub-XXX domain.' },
+  { key: 's3.media_bucket',         category: 'storage',   label: 'Public media bucket',        sensitive: false, envFallback: 'S3_MEDIA_BUCKET',      description: 'Bucket used only after a platform admin approves media for publication.' },
+  { key: 's3.media_quarantine_bucket', category: 'storage', label: 'Private media quarantine',    sensitive: false, envFallback: 'S3_MEDIA_QUARANTINE_BUCKET', description: 'Separate private bucket for pending media. Must not have public-read access.' },
+  { key: 's3.public_url',           category: 'storage',   label: 'Media public base URL',      sensitive: false, envFallback: 'S3_PUBLIC_URL',        description: 'CDN URL prefix for approved media only, e.g. "https://media.omnix.co.ke".' },
 
   // ── Cron / system ──────────────────────────────
   { key: 'cron.secret',             category: 'system',    label: 'Cron Bearer secret',         sensitive: true,  envFallback: 'CRON_SECRET',          description: 'Vercel cron jobs send Authorization: Bearer <this>.' },
@@ -89,23 +90,8 @@ export const SETTING_DEFINITIONS = [
   { key: 'landing.hero.eyebrow',        category: 'landing_hero', label: 'Hero eyebrow',           sensitive: false, envFallback: undefined, description: 'The pill above the headline. Empty = "One platform · offline-first · pay once, own forever". Overridden by latest-release note when a release exists.' },
   { key: 'landing.hero.headline',       category: 'landing_hero', label: 'Hero headline',          sensitive: false, envFallback: undefined, description: 'Main homepage headline. Empty = shipped default. Keep it under 65 chars for the landing look.' },
   { key: 'landing.hero.subheadline',    category: 'landing_hero', label: 'Hero subheadline',       sensitive: false, envFallback: undefined, description: 'The paragraph under the headline. Empty = per-locale default (Kenya vs global copy).' },
-  { key: 'landing.hero.cta_label',      category: 'landing_hero', label: 'Primary CTA label',      sensitive: false, envFallback: undefined, description: 'The big button below the subheadline. Empty = "Start free trial".' },
-  { key: 'landing.hero.cta_href',       category: 'landing_hero', label: 'Primary CTA link',       sensitive: false, envFallback: undefined, description: 'Where the CTA points. Empty = "/signup". Use an absolute URL for external.' },
-  { key: 'landing.hero.video_url',      category: 'landing_hero', label: 'Hero video URL',         sensitive: false, envFallback: undefined, description: 'Direct URL to a short (10-25s) muted loop showing the product in motion. mp4/webm. Leave empty to render the current PosPreview illustration.' },
-  { key: 'landing.hero.video_poster',   category: 'landing_hero', label: 'Hero video poster',      sensitive: false, envFallback: undefined, description: 'URL to a still frame shown before the video loads (and on mobile until tap-to-play). Highly recommended if video_url is set.' },
-
-  // ── Landing page — per-variant video (module pages: /dawa, /retail, /hospitality, /hardware) ─
-  { key: 'landing.dawa.video_url',        category: 'landing_variant_video', label: 'Dawa video URL',           sensitive: false, envFallback: undefined, description: 'Short muted loop for the Dawa (pharmacy) landing page hero.' },
-  { key: 'landing.dawa.video_poster',     category: 'landing_variant_video', label: 'Dawa video poster',        sensitive: false, envFallback: undefined, description: 'Still frame for the Dawa hero video.' },
-  { key: 'landing.retail.video_url',      category: 'landing_variant_video', label: 'Retail video URL',         sensitive: false, envFallback: undefined, description: 'Short muted loop for the Retail landing page hero.' },
-  { key: 'landing.retail.video_poster',   category: 'landing_variant_video', label: 'Retail video poster',      sensitive: false, envFallback: undefined, description: 'Still frame for the Retail hero video.' },
-  { key: 'landing.hospitality.video_url', category: 'landing_variant_video', label: 'Hospitality video URL',    sensitive: false, envFallback: undefined, description: 'Short muted loop for the Hospitality landing page hero.' },
-  { key: 'landing.hospitality.video_poster', category: 'landing_variant_video', label: 'Hospitality video poster', sensitive: false, envFallback: undefined, description: 'Still frame for the Hospitality hero video.' },
-  { key: 'landing.hardware.video_url',    category: 'landing_variant_video', label: 'Hardware video URL',       sensitive: false, envFallback: undefined, description: 'Short muted loop for the Hardware Store landing page hero.' },
-  { key: 'landing.hardware.video_poster', category: 'landing_variant_video', label: 'Hardware video poster',    sensitive: false, envFallback: undefined, description: 'Still frame for the Hardware Store hero video.' },
-  { key: 'landing.salon.video_url',       category: 'landing_variant_video', label: 'Salon video URL',          sensitive: false, envFallback: undefined, description: 'Short muted loop for the Salon & Spa landing page hero.' },
-  { key: 'landing.salon.video_poster',    category: 'landing_variant_video', label: 'Salon video poster',       sensitive: false, envFallback: undefined, description: 'Still frame for the Salon & Spa hero video.' },
-
+  { key: 'landing.hero.cta_label',      category: 'landing_hero', label: 'Primary CTA label',      sensitive: false, envFallback: undefined, description: 'The big button below the subheadline. Empty = "Book a demo".' },
+  { key: 'landing.hero.cta_href',       category: 'landing_hero', label: 'Primary CTA link',       sensitive: false, envFallback: undefined, description: 'Where the CTA points. Empty = "/contact?type=demo". Use an absolute URL for external.' },
   // ── Landing page — one-price section ─
   { key: 'landing.one_price.eyebrow',           category: 'landing_one_price', label: 'One-price eyebrow',           sensitive: false, envFallback: undefined, description: 'Small caps label above the price. Empty = "Pricing".' },
   { key: 'landing.one_price.commitment_lead',   category: 'landing_one_price', label: 'Commitment (lead)',           sensitive: false, envFallback: undefined, description: 'Muted italic that leads. Empty = "Once."' },
@@ -120,7 +106,7 @@ export const SETTING_DEFINITIONS = [
   // ── Landing page — closing CTA ─
   { key: 'landing.closing.headline',        category: 'landing_closing', label: 'Closing CTA headline',        sensitive: false, envFallback: undefined, description: 'The italic display line. The final accent word is a separate field.' },
   { key: 'landing.closing.headline_accent', category: 'landing_closing', label: 'Closing CTA accent word',     sensitive: false, envFallback: undefined, description: 'The final coloured word/phrase in the headline. Empty = "properly."' },
-  { key: 'landing.closing.cta_label',       category: 'landing_closing', label: 'Closing CTA button label',    sensitive: false, envFallback: undefined, description: 'Empty = "Start free trial".' },
+  { key: 'landing.closing.cta_label',       category: 'landing_closing', label: 'Closing CTA button label',    sensitive: false, envFallback: undefined, description: 'Empty = "Book a demo".' },
   { key: 'landing.closing.whatsapp_prompt', category: 'landing_closing', label: 'WhatsApp link text',          sensitive: false, envFallback: undefined, description: 'Empty = "or talk to us on WhatsApp".' },
 ] as const
 

@@ -1,39 +1,67 @@
 import { notFound } from 'next/navigation'
-import { eq, desc } from 'drizzle-orm'
+import { and, count, desc, eq, ilike, or, sql } from 'drizzle-orm'
 import { db, machines, licenses, user, telemetryEvents, cloudBackups, activations } from '@/db'
 import { Breadcrumbs } from '@/components/layout/breadcrumbs'
 import { BackButton } from '@/components/layout/back-button'
 import { EntityHero } from '@/components/layout/entity-hero'
 import { UpdatePolicyPanel } from './update-policy-panel'
 import { LazyTabs } from '@/components/layout/lazy-tabs'
-import { formatDate, formatDateShort, formatDateLong, formatRelative } from '@/lib/format-date'
+import { AdminPagination, AdminSearch } from '@/components/admin/data-controls'
+import { FilteredEmptyState } from '@/components/ui/state-view'
+import { buildClearHref } from '@/lib/list-query'
+import { formatDate, formatDateShort, formatRelative } from '@/lib/format-date'
 import Link from 'next/link'
 
 export const dynamic = 'force-dynamic'
 
+const PAGE_SIZE = 20
+
 interface PageProps {
   params: Promise<{ id: string }>
+  searchParams: Promise<{ telePage?: string; teleQ?: string; backupPage?: string; backupQ?: string }>
 }
 
-export default async function AdminMachineDetailPage({ params }: PageProps) {
+const num = (v: string | undefined) => Math.max(1, parseInt(v ?? '1', 10) || 1)
+
+export default async function AdminMachineDetailPage({ params, searchParams }: PageProps) {
   const { id } = await params
+  const sp = await searchParams
   const m = await db.query.machines.findFirst({ where: eq(machines.id, id) })
   if (!m) notFound()
 
-  const [machineLicense, machineUser, telemetry, backups] = await Promise.all([
+  const telePage = num(sp.telePage), teleQ = sp.teleQ?.trim() ?? ''
+  const backupPage = num(sp.backupPage), backupQ = sp.backupQ?.trim() ?? ''
+
+  const clearHref = (tab: string, drop: string[]) =>
+    buildClearHref(`/admin/machines/${id}`, sp as Record<string, string | undefined>, { drop, set: { tab } })
+
+  const teleWhere = and(
+    eq(telemetryEvents.machineId, id),
+    teleQ ? or(ilike(telemetryEvents.kind, `%${teleQ}%`), ilike(sql<string>`${telemetryEvents.payload}::text`, `%${teleQ}%`)) : undefined,
+  )
+  const backupWhere = and(
+    eq(cloudBackups.machineId, id),
+    backupQ ? ilike(cloudBackups.s3Key, `%${backupQ}%`) : undefined,
+  )
+
+  const [machineLicense, machineUser, telemetry, teleCountRow, backups, backupCountRow, activatedLicences] = await Promise.all([
     db.query.licenses.findFirst({ where: eq(licenses.id, m.licenseId) }),
     m.userId ? db.query.user.findFirst({ where: eq(user.id, m.userId) }) : null,
-    db.select().from(telemetryEvents).where(eq(telemetryEvents.machineId, id)).orderBy(desc(telemetryEvents.occurredAt)).limit(100),
-    db.select().from(cloudBackups).where(eq(cloudBackups.machineId, id)).orderBy(desc(cloudBackups.takenAt)).limit(50),
+    db.select().from(telemetryEvents).where(teleWhere).orderBy(desc(telemetryEvents.occurredAt)).limit(PAGE_SIZE).offset((telePage - 1) * PAGE_SIZE),
+    db.select({ n: count() }).from(telemetryEvents).where(teleWhere),
+    db.select().from(cloudBackups).where(backupWhere).orderBy(desc(cloudBackups.takenAt)).limit(PAGE_SIZE).offset((backupPage - 1) * PAGE_SIZE),
+    db.select({ n: count() }).from(cloudBackups).where(backupWhere),
+    // A machine runs a small, fixed set of module variants (bounded by the
+    // product catalogue) — a closed enumeration, exempt from pagination.
+    db
+      .selectDistinct({ id: licenses.id, variant: licenses.variant, licenseKey: licenses.licenseKey, status: licenses.status })
+      .from(activations)
+      .innerJoin(licenses, eq(activations.licenseId, licenses.id))
+      .where(eq(activations.machineId, id)),
   ])
 
-  // All licences/modules activated on this machine (a PC can hold
-  // several trade licences). machines.activeModule only holds the last.
-  const activatedLicences = await db
-    .selectDistinct({ id: licenses.id, variant: licenses.variant, licenseKey: licenses.licenseKey, status: licenses.status })
-    .from(activations)
-    .innerJoin(licenses, eq(activations.licenseId, licenses.id))
-    .where(eq(activations.machineId, id))
+  const teleCount = teleCountRow[0]?.n ?? 0
+  const backupCount = backupCountRow[0]?.n ?? 0
   const activatedVariants = activatedLicences.map((l) => l.variant)
 
   const lastHeartbeat = m.lastSeenAt ? formatRelative(m.lastSeenAt) : 'never'
@@ -100,43 +128,63 @@ export default async function AdminMachineDetailPage({ params }: PageProps) {
           {
             id: 'telemetry',
             label: 'Telemetry',
-            count: telemetry.length,
+            count: teleCount,
             content: (
-              <ol className="flex flex-col gap-3">
-                {telemetry.map((t) => (
-                  <li key={t.id} className="grid grid-cols-[120px_1fr] items-baseline gap-4 border-b border-foreground/5 pb-2.5">
-                    <time className="font-mono text-[10px] uppercase tracking-[0.16em] text-muted-foreground">
-                      {formatDateShort(t.occurredAt)}
-                    </time>
-                    <div className="flex flex-col gap-0.5">
-                      <span className="text-[13px] font-medium">{t.kind}</span>
-                      {t.payload != null && <pre className="text-[10px] text-muted-foreground font-mono whitespace-pre-wrap break-all max-h-24 overflow-hidden">{JSON.stringify(t.payload, null, 2).slice(0, 400)}</pre>}
-                    </div>
-                  </li>
-                ))}
-                {telemetry.length === 0 && <li className="text-sm text-muted-foreground">No telemetry yet.</li>}
-              </ol>
+              <div className="flex flex-col gap-3">
+                <AdminSearch placeholder="Search telemetry by kind or payload…" label="Search machine telemetry" paramName="teleQ" pageParamName="telePage" />
+                <ol className="flex flex-col gap-3">
+                  {telemetry.map((t) => (
+                    <li key={t.id} className="grid grid-cols-[120px_1fr] items-baseline gap-4 border-b border-[var(--color-border)] pb-2.5">
+                      <time className="font-mono text-[10px] uppercase tracking-[0.16em] text-[var(--color-fg-muted)]">
+                        {formatDateShort(t.occurredAt)}
+                      </time>
+                      <div className="flex flex-col gap-0.5">
+                        <span className="text-[13px] font-medium">{t.kind}</span>
+                        {t.payload != null && <pre className="text-[10px] text-[var(--color-fg-muted)] font-mono whitespace-pre-wrap break-all max-h-24 overflow-hidden">{JSON.stringify(t.payload, null, 2).slice(0, 400)}</pre>}
+                      </div>
+                    </li>
+                  ))}
+                  {telemetry.length === 0 && (
+                    teleQ ? (
+                      <li><FilteredEmptyState query={teleQ} clearHref={clearHref('telemetry', ['teleQ', 'telePage'])} entityLabel="telemetry events" /></li>
+                    ) : (
+                      <li className="text-sm text-[var(--color-fg-muted)]">No telemetry yet.</li>
+                    )
+                  )}
+                </ol>
+                <AdminPagination page={telePage} pageSize={PAGE_SIZE} total={teleCount} pageParamName="telePage" label="Telemetry pages" />
+              </div>
             ),
           },
           {
             id: 'backups',
             label: 'Cloud backups',
-            count: backups.length,
+            count: backupCount,
             content: (
-              <ul className="flex flex-col divide-y divide-foreground/5 rounded-md border border-foreground/10">
-                {backups.map((b) => (
-                  <li key={b.id} className="flex items-center justify-between gap-4 px-4 py-3">
-                    <div className="flex flex-col">
-                      <span className="text-[13px] font-medium font-mono">{b.s3Key}</span>
-                      <span className="text-[11px] text-muted-foreground">
-                        {formatDate(b.takenAt, true)} · uploaded {formatDateShort(b.uploadedAt)}
-                      </span>
-                    </div>
-                    <span className="font-mono text-[11px] text-muted-foreground">{(b.sizeBytes / 1024 / 1024).toFixed(1)} MB</span>
-                  </li>
-                ))}
-                {backups.length === 0 && <li className="px-4 py-3 text-sm text-muted-foreground">No backups recorded.</li>}
-              </ul>
+              <div className="flex flex-col gap-3">
+                <AdminSearch placeholder="Search backups by object key…" label="Search machine backups" paramName="backupQ" pageParamName="backupPage" />
+                <ul className="flex flex-col divide-y divide-[var(--color-border)] rounded-md border border-[var(--color-border)]">
+                  {backups.map((b) => (
+                    <li key={b.id} className="flex items-center justify-between gap-4 px-4 py-3">
+                      <div className="flex flex-col">
+                        <span className="text-[13px] font-medium font-mono">{b.s3Key}</span>
+                        <span className="text-[11px] text-[var(--color-fg-muted)]">
+                          {formatDate(b.takenAt, true)} · uploaded {formatDateShort(b.uploadedAt)}
+                        </span>
+                      </div>
+                      <span className="font-mono text-[11px] text-[var(--color-fg-muted)]">{(b.sizeBytes / 1024 / 1024).toFixed(1)} MB</span>
+                    </li>
+                  ))}
+                  {backups.length === 0 && (
+                    backupQ ? (
+                      <li><FilteredEmptyState query={backupQ} clearHref={clearHref('backups', ['backupQ', 'backupPage'])} entityLabel="backups" /></li>
+                    ) : (
+                      <li className="px-4 py-3 text-sm text-[var(--color-fg-muted)]">No backups recorded.</li>
+                    )
+                  )}
+                </ul>
+                <AdminPagination page={backupPage} pageSize={PAGE_SIZE} total={backupCount} pageParamName="backupPage" label="Backup pages" />
+              </div>
             ),
           },
         ]}
@@ -148,8 +196,8 @@ export default async function AdminMachineDetailPage({ params }: PageProps) {
 function Field({ label, value, className = '' }: { label: string; value?: React.ReactNode; className?: string }) {
   return (
     <div className={`flex flex-col gap-0.5 ${className}`}>
-      <dt className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">{label}</dt>
-      <dd className="text-[14px] text-foreground/90">{value || <span className="text-muted-foreground/60">—</span>}</dd>
+      <dt className="font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--color-fg-muted)]">{label}</dt>
+      <dd className="text-[14px] text-[var(--color-fg)]">{value || <span className="text-[var(--color-fg-subtle)]">—</span>}</dd>
     </div>
   )
 }

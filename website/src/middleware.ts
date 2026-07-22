@@ -2,7 +2,12 @@ import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 import createMiddleware from 'next-intl/middleware'
 import { routing, localeForGeoCountry, COUNTRY_LOCALES, LANGUAGE_LOCALES } from './i18n/routing'
+import {
+  canonicalPublicRedirectPath,
+  isUnknownKenyaOnlyDetailPath,
+} from '@/lib/canonical-public-redirect'
 import { currencyForCountry, type SupportedCurrency } from '@/lib/currency'
+import { preserveSafeUrlSearchParams } from '@/lib/redirect-query'
 
 /**
  * Three roles in one middleware pass (order matters):
@@ -65,6 +70,9 @@ function isNonLocalizedPath(pathname: string): boolean {
     pathname === '/signup' ||
     pathname === '/forgot-password' ||
     pathname.startsWith('/verify-email') ||
+    // Invitation acceptance lands via an emailed tokenised link and must
+    // stay unprefixed so the Better Auth session cookie is in scope.
+    pathname.startsWith('/accept-invitation') ||
     pathname === '/region-unavailable' ||
     pathname.startsWith('/region-unavailable') ||
     // Onboarding lives at /onboarding (outside [locale]) so the wizard
@@ -84,7 +92,33 @@ export function middleware(request: NextRequest) {
     }
   }
 
-  // ── (1b) Geo-prefix redirect ─────────────────────────────────
+  const pathname = request.nextUrl.pathname
+
+  // ── (1b) Canonical public redirects ──────────────────────────
+  // Run before next-intl and React rendering. Server Component redirects can
+  // become streamed 200 responses; this layer guarantees a real HTTP 308.
+  if (request.method === 'GET' && !request.headers.get('next-action')) {
+    const canonicalPath = canonicalPublicRedirectPath(pathname)
+    if (canonicalPath) {
+      const url = request.nextUrl.clone()
+      url.pathname = canonicalPath
+      url.search = preserveSafeUrlSearchParams(request.nextUrl.searchParams)
+      return NextResponse.redirect(url, 308)
+    }
+  }
+
+  // ── (1c) Unknown Kenya-only detail routes ───────────────────
+  // These pages are request-rendered for admin-configurable public settings.
+  // Catch unknown slugs before a streamed notFound() can retain HTTP 200.
+  if (
+    request.method === 'GET' &&
+    !request.headers.get('next-action') &&
+    isUnknownKenyaOnlyDetailPath(pathname)
+  ) {
+    return NextResponse.rewrite(new URL('/_not-found', request.url), { status: 404 })
+  }
+
+  // ── (1d) Geo-prefix redirect ─────────────────────────────────
   // Bare URLs (no /xx prefix) get redirected to the user's locale.
   // Order of preference:
   //   1. omnix_routed_locale cookie  — sticks user's last choice
@@ -97,7 +131,6 @@ export function middleware(request: NextRequest) {
   //
   // Auth pages, /api, /admin, /dashboard, /buy, /_next, etc. are in
   // isNonLocalizedPath() and stay bare.
-  const pathname = request.nextUrl.pathname
   const firstSeg = pathname.split('/')[1] ?? ''
   const knownLocale = ([...COUNTRY_LOCALES, ...LANGUAGE_LOCALES] as readonly string[]).includes(firstSeg)
   if (

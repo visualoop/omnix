@@ -26,6 +26,71 @@ export type ValidModule = (typeof VALID_MODULES)[number]
 const VALID_VARIANTS = ['pro', 'dawa', 'retail', 'hospitality', 'hardware', 'salon'] as const
 export type ValidVariant = (typeof VALID_VARIANTS)[number]
 
+/* ────────────────────────────────────────────────────────────────────
+ * Public catalogue — the ONLY products a buyer can select and pay for.
+ *
+ * The commercial contract is exactly five products. `pro` is a legacy
+ * internal variant (kept for enum/API compatibility with existing
+ * licence rows and the desktop validator) but is NOT publicly sold, so
+ * it is deliberately absent from this list. Every public entry point —
+ * the /buy resolver, the checkout UI, and the server-side Paystack init
+ * guard — must constrain to `PublicVariant`.
+ * ──────────────────────────────────────────────────────────────────── */
+
+export interface PublicProduct {
+  /** Marketing id + landing route segment. */
+  id: 'pharmacy' | 'retail' | 'hospitality' | 'hardware' | 'salon'
+  /** Licence + desktop variant enum this product issues. */
+  variant: 'dawa' | 'retail' | 'hospitality' | 'hardware' | 'salon'
+  /** Catalogue display name shown on the order review + confirmation. */
+  name: string
+  /** One-line audience descriptor for the order docket. */
+  tagline: string
+}
+
+export const PUBLIC_PRODUCTS: readonly PublicProduct[] = [
+  { id: 'pharmacy', variant: 'dawa', name: 'Pharmacy', tagline: 'Chemists, clinics and dispensaries' },
+  { id: 'retail', variant: 'retail', name: 'Retail', tagline: 'Mini-marts, fashion and general retail' },
+  { id: 'hospitality', variant: 'hospitality', name: 'Hospitality', tagline: 'Restaurants, bars, hotels and lodges' },
+  { id: 'hardware', variant: 'hardware', name: 'Hardware & Equipment', tagline: 'Hardware stores, yards and equipment dealers' },
+  { id: 'salon', variant: 'salon', name: 'Salon & Spa', tagline: 'Salons, barbershops, nail bars and spas' },
+] as const
+
+export type PublicVariant = PublicProduct['variant']
+
+const PUBLIC_VARIANTS: readonly PublicVariant[] = PUBLIC_PRODUCTS.map((p) => p.variant)
+
+/** True only for one of the five publicly-sold product variants. */
+export function isPublicVariant(value: string | null | undefined): value is PublicVariant {
+  return typeof value === 'string' && (PUBLIC_VARIANTS as readonly string[]).includes(value)
+}
+
+/**
+ * Resolve the public product a `?variant=` / `?module=` request maps to.
+ *
+ * Never returns `pro` (or any non-catalogue value). A `pharmacy` alias
+ * maps to the `dawa` variant. Anything unrecognised falls back to the
+ * flagship `dawa` product rather than issuing a paused/legacy variant.
+ */
+export function resolvePublicVariant(variant?: string | null, mod?: string | null): PublicVariant {
+  if (isPublicVariant(variant)) return variant
+  const v = (variant ?? '').toLowerCase()
+  if (v === 'pharmacy') return 'dawa'
+  const m = (mod ?? '').toLowerCase()
+  if (m === 'pharmacy') return 'dawa'
+  if (isPublicVariant(m)) return m
+  return 'dawa'
+}
+
+/** Catalogue display name for a variant. Legacy `pro` keeps a name for
+ *  the paused-notice screen only; it is never a purchasable product. */
+export function publicProductName(variant: string): string {
+  const product = PUBLIC_PRODUCTS.find((p) => p.variant === variant)
+  if (product) return product.name
+  if (variant === 'pro') return 'Omnix Pro'
+  return `Omnix ${variant.charAt(0).toUpperCase()}${variant.slice(1)}`
+}
+
 /**
  * Resolve which modules a freshly-issued trial licence should include.
  *

@@ -11,7 +11,7 @@ import { redirect } from 'next/navigation'
 import { and, eq, desc } from 'drizzle-orm'
 import { auth } from '@/lib/auth'
 import { db, licenses } from '@/db'
-import { decideBuyDestination, isValidMachineId } from '@/lib/buy-resolver'
+import { decideBuyDestination, isValidMachineId, resolvePublicVariant } from '@/lib/buy-resolver'
 import { createId } from '@/lib/ids'
 
 export const metadata = { title: 'Buy Omnix' }
@@ -44,29 +44,29 @@ export default async function BuyEntryPage({
   const isCustomer = Boolean(session?.user?.id)
   const customerId = isCustomer ? (session!.user.id as string) : null
 
-  const requestedVariant = variant && ['pro','dawa','retail','hospitality','hardware','salon'].includes(variant)
-    ? variant
-    : (mod === 'dawa' || mod === 'retail' || mod === 'hospitality' || mod === 'hardware' || mod === 'salon' ? mod : 'dawa')
-
-  // Pro is no longer on sale publicly. If the caller asked for Pro and
-  // the user doesn't already have an existing Pro licence row, redirect
-  // them to the Dawa flow rather than issuing a fresh Pro trial that
-  // will eventually hit a dead-end checkout. Existing Pro owners
-  // (active or trial) flow normally so the /buy/[licenseId] short-
-  // circuit can render the "Pro is paused" notice for them.
-  let existingProLicenseId: string | null = null
-  if (requestedVariant === 'pro' && isCustomer && customerId) {
-    const rows = await db
-      .select({ id: licenses.id })
-      .from(licenses)
-      .where(and(eq(licenses.userId, customerId), eq(licenses.variant, 'pro')))
-      .orderBy(desc(licenses.createdAt))
-      .limit(1)
-    existingProLicenseId = rows[0]?.id ?? null
-    if (!existingProLicenseId) {
+  // ── Legacy Pro handling (not publicly sold) ─────────────────────
+  // Pro is preserved for existing licence rows + the desktop validator,
+  // but it is not on the public catalogue. An existing Pro owner still
+  // reaches their /buy/[licenseId] paused-notice screen; anyone else who
+  // asks for Pro is routed into the flagship public product rather than
+  // minting a fresh Pro trial that would dead-end at checkout.
+  if (variant === 'pro') {
+    if (isCustomer && customerId) {
+      const rows = await db
+        .select({ id: licenses.id })
+        .from(licenses)
+        .where(and(eq(licenses.userId, customerId), eq(licenses.variant, 'pro')))
+        .orderBy(desc(licenses.createdAt))
+        .limit(1)
+      const existingProLicenseId = rows[0]?.id ?? null
+      if (existingProLicenseId) redirect(`/buy/${existingProLicenseId}`)
       redirect('/buy?variant=dawa')
     }
+    redirect(`/login?next=${encodeURIComponent('/buy?variant=dawa')}`)
   }
+
+  // Constrain every public request to one of the five catalogue products.
+  const requestedVariant = resolvePublicVariant(variant, mod)
 
   let existingLicenseId: string | null = null
   if (isCustomer && customerId) {
@@ -79,7 +79,13 @@ export default async function BuyEntryPage({
     existingLicenseId = rows[0]?.id ?? null
   }
 
-  const decision = decideBuyDestination({ isCustomer, existingLicenseId, machine, module: mod, variant })
+  const decision = decideBuyDestination({
+    isCustomer,
+    existingLicenseId,
+    machine,
+    module: mod,
+    variant: requestedVariant,
+  })
 
   if (decision.kind === 'signup') {
     redirect(`/login?next=${encodeURIComponent(decision.next)}`)

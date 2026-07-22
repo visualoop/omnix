@@ -12,11 +12,11 @@
  * No backend, no tracking. Respects reduced-motion. Hidden on print.
  */
 import { useState } from 'react'
-import { motion, AnimatePresence } from 'motion/react'
 
-const WHATSAPP_NUMBER = '254740455200'
+import { trackConversion, type ConversionLocale } from '@/lib/analytics/track'
+
 const BUSINESS_NAME = 'Omnix'
-const GREETING = "Hi! 👋 Ask us anything about Omnix — pricing, M-Pesa setup, eTIMS, or a demo. We usually reply within minutes."
+const GREETING = 'Ask us about Omnix pricing, setup or a product demo.'
 
 function WhatsAppGlyph({ className }: { className?: string }) {
   return (
@@ -26,13 +26,19 @@ function WhatsAppGlyph({ className }: { className?: string }) {
   )
 }
 
-export function WhatsAppWidget() {
+export function WhatsAppWidget({ whatsappUrl, locale }: { whatsappUrl: string; locale?: string }) {
   const [open, setOpen] = useState(false)
   const [message, setMessage] = useState('')
 
   const send = () => {
     const text = message.trim() || 'Hi Omnix, I have a question.'
-    const url = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(text)}`
+    const separator = whatsappUrl.includes('?') ? '&' : '?'
+    const url = `${whatsappUrl}${separator}text=${encodeURIComponent(text)}`
+    // Conversion signal only — closed dimensions, no message text, no number.
+    trackConversion('whatsapp_click', {
+      surface: 'whatsapp_widget',
+      locale: locale as ConversionLocale | undefined,
+    })
     window.open(url, '_blank', 'noopener,noreferrer')
     setMessage('')
     setOpen(false)
@@ -40,13 +46,8 @@ export function WhatsAppWidget() {
 
   return (
     <div className="fixed bottom-5 right-5 z-50 flex flex-col items-end print:hidden">
-      <AnimatePresence>
-        {open && (
-          <motion.div
-            initial={{ opacity: 0, y: 16, scale: 0.96 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 16, scale: 0.96 }}
-            transition={{ duration: 0.2 }}
+      {open ? (
+          <div
             className="mb-3 w-[330px] overflow-hidden rounded-2xl border border-black/10 bg-white shadow-2xl"
           >
             {/* WhatsApp-style header */}
@@ -56,7 +57,7 @@ export function WhatsAppWidget() {
               </div>
               <div className="leading-tight">
                 <div className="text-sm font-semibold">{BUSINESS_NAME}</div>
-                <div className="text-[11px] text-white/80">Typically replies in minutes</div>
+                <div className="text-[11px] text-white/80">Product questions and demos</div>
               </div>
               <button
                 onClick={() => setOpen(false)}
@@ -90,9 +91,8 @@ export function WhatsAppWidget() {
                 <svg viewBox="0 0 24 24" className="size-5" fill="currentColor"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
               </button>
             </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+          </div>
+        ) : null}
 
       {/* FAB — stays fixed bottom-right; becomes an X while the panel is open */}
       <button

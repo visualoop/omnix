@@ -5,7 +5,7 @@
  *
  *   <BrandLogo>      square mark, served from /favicon.svg
  *   <BrandWordmark>  horizontal lockup: same icon + "Omnix" text in
- *                    Fraunces (display font)
+ *                    the Geist display role
  */
 
 /** Square brand mark — same source as the favicon. */

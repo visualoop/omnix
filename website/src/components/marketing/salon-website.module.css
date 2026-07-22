@@ -1,0 +1,141 @@
+/* Hallmark · pre-emit critique: P5 H5 E5 S5 R5 V5
+ * Hallmark · genre: editorial · macrostructure: Map / Diagram · theme: Marigold Ledger
+ * enrichment: approved Task 8 module.salon media or useful demo docket · motion: static except control feedback
+ * contrast: pass (46–50) · honest: pass (56) · chrome: pass (57) · tokens: pass (58) · icons: pass (60)
+ * mobile: pass (36, 59, 61–69) · responsive: 320/375/414/768/1440 · no decorative numbering
+ */
+.page{
+  --salon-accent:oklch(52% .13 75);
+  --salon-accent-hover:oklch(44% .12 75);
+  --salon-accent-ink:oklch(98% .015 82);
+  --salon-soft:oklch(94% .035 82);
+  --salon-soft-2:oklch(88% .07 82);
+  --salon-line:oklch(74% .08 82);
+  --salon-ink:oklch(25% .03 75);
+  --salon-display:var(--font-jakarta);
+  --salon-body:var(--font-geist);
+  background:var(--color-bg);
+  color:var(--color-fg);
+  font-family:var(--salon-body);
+  overflow-x:clip;
+}
+:global(.dark) .page{
+  --salon-accent:oklch(82% .13 82);
+  --salon-accent-hover:oklch(88% .11 82);
+  --salon-accent-ink:oklch(23% .03 75);
+  --salon-soft:oklch(22% .02 82);
+  --salon-soft-2:oklch(28% .035 82);
+  --salon-line:oklch(45% .055 82);
+  --salon-ink:oklch(96% .02 82);
+}
+.container{width:min(100%,var(--w-wide));margin-inline:auto;padding-inline:var(--space-4)}
+.hero,.daybook,.flow,.capabilities,.boundary,.closing{position:relative;border-block-end:1px solid var(--color-border-strong)}
+.hero{padding-block:var(--space-12) var(--space-16)}
+.heroGrid{display:grid;grid-template-columns:minmax(0,1fr);gap:var(--space-10);align-items:stretch}
+.heroCopy,.heroMedia,.sectionHeading>*,.flowGrid>*,.boundaryGrid>*,.closingPanel>*{min-width:0}
+.identity{display:flex;align-items:center;gap:var(--space-3)}
+.identity p{margin:0;color:var(--salon-accent);font-family:var(--salon-body);font-size:.72rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase}
+.mark{width:2.75rem;height:2.75rem;flex:none;stroke:var(--salon-accent);stroke-linecap:round;stroke-linejoin:round;stroke-width:1.7}
+.hero h1{max-width:10ch;margin-block:var(--space-6) 0;color:var(--salon-ink);font-family:var(--salon-display);font-size:clamp(2.65rem,13vw,4.1rem);font-weight:700;letter-spacing:-.065em;line-height:.96;overflow-wrap:anywhere}
+.lede{max-width:62ch;margin-block:var(--space-6) 0;color:var(--color-fg-muted);font-size:1rem;line-height:1.7}
+.actions,.closingActions{display:flex;flex-direction:column;align-items:stretch;gap:var(--space-3);margin-block-start:var(--space-8)}
+.primaryAction,.secondaryAction{display:inline-flex;min-height:3rem;align-items:center;justify-content:center;border:1px solid transparent;border-radius:var(--radius-sm);padding-inline:var(--space-4);font-size:.79rem;font-weight:700;line-height:1;white-space:nowrap;transition:background-color var(--duration-ui) var(--ease-out),border-color var(--duration-ui) var(--ease-out),transform var(--duration-fast) var(--ease-out)}
+.primaryAction{background:var(--salon-accent);color:var(--salon-accent-ink)}
+.primaryAction:hover{background:var(--salon-accent-hover)}
+.secondaryAction{border-color:var(--color-border-strong);background:var(--color-bg);color:var(--color-fg)}
+.secondaryAction:hover{border-color:var(--salon-accent);color:var(--salon-accent)}
+.primaryAction:active,.secondaryAction:active{transform:translateY(1px)}
+.primaryAction[aria-disabled="true"],.secondaryAction[aria-disabled="true"]{cursor:not-allowed;opacity:.55;pointer-events:none}
+.primaryAction:focus-visible,.secondaryAction:focus-visible,.textAction:focus-visible{outline:3px solid var(--salon-accent);outline-offset:3px}
+.localNote{max-width:54ch;margin-block:var(--space-8) 0;border-block-start:1px solid var(--salon-line);padding-block-start:var(--space-4);color:var(--color-fg-muted);font-size:.88rem;line-height:1.6}
+.heroMedia{min-height:25rem;margin:0;overflow:clip;border:1px solid var(--salon-line);border-radius:var(--radius-sm);background:var(--salon-soft)}
+.heroMedia img,.heroMedia video{display:block;width:100%;height:100%;min-height:inherit;object-fit:cover}
+.demoDocket{display:grid;min-height:inherit;grid-template-rows:auto 1fr auto;gap:var(--space-8);padding:var(--space-5)}
+.demoDocket header{display:grid;grid-template-columns:auto minmax(0,1fr);gap:var(--space-4);align-items:start}
+.demoDocket h2{max-width:15ch;margin:0;color:var(--salon-ink);font-family:var(--salon-display);font-size:clamp(1.65rem,8vw,2.55rem);font-weight:700;letter-spacing:-.05em;line-height:1.02}
+.demoDocket p{margin-block:var(--space-3) 0;color:var(--color-fg-muted);font-size:.88rem;line-height:1.6}
+.demoDocket dl{align-self:end;margin:0;border-block-start:1px solid var(--salon-line)}
+.demoDocket dl div{display:grid;grid-template-columns:minmax(4.6rem,.3fr) minmax(0,1fr);gap:var(--space-4);padding-block:var(--space-3);border-block-end:1px solid var(--salon-line)}
+.demoDocket dt{color:var(--salon-accent);font-family:var(--salon-body);font-size:.66rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase}
+.demoDocket dd{margin:0;color:var(--salon-ink);font-size:.82rem;line-height:1.45}
+.demoDocket small{color:var(--color-fg-subtle);font-size:.75rem}
+.daybook,.flow,.capabilities,.boundary,.closing{padding-block:var(--space-16)}
+.daybook{background:var(--salon-soft)}
+.sectionHeading{display:grid;grid-template-columns:minmax(0,1fr);gap:var(--space-5);margin-block-end:var(--space-10)}
+.sectionHeading h2,.flowIntro h2,.boundary h2,.closing h2{margin:0;color:var(--salon-ink);font-family:var(--salon-display);font-size:clamp(2rem,9vw,3.35rem);font-weight:700;letter-spacing:-.055em;line-height:1}
+.sectionHeading p,.flowIntro p,.flowList p,.capabilityGrid p,.boundaryCopy p,.closing p{margin:0;color:var(--color-fg-muted);line-height:1.7}
+.scheduleMap{display:grid;grid-template-columns:2.9rem repeat(2,minmax(0,1fr));grid-template-rows:auto 21rem auto;border-block:1px solid var(--salon-line);background:var(--color-bg)}
+.timeRail{display:flex;grid-column:1;grid-row:2;flex-direction:column;justify-content:space-between;border-inline-end:1px solid var(--salon-line);padding:var(--space-3) var(--space-1)}
+.timeRail span{color:var(--color-fg-subtle);font-family:var(--salon-body);font-size:.6rem;font-variant-numeric:tabular-nums}
+.staffLane{position:relative;grid-row:1 / 3;min-width:0;background-image:repeating-linear-gradient(to bottom,transparent 0,transparent calc(25% - 1px),var(--salon-line) 25%)}
+.staffLane+.staffLane{border-inline-start:1px solid var(--salon-line)}
+.staffLane h3{height:3.2rem;margin:0;border-block-end:1px solid var(--salon-line);padding:var(--space-3) var(--space-2);color:var(--salon-ink);font-family:var(--salon-body);font-size:.72rem;font-weight:700;letter-spacing:-.01em;text-align:center}
+.staffLane article{position:absolute;inset-inline:var(--space-2);display:flex;flex-direction:column;gap:var(--space-1);min-height:4.4rem;border:1px solid var(--salon-line);border-radius:var(--radius-xs);padding:var(--space-2);background:var(--salon-soft-2);color:var(--salon-ink)}
+.staffLane article strong{font-size:.7rem;line-height:1.25}
+.staffLane article span{font-size:.62rem;line-height:1.35}
+.appointmentOne{top:5.4rem}.appointmentTwo{top:13.2rem}.appointmentThree{top:8.1rem}.appointmentFour{top:16rem}
+.mapLegend{display:flex;grid-column:1 / -1;grid-row:3;flex-flow:row wrap;gap:var(--space-3) var(--space-5);padding:var(--space-3);border-block-start:1px solid var(--salon-line)}
+.mapLegend span{display:inline-flex;align-items:center;gap:var(--space-2);color:var(--color-fg-muted);font-size:.72rem;white-space:nowrap}
+.mapLegend i{display:block;width:.6rem;height:.6rem;border:1px solid var(--salon-accent);background:var(--salon-soft-2)}
+.mapLegend span:nth-child(2) i{background:var(--salon-accent)}
+.mapLegend span:nth-child(3) i{border-radius:50%;background:var(--color-bg)}
+.flow{background:var(--color-surface)}
+.flowGrid{display:grid;grid-template-columns:minmax(0,1fr);gap:var(--space-12)}
+.flowIntro .mark{margin-block-end:var(--space-6)}
+.flowIntro p{max-width:48ch;margin-block-start:var(--space-5)}
+.flowList{border-block-start:2px solid var(--salon-ink)}
+.flowList article{display:grid;grid-template-columns:minmax(4.5rem,.25fr) minmax(0,1fr);gap:var(--space-4);padding-block:var(--space-6);border-block-end:1px solid var(--color-border-strong)}
+.flowList article>span{color:var(--salon-accent);font-family:var(--salon-body);font-size:.68rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase}
+.flowList h3,.capabilityGrid h3{margin:0;color:var(--salon-ink);font-family:var(--salon-body);font-size:1rem;font-weight:700;letter-spacing:-.02em;line-height:1.3}
+.flowList p,.capabilityGrid p{margin-block-start:var(--space-3);font-size:.9rem}
+.capabilityGrid{display:grid;grid-template-columns:minmax(0,1fr);border-block-start:1px solid var(--color-border-strong)}
+.capabilityGrid article{min-width:0;padding-block:var(--space-6);border-block-end:1px solid var(--color-border)}
+.boundary{background:var(--salon-soft)}
+.boundaryGrid{display:grid;grid-template-columns:minmax(0,1fr);gap:var(--space-10)}
+.boundaryCopy p+p{margin-block-start:var(--space-5)}
+.closing{border-block-end:0}
+.closingPanel{display:grid;grid-template-columns:minmax(0,1fr);gap:var(--space-8);border-block-start:3px solid var(--salon-accent);padding-block-start:var(--space-8)}
+.closingPanel>div:first-child{display:grid;grid-template-columns:auto minmax(0,1fr);gap:var(--space-4)}
+.closingPanel h2,.closingPanel p{grid-column:2}
+.closing p{max-width:54ch;margin-block-start:var(--space-4)}
+.closingActions{margin-block-start:0}
+.textAction{align-self:center;color:var(--color-fg);font-size:.85rem;font-weight:700;text-decoration:underline;text-decoration-color:var(--salon-accent);text-underline-offset:4px;white-space:nowrap}
+@media(min-width:34rem){
+  .container{padding-inline:clamp(var(--space-6),5vw,var(--space-12))}
+  .actions,.closingActions{flex-flow:row wrap;align-items:center}
+  .primaryAction,.secondaryAction{padding-inline:var(--space-6);font-size:.86rem}
+  .scheduleMap{grid-template-columns:4rem repeat(2,minmax(0,1fr));grid-template-rows:auto 24rem auto}
+  .staffLane h3{padding-inline:var(--space-4);font-size:.86rem;text-align:start}
+  .staffLane article{inset-inline:var(--space-3);padding:var(--space-3)}
+  .staffLane article strong{font-size:.82rem}.staffLane article span{font-size:.72rem}
+  .appointmentOne{top:5.8rem}.appointmentTwo{top:15rem}.appointmentThree{top:9rem}.appointmentFour{top:18rem}
+}
+@media(min-width:48rem){
+  .hero{padding-block:var(--space-16) var(--space-24)}
+  .daybook,.flow,.capabilities,.boundary,.closing{padding-block:clamp(var(--space-16),8vw,var(--space-24))}
+  .sectionHeading{grid-template-columns:minmax(0,1.12fr) minmax(0,.72fr);gap:clamp(var(--space-8),8vw,var(--space-20));align-items:end;margin-block-end:var(--space-16)}
+  .capabilityGrid{grid-template-columns:repeat(12,minmax(0,1fr))}
+  .capabilityGrid article{grid-column:span 6;padding:var(--space-6) var(--space-8) var(--space-6) 0}
+  .capabilityGrid article:nth-child(even){padding-inline:var(--space-8) 0;border-inline-start:1px solid var(--color-border)}
+  .capabilityGrid article:nth-child(4n+1){grid-column:span 7}.capabilityGrid article:nth-child(4n+2){grid-column:span 5}
+  .capabilityGrid article:nth-child(4n+3){grid-column:span 5}.capabilityGrid article:nth-child(4n+4){grid-column:span 7}
+  .boundaryGrid{grid-template-columns:minmax(0,.85fr) minmax(0,1.15fr);gap:clamp(var(--space-10),9vw,var(--space-24))}
+  .closingPanel{grid-template-columns:minmax(0,1fr) auto;align-items:end}.closingActions{justify-content:flex-end}
+}
+@media(min-width:64rem){
+  .heroGrid{grid-template-columns:minmax(0,.92fr) minmax(25rem,1.08fr);gap:clamp(var(--space-12),7vw,var(--space-20))}
+  .hero h1{font-size:clamp(4rem,6.4vw,5.6rem)}
+  .heroMedia{min-height:34rem}
+  .demoDocket{padding:var(--space-8)}
+  .flowGrid{grid-template-columns:minmax(0,.78fr) minmax(0,1.22fr);gap:clamp(var(--space-12),9vw,var(--space-24))}
+}
+@media(prefers-reduced-motion:reduce){.primaryAction,.secondaryAction{transition:none}}
+
+/* Task 34 demo-video section — maps the shared component accent to the Salon marigold. */
+.demoVideo{
+  padding-block:var(--space-section);
+  border-block-end:1px solid var(--color-border-strong);
+  --color-accent:var(--salon-accent);
+  --color-accent-hover:var(--salon-accent-hover);
+  --color-accent-foreground:var(--salon-accent-ink);
+}

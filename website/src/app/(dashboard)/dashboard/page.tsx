@@ -1,10 +1,12 @@
 import { headers } from 'next/headers'
 import { redirect } from 'next/navigation'
+import Link from 'next/link'
 import { eq, desc, inArray } from 'drizzle-orm'
 import { db, licenses, machines, activations } from '@/db'
 import { auth } from '@/lib/auth'
-import { PageHeading } from '@/components/dashboard/status-utils'
-import { StartTrialWizard } from '@/components/dashboard/start-trial-wizard'
+import { PageHeader } from '@/components/layout/page-header'
+import { Button } from '@/components/ui/button'
+import { StatusPill } from '@/components/dashboard/status-utils'
 import { SetupCtaBanner } from '@/components/dashboard/setup-cta-banner'
 import { WelcomeTour } from '@/components/dashboard/welcome-tour'
 
@@ -14,10 +16,11 @@ export const dynamic = 'force-dynamic'
 /**
  * Customer dashboard overview.
  *
- * If the customer has no licences, the page becomes a "Start your trial"
- * wizard: pick a variant, click Start, and a 30-day trial licence is
- * provisioned in-place. Once a licence exists the page renders the
- * normal licences + machines summary.
+ * If the customer has no licences, the page points them at a perpetual
+ * purchase (or a demo booking) — there is no public trial acquisition path.
+ * Once a licence exists the page renders the normal licences + devices
+ * summary, linking through to the full paginated lists. Existing trial
+ * licences keep their status + purchase upsell.
  */
 export default async function DashboardOverviewPage({
   searchParams,
@@ -33,18 +36,10 @@ export default async function DashboardOverviewPage({
 
   // First-time-user check: route to /onboarding when business name is
   // missing. The wizard captures business + country + currency + phone
-  // + KRA PIN + variant before the user lands on the trial dashboard.
+  // + KRA PIN + product before the user lands on the dashboard.
   if (!session.user.businessName || !session.user.phoneNumber) {
     redirect('/onboarding')
   }
-
-  const sp = (await searchParams) ?? {}
-  const requestedVariant = sp.variant?.toLowerCase()
-  const VALID_VARIANTS = ['pro', 'dawa', 'retail', 'hospitality', 'hardware', 'salon'] as const
-  type Variant = (typeof VALID_VARIANTS)[number]
-  const defaultVariant: Variant = (VALID_VARIANTS as readonly string[]).includes(requestedVariant ?? '')
-    ? (requestedVariant as Variant)
-    : 'dawa'
 
   const userId = session.user.id
 
@@ -78,12 +73,10 @@ export default async function DashboardOverviewPage({
       .limit(10),
   ])
 
-  // Resolve which licences each machine is bound to (via activations).
-  // The dashboard uses this so the per-machine Upgrade button only
-  // appears when that specific machine has a TRIAL licence bound to it
-  // (not whenever any licence in the account is on trial — that gave
-  // false positives when a machine was on a paid trade licence but the
-  // account also had a Pro trial running on a different machine).
+  // Resolve which licences each machine is bound to (via activations). The
+  // dashboard uses this so the per-machine Upgrade button only appears when
+  // that specific machine has a TRIAL licence bound to it (not whenever any
+  // licence in the account is on trial).
   const machineIds = machList.map((m) => m.id)
   const licenseIds = licList.map((l) => l.id)
   const activationRows =
@@ -96,7 +89,6 @@ export default async function DashboardOverviewPage({
           .from(activations)
           .where(inArray(activations.machineId, machineIds))
       : []
-  // machineId → array of bound licence rows (filtered to this user's licList)
   const licenseById = new Map(licList.map((l) => [l.id, l]))
   const boundLicencesByMachine = new Map<string, typeof licList>()
   for (const a of activationRows) {
@@ -111,205 +103,237 @@ export default async function DashboardOverviewPage({
   const firstName = session.user.name?.split(' ')[0] ?? 'there'
   const hasNoLicences = licList.length === 0
   // Pro coverage only counts when Pro is ACTIVE (paid). A Pro trial is a
-  // 30-day taste — it doesn't supersede the user's paid trade licences,
-  // because if Pro trial expires unconverted, the trades are what they
-  // keep. Only the paid Pro licence "Covers" trades.
+  // 30-day taste — only the paid Pro licence "Covers" trades.
   const ownsProActive = licList.some((l) => l.variant === 'pro' && l.status === 'active')
-  // Used by the trial banner (below) — a Pro trial banner outweighs any
-  // trade-trial banner.
   const proTrial = licList.find((l) => l.variant === 'pro' && l.status === 'trial')
   const otherTrials = licList.filter((l) => l.status === 'trial' && l.variant !== 'pro')
-  // "Show the trial banner" rule: now that Pro isn't on sale publicly,
-  // ALWAYS prefer a trade trial — the user can actually convert that to
-  // a purchase. A standalone Pro trial gets no banner (there's no public
-  // Pro buy path; the trial expires gracefully + the trade licences they
-  // also own keep them running).
+  // Prefer a trade trial banner — the user can convert that to a purchase.
+  // A standalone Pro trial gets no banner (there's no public Pro buy path).
   const trialToBanner = otherTrials[0] ?? null
   const hasTrialBanner = !!trialToBanner
-  void proTrial // intentionally unused — kept around for the "supersededByPro" check below
+  void proTrial // intentionally unused — kept for the "supersededByPro" check
 
   // Reseller check — banner links to /dashboard/reseller when the user is one.
   let isReseller = false
   try {
     const { resellers: resellersTable } = await import('@/db')
-    const rows = await db.select({ id: resellersTable.id }).from(resellersTable).where(eq(resellersTable.userId, userId)).limit(1)
+    const rows = await db
+      .select({ id: resellersTable.id })
+      .from(resellersTable)
+      .where(eq(resellersTable.userId, userId))
+      .limit(1)
     isReseller = rows.length > 0
   } catch {
     // resellers table cold — dashboard renders without the reseller pill.
   }
 
   return (
-    <div className="space-y-8">
+    <div className="flex flex-col gap-8">
       <WelcomeTour />
-      <PageHeading
+      <PageHeader
+        eyebrow="Overview"
         title={`Welcome${hasNoLicences ? '' : ' back'}, ${firstName}`}
-        subtitle={
+        description={
           hasNoLicences
-            ? 'Pick the trade you run and get a 30-day trial licence — no card needed.'
-            : 'Your licences, machines, and support — all in one place.'
+            ? 'Buy a perpetual licence for the trade you run, or book a demo to see it first.'
+            : 'Your licences, devices and support — all in one place.'
         }
       />
 
       {isReseller ? (
-        <a
+        <Link
           href="/dashboard/reseller"
-          className="inline-flex items-center gap-2 rounded-full border border-emerald-500/40 bg-emerald-500/5 px-3 py-1.5 text-xs font-medium text-emerald-700 dark:text-emerald-400 hover:bg-emerald-500/10"
+          className="inline-flex w-fit items-center gap-2 rounded-[var(--radius-pill)] border border-[var(--color-positive)]/40 bg-[var(--color-positive)]/8 px-3 py-1.5 text-[12px] font-medium text-[var(--color-positive)] transition-colors hover:bg-[var(--color-positive)]/12"
         >
-          <span className="size-1.5 rounded-full bg-emerald-500" />
+          <span className="size-1.5 rounded-full bg-[var(--color-positive)]" aria-hidden />
           Reseller channel · view your dashboard
           <span aria-hidden>→</span>
-        </a>
+        </Link>
       ) : null}
 
-      {/* Trial → buy banner. Shows when at least one TRADE licence is
-          on trial. A Pro trial alone deliberately gets no banner now
-          that we don't sell Pro publicly — the trial runs to expiry,
-          the user is unaffected, and any trade licences they also own
-          keep them working. */}
+      {/* Trade trial → buy banner. A Pro trial alone deliberately gets no
+          banner: Pro is not sold publicly, so the trial runs to expiry and
+          any trade licences the user owns keep them working. */}
       {!hasNoLicences && hasTrialBanner ? (
-        <div className="rounded-xl border border-[var(--color-accent)] bg-[var(--color-accent-soft)] p-4 lg:p-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-col gap-3 rounded-[var(--radius-md)] border border-[var(--color-accent-line)] bg-[var(--color-accent-soft)] p-4 sm:flex-row sm:items-center sm:justify-between lg:p-5">
           <div className="flex flex-col gap-0.5">
             <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-[var(--color-accent)]">
               Trial active
             </span>
-            <span className="font-display text-[16px] font-medium text-[var(--color-fg)]">
+            <span className="font-display text-[16px] font-semibold text-[var(--color-fg)]">
               Lock in your licence — pay once, use forever.
             </span>
             <span className="text-[13px] text-[var(--color-fg-muted)]">
               KES 30,000 one-time per trade. Perpetual licence, no subscription.
             </span>
           </div>
-          <a
-            href={`/buy?variant=${encodeURIComponent(trialToBanner!.variant ?? 'dawa')}`}
-            className="shrink-0 inline-flex items-center justify-center rounded-md bg-[var(--color-accent)] px-4 py-2 font-mono text-[12px] uppercase tracking-[0.16em] text-white transition-colors hover:bg-[var(--color-accent)]/90 cursor-pointer"
-          >
-            Purchase licence →
-          </a>
+          <Button asChild className="shrink-0 max-sm:w-full">
+            <Link href={`/buy?variant=${encodeURIComponent(trialToBanner!.variant ?? 'dawa')}`}>
+              Purchase licence
+            </Link>
+          </Button>
         </div>
       ) : null}
 
       {hasNoLicences ? (
-        <StartTrialWizard defaultVariant={defaultVariant} />
+        <div className="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] p-6 lg:p-8">
+          <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-[var(--color-fg-muted)]">
+            Get started
+          </span>
+          <h2
+            style={{ fontFamily: 'var(--font-display)' }}
+            className="mt-1.5 text-[22px] font-medium tracking-[-0.01em] text-[var(--color-fg)]"
+          >
+            Buy your Omnix licence
+          </h2>
+          <p className="mt-2 max-w-[62ch] text-[13px] leading-[1.6] text-[var(--color-fg-muted)]">
+            One perpetual licence per trade — Pharmacy, Retail, Hospitality, Hardware, or Salon &amp; Spa.
+            Pay once, own it forever, with a year of compliance updates included. Not sure which fits your
+            business? Book a demo and we&rsquo;ll walk you through it.
+          </p>
+          <div className="mt-6 flex flex-col gap-3 sm:flex-row">
+            <Button asChild>
+              <Link href="/buy">Buy a licence</Link>
+            </Button>
+            <Button asChild variant="outline">
+              <Link href="/contact?type=demo">Book a demo</Link>
+            </Button>
+          </div>
+        </div>
       ) : (
         <>
           <SetupCtaBanner />
-          <section data-tour="licenses">
-            <h2 className="font-display text-[18px] font-medium text-[var(--color-fg)] mb-3">
-              Licences
-            </h2>
-            <ul className="rounded-lg border border-[var(--color-border)] divide-y divide-[var(--color-border)]">
+
+          <section data-tour="licenses" className="flex flex-col gap-3">
+            <div className="flex items-baseline justify-between gap-3">
+              <h2 className="font-display text-[18px] font-semibold tracking-[-0.02em] text-[var(--color-fg)]">
+                Licences
+              </h2>
+              <Link
+                href="/dashboard/licenses"
+                className="font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--color-fg-muted)] transition-colors hover:text-[var(--color-fg)]"
+              >
+                All licences →
+              </Link>
+            </div>
+            <ul className="flex flex-col divide-y divide-[var(--color-border)] rounded-[var(--radius-md)] border border-[var(--color-border)]">
               {licList.map((l) => {
                 // A trade-variant licence becomes redundant once the user
-                // also owns Pro — show a "Covered by Pro" pill instead of
-                // an Upgrade button so we don't push them to pay twice.
+                // also owns Pro — show a "Covered by Pro" pill instead of an
+                // Upgrade button so we don't push them to pay twice.
                 const supersededByPro = ownsProActive && l.variant !== 'pro'
-                // Pro isn't on sale publicly right now — Pro trial owners
-                // shouldn't see an "Upgrade" button that routes to a
-                // non-functional /buy?variant=pro flow. They keep using
-                // their trial; the row drops to the neutral "Open" CTA.
+                // Pro isn't on sale publicly — Pro trial owners never see an
+                // "Upgrade" button that routes to a non-functional
+                // /buy?variant=pro flow.
                 const isPro = l.variant === 'pro'
                 const isTrialOffer = l.status === 'trial' && !supersededByPro && !isPro
                 return (
-                  <li key={l.id} className="flex items-center justify-between gap-3 px-4 py-3 text-[13px]">
-                    <code className="font-mono text-[12px] text-[var(--color-fg)] select-all flex-1 min-w-0 truncate">{l.licenseKey}</code>
-                    <span className="text-[var(--color-fg-muted)] shrink-0">{l.variant} · {l.tier}</span>
-                    <span className="font-mono text-[10px] uppercase tracking-[0.18em] shrink-0">{l.status}</span>
+                  <li
+                    key={l.id}
+                    className="flex flex-wrap items-center gap-3 px-4 py-3 text-[13px]"
+                  >
+                    <code className="min-w-0 flex-1 select-all truncate font-mono text-[12px] text-[var(--color-fg)]">
+                      {l.licenseKey}
+                    </code>
+                    <span className="shrink-0 font-mono text-[11px] uppercase tracking-[0.12em] text-[var(--color-fg-muted)]">
+                      {l.variant} · {l.tier}
+                    </span>
+                    <StatusPill kind="license" status={l.status} />
                     {supersededByPro ? (
                       <span
-                        className="shrink-0 inline-flex items-center rounded-md border border-[var(--color-border)] px-2.5 py-1 font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--color-fg-muted)]"
-                        title="Pro covers every trade module — this individual licence is redundant. You can release it from Settings → Licences inside the app."
+                        className="inline-flex shrink-0 items-center rounded-[var(--radius-pill)] border border-[var(--color-border)] px-2.5 py-0.5 font-mono text-[10px] uppercase tracking-[0.16em] text-[var(--color-fg-muted)]"
+                        title="Pro covers every trade module — this individual licence is redundant. Release it from Settings → Licences inside the app."
                       >
                         Covered by Pro
                       </span>
                     ) : isTrialOffer ? (
-                      <a
-                        href={`/buy?variant=${encodeURIComponent(l.variant ?? 'dawa')}`}
-                        className="shrink-0 inline-flex items-center rounded-md border border-[var(--color-accent)] bg-[var(--color-accent)] px-2.5 py-1 font-mono text-[10px] uppercase tracking-[0.18em] text-white hover:bg-[var(--color-accent)]/90 transition-colors cursor-pointer"
-                      >
-                        Upgrade
-                      </a>
+                      <Button asChild size="xs">
+                        <Link href={`/buy?variant=${encodeURIComponent(l.variant ?? 'dawa')}`}>Upgrade</Link>
+                      </Button>
                     ) : (
-                      <a
-                        href={`/dashboard/licenses/${l.id}`}
-                        className="shrink-0 inline-flex items-center rounded-md border border-[var(--color-border)] px-2.5 py-1 font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--color-fg-muted)] hover:text-[var(--color-fg)] hover:border-[var(--color-border-strong)] transition-colors cursor-pointer"
-                      >
-                        Open
-                      </a>
+                      <Button asChild size="xs" variant="outline">
+                        <Link href={`/dashboard/licenses/${l.id}`}>Open</Link>
+                      </Button>
                     )}
                   </li>
                 )
               })}
             </ul>
-            {/* Always offer to try (or buy) another variant — customers
-                often start with one trade and add more (e.g. Dawa pharmacy
-                + Retail mini-mart). The wizard skips variants the customer
-                already has so we don't issue duplicate trial keys. */}
-            {/* Hide the "try another trade" wizard only when the user
-                has an ACTIVE (paid) Pro licence — that one truly covers
-                every trade. A Pro TRIAL doesn't, because if it expires
-                without conversion the user keeps only their paid trade
-                licences (or nothing). So Pro-trial users still see the
-                wizard to start trade-specific trials they might want to
-                keep separately. */}
+            {/* Offer to buy another trade — unless the user has an ACTIVE
+                (paid) Pro licence, which already covers every trade. There is
+                no public trial acquisition path, so this is a purchase link. */}
             {!ownsProActive ? (
-              <div className="mt-4">
-                <StartTrialWizard
-                  defaultVariant={pickFirstUntakenVariant(licList.map((l) => l.variant)) ?? defaultVariant}
-                  ownedVariants={licList.map((l) => l.variant).filter(Boolean) as string[]}
-                  compact
-                />
+              <div className="mt-1 rounded-md border border-dashed border-[var(--color-border)] bg-[var(--color-surface)] px-4 py-3 text-[12px] text-[var(--color-fg-muted)]">
+                Run more than one trade?{' '}
+                <Link href="/buy" className="text-[var(--color-fg)] underline-offset-4 hover:underline">
+                  Buy another Omnix licence →
+                </Link>
               </div>
             ) : null}
           </section>
 
-          <section>
-            <h2 className="font-display text-[18px] font-medium text-[var(--color-fg)] mb-3">
-              Machines
-            </h2>
+          <section className="flex flex-col gap-3">
+            <div className="flex items-baseline justify-between gap-3">
+              <h2 className="font-display text-[18px] font-semibold tracking-[-0.02em] text-[var(--color-fg)]">
+                Devices
+              </h2>
+              <Link
+                href="/dashboard/machines"
+                className="font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--color-fg-muted)] transition-colors hover:text-[var(--color-fg)]"
+              >
+                All devices →
+              </Link>
+            </div>
             {machList.length === 0 ? (
-              <div className="rounded-lg border border-dashed border-[var(--color-border)] px-4 py-8 text-center text-[13px] text-[var(--color-fg-muted)]">
-                No machines have activated yet. Install Omnix on your till and paste your licence key on first launch.{' '}
-                <a href="/dashboard/downloads" className="ml-1 underline-offset-4 hover:underline text-[var(--color-fg)]">
+              <div className="rounded-[var(--radius-md)] border border-dashed border-[var(--color-border-strong)] px-4 py-8 text-center text-[13px] text-[var(--color-fg-muted)]">
+                No devices have activated yet. Install Omnix on your till and paste your licence key on
+                first launch.{' '}
+                <Link
+                  href="/dashboard/downloads"
+                  className="ml-1 text-[var(--color-fg)] underline-offset-4 hover:underline"
+                >
                   Get the installer →
-                </a>
+                </Link>
               </div>
             ) : (
-              <ul className="rounded-lg border border-[var(--color-border)] divide-y divide-[var(--color-border)]">
+              <ul className="flex flex-col divide-y divide-[var(--color-border)] rounded-[var(--radius-md)] border border-[var(--color-border)]">
                 {machList.map((m) => {
                   // Per-machine Upgrade rule: only show Upgrade when this
-                  // specific machine has a licence ON TRIAL bound to it.
-                  // Default to the first trial bound here; if none, no CTA.
-                  // Pro trials are excluded — Pro isn't on sale publicly,
-                  // so /buy?variant=pro wouldn't resolve to anything useful.
+                  // specific machine has a licence ON TRIAL bound to it. Pro
+                  // trials are excluded (no public /buy?variant=pro path).
                   const bound = boundLicencesByMachine.get(m.id) ?? []
                   const trialBound = bound.find((l) => l.status === 'trial' && l.variant !== 'pro')
-                  // Visual cue: list the variants bound to this machine.
-                  // Tells the user at a glance which licence(s) this PC runs.
                   const variantsLabel = bound.length
                     ? Array.from(new Set(bound.map((l) => l.variant))).join(' + ')
                     : null
                   return (
-                    <li key={m.id} className="flex items-center justify-between gap-3 px-4 py-3 text-[13px]">
-                      <span className="text-[var(--color-fg)] font-medium flex-1 min-w-0 truncate">{m.hostname ?? '—'}</span>
-                      <span className="text-[var(--color-fg-muted)] shrink-0">
-                        {m.os} · v{m.currentVersion ?? '?'}
-                        {variantsLabel ? <> · <span className="text-[var(--color-fg)]">{variantsLabel}</span></> : null}
+                    <li
+                      key={m.id}
+                      className="flex flex-wrap items-center gap-3 px-4 py-3 text-[13px]"
+                    >
+                      <span className="min-w-0 flex-1 truncate font-medium text-[var(--color-fg)]">
+                        {m.hostname ?? '—'}
                       </span>
-                      <span className="font-mono text-[10px] uppercase tracking-[0.18em] shrink-0">{m.status}</span>
+                      <span className="shrink-0 font-mono text-[11px] text-[var(--color-fg-muted)]">
+                        {m.os} · v{m.currentVersion ?? '?'}
+                        {variantsLabel ? (
+                          <>
+                            {' '}
+                            · <span className="text-[var(--color-fg)]">{variantsLabel}</span>
+                          </>
+                        ) : null}
+                      </span>
+                      <StatusPill kind="machine" status={m.status} />
                       {trialBound ? (
-                        <a
-                          href={`/buy?variant=${encodeURIComponent(trialBound.variant ?? 'dawa')}`}
-                          className="shrink-0 inline-flex items-center rounded-md border border-[var(--color-accent)] bg-[var(--color-accent)] px-2.5 py-1 font-mono text-[10px] uppercase tracking-[0.18em] text-white hover:bg-[var(--color-accent)]/90 transition-colors cursor-pointer"
-                        >
-                          Upgrade
-                        </a>
+                        <Button asChild size="xs">
+                          <Link href={`/buy?variant=${encodeURIComponent(trialBound.variant ?? 'dawa')}`}>
+                            Upgrade
+                          </Link>
+                        </Button>
                       ) : null}
-                      <a
-                        href={`/dashboard/machines/${m.id}`}
-                        className="shrink-0 inline-flex items-center rounded-md border border-[var(--color-border)] px-2.5 py-1 font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--color-fg-muted)] hover:text-[var(--color-fg)] hover:border-[var(--color-border-strong)] transition-colors cursor-pointer"
-                      >
-                        Open
-                      </a>
+                      <Button asChild size="xs" variant="outline">
+                        <Link href={`/dashboard/machines/${m.id}`}>Open</Link>
+                      </Button>
                     </li>
                   )
                 })}
@@ -320,13 +344,4 @@ export default async function DashboardOverviewPage({
       )}
     </div>
   )
-}
-
-const ALL_VARIANTS = ['pro', 'dawa', 'retail', 'hospitality', 'hardware', 'salon'] as const
-function pickFirstUntakenVariant(taken: (string | null)[]): typeof ALL_VARIANTS[number] | null {
-  const set = new Set(taken.filter(Boolean))
-  for (const v of ALL_VARIANTS) {
-    if (!set.has(v)) return v
-  }
-  return null
 }

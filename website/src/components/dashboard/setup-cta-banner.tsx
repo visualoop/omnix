@@ -4,10 +4,9 @@ import Link from 'next/link'
  * Setup-CTA banner for the dashboard.
  *
  * Shown to customers who own a licence so they can immediately find how
- * to switch on the things that make the POS useful — M-Pesa, Paystack,
- * and the AI assistant. Each card links to the matching setup guide
- * (which explains how to get the keys and where to paste them in the
- * desktop app).
+ * to switch on the things that make the POS useful — M-Pesa and Paystack
+ * payments. Each card links to the matching setup guide (which explains
+ * how to get the keys and where to paste them in the desktop app).
  *
  * This is a "next step" nudge, not a blocker — it always renders for
  * licence-holders since we can't see the desktop app's local config
@@ -28,13 +27,6 @@ const STEPS = [
     body: 'Take M-Pesa and cards through one provider. Get your API keys in minutes.',
     accent: '#13B7F5',
   },
-  {
-    href: '/docs/ai-keys',
-    eyebrow: 'Assistant',
-    title: 'Set up AI',
-    body: 'Bring your own key (Groq, OpenRouter, Anthropic) to switch on the in-app assistant.',
-    accent: '#8B5CF6',
-  },
 ] as const
 
 export function SetupCtaBanner() {
@@ -43,7 +35,7 @@ export function SetupCtaBanner() {
       <h2 className="font-display text-[18px] font-medium text-[var(--color-fg)] mb-3">
         Finish setting up
       </h2>
-      <div className="grid gap-3 sm:grid-cols-3">
+      <div className="grid gap-3 sm:grid-cols-2">
         {STEPS.map((s) => (
           <Link
             key={s.href}

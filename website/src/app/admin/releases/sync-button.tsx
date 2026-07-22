@@ -29,7 +29,7 @@ export function ReleasesSyncButton() {
         disabled={busy}
         className="inline-flex items-center gap-2 rounded-md border border-foreground/15 bg-background px-3 py-1.5 font-mono text-[11px] uppercase tracking-[0.18em] text-foreground transition-colors hover:border-foreground/40 disabled:opacity-50"
       >
-        <ArrowsClockwise weight="bold" className={`size-3.5 ${busy ? 'animate-spin' : ''}`} />
+        <ArrowsClockwise weight="bold" className="size-3.5" />
         {busy ? 'Syncing…' : 'Sync from GitHub'}
       </button>
     </div>

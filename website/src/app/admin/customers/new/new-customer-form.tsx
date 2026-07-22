@@ -1,5 +1,6 @@
 'use client'
 
+import Link from 'next/link'
 import { useState } from 'react'
 import { CheckCircle, Copy } from '@phosphor-icons/react'
 
@@ -107,12 +108,12 @@ export function NewCustomerForm() {
               </div>
               <div>
                 <div className="text-xs text-muted-foreground">Mark paid</div>
-                <a
+                <Link
                   href={`/admin/licenses/${result.license.id}`}
                   className="text-sm text-primary underline-offset-4 hover:underline"
                 >
                   Go to licence detail →
-                </a>
+                </Link>
               </div>
             </div>
           </div>
@@ -131,12 +132,12 @@ export function NewCustomerForm() {
           >
             Create another
           </button>
-          <a
+          <Link
             href={`/admin/users/${result.user.id}`}
             className="text-sm px-3 py-1.5 rounded-md bg-primary text-primary-foreground hover:opacity-90"
           >
             View customer →
-          </a>
+          </Link>
         </div>
       </div>
     )
@@ -237,12 +238,12 @@ export function NewCustomerForm() {
       ) : null}
 
       <div className="flex justify-end gap-2">
-        <a
+        <Link
           href="/admin/users"
           className="h-10 px-4 grid place-items-center rounded-md border border-border text-sm hover:bg-accent"
         >
           Cancel
-        </a>
+        </Link>
         <button
           type="submit"
           disabled={busy}

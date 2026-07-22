@@ -75,11 +75,11 @@ export default async function AdminAuditDetailPage({ params }: PageProps) {
       </div>
 
       {entry.metadata != null && (
-        <details open className="rounded-md border border-foreground/10 bg-foreground/[0.02] p-4">
-          <summary className="cursor-pointer font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+        <details open className="rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] p-4">
+          <summary className="cursor-pointer font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--color-fg-muted)]">
             Metadata
           </summary>
-          <pre className="mt-3 text-[11px] text-foreground/80 whitespace-pre-wrap break-all">
+          <pre className="mt-3 text-[11px] text-[var(--color-fg)] whitespace-pre-wrap break-all">
             {JSON.stringify(entry.metadata, null, 2)}
           </pre>
         </details>
@@ -91,8 +91,8 @@ export default async function AdminAuditDetailPage({ params }: PageProps) {
 function Field({ label, value, className = '' }: { label: string; value?: React.ReactNode; className?: string }) {
   return (
     <div className={`flex flex-col gap-0.5 ${className}`}>
-      <dt className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">{label}</dt>
-      <dd className="text-[14px] text-foreground/90">{value || <span className="text-muted-foreground/60">—</span>}</dd>
+      <dt className="font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--color-fg-muted)]">{label}</dt>
+      <dd className="text-[14px] text-[var(--color-fg)]">{value || <span className="text-[var(--color-fg-subtle)]">—</span>}</dd>
     </div>
   )
 }

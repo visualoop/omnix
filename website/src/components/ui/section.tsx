@@ -35,9 +35,9 @@ export function Section({
 }: SectionProps) {
   const padMap = {
     none: '',
-    tight: 'py-14 sm:py-20',
-    default: 'py-20 sm:py-28 lg:py-32',
-    loose: 'py-28 sm:py-36 lg:py-44',
+    tight: 'section-tight',
+    default: 'section',
+    loose: 'section-loose',
   } as const
   return (
     <Tag
@@ -54,26 +54,14 @@ export function Section({
   )
 }
 
-/** Small uppercase label above section headlines. Uses --font-ui (Plus Jakarta) tracking. */
+/** Small operational label above section headlines. */
 export function Eyebrow({
   className,
   ...rest
 }: React.HTMLAttributes<HTMLSpanElement>) {
-  return (
-    <span
-      className={cn(
-        "inline-flex items-center gap-2 font-[family-name:var(--font-ui)] text-[11px] font-semibold uppercase tracking-[0.22em] text-[var(--color-accent)]",
-        className,
-      )}
-      {...rest}
-    />
-  )
+  return <span className={cn('eyebrow', className)} {...rest} />
 }
 
-/**
- * Display heading — Fraunces serif, italic word emphasis supported via <Italic> child.
- * Pass children as <>plain text <Italic>italic word</Italic> more text</>.
- */
 interface HeadingProps {
   level?: 1 | 2 | 3
   children: React.ReactNode
@@ -83,17 +71,17 @@ interface HeadingProps {
 
 export function Heading({ level = 2, children, className, align = 'left' }: HeadingProps) {
   const sizeMap = {
-    1: 'text-[clamp(40px,6vw,84px)] leading-[1.02] tracking-[-0.025em]',
-    2: 'text-[clamp(32px,4.5vw,60px)] leading-[1.05] tracking-[-0.02em]',
-    3: 'text-[clamp(24px,2.6vw,36px)] leading-[1.1] tracking-[-0.015em]',
+    1: 'text-[clamp(42px,6.5vw,88px)] leading-[0.96] tracking-[-0.05em]',
+    2: 'text-[clamp(36px,4.6vw,64px)] leading-none tracking-[-0.045em]',
+    3: 'text-[clamp(25px,2.6vw,38px)] leading-[1.08] tracking-[-0.035em]',
   } as const
-  const Tag = (`h${level}` as 'h1' | 'h2' | 'h3')
+  const Tag = `h${level}` as 'h1' | 'h2' | 'h3'
   return (
     <Tag
       className={cn(
-        'font-[family-name:var(--font-display)] font-normal text-balance text-[var(--color-fg)]',
+        'font-display font-semibold text-balance text-[var(--color-fg)]',
         sizeMap[level],
-        align === 'center' ? 'text-center' : '',
+        align === 'center' && 'text-center',
         className,
       )}
     >
@@ -102,15 +90,10 @@ export function Heading({ level = 2, children, className, align = 'left' }: Head
   )
 }
 
-/** Italic word inside a Heading — Fraunces light italic */
+/** Compatibility helper: emphasis is colour and weight, never decorative italics. */
 export function Italic({ children, className }: { children: React.ReactNode; className?: string }) {
   return (
-    <span
-      className={cn(
-        'italic font-light text-[var(--color-fg-muted)]',
-        className,
-      )}
-    >
+    <span className={cn('font-inherit font-semibold not-italic text-[var(--color-accent)]', className)}>
       {children}
     </span>
   )
@@ -140,10 +123,7 @@ export function SectionHeader({
       )}
     >
       {eyebrow ? (
-        <Eyebrow>
-          <span className="size-1 rounded-full bg-[var(--color-accent)]" />
-          {eyebrow}
-        </Eyebrow>
+        <Eyebrow>{eyebrow}</Eyebrow>
       ) : null}
       <Heading level={2} align={align}>
         {title}

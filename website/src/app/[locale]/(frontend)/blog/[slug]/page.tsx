@@ -1,132 +1,138 @@
+/* Hallmark · Working Counter · long-form article */
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
-import { ArrowLeft, ArrowRight } from '@/components/icons'
-import { Container } from '@/components/ui/section'
-import { POSTS_SEED, postBySlug, postSlugs, relatedPosts } from '@/lib/blog-seed'
-import { ArticleJsonLd } from '@/components/seo/jsonld'
 
-const CATEGORY_LABEL = {
+import { ArrowLeft, Icon } from '@/components/icons'
+import { PageContainer } from '@/components/layout/layout-primitives'
+import { ArticleJsonLd } from '@/components/seo/jsonld'
+import { buildAlternatesLanguages } from '@/lib/hreflang'
+import { buildSocialMetadata } from '@/lib/seo-metadata'
+import { postBySlug, postSlugs, relatedPosts, type BlogPostSeed } from '@/lib/blog-seed'
+
+export const dynamicParams = false
+
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://omnix.co.ke'
+
+const CATEGORY_LABEL: Record<BlogPostSeed['category'], string> = {
   product: 'Product',
   industry: 'Industry',
   tutorial: 'Tutorial',
   announcement: 'Announcement',
-} as const
+}
 
-export async function generateStaticParams() {
+export function generateStaticParams() {
   return postSlugs().map((slug) => ({ slug }))
 }
 
 export async function generateMetadata({
   params,
 }: {
-  params: Promise<{ slug: string }>
+  params: Promise<{ locale: string; slug: string }>
 }): Promise<Metadata> {
-  const { slug } = await params
+  const { locale, slug } = await params
   const post = postBySlug(slug)
-  if (!post) return { title: 'Post not found' }
+  if (!post) {
+    return { title: 'Post not found', robots: { index: false, follow: false } }
+  }
+  const canonical = `${SITE_URL}/${locale}/blog/${post.slug}`
   return {
     title: post.title,
     description: post.excerpt,
-    openGraph: {
+    alternates: {
+      canonical,
+      languages: buildAlternatesLanguages(`/blog/${post.slug}`),
+    },
+    ...buildSocialMetadata({
+      locale,
+      url: canonical,
       title: post.title,
       description: post.excerpt,
       type: 'article',
       publishedTime: post.publishedAt,
       authors: [post.author],
-    },
+    }),
   }
+}
+
+function slugifyHeading(text: string): string {
+  return text.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
+}
+
+function formatPublished(iso: string): string {
+  const date = new Date(iso)
+  if (Number.isNaN(date.getTime())) return iso
+  return date.toLocaleDateString('en-KE', { day: 'numeric', month: 'long', year: 'numeric' })
 }
 
 export default async function BlogPostPage({
   params,
 }: {
-  params: Promise<{ slug: string }>
+  params: Promise<{ locale: string; slug: string }>
 }) {
-  const { slug } = await params
+  const { locale, slug } = await params
   const post = postBySlug(slug)
   if (!post) notFound()
 
   const related = relatedPosts(slug, 3)
-
-  // Tiny markdown-ish parser: split paragraphs, recognise **bold** and ## headers
   const blocks = post.body.split('\n\n').map((block) => block.trim()).filter(Boolean)
 
   return (
-    <>
+    <article className="min-w-0 border-b border-[var(--color-border)]">
       <ArticleJsonLd
         headline={post.title}
         description={post.excerpt}
-        url={`https://omnix.co.ke/blog/${post.slug}`}
+        url={`${SITE_URL}/${locale}/blog/${post.slug}`}
         datePublished={post.publishedAt}
       />
-      <article className="pt-24 sm:pt-28">
-        <Container width="default">
+
+      <article className="min-w-0">
+        <PageContainer width="text" className="py-[var(--space-section-tight)] sm:py-[var(--space-section)]">
           <Link
-            href="/blog"
-            className="inline-flex items-center gap-1.5 text-[13px] text-[var(--color-fg-subtle)] hover:text-[var(--color-fg)]"
+            href={`/${locale}/blog`}
+            className="inline-flex items-center gap-1.5 font-mono text-[11px] uppercase tracking-[0.16em] text-[var(--color-fg-subtle)] transition-colors hover:text-[var(--color-fg)]"
           >
-            <ArrowLeft className="size-3.5" />
+            <ArrowLeft className="size-3.5" weight="bold" />
             All articles
           </Link>
 
-          <div className="mt-10 flex flex-col gap-6">
-            <div className="flex items-center gap-3 text-[11px] font-semibold uppercase tracking-[0.18em]">
-              <span className="rounded-full bg-[var(--color-accent-soft)] px-2.5 py-1 text-[var(--color-accent-hover)]">
-                {CATEGORY_LABEL[post.category]}
-              </span>
-              <time className="text-[var(--color-fg-subtle)]">{post.publishedAt}</time>
-              <span className="text-[var(--color-border-strong)]">·</span>
-              <span className="text-[var(--color-fg-subtle)]">{post.readTime} min read</span>
-            </div>
-            <h1 className="text-balance font-display text-[clamp(36px,5vw,72px)] font-medium leading-[1.05] tracking-[-0.02em] text-[var(--color-fg)]">
+          <header className="mt-8 border-b border-[var(--color-border)] pb-10">
+            <p className="flex flex-wrap items-center gap-x-3 gap-y-1 font-mono text-[10px] uppercase tracking-[0.16em] text-[var(--color-fg-subtle)]">
+              <span className="text-[var(--color-accent)]">{CATEGORY_LABEL[post.category]}</span>
+              <span aria-hidden>·</span>
+              <time dateTime={post.publishedAt}>{formatPublished(post.publishedAt)}</time>
+              <span aria-hidden>·</span>
+              <span>{post.readTime} min read</span>
+            </p>
+            <h1 className="mt-5 max-w-[20ch] text-balance text-[clamp(2.2rem,5vw,4rem)] font-semibold leading-[1.0] tracking-[-0.045em] text-[var(--color-fg)]">
               {post.title}
             </h1>
-            <p className="max-w-2xl text-balance text-[18px] leading-[1.55] text-[var(--color-fg-muted)] sm:text-[20px]">
+            <p className="mt-6 max-w-[60ch] text-[clamp(1.05rem,1.6vw,1.25rem)] leading-[1.6] text-[var(--color-fg-muted)]">
               {post.excerpt}
             </p>
-            <div className="flex items-center gap-3 text-[13px] text-[var(--color-fg-subtle)]">
-              <span className="inline-flex size-9 items-center justify-center rounded-full bg-[var(--color-accent-soft)] font-mono text-[12px] font-semibold text-[var(--color-accent-hover)]">
-                {post.author
-                  .split(' ')
-                  .map((n) => n[0])
-                  .join('')
-                  .slice(0, 2)
-                  .toUpperCase()}
-              </span>
-              <span className="text-[var(--color-fg)]">{post.author}</span>
-            </div>
-          </div>
-        </Container>
+            <p className="mt-6 text-[13px] text-[var(--color-fg-subtle)]">
+              By <span className="text-[var(--color-fg)]">{post.author}</span>
+            </p>
+          </header>
 
-        {/* Hero placeholder visual */}
-        <Container width="default" className="mt-14">
-          <div className="relative aspect-[16/8] overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[radial-gradient(60%_60%_at_50%_30%,var(--color-accent-soft),transparent_70%)]">
-            <div className="absolute inset-0 flex items-center justify-center">
-              <div className="font-display text-[140px] font-medium leading-none text-[var(--color-accent)] opacity-25 sm:text-[200px]">
-                D
-              </div>
-            </div>
-          </div>
-        </Container>
-
-        {/* Body */}
-        <Container width="narrow" className="mt-14 mb-24">
-          <div className="prose prose-invert max-w-none">
+          {/* Body */}
+          <div className="mt-10">
             {blocks.map((block, i) => {
               if (block.startsWith('## ')) {
+                const text = block.slice(3)
                 return (
                   <h2
                     key={i}
-                    className="mt-12 font-display text-[28px] font-medium leading-tight text-[var(--color-fg)]"
+                    id={slugifyHeading(text)}
+                    className="mt-12 scroll-mt-24 text-[clamp(1.5rem,2.6vw,2rem)] font-semibold leading-[1.15] tracking-[-0.03em] text-[var(--color-fg)]"
                   >
-                    {renderInline(block.slice(3))}
+                    {renderInline(text)}
                   </h2>
                 )
               }
               if (block.startsWith('- ')) {
                 return (
-                  <ul key={i} className="my-5 list-disc space-y-2 pl-6 text-[17px] leading-[1.7] text-[var(--color-fg-muted)]">
+                  <ul key={i} className="my-6 list-disc space-y-2 pl-6 text-[16px] leading-[1.75] text-[var(--color-fg-muted)] marker:text-[var(--color-border-strong)]">
                     {block.split('\n').map((line, j) => (
                       <li key={j}>{renderInline(line.replace(/^- /, ''))}</li>
                     ))}
@@ -134,57 +140,54 @@ export default async function BlogPostPage({
                 )
               }
               return (
-                <p
-                  key={i}
-                  className="my-5 text-[17px] leading-[1.7] text-[var(--color-fg-muted)]"
-                >
+                <p key={i} className="my-6 text-[16px] leading-[1.8] text-[var(--color-fg-muted)]">
                   {renderInline(block)}
                 </p>
               )
             })}
           </div>
-        </Container>
-      </article>
+        </PageContainer>
 
-      {/* Related posts */}
-      {related.length > 0 ? (
-        <section className="border-t border-[var(--color-border)] py-20">
-          <Container width="wide">
-            <h2 className="font-display text-[24px] font-medium text-[var(--color-fg)] sm:text-[28px]">
+        {/* Read next */}
+        {related.length > 0 ? (
+          <PageContainer width="wide" className="border-t border-[var(--color-border)] py-14 sm:py-16">
+            <h2 className="text-[clamp(1.4rem,3vw,2rem)] font-semibold leading-none tracking-[-0.04em] text-[var(--color-fg)]">
               Read next
             </h2>
-            <div className="mt-8 grid grid-cols-1 gap-3 md:grid-cols-3">
+            <ol className="mt-8 min-w-0">
               {related.map((p) => (
-                <Link
-                  key={p.slug}
-                  href={`/blog/${p.slug}`}
-                  className="group flex flex-col gap-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-6 transition-colors hover:border-[var(--color-border-strong)]"
-                >
-                  <span className="inline-flex w-fit rounded-full bg-[var(--color-accent-soft)] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.18em] text-[var(--color-accent-hover)]">
-                    {CATEGORY_LABEL[p.category]}
-                  </span>
-                  <h3 className="font-display text-[18px] font-medium leading-tight text-[var(--color-fg)]">
-                    {p.title}
-                  </h3>
-                  <p className="text-[13px] leading-[1.5] text-[var(--color-fg-muted)]">
-                    {p.excerpt}
-                  </p>
-                  <span className="mt-auto inline-flex items-center gap-1.5 text-[12px] font-medium text-[var(--color-fg-muted)] transition-colors group-hover:text-[var(--color-accent)]">
-                    Read article
-                    <ArrowRight className="size-3.5" />
-                  </span>
-                </Link>
+                <li key={p.slug} className="min-w-0 border-t border-[var(--color-border)] first:border-t-0">
+                  <Link
+                    href={`/${locale}/blog/${p.slug}`}
+                    className="group grid min-w-0 items-baseline gap-2 py-6 lg:grid-cols-[9rem_minmax(0,1fr)_auto] lg:gap-8"
+                  >
+                    <span className="font-mono text-[10px] uppercase tracking-[0.16em] text-[var(--color-accent)]">
+                      {CATEGORY_LABEL[p.category]}
+                    </span>
+                    <div className="min-w-0">
+                      <h3 className="max-w-[36ch] text-[clamp(1.05rem,1.8vw,1.375rem)] font-semibold leading-[1.15] tracking-[-0.03em] text-[var(--color-fg)] transition-colors group-hover:text-[var(--color-accent)]">
+                        {p.title}
+                      </h3>
+                      <p className="mt-1.5 max-w-[62ch] text-[13px] leading-[1.6] text-[var(--color-fg-muted)]">
+                        {p.excerpt}
+                      </p>
+                    </div>
+                    <Icon.ArrowRight
+                      className="hidden size-4 self-center text-[var(--color-fg-subtle)] transition-all group-hover:translate-x-0.5 group-hover:text-[var(--color-accent)] lg:block"
+                      weight="bold"
+                    />
+                  </Link>
+                </li>
               ))}
-            </div>
-          </Container>
-        </section>
-      ) : null}
-    </>
+            </ol>
+          </PageContainer>
+        ) : null}
+      </article>
+    </article>
   )
 }
 
 function renderInline(text: string): React.ReactNode {
-  // Replace **text** with <strong>
   const parts = text.split(/(\*\*[^*]+\*\*)/g)
   return parts.map((part, i) => {
     if (part.startsWith('**') && part.endsWith('**')) {

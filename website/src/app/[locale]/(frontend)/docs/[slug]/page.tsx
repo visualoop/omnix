@@ -1,195 +1,349 @@
+/* Hallmark · Working Counter · documentation article */
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
-import { ArrowLeft, ArrowRight } from '@/components/icons'
-import { Container } from '@/components/ui/section'
-import { getSiteSettings } from '@/lib/site-settings'
-import { DOCS_SEED, docBySlug, docSlugs } from '@/lib/docs-seed'
 
-export async function generateStaticParams() {
-  return docSlugs().map((slug) => ({ slug }))
+import { ArrowLeft, Icon } from '@/components/icons'
+import { PageContainer } from '@/components/layout/layout-primitives'
+import { Button } from '@/components/ui/button'
+import { buildAlternatesLanguages } from '@/lib/hreflang'
+import { buildSocialMetadata } from '@/lib/seo-metadata'
+import { DOCS_SEED, docBySlug, docSlugs } from '@/lib/docs-seed'
+import { isDocPlaceholder, isLegacyExcludedDocSlug, isPublishedDoc } from '@/lib/docs-visibility'
+import { getSiteSettings } from '@/lib/site-settings'
+
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://omnix.co.ke'
+
+export const dynamicParams = false
+
+export function generateStaticParams() {
+  return docSlugs()
+    .filter((slug) => !isLegacyExcludedDocSlug(slug))
+    .map((slug) => ({ slug }))
 }
 
 export async function generateMetadata({
   params,
 }: {
-  params: Promise<{ slug: string }>
+  params: Promise<{ locale: string; slug: string }>
 }): Promise<Metadata> {
-  const { slug } = await params
+  const { locale, slug } = await params
   const doc = docBySlug(slug)
-  if (!doc) return { title: 'Doc not found' }
-  return {
-    title: `${doc.title} — docs`,
-    description: doc.excerpt,
+  if (!doc) {
+    return { title: 'Doc not found', robots: { index: false, follow: false } }
   }
+  // Legacy docs retired from the public surface keep their route for old
+  // links but must never be indexed and must not expose their old
+  // title/excerpt — treat them exactly like an unknown doc for metadata.
+  if (isLegacyExcludedDocSlug(slug)) {
+    return { title: 'Doc not found', robots: { index: false, follow: false } }
+  }
+  // Placeholder scaffolds keep their route but must never be indexed.
+  if (isDocPlaceholder(doc)) {
+    return {
+      title: `${doc.title} — Omnix docs`,
+      description: doc.excerpt,
+      robots: { index: false, follow: true },
+    }
+  }
+  const canonical = `${SITE_URL}/${locale}/docs/${doc.slug}`
+  return {
+    title: `${doc.title} — Omnix docs`,
+    description: doc.excerpt,
+    alternates: {
+      canonical,
+      languages: buildAlternatesLanguages(`/docs/${doc.slug}`),
+    },
+    ...buildSocialMetadata({
+      locale,
+      url: canonical,
+      title: `${doc.title} — Omnix docs`,
+      description: doc.excerpt,
+      type: 'article',
+    }),
+  }
+}
+
+function slugifyHeading(text: string): string {
+  return text.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
 }
 
 export default async function DocPage({
   params,
 }: {
-  params: Promise<{ slug: string }>
+  params: Promise<{ locale: string; slug: string }>
 }) {
-  const settings = await getSiteSettings();
-  const { slug } = await params
+  const [{ locale, slug }, settings] = await Promise.all([params, getSiteSettings()])
   const doc = docBySlug(slug)
   if (!doc) notFound()
+
+  // Legacy public exclusion: this doc was retired from the public surface.
+  // Fail closed — do not render its title/excerpt/body; behave as if the
+  // route does not exist (generateMetadata already returns generic noindex).
+  if (isLegacyExcludedDocSlug(slug)) notFound()
+
+  const docsHref = `/${locale}/docs`
+  const demoHref = `/${locale}/contact?type=demo`
+
+  // Placeholder scaffold: show an honest "being written" state instead of
+  // the raw TODO body, and (via generateMetadata) keep it out of the index.
+  if (isDocPlaceholder(doc)) {
+    return (
+      <article className="min-w-0 border-b border-[var(--color-border)]">
+        <PageContainer width="text" className="py-[var(--space-section-tight)] sm:py-[var(--space-section)]">
+          <Link
+            href={docsHref}
+            className="inline-flex items-center gap-1.5 font-mono text-[11px] uppercase tracking-[0.16em] text-[var(--color-fg-subtle)] transition-colors hover:text-[var(--color-fg)]"
+          >
+            <ArrowLeft className="size-3.5" weight="bold" />
+            All docs
+          </Link>
+          <div className="mt-10 border-t-2 border-[var(--color-fg)] pt-8">
+            <p className="caption-mono text-[var(--color-accent)]">{doc.category}</p>
+            <h1 className="mt-4 max-w-[18ch] text-balance text-[clamp(2rem,5vw,3.5rem)] font-semibold leading-[1.0] tracking-[-0.045em] text-[var(--color-fg)]">
+              {doc.title}
+            </h1>
+            <p className="mt-6 max-w-[58ch] text-[16px] leading-[1.7] text-[var(--color-fg-muted)]">
+              This guide is being written. Rather than publish a placeholder, we&rsquo;ve left it
+              out of search until it&rsquo;s genuinely useful. {doc.excerpt}
+            </p>
+            <p className="mt-4 max-w-[58ch] text-[15px] leading-[1.7] text-[var(--color-fg-muted)]">
+              Need this now? Book a demo and we&rsquo;ll walk you through it, or email{' '}
+              <a
+                className="underline decoration-[var(--color-border-strong)] underline-offset-4 hover:decoration-[var(--color-accent)]"
+                href={`mailto:${settings.supportEmail}`}
+              >
+                {settings.supportEmail}
+              </a>
+              .
+            </p>
+            <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+              <Button asChild size="lg" className="w-full sm:w-auto">
+                <Link href={demoHref}>Book a demo</Link>
+              </Button>
+              <Button asChild variant="outline" size="lg" className="w-full sm:w-auto">
+                <Link href={docsHref}>Browse all docs</Link>
+              </Button>
+            </div>
+          </div>
+        </PageContainer>
+      </article>
+    )
+  }
 
   const blocks = doc.body.split('\n\n').map((b) => b.trim()).filter(Boolean)
   const headings = blocks.filter((b) => b.startsWith('## ')).map((b) => b.slice(3))
 
-  // Show 3 next docs from same category
-  const others = DOCS_SEED.filter((d) => d.category === doc.category && d.slug !== slug).slice(0, 3)
+  // Related = other published docs in the same category (placeholder scaffolds
+  // and legacy-excluded docs are filtered out by isPublishedDoc).
+  const related = DOCS_SEED.filter(
+    (d) => d.category === doc.category && d.slug !== slug && isPublishedDoc(d),
+  ).slice(0, 4)
 
   return (
-    <article className="pt-24 sm:pt-28">
-      <Container width="wide">
+    <article className="min-w-0 border-b border-[var(--color-border)]">
+      <PageContainer width="wide" className="py-[var(--space-section-tight)] sm:py-[var(--space-section)]">
         <Link
-          href="/docs"
-          className="inline-flex items-center gap-1.5 text-[13px] text-[var(--color-fg-subtle)] hover:text-[var(--color-fg)]"
+          href={docsHref}
+          className="inline-flex items-center gap-1.5 font-mono text-[11px] uppercase tracking-[0.16em] text-[var(--color-fg-subtle)] transition-colors hover:text-[var(--color-fg)]"
         >
-          <ArrowLeft className="size-3.5" />
+          <ArrowLeft className="size-3.5" weight="bold" />
           All docs
         </Link>
 
-        <div className="mt-12 grid grid-cols-1 gap-12 lg:grid-cols-[1fr_220px] lg:gap-16">
-          {/* Body */}
-          <div>
-            <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--color-accent)]">
-              {doc.category}
-            </div>
-            <h1 className="mt-4 text-balance font-display text-[clamp(32px,4vw,52px)] font-medium leading-[1.05] tracking-[-0.02em] text-[var(--color-fg)]">
-              {doc.title}
-            </h1>
-            <p className="mt-4 max-w-2xl text-balance text-[18px] leading-[1.55] text-[var(--color-fg-muted)]">
-              {doc.excerpt}
-            </p>
+        <div className="mt-10 grid min-w-0 grid-cols-1 gap-12 lg:grid-cols-[minmax(0,1fr)_15rem] lg:gap-16">
+          {/* Article */}
+          <article className="min-w-0 max-w-[72ch]">
+            <header className="border-b border-[var(--color-border)] pb-8">
+              <p className="caption-mono text-[var(--color-accent)]">{doc.category}</p>
+              <h1 className="mt-4 max-w-[20ch] text-balance text-[clamp(2rem,4.5vw,3.5rem)] font-semibold leading-[1.02] tracking-[-0.045em] text-[var(--color-fg)]">
+                {doc.title}
+              </h1>
+              <p className="mt-5 max-w-[60ch] text-[clamp(1.05rem,1.6vw,1.2rem)] leading-[1.6] text-[var(--color-fg-muted)]">
+                {doc.excerpt}
+              </p>
+            </header>
 
-            <div className="prose prose-invert mt-12 max-w-none">
+            <div className="mt-8">
               {blocks.map((block, i) => {
                 if (block.startsWith('## ')) {
                   const text = block.slice(3)
-                  const id = text.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
                   return (
                     <h2
                       key={i}
-                      id={id}
-                      className="mt-12 scroll-mt-24 font-display text-[24px] font-medium leading-tight text-[var(--color-fg)] sm:text-[28px]"
+                      id={slugifyHeading(text)}
+                      className="mt-11 scroll-mt-24 text-[clamp(1.4rem,2.4vw,1.85rem)] font-semibold leading-[1.15] tracking-[-0.03em] text-[var(--color-fg)]"
                     >
-                      {text}
+                      {renderInline(text, locale)}
                     </h2>
                   )
                 }
                 if (block.startsWith('- ')) {
                   return (
-                    <ul key={i} className="my-5 list-disc space-y-2 pl-6 text-[16px] leading-[1.7] text-[var(--color-fg-muted)]">
+                    <ul key={i} className="my-5 list-disc space-y-2 pl-6 text-[15px] leading-[1.75] text-[var(--color-fg-muted)] marker:text-[var(--color-border-strong)]">
                       {block.split('\n').map((line, j) => (
-                        <li key={j}>{renderInline(line.replace(/^- /, ''))}</li>
+                        <li key={j}>{renderInline(line.replace(/^- /, ''), locale)}</li>
                       ))}
                     </ul>
                   )
                 }
                 return (
-                  <p
-                    key={i}
-                    className="my-5 text-[16px] leading-[1.7] text-[var(--color-fg-muted)]"
-                  >
-                    {renderInline(block)}
+                  <p key={i} className="my-5 text-[15px] leading-[1.8] text-[var(--color-fg-muted)]">
+                    {renderInline(block, locale)}
                   </p>
                 )
               })}
             </div>
 
-            {/* Was this helpful? */}
-            <div className="mt-16 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-6">
-              <h3 className="font-display text-[18px] font-medium text-[var(--color-fg)]">
-                Was this helpful?
-              </h3>
-              <p className="mt-1 text-[13px] text-[var(--color-fg-muted)]">
-                If something is wrong or missing, WhatsApp the owner. We update the docs every
-                time a real question comes in.
+            {/* Was this helpful — demo-led, no card shadow */}
+            <div className="mt-14 border-t-2 border-[var(--color-fg)] pt-8">
+              <h2 className="text-[clamp(1.3rem,2.4vw,1.75rem)] font-semibold leading-none tracking-[-0.035em] text-[var(--color-fg)]">
+                Something missing?
+              </h2>
+              <p className="mt-4 max-w-[58ch] text-[14px] leading-6 text-[var(--color-fg-muted)]">
+                If a step is wrong or unclear, tell us — we update the docs when a real question
+                comes in. Book a demo for a walkthrough, or email{' '}
+                <a
+                  className="underline decoration-[var(--color-border-strong)] underline-offset-4 hover:decoration-[var(--color-accent)]"
+                  href={`mailto:${settings.supportEmail}`}
+                >
+                  {settings.supportEmail}
+                </a>
+                .
               </p>
-              <div className="mt-4 flex flex-wrap gap-2">
-                <a
-                  href={settings.whatsappUrl ?? `mailto:${settings.supportEmail}`}
-                  className="rounded-md border border-[var(--color-border-strong)] px-4 py-2 text-[12px] font-medium text-[var(--color-fg)] hover:border-[var(--color-fg-subtle)]"
-                >
-                  WhatsApp the owner
-                </a>
-                <a
-                  href="mailto:support@omnix.co.ke"
-                  className="rounded-md border border-[var(--color-border-strong)] px-4 py-2 text-[12px] font-medium text-[var(--color-fg)] hover:border-[var(--color-fg-subtle)]"
-                >
-                  Email support
-                </a>
+              <div className="mt-6 flex flex-col gap-3 sm:flex-row">
+                <Button asChild variant="outline" size="lg" className="w-full sm:w-auto">
+                  <Link href={demoHref}>Book a demo</Link>
+                </Button>
+                {settings.whatsappUrl ? (
+                  <Button asChild variant="ghost" size="lg" className="w-full sm:w-auto">
+                    <a
+                      href={`${settings.whatsappUrl}${settings.whatsappUrl.includes('?') ? '&' : '?'}text=${encodeURIComponent(`Hi Omnix, I have a question about the ${doc.title} guide.`)}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      Ask on WhatsApp
+                    </a>
+                  </Button>
+                ) : null}
               </div>
             </div>
 
-            {/* Related */}
-            {others.length > 0 ? (
-              <div className="mt-16 border-t border-[var(--color-border)] pt-12">
-                <h3 className="font-display text-[20px] font-medium text-[var(--color-fg)]">
+            {/* More in category */}
+            {related.length > 0 ? (
+              <div className="mt-12 border-t border-[var(--color-border)] pt-10">
+                <h2 className="text-[15px] font-semibold uppercase tracking-[0.02em] text-[var(--color-fg)]">
                   More in {doc.category}
-                </h3>
-                <ul className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2">
-                  {others.map((d) => (
-                    <li key={d.slug}>
+                </h2>
+                <ol className="mt-5 min-w-0">
+                  {related.map((d) => (
+                    <li key={d.slug} className="min-w-0 border-t border-[var(--color-border)] first:border-t-0">
                       <Link
-                        href={`/docs/${d.slug}`}
-                        className="group flex flex-col gap-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] p-5 transition-colors hover:border-[var(--color-border-strong)]"
+                        href={`/${locale}/docs/${d.slug}`}
+                        className="group grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-start gap-4 py-4"
                       >
-                        <h4 className="font-display text-[16px] font-medium text-[var(--color-fg)]">
-                          {d.title}
-                        </h4>
-                        <p className="text-[12px] leading-[1.45] text-[var(--color-fg-muted)]">
-                          {d.excerpt}
-                        </p>
+                        <div className="min-w-0">
+                          <h3 className="text-[15px] font-semibold leading-[1.3] text-[var(--color-fg)] transition-colors group-hover:text-[var(--color-accent)]">
+                            {d.title}
+                          </h3>
+                          <p className="mt-1 max-w-[60ch] text-[13px] leading-[1.55] text-[var(--color-fg-muted)]">
+                            {d.excerpt}
+                          </p>
+                        </div>
+                        <Icon.ArrowRight
+                          className="mt-1 size-4 shrink-0 text-[var(--color-fg-subtle)] transition-all group-hover:translate-x-0.5 group-hover:text-[var(--color-accent)]"
+                          weight="bold"
+                        />
                       </Link>
                     </li>
                   ))}
-                </ul>
+                </ol>
               </div>
             ) : null}
-          </div>
+          </article>
 
-          {/* Right rail TOC */}
+          {/* On-this-page rail */}
           {headings.length > 0 ? (
-            <aside className="lg:sticky lg:top-24 lg:h-fit">
-              <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[var(--color-fg-subtle)]">
-                On this page
-              </div>
-              <ul className="mt-4 space-y-2 border-l border-[var(--color-border)] pl-4 text-[12px]">
-                {headings.map((h) => {
-                  const id = h.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
-                  return (
-                    <li key={id}>
+            <aside className="order-first lg:order-none lg:sticky lg:top-24 lg:h-fit">
+              <nav aria-label="On this page">
+                <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-[var(--color-fg-subtle)]">
+                  On this page
+                </p>
+                <ol className="mt-4 space-y-1 border-l border-[var(--color-border)]">
+                  {headings.map((h) => (
+                    <li key={h}>
                       <a
-                        href={`#${id}`}
-                        className="text-[var(--color-fg-muted)] transition-colors hover:text-[var(--color-accent)]"
+                        href={`#${slugifyHeading(h)}`}
+                        className="-ml-px block border-l border-transparent py-1.5 pl-4 text-[13px] leading-5 text-[var(--color-fg-muted)] transition-colors hover:border-[var(--color-accent)] hover:text-[var(--color-fg)]"
                       >
                         {h}
                       </a>
                     </li>
-                  )
-                })}
-              </ul>
+                  ))}
+                </ol>
+              </nav>
             </aside>
           ) : null}
         </div>
-      </Container>
+      </PageContainer>
     </article>
   )
 }
 
-function renderInline(text: string): React.ReactNode {
-  const parts = text.split(/(\*\*[^*]+\*\*)/g)
-  return parts.map((part, i) => {
-    if (part.startsWith('**') && part.endsWith('**')) {
-      return (
-        <strong key={i} className="font-semibold text-[var(--color-fg)]">
-          {part.slice(2, -2)}
-        </strong>
-      )
+function renderInline(text: string, locale: string): React.ReactNode {
+  const nodes: React.ReactNode[] = []
+  // Match bold, inline code, or a markdown link.
+  const regex = /(\*\*[^*]+\*\*)|(`[^`]+`)|(\[[^\]]+\]\([^)]+\))/g
+  const linkClass =
+    'text-[var(--color-accent)] underline decoration-[var(--color-border-strong)] underline-offset-4 hover:decoration-[var(--color-accent)]'
+  let lastIndex = 0
+  let key = 0
+  let match: RegExpExecArray | null
+  while ((match = regex.exec(text)) !== null) {
+    if (match.index > lastIndex) {
+      nodes.push(<span key={key++}>{text.slice(lastIndex, match.index)}</span>)
     }
-    return <span key={i}>{part}</span>
-  })
+    const token = match[0]
+    if (token.startsWith('**')) {
+      nodes.push(
+        <strong key={key++} className="font-semibold text-[var(--color-fg)]">
+          {token.slice(2, -2)}
+        </strong>,
+      )
+    } else if (token.startsWith('`')) {
+      nodes.push(
+        <code
+          key={key++}
+          className="rounded-[var(--radius-xs)] bg-[var(--color-surface)] px-1.5 py-0.5 font-mono text-[0.9em] text-[var(--color-fg)]"
+        >
+          {token.slice(1, -1)}
+        </code>,
+      )
+    } else {
+      const link = /^\[([^\]]+)\]\(([^)]+)\)$/.exec(token)
+      const label = link?.[1] ?? token
+      const url = link?.[2] ?? ''
+      if (/^https?:\/\//.test(url)) {
+        nodes.push(
+          <a key={key++} href={url} target="_blank" rel="noopener noreferrer" className={linkClass}>
+            {label}
+          </a>,
+        )
+      } else if (url.startsWith('/')) {
+        // Keep internal links inside the active locale.
+        nodes.push(
+          <Link key={key++} href={`/${locale}${url}`} className={linkClass}>
+            {label}
+          </Link>,
+        )
+      } else {
+        nodes.push(<span key={key++}>{label}</span>)
+      }
+    }
+    lastIndex = regex.lastIndex
+  }
+  if (lastIndex < text.length) {
+    nodes.push(<span key={key++}>{text.slice(lastIndex)}</span>)
+  }
+  return nodes
 }

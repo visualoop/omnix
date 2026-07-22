@@ -1,117 +1,110 @@
-import Link from 'next/link'
-import { ArrowRight, CheckCircle2, Download, FileText, Sparkles } from '@/components/icons'
-import { Button } from '@/components/ui/button'
+import { headers } from 'next/headers'
+import { redirect } from 'next/navigation'
+import { and, desc, eq } from 'drizzle-orm'
+import { auth } from '@/lib/auth'
+import { db, payments, licenses } from '@/db'
+import { verify } from '@/lib/paystack'
+import {
+  deriveCheckoutView,
+  isValidPaystackReference,
+  type VerifiedSnapshot,
+} from '@/lib/checkout-status'
+import { publicProductName } from '@/lib/buy-resolver'
+import { safeNextPath } from '@/lib/safe-redirect'
 import { getSiteSettings } from '@/lib/site-settings'
+import { CheckoutOutcome } from '@/components/checkout/checkout-outcome'
 
-export const metadata = { title: 'Payment successful' }
+export const metadata = { title: 'Payment confirmation', robots: { index: false } }
+export const dynamic = 'force-dynamic'
 
+/**
+ * /buy/success — payment confirmation.
+ *
+ * The buyer's browser lands here from Paystack (`?reference=` / `?trxref=`)
+ * or the in-app popup (`?ref=`). None of that is trusted: the page requires
+ * a session, looks the payment up scoped to the signed-in owner, and only
+ * ever derives success from the server-side row (+ a live Paystack verify
+ * for still-pending charges). A `?success=true`-style query can never turn
+ * this page green, and a reference owned by another account resolves to the
+ * same neutral "unknown" state as a nonexistent one — so the page never
+ * reveals whether someone else's reference exists.
+ */
 export default async function CheckoutSuccessPage({
   searchParams,
 }: {
   searchParams: Promise<{ ref?: string; reference?: string; trxref?: string }>
 }) {
-  const settings = await getSiteSettings();
   const params = await searchParams
-  // Paystack's hosted-checkout redirect uses ?reference= and ?trxref=.
-  // Our in-app popup uses ?ref=. Accept either.
-  const ref = params.ref ?? params.reference ?? params.trxref ?? null
+  const rawRef = params.ref ?? params.reference ?? params.trxref ?? null
+  const reference = isValidPaystackReference(rawRef) ? rawRef : null
+
+  const session = await auth.api.getSession({ headers: await headers() }).catch(() => null)
+  if (!session) {
+    const next = safeNextPath(reference ? `/buy/success?ref=${encodeURIComponent(reference)}` : '/buy/success')
+    redirect(`/login?next=${encodeURIComponent(next)}`)
+  }
+
+  // Ownership-scoped lookup. A reference that isn't the caller's own
+  // resolves to `null` here, i.e. the neutral "unknown" view.
+  const paymentRow = reference
+    ? (
+        await db
+          .select()
+          .from(payments)
+          .where(and(eq(payments.paystackReference, reference), eq(payments.userId, session.user.id)))
+          .limit(1)
+      )[0] ?? null
+    : null
+
+  // Defense-in-depth: re-verify still-pending charges with Paystack so a
+  // buyer who beat the webhook here isn't stuck on a stale "pending".
+  let verified: VerifiedSnapshot | null = null
+  if (paymentRow && reference && paymentRow.status !== 'success') {
+    try {
+      const v = await verify(reference)
+      verified = {
+        status: v.status,
+        amountSmallestUnit: v.amountSmallestUnit,
+        currency: v.currency,
+      }
+    } catch {
+      verified = null
+    }
+  }
+
+  const view = deriveCheckoutView(
+    paymentRow ? { status: paymentRow.status, amount: paymentRow.amount, currency: paymentRow.currency } : null,
+    verified,
+  )
+
+  // Product name is only resolved (and shown) once we have a confirmed,
+  // owned success — never for a spoofed or foreign reference.
+  let productName: string | null = null
+  if (view === 'success' && paymentRow?.licenseId) {
+    const lic = (
+      await db
+        .select({ variant: licenses.variant })
+        .from(licenses)
+        .where(and(eq(licenses.id, paymentRow.licenseId), eq(licenses.userId, session.user.id)))
+        .orderBy(desc(licenses.createdAt))
+        .limit(1)
+    )[0]
+    if (lic) productName = publicProductName(lic.variant)
+  }
+
+  const settings = await getSiteSettings()
+  const supportHref = settings.whatsappUrl ?? `mailto:${settings.supportEmail}`
 
   return (
-    <div className="min-h-screen bg-[var(--color-bg)] pt-12 pb-20">
-      <div className="mx-auto max-w-3xl px-6 sm:px-8">
-        <div className="rounded-2xl border border-[var(--color-accent)] bg-[var(--color-accent-soft)] p-10 text-center lg:p-14">
-          <div className="mx-auto inline-flex size-16 items-center justify-center rounded-full bg-[var(--color-accent)] text-[var(--color-accent-foreground)]">
-            <CheckCircle2 className="size-8" />
-          </div>
-          <h1 className="mt-6 font-display text-[clamp(32px,4vw,48px)] font-medium leading-[1.05] text-[var(--color-fg)]">
-            Payment received.
-          </h1>
-          <p className="mx-auto mt-3 max-w-xl text-balance text-[16px] leading-[1.55] text-[var(--color-fg-muted)]">
-            Your licence is active. We've sent the receipt to your email and the licence key is
-            in your dashboard.
-          </p>
-          {ref ? (
-            <div className="mx-auto mt-5 inline-flex items-center gap-2 rounded-full border border-[var(--color-border)] bg-[var(--color-bg)] px-4 py-1.5 font-mono text-[12px] tabular-nums text-[var(--color-fg-muted)]">
-              <Sparkles className="size-3 text-[var(--color-accent)]" />
-              Reference {ref}
-            </div>
-          ) : null}
-        </div>
-
-        <div className="mt-10 grid grid-cols-1 gap-3 md:grid-cols-3">
-          <NextStep
-            icon={Download}
-            title="Download installer"
-            body="Get Omnix for Windows. Install in under five minutes."
-            cta="Open downloads"
-            href="/dashboard/downloads"
-          />
-          <NextStep
-            icon={FileText}
-            title="Read first-sale guide"
-            body="From product import to your first KRA-receipted sale."
-            cta="Read guide"
-            href="/docs/getting-started"
-          />
-          <NextStep
-            icon={ArrowRight}
-            title="Manage licence"
-            body="Activate machines, add cloud backup, invite staff."
-            cta="Open dashboard"
-            href="/dashboard"
-          />
-        </div>
-
-        <div className="mt-12 text-center">
-          <p className="text-[13px] text-[var(--color-fg-subtle)]">
-            Stuck or unsure?{' '}
-            <a
-              href={settings.whatsappUrl ?? `mailto:${settings.supportEmail}`}
-              className="text-[var(--color-accent)] underline-offset-4 hover:underline"
-            >
-              WhatsApp the owner
-            </a>{' '}
-            — usually answered within an hour.
-          </p>
-        </div>
+    <div className="px-6 py-10 sm:px-8 sm:py-14">
+      <div className="mx-auto max-w-3xl">
+        <CheckoutOutcome
+          view={view}
+          reference={reference}
+          productName={productName}
+          supportHref={supportHref}
+        />
       </div>
     </div>
-  )
-}
-
-function NextStep({
-  icon: Icon,
-  title,
-  body,
-  cta,
-  href,
-}: {
-  icon: React.ComponentType<{ className?: string }>
-  title: string
-  body: string
-  cta: string
-  href: string
-}) {
-  return (
-    <Link
-      href={href}
-      className="group flex flex-col gap-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-6 transition-colors hover:border-[var(--color-border-strong)]"
-    >
-      <div className="inline-flex size-9 items-center justify-center rounded-lg bg-[var(--color-accent-soft)] text-[var(--color-accent)]">
-        <Icon className="size-4" />
-      </div>
-      <div>
-        <h3 className="font-display text-[16px] font-medium text-[var(--color-fg)]">
-          {title}
-        </h3>
-        <p className="mt-1 text-[12px] leading-[1.5] text-[var(--color-fg-muted)]">
-          {body}
-        </p>
-      </div>
-      <span className="mt-auto inline-flex items-center gap-1.5 text-[12px] font-medium text-[var(--color-fg-muted)] transition-colors group-hover:text-[var(--color-accent)]">
-        {cta}
-        <ArrowRight className="size-3.5 transition-transform group-hover:translate-x-0.5" />
-      </span>
-    </Link>
   )
 }

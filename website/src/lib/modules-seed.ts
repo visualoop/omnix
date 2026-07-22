@@ -89,9 +89,9 @@ export const MODULES_SEED: ModuleSeed[] = [
       { label: 'Bank statement access', body: 'CSV or direct download from your bank portal.' },
     ],
     pricing: {
-      from: 100000,
+      from: 30000,
       cadence: 'one-time',
-      note: 'Included in every Omnix licence.',
+      note: 'Included in every Omnix licence — one KES 30,000 one-time purchase per device.',
     },
   },
   {
@@ -174,9 +174,9 @@ export const MODULES_SEED: ModuleSeed[] = [
       },
     ],
     pricing: {
-      from: 100000,
+      from: 30000,
       cadence: 'one-time',
-      note: 'Included in Starter or Business licence.',
+      note: 'A perpetual licence for one device. Optional compliance updates are separate.',
     },
   },
   {
@@ -254,9 +254,9 @@ export const MODULES_SEED: ModuleSeed[] = [
       },
     ],
     pricing: {
-      from: 100000,
+      from: 30000,
       cadence: 'one-time',
-      note: 'Included in Starter or Business licence.',
+      note: 'A perpetual licence for one device. Optional compliance updates are separate.',
     },
   },
   {
@@ -312,9 +312,9 @@ export const MODULES_SEED: ModuleSeed[] = [
       { label: 'Customer list', body: 'Contractor accounts and credit terms.' },
     ],
     pricing: {
-      from: 100000,
+      from: 30000,
       cadence: 'one-time',
-      note: 'Included in Business licence.',
+      note: 'A perpetual licence for one device. Optional compliance updates are separate.',
     },
   },
   {
@@ -375,9 +375,9 @@ export const MODULES_SEED: ModuleSeed[] = [
       { label: 'Menu + rooms', body: 'Menu items, prices, and room inventory.' },
     ],
     pricing: {
-      from: 100000,
+      from: 30000,
       cadence: 'one-time',
-      note: 'Included in Business licence.',
+      note: 'A perpetual licence for one device. Optional compliance updates are separate.',
     },
   },
   {
@@ -427,9 +427,9 @@ export const MODULES_SEED: ModuleSeed[] = [
       { label: 'Service menu + staff', body: 'Services, durations, prices and your team.' },
     ],
     pricing: {
-      from: 100000,
+      from: 30000,
       cadence: 'one-time',
-      note: 'Included in Business licence.',
+      note: 'A perpetual licence for one device. Optional compliance updates are separate.',
     },
   },
 ]

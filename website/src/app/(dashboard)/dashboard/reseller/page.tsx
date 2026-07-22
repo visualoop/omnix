@@ -1,30 +1,46 @@
 /**
  * /dashboard/reseller — reseller-facing dashboard.
  *
- * Only accessible if the logged-in user has a matching `resellers` row.
- * Non-resellers get redirected to /dashboard with a note (via searchParam).
+ * Server-gated: only a user with a matching `resellers` row may see it.
+ * Non-resellers are redirected to /dashboard with a notice. Nav visibility
+ * is never the authorization boundary — this gate runs regardless.
  *
- * Shows:
- *  - Status card (active/suspended, discount, currency)
- *  - Rolling totals — licences issued, revenue brought, commission earned, unpaid
- *  - Table of licences they've issued (most recent 50)
- *  - Recent commission ledger entries (most recent 20)
- *
- * The "issue a new licence" flow lives at /dashboard/reseller/new (built
- * in v0.22.x when Paystack wholesale checkout is wired).
+ * Shows the reseller's status + rolling totals, a searchable/paginated
+ * table of the licences they've issued, and a recent commission ledger.
+ * Issuing a new licence lives at /dashboard/reseller/new.
  */
 import { headers } from 'next/headers'
 import { redirect } from 'next/navigation'
-import { eq, desc } from 'drizzle-orm'
+import Link from 'next/link'
+import { and, count, eq, desc, ilike, or } from 'drizzle-orm'
 import { auth } from '@/lib/auth'
 import { db, resellers, licenses, resellerCommissions, user } from '@/db'
-import Link from 'next/link'
+import { Breadcrumbs } from '@/components/layout/breadcrumbs'
+import { EntityHero } from '@/components/layout/entity-hero'
+import { Button } from '@/components/ui/button'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
+import { EmptyState, StatusPill } from '@/components/dashboard/status-utils'
+import { FilteredEmptyState } from '@/components/ui/state-view'
+import { ListPagination, ListSearch } from '@/components/dashboard/list-controls'
 import { formatDate } from '@/lib/format-date'
 
 export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Reseller · Omnix' }
 
-export default async function ResellerDashboardPage() {
+const PAGE_SIZE = 25
+
+export default async function ResellerDashboardPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ page?: string; q?: string }>
+}) {
   const reqHeaders = await headers()
   const session = await auth.api.getSession({ headers: reqHeaders }).catch(() => null)
   if (!session) redirect('/login?next=/dashboard/reseller')
@@ -34,7 +50,24 @@ export default async function ResellerDashboardPage() {
     redirect('/dashboard?notice=not_reseller')
   }
 
-  const [issued, commissions] = await Promise.all([
+  const sp = await searchParams
+  const page = Math.max(1, parseInt(sp.page ?? '1', 10) || 1)
+  const q = sp.q?.trim() ?? ''
+
+  // Every read is scoped to this reseller's id. Search narrows within their
+  // issued set (customer name/email or licence key) — never widens it.
+  const issuedWhere = q
+    ? and(
+        eq(licenses.resellerId, reseller.id),
+        or(
+          ilike(user.email, `%${q}%`),
+          ilike(user.name, `%${q}%`),
+          ilike(licenses.licenseKey, `%${q}%`),
+        ),
+      )
+    : eq(licenses.resellerId, reseller.id)
+
+  const [issued, issuedTotalRow, commissions] = await Promise.all([
     db
       .select({
         id: licenses.id,
@@ -42,16 +75,20 @@ export default async function ResellerDashboardPage() {
         variant: licenses.variant,
         status: licenses.status,
         createdAt: licenses.createdAt,
-        paidAt: licenses.paidAt,
-        maintenanceUntil: licenses.maintenanceUntil,
         userEmail: user.email,
         userName: user.name,
       })
       .from(licenses)
       .leftJoin(user, eq(licenses.userId, user.id))
-      .where(eq(licenses.resellerId, reseller.id))
+      .where(issuedWhere)
       .orderBy(desc(licenses.createdAt))
-      .limit(50),
+      .limit(PAGE_SIZE)
+      .offset((page - 1) * PAGE_SIZE),
+    db
+      .select({ n: count() })
+      .from(licenses)
+      .leftJoin(user, eq(licenses.userId, user.id))
+      .where(issuedWhere),
     db
       .select()
       .from(resellerCommissions)
@@ -60,186 +97,152 @@ export default async function ResellerDashboardPage() {
       .limit(20),
   ])
 
+  const issuedTotal = issuedTotalRow[0]?.n ?? 0
   const isSuspended = reseller.status === 'suspended'
-  const fmtMoney = (n: number) =>
-    `${reseller.commissionCurrency} ${Math.round(n).toLocaleString()}`
+  const fmtMoney = (n: number) => `${reseller.commissionCurrency} ${Math.round(n).toLocaleString()}`
 
   return (
-    <div className="flex flex-col gap-6">
-      <div>
-        <h1 className="text-xl font-semibold">Reseller · {reseller.companyName}</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Wholesale channel. Your discount off retail is <strong>{reseller.discountPercent}%</strong>.
-          {isSuspended ? (
-            <span className="ml-2 rounded bg-amber-500/10 px-2 py-0.5 text-xs text-amber-700 dark:text-amber-400">
-              Suspended — cannot issue new licences
-            </span>
-          ) : (
-            <span className="ml-2 rounded bg-emerald-500/10 px-2 py-0.5 text-xs text-emerald-700 dark:text-emerald-400">
-              Active
-            </span>
-          )}
-        </p>
-      </div>
-
-      {/* Rolling totals */}
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <Stat label="Licences issued" value={reseller.totalLicensesIssued.toString()} />
-        <Stat label="Revenue brought" value={fmtMoney(reseller.totalRevenueBrought)} />
-        <Stat label="Commission earned" value={fmtMoney(reseller.totalCommissionEarned)} accent />
-        <Stat
-          label="Unpaid commission"
-          value={fmtMoney(reseller.unpaidCommission)}
-          note={reseller.unpaidCommission > 0 ? 'Paid out on the 5th of each month' : undefined}
-        />
-      </div>
-
-      {/* Issue-new CTA */}
-      <div className={`rounded-lg border p-4 text-sm ${isSuspended ? 'border-dashed border-border opacity-60' : 'border-primary/40 bg-primary/5'}`}>
-        <div className="flex items-center justify-between gap-4">
-          <div>
-            <div className="font-medium">Issue a new licence for a customer</div>
-            <div className="mt-0.5 text-xs text-muted-foreground">
-              {isSuspended
-                ? 'Suspended — reactivate before issuing new licences.'
-                : `Wholesale checkout at ${reseller.discountPercent}% off retail. Reseller pays; customer gets the licence.`}
-            </div>
-          </div>
-          {isSuspended ? (
-            <button
-              disabled
-              className="inline-flex h-9 items-center rounded-md border border-border px-3 text-xs text-muted-foreground"
-            >
+    <div className="flex flex-col gap-10">
+      <Breadcrumbs items={[{ label: 'Reseller' }]} />
+      <EntityHero
+        eyebrow="Partner programs"
+        title={`Reseller · ${reseller.companyName}`}
+        subtitle={`Wholesale channel — your discount off retail is ${reseller.discountPercent}%.`}
+        badges={[{ label: isSuspended ? 'Suspended' : 'Active', variant: isSuspended ? 'secondary' : 'default' }]}
+        actions={
+          isSuspended ? (
+            <Button type="button" variant="outline" disabled title="Reactivate before issuing new licences">
               Suspended
-            </button>
+            </Button>
           ) : (
-            <Link
-              href="/dashboard/reseller/new"
-              className="inline-flex h-9 items-center rounded-md bg-primary px-4 text-xs font-medium text-primary-foreground hover:opacity-90"
-            >
-              Issue licence →
-            </Link>
-          )}
+            <Button asChild>
+              <Link href="/dashboard/reseller/new">Issue a licence</Link>
+            </Button>
+          )
+        }
+        stats={[
+          { label: 'Licences issued', value: reseller.totalLicensesIssued.toLocaleString() },
+          { label: 'Revenue brought', value: fmtMoney(reseller.totalRevenueBrought) },
+          { label: 'Commission earned', value: fmtMoney(reseller.totalCommissionEarned), tone: 'positive' },
+          {
+            label: 'Unpaid commission',
+            value: fmtMoney(reseller.unpaidCommission),
+            tone: reseller.unpaidCommission > 0 ? 'warning' : 'muted',
+          },
+        ]}
+      />
+
+      {isSuspended ? (
+        <div className="rounded-[var(--radius-md)] border border-[var(--color-caution)]/35 bg-[var(--color-caution)]/9 px-4 py-3 text-[13px] text-[var(--color-fg)]">
+          Your reseller account is suspended — reactivate it with support before issuing new licences.
         </div>
-      </div>
+      ) : null}
 
-      {/* Licences issued */}
-      <section>
-        <h2 className="mb-2 text-sm font-semibold">Licences you&rsquo;ve issued</h2>
+      <section className="flex flex-col gap-4">
+        <h2 className="font-display text-[18px] font-semibold tracking-[-0.02em] text-[var(--color-fg)]">
+          Licences you&rsquo;ve issued
+        </h2>
+        <ListSearch label="Search issued licences" placeholder="Search customer or licence key…" />
+
         {issued.length === 0 ? (
-          <div className="rounded-lg border border-border p-6 text-center text-sm text-muted-foreground">
-            You haven&rsquo;t issued any licences yet. Once you do, they&rsquo;ll appear here.
-          </div>
+          q ? (
+            <FilteredEmptyState query={q} clearHref="/dashboard/reseller" entityLabel="issued licences" />
+          ) : (
+            <EmptyState
+              title="No licences issued yet"
+              body="Issue a licence for a customer and it will appear here with its status and commission."
+              action={
+                isSuspended ? undefined : (
+                  <Button asChild>
+                    <Link href="/dashboard/reseller/new">Issue a licence</Link>
+                  </Button>
+                )
+              }
+            />
+          )
         ) : (
-          <div className="overflow-hidden rounded-lg border border-border">
-            <table className="w-full text-sm">
-              <thead className="bg-muted/40">
-                <tr>
-                  <Th>Customer</Th>
-                  <Th>Variant</Th>
-                  <Th>Status</Th>
-                  <Th>Issued</Th>
-                  <Th>Key</Th>
-                </tr>
-              </thead>
-              <tbody>
+          <div className="flex flex-col">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Customer</TableHead>
+                  <TableHead>Product</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Issued</TableHead>
+                  <TableHead>Key</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
                 {issued.map((l) => (
-                  <tr key={l.id} className="border-t border-border">
-                    <Td>
-                      <div className="text-foreground">{l.userName || '—'}</div>
-                      <div className="text-[11px] text-muted-foreground">{l.userEmail}</div>
-                    </Td>
-                    <Td className="capitalize">{l.variant}</Td>
-                    <Td>
-                      <span
-                        className={`inline-block rounded px-1.5 py-0.5 text-[11px] ${
-                          l.status === 'active'
-                            ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400'
-                            : l.status === 'trial'
-                              ? 'bg-blue-500/10 text-blue-700 dark:text-blue-400'
-                              : 'bg-muted text-muted-foreground'
-                        }`}
-                      >
-                        {l.status}
-                      </span>
-                    </Td>
-                    <Td className="text-xs text-muted-foreground">{formatDate(l.createdAt)}</Td>
-                    <Td>
-                      <code className="text-[11px] text-muted-foreground">{l.licenseKey}</code>
-                    </Td>
-                  </tr>
+                  <TableRow key={l.id}>
+                    <TableCell className="min-w-[160px]">
+                      <div className="text-[var(--color-fg)]">{l.userName || '—'}</div>
+                      <div className="text-[11px] text-[var(--color-fg-muted)]">{l.userEmail}</div>
+                    </TableCell>
+                    <TableCell className="font-mono text-[11px] uppercase tracking-[0.12em] text-[var(--color-fg-muted)]">
+                      {l.variant}
+                    </TableCell>
+                    <TableCell>
+                      <StatusPill kind="license" status={l.status} />
+                    </TableCell>
+                    <TableCell className="font-mono text-[11px] tabular-nums text-[var(--color-fg-muted)]">
+                      {formatDate(l.createdAt)}
+                    </TableCell>
+                    <TableCell>
+                      <code className="font-mono text-[11px] text-[var(--color-fg-muted)]">{l.licenseKey}</code>
+                    </TableCell>
+                  </TableRow>
                 ))}
-              </tbody>
-            </table>
+              </TableBody>
+            </Table>
+            <ListPagination page={page} pageSize={PAGE_SIZE} total={issuedTotal} label="Issued licence pages" />
           </div>
         )}
       </section>
 
-      {/* Commission ledger */}
-      <section>
-        <h2 className="mb-2 text-sm font-semibold">Recent commission</h2>
+      <section className="flex flex-col gap-4">
+        <h2 className="font-display text-[18px] font-semibold tracking-[-0.02em] text-[var(--color-fg)]">
+          Recent commission
+        </h2>
         {commissions.length === 0 ? (
-          <div className="rounded-lg border border-border p-6 text-center text-sm text-muted-foreground">
-            No commission entries yet.
-          </div>
+          <EmptyState title="No commission entries yet" body="Commission accrues here each time an issued licence is paid." />
         ) : (
-          <div className="overflow-hidden rounded-lg border border-border">
-            <table className="w-full text-sm">
-              <thead className="bg-muted/40">
-                <tr>
-                  <Th>Date</Th>
-                  <Th>Licence</Th>
-                  <Th>Gross</Th>
-                  <Th>Commission</Th>
-                  <Th>Status</Th>
-                </tr>
-              </thead>
-              <tbody>
-                {commissions.map((c) => (
-                  <tr key={c.id} className="border-t border-border">
-                    <Td className="text-xs text-muted-foreground">{formatDate(c.createdAt)}</Td>
-                    <Td>
-                      <code className="text-[11px] text-muted-foreground">{c.licenseId.slice(0, 12)}…</code>
-                    </Td>
-                    <Td className="tabular-nums">{c.currency} {Math.round(c.grossAmount).toLocaleString()}</Td>
-                    <Td className="tabular-nums font-medium">{c.currency} {Math.round(c.commissionAmount).toLocaleString()}</Td>
-                    <Td>
-                      <span
-                        className={`inline-block rounded px-1.5 py-0.5 text-[11px] ${
-                          c.status === 'paid'
-                            ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400'
-                            : c.status === 'reversed'
-                              ? 'bg-destructive/10 text-destructive'
-                              : 'bg-amber-500/10 text-amber-700 dark:text-amber-400'
-                        }`}
-                      >
-                        {c.status}
-                      </span>
-                    </Td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Date</TableHead>
+                <TableHead>Licence</TableHead>
+                <TableHead className="text-right">Gross</TableHead>
+                <TableHead className="text-right">Commission</TableHead>
+                <TableHead>Status</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {commissions.map((c) => (
+                <TableRow key={c.id}>
+                  <TableCell className="font-mono text-[11px] tabular-nums text-[var(--color-fg-muted)]">
+                    {formatDate(c.createdAt)}
+                  </TableCell>
+                  <TableCell>
+                    <code className="font-mono text-[11px] text-[var(--color-fg-muted)]">
+                      {c.licenseId.slice(0, 12)}…
+                    </code>
+                  </TableCell>
+                  <TableCell className="text-right font-mono tabular-nums">
+                    {c.currency} {Math.round(c.grossAmount).toLocaleString()}
+                  </TableCell>
+                  <TableCell className="text-right font-mono font-medium tabular-nums">
+                    {c.currency} {Math.round(c.commissionAmount).toLocaleString()}
+                  </TableCell>
+                  <TableCell>
+                    <StatusPill kind="commission" status={c.status} />
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
         )}
       </section>
     </div>
   )
-}
-
-function Stat({ label, value, accent, note }: { label: string; value: string; accent?: boolean; note?: string }) {
-  return (
-    <div className={`rounded-lg border p-4 ${accent ? 'border-primary/40 bg-primary/5' : 'border-border'}`}>
-      <div className="text-[11px] uppercase tracking-wider text-muted-foreground">{label}</div>
-      <div className="mt-1 text-xl font-semibold tabular-nums">{value}</div>
-      {note ? <div className="mt-1 text-[11px] text-muted-foreground">{note}</div> : null}
-    </div>
-  )
-}
-
-function Th({ children }: { children: React.ReactNode }) {
-  return <th className="px-3 py-2 text-left text-[11px] font-medium uppercase tracking-wider text-muted-foreground">{children}</th>
-}
-function Td({ children, className = '' }: { children: React.ReactNode; className?: string }) {
-  return <td className={`px-3 py-2 ${className}`}>{children}</td>
 }

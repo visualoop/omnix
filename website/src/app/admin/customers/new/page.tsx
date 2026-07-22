@@ -11,6 +11,7 @@
  * signs in normally, then updates their email + password from
  * /dashboard/profile.
  */
+import { PageHeader } from '@/components/layout/page-header'
 import { NewCustomerForm } from './new-customer-form'
 
 export const metadata = { title: 'New customer · Admin' }
@@ -18,15 +19,12 @@ export const dynamic = 'force-dynamic'
 
 export default function NewCustomerPage() {
   return (
-    <div className="max-w-3xl">
-      <div className="mb-6">
-        <h1 className="text-xl font-semibold">Create customer account</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          For customers who bought via M-Pesa directly or don&rsquo;t want to give an email.
-          You&rsquo;ll get a login PIN to pass them by WhatsApp. They log in, use Omnix,
-          and can add a real email later from their profile.
-        </p>
-      </div>
+    <div className="mx-auto flex w-full max-w-3xl flex-col gap-8">
+      <PageHeader
+        eyebrow="Customers"
+        title="Create customer account"
+        description="For customers who bought via M-Pesa directly or don't want to give an email. You'll get a login PIN to pass them by WhatsApp; they sign in, use Omnix, and can add a real email later from their profile."
+      />
       <NewCustomerForm />
     </div>
   )

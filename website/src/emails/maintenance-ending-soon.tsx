@@ -42,7 +42,7 @@ export function MaintenanceEndingSoon({ name, days }: Props) {
             statutory updates (KRA, NHIF, SHA, NSSF) flowing automatically.
           </Text>
           <Text style={p}>
-            <strong>Skipping renewal is fine.</strong> The desktop app keeps working; you'll
+            <strong>Skipping renewal is fine.</strong> The desktop app keeps working; you&apos;ll
             just need to apply statutory rate changes manually. You can renew any time in the
             future to resume automatic updates.
           </Text>
@@ -66,7 +66,7 @@ export function MaintenanceEndingSoon({ name, days }: Props) {
 
           <Hr style={hr} />
           <Text style={footer}>
-            We don't auto-charge. Reminders go out 30, 7, and 1 day before renewal. Cancel
+            We don&apos;t auto-charge. Reminders go out 30, 7, and 1 day before renewal. Cancel
             future reminders any time from your dashboard.
           </Text>
         </Container>

@@ -1,0 +1,589 @@
+/* Hallmark · pre-emit critique: P5 H5 E5 S5 R5 V5
+ * Hallmark · macrostructure: Counter Ledger · tone: confident utilitarian · theme: Working Counter
+ * enrichment: approved Task 8 retail media or useful retail demo docket · reveal: none
+ * contrast: pass · honest copy: pass · responsive: 320/375/414/768/1440
+ */
+.page {
+  /* Retail teal: the colour of shelf labels and till confirmation, scoped to this product only. */
+  --color-accent: #146b5d;
+  --color-accent-hover: #0f584d;
+  --color-accent-foreground: #ffffff;
+  --color-accent-soft: #e1f0ec;
+  --color-accent-line: #9bc9bd;
+  background: var(--color-bg);
+  color: var(--color-fg);
+}
+
+:global(.dark) .page {
+  --color-accent: #4dc5a8;
+  --color-accent-hover: #70d5bd;
+  --color-accent-foreground: #071814;
+  --color-accent-soft: #173a32;
+  --color-accent-line: #2d695b;
+}
+
+.container {
+  width: min(100%, var(--w-wide));
+  margin-inline: auto;
+  padding-inline: clamp(var(--space-4), 5vw, var(--space-12));
+}
+
+.hero,
+.flow,
+.merchandising,
+.capabilities,
+.boundary,
+.closing {
+  position: relative;
+}
+
+.hero {
+  padding-block: clamp(var(--space-10), 6vw, var(--space-20)) clamp(var(--space-16), 9vw, var(--space-24));
+  border-block-end: 1px solid var(--color-border-strong);
+}
+
+.heroGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: clamp(var(--space-10), 8vw, var(--space-20));
+  align-items: stretch;
+}
+
+.heroCopy,
+.heroMedia,
+.sectionHeading > *,
+.merchandisingGrid > *,
+.boundaryGrid > *,
+.closingPanel > * {
+  min-width: 0;
+}
+
+.identityLine {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.retailMark {
+  display: inline-flex;
+  width: 2.25rem;
+  height: 1.35rem;
+  align-items: stretch;
+  justify-content: space-between;
+  border-block: 2px solid var(--color-fg);
+  padding-block: 2px;
+}
+
+.retailMark span {
+  display: block;
+  width: 2px;
+  background: var(--color-accent);
+}
+
+.retailMark span:nth-child(2),
+.retailMark span:nth-child(5) {
+  width: 4px;
+}
+
+.retailMark span:nth-child(4) {
+  width: 1px;
+}
+
+.overline,
+.fallbackLabel,
+.flowList > li > span,
+.merchandisingLedger article > span {
+  margin: 0;
+  color: var(--color-fg-subtle);
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  font-weight: 650;
+  letter-spacing: 0.1em;
+  line-height: 1.5;
+  text-transform: uppercase;
+}
+
+.heroCopy h1 {
+  max-width: 11.5ch;
+  margin-block-start: var(--space-6);
+  font-size: clamp(2.65rem, 7.4vw, 5.7rem);
+  font-weight: 700;
+  letter-spacing: -0.065em;
+  line-height: 0.94;
+  overflow-wrap: anywhere;
+}
+
+.heroLede {
+  max-width: 62ch;
+  margin-block: var(--space-6) 0;
+  color: var(--color-fg-muted);
+  font-size: clamp(1rem, 1.45vw, 1.16rem);
+  line-height: 1.65;
+}
+
+.actions,
+.closingActions {
+  display: flex;
+  flex-flow: row wrap;
+  gap: var(--space-3);
+  align-items: center;
+  margin-block-start: var(--space-8);
+}
+
+.primaryAction,
+.secondaryAction {
+  display: inline-flex;
+  min-height: 3rem;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid transparent;
+  border-radius: var(--radius-pill);
+  padding-inline: var(--space-6);
+  font-family: var(--font-ui);
+  font-size: 0.875rem;
+  font-weight: 700;
+  line-height: 1;
+  white-space: nowrap;
+  transition: background-color var(--duration-ui) var(--ease-out), color var(--duration-ui) var(--ease-out), border-color var(--duration-ui) var(--ease-out), transform var(--duration-fast) var(--ease-out);
+}
+
+.primaryAction {
+  background: var(--color-accent);
+  color: var(--color-accent-foreground);
+}
+
+.secondaryAction {
+  border-color: var(--color-border-strong);
+  background: var(--color-bg);
+  color: var(--color-fg);
+}
+
+.primaryAction:hover {
+  background: var(--color-accent-hover);
+}
+
+.secondaryAction:hover {
+  border-color: var(--color-fg);
+}
+
+.primaryAction:active,
+.secondaryAction:active {
+  transform: scale(0.98);
+}
+
+.counterTape {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  margin-block-start: clamp(var(--space-10), 7vw, var(--space-16));
+  border-block: 1px solid var(--color-border-strong);
+}
+
+.counterTape span {
+  min-width: 0;
+  padding: var(--space-3) var(--space-1);
+  color: var(--color-fg-muted);
+  font-family: var(--font-mono);
+  font-size: clamp(0.58rem, 2.6vw, 0.72rem);
+  font-weight: 650;
+  letter-spacing: 0.06em;
+  text-align: center;
+  text-transform: uppercase;
+}
+
+.counterTape span + span {
+  border-inline-start: 1px solid var(--color-border);
+}
+
+.counterTape span:last-child {
+  color: var(--color-accent);
+}
+
+.heroMedia {
+  min-height: 30rem;
+  margin: 0;
+  overflow: clip;
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+}
+
+.heroMedia img,
+.heroMedia video {
+  display: block;
+  width: 100%;
+  height: 100%;
+  min-height: inherit;
+  object-fit: cover;
+}
+
+.mediaFallback {
+  display: grid;
+  min-height: inherit;
+  grid-template-rows: auto 1fr auto;
+  gap: var(--space-8);
+  padding: clamp(var(--space-5), 5vw, var(--space-8));
+}
+
+.fallbackHeader {
+  padding-block-start: var(--space-4);
+  border-block-start: 4px solid var(--color-accent);
+}
+
+.fallbackHeader p {
+  max-width: 18ch;
+  margin-block: var(--space-4) 0;
+  font-size: clamp(1.55rem, 4vw, 2.45rem);
+  font-weight: 700;
+  letter-spacing: -0.045em;
+  line-height: 1.02;
+}
+
+.mediaFallback dl {
+  align-self: end;
+  margin: 0;
+  border-block-start: 1px solid var(--color-border-strong);
+}
+
+.mediaFallback dl > div {
+  display: grid;
+  grid-template-columns: minmax(4.5rem, 0.33fr) minmax(0, 1fr);
+  gap: var(--space-4);
+  padding-block: var(--space-3);
+  border-block-end: 1px solid var(--color-border);
+}
+
+.mediaFallback dt {
+  color: var(--color-fg-subtle);
+  font-family: var(--font-mono);
+  font-size: 0.625rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.mediaFallback dd {
+  margin: 0;
+  font-size: 0.8125rem;
+  font-weight: 680;
+  line-height: 1.4;
+}
+
+.fallbackNote {
+  width: fit-content;
+  max-width: 100%;
+  border-radius: var(--radius-pill);
+  padding: var(--space-2) var(--space-3);
+  background: var(--color-surface-2);
+  color: var(--color-fg-muted);
+  font-size: 0.6875rem;
+  line-height: 1.4;
+}
+
+.flow,
+.merchandising,
+.capabilities,
+.closing {
+  padding-block: var(--space-section);
+}
+
+.flow {
+  background: var(--color-surface);
+}
+
+.sectionHeading {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-6);
+  align-items: end;
+  margin-block-end: clamp(var(--space-10), 7vw, var(--space-20));
+}
+
+.sectionHeading h2,
+.merchandisingIntro h2,
+.boundaryGrid h2,
+.closingPanel h2 {
+  max-width: 15ch;
+  margin-block-start: var(--space-3);
+  font-size: clamp(2.1rem, 5vw, 4rem);
+  font-weight: 700;
+  letter-spacing: -0.055em;
+  line-height: 0.98;
+}
+
+.sectionHeading > p,
+.merchandisingIntro > p:not(.overline) {
+  max-width: 47ch;
+  margin: 0;
+  color: var(--color-fg-muted);
+  font-size: 0.95rem;
+  line-height: 1.65;
+}
+
+.flowList {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  margin: 0;
+  padding: 0;
+  border-block-start: 1px solid var(--color-border-strong);
+  list-style: none;
+}
+
+.flowList > li {
+  min-width: 0;
+  padding-block: var(--space-8);
+  border-block-end: 1px solid var(--color-border-strong);
+}
+
+.flowList h3,
+.merchandisingLedger h3,
+.capabilityGrid h3 {
+  margin-block-start: var(--space-5);
+  font-size: clamp(1.18rem, 2.3vw, 1.6rem);
+  font-weight: 700;
+  letter-spacing: -0.035em;
+  line-height: 1.1;
+}
+
+.flowList p,
+.merchandisingLedger p,
+.capabilityGrid p,
+.boundaryCopy p,
+.closingPanel p:not(.overline) {
+  max-width: 58ch;
+  margin-block: var(--space-3) 0;
+  color: var(--color-fg-muted);
+  font-size: 0.89rem;
+  line-height: 1.65;
+}
+
+.merchandising {
+  border-block: 1px solid var(--color-border-strong);
+}
+
+.merchandisingGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: clamp(var(--space-12), 9vw, var(--space-24));
+}
+
+.merchandisingIntro {
+  align-self: start;
+}
+
+.merchandisingIntro > p:not(.overline) {
+  margin-block-start: var(--space-6);
+}
+
+.merchandisingLedger {
+  border-block-start: 3px solid var(--color-accent);
+}
+
+.merchandisingLedger article {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  padding-block: var(--space-6);
+  border-block-end: 1px solid var(--color-border-strong);
+}
+
+.merchandisingLedger h3 {
+  margin-block-start: var(--space-3);
+}
+
+.capabilityGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  border-block-start: 1px solid var(--color-border-strong);
+}
+
+.capabilityGrid article {
+  min-width: 0;
+  padding-block: var(--space-8);
+  border-block-end: 1px solid var(--color-border-strong);
+}
+
+.capabilityGrid h3 {
+  margin-block-start: 0;
+}
+
+.boundary {
+  padding-block: var(--space-section-tight);
+  border-block: 1px solid var(--color-border-strong);
+  background: var(--color-fg);
+  color: var(--color-bg);
+}
+
+.boundary .overline {
+  color: var(--color-accent);
+}
+
+.boundaryGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-8);
+}
+
+.boundaryGrid h2 {
+  color: var(--color-bg);
+}
+
+.boundaryCopy {
+  padding-block-start: var(--space-2);
+  border-block-start: 1px solid var(--color-fg-subtle);
+}
+
+.boundaryCopy p {
+  color: var(--color-border);
+}
+
+.boundaryCopy p + p {
+  margin-block-start: var(--space-5);
+}
+
+.closingPanel {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-8);
+  align-items: end;
+  padding-block-start: var(--space-8);
+  border-block-start: 4px solid var(--color-accent);
+}
+
+.closingActions {
+  align-items: flex-start;
+  margin-block-start: 0;
+}
+
+.textAction {
+  display: inline-flex;
+  min-height: 2.75rem;
+  align-items: center;
+  border-block-end: 1px solid var(--color-border-strong);
+  color: var(--color-fg-muted);
+  font-size: 0.8125rem;
+  font-weight: 700;
+  line-height: 1;
+  white-space: nowrap;
+  transition: border-color var(--duration-ui) var(--ease-out), color var(--duration-ui) var(--ease-out), transform var(--duration-fast) var(--ease-out);
+}
+
+.textAction:hover {
+  border-color: var(--color-accent);
+  color: var(--color-fg);
+}
+
+.textAction:active {
+  transform: scale(0.98);
+}
+
+.primaryAction[aria-disabled='true'],
+.secondaryAction[aria-disabled='true'],
+.textAction[aria-disabled='true'] {
+  cursor: not-allowed;
+  opacity: 0.55;
+  pointer-events: none;
+}
+
+@media (min-width: 48rem) {
+  .sectionHeading {
+    grid-template-columns: minmax(0, 1.35fr) minmax(0, 0.75fr);
+  }
+
+  .flowList {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .flowList > li {
+    padding: var(--space-8);
+  }
+
+  .flowList > li:nth-child(odd) {
+    padding-inline-start: 0;
+    border-inline-end: 1px solid var(--color-border-strong);
+  }
+
+  .capabilityGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .capabilityGrid article {
+    padding: var(--space-8);
+  }
+
+  .capabilityGrid article:nth-child(odd) {
+    padding-inline-start: 0;
+    border-inline-end: 1px solid var(--color-border-strong);
+  }
+
+  .boundaryGrid {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 0.86fr);
+    gap: var(--space-16);
+    align-items: start;
+  }
+
+  .closingPanel {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .closingActions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}
+
+@media (min-width: 64rem) {
+  .heroGrid {
+    grid-template-columns: minmax(0, 1.08fr) minmax(22rem, 0.92fr);
+  }
+
+  .heroMedia {
+    min-height: 39rem;
+  }
+
+  .merchandisingGrid {
+    grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr);
+  }
+
+  .merchandisingIntro {
+    position: sticky;
+    top: var(--space-20);
+  }
+
+  .merchandisingLedger article {
+    grid-template-columns: minmax(5rem, 0.28fr) minmax(0, 0.72fr);
+    column-gap: var(--space-6);
+  }
+
+  .merchandisingLedger article > span {
+    grid-row: 1 / span 2;
+  }
+
+  .merchandisingLedger h3 {
+    margin-block-start: 0;
+  }
+}
+
+@media (min-width: 90rem) {
+  .container {
+    padding-inline: var(--space-8);
+  }
+}
+
+@media (pointer: coarse) {
+  .primaryAction,
+  .secondaryAction {
+    min-height: 3.25rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .primaryAction,
+  .secondaryAction,
+  .textAction {
+    transition-duration: 0.01ms;
+  }
+}
+
+/* Task 34 demo-video section — inherits the retail teal accent from .page. */
+.demoVideo {
+  padding-block: var(--space-section);
+  border-block-end: 1px solid var(--color-border-strong);
+}

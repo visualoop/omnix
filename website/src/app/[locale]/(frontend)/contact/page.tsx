@@ -1,201 +1,153 @@
+/* Hallmark · Working Counter · contact routing desk · procedural, not simulated */
 import type { Metadata } from 'next'
-import { Icon } from '@/components/icons'
-import { PageHero } from '@/components/marketing/page-hero'
-import { ContactForm } from '@/components/marketing/contact-form'
 import { getLocale } from 'next-intl/server'
+
+import { PageContainer } from '@/components/layout/layout-primitives'
+import { ContactForm } from '@/components/marketing/contact-form'
+import { DemoBookingForm } from '@/components/marketing/demo-booking-form'
+import { Button } from '@/components/ui/button'
+import { buildAlternatesLanguages } from '@/lib/hreflang'
+import { buildSocialMetadata } from '@/lib/seo-metadata'
 import { getSiteSettings } from '@/lib/site-settings'
 
-export const metadata: Metadata = {
-  title: 'Contact — talk to us',
-  description: 'Book a demo, ask about Custom pricing, or just say hello. We respond within 24 hours.',
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://omnix.co.ke'
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: string }>
+}): Promise<Metadata> {
+  const { locale } = await params
+  const canonical = `${SITE_URL}/${locale}/contact`
+
+  return {
+    title: 'Book an Omnix demo or contact the team',
+    description:
+      'Book a prepared Omnix product demo, open the configured WhatsApp chat, or email Omnix support. Each route states what happens next.',
+    alternates: {
+      canonical,
+      languages: buildAlternatesLanguages('/contact'),
+    },
+    ...buildSocialMetadata({
+      locale,
+      url: canonical,
+      title: 'Book an Omnix demo or contact the team',
+      description:
+        'Choose the dedicated demo request, configured WhatsApp chat, or support email route.',
+      type: 'website',
+    }),
+  }
 }
 
-interface ContactGlobal {
-  pageTitle?: string
-  pageSubtitle?: string
-  methodsHeading?: string
-  methods?: { channel: string; label?: string | null; description?: string | null }[]
-  faqHeading?: string
-  faq?: { question: string; answer: string }[]
-  ctaHeading?: string | null
-  ctaBody?: string | null
-  ctaPrimaryLabel?: string | null
-  ctaPrimaryHref?: string | null
+function whatsappQuestionHref(base: string | null): string | null {
+  if (!base) return null
+  const separator = base.includes('?') ? '&' : '?'
+  return `${base}${separator}text=${encodeURIComponent('Hi Omnix, I would like to ask about Omnix for my business.')}`
 }
 
-async function getContactContent(_locale: string): Promise<ContactGlobal> {
-  // Was a Payload global; the existing fallback logic below produces a
-  // perfectly good page. Promote to a static config later if we want
-  // editable methods.
-  return {}
+interface ContactPageProps {
+  searchParams: Promise<{ type?: string; product?: string }>
 }
 
-export default async function ContactPage() {
+type DemoProduct = 'pharmacy' | 'retail' | 'hospitality' | 'hardware' | 'salon'
+const DEMO_PRODUCTS = new Set<DemoProduct>(['pharmacy', 'retail', 'hospitality', 'hardware', 'salon'])
+
+export default async function ContactPage({ searchParams }: ContactPageProps) {
   const locale = await getLocale()
-  const [settings, content] = await Promise.all([getSiteSettings(), getContactContent(locale)])
+  const query = await searchParams
+  const settings = await getSiteSettings()
+  const whatsappHref = whatsappQuestionHref(settings.whatsappUrl)
+  const type = query.type
 
-  const title = content.pageTitle ?? 'Talk to us.'
-  const subtitle =
-    content.pageSubtitle ??
-    'Book a demo, ask about Custom pricing, or just say hello. We respond within 24 hours.'
+  if (type === 'demo') {
+    const initialProduct = DEMO_PRODUCTS.has(query.product as DemoProduct)
+      ? query.product as DemoProduct
+      : undefined
 
-  const methods = (content.methods ?? []).filter((m) => m && m.channel)
+    return (
+      <div className="border-b border-[var(--color-border)]">
+        <PageContainer width="wide" className="py-[var(--space-section)]">
+          <div className="grid min-w-0 gap-12 lg:grid-cols-[minmax(0,1fr)_20rem] lg:gap-16 xl:gap-24">
+            <div className="min-w-0">
+              <header className="max-w-3xl border-b border-[var(--color-border)] pb-10 sm:pb-12">
+                <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-[var(--color-accent)]">
+                  Book a demo
+                </p>
+                <h1 className="mt-4 overflow-wrap-anywhere text-balance text-[clamp(2.4rem,7vw,5.75rem)] font-semibold leading-[0.92] tracking-[-0.055em] text-[var(--color-fg)]">
+                  A demo built around your counter.
+                </h1>
+                <p className="mt-6 max-w-[58ch] text-[15px] leading-7 text-[var(--color-fg-muted)] sm:text-[16px]">
+                  Tell us what you sell, how many locations you run, and where work gets stuck. We will prepare the relevant POS, inventory, payment, and operating workflows.
+                </p>
+              </header>
 
-  // If no methods configured in CMS, fall back to a sensible default set
-  const fallbackMethods: { channel: string; label?: string; description?: string }[] = [
-    { channel: 'whatsapp', label: 'WhatsApp' },
-    { channel: 'email-support', label: 'Email' },
-    { channel: 'office', label: 'Office', description: 'Nairobi, Kenya · By appointment only' },
-  ]
-  const renderMethods = methods.length > 0 ? methods : fallbackMethods
+              <div className="pt-10 sm:pt-12">
+                <DemoBookingForm
+                  initialProduct={initialProduct}
+                  locale={locale}
+                  whatsappUrl={settings.whatsappUrl}
+                />
+              </div>
+            </div>
+
+            <aside className="min-w-0 lg:sticky lg:top-28 lg:self-start">
+              <div className="border-t-2 border-[var(--color-fg)] pt-5">
+                <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--color-fg-subtle)]">
+                  Demo docket
+                </p>
+                <ol className="mt-6 divide-y divide-[var(--color-border)] border-y border-[var(--color-border)]">
+                  {[
+                    ['01', 'We review the business details you send.'],
+                    ['02', 'We contact you to confirm a suitable time.'],
+                    ['03', 'The session follows your selected workflows.'],
+                  ].map(([number, text]) => (
+                    <li key={number} className="grid grid-cols-[2rem_1fr] gap-3 py-4">
+                      <span className="font-mono text-[10px] text-[var(--color-accent)]">{number}</span>
+                      <span className="text-[13px] leading-5 text-[var(--color-fg-muted)]">{text}</span>
+                    </li>
+                  ))}
+                </ol>
+                <p className="mt-5 text-[12px] leading-5 text-[var(--color-fg-subtle)]">
+                  Your request is stored for follow-up. Product updates are optional and require a separate choice in the form.
+                </p>
+                {whatsappHref ? (
+                  <Button asChild variant="outline" size="lg" className="mt-6 w-full">
+                    <a href={whatsappHref} target="_blank" rel="noopener noreferrer">Ask on WhatsApp instead</a>
+                  </Button>
+                ) : null}
+              </div>
+            </aside>
+          </div>
+        </PageContainer>
+      </div>
+    )
+  }
 
   return (
-    <>
-      <PageHero eyebrow="Contact" title={title} description={subtitle} />
-
-      <section className="section">
-        <div className="container-default">
-          <div className="grid grid-cols-1 gap-12 lg:grid-cols-[1fr_auto] lg:gap-16">
-            <div>
-              <h2 className="font-[family-name:var(--font-display)] text-[28px] font-normal text-[var(--color-fg)]">
-                Send us a message
-              </h2>
-              <p className="mt-3 max-w-[52ch] text-[15px] text-[var(--color-fg-muted)]">
-                We read every message. Real person responds within 24 hours, usually faster.
-              </p>
-              <div className="mt-8">
-                <ContactForm />
-              </div>
-            </div>
-
-            <div className="lg:w-80">
-              <h3 className="font-[family-name:var(--font-display)] text-[20px] font-normal text-[var(--color-fg)]">
-                {content.methodsHeading ?? 'Other ways to reach us'}
-              </h3>
-              <ul className="mt-6 space-y-5">
-                {renderMethods.map((m) => {
-                  const label = m.label ?? channelLabel(m.channel)
-                  const value = renderChannelValue(m.channel, settings)
-                  if (!value) return null
-                  return (
-                    <li key={m.channel}>
-                      <div className="caption-mono mb-2">{label}</div>
-                      {value}
-                      {m.description ? (
-                        <p className="mt-1 text-[12px] text-[var(--color-fg-muted)]">{m.description}</p>
-                      ) : null}
-                    </li>
-                  )
-                })}
-              </ul>
-
-              <div className="mt-10 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-6">
-                <div className="caption-mono mb-3">Response time</div>
-                <div className="flex items-center gap-2">
-                  <span className="size-2 rounded-full bg-[var(--color-positive)]" />
-                  <span className="text-[15px] text-[var(--color-fg)]">Usually within 4 hours</span>
-                </div>
-                <p className="mt-3 text-[13px] text-[var(--color-fg-muted)]">
-                  {settings.office.workingHours ??
-                    'Monday–Friday, 8am–6pm EAT. Weekend messages answered Monday morning.'}
-                </p>
-              </div>
-            </div>
+    <div className="min-w-0 border-b border-[var(--color-border)]">
+      <PageContainer width="wide" className="py-[var(--space-section-tight)] sm:py-[var(--space-section)]">
+        <header className="grid min-w-0 gap-10 border-b border-[var(--color-border)] pb-12 lg:grid-cols-[minmax(0,1.2fr)_minmax(18rem,0.8fr)] lg:items-end lg:gap-20 lg:pb-16">
+          <div className="min-w-0">
+            <h1 className="max-w-[11ch] text-balance text-[clamp(2.8rem,8vw,7rem)] font-semibold leading-[0.9] tracking-[-0.065em] text-[var(--color-fg)]">
+              Choose the shortest route.
+            </h1>
           </div>
+          <div className="min-w-0 border-t-2 border-[var(--color-fg)] pt-5">
+            <p className="max-w-[52ch] text-[15px] leading-7 text-[var(--color-fg-muted)] sm:text-[16px]">
+              Book a prepared product demo, continue in WhatsApp, or write to support. There is no generic form on this page pretending to send a message.
+            </p>
+          </div>
+        </header>
 
-          {content.faq && content.faq.length > 0 ? (
-            <section className="mt-20">
-              <h2 className="font-[family-name:var(--font-display)] text-[28px] font-normal text-[var(--color-fg)]">
-                {content.faqHeading ?? 'Frequently asked'}
-              </h2>
-              <dl className="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-2 lg:gap-x-12">
-                {content.faq.map((q, i) => (
-                  <div key={i}>
-                    <dt className="text-[16px] font-medium text-[var(--color-fg)]">{q.question}</dt>
-                    <dd className="mt-2 text-[14px] leading-[1.6] text-[var(--color-fg-muted)]">{q.answer}</dd>
-                  </div>
-                ))}
-              </dl>
-            </section>
-          ) : null}
+        <div className="pt-10 sm:pt-14">
+          <ContactForm
+            locale={locale}
+            supportEmail={settings.supportEmail}
+            whatsappUrl={settings.whatsappUrl}
+            whatsappDisplay={settings.whatsappDisplay}
+          />
         </div>
-      </section>
-    </>
+      </PageContainer>
+    </div>
   )
-}
-
-function channelLabel(channel: string): string {
-  switch (channel) {
-    case 'whatsapp':
-      return 'WhatsApp'
-    case 'email-support':
-      return 'Support email'
-    case 'email-sales':
-      return 'Sales email'
-    case 'phone':
-      return 'Phone'
-    case 'office':
-      return 'Office'
-    default:
-      return channel
-  }
-}
-
-function renderChannelValue(
-  channel: string,
-  settings: { whatsappUrl: string | null; whatsappDisplay: string | null; supportEmail: string; salesEmail: string | null; phoneNumber: string | null; office: { address: string | null } },
-): React.ReactNode {
-  switch (channel) {
-    case 'whatsapp':
-      if (!settings.whatsappUrl) return null
-      return (
-        <a
-          href={settings.whatsappUrl}
-          className="inline-flex items-center gap-2 text-[15px] text-[var(--color-fg)] transition-colors hover:text-[var(--color-accent)]"
-        >
-          <Icon.WhatsApp className="size-4" weight="bold" />
-          {settings.whatsappDisplay}
-        </a>
-      )
-    case 'email-support':
-      return (
-        <a
-          href={`mailto:${settings.supportEmail}`}
-          className="inline-flex items-center gap-2 text-[15px] text-[var(--color-fg)] transition-colors hover:text-[var(--color-accent)]"
-        >
-          <Icon.Email className="size-4" weight="bold" />
-          {settings.supportEmail}
-        </a>
-      )
-    case 'email-sales':
-      if (!settings.salesEmail) return null
-      return (
-        <a
-          href={`mailto:${settings.salesEmail}`}
-          className="inline-flex items-center gap-2 text-[15px] text-[var(--color-fg)] transition-colors hover:text-[var(--color-accent)]"
-        >
-          <Icon.Email className="size-4" weight="bold" />
-          {settings.salesEmail}
-        </a>
-      )
-    case 'phone':
-      if (!settings.phoneNumber) return null
-      return (
-        <a
-          href={`tel:${settings.phoneNumber.replace(/[^0-9+]/g, '')}`}
-          className="inline-flex items-center gap-2 text-[15px] text-[var(--color-fg)] transition-colors hover:text-[var(--color-accent)]"
-        >
-          {settings.phoneNumber}
-        </a>
-      )
-    case 'office':
-      if (!settings.office.address) return null
-      return (
-        <p className="text-[15px] whitespace-pre-line text-[var(--color-fg-muted)]">
-          {settings.office.address}
-        </p>
-      )
-    default:
-      return null
-  }
 }

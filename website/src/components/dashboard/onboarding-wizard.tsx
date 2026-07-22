@@ -2,8 +2,12 @@
 
 import * as React from 'react'
 import { useRouter } from 'next/navigation'
+import { Alert } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
-import { CaretLeft, CaretRight, Check } from '@phosphor-icons/react'
+import { Field } from '@/components/ui/field'
+import { Input } from '@/components/ui/input'
+import { ArrowLeft, ArrowRight, Check } from '@/components/icons'
+import { cn } from '@/lib/cn'
 
 interface WizardData {
   businessName: string
@@ -49,26 +53,19 @@ interface Props {
 }
 
 /**
- * 6-step onboarding wizard. Runs the first time a user lands on the
- * dashboard with no business name set. Captures the minimum the
- * licence-issuance flow needs:
+ * First-run onboarding wizard. Runs once when a signed-in buyer account
+ * lands on the dashboard without a business name. Captures the minimum the
+ * licence-issuance flow needs, then hands off to the dashboard.
  *
- *   1. Business name
- *   2. Country
- *   3. Currency (defaults from country)
- *   4. Team size
- *   5. Contact (phone + WhatsApp)
- *   6. Tax (KRA PIN; optional outside Kenya)
- *   7. Variant pick (one of: dawa | retail | hardware | hospitality | pro)
- *
- * Edits the user record via PATCH /api/customers/me, then routes to
- * /dashboard?variant=X to trigger the trial wizard.
+ * This is account setup, not a purchase — it never charges anything, does
+ * not start a trial, and does not change the commerce flow.
  */
 export function OnboardingWizard({ initial, onComplete }: Props) {
   const router = useRouter()
   const [step, setStep] = React.useState(0)
   const [submitting, setSubmitting] = React.useState(false)
   const [error, setError] = React.useState<string | null>(null)
+  const headingRef = React.useRef<HTMLHeadingElement>(null)
   const [data, setData] = React.useState<WizardData>({
     businessName: initial?.businessName ?? '',
     country: initial?.country ?? 'KE',
@@ -80,30 +77,31 @@ export function OnboardingWizard({ initial, onComplete }: Props) {
   })
 
   const steps: Array<{
-    title: string
     eyebrow: string
-    valid: () => boolean
+    title: string
     optional?: boolean
+    valid: () => boolean
     render: () => React.ReactNode
   }> = [
     {
       eyebrow: 'Step 1 of 7',
-      title: 'What\'s your business called?',
+      title: 'What’s your business called?',
       valid: () => data.businessName.trim().length >= 2,
       render: () => (
-        <div className="flex flex-col gap-2">
-          <input
+        <Field
+          label="Business name"
+          required
+          description="Shown on receipts, invoices, and the customer display."
+        >
+          <Input
             type="text"
-            autoFocus
+            name="businessName"
+            autoComplete="organization"
             value={data.businessName}
             onChange={(e) => setData({ ...data, businessName: e.target.value })}
             placeholder="e.g. Acme Pharmacy"
-            className="rounded-md border border-foreground/15 bg-background px-3 py-2.5 text-[15px] outline-none focus:border-foreground/40"
           />
-          <p className="text-[12px] text-muted-foreground">
-            This is what shows up on receipts, invoices, and the customer display.
-          </p>
-        </div>
+        </Field>
       ),
     },
     {
@@ -111,73 +109,54 @@ export function OnboardingWizard({ initial, onComplete }: Props) {
       title: 'Where do you operate?',
       valid: () => !!data.country,
       render: () => (
-        <div className="grid grid-cols-2 gap-2">
-          {COUNTRIES.map((c) => {
-            const active = data.country === c.value
-            return (
-              <button
-                key={c.value}
-                type="button"
-                onClick={() => setData({ ...data, country: c.value, currency: c.currency })}
-                className={
-                  'rounded-md border px-3 py-2.5 text-left text-[14px] cursor-pointer transition-colors ' +
-                  (active
-                    ? 'border-foreground bg-foreground/[0.06] text-foreground'
-                    : 'border-foreground/15 hover:border-foreground/30')
-                }
-              >
-                {c.label}
-              </button>
-            )
-          })}
-        </div>
+        <ChoiceGrid
+          legend="Country of operation"
+          columns={2}
+          value={data.country}
+          onChange={(value) => {
+            const match = COUNTRIES.find((c) => c.value === value)
+            setData({ ...data, country: value, currency: match?.currency ?? data.currency })
+          }}
+          options={COUNTRIES.map((c) => ({ value: c.value, label: c.label }))}
+        />
       ),
     },
     {
       eyebrow: 'Step 3 of 7',
       title: 'Confirm your currency',
-      valid: () => data.currency.length === 3,
+      valid: () => data.currency.trim().length === 3,
       render: () => (
-        <div className="flex flex-col gap-2">
-          <input
+        <Field
+          label="Currency"
+          required
+          description="ISO 4217 code, e.g. KES, UGX, USD. Defaults from your country."
+        >
+          <Input
             type="text"
+            name="currency"
+            inputMode="text"
+            autoCapitalize="characters"
             maxLength={3}
             value={data.currency}
             onChange={(e) => setData({ ...data, currency: e.target.value.toUpperCase() })}
-            className="rounded-md border border-foreground/15 bg-background px-3 py-2.5 font-mono text-[15px] outline-none focus:border-foreground/40 max-w-[120px]"
+            className="max-w-[140px] font-mono uppercase tracking-[0.14em]"
           />
-          <p className="text-[12px] text-muted-foreground">
-            ISO 4217 code, e.g. KES, UGX, USD. Defaults from your country choice.
-          </p>
-        </div>
+        </Field>
       ),
     },
     {
       eyebrow: 'Step 4 of 7',
       title: 'How big is your team?',
-      valid: () => true, // optional — defaults to "" if skipped
       optional: true,
+      valid: () => true,
       render: () => (
-        <div className="grid grid-cols-1 gap-2">
-          {TEAM_SIZES.map((t) => {
-            const active = data.employeeCount === t.value
-            return (
-              <button
-                key={t.value}
-                type="button"
-                onClick={() => setData({ ...data, employeeCount: t.value })}
-                className={
-                  'rounded-md border px-3 py-2.5 text-left text-[14px] cursor-pointer transition-colors ' +
-                  (active
-                    ? 'border-foreground bg-foreground/[0.06] text-foreground'
-                    : 'border-foreground/15 hover:border-foreground/30')
-                }
-              >
-                {t.label}
-              </button>
-            )
-          })}
-        </div>
+        <ChoiceGrid
+          legend="Team size"
+          columns={1}
+          value={data.employeeCount}
+          onChange={(value) => setData({ ...data, employeeCount: value })}
+          options={TEAM_SIZES}
+        />
       ),
     },
     {
@@ -185,41 +164,48 @@ export function OnboardingWizard({ initial, onComplete }: Props) {
       title: 'What number can we reach you on?',
       valid: () => data.phone.replace(/\s+/g, '').length >= 9,
       render: () => (
-        <div className="flex flex-col gap-2">
-          <input
+        <Field
+          label="Phone"
+          required
+          description="Only for licence keys, payment receipts, or critical alerts."
+        >
+          <Input
             type="tel"
-            autoFocus
+            name="phone"
+            inputMode="tel"
+            autoComplete="tel"
             value={data.phone}
             onChange={(e) => setData({ ...data, phone: e.target.value })}
-            placeholder={data.country === 'KE' ? '+254 7XX XXX XXX' : '+...'}
-            className="rounded-md border border-foreground/15 bg-background px-3 py-2.5 text-[15px] outline-none focus:border-foreground/40"
+            placeholder={data.country === 'KE' ? '+254 7XX XXX XXX' : '+…'}
           />
-          <p className="text-[12px] text-muted-foreground">
-            We'll only message you for licence keys, payment receipts, or critical alerts.
-          </p>
-        </div>
+        </Field>
       ),
     },
     {
       eyebrow: 'Step 6 of 7',
-      title: data.country === 'KE' ? 'Your KRA PIN (optional)' : 'Your tax ID (optional)',
-      valid: () => true, // optional
+      title: data.country === 'KE' ? 'Your KRA PIN' : 'Your tax ID',
       optional: true,
+      valid: () => true,
       render: () => (
-        <div className="flex flex-col gap-2">
-          <input
+        <Field
+          label={data.country === 'KE' ? 'KRA PIN' : 'Tax ID'}
+          optional
+          description={
+            data.country === 'KE'
+              ? 'Needed for KRA eTIMS sale signing and VAT3 returns. You can add this later.'
+              : 'For tax receipts. You can add this later.'
+          }
+        >
+          <Input
             type="text"
+            name="taxId"
+            autoCapitalize="characters"
             value={data.kraPin}
             onChange={(e) => setData({ ...data, kraPin: e.target.value.toUpperCase() })}
             placeholder={data.country === 'KE' ? 'P051XXXXXXXM' : 'Tax ID'}
-            className="rounded-md border border-foreground/15 bg-background px-3 py-2.5 font-mono text-[15px] outline-none focus:border-foreground/40"
+            className="font-mono uppercase tracking-[0.08em]"
           />
-          <p className="text-[12px] text-muted-foreground">
-            {data.country === 'KE'
-              ? 'Required for KRA eTIMS sale signing + VAT3 returns. You can add this later.'
-              : 'For tax receipts. You can add this later.'}
-          </p>
-        </div>
+        </Field>
       ),
     },
     {
@@ -227,29 +213,17 @@ export function OnboardingWizard({ initial, onComplete }: Props) {
       title: 'Pick your starting module',
       valid: () => !!data.variant,
       render: () => (
-        <div className="flex flex-col gap-2">
-          {VARIANTS.map((v) => {
-            const active = data.variant === v.value
-            return (
-              <button
-                key={v.value}
-                type="button"
-                onClick={() => setData({ ...data, variant: v.value })}
-                className={
-                  'flex flex-col gap-0.5 rounded-md border px-3 py-2.5 text-left cursor-pointer transition-colors ' +
-                  (active
-                    ? 'border-foreground bg-foreground/[0.06] text-foreground'
-                    : 'border-foreground/15 hover:border-foreground/30')
-                }
-              >
-                <span className="text-[14px] font-medium">{v.label}</span>
-                <span className="text-[12px] text-muted-foreground">{v.tagline}</span>
-              </button>
-            )
-          })}
-          <p className="mt-2 text-[12px] text-muted-foreground">
-            You can run more than one module in the same business — pick the one you'll use first.
-            Each starts with a 30-day trial.
+        <div className="flex flex-col gap-3">
+          <ChoiceGrid
+            legend="Starting module"
+            columns={1}
+            value={data.variant}
+            onChange={(value) => setData({ ...data, variant: value })}
+            options={VARIANTS.map((v) => ({ value: v.value, label: v.label, hint: v.tagline }))}
+          />
+          <p className="text-[12px] leading-5 text-[var(--color-fg-subtle)]">
+            You can run more than one module in the same business — pick the one you&apos;ll use
+            first. Buy its perpetual licence any time from the dashboard.
           </p>
         </div>
       ),
@@ -259,13 +233,18 @@ export function OnboardingWizard({ initial, onComplete }: Props) {
   const current = steps[step]
   const isLast = step === steps.length - 1
 
+  // Move focus to the step heading on each transition so keyboard and
+  // screen-reader users are placed at the top of the new step.
+  React.useEffect(() => {
+    headingRef.current?.focus()
+  }, [step])
+
   async function handleNext() {
     if (!current.valid()) return
     if (!isLast) {
       setStep(step + 1)
       return
     }
-    // Final step — submit
     setSubmitting(true)
     setError(null)
     try {
@@ -284,88 +263,167 @@ export function OnboardingWizard({ initial, onComplete }: Props) {
       })
       if (!res.ok) {
         const j = (await res.json().catch(() => null)) as { errors?: { message: string }[] } | null
-        throw new Error(j?.errors?.[0]?.message ?? 'Could not save')
+        throw new Error(j?.errors?.[0]?.message ?? 'We could not save your details. Try again.')
       }
       onComplete?.(data)
       router.push(`/dashboard?variant=${encodeURIComponent(data.variant)}`)
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e))
+      setError(e instanceof Error ? e.message : 'We could not save your details. Try again.')
     } finally {
       setSubmitting(false)
     }
   }
 
   return (
-    <div className="flex min-h-[80vh] flex-col items-center justify-center px-6">
-      <div className="w-full max-w-md flex flex-col gap-6">
-        {/* Progress bar */}
-        <div className="flex items-center gap-1.5">
-          {steps.map((_, i) => (
-            <div
-              key={i}
-              className={
-                'h-[3px] flex-1 rounded-full transition-colors ' +
-                (i <= step ? 'bg-foreground' : 'bg-foreground/15')
-              }
-            />
-          ))}
-        </div>
-
+    <div className="flex min-h-dvh items-center justify-center px-5 py-10 sm:px-6">
+      <div className="flex w-full max-w-lg flex-col gap-6">
         <div className="flex flex-col gap-1">
-          <div className="flex items-baseline gap-2">
-            <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
-              {current.eyebrow}
-            </span>
-            {current.optional && (
-              <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-muted-foreground/70">
-                · Optional
-              </span>
-            )}
-          </div>
-          <h1
-            style={{ fontFamily: 'var(--font-display, serif)' }}
-            className="text-[clamp(24px,3vw,32px)] font-medium leading-[1.1] tracking-[-0.01em]"
-          >
-            {current.title}
-          </h1>
+          <p className="eyebrow-plain">Set up Omnix</p>
+          <p className="text-[13px] leading-6 text-[var(--color-fg-muted)]">
+            A few details so licences, receipts, and tax documents carry the right information.
+          </p>
         </div>
 
-        <div className="flex flex-col gap-3">{current.render()}</div>
-
-        {error && (
-          <div className="rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2 text-[13px]">
-            {error}
+        {/* Progress */}
+        <div>
+          <div className="flex items-center gap-1.5" aria-hidden="true">
+            {steps.map((_, i) => (
+              <div
+                key={i}
+                className={cn(
+                  'h-[3px] flex-1 rounded-[var(--radius-pill)] transition-colors',
+                  i <= step ? 'bg-[var(--color-accent)]' : 'bg-[var(--color-border-strong)]',
+                )}
+              />
+            ))}
           </div>
-        )}
+        </div>
 
-        <div className="flex items-center justify-between gap-3 pt-2">
-          <button
+        {/* Step */}
+        <div className="flex flex-col gap-4">
+          <div className="flex flex-col gap-1">
+            <p
+              className="font-mono text-[10px] font-semibold uppercase tracking-[0.18em] text-[var(--color-fg-subtle)]"
+              aria-live="polite"
+            >
+              {current.eyebrow}
+              {current.optional ? ' · Optional' : ''}
+            </p>
+            <h1
+              ref={headingRef}
+              tabIndex={-1}
+              className="font-display text-[clamp(24px,3.4vw,32px)] font-semibold leading-[1.08] tracking-[-0.035em] text-[var(--color-fg)] outline-none"
+            >
+              {current.title}
+            </h1>
+          </div>
+
+          <div>{current.render()}</div>
+
+          {error ? (
+            <Alert variant="error" title="Couldn’t save">
+              {error}
+            </Alert>
+          ) : null}
+        </div>
+
+        {/* Nav */}
+        <div className="flex items-center justify-between gap-3 pt-1">
+          <Button
             type="button"
+            variant="ghost"
             onClick={() => setStep(Math.max(0, step - 1))}
             disabled={step === 0 || submitting}
-            className="inline-flex items-center gap-1.5 px-2 py-1.5 text-[13px] text-muted-foreground hover:text-foreground disabled:opacity-30 cursor-pointer"
           >
-            <CaretLeft className="h-3.5 w-3.5" />
+            <ArrowLeft className="size-4" />
             Back
-          </button>
+          </Button>
+
           <div className="flex items-center gap-2">
-            {current.optional && !isLast && (
-              <button
+            {current.optional && !isLast ? (
+              <Button
                 type="button"
+                variant="ghost"
                 onClick={() => setStep(step + 1)}
                 disabled={submitting}
-                className="px-3 py-1.5 text-[13px] text-muted-foreground hover:text-foreground disabled:opacity-30 cursor-pointer"
               >
                 Skip for now
-              </button>
-            )}
-            <Button onClick={handleNext} disabled={!current.valid() || submitting}>
+              </Button>
+            ) : null}
+            <Button type="button" onClick={handleNext} disabled={!current.valid() || submitting} aria-busy={submitting}>
               {submitting ? 'Saving…' : isLast ? 'Finish' : 'Next'}
-              {isLast ? <Check className="h-3.5 w-3.5" /> : <CaretRight className="h-3.5 w-3.5" />}
+              {isLast ? <Check className="size-4" /> : <ArrowRight className="size-4" />}
             </Button>
           </div>
         </div>
+
+        <p className="border-t border-[var(--color-border)] pt-5 text-[12px] leading-5 text-[var(--color-fg-subtle)]">
+          Omnix is a one-time purchase per device, not a subscription — you own the version you
+          buy, and compliance updates renew yearly. Setting up here creates your account and
+          charges nothing now.
+        </p>
       </div>
     </div>
+  )
+}
+
+interface ChoiceOption {
+  value: string
+  label: string
+  hint?: string
+}
+
+/**
+ * Accessible single-select group built from toggle buttons. Each option is
+ * a 44px-tall, keyboard-focusable control with aria-pressed state — valid
+ * for the short, fixed enums used here (country, team size, module).
+ */
+function ChoiceGrid({
+  legend,
+  options,
+  value,
+  onChange,
+  columns,
+}: {
+  legend: string
+  options: ChoiceOption[]
+  value: string
+  onChange: (value: string) => void
+  columns: 1 | 2
+}) {
+  return (
+    <fieldset className="min-w-0 border-0 p-0">
+      <legend className="sr-only">{legend}</legend>
+      <div
+        className={cn('grid gap-2', columns === 2 ? 'grid-cols-2' : 'grid-cols-1')}
+        role="group"
+        aria-label={legend}
+      >
+        {options.map((o) => {
+          const active = value === o.value
+          return (
+            <button
+              key={o.value}
+              type="button"
+              aria-pressed={active}
+              onClick={() => onChange(o.value)}
+              className={cn(
+                'flex min-h-11 flex-col justify-center gap-0.5 rounded-[var(--radius-md)] border px-3.5 py-2.5 text-left',
+                'transition-[border-color,background-color] duration-[var(--duration-fast)] ease-[var(--ease-out)]',
+                'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-line)]',
+                active
+                  ? 'border-[var(--color-accent)] bg-[var(--color-accent-soft)] text-[var(--color-fg)]'
+                  : 'border-[var(--color-border-strong)] text-[var(--color-fg)] hover:border-[var(--color-fg-subtle)]',
+              )}
+            >
+              <span className="text-[14px] font-medium">{o.label}</span>
+              {o.hint ? (
+                <span className="text-[12px] leading-5 text-[var(--color-fg-muted)]">{o.hint}</span>
+              ) : null}
+            </button>
+          )
+        })}
+      </div>
+    </fieldset>
   )
 }

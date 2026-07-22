@@ -1,9 +1,13 @@
 import { and, count, desc, eq, ilike, ne, or, sql } from 'drizzle-orm'
 import Link from 'next/link'
+import { headers } from 'next/headers'
 import { Users } from '@phosphor-icons/react/dist/ssr'
 import { db, user } from '@/db'
+import { auth } from '@/lib/auth'
 import { EmptyState } from '@/components/admin/empty-state'
+import { FilteredEmptyState } from '@/components/ui/state-view'
 import { PageHeader } from '@/components/layout/page-header'
+import { Button } from '@/components/ui/button'
 import {
   Table,
   TableBody,
@@ -61,6 +65,14 @@ export default async function AdminUsersPage({
   const role = sp.role ?? ''
   const status = sp.status ?? ''
 
+  // Provisioning a customer (→ /admin/customers/new) is a platform_admin-only
+  // desk (DESK_ACCESS.customerCreate + the /api/admin/customers gate). Support
+  // and sales can view users but must not see an action they can't complete,
+  // so resolve the caller's role server-side and gate the CTA on it.
+  const session = await auth.api.getSession({ headers: await headers() }).catch(() => null)
+  const viewerRole = ((session?.user as { role?: string } | undefined)?.role ?? 'user')
+  const canCreateCustomer = viewerRole === 'platform_admin'
+
   const whereClauses = [
     q ? or(ilike(user.email, `%${q}%`), ilike(user.name, `%${q}%`)) : null,
     role ? eq(user.role, role) : null,
@@ -97,12 +109,11 @@ export default async function AdminUsersPage({
         title="Users"
         description="Every account — customers, support agents, sales reps, platform admins."
         actions={
-          <Link
-            href="/admin/customers/new"
-            className="inline-flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:opacity-90"
-          >
-            + New customer
-          </Link>
+          canCreateCustomer ? (
+            <Button asChild size="sm">
+              <Link href="/admin/customers/new">+ New customer</Link>
+            </Button>
+          ) : undefined
         }
       />
 
@@ -120,14 +131,16 @@ export default async function AdminUsersPage({
         </div>
       </div>
 
-      {rows.length === 0 && total === 0 ? (
-        <EmptyState
-          icon={<Users weight="regular" className="size-8" />}
-          title={q || role || status ? 'No matches.' : 'No users yet.'}
-          description={
-            q || role || status ? 'Adjust the search or filters.' : 'Sign-ups via /login or pre-seeded admins land here.'
-          }
-        />
+      {rows.length === 0 ? (
+        q || role || status ? (
+          <FilteredEmptyState query={q || undefined} clearHref="/admin/users" entityLabel="users" />
+        ) : (
+          <EmptyState
+            icon={<Users weight="regular" className="size-8" />}
+            title="No users yet."
+            description="Sign-ups via /login or pre-seeded admins land here."
+          />
+        )
       ) : (
         <>
           <Table>
@@ -160,7 +173,7 @@ export default async function AdminUsersPage({
                   </TableCell>
                   <TableCell>
                     {u.banned ? (
-                      <span className="inline-flex items-center rounded-md border border-rose-500/30 bg-rose-500/10 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-[0.18em] text-rose-700 dark:text-rose-300">
+                      <span className="inline-flex items-center rounded-md border border-[var(--color-negative)]/30 bg-[var(--color-negative)]/10 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--color-negative)]">
                         Banned
                       </span>
                     ) : (

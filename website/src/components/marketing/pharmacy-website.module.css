@@ -1,0 +1,480 @@
+/* Hallmark · pre-emit critique: P5 H5 E5 S5 R5 V4
+ * Hallmark · macrostructure: Workbench · tone: confident utilitarian · theme: Working Counter
+ * enrichment: approved Task 8 product media or useful demo docket · reveal: none
+ * contrast: pass · honest copy: pass · responsive: pass at 320/375/414/768/1440
+ */
+.page {
+  background: var(--color-bg);
+  color: var(--color-fg);
+}
+
+.container {
+  width: min(100%, var(--w-wide));
+  margin-inline: auto;
+  padding-inline: clamp(var(--space-4), 5vw, var(--space-12));
+}
+
+.hero,
+.workflow,
+.capabilities,
+.boundary,
+.closing {
+  position: relative;
+}
+
+.demoVideo {
+  padding-block: var(--space-section);
+  border-block-end: 1px solid var(--color-border-strong);
+}
+
+.hero {
+  padding-block-start: clamp(var(--space-12), 6vw, var(--space-20));
+  padding-block-end: clamp(var(--space-16), 9vw, calc(var(--space-24) + var(--space-8)));
+  border-block-end: 1px solid var(--color-border-strong);
+}
+
+.heroGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: clamp(var(--space-10), 8vw, var(--space-20));
+  align-items: end;
+}
+
+.heroCopy,
+.heroMedia,
+.sectionHeading > *,
+.boundaryGrid > *,
+.closingPanel > * {
+  min-width: 0;
+}
+
+.overline,
+.fallbackLabel,
+.workflowList > li > span {
+  margin: 0;
+  color: var(--color-fg-subtle);
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  font-weight: 650;
+  letter-spacing: 0.11em;
+  line-height: 1.5;
+  text-transform: uppercase;
+}
+
+.heroCopy h1 {
+  max-width: 12ch;
+  margin-block-start: var(--space-5);
+  font-size: clamp(2.65rem, 7.6vw, 5.5rem);
+  font-weight: 700;
+  letter-spacing: -0.06em;
+  line-height: 0.95;
+  overflow-wrap: anywhere;
+}
+
+.heroLede {
+  max-width: 61ch;
+  margin-block: var(--space-6) 0;
+  color: var(--color-fg-muted);
+  font-size: clamp(1rem, 1.5vw, 1.16rem);
+  line-height: 1.65;
+}
+
+.actions,
+.closingActions {
+  display: flex;
+  flex-flow: row wrap;
+  gap: var(--space-3);
+  align-items: center;
+  margin-block-start: var(--space-8);
+}
+
+.primaryAction,
+.secondaryAction {
+  display: inline-flex;
+  min-height: 3rem;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid transparent;
+  border-radius: var(--radius-pill);
+  padding-inline: var(--space-6);
+  font-family: var(--font-ui);
+  font-size: 0.875rem;
+  font-weight: 700;
+  line-height: 1;
+  white-space: nowrap;
+  transition: background-color var(--duration-ui) var(--ease-out), color var(--duration-ui) var(--ease-out), border-color var(--duration-ui) var(--ease-out), transform var(--duration-fast) var(--ease-out);
+}
+
+.primaryAction {
+  background: var(--color-accent);
+  color: var(--color-accent-foreground);
+}
+
+.secondaryAction {
+  border-color: var(--color-border-strong);
+  background: var(--color-bg);
+  color: var(--color-fg);
+}
+
+.primaryAction:hover {
+  background: var(--color-accent-hover);
+}
+
+.secondaryAction:hover {
+  border-color: var(--color-fg);
+}
+
+.primaryAction:active,
+.secondaryAction:active {
+  transform: scale(0.98);
+}
+
+.scopeLine {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  margin-block: var(--space-10) 0;
+  border-block-start: 1px solid var(--color-border);
+}
+
+.scopeLine > div {
+  padding-block: var(--space-4);
+  border-block-end: 1px solid var(--color-border);
+}
+
+.scopeLine dt {
+  color: var(--color-fg-subtle);
+  font-family: var(--font-mono);
+  font-size: 0.625rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.scopeLine dd {
+  margin: var(--space-1) 0 0;
+  font-size: 0.875rem;
+  font-weight: 680;
+  line-height: 1.4;
+}
+
+.heroMedia {
+  min-height: 27rem;
+  margin: 0;
+  overflow: clip;
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+}
+
+.heroMedia img,
+.heroMedia video {
+  display: block;
+  width: 100%;
+  height: 100%;
+  min-height: inherit;
+  object-fit: cover;
+}
+
+.mediaFallback {
+  display: flex;
+  min-height: inherit;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: var(--space-8);
+  padding: clamp(var(--space-6), 6vw, var(--space-10));
+  background-image: linear-gradient(var(--color-border) 1px, transparent 1px), linear-gradient(90deg, var(--color-border) 1px, transparent 1px);
+  background-size: var(--space-8) var(--space-8);
+}
+
+.mediaFallback > div {
+  padding: var(--space-5);
+  border-block-start: 3px solid var(--color-accent);
+  background: var(--color-bg);
+}
+
+.mediaFallback > div p {
+  max-width: 17ch;
+  margin-block: var(--space-4) 0;
+  font-size: clamp(1.4rem, 4vw, 2.2rem);
+  font-weight: 700;
+  letter-spacing: -0.04em;
+  line-height: 1.05;
+}
+
+.mediaFallback ul {
+  display: grid;
+  gap: 0;
+  margin: auto 0 0;
+  padding: 0;
+  border-block-start: 1px solid var(--color-border-strong);
+  background: var(--color-bg);
+  list-style: none;
+}
+
+.mediaFallback li {
+  padding: var(--space-3) var(--space-4);
+  border-block-end: 1px solid var(--color-border);
+  font-size: 0.8125rem;
+  font-weight: 650;
+  line-height: 1.45;
+}
+
+.fallbackNote {
+  width: fit-content;
+  max-width: 100%;
+  border-radius: var(--radius-pill);
+  padding: var(--space-2) var(--space-3);
+  background: var(--color-surface-2);
+  color: var(--color-fg-muted);
+  font-family: var(--font-ui);
+  font-size: 0.6875rem;
+  line-height: 1.4;
+}
+
+.workflow,
+.capabilities,
+.closing {
+  padding-block: var(--space-section);
+}
+
+.workflow {
+  background: var(--color-surface);
+}
+
+.sectionHeading {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-6);
+  align-items: end;
+  margin-block-end: clamp(var(--space-10), 7vw, var(--space-20));
+}
+
+.sectionHeading h2,
+.boundaryGrid h2,
+.closingPanel h2 {
+  max-width: 15ch;
+  margin-block-start: var(--space-3);
+  font-size: clamp(2.15rem, 5vw, 4rem);
+  font-weight: 700;
+  letter-spacing: -0.05em;
+  line-height: 1;
+}
+
+.sectionHeading > p {
+  max-width: 46ch;
+  margin: 0;
+  color: var(--color-fg-muted);
+  font-size: 0.96rem;
+  line-height: 1.65;
+}
+
+.workflowList {
+  margin: 0;
+  padding: 0;
+  border-block-start: 1px solid var(--color-border-strong);
+  list-style: none;
+}
+
+.workflowList > li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-3);
+  padding-block: var(--space-6);
+  border-block-end: 1px solid var(--color-border-strong);
+}
+
+.workflowList h3,
+.capabilityGrid h3 {
+  font-size: clamp(1.2rem, 2.5vw, 1.7rem);
+  font-weight: 700;
+  letter-spacing: -0.035em;
+  line-height: 1.1;
+}
+
+.workflowList p,
+.capabilityGrid p,
+.boundaryCopy p,
+.closingPanel p:not(.overline) {
+  max-width: 58ch;
+  margin-block: var(--space-3) 0;
+  color: var(--color-fg-muted);
+  font-size: 0.9rem;
+  line-height: 1.65;
+}
+
+.capabilityGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  border-block-start: 1px solid var(--color-border-strong);
+}
+
+.capabilityGrid article {
+  min-width: 0;
+  padding-block: var(--space-8);
+  border-block-end: 1px solid var(--color-border-strong);
+}
+
+.boundary {
+  padding-block: var(--space-section-tight);
+  border-block: 1px solid var(--color-border-strong);
+  background: var(--color-fg);
+  color: var(--color-bg);
+}
+
+.boundary .overline {
+  color: var(--color-accent-on-dark);
+}
+
+.boundaryGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-8);
+}
+
+.boundaryGrid h2 {
+  color: var(--color-bg);
+}
+
+.boundaryCopy {
+  padding-block-start: var(--space-2);
+  border-block-start: 1px solid var(--color-fg-subtle);
+}
+
+.boundaryCopy p {
+  color: var(--color-border);
+}
+
+.boundaryCopy p + p {
+  margin-block-start: var(--space-5);
+}
+
+.closingPanel {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-8);
+  align-items: end;
+  padding-block-start: var(--space-8);
+  border-block-start: 3px solid var(--color-accent);
+}
+
+.closingActions {
+  align-items: flex-start;
+  margin-block-start: 0;
+}
+
+.textAction {
+  display: inline-flex;
+  min-height: 2.75rem;
+  align-items: center;
+  border-block-end: 1px solid var(--color-border-strong);
+  color: var(--color-fg-muted);
+  font-family: var(--font-ui);
+  font-size: 0.8125rem;
+  font-weight: 700;
+  line-height: 1;
+  white-space: nowrap;
+  transition: border-color var(--duration-ui) var(--ease-out), color var(--duration-ui) var(--ease-out), transform var(--duration-fast) var(--ease-out);
+}
+
+.textAction:hover {
+  border-color: var(--color-accent);
+  color: var(--color-fg);
+}
+
+.textAction:active {
+  transform: scale(0.98);
+}
+
+.primaryAction[aria-disabled='true'],
+.secondaryAction[aria-disabled='true'],
+.textAction[aria-disabled='true'] {
+  cursor: not-allowed;
+  opacity: 0.55;
+  pointer-events: none;
+}
+
+@media (min-width: 32rem) {
+  .scopeLine {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .scopeLine > div {
+    padding-inline: var(--space-4);
+    border-inline-start: 1px solid var(--color-border);
+  }
+
+  .scopeLine > div:first-child {
+    padding-inline-start: 0;
+    border-inline-start: 0;
+  }
+}
+
+@media (min-width: 48rem) {
+  .sectionHeading {
+    grid-template-columns: minmax(0, 1.35fr) minmax(0, 0.75fr);
+  }
+
+  .workflowList > li {
+    grid-template-columns: minmax(7rem, 0.28fr) minmax(0, 1fr);
+    gap: var(--space-8);
+    padding: var(--space-8) var(--space-4);
+  }
+
+  .capabilityGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .capabilityGrid article {
+    padding: var(--space-8);
+  }
+
+  .capabilityGrid article:nth-child(odd) {
+    padding-inline-start: 0;
+    border-inline-end: 1px solid var(--color-border-strong);
+  }
+
+  .boundaryGrid {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 0.8fr);
+    gap: var(--space-16);
+    align-items: start;
+  }
+
+  .closingPanel {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .closingActions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}
+
+@media (min-width: 64rem) {
+  .heroGrid {
+    grid-template-columns: minmax(0, 1.12fr) minmax(22rem, 0.88fr);
+  }
+
+  .heroMedia {
+    min-height: 36rem;
+  }
+}
+
+@media (min-width: 90rem) {
+  .container {
+    padding-inline: var(--space-8);
+  }
+}
+
+@media (pointer: coarse) {
+  .primaryAction,
+  .secondaryAction {
+    min-height: 3.25rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .primaryAction,
+  .secondaryAction,
+  .textAction {
+    transition-duration: 0.01ms;
+  }
+}

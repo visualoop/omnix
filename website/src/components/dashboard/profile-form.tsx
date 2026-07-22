@@ -161,7 +161,7 @@ export function ProfileForm({
 
       <label className="flex items-start gap-2.5 text-[12px] text-[var(--color-fg-muted)]">
         <Checkbox name="newsletterOptIn" defaultChecked={initial.newsletterOptIn} className="mt-0.5" />
-        Email me when there's a major release.
+        Email me when there&apos;s a major release.
       </label>
 
       {error ? (

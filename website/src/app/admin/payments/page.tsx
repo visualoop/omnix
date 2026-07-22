@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { CurrencyDollar } from '@phosphor-icons/react/dist/ssr'
 import { db, payments, user } from '@/db'
 import { EmptyState } from '@/components/admin/empty-state'
+import { FilteredEmptyState } from '@/components/ui/state-view'
 import { PageHeader } from '@/components/layout/page-header'
 import {
   Table,
@@ -152,16 +153,20 @@ export default async function AdminPaymentsPage({
         </div>
       </div>
 
-      {rows.length === 0 && total === 0 ? (
-        <EmptyState
-          icon={<CurrencyDollar weight="regular" className="size-8" />}
-          title={q || status || purpose ? 'No matches.' : 'No payments yet.'}
-          description={
-            q || status || purpose
-              ? 'Adjust the search or filters.'
-              : 'Each Paystack transaction will land here.'
-          }
-        />
+      {rows.length === 0 ? (
+        q || status || purpose ? (
+          <FilteredEmptyState
+            query={q || undefined}
+            clearHref="/admin/payments"
+            entityLabel="payments"
+          />
+        ) : (
+          <EmptyState
+            icon={<CurrencyDollar weight="regular" className="size-8" />}
+            title="No payments yet."
+            description="Each Paystack transaction will land here."
+          />
+        )
       ) : (
         <>
           <Table>

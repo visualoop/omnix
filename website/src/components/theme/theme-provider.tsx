@@ -1,20 +1,12 @@
 'use client'
 
 /**
- * Theme provider — wraps `next-themes` with our defaults.
+ * Theme provider — deterministic light first, explicit dark opt-in.
  *
- * Decisions:
- *   - attribute="class" — flips a `.dark` class on <html>. Matches the
- *     globals.css structure (light = default, dark = .dark override).
- *   - defaultTheme="dark" — Kenyan SME owners shop in daylight on
- *     uncalibrated screens; cream + espresso is the more legible
- *     starting point. Users can opt into dark via the header toggle or
- *     OS preference (when enableSystem is true).
- *   - enableSystem=true — if the OS is dark and they haven't picked
- *     anything yet, we follow that. Their explicit choice still wins.
- *   - disableTransitionOnChange=true — no flicker when flipping themes
- *     (otherwise Tailwind's transition utilities cause every coloured
- *     element to fade simultaneously, which looks bad).
+ * Omnix is evaluated mainly in bright shops and offices. A first visit must
+ * therefore render the high-contrast light palette regardless of OS theme.
+ * The header toggle persists an explicit light/dark choice in localStorage.
+ * Disabling transitions prevents every surface from fading during a switch.
  */
 import { ThemeProvider as NextThemesProvider, type ThemeProviderProps } from 'next-themes'
 
@@ -22,8 +14,8 @@ export function ThemeProvider({ children, ...props }: ThemeProviderProps) {
   return (
     <NextThemesProvider
       attribute="class"
-      defaultTheme="dark"
-      enableSystem
+      defaultTheme="light"
+      enableSystem={false}
       disableTransitionOnChange
       {...props}
     >

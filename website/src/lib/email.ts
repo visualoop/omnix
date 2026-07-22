@@ -29,6 +29,8 @@ import {
   TeamInviteEmail,
   PartnershipInquiryEmail,
   PartnershipAckEmail,
+  DemoRequestNotificationEmail,
+  DemoRequestAcknowledgementEmail,
 } from '@/emails/templates'
 
 interface ResolvedConfig {
@@ -50,7 +52,7 @@ async function getResend(): Promise<ResolvedConfig> {
 export async function sendMagicLinkEmail({ to, url }: { to: string; url: string }) {
   const { client, from, replyTo } = await getResend()
   if (!client) {
-    console.warn(`[email] resend.api_key missing — magic link not sent to ${to}`)
+    console.warn('[email] magic-link send skipped: resend.api_key not configured')
     return
   }
   const brand = await emailBranding()
@@ -115,23 +117,32 @@ interface LicenseKeyInput {
   date: string
   downloadUrl: string
   maintenanceUntil: string
+  /**
+   * Optional Resend idempotency key. Passed straight through as the
+   * `Idempotency-Key` header so a retried / concurrent webhook delivery
+   * re-sending the same purchase confirmation is de-duplicated by the
+   * provider instead of mailing the customer twice. Must be a stable,
+   * non-secret, payment-derived string — never a licence key.
+   */
+  idempotencyKey?: string
 }
 
 export async function sendLicenseKeyEmail(input: LicenseKeyInput) {
   const { client, from, replyTo } = await getResend()
   if (!client) {
-    console.warn(`[email] resend.api_key missing — license key not delivered to ${input.to}`)
+    console.warn('[email] license-key delivery skipped: resend.api_key not configured')
     return
   }
   const brand = await emailBranding()
   const html = await render(LicenseKeyEmail({ ...input, brand }))
-  const result = await client.emails.send({
-    from,
-    to: input.to,
-    replyTo,
-    subject: `Your Omnix ${input.variant} licence is ready`,
-    html,
-    text: `Hi ${input.customerName},
+  const result = await client.emails.send(
+    {
+      from,
+      to: input.to,
+      replyTo,
+      subject: `Your Omnix ${input.variant} licence is ready`,
+      html,
+      text: `Hi ${input.customerName},
 
 Your Omnix ${input.variant} licence is ready.
 
@@ -142,7 +153,9 @@ Maintenance until: ${input.maintenanceUntil}
 Reference: ${input.reference}
 
 To activate: install Omnix, open it, paste the licence key into the activation screen.`,
-  })
+    },
+    input.idempotencyKey ? { idempotencyKey: input.idempotencyKey } : undefined,
+  )
   if (result.error) throw new Error(`License key send failed: ${result.error.message ?? 'unknown'}`)
 }
 
@@ -156,6 +169,11 @@ interface PaymentReceiptInput {
   reference: string
   purpose: string
   date: string
+  /**
+   * Optional Resend idempotency key (see {@link LicenseKeyInput}). Lets a
+   * retried webhook delivery re-send the receipt without duplicating it.
+   */
+  idempotencyKey?: string
 }
 
 export async function sendPaymentReceiptEmail(input: PaymentReceiptInput) {
@@ -163,13 +181,17 @@ export async function sendPaymentReceiptEmail(input: PaymentReceiptInput) {
   if (!client) return
   const brand = await emailBranding()
   const html = await render(PaymentReceiptEmail({ ...input, brand }))
-  await client.emails.send({
-    from,
-    to: input.to,
-    replyTo,
-    subject: `Receipt — ${input.currency} ${input.amount.toLocaleString()} paid to Omnix`,
-    html,
-  })
+  const result = await client.emails.send(
+    {
+      from,
+      to: input.to,
+      replyTo,
+      subject: `Receipt — ${input.currency} ${input.amount.toLocaleString()} paid to Omnix`,
+      html,
+    },
+    input.idempotencyKey ? { idempotencyKey: input.idempotencyKey } : undefined,
+  )
+  if (result.error) throw new Error(`Payment receipt send failed: ${result.error.message ?? 'unknown'}`)
 }
 
 // ─── Payment failed ────────────────────────────────────
@@ -342,7 +364,7 @@ interface TeamInviteInput {
 export async function sendTeamInviteEmail(input: TeamInviteInput) {
   const { client, from, replyTo } = await getResend()
   if (!client) {
-    console.warn(`[email] resend.api_key missing — team invite not sent to ${input.to}`)
+    console.warn('[email] team-invite send skipped: resend.api_key not configured')
     return
   }
   const brand = await emailBranding()
@@ -409,7 +431,7 @@ interface PartnershipInput {
 export async function sendPartnershipInquiry(input: PartnershipInput): Promise<{ ok: true; warning?: string }> {
   const { client, from, replyTo } = await getResend();
   if (!client) {
-    console.warn(`[email] resend.api_key missing — partnership enquiry from ${input.email} captured but not delivered`);
+    console.warn('[email] partnership enquiry captured but not delivered: resend.api_key not configured');
     return { ok: true, warning: 'email-not-configured' };
   }
 
@@ -463,9 +485,77 @@ export async function sendPartnershipInquiry(input: PartnershipInput): Promise<{
   });
   if (r2.error) {
     // Acknowledgement failure is non-fatal; the internal team already has
-    // the lead. Log and move on.
-    console.warn(`[email] partnership ack to ${input.email} failed:`, r2.error.message);
+    // the lead. Log the provider error class only (no submitter email).
+    console.warn('[email] partnership acknowledgement failed:', r2.error.message);
   }
 
   return { ok: true };
+}
+
+
+// ─── Demo booking request ─────────────────────────────────────────
+
+export interface DemoRequestEmailInput {
+  reference: string
+  fullName: string
+  businessName: string
+  workEmail: string
+  phone: string
+  product: 'pharmacy' | 'retail' | 'hospitality' | 'hardware' | 'salon'
+  locationCount: number
+  currentSystem?: string
+  priorities: string[]
+  notes?: string
+  preferredChannel: 'whatsapp' | 'phone' | 'email'
+  preferredWindow: 'morning' | 'afternoon' | 'evening' | 'anytime'
+}
+
+export async function sendDemoRequest(input: DemoRequestEmailInput): Promise<{ ok: true; warning?: string }> {
+  const { client, from, replyTo } = await getResend()
+  if (!client) {
+    console.warn('[email] demo-request delivery skipped: resend.api_key not configured (request stored)')
+    return { ok: true, warning: 'email-not-configured' }
+  }
+
+  const brand = await emailBranding()
+  const internalTo = process.env.DEMO_REQUESTS_EMAIL ?? process.env.SALES_EMAIL ?? 'sales@omnix.co.ke'
+  const templateProps = { ...input, brand }
+  const internalHtml = await render(DemoRequestNotificationEmail(templateProps))
+  const notification = await client.emails.send({
+    from,
+    to: internalTo,
+    replyTo: input.workEmail,
+    subject: `Demo · ${input.product} · ${input.businessName} · ${input.reference}`,
+    html: internalHtml,
+    text: [
+      `Demo request ${input.reference}`,
+      `Name: ${input.fullName}`,
+      `Business: ${input.businessName}`,
+      `Email: ${input.workEmail}`,
+      `Phone: ${input.phone}`,
+      `Product: ${input.product}`,
+      `Locations: ${input.locationCount}`,
+      `Current system: ${input.currentSystem || 'Not provided'}`,
+      `Priorities: ${input.priorities.join(', ') || 'Not provided'}`,
+      `Preferred contact: ${input.preferredChannel} / ${input.preferredWindow}`,
+      '',
+      input.notes || '',
+    ].join('\n'),
+  })
+  if (notification.error) throw new Error(`Demo notification failed: ${notification.error.message ?? 'unknown'}`)
+
+  const acknowledgementHtml = await render(DemoRequestAcknowledgementEmail(templateProps))
+  const acknowledgement = await client.emails.send({
+    from,
+    to: input.workEmail,
+    replyTo,
+    subject: `Your Omnix demo request · ${input.reference}`,
+    html: acknowledgementHtml,
+    text: `Your Omnix demo request for ${input.businessName} is recorded. We will use ${input.preferredChannel} to confirm a suitable time. Reference: ${input.reference}.`,
+  })
+  if (acknowledgement.error) {
+    console.warn('[email] demo acknowledgement failed:', acknowledgement.error.message)
+  }
+
+  return { ok: true }
 }

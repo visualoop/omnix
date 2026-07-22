@@ -13,29 +13,43 @@ import { test, expect } from '@playwright/test'
  */
 
 test.describe('Marketing homepage', () => {
-  test('leads with M-Pesa, not ERP', async ({ page }) => {
+  test('explains M-Pesa without positioning Omnix as generic ERP', async ({ page }) => {
     await page.goto('/ke')
-    // Headline should mention M-Pesa (hero rewrite).
     const h1 = page.locator('h1').first()
-    await expect(h1).toContainText(/M-Pesa/i)
-    // Title carries the Kenya M-Pesa positioning.
-    await expect(page).toHaveTitle(/M-Pesa/i)
+    await expect(h1).toBeVisible()
+    await expect(h1).not.toContainText(/\bERP\b/i)
+    await expect(page.locator('body')).toContainText(/M-Pesa/i)
+    await expect(page).toHaveTitle(/Omnix/i)
   })
 
-  test('WhatsApp widget opens and deep-links to wa.me', async ({ page }) => {
+  test('WhatsApp widget is absent or uses a configured wa.me link', async ({ page }) => {
     await page.goto('/ke')
     const fab = page.getByRole('button', { name: /WhatsApp/i })
-    await expect(fab).toBeVisible()
-    await fab.click()
-    await expect(page.getByPlaceholder(/Type a message/i)).toBeVisible()
+    if (await fab.count()) {
+      await expect(fab).toBeVisible()
+      await fab.click()
+      await expect(page.getByPlaceholder(/Type a message/i)).toBeVisible()
+      await page.getByRole('button', { name: 'Send via WhatsApp' }).click()
+    } else {
+      await expect(page.getByRole('link', { name: 'Ask on WhatsApp' })).toHaveCount(0)
+    }
   })
 })
 
-test.describe('Variant landings', () => {
-  for (const v of ['dawa', 'retail', 'hardware', 'hospitality']) {
-    test(`/${v} leads with M-Pesa`, async ({ page }) => {
-      await page.goto(`/ke/${v}`)
-      await expect(page.locator('h1').first()).toContainText(/M-Pesa/i)
+test.describe('Product landings', () => {
+  for (const [route, canonical] of [
+    ['dawa', 'pharmacy'],
+    ['retail', 'retail'],
+    ['hardware', 'hardware'],
+    ['hospitality', 'hospitality'],
+    ['salon', 'salon'],
+  ] as const) {
+    test(`/${route} resolves to the canonical ${canonical} product with M-Pesa coverage`, async ({ page }) => {
+      await page.goto(`/ke/${route}`)
+      await expect(page).toHaveURL(new RegExp(`/ke/${canonical}$`))
+      await expect(page.locator('h1').first()).toBeVisible()
+      await expect(page.locator('body')).toContainText(/M-Pesa/i)
+      await expect(page.getByRole('link', { name: /Book .* demo/i }).first()).toBeVisible()
     })
   }
 })
@@ -50,9 +64,11 @@ test.describe('Setup guides', () => {
     await page.goto('/ke/docs/paystack-keys')
     await expect(page.locator('body')).toContainText(/API Keys/i)
   })
-  test('AI key guide exists', async ({ page }) => {
-    await page.goto('/ke/docs/ai-keys')
-    await expect(page.locator('body')).toContainText(/Groq|OpenRouter|Anthropic/i)
+  test('legacy AI key guide is retired from the public docs surface', async ({ request }) => {
+    const response = await request.get('/ke/docs/ai-keys')
+    expect(response.status()).toBe(404)
+    // It must never surface the old provider-key walkthrough.
+    await expect(response.text()).resolves.not.toMatch(/Groq|OpenRouter|Anthropic/i)
   })
 })
 

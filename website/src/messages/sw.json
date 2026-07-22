@@ -1,7 +1,7 @@
 {
   "nav": {
     "pricing": "Bei",
-    "ai": "AI",
+    "ai": "Bidhaa",
     "downloads": "Pakua",
     "changelog": "Mabadiliko",
     "modules": "Moduli",
@@ -12,7 +12,7 @@
     "docs": "Maelekezo",
     "support": "Msaada",
     "signIn": "Ingia",
-    "startTrial": "Anza bure",
+    "startTrial": "Weka miadi ya onyesho",
     "products": "Bidhaa",
     "resources": "Rasilimali"
   },
@@ -30,14 +30,14 @@
   "common": {
     "buyNow": "Nunua sasa",
     "learnMore": "Jifunze zaidi",
-    "tryFree": "Jaribu bure",
+    "tryFree": "Weka miadi ya onyesho",
     "loading": "Inapakia…",
     "error": "Kuna tatizo.",
     "retry": "Jaribu tena"
   },
   "trades": {
-    "pro": "Omnix Pro",
-    "dawa": "Omnix Dawa",
+    "pro": "Bidhaa za Omnix",
+    "dawa": "Duka la Dawa",
     "retail": "Omnix Retail",
     "hospitality": "Omnix Hospitality",
     "hardware": "Omnix Hardware"

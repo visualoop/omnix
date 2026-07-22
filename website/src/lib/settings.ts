@@ -16,7 +16,6 @@ interface ResolvedSettings {
   paystackWebhookSecret?: string
   resendApiKey?: string
   resendFromEmail?: string
-  googleAnalyticsId?: string
   cloudBackupEnabled?: boolean
   cloudBackupPriceMonthly?: number
   cloudBackupRetentionDays?: number
@@ -32,7 +31,6 @@ export async function resolveSettings(): Promise<ResolvedSettings> {
     paystackWebhookSecret: process.env.PAYSTACK_WEBHOOK_SECRET ?? undefined,
     resendApiKey: process.env.RESEND_API_KEY ?? undefined,
     resendFromEmail: process.env.RESEND_FROM ?? undefined,
-    googleAnalyticsId: process.env.NEXT_PUBLIC_GA_ID ?? undefined,
     cloudBackupEnabled: process.env.CLOUD_BACKUP_ENABLED === 'true',
     cloudBackupPriceMonthly: process.env.CLOUD_BACKUP_PRICE_MONTHLY
       ? Number(process.env.CLOUD_BACKUP_PRICE_MONTHLY)

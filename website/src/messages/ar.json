@@ -1,7 +1,7 @@
 {
   "nav": {
     "pricing": "الأسعار",
-    "ai": "الذكاء الاصطناعي",
+    "ai": "المنتجات",
     "downloads": "التنزيلات",
     "changelog": "سجل التغييرات",
     "modules": "الوحدات",
@@ -12,7 +12,7 @@
     "docs": "التوثيق",
     "support": "الدعم",
     "signIn": "تسجيل الدخول",
-    "startTrial": "تجربة مجانية",
+    "startTrial": "احجز عرضًا توضيحيًا",
     "products": "المنتجات",
     "resources": "الموارد"
   },
@@ -30,14 +30,14 @@
   "common": {
     "buyNow": "اشتر الآن",
     "learnMore": "اعرف المزيد",
-    "tryFree": "جرّب مجانًا",
+    "tryFree": "احجز عرضًا توضيحيًا",
     "loading": "جارٍ التحميل…",
     "error": "حدث خطأ ما.",
     "retry": "إعادة المحاولة"
   },
   "trades": {
-    "pro": "Omnix Pro",
-    "dawa": "Omnix Dawa",
+    "pro": "منتجات Omnix",
+    "dawa": "صيدلية",
     "retail": "Omnix Retail",
     "hospitality": "Omnix Hospitality",
     "hardware": "Omnix Hardware"

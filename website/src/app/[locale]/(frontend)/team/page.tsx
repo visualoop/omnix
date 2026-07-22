@@ -1,97 +1,124 @@
 import type { Metadata } from 'next'
 import { asc, eq } from 'drizzle-orm'
-import { PageHero } from '@/components/marketing/page-hero'
-import { ClosingCtaSection } from '@/components/landing/closing-cta-section'
-import { getSiteSettings } from '@/lib/site-settings'
-import { db, teamMembers } from '@/db'
 
-export const metadata: Metadata = {
-  title: 'Team — the people building Omnix',
-  description: 'Meet the team building Omnix — the POS with M-Pesa for Kenyan businesses. A small team in Nairobi.',
-}
+import {
+  TrustClosing,
+  TrustHero,
+  TrustPage,
+  TrustSection,
+  TrustTeamGrid,
+  type TrustTeamMember,
+} from '@/components/marketing/trust-pages'
+import { db, teamMembers } from '@/db'
+import { buildAlternatesLanguages } from '@/lib/hreflang'
+import { buildSocialMetadata } from '@/lib/seo-metadata'
+import { getSiteSettings } from '@/lib/site-settings'
+import { getApprovedTeamMemberPhoto } from '@/lib/team-member-media'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 300
 
-function initials(name: string) {
-  return name
-    .split(/\s+/)
-    .slice(0, 2)
-    .map((w) => w[0]?.toUpperCase() ?? '')
-    .join('')
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://omnix.co.ke'
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: string }>
+}): Promise<Metadata> {
+  const { locale } = await params
+  const canonical = `${SITE_URL}/${locale}/team`
+
+  return {
+    title: 'The team building Omnix',
+    description:
+      'The people behind Omnix, shown only from published records. Photos appear when an approved, rights-cleared image is on file; otherwise the person is listed with initials.',
+    alternates: {
+      canonical,
+      languages: buildAlternatesLanguages('/team'),
+    },
+    ...buildSocialMetadata({
+      locale,
+      url: canonical,
+      title: 'The team building Omnix',
+      description: 'Meet the people building Omnix — published from the internal team directory.',
+      type: 'website',
+    }),
+  }
 }
 
-export default async function TeamPage() {
-  const settings = await getSiteSettings()
-  const members = await db
-    .select()
+export default async function TeamPage({
+  params,
+}: {
+  params: Promise<{ locale: string }>
+}) {
+  const [{ locale }, settings] = await Promise.all([params, getSiteSettings()])
+  const whatsappMessage = 'Hi Omnix, I would like to talk to the team about Omnix.'
+
+  const persistedMembers = await db
+    .select({
+      id: teamMembers.id,
+      name: teamMembers.name,
+      role: teamMembers.role,
+      bio: teamMembers.bio,
+      mediaId: teamMembers.mediaId,
+      linkedinUrl: teamMembers.linkedinUrl,
+      sortOrder: teamMembers.sortOrder,
+    })
     .from(teamMembers)
     .where(eq(teamMembers.active, true))
     .orderBy(asc(teamMembers.sortOrder))
     .catch(() => [])
 
+  const members: TrustTeamMember[] = await Promise.all(
+    persistedMembers.map(async (member) => ({
+      id: member.id,
+      name: member.name,
+      role: member.role,
+      bio: member.bio,
+      // Photos resolve through the audited approved-media gate on every render.
+      // Raw URLs are rejected at the admin API; only a mediaId reaches here.
+      photo: await getApprovedTeamMemberPhoto(member.mediaId),
+      linkedinUrl: member.linkedinUrl,
+    })),
+  )
+
   return (
-    <>
-      <PageHero
-        eyebrow="Team"
-        title={<>The people <em>behind Omnix.</em></>}
-        description="A small team in Nairobi building the POS Kenyan businesses actually want — M-Pesa, eTIMS, offline-first."
+    <TrustPage>
+      <TrustHero
+        kicker="The team"
+        title="The people behind"
+        accent="Omnix."
+        lede="Omnix is built and supported by a small team. This page is generated from the internal team directory, so it only shows people who have been published there."
+        factsTitle="How this page works"
+        facts={[
+          { label: 'Source', value: 'Published internal team directory' },
+          { label: 'Photos', value: 'Only approved, rights-cleared images' },
+          { label: 'Fallback', value: 'Initials when no approved photo is on file' },
+        ]}
+        locale={locale}
+        whatsappUrl={settings.whatsappUrl}
+        whatsappMessage={whatsappMessage}
       />
 
-      <section className="section">
-        <div className="container-default">
-          {members.length === 0 ? (
-            <p className="text-center text-[15px] text-[var(--color-fg-muted)]">
-              We&rsquo;re assembling the team page. Check back soon.
-            </p>
-          ) : (
-            <ul className="grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
-              {members.map((m) => (
-                <li key={m.id} className="flex flex-col">
-                  <div className="aspect-[3/2] w-full overflow-hidden rounded-xl bg-[var(--color-surface)] ring-1 ring-[var(--color-border)]">
-                    {m.photoUrl ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        src={m.photoUrl}
-                        alt={m.name}
-                        className="h-full w-full object-cover"
-                        loading="lazy"
-                      />
-                    ) : (
-                      <div className="flex h-full w-full items-center justify-center font-[family-name:var(--font-display)] text-5xl text-[var(--color-fg-subtle)]">
-                        {initials(m.name)}
-                      </div>
-                    )}
-                  </div>
-                  <div className="mt-4">
-                    <h3 className="font-display text-[18px] font-medium text-[var(--color-fg)]">
-                      {m.name}
-                    </h3>
-                    <p className="caption-mono mt-1">{m.role}</p>
-                    {m.bio && (
-                      <p className="mt-3 text-[14px] leading-relaxed text-[var(--color-fg-muted)]">
-                        {m.bio}
-                      </p>
-                    )}
-                    {m.linkedinUrl && (
-                      <a
-                        href={m.linkedinUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="mt-3 inline-block text-[13px] text-[var(--color-accent)] hover:underline"
-                      >
-                        LinkedIn →
-                      </a>
-                    )}
-                  </div>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-      </section>
+      <TrustSection
+        id="team-directory"
+        kicker="Directory"
+        title="Who you will be working with."
+        intro="Each person below comes from a published team record. Nothing here is placeholder or stock."
+      >
+        <TrustTeamGrid
+          members={members}
+          emptyMessage="The published team directory is currently empty. Rather than show invented people, this page stays blank until real members are published. To reach the team now, book a demo or use the configured WhatsApp line."
+        />
+      </TrustSection>
 
-      <ClosingCtaSection whatsappUrl={settings.whatsappUrl} />
-    </>
+      <TrustClosing
+        kicker="Talk to us"
+        title="Prefer to meet the product first? Book a demo."
+        locale={locale}
+        whatsappUrl={settings.whatsappUrl}
+        whatsappMessage={whatsappMessage}
+      />
+    </TrustPage>
   )
 }

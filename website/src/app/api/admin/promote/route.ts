@@ -1,6 +1,7 @@
 import { eq } from 'drizzle-orm'
 import { db, user, auditLog } from '@/db'
 import { createId } from '@/lib/ids'
+import { hasValidBootstrapToken } from '@/lib/bootstrap-auth'
 
 export const dynamic = 'force-dynamic'
 
@@ -23,8 +24,7 @@ export const dynamic = 'force-dynamic'
  * Idempotent. Logs to audit_log with actor=bootstrap.
  */
 export async function POST(req: Request) {
-  const token = req.headers.get('authorization')?.replace(/^Bearer /, '')
-  if (token !== process.env.BOOTSTRAP_TOKEN) {
+  if (!hasValidBootstrapToken(req)) {
     return Response.json({ error: 'unauthorized' }, { status: 401 })
   }
 

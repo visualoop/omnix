@@ -21,7 +21,7 @@ export function Welcome({ name }: WelcomeProps) {
   return (
     <Html>
       <Head />
-      <Preview>Karibu, {name}. Your free trial is live.</Preview>
+      <Preview>Karibu, {name}. Your Omnix account is ready.</Preview>
       <Body style={{ backgroundColor: '#0B0907', margin: 0, padding: '40px 0' }}>
         <Container style={containerStyle}>
           <Section style={brand}>
@@ -35,11 +35,11 @@ export function Welcome({ name }: WelcomeProps) {
             Karibu, {name}.
           </Heading>
           <Text style={p}>
-            Your 30-day Omnix trial is live. Every module is unlocked. No card required, no
-            surprises.
+            Your Omnix account is ready. Buy a perpetual licence to unlock your trade — pay once,
+            own it forever — or book a demo first.
           </Text>
           <Text style={p}>
-            Open your dashboard to grab your licence key and download the desktop installer.
+            Open your dashboard to buy your licence and download the desktop installer.
           </Text>
 
           <Section style={{ marginTop: 28 }}>

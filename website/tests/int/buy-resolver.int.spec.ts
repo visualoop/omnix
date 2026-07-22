@@ -55,11 +55,11 @@ describe('trialModulesFor', () => {
     expect(trialModulesFor('hospitality')).toEqual(['core', 'hospitality'])
   })
   it('returns the default bundle for unknown/empty module', () => {
-    expect(trialModulesFor(undefined)).toEqual(['core', 'dawa', 'retail', 'hardware', 'hospitality'])
-    expect(trialModulesFor('not-a-module')).toEqual(['core', 'dawa', 'retail', 'hardware', 'hospitality'])
+    expect(trialModulesFor(undefined)).toEqual(['core', 'dawa', 'retail', 'hardware', 'hospitality', 'salon'])
+    expect(trialModulesFor('not-a-module')).toEqual(['core', 'dawa', 'retail', 'hardware', 'hospitality', 'salon'])
   })
   it('never lets an injected module string through', () => {
-    expect(trialModulesFor('admin')).toEqual(['core', 'dawa', 'retail', 'hardware', 'hospitality'])
+    expect(trialModulesFor('admin')).toEqual(['core', 'dawa', 'retail', 'hardware', 'hospitality', 'salon'])
   })
 })
 
@@ -83,7 +83,7 @@ describe('decideBuyDestination', () => {
     const d = decideBuyDestination({ isCustomer: true, existingLicenseId: null })
     expect(d).toEqual({
       kind: 'create-then-checkout',
-      modules: ['core', 'dawa', 'retail', 'hardware', 'hospitality'],
+      modules: ['core', 'dawa', 'retail', 'hardware', 'hospitality', 'salon'],
       variant: 'pro',
     })
   })

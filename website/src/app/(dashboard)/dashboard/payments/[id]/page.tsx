@@ -1,13 +1,14 @@
 import { headers } from 'next/headers'
 import { redirect, notFound } from 'next/navigation'
+import Link from 'next/link'
 import { and, eq } from 'drizzle-orm'
 import { db, payments, licenses } from '@/db'
 import { auth } from '@/lib/auth'
 import { Breadcrumbs } from '@/components/layout/breadcrumbs'
 import { BackButton } from '@/components/layout/back-button'
 import { EntityHero } from '@/components/layout/entity-hero'
+import { DetailField, DetailGrid } from '@/components/dashboard/detail-field'
 import { formatDate } from '@/lib/format-date'
-import Link from 'next/link'
 
 export const dynamic = 'force-dynamic'
 
@@ -16,6 +17,8 @@ export default async function DashboardPaymentDetailPage({ params }: { params: P
   const session = await auth.api.getSession({ headers: await headers() }).catch(() => null)
   if (!session) redirect('/login')
 
+  // Ownership gate — a payment belonging to another account is
+  // indistinguishable from one that does not exist.
   const rows = await db
     .select()
     .from(payments)
@@ -24,21 +27,32 @@ export default async function DashboardPaymentDetailPage({ params }: { params: P
   const p = rows[0]
   if (!p) notFound()
 
-  const license = p.licenseId ? await db.query.licenses.findFirst({ where: eq(licenses.id, p.licenseId) }) : null
+  // The linked licence is only resolved when it also belongs to this
+  // customer, so a shared licence id can never leak another account's key.
+  const license = p.licenseId
+    ? await db.query.licenses.findFirst({
+        where: and(eq(licenses.id, p.licenseId), eq(licenses.userId, session.user.id)),
+      })
+    : null
   const fmt = new Intl.NumberFormat('en-KE', { style: 'currency', currency: p.currency }).format(p.amount)
 
   return (
-    <div className="flex flex-col gap-5">
+    <div className="flex flex-col gap-6">
       <Breadcrumbs items={[{ label: 'Payments', href: '/dashboard/payments' }, { label: p.paystackReference }]} />
       <BackButton fallback="/dashboard/payments" label="Back to payments" />
       <EntityHero
-        eyebrow="Payment"
+        eyebrow="Payment receipt"
         title={p.paystackReference}
-        subtitle={p.purpose}
+        subtitle={p.purpose.replace(/_/g, ' ')}
         badges={[
           {
             label: p.status,
-            variant: p.status === 'success' ? 'default' : p.status === 'failed' || p.status === 'reversed' ? 'destructive' : 'secondary',
+            variant:
+              p.status === 'success'
+                ? 'default'
+                : p.status === 'failed' || p.status === 'reversed'
+                  ? 'destructive'
+                  : 'secondary',
           },
         ]}
         stats={[
@@ -49,21 +63,30 @@ export default async function DashboardPaymentDetailPage({ params }: { params: P
         ]}
       />
 
-      <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
-        <Field label="Reference" value={<span className="font-mono">{p.paystackReference}</span>} />
-        <Field label="Purpose" value={p.purpose} />
-        <Field label="Linked licence" value={license ? <Link className="underline font-mono" href={`/dashboard/licenses/${license.id}`}>{license.licenseKey}</Link> : null} />
-        <Field label="Refund of" value={p.parentId ? <Link className="underline font-mono" href={`/dashboard/payments/${p.parentId}`}>{p.parentId.slice(0, 12)}…</Link> : null} />
-      </div>
-    </div>
-  )
-}
-
-function Field({ label, value, className = '' }: { label: string; value?: React.ReactNode; className?: string }) {
-  return (
-    <div className={`flex flex-col gap-0.5 ${className}`}>
-      <dt className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">{label}</dt>
-      <dd className="text-[14px] text-foreground/90">{value || <span className="text-muted-foreground/60">—</span>}</dd>
+      <DetailGrid>
+        <DetailField label="Reference" value={p.paystackReference} mono />
+        <DetailField label="Purpose" value={<span className="capitalize">{p.purpose.replace(/_/g, ' ')}</span>} />
+        <DetailField
+          label="Linked licence"
+          value={
+            license ? (
+              <Link className="font-mono underline underline-offset-4" href={`/dashboard/licenses/${license.id}`}>
+                {license.licenseKey}
+              </Link>
+            ) : undefined
+          }
+        />
+        <DetailField
+          label="Refund of"
+          value={
+            p.parentId ? (
+              <Link className="font-mono underline underline-offset-4" href={`/dashboard/payments/${p.parentId}`}>
+                {p.parentId.slice(0, 12)}…
+              </Link>
+            ) : undefined
+          }
+        />
+      </DetailGrid>
     </div>
   )
 }

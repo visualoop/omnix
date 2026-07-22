@@ -11,13 +11,24 @@ import {
   Text,
 } from '@react-email/components'
 import { BRAND_NAME, BRAND } from '@/lib/brand'
+import { pricing } from '@/config/pricing'
 import { containerStyle, brand, h1, p, hr, footer, dot, accent } from './_shared-styles'
+
+// Price is derived from the single source of truth in config, never hardcoded,
+// so this template can never drift from the published starter licence figure.
+const LICENCE_PRICE = `KES ${pricing.starter.oneTimeFee.KES.toLocaleString('en-US')}`
+const COMPLIANCE_PRICE = `KES ${pricing.starter.maintenanceYearly.KES.toLocaleString('en-US')}`
 
 interface Props {
   name: string
   days: number
 }
 
+/**
+ * Trial reminder — retained ONLY to service existing legacy trial records.
+ * The public site no longer starts trials, so this template must not be wired
+ * to any new public trial-start CTA or lifecycle path.
+ */
 export function TrialEndingSoon({ name, days }: Props) {
   return (
     <Html>
@@ -41,8 +52,13 @@ export function TrialEndingSoon({ name, days }: Props) {
             <span style={accent}>
               in {days} day{days === 1 ? '' : 's'}
             </span>
-            . Pay <strong>KES 100,000 once</strong> to keep going — your data stays exactly where
-            it is.
+            . One payment of <strong>{LICENCE_PRICE}</strong> keeps it — a one-time,
+            perpetual per-device licence, not a subscription. Your data stays exactly where it
+            is.
+          </Text>
+          <Text style={p}>
+            Annual compliance updates ({COMPLIANCE_PRICE}/year) are optional and billed
+            separately. The perpetual licence keeps working whether or not you renew them.
           </Text>
 
           <Section style={{ marginTop: 28 }}>
@@ -64,9 +80,8 @@ export function TrialEndingSoon({ name, days }: Props) {
 
           <Hr style={hr} />
           <Text style={footer}>
-            If you've already decided Omnix isn't the right fit, no worries — your data exports
-            from the desktop app at any time. Reply to this email if anything's stopping you
-            from paying; we usually fix the issue and you decide later.
+            If Omnix isn&apos;t the right fit, your data exports from the desktop app at any
+            time. Reply to this email with any questions.
           </Text>
         </Container>
       </Body>

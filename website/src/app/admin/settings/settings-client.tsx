@@ -161,7 +161,7 @@ export function SettingsClient({ initial }: Props) {
             })
           }}
           disabled={busy}
-          className="inline-flex items-center gap-2 rounded-md border border-foreground/15 bg-background px-3 py-1.5 font-mono text-[11px] uppercase tracking-[0.18em] text-foreground transition-colors hover:border-foreground/40 disabled:opacity-50"
+          className="inline-flex items-center gap-2 rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-1.5 font-mono text-[11px] uppercase tracking-[0.18em] text-[var(--color-fg)] transition-colors hover:border-[var(--color-border-strong)] disabled:opacity-50"
         >
           <ArrowsClockwise weight="bold" className="size-3.5" />
           Import current env → DB
@@ -170,24 +170,24 @@ export function SettingsClient({ initial }: Props) {
 
       {grouped.map(({ category, items }) => (
         <section key={category}>
-          <header className="mb-4 flex items-end justify-between border-b border-foreground/10 pb-3">
+          <header className="mb-4 flex items-end justify-between border-b border-[var(--color-border)] pb-3">
             <div>
-              <div className="font-mono text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
+              <div className="font-mono text-[10px] uppercase tracking-[0.22em] text-[var(--color-fg-muted)]">
                 {category.replace('_', ' ')}
               </div>
               <h2
-                className="mt-2 text-[24px] leading-tight font-medium text-foreground"
+                className="mt-2 text-[24px] leading-tight font-medium text-[var(--color-fg)]"
                 style={{ fontFamily: 'var(--font-display, serif)' }}
               >
                 {CATEGORY_LABELS[category]}
               </h2>
-              <p className="mt-1 text-[13px] text-muted-foreground">{CATEGORY_DESCRIPTIONS[category]}</p>
+              <p className="mt-1 text-[13px] text-[var(--color-fg-muted)]">{CATEGORY_DESCRIPTIONS[category]}</p>
             </div>
             {(category === 'paystack' || category === 'email' || category === 'oauth' || category === 'storage') && (
               <button
                 onClick={() => runTest(category)}
                 disabled={busy}
-                className="inline-flex items-center gap-2 rounded-md border border-foreground/15 bg-background px-3 py-1.5 font-mono text-[11px] uppercase tracking-[0.18em] text-foreground transition-colors hover:border-foreground/40 disabled:opacity-50"
+                className="inline-flex items-center gap-2 rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-1.5 font-mono text-[11px] uppercase tracking-[0.18em] text-[var(--color-fg)] transition-colors hover:border-[var(--color-border-strong)] disabled:opacity-50"
               >
                 <FlaskIcon weight="bold" className="size-3.5" />
                 Test
@@ -195,18 +195,18 @@ export function SettingsClient({ initial }: Props) {
             )}
           </header>
 
-          <ul className="divide-y divide-foreground/10">
+          <ul className="divide-y divide-[var(--color-border)]">
             {items.map((s) => {
               const isEditing = editingKey === s.key
               const reveal = showSensitive[s.key] ?? false
               return (
                 <li key={s.key} className="grid grid-cols-12 gap-4 py-4">
                   <div className="col-span-4">
-                    <div className="text-[13px] font-medium text-foreground">{s.label}</div>
+                    <div className="text-[13px] font-medium text-[var(--color-fg)]">{s.label}</div>
                     {s.description && (
-                      <div className="mt-1 text-[12px] leading-[1.5] text-muted-foreground">{s.description}</div>
+                      <div className="mt-1 text-[12px] leading-[1.5] text-[var(--color-fg-muted)]">{s.description}</div>
                     )}
-                    <div className="mt-2 font-mono text-[11px] text-muted-foreground/80">{s.key}</div>
+                    <div className="mt-2 font-mono text-[11px] text-[var(--color-fg-subtle)]">{s.key}</div>
                   </div>
 
                   <div className="col-span-6">
@@ -218,7 +218,7 @@ export function SettingsClient({ initial }: Props) {
                             onChange={(e) => setDraft(e.target.value)}
                             placeholder="New value"
                             rows={s.key === 'landing.founder.body' ? 8 : 4}
-                            className="w-full rounded-md border border-foreground/20 bg-background px-3 py-2 text-[13px] leading-relaxed text-foreground outline-none focus:border-foreground/50"
+                            className="w-full rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-[13px] leading-relaxed text-[var(--color-fg)] outline-none focus:border-[var(--color-accent)]"
                             autoFocus
                           />
                         ) : (
@@ -227,7 +227,7 @@ export function SettingsClient({ initial }: Props) {
                             value={draft}
                             onChange={(e) => setDraft(e.target.value)}
                             placeholder={s.sensitive ? 'Paste new value…' : 'New value'}
-                            className="w-full rounded-md border border-foreground/20 bg-background px-3 py-2 font-mono text-[13px] text-foreground outline-none focus:border-foreground/50"
+                            className="w-full rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 font-mono text-[13px] text-[var(--color-fg)] outline-none focus:border-[var(--color-accent)]"
                             autoFocus
                           />
                         )}
@@ -235,20 +235,20 @@ export function SettingsClient({ initial }: Props) {
                           <button
                             onClick={() => save(s.key)}
                             disabled={busy || !draft.trim()}
-                            className="rounded-md bg-foreground px-3 py-1.5 text-[12px] font-medium text-background transition-opacity hover:opacity-90 disabled:opacity-50"
+                            className="rounded-md bg-[var(--color-fg)] px-3 py-1.5 text-[12px] font-medium text-[var(--color-bg)] transition-opacity hover:opacity-90 disabled:opacity-50"
                           >
                             Save
                           </button>
                           <button
                             onClick={() => { setEditingKey(null); setDraft('') }}
-                            className="text-[12px] text-muted-foreground hover:text-foreground"
+                            className="text-[12px] text-[var(--color-fg-muted)] hover:text-[var(--color-fg)]"
                           >
                             Cancel
                           </button>
                           {s.sensitive && (
                             <button
                               onClick={() => setShowSensitive((m) => ({ ...m, [s.key]: !reveal }))}
-                              className="ml-auto text-[12px] text-muted-foreground hover:text-foreground"
+                              className="ml-auto text-[12px] text-[var(--color-fg-muted)] hover:text-[var(--color-fg)]"
                             >
                               {reveal ? 'Hide' : 'Show'}
                             </button>
@@ -258,9 +258,9 @@ export function SettingsClient({ initial }: Props) {
                     ) : (
                       <div className="font-mono text-[13px] tabular-nums">
                         {s.hasValue ? (
-                          <span className="text-foreground">{s.preview}</span>
+                          <span className="text-[var(--color-fg)]">{s.preview}</span>
                         ) : (
-                          <span className="text-muted-foreground">Not set</span>
+                          <span className="text-[var(--color-fg-muted)]">Not set</span>
                         )}
                       </div>
                     )}
@@ -288,7 +288,7 @@ export function SettingsClient({ initial }: Props) {
                           })
                         }}
                         disabled={busy}
-                        className="rounded-md border border-foreground/15 bg-background p-1.5 text-foreground transition-colors hover:border-foreground/40 disabled:opacity-50"
+                        className="rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] p-1.5 text-[var(--color-fg)] transition-colors hover:border-[var(--color-border-strong)] disabled:opacity-50"
                         aria-label="Generate fresh value"
                         title="Generate fresh value"
                       >
@@ -298,7 +298,7 @@ export function SettingsClient({ initial }: Props) {
                     {!isEditing && (
                       <button
                         onClick={() => { setEditingKey(s.key); setDraft('') }}
-                        className="rounded-md border border-foreground/15 bg-background p-1.5 text-foreground transition-colors hover:border-foreground/40"
+                        className="rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] p-1.5 text-[var(--color-fg)] transition-colors hover:border-[var(--color-border-strong)]"
                         aria-label={`Edit ${s.label}`}
                       >
                         <Pencil weight="bold" className="size-3.5" />
@@ -312,11 +312,11 @@ export function SettingsClient({ initial }: Props) {
         </section>
       ))}
 
-      <p className="mt-12 max-w-2xl text-[12px] leading-[1.6] text-muted-foreground">
+      <p className="mt-12 max-w-2xl text-[12px] leading-[1.6] text-[var(--color-fg-muted)]">
         Sensitive values are stored AES-256-GCM-encrypted in the <code className="font-mono">platform_settings</code> table.
-        Source <span className="font-mono">db</span> = stored by an admin here. Source <span className="font-mono">env</span> = falling back to the deployment's environment variable. Source <span className="font-mono">unset</span> = nothing configured; the integration won't work.
+        Source <span className="font-mono">db</span> = stored by an admin here. Source <span className="font-mono">env</span> = falling back to the deployment&apos;s environment variable. Source <span className="font-mono">unset</span> = nothing configured; the integration won&apos;t work.
         <br /><br />
-        <strong className="text-foreground">Note:</strong> Better Auth (Google OAuth + magic link cookie secret) only re-reads its config on cold start.
+        <strong className="text-[var(--color-fg)]">Note:</strong> Better Auth (Google OAuth + magic link cookie secret) only re-reads its config on cold start.
         Updating <span className="font-mono">google.client_id</span>, <span className="font-mono">google.client_secret</span>, or <span className="font-mono">BETTER_AUTH_SECRET</span> requires a redeploy or a 5-min wait for the next cold boot.
         Paystack, Resend, S3, and cron secrets re-read on every request and take effect within 60 seconds (cache TTL).
       </p>

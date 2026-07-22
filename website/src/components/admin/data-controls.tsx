@@ -17,10 +17,18 @@ export function AdminPagination({
   page,
   pageSize,
   total,
+  pageParamName = 'page',
+  label,
 }: {
   page: number
   pageSize: number
   total: number
+  /** URL param that carries the page number. Defaults to `page`. Detail
+   *  pages with several independent lists pass a namespaced value
+   *  (e.g. `machPage`) so one pager never clobbers another. */
+  pageParamName?: string
+  /** Optional accessible label for the whole pager (announced range). */
+  label?: string
 }) {
   const router = useRouter()
   const params = useSearchParams()
@@ -32,26 +40,32 @@ export function AdminPagination({
 
   const go = (next: number) => {
     const u = new URLSearchParams(params.toString())
-    if (next <= 1) u.delete('page')
-    else u.set('page', String(next))
+    if (next <= 1) u.delete(pageParamName)
+    else u.set(pageParamName, String(next))
     const qs = u.toString()
     router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false })
   }
 
   return (
-    <div className="flex items-center justify-between border-t border-[var(--color-border)] px-3 py-2.5 font-mono text-[11px] text-[var(--color-fg-muted)]">
+    <div
+      className="flex items-center justify-between border-t border-[var(--color-border)] px-3 py-2 font-mono text-[11px] text-[var(--color-fg-muted)]"
+      role="navigation"
+      aria-label={label ?? 'Pagination'}
+    >
       <span>
         {from.toLocaleString()}–{to.toLocaleString()} of {total.toLocaleString()}
       </span>
       <div className="flex items-center gap-1">
+        {/* Hit targets are 44px (WCAG 2.5.5 / touch-friendly); the glyph
+            stays small so the control still reads as a compact pager. */}
         <button
           type="button"
           onClick={() => go(page - 1)}
           disabled={page <= 1}
-          className="inline-flex size-7 items-center justify-center rounded-md border border-[var(--color-border)] text-[var(--color-fg)] hover:bg-[var(--color-bg-muted)] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+          className="inline-flex size-11 items-center justify-center rounded-md border border-[var(--color-border)] text-[var(--color-fg)] hover:bg-[var(--color-surface-2)] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
           aria-label="Previous page"
         >
-          <CaretLeft className="size-3" />
+          <CaretLeft className="size-3.5" />
         </button>
         <span className="px-2 tabular-nums">
           {page} / {totalPages}
@@ -60,10 +74,10 @@ export function AdminPagination({
           type="button"
           onClick={() => go(page + 1)}
           disabled={page >= totalPages}
-          className="inline-flex size-7 items-center justify-center rounded-md border border-[var(--color-border)] text-[var(--color-fg)] hover:bg-[var(--color-bg-muted)] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+          className="inline-flex size-11 items-center justify-center rounded-md border border-[var(--color-border)] text-[var(--color-fg)] hover:bg-[var(--color-surface-2)] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
           aria-label="Next page"
         >
-          <CaretRight className="size-3" />
+          <CaretRight className="size-3.5" />
         </button>
       </div>
     </div>
@@ -73,15 +87,29 @@ export function AdminPagination({
 export function AdminSearch({
   placeholder = 'Search…',
   paramName = 'q',
+  label = 'Search this list',
+  id,
+  pageParamName = 'page',
 }: {
   placeholder?: string
   paramName?: string
+  /** Accessible name for the field. Rendered visually-hidden by default so
+   *  the control is announced to assistive tech without adding chrome. */
+  label?: string
+  /** Optional explicit id. Defaults to a stable id derived from `paramName`
+   *  so the `<label htmlFor>` association is deterministic across renders. */
+  id?: string
+  /** Which page param to reset when the query changes. Defaults to `page`.
+   *  Namespaced lists pass their own (e.g. `machPage`) so searching one list
+   *  does not reset another list's pager. */
+  pageParamName?: string
 }) {
   const router = useRouter()
   const params = useSearchParams()
   const pathname = usePathname()
   const initial = params.get(paramName) ?? ''
   const [value, setValue] = useState(initial)
+  const inputId = id ?? `admin-search-${paramName}`
 
   // Debounced URL update so we don't refetch on every keystroke.
   useEffect(() => {
@@ -92,7 +120,7 @@ export function AdminSearch({
       else u.delete(paramName)
       // Going back to page 1 whenever the query changes — otherwise
       // you can land on page 7 of a 2-page filtered set.
-      u.delete('page')
+      u.delete(pageParamName)
       const qs = u.toString()
       router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false })
     }, 250)
@@ -102,13 +130,18 @@ export function AdminSearch({
 
   return (
     <div className="relative w-full max-w-sm">
+      <label htmlFor={inputId} className="sr-only">
+        {label}
+      </label>
       <MagnifyingGlass className="absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-[var(--color-fg-muted)] pointer-events-none" />
       <input
+        id={inputId}
         type="search"
         value={value}
         onChange={(e) => setValue(e.target.value)}
         placeholder={placeholder}
-        className="h-8 w-full rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] pl-8 pr-8 text-[13px] outline-none focus:border-[var(--color-accent)]"
+        aria-label={label}
+        className="h-9 w-full rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] pl-8 pr-8 text-[13px] outline-none focus:border-[var(--color-accent)]"
       />
       {value ? (
         <button

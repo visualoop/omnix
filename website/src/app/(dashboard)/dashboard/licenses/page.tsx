@@ -4,7 +4,8 @@ import Link from 'next/link'
 import { and, count, desc, eq, ilike } from 'drizzle-orm'
 import { db, licenses } from '@/db'
 import { auth } from '@/lib/auth'
-import { PageHeading } from '@/components/dashboard/status-utils'
+import { PageHeader } from '@/components/layout/page-header'
+import { Button } from '@/components/ui/button'
 import {
   Table,
   TableBody,
@@ -13,29 +14,13 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { AdminPagination, AdminSearch } from '@/components/admin/data-controls'
+import { EmptyState, StatusPill } from '@/components/dashboard/status-utils'
+import { FilteredEmptyState } from '@/components/ui/state-view'
+import { ListPagination, ListSearch } from '@/components/dashboard/list-controls'
 
 export const metadata = { title: 'Licences' }
 
 const PAGE_SIZE = 25
-
-function StatusPill({ status }: { status: string }) {
-  const tone =
-    status === 'active'
-      ? 'text-emerald-700 dark:text-emerald-300 bg-emerald-500/10 border-emerald-500/30'
-      : status === 'trial'
-        ? 'text-amber-700 dark:text-amber-300 bg-amber-500/10 border-amber-500/30'
-        : status === 'lapsed'
-          ? 'text-rose-700 dark:text-rose-300 bg-rose-500/10 border-rose-500/30'
-          : 'text-[var(--color-fg-muted)] bg-[var(--color-bg-muted)] border-[var(--color-border)]'
-  return (
-    <span
-      className={`inline-flex items-center rounded-md border px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-[0.18em] ${tone}`}
-    >
-      {status}
-    </span>
-  )
-}
 
 export default async function LicensesPage({
   searchParams,
@@ -49,6 +34,8 @@ export default async function LicensesPage({
   const page = Math.max(1, parseInt(sp.page ?? '1', 10) || 1)
   const q = sp.q?.trim() ?? ''
 
+  // Ownership is enforced in SQL: a customer only ever queries their own
+  // licences. Search narrows within that scope; it never widens it.
   const where = q
     ? and(eq(licenses.userId, session.user.id), ilike(licenses.licenseKey, `%${q}%`))
     : eq(licenses.userId, session.user.id)
@@ -67,32 +54,42 @@ export default async function LicensesPage({
   const total = totalRow[0]?.n ?? 0
 
   return (
-    <div className="space-y-6">
-      <PageHeading title="Licences" subtitle="The keys that activate Omnix on your tills." />
+    <div className="flex flex-col gap-8">
+      <PageHeader
+        eyebrow="Your software"
+        title="Licences"
+        description="The keys that activate Omnix on your tills, and the compliance cover each one carries."
+      />
 
-      <AdminSearch placeholder="Search by licence key…" />
+      <ListSearch label="Search licences" placeholder="Search by licence key…" />
 
-      {rows.length === 0 && total === 0 ? (
-        <div className="rounded-lg border border-dashed border-[var(--color-border)] px-4 py-12 text-center text-[13px] text-[var(--color-fg-muted)]">
-          {q ? (
-            <>No licences match that search.</>
-          ) : (
-            <>
-              No licences yet. <Link href="/buy" className="underline-offset-4 hover:underline">Buy one</Link>.
-            </>
-          )}
-        </div>
+      {rows.length === 0 ? (
+        q ? (
+          <FilteredEmptyState query={q} clearHref="/dashboard/licenses" entityLabel="licences" />
+        ) : (
+          <EmptyState
+            title="No licences yet"
+            body="Buy a perpetual licence for the trade you run — Pharmacy, Retail, Hospitality, Hardware, or Salon & Spa. One-time payment, no subscription."
+            action={
+              <Button asChild>
+                <Link href="/buy">Buy a licence</Link>
+              </Button>
+            }
+          />
+        )
       ) : (
-        <>
+        <div className="flex flex-col">
           <Table>
             <TableHeader>
               <TableRow>
                 <TableHead>Licence key</TableHead>
-                <TableHead>Variant</TableHead>
+                <TableHead>Product</TableHead>
                 <TableHead>Status</TableHead>
-                <TableHead className="text-right">Machines</TableHead>
-                <TableHead>Renew / Trial</TableHead>
-                <TableHead className="w-12 text-right">·</TableHead>
+                <TableHead className="text-right">Devices</TableHead>
+                <TableHead>Renew / trial</TableHead>
+                <TableHead className="w-16 text-right">
+                  <span className="sr-only">Open</span>
+                </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -110,25 +107,27 @@ export default async function LicensesPage({
                     <TableCell className="min-w-[200px]">
                       <Link
                         href={`/dashboard/licenses/${l.id}`}
-                        className="font-mono text-[12px] hover:text-[var(--color-accent)] underline-offset-4 hover:underline"
+                        className="font-mono text-[12px] text-[var(--color-fg)] underline-offset-4 hover:text-[var(--color-accent)] hover:underline"
                       >
                         {l.licenseKey}
                       </Link>
                     </TableCell>
-                    <TableCell className="font-mono text-[11px] uppercase tracking-[0.12em]">
-                      {l.variant} <span className="text-[var(--color-fg-muted)]">· {l.tier}</span>
+                    <TableCell className="font-mono text-[11px] uppercase tracking-[0.12em] text-[var(--color-fg-muted)]">
+                      {l.variant} · {l.tier}
                     </TableCell>
                     <TableCell>
-                      <StatusPill status={l.status} />
+                      <StatusPill kind="license" status={l.status} />
                     </TableCell>
-                    <TableCell className="text-right font-mono tabular-nums">{l.maxMachines}</TableCell>
+                    <TableCell className="text-right font-mono tabular-nums">
+                      {l.maxMachines}
+                    </TableCell>
                     <TableCell className="font-mono text-[11px] tabular-nums text-[var(--color-fg-muted)]">
                       {renew}
                     </TableCell>
                     <TableCell className="text-right">
                       <Link
                         href={`/dashboard/licenses/${l.id}`}
-                        className="font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--color-fg-muted)] hover:text-[var(--color-fg)]"
+                        className="font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--color-fg-muted)] transition-colors hover:text-[var(--color-fg)]"
                       >
                         Open →
                       </Link>
@@ -138,8 +137,8 @@ export default async function LicensesPage({
               })}
             </TableBody>
           </Table>
-          <AdminPagination page={page} pageSize={PAGE_SIZE} total={total} />
-        </>
+          <ListPagination page={page} pageSize={PAGE_SIZE} total={total} label="Licence pages" />
+        </div>
       )}
     </div>
   )

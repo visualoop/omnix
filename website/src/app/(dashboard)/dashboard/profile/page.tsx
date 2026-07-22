@@ -4,7 +4,7 @@ import { eq } from 'drizzle-orm'
 import { db, user } from '@/db'
 import { auth } from '@/lib/auth'
 import { ProfileForm } from '@/components/dashboard/profile-form'
-import { PageHeading } from '@/components/dashboard/status-utils'
+import { PageHeader } from '@/components/layout/page-header'
 import { KE_COUNTIES } from '@/lib/ke-counties'
 
 export const metadata = { title: 'Profile' }
@@ -18,19 +18,20 @@ export default async function ProfilePage() {
   const customer = rows[0]
   if (!customer) redirect('/login?next=/dashboard/profile')
 
-  // Extra customer fields are stored on the user row via additionalFields,
-  // plus a few we left in metadata until we promote them to columns.
+  // Extra customer fields live on the user row via additionalFields, plus a
+  // few we kept in metadata until they are promoted to columns.
   const extra = (customer as unknown as { metadata?: Record<string, unknown> }).metadata ?? {}
   const get = (k: string) => (typeof extra[k] === 'string' ? (extra[k] as string) : '')
 
   return (
-    <div className="space-y-8">
-      <PageHeading
+    <div className="flex flex-col gap-8">
+      <PageHeader
+        eyebrow="Account"
         title="Profile"
-        subtitle="Update your account details. Email is your sign-in handle and can't be changed without contacting support."
+        description="Update your account and business details. Email is your sign-in handle — contact support to change it."
       />
 
-      <div className="max-w-3xl rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-6 lg:p-8">
+      <div className="max-w-3xl rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-surface)] p-6 lg:p-8">
         <ProfileForm
           initial={{
             fullName: customer.name ?? '',

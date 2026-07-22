@@ -1,18 +1,21 @@
 'use client'
 
 /**
- * CheckoutForm — Paystack Inline V2 popup.
+ * CheckoutForm — Paystack Inline V2 handoff.
  *
- * One button → /api/paystack/init returns { reference, amount, email, publicKey }
- * → new PaystackPop().newTransaction({...}) opens Paystack's hosted popup
- * → onSuccess redirects to /buy/success, onCancel resets.
+ * One button → POST /api/paystack/init (server computes the authoritative
+ * amount/currency and records the pending payment) → PaystackPop opens the
+ * hosted popup → onSuccess forwards to the server-verified /buy/success.
  *
- * No more custom card form, OTP modal, 3DS iframe, or /charge endpoint.
- * Paystack hosts the entire payment UI; we only consume the result.
+ * The client never sends or trusts an amount: it posts only { licenseId,
+ * purpose } and pays exactly what the server returns. Card details never
+ * touch our server — Paystack hosts the entire payment surface.
  */
 import * as React from 'react'
 import Script from 'next/script'
-import { CreditCard, Lock } from '@/components/icons'
+import { CreditCard, Globe, Lock } from '@/components/icons'
+import { Button } from '@/components/ui/button'
+import { Alert } from '@/components/ui/alert'
 
 interface InitResponse {
   reference: string
@@ -47,6 +50,8 @@ declare global {
 
 const PAYSTACK_INLINE_JS = 'https://js.paystack.co/v2/inline.js'
 
+type Status = 'idle' | 'starting' | 'redirecting' | 'cancelled' | 'error'
+
 export function CheckoutForm({
   licenseId,
   purpose,
@@ -59,12 +64,14 @@ export function CheckoutForm({
   currency: string
 }) {
   const [scriptReady, setScriptReady] = React.useState(false)
-  const [submitting, setSubmitting] = React.useState(false)
+  const [status, setStatus] = React.useState<Status>('idle')
   const [error, setError] = React.useState<string | null>(null)
+
+  const busy = status === 'starting' || status === 'redirecting'
 
   const onPay = async () => {
     setError(null)
-    setSubmitting(true)
+    setStatus('starting')
     try {
       const initRes = await fetch('/api/paystack/init', {
         method: 'POST',
@@ -73,12 +80,12 @@ export function CheckoutForm({
       })
       if (!initRes.ok) {
         const errBody = await initRes.json().catch(() => null)
-        throw new Error(errBody?.error ?? `Init failed (${initRes.status})`)
+        throw new Error(errBody?.error ?? `We couldn't start the payment (${initRes.status}).`)
       }
       const init = (await initRes.json()) as InitResponse
 
       if (!window.PaystackPop) {
-        throw new Error('Paystack popup script not loaded yet — try again in a moment.')
+        throw new Error('The secure payment window isn\u2019t ready yet — try again in a moment.')
       }
       const pop = new window.PaystackPop()
       pop.newTransaction({
@@ -95,88 +102,91 @@ export function CheckoutForm({
           ],
         },
         onSuccess: (transaction) => {
+          setStatus('redirecting')
+          // Internal, server-verified confirmation route only.
           window.location.href = `/buy/success?ref=${encodeURIComponent(transaction.reference)}`
         },
         onCancel: () => {
-          setSubmitting(false)
+          setStatus('cancelled')
         },
         onError: (err) => {
-          setError(err?.message ?? 'Payment could not start.')
-          setSubmitting(false)
+          setError(err?.message ?? 'The payment could not start. Please try again.')
+          setStatus('error')
         },
       })
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Payment could not start.')
-      setSubmitting(false)
+      setError(err instanceof Error ? err.message : 'The payment could not start. Please try again.')
+      setStatus('error')
     }
   }
 
+  const label = busy
+    ? status === 'redirecting'
+      ? 'Confirming…'
+      : 'Opening secure window…'
+    : !scriptReady
+      ? 'Loading payment…'
+      : `Pay ${currency} ${amount.toLocaleString()}`
+
   return (
     <>
-      <Script
-        src={PAYSTACK_INLINE_JS}
-        strategy="afterInteractive"
-        onLoad={() => setScriptReady(true)}
-      />
-      <div className="flex flex-col gap-6">
-        {/* Payment method panel — quiet copy, no competing colours so the
-            CTA below is the only loud thing in the column. */}
-        <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-5 lg:p-6">
+      <Script src={PAYSTACK_INLINE_JS} strategy="afterInteractive" onLoad={() => setScriptReady(true)} />
+      <div className="flex flex-col gap-5">
+        {/* Payment method panel — quiet, honest description of the handoff. */}
+        <div className="rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-surface)] p-5 sm:p-6">
           <div className="flex items-start gap-3">
-            <CreditCard className="size-5 shrink-0 text-[var(--color-accent)] mt-0.5" />
-            <div className="flex-1">
-              <div
-                style={{ fontFamily: 'var(--font-display)' }}
-                className="text-[18px] font-medium text-[var(--color-fg)]"
-              >
-                Pay with card or M-Pesa
+            <CreditCard className="mt-0.5 size-5 shrink-0 text-[var(--color-accent)]" />
+            <div className="min-w-0 flex-1">
+              <div className="font-display text-[17px] font-semibold tracking-[-0.01em] text-[var(--color-fg)]">
+                Pay with M-Pesa, card or bank
               </div>
-              <p className="mt-1.5 text-[13px] leading-[1.6] text-[var(--color-fg-muted)] max-w-[42ch]">
-                Paystack handles the secure popup. Card, M-Pesa STK push, bank transfer —
-                all in one flow.
+              <p className="mt-1.5 max-w-[46ch] text-[13px] leading-[1.6] text-[var(--color-fg-muted)]">
+                Paystack opens a secure window to complete payment. M-Pesa STK push, card and bank transfer all run
+                there — your card details never reach our server.
+              </p>
+              <p className="mt-2 inline-flex items-center gap-1.5 text-[12px] leading-[1.5] text-[var(--color-fg-subtle)]">
+                <Globe className="size-3.5" />
+                An internet connection is needed for this step; the app itself runs offline once installed.
               </p>
             </div>
           </div>
         </div>
 
-        {error ? (
-          <div className="rounded-md border border-[var(--color-negative)] bg-[var(--color-negative)]/10 px-3 py-2.5 text-[13px] text-[var(--color-fg)]">
-            {error}
-          </div>
+        {status === 'cancelled' ? (
+          <Alert variant="warning" title="Payment window closed">
+            No money was charged. You can start the payment again whenever you&rsquo;re ready.
+          </Alert>
         ) : null}
 
-        {/* The CTA. Inline-styled to the copper accent so it can't get
-            swallowed by a passing surface token in dark mode. The amount
-            sits in the button itself with serif weight; a separate
-            caption below repeats the currency in mono for clarity. */}
-        <button
+        {status === 'error' && error ? (
+          <Alert variant="error" title="We couldn't start the payment">
+            {error}
+          </Alert>
+        ) : null}
+
+        <Button
           type="button"
-          disabled={!scriptReady || submitting}
+          size="xl"
+          disabled={!scriptReady || busy}
+          aria-busy={busy}
           onClick={onPay}
-          style={{
-            background: 'var(--color-accent)',
-            color: 'var(--color-accent-foreground, white)',
-            boxShadow: '0 8px 24px -8px var(--color-accent)',
-          }}
-          className="group relative w-full inline-flex items-center justify-center gap-3 rounded-xl px-6 py-5 font-medium text-[18px] tracking-[-0.01em] cursor-pointer transition-all hover:opacity-95 hover:-translate-y-[1px] active:translate-y-0 disabled:opacity-50 disabled:cursor-not-allowed disabled:translate-y-0"
+          className="w-full"
         >
           <CreditCard className="size-5" />
-          <span style={{ fontFamily: 'var(--font-display)' }}>
-            {submitting
-              ? 'Opening Paystack…'
-              : !scriptReady
-                ? 'Loading payment…'
-                : `Pay ${currency} ${amount.toLocaleString()}`}
-          </span>
-        </button>
+          {label}
+        </Button>
 
-        {/* Confirmation line + secondary mono caption */}
+        {/* Live region for assistive tech while the handoff is in progress. */}
+        <p aria-live="polite" className="sr-only">
+          {busy ? label : ''}
+        </p>
+
         <div className="flex flex-col items-center gap-1.5">
           <div className="flex items-center justify-center gap-2 text-[12px] text-[var(--color-fg-muted)]">
             <Lock className="size-3" />
             <span>Secured by Paystack · Card details never touch our server</span>
           </div>
-          <div className="font-mono text-[10px] uppercase tracking-[0.22em] text-[var(--color-fg-subtle)]">
+          <div className="font-mono text-[10px] uppercase tracking-[0.2em] text-[var(--color-fg-subtle)]">
             {currency} {amount.toLocaleString()} · One-time
           </div>
         </div>

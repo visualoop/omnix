@@ -1,5 +1,7 @@
 import type { ReactNode } from 'react'
 
+import { cn } from '@/lib/cn'
+
 interface Props {
   eyebrow?: string
   title: string
@@ -10,26 +12,33 @@ interface Props {
 
 export function PageHeader({ eyebrow, title, description, actions, className }: Props) {
   return (
-    <header className={`flex flex-col gap-4 border-b border-[var(--color-border)] pb-5 lg:flex-row lg:items-end lg:justify-between ${className ?? ''}`}>
-      <div>
+    <header
+      className={cn(
+        'flex min-w-0 flex-col gap-5 border-b border-[var(--color-border)] pb-6',
+        'md:flex-row md:items-end md:justify-between',
+        className,
+      )}
+    >
+      <div className="min-w-0 flex-1">
         {eyebrow ? (
-          <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-[var(--color-fg-muted)]">
+          <span className="font-mono text-[10px] uppercase tracking-[0.16em] text-[var(--color-fg-subtle)]">
             {eyebrow}
           </span>
         ) : null}
-        <h1
-          style={{ fontFamily: 'var(--font-display, serif)' }}
-          className="mt-1.5 text-[clamp(24px,3vw,32px)] font-medium leading-[1.05] tracking-[-0.01em] text-[var(--color-fg)]"
-        >
+        <h1 className="mt-1.5 max-w-[24ch] font-display text-[clamp(28px,4vw,40px)] font-semibold leading-none tracking-[-0.04em] text-[var(--color-fg)] text-balance">
           {title}
         </h1>
         {description ? (
-          <p className="mt-2 max-w-[60ch] text-[13px] leading-[1.55] text-[var(--color-fg-muted)]">
+          <p className="mt-2.5 max-w-[64ch] text-[14px] leading-6 text-[var(--color-fg-muted)]">
             {description}
           </p>
         ) : null}
       </div>
-      {actions ? <div className="shrink-0">{actions}</div> : null}
+      {actions ? (
+        <div className="flex w-full shrink-0 flex-wrap items-center gap-2 md:w-auto md:justify-end max-sm:[&>*]:w-full">
+          {actions}
+        </div>
+      ) : null}
     </header>
   )
 }

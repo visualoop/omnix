@@ -1,8 +1,31 @@
 import type { Metadata } from 'next'
+import { buildAlternatesLanguages } from '@/lib/hreflang'
+import { buildSocialMetadata } from '@/lib/seo-metadata'
 
-export const metadata: Metadata = {
-  title: 'Developers — Omnix Public API',
-  description: 'REST API for programmatic access to your machines, licenses, and product data on Omnix.',
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://omnix.co.ke'
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: string }>
+}): Promise<Metadata> {
+  const { locale } = await params
+  const canonical = `${SITE_URL}/${locale}/developers`
+  return {
+    title: 'Developers — Omnix Public API',
+    description: 'REST API for programmatic access to your machines, licenses, and product data on Omnix.',
+    alternates: {
+      canonical,
+      languages: buildAlternatesLanguages('/developers'),
+    },
+    ...buildSocialMetadata({
+      locale,
+      url: canonical,
+      title: 'Omnix Public API',
+      description: 'Read your machines, licenses, and product data from the Omnix REST API.',
+      type: 'website',
+    }),
+  }
 }
 
 const ENDPOINTS = [
@@ -26,7 +49,12 @@ const ENDPOINTS = [
   },
 ]
 
-export default function DevelopersPage() {
+export default async function DevelopersPage({
+  params,
+}: {
+  params: Promise<{ locale: string }>
+}) {
+  const { locale } = await params
   return (
     <div className="max-w-3xl mx-auto px-6 py-10 prose prose-neutral dark:prose-invert">
       <h1>Omnix Public API</h1>
@@ -41,8 +69,9 @@ export default function DevelopersPage() {
       <h2>Authentication</h2>
       <p>
         All requests need an <code>X-Omnix-Api-Key</code> header (or an{' '}
-        <code>Authorization: Bearer &lt;key&gt;</code> header — both work). Get
-        yours from <a href="/dashboard/api-keys">Dashboard → API keys</a>.
+        <code>Authorization: Bearer &lt;key&gt;</code> header — both work). API
+        keys are issued per account on request — contact{' '}
+        <a href={`/${locale}/support`}>Omnix support</a> to get yours.
       </p>
       <pre><code>{`curl https://omnix.co.ke/api/public/v1/health \\
   -H 'X-Omnix-Api-Key: YOUR_KEY_HERE'`}</code></pre>

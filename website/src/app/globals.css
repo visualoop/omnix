@@ -1,130 +1,112 @@
 @import 'tailwindcss';
 @import 'tw-animate-css';
 
-/* ═══════════════════════════════════════════════════════════════════════
- * COMMITTED AESTHETIC DIRECTION (per Anthropic frontend-design + aesthetic-direction skills)
- *
- * Three adjectives:        editorial · confident · warm-luxe
- * Audience:                Kenyan SME owner-operators, ages 28–55, buying once
- * Reference ceiling:       Linear · Stripe · Cereal magazine · Vercel · Aesop
- * Industry:                B2B desktop ERP, paid-once, locally fluent
- *
- * Type        Fraunces (display, italic on emphasis) + Geist (body) + Plus Jakarta (UI labels) + JetBrains Mono (numbers)
- *             Fraunces is intentional, not silent default. Italic word per headline carries voice.
- * Color tone  Warm. Espresso bg #0B0907, cream fg #F2EDE3, single accent #C77B3F (deep terracotta-copper).
- *             3 surface depths total. NO green/blue/purple/teal anywhere.
- * Density     Loose for marketing, normal for dashboard. 4px base scale. Section rhythm 96/120/180px.
- * Radius      Soft (8–12px on cards, 6px on buttons). Pricing card uses sharp 0px to feel architectural.
- * Components  Filled accent for primary CTA. Ghost for secondary. 1px border on every card.
- * Imagery     Honest placeholders > hand-drawn SVG. Real product UI > stock photography.
- * Motion      Quiet. 200ms ease on hover, framer whileInView fades only. No scroll-jacking, no parallax.
- *
- * Anti-patterns explicitly banned (verified against ai-slop-check skill):
- *   ✗ border-left: 4px solid as default card pattern
- *   ✗ emoji in headlines
- *   ✗ 3+ color gradients, purple→pink, orange→pink
- *   ✗ #FFFFFF + #000000 — use #F2EDE3 + #0B0907
- *   ✗ off-scale spacing (7px, 13px, 18px)
- *   ✗ Inter / Roboto / Arial as silent defaults
- *   ✗ section title literally "Features" / "Services" / "Why Choose Us"
- *   ✗ "Trusted by 50+" avatar strips with 4.9★
- *   ✗ 3-column emoji feature grids
- * ═══════════════════════════════════════════════════════════════════════ */
+/* Hallmark · system foundation: Working Counter · tone: confident utilitarian · anchor hue: signal copper
+ * Light-first surfaces for Kenyan owner-operators; dark is explicit opt-in.
+ * Real product evidence carries the identity — not gradients, fake metrics, or decorative serif styling.
+ */
 
 @theme {
-  /* ── Surfaces (4 depths max — cream → light stone → elevated → hover) ── */
-  --color-bg: #F7F2E8;            /* cream, warm off-white */
-  --color-surface: #EFE8D9;       /* light warm stone */
-  --color-surface-2: #E5DCC8;     /* elevated card */
-  --color-surface-hover: #DBD0B6; /* hover state on surface */
+  /* Receipt paper, counter surfaces, ledger ink. */
+  --color-bg: #FAFAF7;
+  --color-surface: #F2F1EB;
+  --color-surface-2: #E9E7DF;
+  --color-surface-hover: #DFDDD4;
+  --color-border: #D8D5CA;
+  --color-border-strong: #BDB8AA;
 
-  --color-border: #D8CDB8;
-  --color-border-strong: #B8A98E;
+  --color-fg: #171713;
+  --color-fg-muted: #57564F;
+  --color-fg-subtle: #706D65;
 
-  /* ── Foregrounds (warm espresso instead of pure black) ── */
-  --color-fg: #1C1611;            /* primary text — deep espresso */
-  --color-fg-muted: #5C4F3E;      /* secondary text, walnut (AA on cream) */
-  --color-fg-subtle: #80735E;     /* captions, taupe (AA 4.5:1 on cream) */
+  /* One brand signal; semantic colours remain functional and labelled. */
+  --color-accent: #B84B1A;
+  --color-accent-hover: #963B12;
+  --color-accent-on-dark: #F07843;
+  --color-accent-foreground: #FFFFFF;
+  --color-accent-soft: rgba(185, 77, 28, 0.09);
+  --color-accent-line: rgba(185, 77, 28, 0.24);
+  --color-accent-glow: rgba(185, 77, 28, 0.14);
 
-  /* ── Single accent (deep terracotta-copper, distinctly Kenyan-earth) ── */
-  --color-accent: #B5682A;        /* slightly deeper for AA contrast on cream */
-  --color-accent-hover: #9F5821;
-  --color-accent-foreground: #F7F2E8;
-  --color-accent-soft: rgba(181, 104, 42, 0.10);
-  --color-accent-line: rgba(181, 104, 42, 0.22);
-  --color-accent-glow: rgba(181, 104, 42, 0.18);
+  --color-positive: #2F6B4F;
+  --color-caution: #936316;
+  --color-negative: #A33A2A;
+  --color-info: #315D7A;
+  --color-neutral: #747168;
 
-  /* ── Semantic states (all warm — no green, no blue) ── */
-  --color-positive: #8F6E2E;      /* gilded amber for "active" */
-  --color-caution: #B5682A;       /* matches accent */
-  --color-negative: #9C3622;      /* warm clay-red, AA on cream */
-  --color-neutral: #80735E;       /* taupe */
-
-  /* ── Type stack ── */
-  --font-display: var(--font-fraunces), 'Fraunces', ui-serif, Georgia, serif;
+  /* Large product statements, readable body copy, operational numbers. */
+  --font-display: var(--font-geist), 'Geist', ui-sans-serif, system-ui, sans-serif;
   --font-sans: var(--font-geist), 'Geist', ui-sans-serif, system-ui, sans-serif;
-  --font-ui: var(--font-jakarta), 'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif;
+  --font-ui: var(--font-geist), 'Geist', ui-sans-serif, system-ui, sans-serif;
   --font-mono: var(--font-jetbrains), 'JetBrains Mono', ui-monospace, 'SFMono-Regular', monospace;
 
-  /* ── Radii (soft default; sharp option for architectural feel) ── */
-  --radius-xs: 2px;
-  --radius-sm: 4px;
-  --radius-md: 6px;
-  --radius-lg: 10px;
-  --radius-xl: 14px;
-  --radius-2xl: 20px;
+  /* 4px spacing scale. */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --space-16: 64px;
+  --space-20: 80px;
+  --space-24: 96px;
+  --space-section-tight: clamp(64px, 8vw, 96px);
+  --space-section: clamp(88px, 11vw, 144px);
+  --space-section-loose: clamp(112px, 14vw, 176px);
 
-  /* ── Container widths (NOT max-w-7xl) ── */
+  /* Rounded controls and media, without turning every section into a bubble. */
+  --radius-xs: 4px;
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-xl: 18px;
+  --radius-2xl: 24px;
+  --radius-pill: 999px;
+
   --w-narrow: 720px;
   --w-text: 880px;
   --w-default: 1120px;
-  --w-wide: 1200px;
-  --w-bleed: 1280px;
+  --w-wide: 1280px;
+  --w-bleed: 1440px;
 
-  /* ── Spacing scale (4px base, snaps every value) ── */
-  --space-section-tight: 96px;
-  --space-section: 144px;
-  --space-section-loose: 192px;
+  --duration-fast: 120ms;
+  --duration-ui: 180ms;
+  --duration-enter: 260ms;
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
 }
 
-/* ─────────────────────────────────────────────────────────────────────
- * Dark theme — opt-in via the `.dark` class on <html>, driven by
- * next-themes. The light palette above is the default (matches our
- * Kenyan SME audience: bright shops, daytime use, paper receipts).
- *
- * We keep the espresso/cream warm-luxe spirit on both sides; only the
- * surfaces and foregrounds invert. The accent is identical so the
- * brand stays consistent across both themes.
- * ───────────────────────────────────────────────────────────────────── */
+/* Explicit opt-in night counter. */
 .dark {
-  --color-bg: #0B0907;            /* espresso, near-black with warm undertone */
-  --color-surface: #15110D;       /* warm stone */
-  --color-surface-2: #1F1A14;     /* elevated card */
-  --color-surface-hover: #2A241B;
+  --color-bg: #11110F;
+  --color-surface: #191815;
+  --color-surface-2: #22211D;
+  --color-surface-hover: #2C2A25;
+  --color-border: #34322C;
+  --color-border-strong: #4A473E;
 
-  --color-border: #2C2620;
-  --color-border-strong: #443B30;
+  --color-fg: #F7F5EE;
+  --color-fg-muted: #C6C2B7;
+  --color-fg-subtle: #9E998D;
 
-  --color-fg: #F2EDE3;            /* cream */
-  --color-fg-muted: #BEB29B;
-  --color-fg-subtle: #9A8E78;
+  --color-accent: #F07843;
+  --color-accent-hover: #FF8B55;
+  --color-accent-foreground: #1D0D06;
+  --color-accent-soft: rgba(240, 120, 67, 0.09);
+  --color-accent-line: rgba(240, 120, 67, 0.25);
+  --color-accent-glow: rgba(240, 120, 67, 0.15);
 
-  --color-accent: #C77B3F;        /* brighter accent works better on espresso */
-  --color-accent-hover: #D89456;
-  --color-accent-foreground: #0B0907;
-  --color-accent-soft: rgba(199, 123, 63, 0.08);
-  --color-accent-line: rgba(199, 123, 63, 0.18);
-  --color-accent-glow: rgba(199, 123, 63, 0.22);
-
-  --color-positive: #B5904A;
-  --color-caution: #C77B3F;
-  --color-negative: #B0432F;
-  --color-neutral: #7A6F5C;
+  --color-positive: #68A883;
+  --color-caution: #D3A64A;
+  --color-negative: #DF7665;
+  --color-info: #72A7C7;
+  --color-neutral: #9E998D;
 }
 
 @layer base {
-  /* Bridge shadcn variables → our tokens (so all installed shadcn components
-     inherit the warm-luxe palette automatically) */
   :root {
     --background: var(--color-bg);
     --foreground: var(--color-fg);
@@ -144,39 +126,41 @@
     --border: var(--color-border);
     --input: var(--color-border-strong);
     --ring: var(--color-accent);
-    --radius: 0.625rem;
+    --radius: var(--radius-md);
   }
 
   *,
   *::before,
   *::after {
     border-color: var(--color-border);
+    box-sizing: border-box;
   }
 
   html {
     background: var(--color-bg);
     color: var(--color-fg);
     color-scheme: light;
+    overflow-x: clip;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
-    text-rendering: optimizeLegibility;
     scrollbar-gutter: stable;
   }
+
   html.dark {
     color-scheme: dark;
   }
 
   body {
+    min-width: 320px;
+    min-height: 100dvh;
     margin: 0;
+    overflow-x: clip;
+    background: var(--color-bg);
+    color: var(--color-fg);
     font-family: var(--font-sans);
     font-size: 16px;
-    line-height: 1.6;
-    background: var(--color-bg);
-    /* Subtle warm noise so the bg never feels flat — single hue, low chroma.
-       Same gradient stops work for both themes thanks to the warm accent. */
-    background-image:
-      radial-gradient(at 8% -8%, var(--color-accent-soft) 0%, transparent 55%),
-      radial-gradient(at 96% 6%, var(--color-accent-soft) 0%, transparent 50%);
+    line-height: 1.65;
+    word-spacing: 0.12em;
   }
 
   ::selection {
@@ -188,20 +172,46 @@
   ::-webkit-scrollbar-track { background: var(--color-bg); }
   ::-webkit-scrollbar-thumb {
     background: var(--color-border-strong);
-    border-radius: 9999px;
     border: 3px solid var(--color-bg);
+    border-radius: var(--radius-pill);
   }
   ::-webkit-scrollbar-thumb:hover { background: var(--color-fg-subtle); }
 
-  h1, h2, h3, h4 {
-    font-family: var(--font-display);
-    letter-spacing: -0.025em;
-    line-height: 1.0;
-    font-weight: 300;
+  h1,
+  h2,
+  h3,
+  h4 {
+    min-width: 0;
+    margin: 0;
+    overflow-wrap: anywhere;
     color: var(--color-fg);
+    font-family: var(--font-display);
+    font-weight: 600;
+    letter-spacing: -0.04em;
+    line-height: 1;
   }
 
+  p {
+    text-wrap: pretty;
+    font-weight: 500;
+  }
   a { color: inherit; text-decoration: none; }
+
+  :focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 3px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      scroll-behavior: auto !important;
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
 }
 
 @layer utilities {
@@ -230,144 +240,127 @@
     }
   }
 
-  /* ─── Editorial type utilities (used everywhere) ─── */
+  /* ─── Working Counter type utilities (class API preserved) ─── */
 
-  /* Eyebrow — small uppercase tracked label preceded by accent dot.
-     Use above section headlines and on hero CTAs. */
-  .eyebrow {
-    font-family: var(--font-ui);
-    font-weight: 600;
-    font-size: 11px;
-    letter-spacing: 0.22em;
-    text-transform: uppercase;
-    color: var(--color-fg-muted);
+  .eyebrow,
+  .eyebrow-plain {
     display: inline-flex;
     align-items: center;
-    gap: 0.6em;
-  }
-  .eyebrow::before {
-    content: '';
-    width: 6px;
-    height: 6px;
-    border-radius: 9999px;
-    background: var(--color-accent);
-    flex-shrink: 0;
-  }
-  .eyebrow-plain {
-    font-family: var(--font-ui);
-    font-weight: 600;
-    font-size: 11px;
-    letter-spacing: 0.22em;
-    text-transform: uppercase;
     color: var(--color-fg-muted);
+    font-family: var(--font-ui);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.16em;
+    line-height: 1.4;
+    text-transform: uppercase;
+  }
+  .eyebrow { gap: 0.65em; }
+  .eyebrow::before {
+    width: 12px;
+    height: 2px;
+    flex-shrink: 0;
+    background: var(--color-accent);
+    content: '';
   }
 
-  /* Headlines — Fraunces with italic-word emphasis.
-     Use <em> inside the headline for the italic word. */
   .headline-hero {
-    font-family: var(--font-display);
-    font-weight: 300;
-    font-size: clamp(56px, 7.4vw, 108px);
-    line-height: 0.96;
-    letter-spacing: -0.028em;
+    max-width: 14ch;
     color: var(--color-fg);
+    font-family: var(--font-display);
+    font-size: clamp(44px, 7.2vw, 104px);
+    font-weight: 600;
+    letter-spacing: -0.055em;
+    line-height: 0.94;
+    text-wrap: balance;
   }
   .headline-hero em {
-    font-style: italic;
-    font-weight: 300;
-    color: var(--color-fg);
+    color: var(--color-accent);
+    font-style: normal;
+    font-weight: inherit;
   }
 
   .headline-section {
-    font-family: var(--font-display);
-    font-weight: 300;
-    font-size: clamp(40px, 4.8vw, 64px);
-    line-height: 1.0;
-    letter-spacing: -0.022em;
+    max-width: 18ch;
     color: var(--color-fg);
+    font-family: var(--font-display);
+    font-size: clamp(36px, 4.6vw, 64px);
+    font-weight: 600;
+    letter-spacing: -0.045em;
+    line-height: 1;
+    text-wrap: balance;
   }
   .headline-section em {
-    font-style: italic;
-    color: var(--color-fg);
+    color: var(--color-accent);
+    font-style: normal;
   }
 
   .headline-sub {
-    font-family: var(--font-display);
-    font-weight: 400;
-    font-size: clamp(26px, 2.6vw, 40px);
-    line-height: 1.1;
-    letter-spacing: -0.018em;
     color: var(--color-fg);
+    font-family: var(--font-display);
+    font-size: clamp(25px, 2.5vw, 38px);
+    font-weight: 600;
+    letter-spacing: -0.035em;
+    line-height: 1.08;
+    text-wrap: balance;
   }
   .headline-sub em {
-    font-style: italic;
+    color: var(--color-accent);
+    font-style: normal;
   }
 
-  /* Lede — the editorial paragraph after a headline.
-     Geist 19px max-width 60ch */
-  .lede {
-    font-family: var(--font-sans);
-    font-size: clamp(17px, 1.4vw, 19px);
-    line-height: 1.55;
-    color: var(--color-fg-muted);
-    max-width: 60ch;
-  }
+  .lede,
   .lede-italic {
-    font-family: var(--font-sans);
-    font-style: italic;
-    font-size: clamp(18px, 1.5vw, 22px);
-    line-height: 1.55;
+    max-width: 58ch;
     color: var(--color-fg-muted);
-    max-width: 60ch;
+    font-family: var(--font-sans);
+    font-size: clamp(17px, 1.35vw, 19px);
+    font-style: normal;
+    line-height: 1.65;
   }
 
-  /* Pull quote — Fraunces italic, hung indent (pulls visually off the grid) */
   .pull-quote {
-    font-family: var(--font-display);
-    font-style: italic;
-    font-weight: 400;
-    font-size: clamp(24px, 2.6vw, 36px);
-    line-height: 1.25;
-    letter-spacing: -0.014em;
+    max-width: 30ch;
     color: var(--color-fg);
-    max-width: 28ch;
+    font-family: var(--font-display);
+    font-size: clamp(24px, 2.5vw, 36px);
+    font-style: normal;
+    font-weight: 600;
+    letter-spacing: -0.035em;
+    line-height: 1.2;
   }
   .pull-quote::before {
-    content: '"';
     display: inline-block;
-    transform: translateX(-0.5em);
     color: var(--color-accent);
+    content: '“';
+    transform: translateX(-0.35em);
   }
 
-  /* Caption-mono — 11px tracked uppercase JetBrains Mono.
-     Used for tech captions ("Windows 11 · 64-bit · 4 GB RAM") */
   .caption-mono {
+    color: var(--color-fg-subtle);
     font-family: var(--font-mono);
     font-size: 11px;
+    letter-spacing: 0.13em;
     line-height: 1.6;
-    letter-spacing: 0.18em;
     text-transform: uppercase;
-    color: var(--color-fg-subtle);
   }
 
-  /* Number-display — for the one giant price */
   .number-display {
-    font-family: var(--font-display);
-    font-weight: 300;
-    font-size: clamp(96px, 14vw, 192px);
-    line-height: 0.9;
-    letter-spacing: -0.045em;
     color: var(--color-fg);
+    font-family: var(--font-mono);
+    font-size: clamp(72px, 12vw, 160px);
     font-variant-numeric: tabular-nums;
+    font-weight: 500;
+    letter-spacing: -0.065em;
+    line-height: 0.88;
   }
   .number-display .currency {
-    font-family: var(--font-mono);
-    font-size: 0.22em;
-    letter-spacing: 0.18em;
-    text-transform: uppercase;
-    vertical-align: 0.55em;
+    margin-right: 0.22em;
     color: var(--color-fg-muted);
-    margin-right: 0.18em;
+    font-family: var(--font-mono);
+    font-size: 0.2em;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    vertical-align: 0.65em;
   }
 
   /* Section vertical rhythm — three paces */

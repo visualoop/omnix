@@ -269,7 +269,7 @@ export function WelcomeEmail({ name, brand }: WelcomeProps) {
         Karibu, <em>{name}</em>.
       </Heading>
       <Text style={ledeStyle}>
-        Your Omnix account is set up. You can start a 30-day trial of any module from the dashboard, or buy a licence right away.
+        Your Omnix account is set up. Buy a perpetual licence for your trade from the dashboard, or book a demo if you&apos;d like a walkthrough first.
       </Text>
       <Button href={`${brand.brandUrl}/dashboard`} style={buttonStyle}>Open dashboard</Button>
       <Hr style={{ borderColor: c.border, margin: '24px 0' }} />
@@ -277,8 +277,8 @@ export function WelcomeEmail({ name, brand }: WelcomeProps) {
         Three things you can do today:
       </Text>
       <Text style={{ fontSize: 13, color: c.fg, margin: 0, lineHeight: 1.7 }}>
-        1. Download the installer for your trade — Pro, Dawa, Retail, Hospitality, or Hardware<br />
-        2. Activate your trial on the first machine to get a 30-day free run<br />
+        1. Download the installer for your trade — Dawa, Retail, Hospitality, Hardware, or Salon &amp; Spa<br />
+        2. Buy your perpetual licence and activate it on your first machine<br />
         3. Add your team and a second machine if you have one (LAN sync is built-in)
       </Text>
     </Shell>
@@ -804,7 +804,7 @@ export function PartnershipInquiryEmail({
       <Hr style={{ borderColor: c.border, margin: '20px 0' }} />
       <Text style={{ fontSize: 12, color: c.fgSubtle, margin: 0 }}>
         Reply directly to this email to respond — the reply-to is set to the
-        submitter's address.
+        submitter&apos;s address.
       </Text>
     </Shell>
   );
@@ -827,8 +827,8 @@ export function PartnershipAckEmail({ fullName, organization, brand }: Partnersh
         Asante, {fullName}.
       </Heading>
       <Text style={ledeStyle}>
-        We received your partnership enquiry for {organization}. Someone from
-        the Omnix team will reply within two business days, often sooner.
+        We received your partnership enquiry for {organization}. The Omnix team
+        will assess the details and follow up by email.
       </Text>
       <Text style={{ fontSize: 13, color: c.fgMuted, margin: '14px 0 0', lineHeight: 1.6 }}>
         Omnix is private, commercial software — resellers, integrators and
@@ -842,4 +842,91 @@ export function PartnershipAckEmail({ fullName, organization, brand }: Partnersh
       </Text>
     </Shell>
   );
+}
+
+
+// ─── Demo booking request ─────────────────────────────────────────
+
+interface DemoRequestEmailProps {
+  reference: string
+  fullName: string
+  businessName: string
+  workEmail: string
+  phone: string
+  product: 'pharmacy' | 'retail' | 'hospitality' | 'hardware' | 'salon'
+  locationCount: number
+  currentSystem?: string
+  priorities: string[]
+  notes?: string
+  preferredChannel: 'whatsapp' | 'phone' | 'email'
+  preferredWindow: 'morning' | 'afternoon' | 'evening' | 'anytime'
+  brand: BrandValues
+}
+
+const productLabels: Record<DemoRequestEmailProps['product'], string> = {
+  pharmacy: 'Pharmacy',
+  retail: 'Retail',
+  hospitality: 'Hospitality',
+  hardware: 'Hardware & Equipment',
+  salon: 'Salon & Spa',
+}
+
+export function DemoRequestNotificationEmail(props: DemoRequestEmailProps) {
+  return (
+    <Shell preview={`Demo request from ${props.businessName}`} brand={props.brand}>
+      <Text style={eyebrowStyle}>Demo request · {props.reference}</Text>
+      <Heading style={{ ...headingStyle, marginTop: 6 }}>
+        {props.businessName} wants to see Omnix {productLabels[props.product]}.
+      </Heading>
+      <Text style={ledeStyle}>
+        {props.fullName} asked to be contacted by {props.preferredChannel} during the {props.preferredWindow} window.
+      </Text>
+      <Hr style={{ borderColor: c.border, margin: '20px 0' }} />
+      <Text style={{ fontSize: 13, color: c.fg, margin: 0, lineHeight: 1.8 }}>
+        <strong>Name:</strong> {props.fullName}<br />
+        <strong>Business:</strong> {props.businessName}<br />
+        <strong>Email:</strong> <Link href={`mailto:${props.workEmail}`} style={{ color: c.fg }}>{props.workEmail}</Link><br />
+        <strong>Phone:</strong> {props.phone}<br />
+        <strong>Product:</strong> {productLabels[props.product]}<br />
+        <strong>Locations:</strong> {props.locationCount}<br />
+        <strong>Current setup:</strong> {props.currentSystem || 'Not provided'}<br />
+        <strong>Priorities:</strong> {props.priorities.length > 0 ? props.priorities.join(', ') : 'Not provided'}
+      </Text>
+      {props.notes ? (
+        <>
+          <Hr style={{ borderColor: c.border, margin: '20px 0' }} />
+          <Text style={{ fontSize: 13, color: c.fgMuted, margin: '0 0 6px' }}>Notes</Text>
+          <Text style={{ fontSize: 14, color: c.fg, margin: 0, lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>
+            {props.notes}
+          </Text>
+        </>
+      ) : null}
+      <Hr style={{ borderColor: c.border, margin: '20px 0' }} />
+      <Text style={{ fontSize: 12, color: c.fgSubtle, margin: 0 }}>
+        Reply directly to this email to contact {props.fullName}.
+      </Text>
+    </Shell>
+  )
+}
+
+export function DemoRequestAcknowledgementEmail(props: DemoRequestEmailProps) {
+  return (
+    <Shell preview="Your Omnix demo request is recorded" brand={props.brand}>
+      <Text style={eyebrowStyle}>Demo request · {props.reference}</Text>
+      <Heading style={{ ...headingStyle, marginTop: 6 }}>
+        Your request is recorded, {props.fullName}.
+      </Heading>
+      <Text style={ledeStyle}>
+        We received the request for {props.businessName}. A member of the Omnix team will use {props.preferredChannel} to confirm a suitable demo time.
+      </Text>
+      <Hr style={{ borderColor: c.border, margin: '20px 0' }} />
+      <Text style={{ fontSize: 13, color: c.fgMuted, margin: 0, lineHeight: 1.7 }}>
+        The session will focus on {productLabels[props.product]} workflows and the priorities you selected. Keep reference <strong>{props.reference}</strong> if you need to update the request.
+      </Text>
+      <Hr style={{ borderColor: c.border, margin: '20px 0' }} />
+      <Text style={{ fontSize: 12, color: c.fgSubtle, margin: 0 }}>
+        Reply to this email if any detail changes before the demo.
+      </Text>
+    </Shell>
+  )
 }

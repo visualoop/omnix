@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { Key } from '@phosphor-icons/react/dist/ssr'
 import { db, licenses, user } from '@/db'
 import { EmptyState } from '@/components/admin/empty-state'
+import { FilteredEmptyState } from '@/components/ui/state-view'
 import { PageHeader } from '@/components/layout/page-header'
 import {
   Table,
@@ -139,16 +140,20 @@ export default async function AdminLicensesPage({
         </div>
       </div>
 
-      {rows.length === 0 && total === 0 ? (
-        <EmptyState
-          icon={<Key weight="regular" className="size-8" />}
-          title={q || variant || status ? 'No matches.' : 'No licences yet.'}
-          description={
-            q || variant || status
-              ? 'Adjust the search or filters above to see other rows.'
-              : 'The first one will show up here as soon as a customer completes a license_fee payment.'
-          }
-        />
+      {rows.length === 0 ? (
+        q || variant || status ? (
+          <FilteredEmptyState
+            query={q || undefined}
+            clearHref="/admin/licenses"
+            entityLabel="licences"
+          />
+        ) : (
+          <EmptyState
+            icon={<Key weight="regular" className="size-8" />}
+            title="No licences yet."
+            description="The first one will show up here as soon as a customer completes a license_fee payment."
+          />
+        )
       ) : (
         <>
           <Table>

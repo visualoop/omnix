@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import * as React from 'react';
 import { Send } from '@/components/icons';
 import { Button } from '@/components/ui/button';
@@ -71,12 +72,11 @@ export function PartnersForm() {
     return (
       <div className="rounded-2xl border border-[var(--color-accent)] bg-[var(--color-accent-soft)] p-8">
         <div className="font-display text-[22px] font-medium text-[var(--color-fg)]">
-          Got it. We\'ll be in touch.
+          Got it. Your enquiry is in.
         </div>
         <p className="mt-2 text-[15px] leading-[1.55] text-[var(--color-fg-muted)]">
-          You\'ll get a confirmation in your inbox shortly. The Omnix team will
-          follow up within two business days, often the same day if your enquiry
-          is clear.
+          The Omnix team reviews every partnership enquiry and follows up by email once it has
+          been assessed. If it is time-sensitive, you can also email partners@omnix.co.ke.
         </p>
       </div>
     );
@@ -155,9 +155,9 @@ export function PartnersForm() {
       <p className="text-[11px] leading-[1.5] text-[var(--color-fg-subtle)]">
         Submitting this form is not a partnership offer; it starts the
         conversation. Read the{' '}
-        <a href="/terms" className="underline-offset-4 hover:underline">terms</a>
+        <Link href="/terms" className="underline-offset-4 hover:underline">terms</Link>
         {' '}and{' '}
-        <a href="/privacy" className="underline-offset-4 hover:underline">privacy policy</a>.
+        <Link href="/privacy" className="underline-offset-4 hover:underline">privacy policy</Link>.
       </p>
     </form>
   );

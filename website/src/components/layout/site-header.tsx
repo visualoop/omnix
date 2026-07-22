@@ -3,7 +3,6 @@
 import * as React from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { useTranslations } from 'next-intl'
 import { Icon } from '@/components/icons'
 import { cn } from '@/lib/cn'
 import { LanguageSwitcher } from '@/components/layout/language-switcher'
@@ -14,43 +13,39 @@ import { BrandWordmark } from '@/components/brand-logo'
 import { Sheet, SheetClose } from '@/components/ui/sheet'
 
 interface NavItem {
-  /** Translation key under the 'nav' namespace, e.g. 'pricing' → t('pricing') */
-  labelKey: string
+  label: string
   href: string
-  /** When set, this entry expands to a dropdown of children. */
   children?: Array<{ label: string; href: string; description?: string }>
 }
 
+const DEMO = { label: 'Book a demo', href: '/contact?type=demo' } as const
+
 const NAV: readonly NavItem[] = [
   {
-    labelKey: 'products',
+    label: 'Products',
     href: '/modules',
     children: [
-      { label: 'Omnix Dawa', href: '/dawa', description: 'Pharmacy management' },
-      { label: 'Omnix Retail', href: '/retail', description: 'Shops, mini-marts, dukas' },
-      { label: 'Omnix Hospitality', href: '/hospitality', description: 'Restaurants, bars, lodges' },
-      { label: 'Omnix Hardware', href: '/hardware', description: 'Hardware stores, contractors' },
-      { label: 'Omnix Salon & Spa', href: '/salon', description: 'Salons, barbershops, spas' },
+      { label: 'Pharmacy', href: '/pharmacy', description: 'Dispensing, expiry, stock and patient records' },
+      { label: 'Retail', href: '/retail', description: 'POS and inventory for shops and mini-marts' },
+      { label: 'Hospitality', href: '/hospitality', description: 'Restaurant POS, kitchen orders and rooms' },
+      { label: 'Hardware & Equipment', href: '/hardware', description: 'Quotations, contractor accounts, serialized equipment and stock' },
+      { label: 'Salon & Spa', href: '/salon', description: 'Appointments, services, staff commissions and checkout' },
     ],
   },
-  { labelKey: 'ai', href: '/ai' },
-  { labelKey: 'pricing', href: '/pricing' },
+  { label: 'Pricing', href: '/pricing' },
   {
-    labelKey: 'resources',
+    label: 'Resources',
     href: '/docs',
     children: [
-      { label: 'Downloads', href: '/downloads', description: 'Get the app for Windows' },
-      { label: 'Documentation', href: '/docs', description: 'Guides, setup, troubleshooting' },
-      { label: 'Migration', href: '/migration', description: 'Switch in an afternoon — AI does the mapping' },
-      { label: 'Security & reliability', href: '/security', description: 'How Omnix protects your business' },
-      { label: 'M-Pesa', href: '/mpesa', description: 'Native payments, reconciled' },
-      { label: 'KRA eTIMS', href: '/etims', description: 'Tax compliance, automated' },
-      { label: 'Roadmap', href: '/roadmap', description: "What we're building next" },
-      { label: 'Changelog', href: '/changelog', description: "What's new in each release" },
-      { label: 'Support', href: '/support', description: 'Help, onboarding, contact' },
-      { label: 'About', href: '/about', description: 'Who builds Omnix' },
+      { label: 'M-Pesa', href: '/mpesa', description: 'Understand payment and reconciliation options' },
+      { label: 'KRA eTIMS', href: '/etims', description: 'See how sales move into tax records' },
+      { label: 'Migration', href: '/migration', description: 'Plan your move from books or another system' },
+      { label: 'Downloads', href: '/downloads', description: 'Get the Windows installer' },
+      { label: 'Documentation', href: '/docs', description: 'Setup and operating guides' },
+      { label: 'Support', href: '/support', description: 'Get help with Omnix' },
     ],
   },
+  { label: 'About', href: '/about' },
 ] as const
 
 /**
@@ -59,13 +54,28 @@ const NAV: readonly NavItem[] = [
  *
  * The Trades item is now a dropdown — five variants in one place.
  */
-export function SiteHeader({ isAuthed = false }: { isAuthed?: boolean }) {
+export function SiteHeader({
+  locale,
+  isAuthed = false,
+  signInLabel = 'Sign in',
+}: {
+  locale: string
+  isAuthed?: boolean
+  signInLabel?: string
+}) {
   const pathname = usePathname()
-  const t = useTranslations('nav')
+  const localePath = React.useCallback(
+    (href: string) => `/${locale}${href === '/' ? '' : href}`,
+    [locale],
+  )
+  const routePath = pathname === `/${locale}` ? '/' : pathname.slice(locale.length + 1) || '/'
   const [scrolled, setScrolled] = React.useState(false)
   const [open, setOpen] = React.useState(false)
   const [openMenu, setOpenMenu] = React.useState<string | null>(null)
   const navRef = React.useRef<HTMLElement | null>(null)
+  // Disclosure triggers keyed by href, so Escape can restore focus to the
+  // button that opened the panel (WAI-ARIA disclosure-navigation pattern).
+  const triggerRefs = React.useRef<Record<string, HTMLButtonElement | null>>({})
 
   React.useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 60)
@@ -91,29 +101,48 @@ export function SiteHeader({ isAuthed = false }: { isAuthed?: boolean }) {
   // Close any open dropdown on outside click.
   React.useEffect(() => {
     if (!openMenu) return
-    const onClick = (e: MouseEvent) => {
-      if (navRef.current && !navRef.current.contains(e.target as Node)) {
+    const onClick = (event: MouseEvent) => {
+      if (navRef.current && !navRef.current.contains(event.target as Node)) {
         setOpenMenu(null)
       }
     }
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        // Restore focus to the trigger that opened the panel before closing,
+        // so keyboard users are not dropped at the top of the document.
+        const trigger = triggerRefs.current[openMenu]
+        setOpenMenu(null)
+        trigger?.focus()
+      }
+    }
     document.addEventListener('mousedown', onClick)
-    return () => document.removeEventListener('mousedown', onClick)
+    document.addEventListener('keydown', onKeyDown)
+    return () => {
+      document.removeEventListener('mousedown', onClick)
+      document.removeEventListener('keydown', onKeyDown)
+    }
   }, [openMenu])
 
   return (
     <>
+    <a
+      href="#main-content"
+      className="sr-only fixed left-4 top-4 z-[100] rounded-[var(--radius-pill)] bg-[var(--color-fg)] px-4 py-2 text-[13px] font-semibold text-[var(--color-bg)] focus:not-sr-only"
+    >
+      Skip to main content
+    </a>
     <header
       className={cn(
-        'sticky top-0 z-50 w-full transition-all duration-200',
+        'sticky top-0 z-50 w-full transition-[background-color,border-color,backdrop-filter] duration-[var(--duration-ui)]',
         scrolled
           ? 'border-b border-[var(--color-border)] bg-[color-mix(in_oklab,var(--color-bg)_82%,transparent)] backdrop-blur-xl'
           : 'bg-transparent',
       )}
     >
-      <div className="container-wide flex h-[72px] items-center justify-between gap-6 md:grid md:grid-cols-[1fr_auto_1fr]">
+      <div className="container-wide flex h-[72px] items-center justify-between gap-6 lg:grid lg:grid-cols-[1fr_auto_1fr]">
         {/* Wordmark */}
         <Link
-          href="/"
+          href={localePath('/')}
           aria-label={`${BRAND_NAME} home`}
           className="group flex w-fit items-center"
         >
@@ -121,23 +150,26 @@ export function SiteHeader({ isAuthed = false }: { isAuthed?: boolean }) {
         </Link>
 
         {/* Nav — truly centred */}
-        <nav ref={navRef} className="hidden items-center gap-1 md:flex">
+        <nav ref={navRef} className="hidden items-center gap-1 lg:flex">
           {NAV.map((item) => {
-            const active = pathname === item.href || pathname.startsWith(`${item.href}/`)
+            const active = routePath === item.href || routePath.startsWith(`${item.href}/`)
             const childActive = item.children?.some(
-              (c) => pathname === c.href || pathname.startsWith(`${c.href}/`),
+              (child) => routePath === child.href || routePath.startsWith(`${child.href}/`),
             )
             const isOpen = openMenu === item.href
+            const menuId = `site-nav-${item.href.replace(/[^a-zA-Z0-9]/g, '')}`
 
             if (item.children) {
               return (
                 <div key={item.href} className="relative">
                   <button
                     type="button"
+                    ref={(node) => {
+                      triggerRefs.current[item.href] = node
+                    }}
                     onClick={() => setOpenMenu((v) => (v === item.href ? null : item.href))}
-                    onMouseEnter={() => setOpenMenu(item.href)}
                     aria-expanded={isOpen}
-                    aria-haspopup="menu"
+                    aria-controls={menuId}
                     className={cn(
                       'font-[family-name:var(--font-ui)] inline-flex items-center gap-1 rounded-md px-3 py-1.5 text-[13px] font-medium transition-colors',
                       active || childActive
@@ -145,36 +177,41 @@ export function SiteHeader({ isAuthed = false }: { isAuthed?: boolean }) {
                         : 'text-[var(--color-fg-muted)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-fg)]',
                     )}
                   >
-                    {t(item.labelKey)}
+                    {item.label}
                     <Icon.ChevronDown
                       className={cn('size-3 transition-transform', isOpen ? 'rotate-180' : '')}
                       weight="bold"
                     />
                   </button>
                   {isOpen ? (
-                    <div
-                      role="menu"
+                    <ul
+                      id={menuId}
                       onMouseLeave={() => setOpenMenu(null)}
-                      className="absolute left-1/2 top-full z-50 mt-2 w-[340px] -translate-x-1/2 rounded-lg border border-[var(--color-border)] bg-[var(--color-bg)] p-2 shadow-lg"
+                      className="absolute left-1/2 top-full z-50 mt-2 w-[340px] -translate-x-1/2 list-none rounded-lg border border-[var(--color-border)] bg-[var(--color-bg)] p-2 shadow-lg"
                     >
-                      {item.children.map((c) => (
-                        <Link
-                          key={c.href}
-                          href={c.href}
-                          role="menuitem"
-                          className="block rounded-md px-3 py-2.5 hover:bg-[var(--color-surface-hover)]"
-                        >
-                          <div className="font-[family-name:var(--font-ui)] text-[13px] font-medium text-[var(--color-fg)]">
-                            {c.label}
-                          </div>
-                          {c.description ? (
-                            <div className="text-[12px] text-[var(--color-fg-muted)] mt-0.5">
-                              {c.description}
-                            </div>
-                          ) : null}
-                        </Link>
-                      ))}
-                    </div>
+                      {item.children.map((c) => {
+                        const childIsActive =
+                          routePath === c.href || routePath.startsWith(`${c.href}/`)
+                        return (
+                          <li key={c.href}>
+                            <Link
+                              href={localePath(c.href)}
+                              aria-current={childIsActive ? 'page' : undefined}
+                              className="block rounded-md px-3 py-2.5 hover:bg-[var(--color-surface-hover)]"
+                            >
+                              <div className="font-[family-name:var(--font-ui)] text-[13px] font-medium text-[var(--color-fg)]">
+                                {c.label}
+                              </div>
+                              {c.description ? (
+                                <div className="text-[12px] text-[var(--color-fg-muted)] mt-0.5">
+                                  {c.description}
+                                </div>
+                              ) : null}
+                            </Link>
+                          </li>
+                        )
+                      })}
+                    </ul>
                   ) : null}
                 </div>
               )
@@ -183,7 +220,8 @@ export function SiteHeader({ isAuthed = false }: { isAuthed?: boolean }) {
             return (
               <Link
                 key={item.href}
-                href={item.href}
+                href={localePath(item.href)}
+                aria-current={active ? 'page' : undefined}
                 className={cn(
                   'font-[family-name:var(--font-ui)] rounded-md px-3 py-1.5 text-[13px] font-medium transition-colors',
                   active
@@ -191,7 +229,7 @@ export function SiteHeader({ isAuthed = false }: { isAuthed?: boolean }) {
                     : 'text-[var(--color-fg-muted)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-fg)]',
                 )}
               >
-                {t(item.labelKey)}
+                {item.label}
               </Link>
             )
           })}
@@ -202,17 +240,19 @@ export function SiteHeader({ isAuthed = false }: { isAuthed?: boolean }) {
             tight tablet widths. gap-3 tightens spacing so the row doesn't
             wrap into two lines. */}
         <div className="flex items-center justify-end gap-3 shrink-0">
-          <LanguageSwitcher className="hidden md:inline-flex shrink-0 rounded-md border border-[var(--color-border)] bg-transparent py-1 pl-2 pr-7 font-[family-name:var(--font-ui)] text-[12px] text-[var(--color-fg-muted)] hover:border-[var(--color-fg-subtle)] hover:text-[var(--color-fg)] focus:outline-none focus:border-[var(--color-accent)] cursor-pointer" />
-          <ThemeToggle className="hidden shrink-0 sm:inline-flex" />
+          <div className="hidden w-[72px] shrink-0 lg:block">
+            <LanguageSwitcher locale={locale} className="w-full rounded-md border border-[var(--color-border)] bg-transparent py-1 pl-2 pr-7 font-[family-name:var(--font-ui)] text-[12px] text-[var(--color-fg-muted)] hover:border-[var(--color-fg-subtle)] hover:text-[var(--color-fg)] focus:border-[var(--color-accent)] focus:outline-none cursor-pointer" />
+          </div>
+          <ThemeToggle className="hidden shrink-0 lg:inline-flex" />
           {isAuthed ? (
             <>
               <Link
                 href="/dashboard"
-                className="font-[family-name:var(--font-ui)] hidden shrink-0 text-[13px] font-medium text-[var(--color-fg-muted)] transition-colors hover:text-[var(--color-fg)] sm:inline"
+                className="font-[family-name:var(--font-ui)] hidden shrink-0 text-[13px] font-medium text-[var(--color-fg-muted)] transition-colors hover:text-[var(--color-fg)] lg:inline"
               >
                 Account
               </Link>
-              <Button asChild size="sm" className="hidden shrink-0 sm:inline-flex">
+              <Button asChild size="sm" className="hidden shrink-0 lg:inline-flex">
                 <Link href="/dashboard">Open dashboard</Link>
               </Button>
             </>
@@ -220,12 +260,12 @@ export function SiteHeader({ isAuthed = false }: { isAuthed?: boolean }) {
             <>
               <Link
                 href="/login"
-                className="font-[family-name:var(--font-ui)] hidden shrink-0 text-[13px] font-medium text-[var(--color-fg-muted)] transition-colors hover:text-[var(--color-fg)] sm:inline"
+                className="hidden shrink-0 text-[13px] font-medium text-[var(--color-fg-muted)] transition-colors hover:text-[var(--color-fg)] lg:inline"
               >
-                {t('signIn')}
+                {signInLabel}
               </Link>
-              <Button asChild size="sm" className="hidden shrink-0 sm:inline-flex">
-                <Link href="/signup">{t('startTrial')}</Link>
+              <Button asChild size="sm" className="hidden shrink-0 lg:inline-flex">
+                <Link href={localePath(DEMO.href)}>{DEMO.label}</Link>
               </Button>
             </>
           )}
@@ -238,7 +278,7 @@ export function SiteHeader({ isAuthed = false }: { isAuthed?: boolean }) {
             onClick={() => setOpen((v) => !v)}
             aria-label={open ? 'Close menu' : 'Open menu'}
             aria-expanded={open}
-            className="inline-flex size-9 shrink-0 items-center justify-center rounded-md text-[var(--color-fg-muted)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-fg)] md:hidden"
+            className="inline-flex size-11 shrink-0 items-center justify-center rounded-full text-[var(--color-fg-muted)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-fg)] lg:hidden"
           >
             <Icon.List className="size-5" weight="regular" />
           </button>
@@ -265,13 +305,13 @@ export function SiteHeader({ isAuthed = false }: { isAuthed?: boolean }) {
                 {item.children ? (
                   <div className="mt-3 first:mt-0">
                     <div className="font-mono text-[10px] font-medium uppercase tracking-[0.22em] text-[var(--color-fg-subtle)] px-1 mb-1">
-                      {t(item.labelKey)}
+                      {item.label}
                     </div>
                     <div className="flex flex-col">
                       {item.children.map((c) => (
                         <Link
                           key={c.href}
-                          href={c.href}
+                          href={localePath(c.href)}
                           onClick={() => setOpen(false)}
                           className="font-[family-name:var(--font-display)] text-[22px] font-light tracking-[-0.01em] py-2 text-[var(--color-fg)] hover:text-[var(--color-accent)] transition-colors"
                         >
@@ -282,11 +322,11 @@ export function SiteHeader({ isAuthed = false }: { isAuthed?: boolean }) {
                   </div>
                 ) : (
                   <Link
-                    href={item.href}
+                    href={localePath(item.href)}
                     onClick={() => setOpen(false)}
                     className="font-[family-name:var(--font-display)] text-[22px] font-light tracking-[-0.01em] py-2 text-[var(--color-fg)] hover:text-[var(--color-accent)] transition-colors"
                   >
-                    {t(item.labelKey)}
+                    {item.label}
                   </Link>
                 )}
               </React.Fragment>
@@ -301,12 +341,14 @@ export function SiteHeader({ isAuthed = false }: { isAuthed?: boolean }) {
               <Link href="/dashboard" onClick={() => setOpen(false)}>Open dashboard</Link>
             </Button>
           ) : (
-            <div className="grid grid-cols-2 gap-2">
-              <Button asChild variant="outline" size="lg">
-                <Link href="/login" onClick={() => setOpen(false)}>{t('signIn')}</Link>
+            <div className="grid gap-2">
+              <Button asChild size="lg" className="w-full">
+                <Link href={localePath(DEMO.href)} onClick={() => setOpen(false)}>
+                  {DEMO.label}
+                </Link>
               </Button>
-              <Button asChild size="lg">
-                <Link href="/signup" onClick={() => setOpen(false)}>{t('startTrial')}</Link>
+              <Button asChild variant="ghost" size="lg" className="w-full">
+                <Link href="/login" onClick={() => setOpen(false)}>{signInLabel}</Link>
               </Button>
             </div>
           )}
@@ -315,7 +357,7 @@ export function SiteHeader({ isAuthed = false }: { isAuthed?: boolean }) {
               Appearance & language
             </span>
             <div className="flex items-center gap-2">
-              <LanguageSwitcher className="inline-flex rounded-md border border-[var(--color-border)] bg-transparent py-1 pl-2 pr-7 font-[family-name:var(--font-ui)] text-[12px] text-[var(--color-fg-muted)] cursor-pointer" />
+              <LanguageSwitcher locale={locale} className="inline-flex rounded-md border border-[var(--color-border)] bg-transparent py-1 pl-2 pr-7 font-[family-name:var(--font-ui)] text-[12px] text-[var(--color-fg-muted)] cursor-pointer" />
               <ThemeToggle />
             </div>
           </div>

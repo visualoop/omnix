@@ -3,14 +3,17 @@
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { confirm } from '@/components/ui/dialog-imperative'
+import { Button } from '@/components/ui/button'
+import { cn } from '@/lib/cn'
 
 /**
- * "Release seat" button — frees the seat consumed by a machine so the
+ * "Release seat" button — frees the seat consumed by a device so the
  * customer can re-install on a different PC.
  *
- * Asks for confirmation, calls DELETE /api/dashboard/machines/[id],
- * routes back to /dashboard/machines on success so the now-revoked
- * machine doesn't fill the detail page with "revoked" labels.
+ * Asks for destructive confirmation, calls DELETE
+ * /api/dashboard/machines/[id], and routes back to /dashboard/machines on
+ * success. The server enforces ownership and the seat/rebind rules; this
+ * only triggers and reports them.
  */
 export function ReleaseSeatButton({
   machineId,
@@ -27,8 +30,9 @@ export function ReleaseSeatButton({
 
   async function release() {
     const sure = await confirm({
-      title: `Release the seat on ${hostname || 'this machine'}?`,
-      description: 'The Omnix install on this PC will stop signing in. You can install on a different PC after release. This does not refund the licence.',
+      title: `Release the seat on ${hostname || 'this device'}?`,
+      description:
+        'The Omnix install on this PC will stop signing in. You can install on a different PC after release. This does not refund the licence.',
       variant: 'destructive',
       confirmText: 'Release seat',
     })
@@ -46,32 +50,41 @@ export function ReleaseSeatButton({
     })
   }
 
+  const destructiveClasses =
+    'text-[var(--color-negative)] hover:bg-[var(--color-negative)]/10 hover:text-[var(--color-negative)]'
+
   if (variant === 'compact') {
     return (
-      <button
+      <Button
         type="button"
+        size="xs"
+        variant="ghost"
         onClick={release}
         disabled={pending}
-        className="rounded-md border border-rose-500/30 bg-rose-500/5 px-2.5 py-1 font-mono text-[10px] uppercase tracking-[0.18em] text-rose-700 hover:bg-rose-500/10 disabled:opacity-50 cursor-pointer dark:text-rose-300"
+        className={destructiveClasses}
         title="Release seat — frees the seat for reinstall on another PC"
       >
         {pending ? 'Releasing…' : 'Release'}
-      </button>
+      </Button>
     )
   }
 
   return (
     <div className="flex flex-col items-end gap-1">
-      <button
+      <Button
         type="button"
+        size="sm"
+        variant="outline"
         onClick={release}
         disabled={pending}
-        className="inline-flex items-center justify-center rounded-md border border-rose-500/30 bg-rose-500/5 px-4 py-2 font-mono text-[11px] uppercase tracking-[0.18em] text-rose-700 hover:bg-rose-500/10 disabled:opacity-50 cursor-pointer dark:text-rose-300"
+        className={cn('border-[var(--color-negative)]/40', destructiveClasses)}
       >
         {pending ? 'Releasing seat…' : 'Release seat'}
-      </button>
+      </Button>
       {error ? (
-        <span className="font-mono text-[10px] text-[var(--color-negative)]">{error}</span>
+        <span role="alert" className="text-right font-mono text-[10px] text-[var(--color-negative)]">
+          {error}
+        </span>
       ) : null}
     </div>
   )

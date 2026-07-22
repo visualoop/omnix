@@ -4,7 +4,8 @@ import Link from 'next/link'
 import { and, count, desc, eq, ilike, or, inArray } from 'drizzle-orm'
 import { db, machines, activations, licenses } from '@/db'
 import { auth } from '@/lib/auth'
-import { PageHeading } from '@/components/dashboard/status-utils'
+import { PageHeader } from '@/components/layout/page-header'
+import { Button } from '@/components/ui/button'
 import {
   Table,
   TableBody,
@@ -13,18 +14,23 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { AdminPagination, AdminSearch } from '@/components/admin/data-controls'
+import { EmptyState } from '@/components/dashboard/status-utils'
+import { FilteredEmptyState } from '@/components/ui/state-view'
+import { ListPagination, ListSearch } from '@/components/dashboard/list-controls'
 import { ReleaseSeatButton } from '@/components/dashboard/release-seat-button'
+import { cn } from '@/lib/cn'
 
-export const metadata = { title: 'Machines' }
+export const metadata = { title: 'Devices' }
 
 const PAGE_SIZE = 25
 
+/** Heartbeat freshness — token-backed, always paired with a text label so
+ *  colour is never the sole signal. */
 function HeartbeatPill({ lastSeenAt }: { lastSeenAt: Date | string | null }) {
   if (!lastSeenAt) {
     return (
       <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--color-fg-subtle)]">
-        Never
+        Never seen
       </span>
     )
   }
@@ -32,26 +38,30 @@ function HeartbeatPill({ lastSeenAt }: { lastSeenAt: Date | string | null }) {
   const ageMin = (Date.now() - ts.getTime()) / 60_000
   const ageHrs = ageMin / 60
   const ageDays = ageHrs / 24
-  let tone = ''
-  let label = ''
+
+  let tone: string
+  let label: string
   if (ageMin < 5) {
-    tone = 'text-emerald-700 dark:text-emerald-300 bg-emerald-500/10 border-emerald-500/30'
+    tone = 'bg-[var(--color-positive)]/15 text-[var(--color-positive)]'
     label = 'Live'
-  } else if (ageHrs < 1) {
-    tone = 'text-emerald-700 dark:text-emerald-300 bg-emerald-500/5 border-emerald-500/20'
-    label = `${Math.round(ageMin)}m`
   } else if (ageHrs < 24) {
-    tone = 'text-amber-700 dark:text-amber-300 bg-amber-500/10 border-amber-500/30'
-    label = `${Math.round(ageHrs)}h`
+    tone = 'bg-[var(--color-positive)]/12 text-[var(--color-positive)]'
+    label = ageHrs < 1 ? `${Math.round(ageMin)}m ago` : `${Math.round(ageHrs)}h ago`
+  } else if (ageDays < 7) {
+    tone = 'bg-[var(--color-caution)]/15 text-[var(--color-caution)]'
+    label = `${Math.round(ageDays)}d ago`
   } else {
-    tone = 'text-rose-700 dark:text-rose-300 bg-rose-500/10 border-rose-500/30'
-    label = `${Math.round(ageDays)}d`
+    tone = 'bg-[var(--color-negative)]/15 text-[var(--color-negative)]'
+    label = `${Math.round(ageDays)}d ago`
   }
   return (
     <span
-      className={`inline-flex items-center gap-1.5 rounded-md border px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-[0.18em] ${tone}`}
+      className={cn(
+        'inline-flex items-center gap-1.5 rounded-[var(--radius-pill)] px-2 py-0.5 font-mono text-[10px] uppercase tracking-[0.16em]',
+        tone,
+      )}
     >
-      <span className="size-1.5 rounded-full bg-current" />
+      <span className="size-1.5 rounded-full bg-current" aria-hidden />
       {label}
     </span>
   )
@@ -89,11 +99,9 @@ export default async function MachinesPage({
 
   const total = totalRow[0]?.n ?? 0
 
-  // Every variant activated on each machine. A single PC can hold
-  // several trade licences (Dawa + Retail + Hardware), so the lone
-  // machines.activeModule column (last-written) under-reports what's
-  // really installed. Join through the activations table to list them
-  // all per machine.
+  // A single PC can hold several trade licences (Dawa + Retail + Hardware),
+  // so the last-written machines.activeModule under-reports. Join through
+  // activations to list every variant installed on each machine.
   const machineIds = rows.map((m) => m.id)
   const variantRows = machineIds.length
     ? await db
@@ -111,28 +119,42 @@ export default async function MachinesPage({
   }
 
   return (
-    <div className="space-y-6">
-      <PageHeading title="Machines" subtitle="Every desktop install activated against your licences." />
+    <div className="flex flex-col gap-8">
+      <PageHeader
+        eyebrow="Your software"
+        title="Devices"
+        description="Every computer and till that has activated Omnix against one of your licences."
+      />
 
-      <AdminSearch placeholder="Search hostname or machine ID…" />
+      <ListSearch label="Search devices" placeholder="Search hostname or device ID…" />
 
-      {rows.length === 0 && total === 0 ? (
-        <div className="rounded-lg border border-dashed border-[var(--color-border)] px-4 py-12 text-center text-[13px] text-[var(--color-fg-muted)]">
-          {q
-            ? 'No machines match that search.'
-            : 'No machines yet. Install Omnix on your till and paste your licence key on first launch.'}
-        </div>
+      {rows.length === 0 ? (
+        q ? (
+          <FilteredEmptyState query={q} clearHref="/dashboard/machines" entityLabel="devices" />
+        ) : (
+          <EmptyState
+            title="No devices activated yet"
+            body="Install Omnix on your till and paste your licence key on first launch — it will show up here within minutes."
+            action={
+              <Button asChild variant="outline">
+                <Link href="/dashboard/downloads">Get the installer</Link>
+              </Button>
+            }
+          />
+        )
       ) : (
-        <>
+        <div className="flex flex-col">
           <Table>
             <TableHeader>
               <TableRow>
                 <TableHead>Hostname</TableHead>
-                <TableHead>Module</TableHead>
+                <TableHead>Product</TableHead>
                 <TableHead>Version</TableHead>
                 <TableHead>Branch</TableHead>
                 <TableHead>Heartbeat</TableHead>
-                <TableHead className="text-right">·</TableHead>
+                <TableHead className="text-right">
+                  <span className="sr-only">Actions</span>
+                </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -141,21 +163,18 @@ export default async function MachinesPage({
                   <TableCell className="min-w-[160px]">
                     <Link
                       href={`/dashboard/machines/${m.id}`}
-                      className="font-medium hover:text-[var(--color-accent)] underline-offset-4 hover:underline"
+                      className="font-medium text-[var(--color-fg)] underline-offset-4 hover:text-[var(--color-accent)] hover:underline"
                     >
                       {m.hostname ?? '—'}
                     </Link>
                   </TableCell>
                   <TableCell className="font-mono text-[11px] uppercase tracking-[0.12em] text-[var(--color-fg-muted)]">
-                    {(() => {
-                      const vs = variantsByMachine.get(m.id) ?? (m.activeModule ? [m.activeModule] : ['core'])
-                      return vs.join(' · ')
-                    })()}
+                    {(variantsByMachine.get(m.id) ?? (m.activeModule ? [m.activeModule] : ['core'])).join(' · ')}
                   </TableCell>
                   <TableCell className="font-mono text-[11px] tabular-nums text-[var(--color-fg-muted)]">
                     {m.os} · v{m.currentVersion ?? '?'}
                   </TableCell>
-                  <TableCell className="text-[12px] text-[var(--color-fg-muted)] truncate max-w-[160px]">
+                  <TableCell className="max-w-[160px] truncate text-[12px] text-[var(--color-fg-muted)]">
                     {m.branchName ?? '—'}
                   </TableCell>
                   <TableCell>
@@ -166,13 +185,13 @@ export default async function MachinesPage({
                       {m.status !== 'revoked' ? (
                         <ReleaseSeatButton machineId={m.id} hostname={m.hostname} variant="compact" />
                       ) : (
-                        <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--color-fg-muted)]">
+                        <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--color-fg-subtle)]">
                           Revoked
                         </span>
                       )}
                       <Link
                         href={`/dashboard/machines/${m.id}`}
-                        className="font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--color-fg-muted)] hover:text-[var(--color-fg)]"
+                        className="font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--color-fg-muted)] transition-colors hover:text-[var(--color-fg)]"
                       >
                         Open →
                       </Link>
@@ -182,8 +201,8 @@ export default async function MachinesPage({
               ))}
             </TableBody>
           </Table>
-          <AdminPagination page={page} pageSize={PAGE_SIZE} total={total} />
-        </>
+          <ListPagination page={page} pageSize={PAGE_SIZE} total={total} label="Device pages" />
+        </div>
       )}
     </div>
   )

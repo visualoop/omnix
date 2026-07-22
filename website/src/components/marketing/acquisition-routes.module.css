@@ -1,0 +1,555 @@
+/* Hallmark · pre-emit critique: P5 H5 E5 S5 R5 V4
+ * macrostructure: Stat-Led (Pricing) + Catalogue (Modules) · theme: Working Counter
+ * tone: confident utilitarian · enrichment: none · contrast: pass · mobile: pass · honest: pass
+ */
+.page {
+  min-width: 0;
+  background: var(--color-bg);
+  color: var(--color-fg);
+}
+
+.container {
+  width: min(100%, var(--w-wide));
+  margin-inline: auto;
+  padding-inline: clamp(var(--space-4), 5vw, var(--space-12));
+}
+
+.priceHero,
+.catalogueHero {
+  padding-block-start: clamp(var(--space-12), 6vw, var(--space-20));
+  padding-block-end: clamp(var(--space-20), 10vw, calc(var(--space-24) + var(--space-8)));
+  border-block-end: 1px solid var(--color-border-strong);
+}
+
+.priceHeroGrid,
+.catalogueHeader,
+.sharedRecordGrid,
+.closingInner {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: clamp(var(--space-8), 7vw, var(--space-16));
+}
+
+.priceStatement,
+.catalogueHeader > *,
+.sectionHead > *,
+.sharedRecordGrid > *,
+.closingInner > * {
+  min-width: 0;
+}
+
+.overline,
+.termKey,
+.catalogueLabels,
+.recordNumber,
+.priceCurrency,
+.priceCadence {
+  color: var(--color-fg-subtle);
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  line-height: 1.5;
+  text-transform: uppercase;
+}
+
+.priceStatement h1,
+.catalogueHeader h1 {
+  max-width: 11ch;
+  margin-block-start: var(--space-5);
+  font-size: clamp(2.75rem, 7.5vw, 5.5rem);
+  font-weight: 700;
+  letter-spacing: -0.06em;
+  line-height: 0.96;
+  overflow-wrap: anywhere;
+}
+
+.lede,
+.catalogueIntro > p {
+  max-width: 60ch;
+  margin-block: var(--space-6) 0;
+  color: var(--color-fg-muted);
+  font-size: clamp(1rem, 1.3vw, 1.15rem);
+  line-height: 1.65;
+}
+
+.actions {
+  display: flex;
+  flex-flow: row wrap;
+  gap: var(--space-3);
+  margin-block-start: var(--space-8);
+}
+
+.primaryAction,
+.secondaryAction,
+.recordAction {
+  display: inline-flex;
+  min-height: 3rem;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid transparent;
+  border-radius: var(--radius-pill);
+  padding-inline: var(--space-6);
+  font-family: var(--font-ui);
+  font-size: 0.875rem;
+  font-weight: 700;
+  line-height: 1;
+  white-space: nowrap;
+  transition: background-color var(--duration-ui) var(--ease-out), color var(--duration-ui) var(--ease-out), border-color var(--duration-ui) var(--ease-out), transform var(--duration-fast) var(--ease-out);
+}
+
+.primaryAction {
+  background: var(--color-accent);
+  color: var(--color-accent-foreground);
+}
+
+.secondaryAction,
+.recordAction {
+  border-color: var(--color-border-strong);
+  background: var(--color-bg);
+  color: var(--color-fg);
+}
+
+.primaryAction:active,
+.secondaryAction:active,
+.recordAction:active {
+  transform: scale(0.98);
+}
+
+.primaryAction[aria-disabled='true'],
+.secondaryAction[aria-disabled='true'],
+.recordAction[aria-disabled='true'] {
+  cursor: not-allowed;
+  opacity: 0.55;
+  pointer-events: none;
+}
+
+.priceDocket {
+  align-self: end;
+  padding-block: var(--space-6);
+  border-block: 1px solid var(--color-border-strong);
+}
+
+.priceCurrency,
+.priceCadence {
+  display: block;
+}
+
+.priceAmount {
+  display: block;
+  margin-block: var(--space-2);
+  font-family: var(--font-mono);
+  font-size: clamp(3.25rem, 10vw, 7rem);
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  letter-spacing: -0.075em;
+  line-height: 0.92;
+}
+
+.priceFacts {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  margin-block: var(--space-8) 0;
+  border-block-start: 1px solid var(--color-border);
+}
+
+.priceFacts > div {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding-block: var(--space-3);
+  border-block-end: 1px solid var(--color-border);
+}
+
+.priceFacts dt {
+  color: var(--color-fg-subtle);
+  font-size: 0.75rem;
+}
+
+.priceFacts dd {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-align: end;
+}
+
+.productPricing,
+.licenceTerms,
+.optionalCosts,
+.catalogue,
+.sharedRecord,
+.closing {
+  padding-block: var(--space-section-tight);
+}
+
+.productPricing,
+.optionalCosts,
+.catalogue {
+  border-block-end: 1px solid var(--color-border);
+}
+
+.licenceTerms,
+.sharedRecord {
+  background: var(--color-surface);
+  border-block-end: 1px solid var(--color-border);
+}
+
+.sectionHead {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-5);
+  align-items: end;
+  margin-block-end: clamp(var(--space-10), 7vw, var(--space-16));
+}
+
+.sectionHead h2,
+.sharedRecord h2,
+.closing h2 {
+  max-width: 16ch;
+  font-size: clamp(2rem, 5vw, 4rem);
+  font-weight: 700;
+  letter-spacing: -0.05em;
+  line-height: 1;
+}
+
+.sectionHead > p,
+.closing p {
+  max-width: 52ch;
+  margin: 0;
+  color: var(--color-fg-muted);
+  line-height: 1.65;
+}
+
+.priceProductList,
+.catalogueList,
+.costLedger {
+  border-block-start: 1px solid var(--color-border-strong);
+}
+
+.priceProductRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-2);
+  padding-block: var(--space-6);
+  border-block-end: 1px solid var(--color-border-strong);
+  transition: background-color var(--duration-ui) var(--ease-out);
+}
+
+.productName {
+  font-size: 1.25rem;
+  font-weight: 750;
+  letter-spacing: -0.03em;
+}
+
+.productAudience,
+.recordArea,
+.recordDescription {
+  color: var(--color-fg-muted);
+  font-size: 0.875rem;
+  line-height: 1.55;
+}
+
+.rowPrice,
+.costPrice {
+  font-family: var(--font-mono);
+  font-size: 0.8125rem;
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+}
+
+.rowAction {
+  width: fit-content;
+  color: var(--color-accent);
+  font-size: 0.8125rem;
+  font-weight: 750;
+  white-space: nowrap;
+}
+
+.termGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  border-block-start: 1px solid var(--color-border-strong);
+}
+
+.termGrid article {
+  padding-block: var(--space-8);
+  border-block-end: 1px solid var(--color-border-strong);
+}
+
+.termGrid h3 {
+  max-width: 20ch;
+  margin-block-start: var(--space-5);
+  font-size: clamp(1.35rem, 2.5vw, 2rem);
+  line-height: 1.15;
+}
+
+.termGrid p {
+  max-width: 45ch;
+  margin-block: var(--space-4) 0;
+  color: var(--color-fg-muted);
+  font-size: 0.9rem;
+  line-height: 1.65;
+}
+
+.costLedger {
+  margin: 0;
+}
+
+.costLedger > div {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-2);
+  padding-block: var(--space-6);
+  border-block-end: 1px solid var(--color-border-strong);
+}
+
+.costLedger dt {
+  font-size: 1.05rem;
+  font-weight: 750;
+}
+
+.costLedger dd {
+  margin: 0;
+}
+
+.costNote {
+  max-width: 58ch;
+  color: var(--color-fg-muted);
+  font-size: 0.875rem;
+  line-height: 1.55;
+}
+
+.catalogueHeader h1 {
+  max-width: 12ch;
+}
+
+.catalogueIntro {
+  align-self: end;
+}
+
+.catalogueCount {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-4);
+  margin-block-start: clamp(var(--space-12), 8vw, var(--space-20));
+  padding-block-start: var(--space-5);
+  border-block-start: 1px solid var(--color-border-strong);
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+.catalogueCount span:first-child {
+  color: var(--color-accent);
+  font-size: clamp(2.5rem, 7vw, 5rem);
+  font-weight: 700;
+  letter-spacing: -0.06em;
+  line-height: 1;
+}
+
+.catalogueCount span:last-child {
+  color: var(--color-fg-muted);
+  font-size: 0.75rem;
+  text-transform: uppercase;
+}
+
+.catalogueLabels {
+  display: none;
+}
+
+.productRecord {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-5);
+  padding-block: clamp(var(--space-8), 6vw, var(--space-12));
+  border-block-end: 1px solid var(--color-border-strong);
+}
+
+.recordIdentity {
+  display: grid;
+  grid-template-columns: 2rem minmax(0, 1fr);
+  gap: var(--space-4);
+}
+
+.recordIdentity h2 {
+  font-size: clamp(1.7rem, 4vw, 2.75rem);
+  font-weight: 750;
+  letter-spacing: -0.045em;
+  line-height: 1;
+}
+
+.recordIdentity p {
+  max-width: 35ch;
+  margin-block: var(--space-3) 0;
+  color: var(--color-fg-muted);
+  font-size: 0.875rem;
+  line-height: 1.55;
+}
+
+.recordDescription,
+.recordArea {
+  margin: 0;
+}
+
+.recordAction {
+  width: fit-content;
+  min-height: 2.75rem;
+  gap: var(--space-2);
+  padding-inline: var(--space-5);
+}
+
+.sharedPoints {
+  border-block-start: 1px solid var(--color-border-strong);
+}
+
+.sharedPoints > div {
+  padding-block: var(--space-5);
+  border-block-end: 1px solid var(--color-border-strong);
+}
+
+.sharedPoints span {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.sharedPoints p {
+  max-width: 48ch;
+  margin-block: var(--space-2) 0;
+  color: var(--color-fg-muted);
+  font-size: 0.875rem;
+  line-height: 1.55;
+}
+
+.closingInner {
+  align-items: end;
+  padding-block-start: var(--space-8);
+  border-block-start: 3px solid var(--color-accent);
+}
+
+.closingInner .actions {
+  margin: 0;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .primaryAction:hover {
+    background: var(--color-accent-hover);
+  }
+
+  .secondaryAction:hover,
+  .recordAction:hover {
+    border-color: var(--color-fg);
+  }
+
+  .priceProductRow:hover {
+    background: var(--color-surface);
+  }
+}
+
+@media (min-width: 34rem) {
+  .priceFacts {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .priceFacts > div {
+    display: block;
+    padding-inline: var(--space-4);
+    border-inline-start: 1px solid var(--color-border);
+  }
+
+  .priceFacts > div:first-child {
+    padding-inline-start: 0;
+    border-inline-start: 0;
+  }
+
+  .priceFacts dd {
+    margin-block-start: var(--space-2);
+    text-align: start;
+  }
+}
+
+@media (min-width: 48rem) {
+  .sectionHead {
+    grid-template-columns: minmax(0, 1.25fr) minmax(0, 0.75fr);
+  }
+
+  .priceProductRow {
+    grid-template-columns: minmax(10rem, 1.1fr) minmax(12rem, 1.5fr) minmax(8rem, 0.8fr) auto;
+    align-items: center;
+    gap: var(--space-6);
+    padding-inline: var(--space-4);
+  }
+
+  .termGrid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .termGrid article {
+    padding: var(--space-8);
+    border-inline-start: 1px solid var(--color-border-strong);
+    border-block-end: 0;
+  }
+
+  .termGrid article:first-child {
+    padding-inline-start: 0;
+    border-inline-start: 0;
+  }
+
+  .costLedger > div {
+    grid-template-columns: minmax(10rem, 0.8fr) minmax(12rem, 0.7fr) minmax(0, 1.5fr);
+    align-items: baseline;
+    gap: var(--space-8);
+    padding-inline: var(--space-4);
+  }
+
+  .catalogueLabels {
+    display: grid;
+    grid-template-columns: minmax(17rem, 1.45fr) minmax(9rem, 0.7fr) minmax(14rem, 1.15fr) auto;
+    gap: var(--space-8);
+    padding: 0 var(--space-4) var(--space-3);
+  }
+
+  .productRecord {
+    grid-template-columns: minmax(17rem, 1.45fr) minmax(9rem, 0.7fr) minmax(14rem, 1.15fr) auto;
+    align-items: center;
+    gap: var(--space-8);
+    padding-inline: var(--space-4);
+  }
+}
+
+@media (min-width: 60rem) {
+  .priceHeroGrid,
+  .catalogueHeader {
+    grid-template-columns: minmax(0, 1.08fr) minmax(25rem, 0.92fr);
+    align-items: end;
+  }
+
+  .sharedRecordGrid,
+  .closingInner {
+    grid-template-columns: minmax(0, 1fr) minmax(24rem, 0.8fr);
+  }
+}
+
+@media (min-width: 90rem) {
+  .container {
+    padding-inline: var(--space-8);
+  }
+}
+
+@media (pointer: coarse) {
+  .primaryAction,
+  .secondaryAction,
+  .recordAction {
+    min-height: 3.25rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .primaryAction,
+  .secondaryAction,
+  .recordAction,
+  .priceProductRow {
+    transition-duration: 0.01ms;
+  }
+}

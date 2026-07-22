@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { Buildings } from '@phosphor-icons/react/dist/ssr'
 import { db, organization, machines, member } from '@/db'
 import { EmptyState } from '@/components/admin/empty-state'
+import { FilteredEmptyState } from '@/components/ui/state-view'
 import { PageHeader } from '@/components/layout/page-header'
 import {
   Table,
@@ -60,16 +61,20 @@ export default async function AdminOrgsPage({
 
       <AdminSearch placeholder="Search by organisation name…" />
 
-      {orgs.length === 0 && total === 0 ? (
-        <EmptyState
-          icon={<Buildings weight="regular" className="size-8" />}
-          title={q ? 'No matches.' : 'No organisations yet.'}
-          description={
-            q
-              ? 'Adjust the search above.'
-              : 'Solo customers don\'t need an org. Once a customer adds a teammate, the org row gets created and lands here.'
-          }
-        />
+      {orgs.length === 0 ? (
+        q ? (
+          <FilteredEmptyState
+            query={q}
+            clearHref="/admin/orgs"
+            entityLabel="organisations"
+          />
+        ) : (
+          <EmptyState
+            icon={<Buildings weight="regular" className="size-8" />}
+            title="No organisations yet."
+            description="Solo customers don't need an org. Once a customer adds a teammate, the org row gets created and lands here."
+          />
+        )
       ) : (
         <>
           <Table>

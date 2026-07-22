@@ -1,5 +1,6 @@
 import { headers } from 'next/headers'
 import { redirect, notFound } from 'next/navigation'
+import Link from 'next/link'
 import { and, eq, desc } from 'drizzle-orm'
 import { db, machines, licenses, telemetryEvents, cloudBackups, activations } from '@/db'
 import { auth } from '@/lib/auth'
@@ -7,9 +8,11 @@ import { Breadcrumbs } from '@/components/layout/breadcrumbs'
 import { BackButton } from '@/components/layout/back-button'
 import { EntityHero } from '@/components/layout/entity-hero'
 import { LazyTabs } from '@/components/layout/lazy-tabs'
+import { Button } from '@/components/ui/button'
+import { DetailField, DetailGrid } from '@/components/dashboard/detail-field'
+import { StatusPill } from '@/components/dashboard/status-utils'
 import { formatDate, formatDateShort, formatRelative } from '@/lib/format-date'
 import { ReleaseSeatButton } from '@/components/dashboard/release-seat-button'
-import Link from 'next/link'
 
 export const dynamic = 'force-dynamic'
 
@@ -18,6 +21,8 @@ export default async function MachineDetailPage({ params }: { params: Promise<{ 
   const session = await auth.api.getSession({ headers: await headers() }).catch(() => null)
   if (!session) redirect('/login')
 
+  // Ownership gate — a device belonging to another account is
+  // indistinguishable from one that does not exist.
   const rows = await db
     .select()
     .from(machines)
@@ -28,33 +33,61 @@ export default async function MachineDetailPage({ params }: { params: Promise<{ 
 
   const [license, telemetry, backups] = await Promise.all([
     db.query.licenses.findFirst({ where: eq(licenses.id, m.licenseId) }),
-    db.select().from(telemetryEvents).where(eq(telemetryEvents.machineId, id)).orderBy(desc(telemetryEvents.occurredAt)).limit(50),
-    db.select().from(cloudBackups).where(eq(cloudBackups.machineId, id)).orderBy(desc(cloudBackups.takenAt)).limit(30),
+    db
+      .select()
+      .from(telemetryEvents)
+      .where(eq(telemetryEvents.machineId, id))
+      .orderBy(desc(telemetryEvents.occurredAt))
+      .limit(50),
+    db
+      .select()
+      .from(cloudBackups)
+      .where(eq(cloudBackups.machineId, id))
+      .orderBy(desc(cloudBackups.takenAt))
+      .limit(30),
   ])
 
-  // Every licence/module activated on THIS machine — a PC can hold
-  // several trade licences (Dawa + Retail + Hardware), so the single
-  // primary `license` above under-reports. List them all.
+  // Every licence/module activated on THIS machine — a PC can hold several
+  // trade licences, so the single primary `license` under-reports.
   const activatedLicences = await db
-    .selectDistinct({ id: licenses.id, variant: licenses.variant, licenseKey: licenses.licenseKey, status: licenses.status })
+    .selectDistinct({
+      id: licenses.id,
+      variant: licenses.variant,
+      licenseKey: licenses.licenseKey,
+      status: licenses.status,
+    })
     .from(activations)
     .innerJoin(licenses, eq(activations.licenseId, licenses.id))
     .where(eq(activations.machineId, id))
   const activatedVariants = activatedLicences.map((l) => l.variant)
 
-  const status = m.status === 'active' && m.lastSeenAt && (Date.now() - new Date(m.lastSeenAt).getTime()) < 24 * 3600 * 1000 ? 'online' : m.status
+  const status =
+    m.status === 'active' && m.lastSeenAt && Date.now() - new Date(m.lastSeenAt).getTime() < 24 * 3600 * 1000
+      ? 'online'
+      : m.status
+
+  // Pro trials never get a public upgrade CTA (Pro is not sold publicly).
+  const canUpgradeTrial = license?.status === 'trial' && license.variant !== 'pro'
 
   return (
-    <div className="flex flex-col gap-5">
-      <Breadcrumbs items={[{ label: 'Machines', href: '/dashboard/machines' }, { label: m.hostname || m.machineId }]} />
-      <BackButton fallback="/dashboard/machines" label="Back to machines" />
+    <div className="flex flex-col gap-6">
+      <Breadcrumbs items={[{ label: 'Devices', href: '/dashboard/machines' }, { label: m.hostname || m.machineId }]} />
+      <BackButton fallback="/dashboard/machines" label="Back to devices" />
       <EntityHero
-        eyebrow="Machine"
+        eyebrow="Device"
         title={m.hostname || m.machineId}
         subtitle={
           <>
             <span className="font-mono">{m.machineId}</span>
-            {license && <> · licence <Link href={`/dashboard/licenses/${license.id}`} className="underline font-mono">{license.licenseKey}</Link></>}
+            {license ? (
+              <>
+                {' '}
+                · licence{' '}
+                <Link href={`/dashboard/licenses/${license.id}`} className="font-mono underline underline-offset-4">
+                  {license.licenseKey}
+                </Link>
+              </>
+            ) : null}
           </>
         }
         badges={[
@@ -62,21 +95,18 @@ export default async function MachineDetailPage({ params }: { params: Promise<{ 
           { label: m.networkMode ?? 'standalone', variant: 'outline' },
           ...(activatedVariants.length
             ? activatedVariants.map((v) => ({ label: v, variant: 'outline' as const }))
-            : m.activeModule ? [{ label: m.activeModule, variant: 'outline' as const }] : []),
+            : m.activeModule
+              ? [{ label: m.activeModule, variant: 'outline' as const }]
+              : []),
         ]}
         actions={
           <div className="flex flex-wrap items-center gap-2">
-            {license?.status === 'trial' ? (
-              <a
-                href={`/buy?variant=${encodeURIComponent(license.variant)}`}
-                className="inline-flex items-center justify-center rounded-md bg-[var(--color-accent)] px-4 py-2 font-mono text-[11px] uppercase tracking-[0.18em] text-white hover:bg-[var(--color-accent)]/90 transition-colors cursor-pointer"
-              >
-                Upgrade · {license.variant}
-              </a>
+            {canUpgradeTrial ? (
+              <Button asChild>
+                <Link href={`/buy?variant=${encodeURIComponent(license!.variant)}`}>Buy {license!.variant} licence</Link>
+              </Button>
             ) : null}
-            {m.status !== 'revoked' ? (
-              <ReleaseSeatButton machineId={m.id} hostname={m.hostname} />
-            ) : null}
+            {m.status !== 'revoked' ? <ReleaseSeatButton machineId={m.id} hostname={m.hostname} /> : null}
           </div>
         }
         stats={[
@@ -95,93 +125,104 @@ export default async function MachineDetailPage({ params }: { params: Promise<{ 
             id: 'overview',
             label: 'Overview',
             content: (
-              <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
-                <Field label="Hostname" value={m.hostname} />
-                <Field label="Machine ID" value={<span className="font-mono">{m.machineId}</span>} />
-                <Field label="OS" value={`${m.os ?? 'windows'} ${m.osVersion ?? ''}`} />
-                <Field label="Architecture" value={m.arch} />
-                <Field label="App version" value={`v${m.currentVersion ?? '?'}`} />
-                <Field label="Modules activated" value={activatedVariants.length ? activatedVariants.join(' · ') : m.activeModule} />
-                <Field label="Branch" value={m.branchName} />
-                <Field label="Currency" value={m.currency} />
-                <Field label="Network mode" value={m.networkMode} />
-                <Field label="First seen" value={formatDate(m.firstSeenAt, true)} />
-              </div>
+              <DetailGrid>
+                <DetailField label="Hostname" value={m.hostname} />
+                <DetailField label="Device ID" value={m.machineId} mono />
+                <DetailField label="OS" value={`${m.os ?? 'windows'} ${m.osVersion ?? ''}`} />
+                <DetailField label="Architecture" value={m.arch} />
+                <DetailField label="App version" value={`v${m.currentVersion ?? '?'}`} mono />
+                <DetailField
+                  label="Modules activated"
+                  value={activatedVariants.length ? activatedVariants.join(' · ') : m.activeModule}
+                />
+                <DetailField label="Branch" value={m.branchName} />
+                <DetailField label="Currency" value={m.currency} />
+                <DetailField label="Network mode" value={m.networkMode} />
+                <DetailField label="First seen" value={formatDate(m.firstSeenAt, true)} />
+              </DetailGrid>
             ),
           },
           {
             id: 'licences',
             label: 'Licences',
             count: activatedLicences.length,
-            content: (
-              <ol className="flex flex-col gap-2">
-                {activatedLicences.map((l) => (
-                  <li key={l.id} className="flex items-center justify-between gap-3 rounded-lg border border-foreground/10 px-4 py-3">
-                    <div className="flex flex-col gap-0.5 min-w-0">
-                      <span className="text-[13px] font-medium uppercase tracking-[0.08em]">{l.variant}</span>
-                      <Link href={`/dashboard/licenses/${l.id}`} className="font-mono text-[11px] text-muted-foreground underline-offset-4 hover:underline truncate">
-                        {l.licenseKey}
-                      </Link>
-                    </div>
-                    <span className="font-mono text-[10px] uppercase tracking-[0.16em] text-muted-foreground">{l.status}</span>
-                  </li>
-                ))}
-                {activatedLicences.length === 0 && <li className="text-sm text-muted-foreground">No licences activated on this machine.</li>}
-              </ol>
-            ),
+            content:
+              activatedLicences.length === 0 ? (
+                <p className="text-[13px] text-[var(--color-fg-muted)]">No licences are activated on this device.</p>
+              ) : (
+                <ul className="flex flex-col gap-2">
+                  {activatedLicences.map((l) => (
+                    <li
+                      key={l.id}
+                      className="flex items-center justify-between gap-3 rounded-[var(--radius-md)] border border-[var(--color-border)] px-4 py-3"
+                    >
+                      <span className="flex min-w-0 flex-col gap-0.5">
+                        <span className="text-[13px] font-medium uppercase tracking-[0.08em] text-[var(--color-fg)]">
+                          {l.variant}
+                        </span>
+                        <Link
+                          href={`/dashboard/licenses/${l.id}`}
+                          className="truncate font-mono text-[11px] text-[var(--color-fg-muted)] underline-offset-4 hover:underline"
+                        >
+                          {l.licenseKey}
+                        </Link>
+                      </span>
+                      <StatusPill kind="license" status={l.status} />
+                    </li>
+                  ))}
+                </ul>
+              ),
           },
           {
             id: 'telemetry',
             label: 'Activity',
             count: telemetry.length,
-            content: (
-              <ol className="flex flex-col gap-3">
-                {telemetry.map((t) => (
-                  <li key={t.id} className="grid grid-cols-[120px_1fr] items-baseline gap-4 border-b border-foreground/5 pb-2.5">
-                    <time className="font-mono text-[10px] uppercase tracking-[0.16em] text-muted-foreground">
-                      {formatDateShort(t.occurredAt)}
-                    </time>
-                    <div className="flex flex-col gap-0.5">
-                      <span className="text-[13px] font-medium">{t.kind}</span>
-                    </div>
-                  </li>
-                ))}
-                {telemetry.length === 0 && <li className="text-sm text-muted-foreground">No activity yet.</li>}
-              </ol>
-            ),
+            content:
+              telemetry.length === 0 ? (
+                <p className="text-[13px] text-[var(--color-fg-muted)]">No activity recorded yet.</p>
+              ) : (
+                <ul className="flex flex-col gap-3">
+                  {telemetry.map((t) => (
+                    <li
+                      key={t.id}
+                      className="grid grid-cols-[130px_1fr] items-baseline gap-4 border-b border-[var(--color-border)] pb-2.5"
+                    >
+                      <time className="font-mono text-[10px] uppercase tracking-[0.16em] text-[var(--color-fg-muted)]">
+                        {formatDateShort(t.occurredAt)}
+                      </time>
+                      <span className="text-[13px] font-medium text-[var(--color-fg)]">{t.kind}</span>
+                    </li>
+                  ))}
+                </ul>
+              ),
           },
           {
             id: 'backups',
             label: 'Cloud backups',
             count: backups.length,
-            content: (
-              <ul className="flex flex-col divide-y divide-foreground/5 rounded-md border border-foreground/10">
-                {backups.map((b) => (
-                  <li key={b.id} className="flex items-center justify-between gap-4 px-4 py-3">
-                    <div className="flex flex-col">
-                      <span className="text-[13px] font-medium font-mono">{b.s3Key}</span>
-                      <span className="text-[11px] text-muted-foreground">
-                        {formatDate(b.takenAt, true)}
+            content:
+              backups.length === 0 ? (
+                <p className="text-[13px] text-[var(--color-fg-muted)]">No cloud backups yet.</p>
+              ) : (
+                <ul className="flex flex-col divide-y divide-[var(--color-border)] rounded-[var(--radius-md)] border border-[var(--color-border)]">
+                  {backups.map((b) => (
+                    <li key={b.id} className="flex items-center justify-between gap-4 px-4 py-3">
+                      <span className="flex min-w-0 flex-col">
+                        <span className="truncate font-mono text-[13px] font-medium text-[var(--color-fg)]">
+                          {b.s3Key}
+                        </span>
+                        <span className="text-[11px] text-[var(--color-fg-muted)]">{formatDate(b.takenAt, true)}</span>
                       </span>
-                    </div>
-                    <span className="font-mono text-[11px] text-muted-foreground">{(b.sizeBytes / 1024 / 1024).toFixed(1)} MB</span>
-                  </li>
-                ))}
-                {backups.length === 0 && <li className="px-4 py-3 text-sm text-muted-foreground">No backups yet.</li>}
-              </ul>
-            ),
+                      <span className="shrink-0 font-mono text-[11px] tabular-nums text-[var(--color-fg-muted)]">
+                        {(b.sizeBytes / 1024 / 1024).toFixed(1)} MB
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              ),
           },
         ]}
       />
-    </div>
-  )
-}
-
-function Field({ label, value, className = '' }: { label: string; value?: React.ReactNode; className?: string }) {
-  return (
-    <div className={`flex flex-col gap-0.5 ${className}`}>
-      <dt className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">{label}</dt>
-      <dd className="text-[14px] text-foreground/90">{value || <span className="text-muted-foreground/60">—</span>}</dd>
     </div>
   )
 }

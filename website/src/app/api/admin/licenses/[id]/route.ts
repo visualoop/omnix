@@ -1,7 +1,7 @@
 import { headers } from 'next/headers'
-import { eq } from 'drizzle-orm'
+import { and, eq } from 'drizzle-orm'
 import { auth } from '@/lib/auth'
-import { db, licenses, machines, auditLog } from '@/db'
+import { db, licenses, machines, payments, auditLog } from '@/db'
 import { createId } from '@/lib/ids'
 
 export const dynamic = 'force-dynamic'
@@ -34,6 +34,28 @@ export async function DELETE(
   const isOwner = target.userId === session.user.id
   if (!isAdmin && !isOwner) {
     return Response.json({ error: 'forbidden' }, { status: 403 })
+  }
+
+  // Never silently hard-delete a licence that carries settled financial
+  // history. A successful payment references this licence for VAT/eTIMS and
+  // reconciliation; destroying the row would orphan that record. Direct the
+  // operator to a status transition (revoke) instead, which preserves the
+  // financial + audit trail. Test/trial licences with no settled payment can
+  // still be cleaned up.
+  const settled = await db
+    .select({ id: payments.id })
+    .from(payments)
+    .where(and(eq(payments.licenseId, id), eq(payments.status, 'success')))
+    .limit(1)
+  if (settled.length > 0) {
+    return Response.json(
+      {
+        error:
+          'This licence has settled payments and cannot be hard-deleted. Revoke it instead to preserve the financial and audit trail.',
+        code: 'has_settled_payments',
+      },
+      { status: 409 },
+    )
   }
 
   // Cascade to machines first (no FK ON DELETE CASCADE on machines.licenseId

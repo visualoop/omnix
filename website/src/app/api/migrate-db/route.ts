@@ -12,6 +12,7 @@
  * Auth: Bearer BOOTSTRAP_TOKEN on both methods.
  */
 import { neon } from '@neondatabase/serverless'
+import { hasValidBootstrapToken } from '@/lib/bootstrap-auth'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 60
@@ -23,8 +24,7 @@ const TABLES_FOR_COUNT = [
 ] as const
 
 export async function GET(req: Request) {
-  const token = req.headers.get('authorization')?.replace(/^Bearer /, '')
-  if (token !== process.env.BOOTSTRAP_TOKEN) {
+  if (!hasValidBootstrapToken(req)) {
     return Response.json({ error: 'unauthorized' }, { status: 401 })
   }
   const url = process.env.DATABASE_URL ?? process.env.POSTGRES_URL
@@ -45,8 +45,7 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
-  const token = req.headers.get('authorization')?.replace(/^Bearer /, '')
-  if (token !== process.env.BOOTSTRAP_TOKEN) {
+  if (!hasValidBootstrapToken(req)) {
     return Response.json({ error: 'unauthorized' }, { status: 401 })
   }
 

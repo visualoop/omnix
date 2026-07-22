@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { ChatCircle } from '@phosphor-icons/react/dist/ssr'
 import { db, supportTickets, user } from '@/db'
 import { EmptyState } from '@/components/admin/empty-state'
+import { FilteredEmptyState } from '@/components/ui/state-view'
 import { PageHeader } from '@/components/layout/page-header'
 import {
   Table,
@@ -137,16 +138,20 @@ export default async function AdminTicketsPage({
         </div>
       </div>
 
-      {rows.length === 0 && total === 0 ? (
-        <EmptyState
-          icon={<ChatCircle weight="regular" className="size-8" />}
-          title={q || status || priority ? 'No matches.' : 'Inbox zero.'}
-          description={
-            q || status || priority
-              ? 'Adjust the search or filters.'
-              : 'No support tickets in the system yet. Customers open them from /dashboard/support.'
-          }
-        />
+      {rows.length === 0 ? (
+        q || status || priority ? (
+          <FilteredEmptyState
+            query={q || undefined}
+            clearHref="/admin/tickets"
+            entityLabel="tickets"
+          />
+        ) : (
+          <EmptyState
+            icon={<ChatCircle weight="regular" className="size-8" />}
+            title="Inbox zero."
+            description="No support tickets in the system yet. Customers open them from /dashboard/support."
+          />
+        )
       ) : (
         <>
           <Table>

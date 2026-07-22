@@ -35,7 +35,7 @@ export default defineConfig({
   ],
   webServer: {
     command: 'pnpm dev',
-    reuseExistingServer: true,
-    url: 'http://localhost:3000',
+    reuseExistingServer: process.env.PLAYWRIGHT_REUSE_SERVER === '1',
+    url: process.env.E2E_BASE_URL || 'http://localhost:3000',
   },
 })

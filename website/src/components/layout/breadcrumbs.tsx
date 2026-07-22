@@ -11,38 +11,36 @@ interface Props {
   className?: string
 }
 
-/**
- * Breadcrumbs — same editorial trail as the desktop component, but
- * uses Next.js `<Link>`. Pass `items[].href` to make a crumb a link.
- * Last crumb is treated as the current page (not a link).
- */
 export function Breadcrumbs({ items, className }: Props) {
   if (!items.length) return null
+
   return (
-    <nav
-      aria-label="Breadcrumb"
-      className={cn(
-        'flex flex-wrap items-center gap-x-1.5 gap-y-1 font-mono text-[11px] uppercase tracking-[0.16em] text-muted-foreground',
-        className,
-      )}
-    >
-      {items.map((c, i) => {
-        const isLast = i === items.length - 1
-        return (
-          <span key={`${c.label}-${i}`} className="inline-flex items-center gap-1.5">
-            {i > 0 && <span aria-hidden className="text-foreground/30">/</span>}
-            {isLast || !c.href ? (
-              <span className="text-foreground/80" aria-current={isLast ? 'page' : undefined}>
-                {c.label}
-              </span>
-            ) : (
-              <Link href={c.href} className="hover:text-foreground transition-colors">
-                {c.label}
-              </Link>
-            )}
-          </span>
-        )
-      })}
+    <nav aria-label="Breadcrumb" className={className}>
+      <ol className="flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-1 font-mono text-[10px] uppercase tracking-[0.14em] text-[var(--color-fg-subtle)]">
+        {items.map((crumb, index) => {
+          const isLast = index === items.length - 1
+          return (
+            <li key={`${crumb.label}-${index}`} className="inline-flex min-w-0 items-center gap-1.5">
+              {index > 0 ? <span aria-hidden className="text-[var(--color-border-strong)]">/</span> : null}
+              {isLast || !crumb.href ? (
+                <span
+                  className={cn('truncate text-[var(--color-fg-muted)]', isLast && 'text-[var(--color-fg)]')}
+                  aria-current={isLast ? 'page' : undefined}
+                >
+                  {crumb.label}
+                </span>
+              ) : (
+                <Link
+                  href={crumb.href}
+                  className="truncate transition-colors duration-[var(--duration-fast)] hover:text-[var(--color-fg)]"
+                >
+                  {crumb.label}
+                </Link>
+              )}
+            </li>
+          )
+        })}
+      </ol>
     </nav>
   )
 }

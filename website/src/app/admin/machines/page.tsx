@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { Desktop } from '@phosphor-icons/react/dist/ssr'
 import { db, machines, user, licenses, activations } from '@/db'
 import { EmptyState } from '@/components/admin/empty-state'
+import { FilteredEmptyState } from '@/components/ui/state-view'
 import { PageHeader } from '@/components/layout/page-header'
 import {
   Table,
@@ -208,16 +209,20 @@ export default async function AdminMachinesPage({
         </div>
       </div>
 
-      {rows.length === 0 && total === 0 ? (
-        <EmptyState
-          icon={<Desktop weight="regular" className="size-8" />}
-          title={q || status || activeModule ? 'No matches.' : 'No machines yet.'}
-          description={
-            q || status || activeModule
-              ? 'Adjust the search or filters above.'
-              : 'Once a customer activates an Omnix install, it phones home every 30s and appears here.'
-          }
-        />
+      {rows.length === 0 ? (
+        q || status || activeModule ? (
+          <FilteredEmptyState
+            query={q || undefined}
+            clearHref="/admin/machines"
+            entityLabel="machines"
+          />
+        ) : (
+          <EmptyState
+            icon={<Desktop weight="regular" className="size-8" />}
+            title="No machines yet."
+            description="Once a customer activates an Omnix install, it phones home every 30s and appears here."
+          />
+        )
       ) : (
         <>
           <Table>

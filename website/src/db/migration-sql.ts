@@ -358,13 +358,22 @@ CREATE INDEX IF NOT EXISTS "license_sync_log_user_idx" ON "license_sync_log" ("u
 --> statement-breakpoint
 CREATE TABLE IF NOT EXISTS "platform_media" (
   "id" text PRIMARY KEY NOT NULL,
-  "key" text NOT NULL,
-  "url" text NOT NULL,
+  "key" text DEFAULT '' NOT NULL,
+  "url" text DEFAULT '' NOT NULL,
+  "quarantine_key" text,
+  "object_state" text DEFAULT 'quarantine' NOT NULL,
   "mime_type" text NOT NULL,
   "size_bytes" integer NOT NULL,
   "filename" text,
-  "alt" text,
+  "alt" text DEFAULT '' NOT NULL,
   "slot" text,
+  "rights_basis" text DEFAULT 'unverified' NOT NULL,
+  "rights_holder" text DEFAULT '' NOT NULL,
+  "rights_source" text DEFAULT '' NOT NULL,
+  "approval_state" text DEFAULT 'pending' NOT NULL,
+  "approved_by" text,
+  "approval_audit_id" text,
+  "approved_at" timestamp,
   "uploaded_by" text NOT NULL,
   "created_at" timestamp DEFAULT now() NOT NULL
 );
@@ -372,6 +381,108 @@ CREATE TABLE IF NOT EXISTS "platform_media" (
 CREATE INDEX IF NOT EXISTS "platform_media_slot_idx" ON "platform_media" ("slot");
 --> statement-breakpoint
 CREATE INDEX IF NOT EXISTS "platform_media_created_at_idx" ON "platform_media" ("created_at");
+--> statement-breakpoint
+ALTER TABLE "platform_media" ADD COLUMN IF NOT EXISTS "rights_basis" text DEFAULT 'unverified' NOT NULL;
+--> statement-breakpoint
+ALTER TABLE "platform_media" ADD COLUMN IF NOT EXISTS "rights_holder" text DEFAULT '' NOT NULL;
+--> statement-breakpoint
+ALTER TABLE "platform_media" ADD COLUMN IF NOT EXISTS "rights_source" text DEFAULT '' NOT NULL;
+--> statement-breakpoint
+ALTER TABLE "platform_media" ADD COLUMN IF NOT EXISTS "approval_state" text DEFAULT 'pending' NOT NULL;
+--> statement-breakpoint
+ALTER TABLE "platform_media" ADD COLUMN IF NOT EXISTS "approved_by" text;
+--> statement-breakpoint
+ALTER TABLE "platform_media" ADD COLUMN IF NOT EXISTS "approval_audit_id" text;
+--> statement-breakpoint
+ALTER TABLE "platform_media" ADD COLUMN IF NOT EXISTS "approved_at" timestamp;
+--> statement-breakpoint
+ALTER TABLE "platform_media" ADD COLUMN IF NOT EXISTS "quarantine_key" text;
+--> statement-breakpoint
+ALTER TABLE "platform_media" ADD COLUMN IF NOT EXISTS "object_state" text DEFAULT 'quarantine' NOT NULL;
+--> statement-breakpoint
+ALTER TABLE "platform_media" ALTER COLUMN "key" SET DEFAULT '';
+--> statement-breakpoint
+ALTER TABLE "platform_media" ALTER COLUMN "url" SET DEFAULT '';
+--> statement-breakpoint
+UPDATE "platform_media" SET "alt" = '' WHERE "alt" IS NULL;
+--> statement-breakpoint
+ALTER TABLE "platform_media" ALTER COLUMN "alt" SET DEFAULT '';
+--> statement-breakpoint
+ALTER TABLE "platform_media" ALTER COLUMN "alt" SET NOT NULL;
+--> statement-breakpoint
+UPDATE "platform_media"
+SET "object_state" = 'legacy-public', "approval_state" = 'pending',
+    "approved_by" = NULL, "approval_audit_id" = NULL, "approved_at" = NULL
+WHERE "quarantine_key" IS NULL AND "key" <> '' AND "object_state" = 'quarantine';
+--> statement-breakpoint
+DO $$ BEGIN
+ ALTER TABLE "platform_media" ADD CONSTRAINT "platform_media_approved_by_user_id_fk"
+ FOREIGN KEY ("approved_by") REFERENCES "public"."user"("id") ON DELETE set null ON UPDATE no action;
+EXCEPTION WHEN duplicate_object THEN null;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+ ALTER TABLE "platform_media" ADD CONSTRAINT "platform_media_approval_audit_id_audit_log_id_fk"
+ FOREIGN KEY ("approval_audit_id") REFERENCES "public"."audit_log"("id") ON DELETE set null ON UPDATE no action;
+EXCEPTION WHEN duplicate_object THEN null;
+END $$;
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "platform_media_approval_slot_idx"
+  ON "platform_media" ("approval_state", "object_state", "slot", "approved_at");
+--> statement-breakpoint
+CREATE TABLE IF NOT EXISTS "customer_proof_evidence" (
+  "id" text PRIMARY KEY NOT NULL,
+  "reference" text NOT NULL UNIQUE,
+  "source_type" text NOT NULL,
+  "source_location" text NOT NULL,
+  "asserted_content_sha256" text NOT NULL,
+  "verification_state" text DEFAULT 'pending' NOT NULL,
+  "verified_by" text REFERENCES "user"("id") ON DELETE SET NULL,
+  "verified_at" timestamp,
+  "created_at" timestamp DEFAULT now() NOT NULL
+);
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "customer_proof_evidence_state_idx" ON "customer_proof_evidence" ("verification_state");
+--> statement-breakpoint
+CREATE TABLE IF NOT EXISTS "customer_proof_permissions" (
+  "id" text PRIMARY KEY NOT NULL,
+  "customer_name" text NOT NULL,
+  "grantor_name" text NOT NULL,
+  "document_reference" text NOT NULL UNIQUE,
+  "authorised_content_sha256" text NOT NULL,
+  "permission_state" text DEFAULT 'pending' NOT NULL,
+  "granted_at" timestamp,
+  "expires_at" timestamp,
+  "revoked_at" timestamp,
+  "created_at" timestamp DEFAULT now() NOT NULL
+);
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "customer_proof_permissions_state_idx" ON "customer_proof_permissions" ("permission_state");
+--> statement-breakpoint
+CREATE TABLE IF NOT EXISTS "verified_customer_proofs" (
+  "id" text PRIMARY KEY NOT NULL,
+  "kind" text NOT NULL,
+  "product" text NOT NULL,
+  "customer_name" text NOT NULL,
+  "content" jsonb NOT NULL,
+  "content_sha256" text NOT NULL,
+  "evidence_id" text NOT NULL REFERENCES "customer_proof_evidence"("id") ON DELETE RESTRICT,
+  "public_permission_id" text NOT NULL REFERENCES "customer_proof_permissions"("id") ON DELETE RESTRICT,
+  "media_id" text,
+  "approval_state" text DEFAULT 'pending' NOT NULL,
+  "approved_by" text REFERENCES "user"("id") ON DELETE SET NULL,
+  "approval_audit_id" text REFERENCES "audit_log"("id") ON DELETE SET NULL,
+  "approved_at" timestamp,
+  "display_order" integer DEFAULT 0 NOT NULL,
+  "created_at" timestamp DEFAULT now() NOT NULL,
+  "updated_at" timestamp DEFAULT now() NOT NULL
+);
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "verified_customer_proofs_publication_idx" ON "verified_customer_proofs" ("approval_state", "kind", "display_order");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "verified_customer_proofs_evidence_idx" ON "verified_customer_proofs" ("evidence_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "verified_customer_proofs_permission_idx" ON "verified_customer_proofs" ("public_permission_id");
 --> statement-breakpoint
 CREATE TABLE IF NOT EXISTS "team_members" (
   "id" text PRIMARY KEY NOT NULL,
@@ -527,6 +638,100 @@ CREATE TABLE IF NOT EXISTS "api_tokens" (
 CREATE INDEX IF NOT EXISTS "api_tokens_user_idx" ON "api_tokens" ("user_id");
 --> statement-breakpoint
 CREATE INDEX IF NOT EXISTS "api_tokens_hash_idx" ON "api_tokens" ("token_hash");
+--> statement-breakpoint
+CREATE TABLE IF NOT EXISTS "demo_requests" (
+  "id" text PRIMARY KEY NOT NULL,
+  "status" text DEFAULT 'new' NOT NULL,
+  "full_name" text NOT NULL,
+  "work_email" text NOT NULL,
+  "phone" text NOT NULL,
+  "business_name" text NOT NULL,
+  "product" text NOT NULL,
+  "location_count" integer DEFAULT 1 NOT NULL,
+  "current_system" text,
+  "priorities" jsonb DEFAULT '[]'::jsonb NOT NULL,
+  "notes" text,
+  "preferred_channel" text NOT NULL,
+  "preferred_window" text NOT NULL,
+  "locale" text DEFAULT 'ke' NOT NULL,
+  "source_path" text NOT NULL,
+  "referrer" text,
+  "attribution" jsonb DEFAULT '{}'::jsonb NOT NULL,
+  "marketing_opt_in" boolean DEFAULT false NOT NULL,
+  "created_at" timestamp DEFAULT now() NOT NULL,
+  "updated_at" timestamp DEFAULT now() NOT NULL
+);
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "demo_requests_status_idx" ON "demo_requests" ("status");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "demo_requests_created_idx" ON "demo_requests" ("created_at");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "demo_requests_product_idx" ON "demo_requests" ("product");
+--> statement-breakpoint
+CREATE TABLE IF NOT EXISTS "team_members" (
+  "id" text PRIMARY KEY NOT NULL,
+  "name" text NOT NULL,
+  "role" text NOT NULL,
+  "bio" text,
+  "photo_url" text,
+  "media_id" text,
+  "linkedin_url" text,
+  "sort_order" integer DEFAULT 0 NOT NULL,
+  "active" boolean DEFAULT true NOT NULL,
+  "created_at" timestamp DEFAULT now() NOT NULL
+);
+--> statement-breakpoint
+ALTER TABLE "team_members" ADD COLUMN IF NOT EXISTS "media_id" text;
+--> statement-breakpoint
+UPDATE "team_members" SET "photo_url" = NULL WHERE "photo_url" IS NOT NULL;
+--> statement-breakpoint
+DO $$ BEGIN
+ ALTER TABLE "team_members" ADD CONSTRAINT "team_members_media_id_platform_media_id_fk"
+ FOREIGN KEY ("media_id") REFERENCES "public"."platform_media"("id") ON DELETE set null ON UPDATE no action;
+EXCEPTION WHEN duplicate_object THEN null;
+END $$;
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "team_members_media_idx" ON "team_members" ("media_id");
+--> statement-breakpoint
+ALTER TABLE "customer_proof_evidence" ADD COLUMN IF NOT EXISTS "asserted_publication_sha256" text DEFAULT '' NOT NULL;
+--> statement-breakpoint
+ALTER TABLE "customer_proof_permissions" ADD COLUMN IF NOT EXISTS "authorised_publication_sha256" text DEFAULT '' NOT NULL;
+--> statement-breakpoint
+ALTER TABLE "verified_customer_proofs" ADD COLUMN IF NOT EXISTS "publication_sha256" text DEFAULT '' NOT NULL;
+--> statement-breakpoint
+ALTER TABLE "customer_proof_evidence" ALTER COLUMN "asserted_content_sha256" SET DEFAULT '';
+--> statement-breakpoint
+ALTER TABLE "customer_proof_permissions" ALTER COLUMN "authorised_content_sha256" SET DEFAULT '';
+--> statement-breakpoint
+ALTER TABLE "verified_customer_proofs" ALTER COLUMN "content_sha256" SET DEFAULT '';
+--> statement-breakpoint
+DO $$ BEGIN
+ ALTER TABLE "verified_customer_proofs" ADD CONSTRAINT "verified_customer_proofs_media_id_platform_media_id_fk"
+ FOREIGN KEY ("media_id") REFERENCES "public"."platform_media"("id") ON DELETE set null ON UPDATE no action;
+EXCEPTION WHEN duplicate_object THEN null;
+END $$;
+--> statement-breakpoint
+CREATE TABLE IF NOT EXISTS "module_demo_videos" (
+  "id" text PRIMARY KEY NOT NULL,
+  "product" text NOT NULL,
+  "video_id" text DEFAULT '' NOT NULL,
+  "title" text DEFAULT '' NOT NULL,
+  "summary" text DEFAULT '' NOT NULL,
+  "published" boolean DEFAULT false NOT NULL,
+  "updated_by" text,
+  "created_at" timestamp DEFAULT now() NOT NULL,
+  "updated_at" timestamp DEFAULT now() NOT NULL
+);
+--> statement-breakpoint
+DO $$ BEGIN
+ ALTER TABLE "module_demo_videos" ADD CONSTRAINT "module_demo_videos_updated_by_user_id_fk"
+ FOREIGN KEY ("updated_by") REFERENCES "public"."user"("id") ON DELETE set null ON UPDATE no action;
+EXCEPTION WHEN duplicate_object THEN null;
+END $$;
+--> statement-breakpoint
+CREATE UNIQUE INDEX IF NOT EXISTS "module_demo_videos_product_uidx" ON "module_demo_videos" ("product");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "module_demo_videos_published_idx" ON "module_demo_videos" ("published");
 --> statement-breakpoint
 `
 

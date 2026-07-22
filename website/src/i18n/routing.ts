@@ -83,4 +83,8 @@ export const routing = defineRouting({
   // 'as-needed' would clash with the redirect by stripping the default
   // locale prefix, causing a redirect loop.
   localePrefix: 'always',
+  // Country path segments (ke/us/gb/...) are routing keys, not language
+  // tags. next-intl would otherwise emit invalid `hreflang="ke"` response
+  // headers. Page metadata supplies the valid en-KE/en-US/... alternates.
+  alternateLinks: false,
 })

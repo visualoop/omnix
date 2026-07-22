@@ -16,11 +16,13 @@ export async function GET() {
   const reqHeaders = await headers()
   const cronSecret = await getSetting('cron.secret')
 
-  if (cronSecret) {
-    const auth = reqHeaders.get('authorization')
-    if (auth !== `Bearer ${cronSecret}`) {
-      return new Response('Unauthorized', { status: 401 })
-    }
+  if (!cronSecret) {
+    return Response.json({ error: 'cron_not_configured' }, { status: 503 })
+  }
+
+  const auth = reqHeaders.get('authorization')
+  if (auth !== `Bearer ${cronSecret}`) {
+    return new Response('Unauthorized', { status: 401 })
   }
 
   const retentionDays = Number(process.env.TELEMETRY_RETENTION_DAYS ?? '90')

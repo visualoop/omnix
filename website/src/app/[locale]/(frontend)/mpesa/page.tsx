@@ -1,221 +1,160 @@
 import type { Metadata } from 'next'
-import Link from 'next/link'
-import { Icon } from '@/components/icons'
-import { Button } from '@/components/ui/button'
-import { PageHero } from '@/components/marketing/page-hero'
-import { FAQJsonLd } from '@/components/seo/jsonld'
 
-export const metadata: Metadata = {
-  title: 'M-Pesa POS for Kenyan businesses · STK push, paybill, till',
-  description:
-    'Native M-Pesa integration in your POS. STK push at the till, paybill + till reconciliation, automatic eTIMS receipts. No card, no manual entry.',
-  alternates: { canonical: 'https://omnix.co.ke/ke/mpesa' },
+import {
+  BoundaryLedger,
+  TrustClosing,
+  TrustHero,
+  TrustList,
+  TrustPage,
+  TrustProse,
+  TrustSection,
+} from '@/components/marketing/trust-pages'
+import { buildAlternatesLanguages } from '@/lib/hreflang'
+import { buildSocialMetadata } from '@/lib/seo-metadata'
+import { getSiteSettings } from '@/lib/site-settings'
+
+export const dynamic = 'force-dynamic'
+export const revalidate = 300
+
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://omnix.co.ke'
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: string }>
+}): Promise<Metadata> {
+  const { locale } = await params
+  const canonical = `${SITE_URL}/${locale}/mpesa`
+
+  return {
+    title: 'M-Pesa at the Omnix counter — how it works and where the line is',
+    description:
+      'How Omnix records an M-Pesa sale locally while STK push, paybill, and till confirmation cross the internet to Safaricom. What Omnix does, what your Daraja account does, and what stays statutory.',
+    alternates: {
+      canonical,
+      languages: buildAlternatesLanguages('/mpesa'),
+    },
+    ...buildSocialMetadata({
+      locale,
+      url: canonical,
+      title: 'M-Pesa at the Omnix counter',
+      description:
+        'The local sale record versus the connected M-Pesa request — explained honestly for Kenyan businesses.',
+      type: 'website',
+    }),
+  }
 }
 
-const FAQ_ENTRIES = [
+const FLOWS = [
   {
-    question: 'What does STK push mean?',
-    answer:
-      "STK push (SIM Toolkit) is the M-Pesa flow where the till sends a payment prompt straight to the customer's phone. They enter their PIN, the till receives the confirmation, and the receipt prints — usually in 8–12 seconds. No QR codes, no number-typing.",
+    term: 'STK push',
+    detail:
+      'The till sends a payment prompt to the customer’s phone number, and the customer approves it on their own handset. The prompt has to reach Safaricom and the phone, so this step needs a connection at the moment of payment.',
   },
   {
-    question: 'What M-Pesa modes does Omnix support?',
-    answer:
-      'STK push for in-store sales, paybill 4-digit + account number for credit + recurring billing, and till number for fast counter sales. All three modes reconcile back to the same Omnix sale ledger.',
+    term: 'Paybill',
+    detail:
+      'Customers pay your paybill against an account reference, often the invoice number. The sale is already in Omnix; matching it to the incoming payment relies on the confirmation arriving over the connection.',
   },
   {
-    question: 'Do I need a Daraja API account?',
-    answer:
-      'You need a Daraja business account (free, registered against your KRA PIN). Omnix walks you through registration on first install. Most owners are live in under an hour.',
+    term: 'Till (Buy Goods)',
+    detail:
+      'Customers pay your till number and share the M-Pesa code. The code can be recorded against the open sale so the local record is complete even before online confirmation is reconciled.',
   },
   {
-    question: 'How does reconciliation work?',
-    answer:
-      "Omnix listens to your paybill/till's confirmation callback in real time. Every M-Pesa transaction matches to an Omnix sale by reference number. Daily, the till compares the M-Pesa statement to its own ledger and flags any unmatched transactions for one-click reconciliation.",
+    term: 'Reconciliation',
+    detail:
+      'M-Pesa payments are matched to Omnix sales by reference. Pulling and comparing confirmations against your own M-Pesa records is a connected step; the underlying sales remain in the local database regardless.',
   },
-  {
-    question: 'Does the till need internet?',
-    answer:
-      'The till works offline. M-Pesa STK push requires a connection at the moment of payment (the prompt has to reach the customer\'s phone). If the line is down, Omnix falls back to "M-Pesa manual": the customer pays, gives you the M-Pesa code, and Omnix files the sale. The till reconciles automatically when the line returns.',
-  },
-  {
-    question: 'How much does Safaricom charge?',
-    answer:
-      "Safaricom's transaction fees aren't paid through Omnix — they go directly between you and Safaricom. Omnix doesn't take a margin on M-Pesa transactions. Whatever Safaricom charges your business is what you pay, no software middleman.",
-  },
-]
+] as const
 
-export default function MPESAPage() {
+const BOUNDARIES = [
+  {
+    owner: 'On the device',
+    title: 'The sale is recorded locally.',
+    body: 'Ringing up a sale, recording the amount and payment method, and printing or reprinting the receipt happen in the local database — whether or not the internet is up.',
+  },
+  {
+    owner: 'Needs a connection',
+    title: 'The M-Pesa request travels online.',
+    body: 'STK push, and confirmation of a paybill or till payment, require internet access at the moment of payment so the request can reach Safaricom and the customer’s phone.',
+  },
+  {
+    owner: 'Your configuration',
+    title: 'A Safaricom business account is required.',
+    body: 'M-Pesa collection runs against your own Safaricom Daraja business account — paybill or till — set up with valid credentials. Omnix connects to that account; it does not provide the M-Pesa account for you.',
+  },
+  {
+    owner: 'Safaricom & KRA',
+    title: 'Fees and tax stay with the provider and the authority.',
+    body: 'Transaction charges are set by Safaricom and billed directly to your business; Omnix takes no margin on M-Pesa. The tax treatment of each sale, and any eTIMS receipt, remain your statutory responsibility.',
+  },
+] as const
+
+export default async function MpesaPage({
+  params,
+}: {
+  params: Promise<{ locale: string }>
+}) {
+  const [{ locale }, settings] = await Promise.all([params, getSiteSettings()])
+  const whatsappMessage = 'Hi Omnix, I would like a demo of M-Pesa at the till.'
+
   return (
-    <>
-      <FAQJsonLd entries={FAQ_ENTRIES} />
-      <PageHero
-        eyebrow="M-Pesa · Kenya"
-        title={<>Tap. <em>Pay.</em> Print.</>}
-        description="STK push at the till. Paybill + till numbers reconcile to your Omnix ledger automatically. Every M-Pesa sale becomes an eTIMS receipt without you touching a key."
+    <TrustPage>
+      <TrustHero
+        kicker="M-Pesa · Kenya"
+        title="M-Pesa at the counter,"
+        accent="recorded either way."
+        lede="Omnix supports STK push, paybill, and till payments at the till. The sale itself is written to the local record whether you are online or off; the M-Pesa request to Safaricom is a connected step that needs the internet and your own business account."
+        factsTitle="M-Pesa at a glance"
+        facts={[
+          { label: 'Sale record', value: 'Stored locally, online or offline' },
+          { label: 'M-Pesa request', value: 'Needs internet at payment time' },
+          { label: 'Account', value: 'Your Safaricom Daraja paybill or till' },
+          { label: 'Fees', value: 'Set by Safaricom — Omnix takes no margin' },
+        ]}
+        locale={locale}
+        whatsappUrl={settings.whatsappUrl}
+        whatsappMessage={whatsappMessage}
+      />
+
+      <TrustSection
+        id="mpesa-flows"
+        kicker="How it works"
+        title="Three ways customers pay, one sale record."
+        intro="However the customer chooses to pay, Omnix keeps the sale in the same local ledger. Only the confirmation of the M-Pesa payment depends on a connection."
       >
-        <div className="mt-6 flex flex-col items-center gap-3 sm:flex-row">
-          <Button asChild size="lg">
-            <Link href="/signup?variant=pro">Start free trial</Link>
-          </Button>
-          <Button asChild size="lg" variant="outline">
-            <Link href="/contact?type=demo">Book a walkthrough</Link>
-          </Button>
-        </div>
-      </PageHero>
+        <TrustList items={FLOWS} />
+      </TrustSection>
 
-      <section className="section">
-        <div className="container-wide">
-          <div className="mb-12 max-w-[44rem]">
-            <span className="eyebrow">Three M-Pesa flows. One ledger.</span>
-            <h2 className="headline-section mt-5 text-balance">However your customers <em>like to pay.</em></h2>
-            <p className="lede mt-6">
-              Some pay by typing on their phone. Some pay against a paybill. Some hand over the till number on a sticker.
-              Omnix supports all three and treats them as one.
-            </p>
-          </div>
+      <BoundaryLedger
+        title="What is local, what is connected, and what stays yours."
+        intro="M-Pesa spans your device, Safaricom’s network, and your own accounts. This ledger keeps those responsibilities separate so there are no surprises."
+        items={BOUNDARIES}
+      />
 
-          <ul className="grid grid-cols-1 lg:grid-cols-3 gap-x-10 gap-y-12">
-            {[
-              {
-                title: 'STK push',
-                lead: 'For in-person retail.',
-                body: 'Cashier rings up the sale → enters customer phone → prompt lands → customer enters PIN → eTIMS receipt prints. Average round-trip: 11 seconds. The till never types a code.',
-              },
-              {
-                title: 'Paybill',
-                lead: 'For credit + recurring billing.',
-                body: 'Customers pay your paybill against an account number (often the invoice number). Omnix matches the M-Pesa confirmation to the open invoice automatically and records the payment.',
-              },
-              {
-                title: 'Till number',
-                lead: 'For fast counter sales.',
-                body: 'Customer keys in your till number, pays, shows you the M-Pesa code. Omnix matches the code to the open sale and signs the eTIMS receipt — same minute.',
-              },
-            ].map((flow) => (
-              <li key={flow.title}>
-                <h3 className="font-[family-name:var(--font-display)] text-[24px] font-normal leading-[1.15] tracking-[-0.01em] text-[var(--color-fg)]">
-                  {flow.title}
-                </h3>
-                <p className="font-[family-name:var(--font-display)] mt-3 text-[18px] italic font-light leading-tight text-[var(--color-fg-muted)]">
-                  {flow.lead}
-                </p>
-                <p className="mt-5 text-[14px] leading-[1.65] text-[var(--color-fg-muted)] max-w-[44ch]">{flow.body}</p>
-              </li>
-            ))}
-          </ul>
-        </div>
-      </section>
+      <TrustSection
+        id="mpesa-offline"
+        alt
+        kicker="When the line is down"
+        title="The counter keeps working."
+        intro="A dropped connection stops the online request, not the sale."
+      >
+        <TrustProse
+          paragraphs={[
+            'If the internet is down at the moment of payment, the STK push cannot be sent. The sale is still recorded in Omnix, and where a customer has paid by till or paybill and can share the M-Pesa code, that code can be entered against the sale so the local record is complete.',
+            'When a connection returns, M-Pesa confirmations can be reconciled against your Omnix sales, and any KRA eTIMS receipt that could not be submitted earlier can be retried. Omnix does not promise a fixed reconciliation time; it keeps the local record intact so the connected steps can catch up.',
+          ]}
+        />
+      </TrustSection>
 
-      <section className="section bg-[var(--color-surface)]">
-        <div className="container-wide">
-          <div className="mb-16 max-w-[44rem]">
-            <span className="eyebrow">Reconciliation</span>
-            <h2 className="headline-section mt-5 text-balance">No more <em>end-of-day excel.</em></h2>
-            <p className="lede mt-6">
-              Omnix listens to your paybill / till callback URL in real time. Every M-Pesa code that lands gets matched to an
-              open Omnix sale or invoice. The match is by reference number — exact, no fuzzy guesses.
-            </p>
-          </div>
-
-          <ul className="space-y-6">
-            {[
-              {
-                k: 'Live capture',
-                v: 'Confirmation callback fires on every M-Pesa receipt. Omnix records it in under a second.',
-              },
-              {
-                k: 'Auto-match',
-                v: 'Reference number = invoice or sale number. If the buyer pays the wrong reference, Omnix queues the receipt as "unmatched" with a one-click reconcile button.',
-              },
-              {
-                k: 'Daily statement check',
-                v: "End of day, Omnix downloads your Safaricom B2B statement and compares against its own M-Pesa ledger. Variance highlights stand out in red — they're rare and usually a paybill cross-post.",
-              },
-              {
-                k: 'Multi-paybill',
-                v: 'Run more than one paybill (e.g. one for retail, one for wholesale)? Omnix routes each callback to the right branch + ledger.',
-              },
-            ].map((row) => (
-              <li key={row.k} className="grid grid-cols-1 md:grid-cols-[1fr_2fr] gap-x-8 border-t border-[var(--color-border)] py-7">
-                <div className="font-[family-name:var(--font-display)] text-[18px] font-normal text-[var(--color-fg)]">{row.k}</div>
-                <p className="text-[15px] leading-[1.65] text-[var(--color-fg-muted)] max-w-[60ch]">{row.v}</p>
-              </li>
-            ))}
-          </ul>
-        </div>
-      </section>
-
-      {/* Z-report — shift close */}
-      <section className="section">
-        <div className="container-wide">
-          <div className="mb-12 max-w-[44rem]">
-            <span className="eyebrow">Shift close</span>
-            <h2 className="headline-section mt-5 text-balance">
-              The cashier&rsquo;s last screen, <em>printed.</em>
-            </h2>
-            <p className="mt-4 text-[15px] leading-[1.65] text-[var(--color-fg-muted)] max-w-[58ch]">
-              At the end of every shift Omnix prints a single PDF that breaks down cash,
-              M-Pesa, card and insurance receipts &mdash; with the cash variance flagged
-              when the till count doesn&rsquo;t match the system.
-            </p>
-          </div>
-          <a
-            href="/samples/z-report-sample.pdf"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-2 font-mono text-[11px] uppercase tracking-[0.18em] underline-offset-4 hover:underline"
-          >
-            Download a sample Z-report PDF →
-          </a>
-        </div>
-      </section>
-
-      <section className="section">
-        <div className="container-wide">
-          <div className="grid grid-cols-1 gap-12 lg:grid-cols-12 lg:gap-16">
-            <div className="lg:col-span-4">
-              <span className="eyebrow">Honest answers</span>
-              <h2 className="headline-section mt-5 text-balance">Questions about M-Pesa <em>+ Omnix.</em></h2>
-            </div>
-            <ol className="lg:col-span-8">
-              {FAQ_ENTRIES.map((q, i) => (
-                <li key={i} className={i === FAQ_ENTRIES.length - 1 ? 'border-y border-[var(--color-border)]' : 'border-t border-[var(--color-border)]'}>
-                  <details className="group">
-                    <summary className="grid w-full grid-cols-[1fr_auto] items-baseline gap-6 py-7 cursor-pointer list-none">
-                      <span className="font-[family-name:var(--font-display)] text-[clamp(20px,1.6vw,24px)] font-normal leading-[1.3] tracking-[-0.014em] text-[var(--color-fg)]">
-                        {q.question}
-                      </span>
-                      <span aria-hidden className="text-[var(--color-fg-subtle)]">+</span>
-                    </summary>
-                    <p className="pb-8 pr-12 text-[16px] leading-[1.65] text-[var(--color-fg-muted)] max-w-[58ch]">{q.answer}</p>
-                  </details>
-                </li>
-              ))}
-            </ol>
-          </div>
-        </div>
-      </section>
-
-      <section className="section relative overflow-hidden border-t border-[var(--color-border)] py-32 sm:py-40">
-        <div aria-hidden className="pointer-events-none absolute inset-0" style={{ background: 'radial-gradient(60% 80% at 50% 50%, var(--color-accent-soft), transparent 70%), var(--color-bg)' }} />
-        <div className="container-wide relative">
-          <div className="mx-auto flex max-w-[920px] flex-col items-center text-center">
-            <h2 className="font-[family-name:var(--font-display)] text-balance text-[clamp(40px,5vw,72px)] italic font-light leading-[1.05] tracking-[-0.025em] text-[var(--color-fg)]">
-              The customer pays. <em className="not-italic text-[var(--color-accent)]">The till knows.</em>
-            </h2>
-            <div className="mt-10 flex flex-col items-center gap-7">
-              <Button asChild size="xl">
-                <Link href="/signup?variant=pro" className="gap-2">
-                  Start free trial
-                  <Icon.ArrowRight className="size-4" weight="bold" />
-                </Link>
-              </Button>
-              <p className="caption-mono text-[var(--color-fg-subtle)]">30 days · no card · works with any Safaricom paybill or till</p>
-            </div>
-          </div>
-        </div>
-      </section>
-    </>
+      <TrustClosing
+        kicker="See it at your till"
+        title="Book a demo and pay a real test sale by M-Pesa."
+        locale={locale}
+        whatsappUrl={settings.whatsappUrl}
+        whatsappMessage={whatsappMessage}
+      />
+    </TrustPage>
   )
 }

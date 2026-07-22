@@ -1,7 +1,7 @@
 'use client'
 
 /**
- * Editorial mobile sheet — Radix Dialog portaled to <body>, sliding in
+ * Working Counter mobile sheet — Radix Dialog portaled to <body>, sliding in
  * from the right at 85vw / max 24rem. Full backdrop-blur overlay.
  *
  * Pattern lifted from the zebra-trails-safari project — clean full-height
@@ -65,7 +65,7 @@ export function Sheet({
             side === 'right'
               ? 'data-[state=open]:animate-in data-[state=open]:slide-in-from-right data-[state=closed]:animate-out data-[state=closed]:slide-out-to-right'
               : 'data-[state=open]:animate-in data-[state=open]:slide-in-from-left data-[state=closed]:animate-out data-[state=closed]:slide-out-to-left',
-            'duration-300 ease-[cubic-bezier(0.32,0.72,0,1)]',
+            'duration-[var(--duration-enter)] ease-[var(--ease-out)]',
             'motion-reduce:animate-none',
             `data-[state=closed]:${slideStart}`, // no-op with animate-out but keeps semantics
             className,

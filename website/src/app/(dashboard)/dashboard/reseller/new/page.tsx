@@ -1,9 +1,12 @@
 /**
- * /dashboard/reseller/new — form the reseller fills to issue a
- * new licence for a customer. Wholesale checkout: reseller pays via
- * Paystack at (retail × (1 − discount%)) using their reseller
- * discount. On success the customer gets an active licence and the
- * reseller's ledger accrues commission.
+ * /dashboard/reseller/new — form the reseller fills to issue a new licence
+ * for a customer. Wholesale checkout: the reseller pays via Paystack at
+ * (retail × (1 − discount%)); on success the customer gets an active
+ * licence and the reseller's ledger accrues commission.
+ *
+ * Server-gated twice over: a session is required, and only an *active*
+ * reseller reaches the form — non-resellers and suspended resellers are
+ * redirected. Nav visibility is never the authorization boundary.
  */
 import { headers } from 'next/headers'
 import { redirect } from 'next/navigation'
@@ -12,6 +15,8 @@ import { auth } from '@/lib/auth'
 import { db, resellers } from '@/db'
 import { pricingFor, type SupportedCurrency } from '@/config/pricing'
 import { CURRENCIES } from '@/lib/currency'
+import { Breadcrumbs } from '@/components/layout/breadcrumbs'
+import { PageHeader } from '@/components/layout/page-header'
 import { IssueLicenseForm } from './issue-license-form'
 
 export const dynamic = 'force-dynamic'
@@ -33,15 +38,13 @@ export default async function ResellerIssuePage() {
   const symbol = CURRENCIES[currency]?.symbol ?? currency
 
   return (
-    <div className="max-w-2xl">
-      <div className="mb-6">
-        <h1 className="text-xl font-semibold">Issue a licence</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Enter the customer&rsquo;s details. You&rsquo;ll pay <strong>{symbol} {wholesale.toLocaleString()}</strong> at
-          wholesale ({reseller.discountPercent}% off retail of {symbol} {retail.toLocaleString()}). On success the
-          customer gets an active licence emailed to them, and your commission is credited.
-        </p>
-      </div>
+    <div className="flex max-w-2xl flex-col gap-8">
+      <Breadcrumbs items={[{ label: 'Reseller', href: '/dashboard/reseller' }, { label: 'Issue licence' }]} />
+      <PageHeader
+        eyebrow="Partner programs"
+        title="Issue a licence"
+        description={`Enter the customer's details. You'll pay ${symbol} ${wholesale.toLocaleString()} at wholesale (${reseller.discountPercent}% off retail of ${symbol} ${retail.toLocaleString()}). On success the customer gets an active licence emailed to them, and your commission is credited.`}
+      />
 
       <IssueLicenseForm
         currency={currency}

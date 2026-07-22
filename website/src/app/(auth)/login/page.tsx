@@ -3,45 +3,91 @@ import Link from 'next/link'
 import { headers } from 'next/headers'
 import { redirect } from 'next/navigation'
 import { auth } from '@/lib/auth'
+import { safeNextPath } from '@/lib/safe-redirect'
+import { AuthFrame } from '@/components/auth/auth-frame'
 import { SignInForm } from '@/components/auth/sign-in-form'
+import { Alert } from '@/components/ui/alert'
 
+// Account routes stay out of the index — unprefixed, private surfaces.
 export const metadata: Metadata = {
   title: 'Sign in',
-  description: 'Sign in to Omnix with Google or a magic link.',
+  description: 'Sign in to Omnix with Google or a one-time email link.',
+  robots: { index: false, follow: false },
+}
+
+type Reason = 'session-expired' | 'signed-out' | 'expired-link' | 'invite'
+
+const REASONS: Record<Reason, { variant: 'info' | 'warning'; title: string; body: string }> = {
+  'session-expired': {
+    variant: 'warning',
+    title: 'Your session expired',
+    body: 'Sign in again to pick up where you left off.',
+  },
+  'signed-out': {
+    variant: 'info',
+    title: 'Signed out',
+    body: 'You have been signed out of this device.',
+  },
+  'expired-link': {
+    variant: 'warning',
+    title: 'That link has expired',
+    body: 'Sign-in links last 15 minutes. Request a fresh one below.',
+  },
+  invite: {
+    variant: 'info',
+    title: 'Sign in to continue',
+    body: 'Use the email your invitation was sent to, then you can accept it.',
+  },
 }
 
 export default async function LoginPage({
   searchParams,
 }: {
-  searchParams?: Promise<{ next?: string }>
+  searchParams?: Promise<{ next?: string; reason?: string }>
 }) {
+  const sp = (await searchParams) ?? {}
   const session = await auth.api.getSession({ headers: await headers() }).catch(() => null)
   if (session) {
-    const sp = (await searchParams) ?? {}
-    redirect(sp.next || '/dashboard')
+    redirect(safeNextPath(sp.next))
   }
-  const sp = (await searchParams) ?? {}
+
+  const reason = sp.reason && sp.reason in REASONS ? (sp.reason as Reason) : null
+  const notice = reason ? REASONS[reason] : null
 
   return (
-    <div className="mx-auto flex min-h-[calc(100vh-128px)] w-full max-w-md flex-col justify-center px-6 py-16">
-      <div className="mb-8">
-        <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-[var(--color-fg-muted)]">
-          Omnix
-        </span>
-        <h1 className="mt-2 font-display text-[clamp(28px,3vw,36px)] font-medium leading-[1.05] tracking-[-0.01em] text-[var(--color-fg)]">
-          Sign in
-        </h1>
-        <p className="mt-2 text-[14px] leading-[1.55] text-[var(--color-fg-muted)]">
-          We don&apos;t use passwords on the website. Pick Google or get a one-time link by email.
-        </p>
-      </div>
+    <AuthFrame
+      eyebrow="Account access"
+      title="Sign in"
+      description={
+        <>
+          Omnix does not use a website password. Continue with Google or get a one-time link by
+          email. This is your <strong className="font-semibold text-[var(--color-fg)]">buyer
+          account</strong> for licences and billing — day-to-day staff sign in inside the desktop
+          app.
+        </>
+      }
+      footer={
+        <>
+          New to Omnix? Sign in with your email and we&apos;ll create the account.{' '}
+          <Link
+            href="/buy"
+            className="font-medium text-[var(--color-accent)] underline-offset-4 hover:underline"
+          >
+            Buy a licence
+          </Link>{' '}
+          if you don&apos;t have one yet.
+        </>
+      }
+    >
+      {notice ? (
+        <div className="mb-5">
+          <Alert variant={notice.variant} title={notice.title}>
+            {notice.body}
+          </Alert>
+        </div>
+      ) : null}
 
       <SignInForm next={sp.next} />
-
-      <p className="mt-8 text-center text-[12px] text-[var(--color-fg-subtle)]">
-        New to Omnix? Just sign in with your email — we&apos;ll create the account.
-        Or <Link href="/buy" className="underline-offset-4 hover:underline text-[var(--color-fg-muted)]">buy a licence first</Link>.
-      </p>
-    </div>
+    </AuthFrame>
   )
 }

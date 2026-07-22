@@ -1,93 +1,313 @@
-/**
- * Slot-based image resolution.
- *
- * `getSlotImage('hero.background')` returns the most recent
- * platform_media row pinned to that slot, or null. Pages call this in
- * their server component to render the admin-uploaded image.
- *
- * Caching: every slot read is request-scoped (Next caches the DB query
- * for the duration of one render). For pages that need fresh images
- * after an upload, hit revalidatePath('/') from the upload route.
- */
-import { desc, eq } from 'drizzle-orm'
-import { db, platformMedia } from '@/db'
+/** Licensed marketing-media slots and their only public resolver. */
+import { cache } from 'react'
+import { unstable_cache } from 'next/cache'
+import { and, count, desc, eq, ilike, isNotNull, ne, or, sql } from 'drizzle-orm'
+import { auditLog, db, platformMedia, user } from '@/db'
+import { isPublishableMedia, type MediaRightsBasis } from '@/lib/media-governance'
 
-export interface SlotImage {
+/**
+ * Documented upper bound (seconds) on how long a freshly approved/published —
+ * or newly revoked — media slot can take to become visible/invisible on public
+ * pages. Admin media mutations also fire revalidateTag('media-slots') for
+ * near-immediate propagation; this window is the fail-safe ceiling (<= 300s).
+ */
+export const MEDIA_SLOT_REVALIDATE_SECONDS = 300
+
+export type MediaSlotType = 'image' | 'video'
+
+export interface SlotMedia {
+  id: string
   url: string
-  alt: string | null
+  alt: string
   filename: string | null
   mimeType: string
-  width?: number
-  height?: number
+  rightsBasis: MediaRightsBasis
+  rightsHolder: string
+  rightsSource: string
+}
+
+export type SlotImage = SlotMedia
+
+export const PRODUCT_MEDIA_SLOTS = [
+  { product: 'pharmacy', variant: 'dawa', name: 'Pharmacy', heroSlot: 'module.dawa.hero', rowSlot: 'module-row.dawa-pharmacy', videoSlot: 'module.dawa.video', posterSlot: 'module.dawa.video-poster', rowSlug: 'dawa-pharmacy', aspect: '16/9' },
+  { product: 'retail', variant: 'retail', name: 'Retail', heroSlot: 'module.retail.hero', rowSlot: 'module-row.soko-retail', videoSlot: 'module.retail.video', posterSlot: 'module.retail.video-poster', rowSlug: 'soko-retail', aspect: '16/9' },
+  { product: 'hospitality', variant: 'hospitality', name: 'Hospitality', heroSlot: 'module.hospitality.hero', rowSlot: 'module-row.hospitality', videoSlot: 'module.hospitality.video', posterSlot: 'module.hospitality.video-poster', rowSlug: 'hospitality', aspect: '16/9' },
+  { product: 'hardware', variant: 'hardware', name: 'Hardware & Equipment', heroSlot: 'module.hardware.hero', rowSlot: 'module-row.hardware', videoSlot: 'module.hardware.video', posterSlot: 'module.hardware.video-poster', rowSlug: 'hardware', aspect: '16/9' },
+  { product: 'salon', variant: 'salon', name: 'Salon & Spa', heroSlot: 'module.salon.hero', rowSlot: 'module-row.salon', videoSlot: 'module.salon.video', posterSlot: 'module.salon.video-poster', rowSlug: 'salon', aspect: '16/9' },
+] as const
+
+const SHARED_MEDIA_SLOTS = [
+  { slot: 'hero.background', label: 'Homepage hero — background', section: 'Homepage', aspect: '16/9', mediaType: 'image' },
+  { slot: 'hero.product_shot', label: 'Homepage hero — product screenshot', section: 'Homepage', aspect: '4/3', mediaType: 'image' },
+  { slot: 'hero.video', label: 'Homepage hero — product video', section: 'Homepage', aspect: '16/9', mediaType: 'video' },
+  { slot: 'hero.video-poster', label: 'Homepage hero — video poster', section: 'Homepage', aspect: '16/9', mediaType: 'image' },
+  { slot: 'pricing.hero', label: 'Pricing page — hero', section: 'Pricing', aspect: '16/9', mediaType: 'image' },
+  { slot: 'about.team_photo', label: 'About page — team photo', section: 'About', aspect: '3/2', mediaType: 'image' },
+  { slot: 'og.default', label: 'Social card — default', section: 'SEO', aspect: '1200/630', mediaType: 'image' },
+] as const
+
+const PRODUCT_SLOTS = PRODUCT_MEDIA_SLOTS.flatMap((product) => [
+  { slot: product.heroSlot, label: `${product.name} — product hero`, section: 'Product pages', aspect: product.aspect, mediaType: 'image' as const },
+  { slot: product.rowSlot, label: `${product.name} — homepage row`, section: 'Homepage products', aspect: '16/10', mediaType: 'image' as const },
+  { slot: product.videoSlot, label: `${product.name} — product video`, section: 'Product pages', aspect: '16/9', mediaType: 'video' as const },
+  { slot: product.posterSlot, label: `${product.name} — video poster`, section: 'Product pages', aspect: '16/9', mediaType: 'image' as const },
+])
+
+export const MEDIA_SLOTS = [...SHARED_MEDIA_SLOTS, ...PRODUCT_SLOTS] as const
+export type MediaSlotId = (typeof MEDIA_SLOTS)[number]['slot']
+
+const MEDIA_SLOT_BY_ID = new Map<string, (typeof MEDIA_SLOTS)[number]>(MEDIA_SLOTS.map((item) => [item.slot, item]))
+
+export function isMediaSlot(value: unknown): value is MediaSlotId {
+  return typeof value === 'string' && MEDIA_SLOT_BY_ID.has(value)
+}
+
+export function mediaTypeForSlot(slot: string): MediaSlotType | null {
+  return MEDIA_SLOT_BY_ID.get(slot)?.mediaType ?? null
 }
 
 /**
- * Built-in default images, seeded to the omnix-media R2 bucket and
- * served via https://media.omnix.co.ke. These render out of the box so
- * the marketing site is never showing empty placeholders — the admin
- * can override any slot from /admin/media and the DB row wins.
+ * Raw, uncached slot resolver. Applies the full fail-closed publication gate in
+ * SQL (approved + published + audited by a real platform_admin +
+ * provenance-complete + https). Kept private so every public entry point flows
+ * through the cache wrappers below and can never bypass this gate.
  */
-const SLOT_DEFAULTS: Record<string, string> = {
-  'hero.background': 'https://media.omnix.co.ke/marketing/hero-background.jpg',
-  'hero.product_shot': 'https://media.omnix.co.ke/marketing/hero-product_shot.png',
-  'module.dawa.hero': 'https://media.omnix.co.ke/marketing/module-dawa-hero.jpg',
-  'module.retail.hero': 'https://media.omnix.co.ke/marketing/module-retail-hero.jpg',
-  'module.hardware.hero': 'https://media.omnix.co.ke/marketing/module-hardware-hero.jpg',
-  'module.hospitality.hero': 'https://media.omnix.co.ke/marketing/module-hospitality-hero.jpg',
-  'pricing.hero': 'https://media.omnix.co.ke/marketing/pricing-hero.jpg',
-  'about.team_photo': 'https://media.omnix.co.ke/marketing/about-team_photo.jpg',
-  'og.default': 'https://media.omnix.co.ke/marketing/og-default.jpg',
-  // Homepage "Four trades" rows.
-  'module-row.dawa-pharmacy': 'https://media.omnix.co.ke/marketing/module-row-dawa-pharmacy.jpg',
-  'module-row.soko-retail': 'https://media.omnix.co.ke/marketing/module-row-soko-retail.jpg',
-  'module-row.hardware': 'https://media.omnix.co.ke/marketing/module-row-hardware.jpg',
-  'module-row.hospitality': 'https://media.omnix.co.ke/marketing/module-row-hospitality.jpg',
-}
+async function fetchSlotMedia(slot: string): Promise<SlotMedia | null> {
+  const expectedType = mediaTypeForSlot(slot)
+  if (!expectedType) return null
 
-export async function getSlotImage(slot: string): Promise<SlotImage | null> {
-  // Admin-uploaded image wins. Fall back to the seeded default so the
-  // page never renders an empty placeholder.
-  const fallback = (): SlotImage | null =>
-    SLOT_DEFAULTS[slot]
-      ? { url: SLOT_DEFAULTS[slot], alt: null, filename: null, mimeType: 'image/jpeg' }
-      : null
   try {
     const rows = await db
-      .select()
+      .select({
+        id: platformMedia.id,
+        key: platformMedia.key,
+        url: platformMedia.url,
+        alt: platformMedia.alt,
+        filename: platformMedia.filename,
+        mimeType: platformMedia.mimeType,
+        rightsBasis: platformMedia.rightsBasis,
+        rightsHolder: platformMedia.rightsHolder,
+        rightsSource: platformMedia.rightsSource,
+        approvalState: platformMedia.approvalState,
+        approvedBy: platformMedia.approvedBy,
+        approvalAuditId: platformMedia.approvalAuditId,
+        approvedAt: platformMedia.approvedAt,
+        objectState: platformMedia.objectState,
+      })
       .from(platformMedia)
-      .where(eq(platformMedia.slot, slot))
-      .orderBy(desc(platformMedia.createdAt))
+      .innerJoin(user, eq(platformMedia.approvedBy, user.id))
+      .innerJoin(auditLog, eq(platformMedia.approvalAuditId, auditLog.id))
+      .where(and(
+        eq(platformMedia.slot, slot),
+        eq(platformMedia.approvalState, 'approved'),
+        eq(platformMedia.objectState, 'published'),
+        isNotNull(platformMedia.approvedBy),
+        isNotNull(platformMedia.approvalAuditId),
+        isNotNull(platformMedia.approvedAt),
+        eq(user.role, 'platform_admin'),
+        eq(auditLog.actorId, platformMedia.approvedBy),
+        eq(auditLog.action, 'media.approve'),
+        eq(auditLog.resource, sql<string>`'platform_media:' || ${platformMedia.id}`),
+        ne(platformMedia.alt, ''),
+        ne(platformMedia.rightsBasis, 'unverified'),
+        ne(platformMedia.rightsHolder, ''),
+        ne(platformMedia.rightsSource, ''),
+        ne(platformMedia.key, ''),
+        ne(platformMedia.url, ''),
+      ))
+      .orderBy(desc(platformMedia.approvedAt), desc(platformMedia.createdAt))
       .limit(1)
+
     const row = rows[0]
-    if (!row) return fallback()
+    if (!row || !isPublishableMedia(row)) return null
+    if (expectedType === 'image' && !row.mimeType.startsWith('image/')) return null
+    if (expectedType === 'video' && !row.mimeType.startsWith('video/')) return null
+
     return {
+      id: row.id,
       url: row.url,
       alt: row.alt,
       filename: row.filename,
       mimeType: row.mimeType,
+      rightsBasis: row.rightsBasis as MediaRightsBasis,
+      rightsHolder: row.rightsHolder,
+      rightsSource: row.rightsSource,
     }
   } catch {
-    // DB unreachable during build/preview — still show the default.
-    return fallback()
+    return null
   }
 }
 
-/** Canonical slot identifiers. Adding a new slot? List it here so the
- * /admin/media page knows it exists + can render a labeled drop zone. */
-export const MEDIA_SLOTS = [
-  { slot: 'hero.background', label: 'Homepage hero — background', section: 'Homepage', aspect: '16/9', searchQuery: 'Kenyan small shop counter point of sale modern' },
-  { slot: 'hero.product_shot', label: 'Homepage hero — product screenshot', section: 'Homepage', aspect: '4/3', searchQuery: 'POS software dashboard screen tablet' },
-  { slot: 'module.dawa.hero', label: 'Dawa module — hero', section: 'Module pages', aspect: '16/9', searchQuery: 'pharmacy counter Kenya pharmacist dispensing' },
-  { slot: 'module.retail.hero', label: 'Retail module — hero', section: 'Module pages', aspect: '16/9', searchQuery: 'retail shop minimart Kenya checkout counter' },
-  { slot: 'module.hardware.hero', label: 'Hardware module — hero', section: 'Module pages', aspect: '16/9', searchQuery: 'hardware store building materials shop counter' },
-  { slot: 'module.hospitality.hero', label: 'Hospitality module — hero', section: 'Module pages', aspect: '16/9', searchQuery: 'restaurant bar counter cashier Kenya' },
-  { slot: 'pricing.hero', label: 'Pricing page — hero', section: 'Pricing', aspect: '16/9', searchQuery: 'small business owner Kenya shop using laptop' },
-  { slot: 'about.team_photo', label: 'About page — team photo', section: 'About', aspect: '3/2', searchQuery: 'African software team office working' },
-  { slot: 'og.default', label: 'Social card (Open Graph) — fallback', section: 'SEO', aspect: '1200/630', searchQuery: 'point of sale M-Pesa payment Kenya shop' },
-  { slot: 'module-row.dawa-pharmacy', label: 'Homepage row — Dawa Pharmacy', section: 'Homepage trades', aspect: '16/10', searchQuery: 'pharmacy counter pharmacist dispensing medicine' },
-  { slot: 'module-row.soko-retail', label: 'Homepage row — Soko Retail', section: 'Homepage trades', aspect: '16/10', searchQuery: 'minimart grocery shop shelves checkout' },
-  { slot: 'module-row.hardware', label: 'Homepage row — Hardware', section: 'Homepage trades', aspect: '16/10', searchQuery: 'hardware store tools building materials' },
-  { slot: 'module-row.hospitality', label: 'Homepage row — Hospitality', section: 'Homepage trades', aspect: '16/10', searchQuery: 'restaurant bar dining counter interior' },
-] as const
+/**
+ * The only public slot resolver. Cross-request results are held in Next's data
+ * cache for a bounded {@link MEDIA_SLOT_REVALIDATE_SECONDS} window and tagged so
+ * admin mutations can invalidate them immediately (revalidateTag('media-slots')).
+ * The cached value is already fully gated by {@link fetchSlotMedia}, so caching
+ * never widens what is publishable. React cache() adds per-render dedup.
+ */
+export const getSlotMedia = cache((slot: string): Promise<SlotMedia | null> =>
+  unstable_cache(
+    () => fetchSlotMedia(slot),
+    ['media-slot', slot],
+    { revalidate: MEDIA_SLOT_REVALIDATE_SECONDS, tags: ['media-slots', `media-slot:${slot}`] },
+  )(),
+)
 
-export type SlotId = (typeof MEDIA_SLOTS)[number]['slot']
+export async function getSlotImage(slot: string): Promise<SlotImage | null> {
+  if (mediaTypeForSlot(slot) !== 'image') return null
+  return getSlotMedia(slot)
+}
+
+/** Resolve a proof-linked logo by persisted media ID through the same gate. */
+export async function getApprovedMediaById(id: string): Promise<SlotMedia | null> {
+  if (!id.trim()) return null
+  try {
+    const rows = await db
+      .select({
+        id: platformMedia.id,
+        key: platformMedia.key,
+        url: platformMedia.url,
+        alt: platformMedia.alt,
+        filename: platformMedia.filename,
+        mimeType: platformMedia.mimeType,
+        rightsBasis: platformMedia.rightsBasis,
+        rightsHolder: platformMedia.rightsHolder,
+        rightsSource: platformMedia.rightsSource,
+        approvalState: platformMedia.approvalState,
+        approvedBy: platformMedia.approvedBy,
+        approvalAuditId: platformMedia.approvalAuditId,
+        approvedAt: platformMedia.approvedAt,
+        objectState: platformMedia.objectState,
+      })
+      .from(platformMedia)
+      .innerJoin(user, eq(platformMedia.approvedBy, user.id))
+      .innerJoin(auditLog, eq(platformMedia.approvalAuditId, auditLog.id))
+      .where(and(
+        eq(platformMedia.id, id),
+        eq(platformMedia.approvalState, 'approved'),
+        eq(platformMedia.objectState, 'published'),
+        isNotNull(platformMedia.approvedBy),
+        isNotNull(platformMedia.approvalAuditId),
+        isNotNull(platformMedia.approvedAt),
+        eq(user.role, 'platform_admin'),
+        eq(auditLog.actorId, platformMedia.approvedBy),
+        eq(auditLog.action, 'media.approve'),
+        eq(auditLog.resource, sql<string>`'platform_media:' || ${platformMedia.id}`),
+      ))
+      .limit(1)
+    const row = rows[0]
+    if (!row || !isPublishableMedia(row)) return null
+    return {
+      id: row.id,
+      url: row.url,
+      alt: row.alt,
+      filename: row.filename,
+      mimeType: row.mimeType,
+      rightsBasis: row.rightsBasis as MediaRightsBasis,
+      rightsHolder: row.rightsHolder,
+      rightsSource: row.rightsSource,
+    }
+  } catch {
+    return null
+  }
+}
+
+/**
+ * Shared publication-gate predicates: only media that is approved, published,
+ * audited by a real platform admin, provenance-complete and https-served.
+ * Mirrors {@link isPublishableMedia} in SQL so a bounded LIMIT/OFFSET page and
+ * its COUNT stay consistent (no post-filter that would under-fill a page).
+ */
+const publishableGate = () =>
+  and(
+    eq(platformMedia.approvalState, 'approved'),
+    eq(platformMedia.objectState, 'published'),
+    isNotNull(platformMedia.approvedBy),
+    isNotNull(platformMedia.approvalAuditId),
+    isNotNull(platformMedia.approvedAt),
+    eq(user.role, 'platform_admin'),
+    eq(auditLog.actorId, platformMedia.approvedBy),
+    eq(auditLog.action, 'media.approve'),
+    eq(auditLog.resource, sql<string>`'platform_media:' || ${platformMedia.id}`),
+    ne(platformMedia.alt, ''),
+    ne(platformMedia.rightsBasis, 'unverified'),
+    ne(platformMedia.rightsHolder, ''),
+    ne(platformMedia.rightsSource, ''),
+    ne(platformMedia.key, ''),
+    ne(platformMedia.url, ''),
+    ilike(platformMedia.url, 'https://%'),
+  )
+
+/**
+ * Bounded, searchable page of approved **image** media eligible to bind to a
+ * team-member photo. Same trust gate as {@link getApprovedMediaById}; never
+ * loads the whole table just to filter in the browser.
+ */
+export async function listApprovedMediaPhotos({
+  q = '',
+  limit = 6,
+  offset = 0,
+}: {
+  q?: string
+  limit?: number
+  offset?: number
+}): Promise<{ rows: SlotMedia[]; total: number }> {
+  const search = q.trim()
+  const where = and(
+    publishableGate(),
+    ilike(platformMedia.mimeType, 'image/%'),
+    search
+      ? or(
+          ilike(platformMedia.alt, `%${search}%`),
+          ilike(platformMedia.filename, `%${search}%`),
+          ilike(platformMedia.id, `%${search}%`),
+          ilike(platformMedia.rightsHolder, `%${search}%`),
+        )
+      : undefined,
+  )
+
+  try {
+    const [rows, totalRow] = await Promise.all([
+      db
+        .select({
+          id: platformMedia.id,
+          url: platformMedia.url,
+          alt: platformMedia.alt,
+          filename: platformMedia.filename,
+          mimeType: platformMedia.mimeType,
+          rightsBasis: platformMedia.rightsBasis,
+          rightsHolder: platformMedia.rightsHolder,
+          rightsSource: platformMedia.rightsSource,
+        })
+        .from(platformMedia)
+        .innerJoin(user, eq(platformMedia.approvedBy, user.id))
+        .innerJoin(auditLog, eq(platformMedia.approvalAuditId, auditLog.id))
+        .where(where)
+        .orderBy(desc(platformMedia.createdAt))
+        .limit(limit)
+        .offset(offset),
+      db
+        .select({ n: count() })
+        .from(platformMedia)
+        .innerJoin(user, eq(platformMedia.approvedBy, user.id))
+        .innerJoin(auditLog, eq(platformMedia.approvalAuditId, auditLog.id))
+        .where(where),
+    ])
+
+    return {
+      rows: rows.map((row) => ({
+        id: row.id,
+        url: row.url,
+        alt: row.alt,
+        filename: row.filename,
+        mimeType: row.mimeType,
+        rightsBasis: row.rightsBasis as MediaRightsBasis,
+        rightsHolder: row.rightsHolder,
+        rightsSource: row.rightsSource,
+      })),
+      total: totalRow[0]?.n ?? 0,
+    }
+  } catch {
+    return { rows: [], total: 0 }
+  }
+}

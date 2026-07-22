@@ -13,6 +13,7 @@ import { db } from '@/db'
 import { sql } from 'drizzle-orm'
 import { user } from '@/db'
 import { count } from 'drizzle-orm'
+import { hasValidBootstrapToken } from '@/lib/bootstrap-auth'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 60
@@ -61,8 +62,7 @@ const PAYLOAD_TABLES = [
 ]
 
 export async function POST(req: Request) {
-  const token = req.headers.get('authorization')?.replace(/^Bearer /, '')
-  if (token !== process.env.BOOTSTRAP_TOKEN) {
+  if (!hasValidBootstrapToken(req)) {
     return Response.json({ error: 'unauthorized' }, { status: 401 })
   }
 

@@ -1,27 +1,122 @@
+/* Hallmark · Working Counter · legal ledger */
 import type { Metadata } from 'next'
+
 import { LegalLayout } from '@/components/marketing/legal-layout'
+import { buildAlternatesLanguages } from '@/lib/hreflang'
+import { buildSocialMetadata } from '@/lib/seo-metadata'
 import { getSiteSettings } from '@/lib/site-settings'
 
-export const metadata: Metadata = {
-  title: 'Refund Policy',
-  description: 'How refunds work for Omnix licences.',
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://omnix.co.ke'
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: string }>
+}): Promise<Metadata> {
+  const { locale } = await params
+  const canonical = `${SITE_URL}/${locale}/refund-policy`
+  return {
+    title: 'Refund policy — Omnix',
+    description:
+      'How refunds work for an Omnix licence: a 14-day refund window less the Paystack processing fee, and what is not refundable.',
+    alternates: {
+      canonical,
+      languages: buildAlternatesLanguages('/refund-policy'),
+    },
+    ...buildSocialMetadata({
+      locale,
+      url: canonical,
+      title: 'Omnix refund policy',
+      description:
+        'If a licence is not the right fit, there is a 14-day refund window less the Paystack processing fee.',
+      type: 'website',
+    }),
+  }
 }
 
-export default async function RefundPolicyPage() {
-  const settings = await getSiteSettings()
+export default async function RefundPolicyPage({
+  params,
+}: {
+  params: Promise<{ locale: string }>
+}) {
+  const [{ locale }, settings] = await Promise.all([params, getSiteSettings()])
+
   return (
     <LegalLayout
-      eyebrow="Legal"
-      title="Refund Policy"
-      description="How refunds work for Omnix licences."
-      lastUpdated="2026-05-01"
+      kicker="Payments"
+      title="Refund policy"
+      description="How refunds work on an Omnix licence, in plain terms. The short version: there is a 14-day window if a licence is not the right fit."
+      lastUpdated="2026-07-01"
+      locale={locale}
+      supportEmail={settings.supportEmail}
       sections={[
-        { id: 'trial', heading: 'Free trial first', body: <p>You get 30 days free to try every module before paying anything. No credit card required. Use this time to make sure Omnix is the right fit.</p> },
-        { id: 'window', heading: '14-day refund window', body: <><p>If you pay and decide within 14 days that Omnix isn&rsquo;t the right fit, we refund the full amount minus the Paystack processing fee (~2.9% + KES 100).</p><p>Email {settings.supportEmail} with your licence key and reason. We process refunds within 5 business days.</p></> },
-        { id: 'after-14-days', heading: 'After 14 days', body: <p>After the 14-day window, we don&rsquo;t offer refunds — but we work with you to fix whatever isn&rsquo;t working. If there&rsquo;s a bug, we fix it. If a feature is missing, we prioritise it. If you&rsquo;re stuck, we walk you through it.</p> },
-        { id: 'no-refund', heading: 'No refunds for', body: <><p>We don&rsquo;t refund:</p><ul><li>Maintenance renewals (optional, you choose to renew)</li><li>Cloud backup subscriptions (cancel anytime, no refund for partial months)</li><li>Extra branch or machine upgrades (one-time, non-refundable)</li><li>Custom licences (negotiated separately, refund terms in contract)</li></ul></> },
-        { id: 'abuse', heading: 'Refund abuse', body: <p>We reserve the right to refuse refunds if we detect abuse (e.g., requesting a refund after extracting all your data, or repeated refund requests across multiple licences).</p> },
-        { id: 'contact', heading: 'Questions?', body: <p>Email {settings.supportEmail} or {settings.whatsappDisplay ? `WhatsApp ${settings.whatsappDisplay}` : `email ${settings.supportEmail}`}. We respond within 24 hours.</p> },
+        {
+          id: 'window',
+          heading: 'The 14-day window',
+          body: (
+            <>
+              <p>
+                If you buy a licence and decide within 14 days that Omnix is not the right fit, we
+                refund the amount you paid less the Paystack processing fee (Paystack does not
+                return its fee to us).
+              </p>
+              <p>
+                Email <a href={`mailto:${settings.supportEmail}`}>{settings.supportEmail}</a> with
+                your licence key and a short note. We start the refund as soon as we have confirmed
+                the purchase.
+              </p>
+            </>
+          ),
+        },
+        {
+          id: 'after-14-days',
+          heading: 'After 14 days',
+          body: (
+            <p>
+              After the window we do not offer refunds, but we do stand behind the software: if
+              something is broken we fix it, if a step is unclear we walk you through it, and
+              feature requests go on the roadmap. The licence you bought is perpetual, so it keeps
+              working regardless.
+            </p>
+          ),
+        },
+        {
+          id: 'non-refundable',
+          heading: 'What is not refundable',
+          body: (
+            <>
+              <p>The following are outside the refund window:</p>
+              <ul>
+                <li>Optional annual compliance updates once a year has started.</li>
+                <li>Cloud backup — cancel any time; partial months are not refunded.</li>
+                <li>One-time extra-branch and extra-machine upgrades.</li>
+                <li>Major-version upgrade purchases once activated.</li>
+              </ul>
+            </>
+          ),
+        },
+        {
+          id: 'fair-use',
+          heading: 'Fair use',
+          body: (
+            <p>
+              We may decline a refund where the request is clearly being used to extract value and
+              then reclaim payment — for example repeated refund requests across multiple licences.
+              This is about fairness, not fine print.
+            </p>
+          ),
+        },
+        {
+          id: 'contact',
+          heading: 'Questions',
+          body: (
+            <p>
+              Not sure whether a refund applies to you? Email{' '}
+              <a href={`mailto:${settings.supportEmail}`}>{settings.supportEmail}</a>
+              {settings.whatsappDisplay ? `, or reach us on WhatsApp at ${settings.whatsappDisplay}.` : '.'}
+            </p>
+          ),
+        },
       ]}
     />
   )

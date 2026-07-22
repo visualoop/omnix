@@ -3,7 +3,10 @@ import { redirect, notFound } from 'next/navigation'
 import { auth } from '@/lib/auth'
 import { db, releases } from '@/db'
 import { desc, eq } from 'drizzle-orm'
-import { PageHeading } from '@/components/dashboard/status-utils'
+import { Breadcrumbs } from '@/components/layout/breadcrumbs'
+import { PageHeader } from '@/components/layout/page-header'
+import { Button } from '@/components/ui/button'
+import { EmptyState } from '@/components/dashboard/status-utils'
 
 const VARIANTS = ['pro', 'dawa', 'retail', 'hospitality', 'hardware', 'salon'] as const
 
@@ -25,16 +28,37 @@ export default async function DownloadsVariantPage({ params }: { params: Promise
 
   const r = rows[0]
 
+  const platforms: Array<{ label: string; url: string | null }> = [
+    { label: 'Windows (.msi)', url: r?.msiUrl ?? null },
+    { label: 'macOS (.dmg)', url: r?.dmgUrl ?? null },
+    { label: 'Linux (AppImage)', url: r?.appImageUrl ?? null },
+  ]
+
   return (
-    <div className="space-y-6">
-      <PageHeading title={`Omnix · ${variant}`} subtitle="Latest stable build." />
+    <div className="flex flex-col gap-8">
+      <Breadcrumbs items={[{ label: 'Downloads', href: '/dashboard/downloads' }, { label: variant }]} />
+      <PageHeader eyebrow="Your software" title={`Omnix · ${variant}`} description="Latest stable build." />
+
       {!r ? (
-        <p className="text-[13px] text-[var(--color-fg-muted)]">No release published yet.</p>
+        <EmptyState title="No release published yet" body="Installers will appear here once a stable build ships." />
       ) : (
-        <ul className="rounded-lg border border-[var(--color-border)] divide-y divide-[var(--color-border)]">
-          <li className="flex items-center justify-between gap-3 px-4 py-3 text-[13px]"><span>Windows (.msi)</span>{r.msiUrl ? <a href={r.msiUrl} className="underline-offset-4 hover:underline">Download</a> : <span className="text-[var(--color-fg-muted)]">—</span>}</li>
-          <li className="flex items-center justify-between gap-3 px-4 py-3 text-[13px]"><span>macOS (.dmg)</span>{r.dmgUrl ? <a href={r.dmgUrl} className="underline-offset-4 hover:underline">Download</a> : <span className="text-[var(--color-fg-muted)]">—</span>}</li>
-          <li className="flex items-center justify-between gap-3 px-4 py-3 text-[13px]"><span>Linux (AppImage)</span>{r.appImageUrl ? <a href={r.appImageUrl} className="underline-offset-4 hover:underline">Download</a> : <span className="text-[var(--color-fg-muted)]">—</span>}</li>
+        <ul className="flex flex-col divide-y divide-[var(--color-border)] rounded-[var(--radius-md)] border border-[var(--color-border)]">
+          {platforms.map((p) => (
+            <li key={p.label} className="flex items-center justify-between gap-3 px-4 py-3.5 text-[13px]">
+              <span className="text-[var(--color-fg)]">{p.label}</span>
+              {p.url ? (
+                <Button asChild size="xs" variant="outline">
+                  <a href={p.url} target="_blank" rel="noopener noreferrer" download>
+                    Download
+                  </a>
+                </Button>
+              ) : (
+                <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--color-fg-subtle)]">
+                  Unavailable
+                </span>
+              )}
+            </li>
+          ))}
         </ul>
       )}
     </div>

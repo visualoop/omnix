@@ -1,15 +1,16 @@
 import type { Metadata } from 'next'
-import { headers } from 'next/headers'
 import { notFound } from 'next/navigation'
-import { GoogleAnalytics } from '@next/third-parties/google'
-import { NextIntlClientProvider, hasLocale } from 'next-intl'
-import { getMessages, setRequestLocale } from 'next-intl/server'
+import { hasLocale } from 'next-intl'
+import { getTranslations, setRequestLocale } from 'next-intl/server'
 
 import { BRAND, BRAND_NAME, BRAND_TAGLINE } from '@/lib/brand'
+import { buildSocialMetadata } from '@/lib/seo-metadata'
 import { SiteHeader } from '@/components/layout/site-header'
 import { SiteFooter } from '@/components/layout/site-footer'
 import { OrgJsonLd } from '@/components/seo/jsonld'
 import { WhatsAppWidget } from '@/components/marketing/whatsapp-widget'
+import { SiteAnalytics } from '@/components/analytics/site-analytics'
+import { resolveGaId } from '@/lib/analytics/ga'
 import { routing, COUNTRY_LOCALES } from '@/i18n/routing'
 
 /**
@@ -44,7 +45,7 @@ const GLOBAL_KEYWORDS = [
   'POS software', 'small business POS', 'pharmacy POS',
   'retail POS', 'restaurant POS', 'bar POS', 'mini-mart POS',
   'hardware store software', 'offline POS', 'inventory management software',
-  'AI for small business', 'point of sale system', 'duka software',
+  'point of sale system', 'duka software',
 ]
 const NIGERIA_KEYWORDS = ['POS Nigeria', 'pharmacy software Nigeria', 'restaurant POS Nigeria', 'Lagos POS', 'FIRS compliance']
 const GHANA_KEYWORDS = ['POS Ghana', 'pharmacy software Ghana', 'restaurant POS Ghana', 'Accra POS']
@@ -135,16 +136,21 @@ export async function generateMetadata({
 }: { params: Promise<{ locale: string }> }): Promise<Metadata> {
   const { locale } = await params
   const c = copyFor(locale)
-  // OG image is admin-editable via the og.default media slot (falls back
-  // to the seeded R2 default). Resolved here so social cards update from
-  // /admin/media with no redeploy.
-  let ogImage = 'https://media.omnix.co.ke/marketing/og-default.jpg'
+  // Social media may use an approved licensed asset. Without one, the shared
+  // helper falls back to the first-party generated /api/og card rather than an
+  // unverified remote default. We only resolve the approved URL/alt here; the
+  // helper fills in siteName, og:locale, dimensions, and the Twitter card.
+  let approvedOg: string | undefined
+  let approvedOgAlt: string | undefined
   try {
     const { getSlotImage } = await import('@/lib/media-slots')
     const og = await getSlotImage('og.default')
-    if (og?.url) ogImage = og.url
+    if (og) {
+      approvedOg = og.url
+      approvedOgAlt = og.alt
+    }
   } catch {
-    /* keep default */
+    /* fall back to the generated card */
   }
   // Valid BCP-47 hreflang codes (en-KE, not bare 'ke') so Google accepts
   // the alternates. Each country route still resolves to its /xx URL.
@@ -157,6 +163,15 @@ export async function generateMetadata({
     COUNTRY_LOCALES.map((cc) => [HREFLANG[cc] ?? `en-${cc.toUpperCase()}`, `${BRAND.url}/${cc}`]),
   )
   altLanguages['x-default'] = `${BRAND.url}/ke`
+  const social = buildSocialMetadata({
+    locale,
+    url: `${BRAND.url}/${locale}`,
+    title: c.title,
+    description: c.description,
+    type: 'website',
+    image: approvedOg,
+    imageAlt: approvedOgAlt,
+  })
   return {
     metadataBase: new URL(BRAND.url),
     title: { default: c.title, template: `%s · ${BRAND_NAME}` },
@@ -164,20 +179,8 @@ export async function generateMetadata({
     applicationName: BRAND_NAME,
     authors: [{ name: BRAND_NAME }],
     keywords: c.keywords,
-    openGraph: {
-      type: 'website',
-      siteName: BRAND_NAME,
-      title: c.title,
-      description: c.description,
-      locale: c.ogLocale,
-      images: [{ url: ogImage, width: 1200, height: 630, alt: BRAND_NAME }],
-    },
-    twitter: {
-      card: 'summary_large_image',
-      title: c.title,
-      description: c.description,
-      images: [ogImage],
-    },
+    openGraph: social.openGraph,
+    twitter: social.twitter,
     icons: { icon: '/favicon.ico' },
     robots: { index: true, follow: true },
     alternates: {
@@ -204,33 +207,29 @@ export default async function FrontendLayout({
     notFound()
   }
   setRequestLocale(locale)
-  const messages = await getMessages()
+  const nav = await getTranslations('nav')
 
-  const gaId = process.env.NEXT_PUBLIC_GA_ID
+  const gaId = resolveGaId(process.env.NEXT_PUBLIC_GA_ID)
+  const { getSiteSettings } = await import('@/lib/site-settings')
+  const siteSettings = await getSiteSettings()
 
-  // Server-side session probe so the header swaps "Sign in / Start trial"
-  // for "Account / Open dashboard" when the visitor is already a signed-in
-  // customer. Errors (stale token, server hiccup) treat the visitor as
-  // signed-out and show the unauth chrome.
-  let isAuthed = false
-  try {
-    const reqHeaders = await headers()
-    const { auth } = await import('@/lib/auth')
-    const session = await auth.api.getSession({ headers: reqHeaders })
-    isAuthed = !!session
-  } catch {
-    isAuthed = false
-  }
+  // No per-request session probe here on purpose. The marketing shell must be
+  // identical for every visitor so public pages stay cacheable at the edge and
+  // are never personalized. The header renders its stable public actions
+  // ("Book a demo" + "Sign in"); signed-in customers reach their account chrome
+  // from the dashboard/account shells, which keep their own auth checks.
 
   return (
-    <NextIntlClientProvider locale={locale} messages={messages}>
-      <SiteHeader isAuthed={isAuthed} />
-      <main>{children}</main>
-      <SiteFooter />
-      <WhatsAppWidget />
-      {gaId && <GoogleAnalytics gaId={gaId} />}
+    <>
+      <SiteHeader locale={locale} signInLabel={nav('signIn')} />
+      <main id="main-content" className="min-w-0">{children}</main>
+      <SiteFooter locale={locale} settings={siteSettings} />
+      {siteSettings.whatsappUrl ? (
+        <WhatsAppWidget whatsappUrl={siteSettings.whatsappUrl} locale={locale} />
+      ) : null}
+      {gaId ? <SiteAnalytics gaId={gaId} privacyHref={`/${locale}/privacy`} /> : null}
       <OrgJsonLd />
-    </NextIntlClientProvider>
+    </>
   )
 }
 

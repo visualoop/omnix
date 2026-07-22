@@ -57,3 +57,39 @@ export function buildAlternatesLanguages(pathname: string): Record<string, strin
   const links = buildHreflangLinks(pathname)
   return Object.fromEntries(links.map((l) => [l.hreflang, l.href]))
 }
+
+/**
+ * Kenya-only alternates for content that must NOT be duplicated across the 12
+ * market locales — national buyer guides (/guides) and local city hubs
+ * (/locations). These pages describe the Kenyan market only; emitting them
+ * under /us, /gb, … with 12-way hreflang would be duplicate / scaled local
+ * SEO (a doorway pattern). So we emit exactly two alternates — `en-KE` and
+ * `x-default` — both pointing at the single canonical /ke path.
+ *
+ * Use this instead of `buildHreflangLinks` for guide/location surfaces; keep
+ * the general helper for genuinely multi-market pages (products, pricing, …).
+ */
+export function buildKenyaOnlyHreflangLinks(pathname: string): AlternateLink[] {
+  // Strip a leading country-locale segment so callers can pass either a
+  // locale-free path ('/guides') or a locale-prefixed one ('/us/guides').
+  const parts = pathname.split('/').filter(Boolean)
+  const first = parts[0]?.toLowerCase()
+  const restPath = (COUNTRY_LOCALES as readonly string[]).includes(first ?? '')
+    ? '/' + parts.slice(1).join('/')
+    : pathname
+  const cleanRest = restPath === '/' ? '' : restPath
+  const href = `${BRAND_URL}/ke${cleanRest}`
+  return [
+    { hreflang: 'en-KE', href },
+    { hreflang: 'x-default', href },
+  ]
+}
+
+/**
+ * Render-only variant of buildKenyaOnlyHreflangLinks, keyed by hreflang for a
+ * Next metadata `alternates.languages` map.
+ */
+export function buildKenyaOnlyAlternatesLanguages(pathname: string): Record<string, string> {
+  const links = buildKenyaOnlyHreflangLinks(pathname)
+  return Object.fromEntries(links.map((l) => [l.hreflang, l.href]))
+}

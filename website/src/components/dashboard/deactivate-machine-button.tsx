@@ -3,10 +3,12 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { confirm } from '@/components/ui/dialog-imperative'
+import { Button } from '@/components/ui/button'
 
 /**
- * Deactivate a machine to free a licence seat (self-service rebind).
- * Calls POST /api/licensing/rebind; the server enforces the cooldown.
+ * Deactivate a device to free a licence seat (self-service rebind).
+ * Calls POST /api/licensing/rebind; the server enforces the cooldown and
+ * ownership — this only triggers it and surfaces the result.
  */
 export function DeactivateMachineButton({ machineId }: { machineId: string }) {
   const router = useRouter()
@@ -14,7 +16,15 @@ export function DeactivateMachineButton({ machineId }: { machineId: string }) {
   const [error, setError] = useState<string | null>(null)
 
   const onClick = async () => {
-    if (!(await confirm({ title: 'Deactivate this machine?', description: 'Frees a seat so another PC can activate. The app on that machine will need to re-activate.', variant: 'destructive', confirmText: 'Deactivate' }))) {
+    if (
+      !(await confirm({
+        title: 'Deactivate this device?',
+        description:
+          'Frees a seat so another PC can activate. The app on this device will need to re-activate.',
+        variant: 'destructive',
+        confirmText: 'Deactivate',
+      }))
+    ) {
       return
     }
     setBusy(true)
@@ -28,7 +38,7 @@ export function DeactivateMachineButton({ machineId }: { machineId: string }) {
       })
       const body = (await res.json()) as { ok?: boolean; error?: string }
       if (!res.ok || !body.ok) {
-        setError(body.error ?? 'Could not deactivate machine.')
+        setError(body.error ?? 'Could not deactivate device.')
       } else {
         router.refresh()
       }
@@ -41,14 +51,14 @@ export function DeactivateMachineButton({ machineId }: { machineId: string }) {
 
   return (
     <div className="flex flex-col items-end gap-1">
-      <button
-        onClick={onClick}
-        disabled={busy}
-        className="cursor-pointer rounded-lg border border-[var(--color-border)] px-3 py-1.5 text-[12px] font-medium text-[var(--color-fg-muted)] transition-colors hover:border-[var(--color-accent)] hover:text-[var(--color-accent)] disabled:opacity-50"
-      >
+      <Button type="button" size="sm" variant="outline" onClick={onClick} disabled={busy}>
         {busy ? 'Deactivating…' : 'Deactivate'}
-      </button>
-      {error ? <span className="max-w-[200px] text-right text-[11px] text-[var(--color-danger,#dc2626)]">{error}</span> : null}
+      </Button>
+      {error ? (
+        <span role="alert" className="max-w-[200px] text-right text-[11px] text-[var(--color-negative)]">
+          {error}
+        </span>
+      ) : null}
     </div>
   )
 }

@@ -74,8 +74,17 @@ const nextConfig: NextConfig = {
       "style-src 'self' 'unsafe-inline'",
       "img-src 'self' data: blob: https:",
       "font-src 'self' data:",
-      "connect-src 'self' https://api.paystack.co https://checkout.paystack.com https://omnix.co.ke https://media.omnix.co.ke https://www.google-analytics.com",
-      "frame-src https://checkout.paystack.com https://standard.paystack.co https://*.paystack.co https://*.paystack.com",
+      // connect-src: our own origins + Paystack, plus the two exact Google
+      // analytics endpoints a consented GA4 tag needs — gtag.js is fetched from
+      // googletagmanager.com (also in script-src) and beacons to
+      // google-analytics.com. Both are exact hosts; no wildcard Google origin.
+      "connect-src 'self' https://api.paystack.co https://checkout.paystack.com https://omnix.co.ke https://media.omnix.co.ke https://www.googletagmanager.com https://www.google-analytics.com",
+      // frame-src is the click-to-load boundary. Paystack checkout frames plus the
+      // single YouTube privacy-embed origin the ModuleDemoVideo component builds
+      // (https://www.youtube-nocookie.com/embed/<id>). We deliberately do NOT allow
+      // youtube.com broadly, no self-starting media origin, and script-src stays
+      // untouched — the embed loads only after an explicit user Play action.
+      "frame-src https://checkout.paystack.com https://standard.paystack.co https://*.paystack.co https://*.paystack.com https://www.youtube-nocookie.com",
       "object-src 'none'",
       "base-uri 'self'",
       "form-action 'self'",

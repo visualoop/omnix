@@ -6,6 +6,7 @@ import { newReference, initTransaction } from '@/lib/paystack'
 import { pricingFor, type SupportedCurrency } from '@/config/pricing'
 import { createId } from '@/lib/ids'
 import { getSetting } from '@/lib/platform-settings'
+import { isPublicVariant } from '@/lib/buy-resolver'
 
 interface InitInput {
   licenseId: string
@@ -28,6 +29,16 @@ export async function POST(req: Request) {
     .limit(1)
   const lic = rows[0]
   if (!lic) return Response.json({ error: 'licence not found' }, { status: 404 })
+
+  // Public catalogue guard. A first purchase (`license_fee`) may only be
+  // taken for one of the five publicly-sold products. The legacy `pro`
+  // variant is not on sale, so a crafted init for a Pro trial's licence
+  // fee is rejected server-side even though its row still exists. Other
+  // purposes (renewals/add-ons) stay open for existing paid licences so
+  // the legacy contract is preserved.
+  if (body.purpose === 'license_fee' && !isPublicVariant(lic.variant)) {
+    return Response.json({ error: 'variant not available for purchase' }, { status: 403 })
+  }
 
   // Compute amount in smallest currency unit (cents/kobo).
   const currency = (lic.currency as SupportedCurrency) ?? 'KES'

@@ -1,67 +1,43 @@
-# Payload Blank Template
+# Omnix website
 
-This template comes configured with the bare minimum to get started on anything you need.
+The public marketing, authentication, customer dashboard, administration, licensing, payment, release, and support service for Omnix. It is a Next.js App Router application backed by Neon/PostgreSQL with Better Auth, Drizzle, Paystack, Resend, and optional S3-compatible storage.
 
-## Quick start
+The public catalogue is Pharmacy, Retail, Hospitality, Hardware & Equipment, and Salon & Spa. Public acquisition is demo-led. The commercial model is a KES 30,000 one-time perpetual Windows licence with optional KES 12,000 annual compliance updates; updates are not required to keep a perpetual licence working.
 
-This template can be deployed directly from our Cloud hosting and it will setup MongoDB and cloud S3 object storage for media.
+## Local development
 
-## Quick Start - local setup
+Requirements: Node 20+, pnpm 9+, and a PostgreSQL connection for database-backed routes.
 
-To spin up this template locally, follow these steps:
+```bash
+cp .env.example .env.local
+pnpm install --frozen-lockfile
+pnpm dev
+```
 
-### Clone
+Do not commit local environment files. Environment names and deployment requirements are documented in [`docs/DEPLOYMENT_READINESS.md`](docs/DEPLOYMENT_READINESS.md); values belong in local secret storage, Vercel, or platform-admin settings.
 
-After you click the `Deploy` button above, you'll want to have standalone copy of this repo on your machine. If you've already cloned this repo, skip to [Development](#development).
+## Validation
 
-### Development
+```bash
+pnpm exec tsc --noEmit
+pnpm run lint
+pnpm run test:int
+pnpm run build
+pnpm run test:e2e
+```
 
-1. First [clone the repo](#clone) if you have not done so already
-2. `cd my-project && cp .env.example .env` to copy the example environment variables. You'll need to add the `MONGODB_URL` from your Cloud project to your `.env` if you want to use S3 storage and the MongoDB database that was created for you.
+Run browser tests against an isolated server and do not reuse an unrelated process. In the Blyss development environment, port 3100 is forwarded as `https://3100.blyss.co.ke`.
 
-3. `pnpm install && pnpm dev` to install dependencies and start the dev server
-4. open `http://localhost:3000` to open the app in your browser
+## Database
 
-That's it! Changes made in `./src` will be reflected in your app. Follow the on-screen instructions to login and create your first admin user. Then check out [Production](#production) once you're ready to build and serve your app, and [Deployment](#deployment) when you're ready to go live.
+Schema changes are managed in `drizzle/migrations`. Production database migrations are an explicit release operation; a successful Next.js build does not prove that the target database is configured or migrated.
 
-#### Docker (Optional)
+## Administration
 
-If you prefer to use Docker for local development instead of a local MongoDB instance, the provided docker-compose.yml file can be used.
+Platform administrators manage public support email, WhatsApp, approved media, module demo videos, email/payment/storage integrations, and other site settings at `/admin/settings`. Sensitive database-backed settings are encrypted with `PLATFORM_SETTINGS_MASTER`.
 
-To do so, follow these steps:
+## Deployment
 
-- Modify the `MONGODB_URL` in your `.env` file to `mongodb://127.0.0.1/<dbname>`
-- Modify the `docker-compose.yml` file's `MONGODB_URL` to match the above `<dbname>`
-- Run `docker-compose up` to start the database, optionally pass `-d` to run in the background.
+The Vercel project root must be `website`. `vercel.json` configures security/cache headers and the daily application and telemetry-retention cron jobs. Both jobs fail closed unless `CRON_SECRET` is configured.
 
-## How it works
-
-The Payload config is tailored specifically to the needs of most websites. It is pre-configured in the following ways:
-
-### Collections
-
-See the [Collections](https://payloadcms.com/docs/configuration/collections) docs for details on how to extend this functionality.
-
-- #### Users (Authentication)
-
-  Users are auth-enabled collections that have access to the admin panel.
-
-  For additional help, see the official [Auth Example](https://github.com/payloadcms/payload/tree/3.x/examples/auth) or the [Authentication](https://payloadcms.com/docs/authentication/overview#authentication-overview) docs.
-
-- #### Media
-
-  This is the uploads enabled collection. It features pre-configured sizes, focal point and manual resizing to help you manage your pictures.
-
-### Docker
-
-Alternatively, you can use [Docker](https://www.docker.com) to spin up this template locally. To do so, follow these steps:
-
-1. Follow [steps 1 and 2 from above](#development), the docker-compose file will automatically use the `.env` file in your project root
-1. Next run `docker-compose up`
-1. Follow [steps 4 and 5 from above](#development) to login and create your first admin user
-
-That's it! The Docker instance will help you get up and running quickly while also standardizing the development environment across your teams.
-
-## Questions
-
-If you have any issues or questions, reach out to us on [Discord](https://discord.com/invite/payload) or start a [GitHub discussion](https://github.com/payloadcms/payload/discussions).
+Use the release checklist in [`docs/DEPLOYMENT_READINESS.md`](docs/DEPLOYMENT_READINESS.md), then apply the monitoring runbook in [`docs/PRODUCTION_MONITORING.md`](docs/PRODUCTION_MONITORING.md).

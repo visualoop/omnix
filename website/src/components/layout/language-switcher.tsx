@@ -1,18 +1,15 @@
 'use client'
 
-import { useLocale } from 'next-intl'
 import { usePathname, useRouter } from 'next/navigation'
 import { useTransition } from 'react'
 import { routing } from '@/i18n/routing'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 
-const LOCALE_LABELS: Record<string, { flag: string; name: string }> = {
-  en: { flag: '🇬🇧', name: 'English' },
-  sw: { flag: '🇰🇪', name: 'Kiswahili' },
-  fr: { flag: '🇫🇷', name: 'Français' },
-  pt: { flag: '🇵🇹', name: 'Português' },
-  es: { flag: '🇪🇸', name: 'Español' },
-  ar: { flag: '🇦🇪', name: 'العربية' },
+const LOCALE_LABELS: Record<string, string> = {
+  ke: 'Kenya', us: 'United States', gb: 'United Kingdom', ng: 'Nigeria',
+  gh: 'Ghana', za: 'South Africa', in: 'India', rw: 'Rwanda', tz: 'Tanzania',
+  ug: 'Uganda', eg: 'Egypt', ae: 'United Arab Emirates',
+  en: 'English', sw: 'Kiswahili', fr: 'Français', pt: 'Português',
+  es: 'Español', ar: 'العربية',
 }
 
 /**
@@ -22,8 +19,7 @@ const LOCALE_LABELS: Record<string, { flag: string; name: string }> = {
  * locale prefix. With localePrefix='as-needed', English routes drop
  * the prefix; everything else gets it.
  */
-export function LanguageSwitcher({ className }: { className?: string }) {
-  const locale = useLocale()
+export function LanguageSwitcher({ locale, className }: { locale: string; className?: string }) {
   const pathname = usePathname()
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
@@ -47,15 +43,18 @@ export function LanguageSwitcher({ className }: { className?: string }) {
   }
 
   return (
-    <Select value={locale} onValueChange={(v) => switchTo(String(v))} disabled={isPending}><SelectTrigger aria-label="Select country / region"><SelectValue /></SelectTrigger><SelectContent>
-      {routing.locales.map((l) => {
-        const label = LOCALE_LABELS[l] ?? { flag: '', name: l }
-        return (
-          <SelectItem key={l} value={l}>
-            {label.flag} {label.name}
-          </SelectItem>
-        )
-      })}
-    </SelectContent></Select>
+    <select
+      value={locale}
+      onChange={(event) => switchTo(event.currentTarget.value)}
+      disabled={isPending}
+      className={className}
+      aria-label="Select country / region"
+    >
+      {routing.locales.map((value) => (
+        <option key={value} value={value}>
+          {value.toUpperCase()} — {LOCALE_LABELS[value] ?? value}
+        </option>
+      ))}
+    </select>
   )
 }

@@ -71,7 +71,10 @@ export function LazyTabs({ tabs, defaultTab, paramKey = 'tab', className }: Prop
 
   return (
     <div className={cn('flex flex-col gap-5', className)}>
-      <div role="tablist" className="flex flex-wrap items-center gap-x-5 gap-y-2 border-b border-foreground/10">
+      <div
+        role="tablist"
+        className="-mx-1 flex flex-nowrap items-center gap-x-5 overflow-x-auto border-b border-[var(--color-border)] px-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+      >
         {tabs.map((t) => {
           const isActive = t.id === activeId
           return (
@@ -83,7 +86,7 @@ export function LazyTabs({ tabs, defaultTab, paramKey = 'tab', className }: Prop
               aria-selected={isActive}
               onClick={() => activate(t.id)}
               className={cn(
-                'relative -mb-px inline-flex items-center gap-1.5 border-b py-2.5 font-mono text-[11px] uppercase tracking-[0.18em] transition-colors cursor-pointer',
+                'relative -mb-px inline-flex min-h-11 shrink-0 items-center gap-1.5 border-b px-0.5 py-2.5 font-mono text-[11px] uppercase tracking-[0.14em] transition-colors duration-[var(--duration-fast)] cursor-pointer',
                 isActive
                   ? 'border-foreground text-foreground'
                   : 'border-transparent text-muted-foreground hover:text-foreground/80',

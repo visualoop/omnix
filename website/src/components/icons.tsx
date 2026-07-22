@@ -77,6 +77,7 @@ import {
   Scissors as PhScissors,
   ShieldCheck as PhShield,
   ShoppingBagOpen as PhShoppingBag,
+  SignOut as PhSignOut,
   Sliders as PhSliders,
   Sparkle as PhSparkle,
   Stack as PhStack,
@@ -218,6 +219,7 @@ export const Search = PhSearch
 export const Send = PhArrowRight
 export const Settings = PhGear
 export const Shield = PhShield
+export const SignOut = PhSignOut
 export const ShieldCheck = PhShield
 export const ShoppingBag = PhShoppingBag
 export const ShoppingBagOpen = PhShoppingBag

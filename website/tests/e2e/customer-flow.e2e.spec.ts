@@ -39,23 +39,23 @@ test.describe('customer auth flow', () => {
     })
   })
 
-  test('signup form renders with full Tailwind styling', async ({ page }) => {
-    await page.goto('/signup')
-    // Hero copy visible
-    await expect(page.getByRole('heading', { name: /Start your/i })).toBeVisible()
-    // Field labels visible (Tailwind loaded — uppercase tracking treatment)
-    await expect(page.getByText('Full name', { exact: false }).first()).toBeVisible()
-    await expect(page.getByText('Email', { exact: false }).first()).toBeVisible()
-    await expect(page.getByText('Password', { exact: false }).first()).toBeVisible()
-    // Submit button rendered
-    await expect(page.getByRole('button', { name: /Create.*account|Sign up|Continue/i }).first()).toBeVisible()
+  test('signup redirects to passwordless login and preserves purchase parameters', async ({ page }) => {
+    await page.goto('/signup?intent=buy&variant=dawa')
+    await expect(page).toHaveURL(/\/login\?next=/)
+    const url = new URL(page.url())
+    expect(url.searchParams.get('next')).toBe('/buy?variant=dawa')
+    await expect(page.getByRole('heading', { name: 'Sign in' })).toBeVisible()
+    await expect(page.locator('input[type="email"]')).toBeVisible()
+    await expect(page.locator('input[type="password"]')).toHaveCount(0)
+    await expect(page.getByRole('button', { name: /Google/i })).toBeVisible()
+    await expect(page.getByRole('button', { name: /sign-in link/i })).toBeVisible()
   })
 
-  test('login page renders with full Tailwind styling', async ({ page }) => {
+  test('login page is passwordless', async ({ page }) => {
     await page.goto('/login')
     await expect(page.getByRole('heading', { level: 1 })).toBeVisible()
     await expect(page.locator('input[type="email"]')).toBeVisible()
-    await expect(page.locator('input[type="password"]')).toBeVisible()
+    await expect(page.locator('input[type="password"]')).toHaveCount(0)
   })
 
   test('header has wordmark left + hamburger top-right on mobile', async ({ page }) => {

@@ -3,8 +3,18 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Field } from '@/components/ui/field'
+import { Label } from '@/components/ui/label'
+import { Alert } from '@/components/ui/alert'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 
 export function NewTicketForm() {
   const router = useRouter()
@@ -40,45 +50,57 @@ export function NewTicketForm() {
   }
 
   return (
-    <form onSubmit={onSubmit} className="space-y-4">
-      <Field label="Subject"><input name="subject" required className={inputClass} /></Field>
-      <Field label="Category">
-        <Select name="category" defaultValue="general">
-          <SelectTrigger><SelectValue /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="general">General</SelectItem>
-            <SelectItem value="billing">Billing</SelectItem>
-            <SelectItem value="bug">Bug report</SelectItem>
-            <SelectItem value="feature">Feature request</SelectItem>
-          </SelectContent>
-        </Select>
+    <form onSubmit={onSubmit} className="flex flex-col gap-5">
+      <Field label="Subject" required>
+        <Input name="subject" required placeholder="Short summary of the issue" />
       </Field>
-      <Field label="Priority">
-        <Select name="priority" defaultValue="normal">
-          <SelectTrigger><SelectValue /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="low">Low</SelectItem>
-            <SelectItem value="normal">Normal</SelectItem>
-            <SelectItem value="high">High</SelectItem>
-          </SelectContent>
-        </Select>
+
+      <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="ticket-category">Category</Label>
+          <Select name="category" defaultValue="general">
+            <SelectTrigger id="ticket-category">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="general">General</SelectItem>
+              <SelectItem value="billing">Billing</SelectItem>
+              <SelectItem value="bug">Bug report</SelectItem>
+              <SelectItem value="feature">Feature request</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="ticket-priority">Priority</Label>
+          <Select name="priority" defaultValue="normal">
+            <SelectTrigger id="ticket-priority">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="low">Low</SelectItem>
+              <SelectItem value="normal">Normal</SelectItem>
+              <SelectItem value="high">High</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
+      <Field label="Describe the problem" required>
+        <Textarea name="body" required rows={6} placeholder="What happened, and what did you expect?" />
       </Field>
-      <Field label="Describe the problem">
-        <Textarea name="body" required rows={6} className={`${inputClass} font-mono`} />
-      </Field>
-      {error ? <p className="text-[12px] text-rose-600">{error}</p> : null}
-      <Button type="submit" disabled={busy}>{busy ? 'Opening…' : 'Open ticket'}</Button>
+
+      {error ? (
+        <Alert variant="error" title="Could not open ticket">
+          {error}
+        </Alert>
+      ) : null}
+
+      <div>
+        <Button type="submit" disabled={busy}>
+          {busy ? 'Opening…' : 'Open ticket'}
+        </Button>
+      </div>
     </form>
-  )
-}
-
-const inputClass = 'w-full h-10 rounded-md border border-[var(--color-border)] bg-transparent px-3 text-[14px] focus:outline-none focus:border-[var(--color-fg-muted)]'
-
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <label className="block">
-      <span className="mb-1 block font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--color-fg-subtle)]">{label}</span>
-      {children}
-    </label>
   )
 }

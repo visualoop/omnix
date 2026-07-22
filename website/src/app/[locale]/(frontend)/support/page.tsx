@@ -1,87 +1,160 @@
 import type { Metadata } from 'next'
-import Link from 'next/link'
-import { Icon } from '@/components/icons'
-import { PageHero } from '@/components/marketing/page-hero'
 
-export const metadata: Metadata = {
-  title: 'Support — get help',
-  description: 'Submit a ticket, browse the knowledge base, or reach us on WhatsApp. Priority support for paid licences.',
+import {
+  buildWhatsAppHref,
+  TrustChannelGrid,
+  TrustClosing,
+  TrustHero,
+  TrustList,
+  TrustPage,
+  TrustSection,
+  type TrustChannel,
+} from '@/components/marketing/trust-pages'
+import { buildAlternatesLanguages } from '@/lib/hreflang'
+import { buildSocialMetadata } from '@/lib/seo-metadata'
+import { getSiteSettings } from '@/lib/site-settings'
+
+export const dynamic = 'force-dynamic'
+export const revalidate = 300
+
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://omnix.co.ke'
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: string }>
+}): Promise<Metadata> {
+  const { locale } = await params
+  const canonical = `${SITE_URL}/${locale}/support`
+
+  return {
+    title: 'Omnix support — real routes to a human',
+    description:
+      'How to get help with Omnix: the configured WhatsApp line, documentation, support email, and dashboard tickets for licensed customers. Each route says what it is for.',
+    alternates: {
+      canonical,
+      languages: buildAlternatesLanguages('/support'),
+    },
+    ...buildSocialMetadata({
+      locale,
+      url: canonical,
+      title: 'Omnix support',
+      description: 'The configured routes for Omnix help — WhatsApp, docs, email, and dashboard tickets.',
+      type: 'website',
+    }),
+  }
 }
 
-const FAQS = [
-  { q: 'How do I reset my password?', a: 'Click "Forgot password" on the login screen. We\'ll email you a reset link.' },
-  { q: 'Can I use Omnix offline?', a: 'Yes. POS, inventory, payroll all run locally. Internet only needed for M-Pesa, eTIMS, and updates.' },
-  { q: 'How do I add a new branch?', a: 'Settings → Branches → Add branch. You\'ll need the extra-branch upgrade (KES 15,000 one-time) if you\'re past your licence limit.' },
-  { q: 'Where is my data stored?', a: 'Locally on your Windows machine in an encrypted SQLite database. Cloud backup is optional (KES 500/month per branch).' },
-]
+const ANSWERS = [
+  {
+    term: 'Offline use',
+    detail:
+      'Point of sale, inventory, customers, and reports run from the local database on your device. A connection is only needed for connected services such as payments, tax submission, insurance verification, and updates.',
+  },
+  {
+    term: 'Where data lives',
+    detail:
+      'Business records are written to a local database on the Windows device. How backups and any optional cloud copy work — and their limits — is set out on the security page.',
+  },
+  {
+    term: 'Users and sign-in',
+    detail:
+      'The business owner creates staff users inside the desktop app; there is no public sign-up. Website account and licence access is through the customer dashboard, and a forgotten dashboard password can be reset from the sign-in screen.',
+  },
+  {
+    term: 'Devices and branches',
+    detail:
+      'Extra devices and branches are handled through licensing and your agreement, which set the limits. The pricing page explains the current options.',
+  },
+] as const
 
-export default function SupportPage() {
+export default async function SupportPage({
+  params,
+}: {
+  params: Promise<{ locale: string }>
+}) {
+  const [{ locale }, settings] = await Promise.all([params, getSiteSettings()])
+  const whatsappMessage = 'Hi Omnix, I need help with Omnix.'
+  const whatsappSupportHref = buildWhatsAppHref(settings.whatsappUrl, whatsappMessage)
+
+  const channels: TrustChannel[] = [
+    ...(whatsappSupportHref
+      ? [
+          {
+            title: 'WhatsApp',
+            body: 'The quickest route for a short question or an urgent issue at the counter. Opens the configured Omnix WhatsApp line with a message started for you.',
+            href: whatsappSupportHref,
+            linkLabel: 'Open WhatsApp',
+            external: true,
+          } satisfies TrustChannel,
+        ]
+      : []),
+    {
+      title: 'Documentation',
+      body: 'Step-by-step guides for setup, day-to-day use, and the connected services. Best when you want to follow a procedure at your own pace.',
+      href: `/${locale}/docs`,
+      linkLabel: 'Browse the docs',
+    },
+    {
+      title: 'Support email',
+      body: 'For a detailed issue you can describe in writing, with screenshots or files. Write to the configured support address.',
+      href: `mailto:${settings.supportEmail}`,
+      linkLabel: `Email ${settings.supportEmail}`,
+      external: true,
+    },
+    {
+      title: 'Dashboard tickets',
+      body: 'Licensed customers can raise and track a support ticket from the customer dashboard. Sign-in is required so the ticket is tied to your account and licence.',
+      href: '/login?next=%2Fdashboard%2Fsupport',
+      linkLabel: 'Sign in to the dashboard',
+    },
+  ]
+
   return (
-    <>
-      <PageHero
-        eyebrow="Support"
-        title={<>We&rsquo;re <em>here.</em></>}
-        description="Submit a ticket, browse the knowledge base, or reach us on WhatsApp. Priority support for paid licences."
+    <TrustPage>
+      <TrustHero
+        kicker="Support"
+        title="Real routes to"
+        accent="a human."
+        lede="Omnix support is a small set of honest channels. Each one below says what it is for, so you can pick the shortest path to an answer instead of filling in a form that goes nowhere."
+        factsTitle="Where help comes from"
+        facts={[
+          { label: 'Fastest', value: settings.whatsappUrl ? 'Configured WhatsApp line' : 'A booked demo or support email' },
+          { label: 'Self-serve', value: 'Documentation with step-by-step guides' },
+          { label: 'Account help', value: 'Customer dashboard (sign-in required)' },
+          { label: 'Email', value: settings.supportEmail },
+        ]}
+        locale={locale}
+        whatsappUrl={settings.whatsappUrl}
+        whatsappMessage={whatsappMessage}
       />
 
-      <section className="section">
-        <div className="container-default">
-          <div className="grid grid-cols-1 gap-12 lg:grid-cols-3">
-            <Link href="/contact" className="group flex flex-col gap-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-8 transition-colors hover:border-[var(--color-accent)]">
-              <Icon.WhatsApp className="size-8 text-[var(--color-accent)]" weight="bold" />
-              <h3 className="font-[family-name:var(--font-display)] text-[24px] font-normal text-[var(--color-fg)]">WhatsApp</h3>
-              <p className="text-[15px] text-[var(--color-fg-muted)]">Fastest way to reach us. Usually respond within 4 hours.</p>
-              <span className="font-[family-name:var(--font-ui)] mt-auto inline-flex items-center gap-2 text-[13px] font-medium text-[var(--color-accent)]">
-                Open WhatsApp
-                <Icon.ArrowRight className="size-3.5 transition-transform group-hover:translate-x-0.5" weight="bold" />
-              </span>
-            </Link>
+      <TrustSection
+        id="support-channels"
+        kicker="Get help"
+        title="Pick the route that fits the problem."
+        intro="No channel here promises a turnaround it cannot keep. They are simply the ways to reach the team and the documentation."
+      >
+        <TrustChannelGrid channels={channels} />
+      </TrustSection>
 
-            <Link href="/docs" className="group flex flex-col gap-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-8 transition-colors hover:border-[var(--color-accent)]">
-              <Icon.BookOpen className="size-8 text-[var(--color-accent)]" weight="bold" />
-              <h3 className="font-[family-name:var(--font-display)] text-[24px] font-normal text-[var(--color-fg)]">Documentation</h3>
-              <p className="text-[15px] text-[var(--color-fg-muted)]">Step-by-step guides for every feature.</p>
-              <span className="font-[family-name:var(--font-ui)] mt-auto inline-flex items-center gap-2 text-[13px] font-medium text-[var(--color-accent)]">
-                Browse docs
-                <Icon.ArrowRight className="size-3.5 transition-transform group-hover:translate-x-0.5" weight="bold" />
-              </span>
-            </Link>
+      <TrustSection
+        id="support-answers"
+        alt
+        kicker="Before you write in"
+        title="Answers to the questions asked most."
+        intro="A few things worth checking first — most of them come down to what is local and what needs a connection."
+      >
+        <TrustList items={ANSWERS} />
+      </TrustSection>
 
-            <Link href="/contact?type=support" className="group flex flex-col gap-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-8 transition-colors hover:border-[var(--color-accent)]">
-              <Icon.Email className="size-8 text-[var(--color-accent)]" weight="bold" />
-              <h3 className="font-[family-name:var(--font-display)] text-[24px] font-normal text-[var(--color-fg)]">Submit a ticket</h3>
-              <p className="text-[15px] text-[var(--color-fg-muted)]">For detailed issues. We respond within 24 hours.</p>
-              <span className="font-[family-name:var(--font-ui)] mt-auto inline-flex items-center gap-2 text-[13px] font-medium text-[var(--color-accent)]">
-                Open ticket
-                <Icon.ArrowRight className="size-3.5 transition-transform group-hover:translate-x-0.5" weight="bold" />
-              </span>
-            </Link>
-          </div>
-        </div>
-      </section>
-
-      <section className="section-tight bg-[var(--color-surface)]/40">
-        <div className="container-default">
-          <div className="mb-12">
-            <span className="eyebrow">Common questions</span>
-            <h2 className="headline-section mt-5">Quick <em>answers.</em></h2>
-          </div>
-          <dl className="space-y-8">
-            {FAQS.map((faq) => (
-              <div key={faq.q}>
-                <dt className="font-[family-name:var(--font-display)] text-[20px] font-normal text-[var(--color-fg)]">{faq.q}</dt>
-                <dd className="mt-3 text-[15px] leading-[1.65] text-[var(--color-fg-muted)] max-w-[68ch]">{faq.a}</dd>
-              </div>
-            ))}
-          </dl>
-          <div className="mt-12">
-            <Link href="/docs" className="font-[family-name:var(--font-ui)] inline-flex items-center gap-2 text-[13px] font-medium text-[var(--color-fg)] transition-colors hover:text-[var(--color-accent)]">
-              See all documentation
-              <Icon.ArrowRight className="size-3.5" weight="bold" />
-            </Link>
-          </div>
-        </div>
-      </section>
-    </>
+      <TrustClosing
+        kicker="Weighing it up?"
+        title="A demo answers most questions in one session."
+        locale={locale}
+        whatsappUrl={settings.whatsappUrl}
+        whatsappMessage={whatsappMessage}
+      />
+    </TrustPage>
   )
 }

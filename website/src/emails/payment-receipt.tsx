@@ -40,7 +40,7 @@ export function PaymentReceipt({ name, reference, amount, currency, purpose }: P
           </Heading>
           <Text style={p}>Hi {name},</Text>
           <Text style={p}>
-            We've received {currency} {amount.toLocaleString()} for {purpose.replace(/_/g, ' ')}.
+            We&apos;ve received {currency} {amount.toLocaleString()} for {purpose.replace(/_/g, ' ')}.
             A formatted receipt is attached at the link below — open it in your browser and
             print to PDF if you need a copy for your books.
           </Text>
