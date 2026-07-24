@@ -97,7 +97,7 @@ export default async function BuyEntryPage({
   // Issue a fresh trial licence for first-time buyer.
   const newId = createId()
   const now = new Date()
-  const trialEnd = new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000)
+  const trialEnd = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000)
   await db.insert(licenses).values({
     id: newId,
     userId: customerId!,

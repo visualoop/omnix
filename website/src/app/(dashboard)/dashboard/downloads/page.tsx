@@ -1,12 +1,15 @@
 import { headers } from 'next/headers'
 import { redirect } from 'next/navigation'
-import Link from 'next/link'
 import { db, releases, licenses } from '@/db'
 import { desc, eq } from 'drizzle-orm'
 import { auth } from '@/lib/auth'
 import { PageHeader } from '@/components/layout/page-header'
 import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/dashboard/status-utils'
+import {
+  StartTrialPanel,
+  type DashboardTrialVariant,
+} from '@/components/dashboard/start-trial-panel'
 
 export const metadata = { title: 'Downloads' }
 export const dynamic = 'force-dynamic'
@@ -63,6 +66,10 @@ export default async function DashboardDownloadsPage() {
   const ownedActive = new Set(
     customerLicences.filter((l) => l.status === 'active').map((l) => l.variant as VariantId),
   )
+  const trialSet = new Set(
+    customerLicences.filter((l) => l.status === 'trial').map((l) => l.variant as VariantId),
+  )
+  const previouslyLicensedSet = new Set(customerLicences.map((l) => l.variant as VariantId))
   // Pro-supersede only when Pro is the user's PAID licence.
   const ownsPro = ownedActive.has('pro')
   // Visibility: active Pro shows only Pro; everyone else sees the five
@@ -71,6 +78,9 @@ export default async function DashboardDownloadsPage() {
     ? (['pro'] as const)
     : (['dawa', 'retail', 'hospitality', 'hardware', 'salon'] as const)
   const finalVariants = visibleVariants
+  const availableTrialVariants = finalVariants.filter(
+    (variant): variant is DashboardTrialVariant => variant !== 'pro' && !previouslyLicensedSet.has(variant),
+  )
 
   const ownedList = [...ownedSet]
 
@@ -117,14 +127,22 @@ export default async function DashboardDownloadsPage() {
   const description = ownsPro
     ? 'You own Omnix Pro — it covers every trade. Download the Pro installer below.'
     : ownedList.length === 0
-      ? 'Pick the installer for your trade and buy a perpetual licence to activate it — one-time payment, no subscription.'
-      : ownedList.length === 1
-        ? `You own ${VARIANT_LABELS[ownedList[0]]}. The other trades are listed below.`
-        : `You own ${ownedList.map((v) => VARIANT_LABELS[v]).join(' + ')}. The other trades are listed below.`
+      ? 'Choose your trade, start a free 30-day trial, then download the Windows installer. No card required.'
+      : trialSet.size > 0
+        ? 'Your trial products are ready to download. You can also try another product below.'
+        : 'Your licensed products are ready to download. Available trials are listed below.'
 
   return (
     <div className="flex flex-col gap-8">
       <PageHeader eyebrow="Your software" title="Downloads" description={description} />
+
+      {availableTrialVariants.length > 0 ? (
+        <StartTrialPanel
+          availableVariants={availableTrialVariants}
+          defaultVariant={availableTrialVariants[0]}
+          downloadHref="#latest-downloads"
+        />
+      ) : null}
 
       {!latestRow ? (
         <EmptyState
@@ -133,7 +151,7 @@ export default async function DashboardDownloadsPage() {
         />
       ) : (
         <>
-          <section className="flex flex-col gap-3">
+          <section id="latest-downloads" className="flex scroll-mt-6 flex-col gap-3">
             <header className="flex items-baseline justify-between">
               <h2 className="font-mono text-[10px] uppercase tracking-[0.22em] text-[var(--color-fg-muted)]">
                 Latest · v{latestRow.version}
@@ -163,19 +181,20 @@ export default async function DashboardDownloadsPage() {
                         {VARIANT_LABELS[v]}
                       </div>
                       <div className="mt-0.5 font-mono text-[9px] uppercase tracking-[0.22em] text-[var(--color-fg-subtle)]">
-                        {isOwned ? 'Your licence' : 'Not activated'}
+                        {trialSet.has(v)
+                          ? 'Trial active'
+                          : ownedActive.has(v)
+                            ? 'Perpetual licence'
+                            : isOwned
+                              ? 'Licence on account'
+                              : '30-day trial available'}
                       </div>
                     </div>
                     <div className="flex flex-wrap items-center gap-2">
-                      {!isOwned ? (
-                        <Button asChild size="xs" variant="outline">
-                          <Link href={`/buy?variant=${encodeURIComponent(v)}`}>Buy licence</Link>
-                        </Button>
-                      ) : null}
                       {u.exe ? (
                         <Button asChild size="xs" variant="outline">
                           <a href={u.exe} target="_blank" rel="noopener noreferrer" download>
-                            .exe
+                            Download .exe
                           </a>
                         </Button>
                       ) : (
@@ -184,7 +203,7 @@ export default async function DashboardDownloadsPage() {
                       {u.msi ? (
                         <Button asChild size="xs" variant="outline">
                           <a href={u.msi} target="_blank" rel="noopener noreferrer" download>
-                            .msi
+                            Download .msi
                           </a>
                         </Button>
                       ) : (

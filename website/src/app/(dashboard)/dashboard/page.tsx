@@ -8,7 +8,10 @@ import { PageHeader } from '@/components/layout/page-header'
 import { Button } from '@/components/ui/button'
 import { StatusPill } from '@/components/dashboard/status-utils'
 import { SetupCtaBanner } from '@/components/dashboard/setup-cta-banner'
+import { StartTrialPanel } from '@/components/dashboard/start-trial-panel'
 import { WelcomeTour } from '@/components/dashboard/welcome-tour'
+import { isPublicVariant } from '@/lib/buy-resolver'
+import { formatDate } from '@/lib/format-date'
 
 export const metadata = { title: 'Dashboard' }
 export const dynamic = 'force-dynamic'
@@ -16,11 +19,11 @@ export const dynamic = 'force-dynamic'
 /**
  * Customer dashboard overview.
  *
- * If the customer has no licences, the page points them at a perpetual
- * purchase (or a demo booking) — there is no public trial acquisition path.
+ * If the customer has no licences, the page offers the real authenticated
+ * 30-day trial for one of the five public products. Public marketing remains
+ * demo-led; this account surface returns the key the Windows app expects.
  * Once a licence exists the page renders the normal licences + devices
- * summary, linking through to the full paginated lists. Existing trial
- * licences keep their status + purchase upsell.
+ * summary. Trial owners reach the existing purchase flow from Licences.
  */
 export default async function DashboardOverviewPage({
   searchParams,
@@ -42,6 +45,8 @@ export default async function DashboardOverviewPage({
   }
 
   const userId = session.user.id
+  const requestedVariant = (await searchParams)?.variant
+  const defaultTrialVariant = isPublicVariant(requestedVariant) ? requestedVariant : 'dawa'
 
   const [licList, machList] = await Promise.all([
     db
@@ -135,7 +140,7 @@ export default async function DashboardOverviewPage({
         title={`Welcome${hasNoLicences ? '' : ' back'}, ${firstName}`}
         description={
           hasNoLicences
-            ? 'Buy a perpetual licence for the trade you run, or book a demo to see it first.'
+            ? 'Try the full Windows app free for 30 days. No card required.'
             : 'Your licences, devices and support — all in one place.'
         }
       />
@@ -151,9 +156,8 @@ export default async function DashboardOverviewPage({
         </Link>
       ) : null}
 
-      {/* Trade trial → buy banner. A Pro trial alone deliberately gets no
-          banner: Pro is not sold publicly, so the trial runs to expiry and
-          any trade licences the user owns keep them working. */}
+      {/* Keep the overview focused on using the trial. The existing licence
+          detail page owns the eventual perpetual-purchase decision. */}
       {!hasNoLicences && hasTrialBanner ? (
         <div className="flex flex-col gap-3 rounded-[var(--radius-md)] border border-[var(--color-accent-line)] bg-[var(--color-accent-soft)] p-4 sm:flex-row sm:items-center sm:justify-between lg:p-5">
           <div className="flex flex-col gap-0.5">
@@ -161,45 +165,20 @@ export default async function DashboardOverviewPage({
               Trial active
             </span>
             <span className="font-display text-[16px] font-semibold text-[var(--color-fg)]">
-              Lock in your licence — pay once, use forever.
+              Keep testing Omnix in your day-to-day work.
             </span>
             <span className="text-[13px] text-[var(--color-fg-muted)]">
-              KES 30,000 one-time per trade. Perpetual licence, no subscription.
+              Full access until {formatDate(trialToBanner!.trialEndsAt)}. Your data stays on this device.
             </span>
           </div>
-          <Button asChild className="shrink-0 max-sm:w-full">
-            <Link href={`/buy?variant=${encodeURIComponent(trialToBanner!.variant ?? 'dawa')}`}>
-              Purchase licence
-            </Link>
+          <Button asChild variant="outline" className="shrink-0 max-sm:w-full">
+            <Link href={`/dashboard/licenses/${trialToBanner!.id}`}>View trial details</Link>
           </Button>
         </div>
       ) : null}
 
       {hasNoLicences ? (
-        <div className="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] p-6 lg:p-8">
-          <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-[var(--color-fg-muted)]">
-            Get started
-          </span>
-          <h2
-            style={{ fontFamily: 'var(--font-display)' }}
-            className="mt-1.5 text-[22px] font-medium tracking-[-0.01em] text-[var(--color-fg)]"
-          >
-            Buy your Omnix licence
-          </h2>
-          <p className="mt-2 max-w-[62ch] text-[13px] leading-[1.6] text-[var(--color-fg-muted)]">
-            One perpetual licence per trade — Pharmacy, Retail, Hospitality, Hardware, or Salon &amp; Spa.
-            Pay once, own it forever, with a year of compliance updates included. Not sure which fits your
-            business? Book a demo and we&rsquo;ll walk you through it.
-          </p>
-          <div className="mt-6 flex flex-col gap-3 sm:flex-row">
-            <Button asChild>
-              <Link href="/buy">Buy a licence</Link>
-            </Button>
-            <Button asChild variant="outline">
-              <Link href="/contact?type=demo">Book a demo</Link>
-            </Button>
-          </div>
-        </div>
+        <StartTrialPanel defaultVariant={defaultTrialVariant} />
       ) : (
         <>
           <SetupCtaBanner />
@@ -247,8 +226,8 @@ export default async function DashboardOverviewPage({
                         Covered by Pro
                       </span>
                     ) : isTrialOffer ? (
-                      <Button asChild size="xs">
-                        <Link href={`/buy?variant=${encodeURIComponent(l.variant ?? 'dawa')}`}>Upgrade</Link>
+                      <Button asChild size="xs" variant="outline">
+                        <Link href={`/dashboard/licenses/${l.id}`}>View trial</Link>
                       </Button>
                     ) : (
                       <Button asChild size="xs" variant="outline">
@@ -259,14 +238,13 @@ export default async function DashboardOverviewPage({
                 )
               })}
             </ul>
-            {/* Offer to buy another trade — unless the user has an ACTIVE
-                (paid) Pro licence, which already covers every trade. There is
-                no public trial acquisition path, so this is a purchase link. */}
+            {/* Let existing customers explore another product before asking
+                them to buy it. Paid Pro already covers every trade. */}
             {!ownsProActive ? (
               <div className="mt-1 rounded-md border border-dashed border-[var(--color-border)] bg-[var(--color-surface)] px-4 py-3 text-[12px] text-[var(--color-fg-muted)]">
-                Run more than one trade?{' '}
-                <Link href="/buy" className="text-[var(--color-fg)] underline-offset-4 hover:underline">
-                  Buy another Omnix licence →
+                Need another Omnix product?{' '}
+                <Link href="/dashboard/downloads" className="text-[var(--color-fg)] underline-offset-4 hover:underline">
+                  See available 30-day trials →
                 </Link>
               </div>
             ) : null}
@@ -325,10 +303,8 @@ export default async function DashboardOverviewPage({
                       </span>
                       <StatusPill kind="machine" status={m.status} />
                       {trialBound ? (
-                        <Button asChild size="xs">
-                          <Link href={`/buy?variant=${encodeURIComponent(trialBound.variant ?? 'dawa')}`}>
-                            Upgrade
-                          </Link>
+                        <Button asChild size="xs" variant="outline">
+                          <Link href={`/dashboard/licenses/${trialBound.id}`}>View trial</Link>
                         </Button>
                       ) : null}
                       <Button asChild size="xs" variant="outline">

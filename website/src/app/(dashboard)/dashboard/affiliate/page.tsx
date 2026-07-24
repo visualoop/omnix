@@ -14,7 +14,6 @@ import { auth } from '@/lib/auth'
 import { db, affiliates, affiliateCredits } from '@/db'
 import { PageHeader } from '@/components/layout/page-header'
 import { AffiliateClient } from './affiliate-client'
-import { formatDate } from '@/lib/format-date'
 
 export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Affiliate · Omnix' }
@@ -55,7 +54,6 @@ export default async function AffiliateDashboardPage() {
           status: c.status,
           createdAt: c.createdAt.toISOString(),
         }))}
-        fmtDate={(iso) => formatDate(new Date(iso))}
       />
     </div>
   )

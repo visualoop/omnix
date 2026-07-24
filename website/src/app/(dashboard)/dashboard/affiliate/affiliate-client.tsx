@@ -18,6 +18,7 @@ import {
 } from '@/components/ui/table'
 import { EmptyState, StatusPill } from '@/components/dashboard/status-utils'
 import { cn } from '@/lib/cn'
+import { formatDate } from '@/lib/format-date'
 
 interface Affiliate {
   id: string
@@ -48,10 +49,9 @@ interface Props {
   initialAffiliate: Affiliate | null
   referralUrl: string
   credits: Credit[]
-  fmtDate: (iso: string) => string
 }
 
-export function AffiliateClient({ initialAffiliate, referralUrl, credits, fmtDate }: Props) {
+export function AffiliateClient({ initialAffiliate, referralUrl, credits }: Props) {
   const router = useRouter()
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -233,7 +233,7 @@ export function AffiliateClient({ initialAffiliate, referralUrl, credits, fmtDat
               {credits.map((c) => (
                 <TableRow key={c.id}>
                   <TableCell className="font-mono text-[11px] tabular-nums text-[var(--color-fg-muted)]">
-                    {fmtDate(c.createdAt)}
+                    {formatDate(c.createdAt)}
                   </TableCell>
                   <TableCell className="text-right font-mono tabular-nums">
                     {c.currency} {Math.round(c.gross).toLocaleString()}

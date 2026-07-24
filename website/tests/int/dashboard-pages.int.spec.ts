@@ -144,6 +144,15 @@ describe('Task 24 session gates and ownership scoping', () => {
     expect(read(PAGES.team)).toContain("redirect('/login')")
     expect(read(PAGES.affiliate)).toContain("redirect('/login?next=/dashboard/affiliate')")
   })
+
+  it('passes only serializable affiliate data into the client component', () => {
+    const page = read(PAGES.affiliate)
+    const client = read(PAGES.affiliateClient)
+    expect(page).not.toContain('fmtDate=')
+    expect(page).not.toContain('formatDate')
+    expect(client).toContain("import { formatDate } from '@/lib/format-date'")
+    expect(client).toContain('formatDate(c.createdAt)')
+  })
 })
 
 // ── Searchable + paginated growing collections ─────────────────────
@@ -264,6 +273,22 @@ describe('Task 24 five-product copy and no stale Pro/trial CTAs', () => {
     expect(downloads).toContain("['dawa', 'retail', 'hospitality', 'hardware', 'salon']")
     expect(downloads).toContain('ownsPro')
     expect(downloads).toContain("(['pro'] as const)")
+  })
+
+  it('offers the authenticated 30-day trial on overview and downloads without a repeated buy CTA', () => {
+    const overview = read(PAGES.overview)
+    const downloads = read(PAGES.downloads)
+    const panel = read('src/components/dashboard/start-trial-panel.tsx')
+    const trialApi = read('src/app/api/dashboard/trial/route.ts')
+
+    expect(overview).toContain('<StartTrialPanel')
+    expect(downloads).toContain('<StartTrialPanel')
+    expect(downloads).not.toContain('Buy licence')
+    expect(panel).toContain('Start 30-day trial')
+    expect(panel).toContain("fetch('/api/dashboard/trial'")
+    expect(panel).not.toContain("id: 'pro'")
+    expect(trialApi).toContain("const VARIANTS = ['dawa', 'retail', 'hospitality', 'hardware', 'salon'] as const")
+    expect(trialApi).not.toContain("'pro', 'dawa'")
   })
 
   it('suppresses the Pro upgrade CTA on the overview and licence detail pages', () => {

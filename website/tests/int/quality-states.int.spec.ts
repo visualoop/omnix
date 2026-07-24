@@ -535,62 +535,51 @@ describe('Task 27 · sensitive settings never reveal a prior secret', () => {
 })
 
 // ─────────────────────────────────────────────────────────────────────────
-// No account UI starts a new trial. The legacy trial API/cron/desktop
-// contracts are preserved, but every website account acquisition surface
-// points at a perpetual purchase / demo / licence handoff instead.
+// Authenticated customers can start the real 30-day trial from Overview or
+// Downloads. Public marketing remains demo-led, and the perpetual purchase
+// handoff stays in Licences after the customer has had time to evaluate.
 // ─────────────────────────────────────────────────────────────────────────
-describe('Task 27 · no authenticated account UI starts a trial', () => {
-  it('removed the StartTrialWizard component and every usage', () => {
-    expect(has('src/components/dashboard/start-trial-wizard.tsx')).toBe(false)
-    const walk = (dir: string): string[] =>
-      readdirSync(dir, { withFileTypes: true }).flatMap((e) => {
-        const p = join(dir, e.name)
-        return e.isDirectory() ? walk(p) : [p]
-      })
-    const files = walk(join(ROOT, 'src')).filter((f) => /\.(ts|tsx)$/.test(f))
-    for (const f of files) {
-      const s = readFileSync(f, 'utf8')
-      expect(s, `${f} still references StartTrialWizard`).not.toContain('StartTrialWizard')
-    }
+describe('Task 27 · authenticated trial-led dashboard acquisition', () => {
+  it('ships one focused StartTrialPanel and uses it on overview and downloads', () => {
+    expect(has('src/components/dashboard/start-trial-panel.tsx')).toBe(true)
+    const overview = source('src/app/(dashboard)/dashboard/page.tsx')
+    const downloads = source('src/app/(dashboard)/dashboard/downloads/page.tsx')
+    expect(overview).toContain('<StartTrialPanel')
+    expect(downloads).toContain('<StartTrialPanel')
   })
 
-  it('preserves the internal legacy trial API + release-trial contract', () => {
-    // The trial provisioning API + desktop-facing contract stay in place.
+  it('preserves the trial API + release-trial contract', () => {
     expect(has('src/app/api/dashboard/trial/route.ts'), 'trial API must be preserved').toBe(true)
     expect(has('src/components/dashboard/release-trial-button.tsx')).toBe(true)
   })
 
-  it('the dashboard overview offers a perpetual purchase / demo, not a trial start', () => {
+  it('the overview leads with a no-card 30-day trial and keeps demo as an alternative', () => {
     const overview = source('src/app/(dashboard)/dashboard/page.tsx')
-    expect(overview).toContain('Buy a licence')
-    expect(overview).toContain('/contact?type=demo')
-    expect(overview).not.toMatch(/Start free trial|Start a trial|Start free/i)
-    expect(overview).not.toContain('/api/dashboard/trial')
+    const panel = source('src/components/dashboard/start-trial-panel.tsx')
+    expect(overview).toContain('Try the full Windows app free for 30 days')
+    expect(panel).toContain('Start 30-day trial')
+    expect(panel).toContain('/contact?type=demo')
+    expect(panel).toContain("fetch('/api/dashboard/trial'")
   })
 
-  it('licences/billing offer a perpetual buy, never "Start a trial"', () => {
+  it('licence and billing pages retain the post-trial perpetual purchase handoff', () => {
     for (const file of [
       'src/app/(dashboard)/dashboard/licenses/page.tsx',
       'src/app/(dashboard)/dashboard/billing/page.tsx',
     ]) {
-      const s = source(file)
-      expect(s, `${file} still links Start a trial`).not.toContain('Start a trial')
-      expect(s).toContain('/buy')
+      expect(source(file)).toContain('/buy')
     }
   })
 
-  it('dashboard downloads offer a perpetual buy, never a /signup?trial link', () => {
+  it('downloads offers trials without a repeated buy button', () => {
     const downloads = source('src/app/(dashboard)/dashboard/downloads/page.tsx')
-    expect(downloads).not.toMatch(/signup\?variant=.*trial|trial=1|Start trial/i)
-    expect(downloads).toContain('/buy?variant=')
+    expect(downloads).toContain('availableTrialVariants')
+    expect(downloads).toContain('30-day trial available')
+    expect(downloads).not.toContain('Buy licence')
+    expect(downloads).not.toContain('/buy?variant=')
   })
 
-  it('the release-trial confirmation no longer claims another trial can be started', () => {
-    const btn = source('src/components/dashboard/release-trial-button.tsx')
-    expect(btn).not.toMatch(/start a new trial|start a trial|another trial/i)
-  })
-
-  it('onboarding + welcome emails no longer promise or start a free trial', () => {
+  it('keeps public onboarding and welcome messages free of trial acquisition claims', () => {
     const onboarding = source('src/components/dashboard/onboarding-wizard.tsx')
     expect(onboarding).not.toMatch(/30-day trial|free trial|starts a free trial/i)
     const templates = source('src/emails/templates.tsx')

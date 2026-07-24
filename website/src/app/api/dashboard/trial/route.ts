@@ -1,12 +1,12 @@
 import { headers } from 'next/headers'
-import { eq, and, ne } from 'drizzle-orm'
+import { eq, and } from 'drizzle-orm'
 import { auth } from '@/lib/auth'
 import { db, licenses, auditLog } from '@/db'
 import { createId } from '@/lib/ids'
 
 export const dynamic = 'force-dynamic'
 
-const VARIANTS = ['pro', 'dawa', 'retail', 'hospitality', 'hardware', 'salon'] as const
+const VARIANTS = ['dawa', 'retail', 'hospitality', 'hardware', 'salon'] as const
 type Variant = (typeof VARIANTS)[number]
 
 const TRIAL_DAYS = 30
@@ -14,22 +14,19 @@ const TRIAL_DAYS = 30
 /**
  * POST /api/dashboard/trial
  *
- * Body: { variant: 'pro' | 'dawa' | 'retail' | 'hospitality' | 'hardware' | 'salon' }
+ * Body: { variant: 'dawa' | 'retail' | 'hospitality' | 'hardware' | 'salon' }
  *
- * Provisions a 30-day trial licence for the signed-in customer. If they
- * already have a non-lapsed licence for the same variant, returns that
- * existing licence rather than creating a duplicate. Otherwise mints a
- * new key formatted as TRIAL-XXXX-XXXX-XXXX-XXXX.
- *
- * Idempotent — can be called from the homepage CTA, the /pricing page,
- * or the dashboard "Start trial" wizard without risk of duplicates.
+ * Provisions a 30-day trial licence for the signed-in customer. The five
+ * public products are eligible; legacy Pro is deliberately excluded. A
+ * current trial is returned idempotently, while a paid or previously-used
+ * product cannot start another trial.
  */
 export async function POST(req: Request) {
   const session = await auth.api.getSession({ headers: await headers() }).catch(() => null)
   if (!session) return Response.json({ error: 'unauthenticated' }, { status: 401 })
 
   const body = (await req.json().catch(() => null)) as { variant?: Variant } | null
-  const variant = (body?.variant ?? 'pro') as Variant
+  const variant = (body?.variant ?? 'dawa') as Variant
   if (!VARIANTS.includes(variant)) {
     return Response.json({ error: `variant must be one of ${VARIANTS.join('/')}` }, { status: 400 })
   }
@@ -37,16 +34,10 @@ export async function POST(req: Request) {
   const existing = (await db
     .select()
     .from(licenses)
-    .where(
-      and(
-        eq(licenses.userId, session.user.id),
-        eq(licenses.variant, variant),
-        ne(licenses.status, 'lapsed'),
-      ),
-    )
+    .where(and(eq(licenses.userId, session.user.id), eq(licenses.variant, variant)))
     .limit(1))[0]
 
-  if (existing) {
+  if (existing?.status === 'trial') {
     return Response.json({
       ok: true,
       existed: true,
@@ -58,6 +49,13 @@ export async function POST(req: Request) {
         trialEndsAt: existing.trialEndsAt,
       },
     })
+  }
+
+  if (existing) {
+    return Response.json(
+      { ok: false, error: 'A licence or prior trial already exists for this product.' },
+      { status: 409 },
+    )
   }
 
   const now = new Date()
@@ -72,7 +70,7 @@ export async function POST(req: Request) {
     variant,
     tier: 'trial',
     status: 'trial',
-    modules: variant === 'pro' ? ['dawa', 'retail', 'hospitality', 'hardware', 'salon'] : [variant],
+    modules: [variant],
     maxBranches: 1,
     maxMachines: 3,
     trialStartedAt: now,
@@ -101,7 +99,6 @@ export async function POST(req: Request) {
  *   OMNIX-<VARIANT>-XXXX-XXXX-XXXX
  *
  * Variant prefixes (from src/lib/variant.ts variantLicensePrefix):
- *   pro         → OMNIX-PRO
  *   dawa        → OMNIX-DAWA
  *   retail      → OMNIX-RETAIL
  *   hospitality → OMNIX-HOSP
@@ -113,7 +110,6 @@ export async function POST(req: Request) {
  */
 function makeLicenseKey(variant: Variant): string {
   const variantSuffix: Record<Variant, string> = {
-    pro: 'PRO',
     dawa: 'DAWA',
     retail: 'RETAIL',
     hospitality: 'HOSP',
