@@ -35,8 +35,12 @@ import { cn } from "@/lib/utils";
 export interface ComboboxOption {
   value: string;
   label: string;
-  /** Optional secondary text shown right-aligned in the row. */
+  /** Optional short category shown beside the primary label. */
   hint?: string;
+  /** Optional explanatory text shown beneath the primary label. */
+  description?: string;
+  /** Additional searchable terms that do not need to be rendered. */
+  keywords?: readonly string[];
 }
 
 interface Props {
@@ -71,7 +75,18 @@ export function Combobox({
 
   const lower = query.trim().toLowerCase();
   const filtered = lower
-    ? options.filter((o) => o.label.toLowerCase().includes(lower))
+    ? options.filter((option) => {
+        const searchable = [
+          option.label,
+          option.hint,
+          option.description,
+          ...(option.keywords ?? []),
+        ]
+          .filter(Boolean)
+          .join(" ")
+          .toLowerCase();
+        return searchable.includes(lower);
+      })
     : options;
   const showCreateRow = onCreate && lower !== "" && !filtered.some((o) => o.label.toLowerCase() === lower);
 
@@ -167,8 +182,11 @@ export function Combobox({
             />
             {query && (
               <button
+                type="button"
                 onClick={() => setQuery("")}
                 className="absolute right-2 top-2 size-5 grid place-items-center rounded text-muted-foreground hover:bg-muted hover:text-foreground"
+                aria-label="Clear search"
+                title="Clear search"
               >
                 <X className="size-3" />
               </button>
@@ -189,17 +207,28 @@ export function Combobox({
                     type="button"
                     onClick={() => handlePick(opt)}
                     className={cn(
-                      "flex w-full items-center gap-2 px-3 py-1.5 text-left text-[13px] transition",
+                      "flex w-full items-start gap-2 px-3 py-2 text-left text-[13px] transition-colors",
                       active
                         ? "bg-accent text-accent-foreground"
                         : "hover:bg-accent/40",
                     )}
                   >
-                    <Check className={cn("size-3.5 shrink-0", active ? "opacity-100" : "opacity-0")} />
-                    <span className="flex-1 truncate">{opt.label}</span>
-                    {opt.hint && (
-                      <span className="shrink-0 text-[11px] text-muted-foreground">{opt.hint}</span>
-                    )}
+                    <Check className={cn("mt-0.5 size-3.5 shrink-0", active ? "opacity-100" : "opacity-0")} />
+                    <span className="min-w-0 flex-1">
+                      <span className="flex items-baseline justify-between gap-3">
+                        <span className="truncate font-medium">{opt.label}</span>
+                        {opt.hint && (
+                          <span className="shrink-0 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                            {opt.hint}
+                          </span>
+                        )}
+                      </span>
+                      {opt.description && (
+                        <span className="mt-0.5 block text-[11px] leading-4 text-muted-foreground">
+                          {opt.description}
+                        </span>
+                      )}
+                    </span>
                   </button>
                 );
               })

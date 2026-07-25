@@ -121,7 +121,7 @@ Business:
   /settings                       Brand, contacts, KRA PIN, currency
   /settings/branches              Multi-location + branch user access
   /settings/users                 User accounts (Argon2 hashed)
-  /settings/roles                 Custom roles
+  /settings/users                 Staff and built-in job roles
   /settings/groups                Group membership
   /settings/access-audit          "Why can / can't user X do Y?"
 

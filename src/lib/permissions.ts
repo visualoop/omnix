@@ -42,6 +42,7 @@ export type Permission =
   | "suppliers.edit"
   | "suppliers.payment"
   // Pharmacy
+  | "pharmacy.access"
   | "pharmacy.dispense"
   | "pharmacy.refill"
   | "pharmacy.controlled"
@@ -89,6 +90,7 @@ export type Permission =
   | "banking.view"
   | "banking.manage"
   | "banking.reconcile"
+  | "retail.access"
   | "retail.brands.manage"
   | "retail.variants.manage"
   | "retail.price_lists.manage"
@@ -96,6 +98,7 @@ export type Permission =
   | "retail.laybys.use"
   | "retail.special_orders.use"
   // Hardware
+  | "hardware.access"
   | "hardware.quotations.manage"
   | "hardware.delivery_notes.manage"
   | "hardware.accounts.manage"
@@ -104,6 +107,7 @@ export type Permission =
   | "hardware.reports.view"
   | "hardware.equipment.manage"
   // Hospitality
+  | "hospitality.access"
   | "hospitality.tables.manage"
   | "hospitality.orders.take"
   | "hospitality.orders.send_kitchen"
@@ -117,6 +121,7 @@ export type Permission =
   | "hospitality.housekeeping.manage"
   | "hospitality.service_charge.manage"
   | "hospitality.reports.view"
+  | "salon.access"
   | "salon.appointments.manage"
   | "salon.services.manage"
   | "salon.staff.manage"
@@ -128,7 +133,7 @@ const ALL_PERMISSIONS: Permission[] = [
   "purchase_orders.view", "purchase_orders.create", "purchase_orders.receive", "stock_take.use",
   "customers.view", "customers.edit", "customers.payment",
   "suppliers.view", "suppliers.edit", "suppliers.payment",
-  "pharmacy.dispense", "pharmacy.refill", "pharmacy.controlled", "pharmacy.doctors.manage",
+  "pharmacy.access", "pharmacy.dispense", "pharmacy.refill", "pharmacy.controlled", "pharmacy.doctors.manage",
   "reports.view", "reports.zreport", "reports.pnl",
   "expenses.view", "expenses.create",
   "cash_register.use", "petty_cash.use",
@@ -143,16 +148,16 @@ const ALL_PERMISSIONS: Permission[] = [
   "hr.leave.request", "hr.leave.approve",
   "invoicing.view", "invoicing.create", "invoicing.send", "invoicing.payment", "invoicing.cancel",
   "banking.view", "banking.manage", "banking.reconcile",
-  "retail.brands.manage", "retail.variants.manage", "retail.price_lists.manage",
+  "retail.access", "retail.brands.manage", "retail.variants.manage", "retail.price_lists.manage",
   "retail.shrinkage.record", "retail.laybys.use", "retail.special_orders.use",
-  "hardware.quotations.manage", "hardware.delivery_notes.manage", "hardware.accounts.manage",
+  "hardware.access", "hardware.quotations.manage", "hardware.delivery_notes.manage", "hardware.accounts.manage",
   "hardware.pricing.manage", "hardware.commissions.view", "hardware.reports.view", "hardware.equipment.manage",
-  "hospitality.tables.manage", "hospitality.orders.take", "hospitality.orders.send_kitchen",
+  "hospitality.access", "hospitality.tables.manage", "hospitality.orders.take", "hospitality.orders.send_kitchen",
   "hospitality.orders.void", "hospitality.kitchen.bump", "hospitality.menu.manage",
   "hospitality.recipes.manage", "hospitality.bookings.manage", "hospitality.checkin.manage",
   "hospitality.folios.manage", "hospitality.housekeeping.manage", "hospitality.service_charge.manage",
   "hospitality.reports.view",
-  "salon.appointments.manage", "salon.services.manage", "salon.staff.manage", "salon.reports.view",
+  "salon.access", "salon.appointments.manage", "salon.services.manage", "salon.staff.manage", "salon.reports.view",
 ];
 
 /** Permission matrix. Each role gets exactly the permissions it should have. */
@@ -167,7 +172,7 @@ const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     "purchase_orders.view", "purchase_orders.create", "purchase_orders.receive", "stock_take.use",
     "customers.view", "customers.edit", "customers.payment",
     "suppliers.view", "suppliers.edit", "suppliers.payment",
-    "pharmacy.dispense", "pharmacy.refill", "pharmacy.doctors.manage",
+    "pharmacy.access", "pharmacy.dispense", "pharmacy.refill", "pharmacy.doctors.manage",
     "reports.view", "reports.zreport", "reports.pnl",
     "expenses.view", "expenses.create",
     "cash_register.use", "petty_cash.use",
@@ -179,16 +184,16 @@ const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     "hr.leave.approve", "hr.payroll.view",
     "invoicing.view", "invoicing.create", "invoicing.send", "invoicing.payment",
     "banking.view", "banking.manage", "banking.reconcile",
-    "retail.brands.manage", "retail.variants.manage", "retail.price_lists.manage",
+    "retail.access", "retail.brands.manage", "retail.variants.manage", "retail.price_lists.manage",
     "retail.shrinkage.record", "retail.laybys.use", "retail.special_orders.use",
-    "hardware.quotations.manage", "hardware.delivery_notes.manage", "hardware.accounts.manage",
+    "hardware.access", "hardware.quotations.manage", "hardware.delivery_notes.manage", "hardware.accounts.manage",
     "hardware.pricing.manage", "hardware.commissions.view", "hardware.reports.view", "hardware.equipment.manage",
-    "hospitality.tables.manage", "hospitality.orders.take", "hospitality.orders.send_kitchen",
+    "hospitality.access", "hospitality.tables.manage", "hospitality.orders.take", "hospitality.orders.send_kitchen",
     "hospitality.orders.void", "hospitality.kitchen.bump", "hospitality.menu.manage",
     "hospitality.recipes.manage", "hospitality.bookings.manage", "hospitality.checkin.manage",
     "hospitality.folios.manage", "hospitality.housekeeping.manage", "hospitality.service_charge.manage",
     "hospitality.reports.view",
-    "salon.appointments.manage", "salon.services.manage", "salon.staff.manage", "salon.reports.view",
+    "salon.access", "salon.appointments.manage", "salon.services.manage", "salon.staff.manage", "salon.reports.view",
   ],
 
   // Cashier: POS-focused. Can sell, take customer payments, view today's sales.
@@ -196,12 +201,15 @@ const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     "pos.use", "sales.view",
     "inventory.view",
     "customers.view", "customers.edit", "customers.payment",
-    "pharmacy.dispense", "pharmacy.refill",
+    "pharmacy.access", "pharmacy.dispense", "pharmacy.refill",
+    "retail.access", "retail.laybys.use", "retail.special_orders.use",
+    "hardware.access", "hardware.quotations.manage", "hardware.delivery_notes.manage",
+    "hospitality.access", "hospitality.orders.take", "hospitality.orders.send_kitchen",
+    "salon.access", "salon.appointments.manage",
     "cash_register.use",
     "reports.zreport",         // can run their end-of-day Z-report
     "hr.attendance.record",    // can clock self in/out
     "hr.leave.request",        // can request leave
-    "hospitality.orders.take", "hospitality.orders.send_kitchen",
   ],
 
   // Viewer: read-only. Reports, dashboards, no edits.
@@ -273,6 +281,7 @@ export const PERMISSION_CATALOG: PermissionMeta[] = [
   { key: "suppliers.view", label: "View suppliers", group: "Suppliers", risk: "low" },
   { key: "suppliers.edit", label: "Edit suppliers", group: "Suppliers", risk: "normal" },
   { key: "suppliers.payment", label: "Record supplier payments", group: "Suppliers", risk: "normal" },
+  { key: "pharmacy.access", label: "Open Pharmacy module", group: "Pharmacy", risk: "low" },
   { key: "pharmacy.dispense", label: "Dispense prescriptions", group: "Pharmacy", risk: "high" },
   { key: "pharmacy.refill", label: "Process refills", group: "Pharmacy", risk: "normal" },
   { key: "pharmacy.controlled", label: "Dispense controlled drugs", group: "Pharmacy", risk: "critical" },
@@ -316,12 +325,14 @@ export const PERMISSION_CATALOG: PermissionMeta[] = [
   { key: "banking.view", label: "View banking", group: "Banking", risk: "low" },
   { key: "banking.manage", label: "Manage bank accounts", group: "Banking", risk: "high" },
   { key: "banking.reconcile", label: "Reconcile bank", group: "Banking", risk: "high" },
+  { key: "retail.access", label: "Open Retail module", group: "Retail", risk: "low" },
   { key: "retail.brands.manage", label: "Manage brands", group: "Retail", risk: "normal" },
   { key: "retail.variants.manage", label: "Manage variants", group: "Retail", risk: "normal" },
   { key: "retail.price_lists.manage", label: "Manage price lists", group: "Retail", risk: "high" },
   { key: "retail.shrinkage.record", label: "Record shrinkage", group: "Retail", risk: "high" },
   { key: "retail.laybys.use", label: "Use laybys", group: "Retail", risk: "normal" },
   { key: "retail.special_orders.use", label: "Use special orders", group: "Retail", risk: "normal" },
+  { key: "hardware.access", label: "Open Hardware module", group: "Hardware", risk: "low" },
   { key: "hardware.quotations.manage", label: "Manage quotations", group: "Hardware", risk: "normal" },
   { key: "hardware.delivery_notes.manage", label: "Manage delivery notes", group: "Hardware", risk: "normal" },
   { key: "hardware.accounts.manage", label: "Manage contractor accounts & credit", group: "Hardware", risk: "high" },
@@ -329,6 +340,7 @@ export const PERMISSION_CATALOG: PermissionMeta[] = [
   { key: "hardware.commissions.view", label: "View salesperson commissions", group: "Hardware", risk: "normal" },
   { key: "hardware.reports.view", label: "View hardware reports", group: "Hardware", risk: "low" },
   { key: "hardware.equipment.manage", label: "Manage equipment units, serials & warranty", group: "Hardware", risk: "normal" },
+  { key: "hospitality.access", label: "Open Hospitality module", group: "Hospitality", risk: "low" },
   { key: "hospitality.tables.manage", label: "Manage tables & floor plan", group: "Hospitality", risk: "normal" },
   { key: "hospitality.orders.take", label: "Take orders", group: "Hospitality", risk: "normal" },
   { key: "hospitality.orders.send_kitchen", label: "Send orders to kitchen", group: "Hospitality", risk: "normal" },
@@ -342,11 +354,74 @@ export const PERMISSION_CATALOG: PermissionMeta[] = [
   { key: "hospitality.housekeeping.manage", label: "Update housekeeping status", group: "Hospitality", risk: "low" },
   { key: "hospitality.service_charge.manage", label: "Manage service charge", group: "Hospitality", risk: "high" },
   { key: "hospitality.reports.view", label: "View hospitality reports", group: "Hospitality", risk: "low" },
+  { key: "salon.access", label: "Open Salon & Spa module", group: "Salon", risk: "low" },
   { key: "salon.appointments.manage", label: "Book & manage appointments", group: "Salon", risk: "normal" },
   { key: "salon.services.manage", label: "Manage services catalog", group: "Salon", risk: "normal" },
   { key: "salon.staff.manage", label: "Manage staff, skills & commissions", group: "Salon", risk: "normal" },
   { key: "salon.reports.view", label: "View salon reports", group: "Salon", risk: "low" },
 ];
+
+/**
+ * Any one of these permissions makes the corresponding vertical hub visible.
+ * Keep sidebar and route guards on this shared map so specialized jobs such as
+ * kitchen, housekeeping, claims, quotations, or salon checkout are never
+ * locked out merely because they lack a manager dashboard permission.
+ */
+export const MODULE_ACCESS_PERMISSIONS = {
+  dawa: [
+    "pharmacy.access",
+    "pharmacy.dispense",
+    "pharmacy.refill",
+    "pharmacy.controlled",
+    "pharmacy.doctors.manage",
+    "claims.view",
+    "claims.submit",
+  ],
+  retail: [
+    "retail.access",
+    "retail.brands.manage",
+    "retail.variants.manage",
+    "retail.price_lists.manage",
+    "retail.shrinkage.record",
+    "retail.laybys.use",
+    "retail.special_orders.use",
+    "promotions.manage",
+    "loyalty.manage",
+  ],
+  hardware: [
+    "hardware.access",
+    "hardware.quotations.manage",
+    "hardware.delivery_notes.manage",
+    "hardware.accounts.manage",
+    "hardware.pricing.manage",
+    "hardware.commissions.view",
+    "hardware.reports.view",
+    "hardware.equipment.manage",
+  ],
+  hospitality: [
+    "hospitality.access",
+    "hospitality.tables.manage",
+    "hospitality.orders.take",
+    "hospitality.orders.send_kitchen",
+    "hospitality.orders.void",
+    "hospitality.kitchen.bump",
+    "hospitality.menu.manage",
+    "hospitality.recipes.manage",
+    "hospitality.bookings.manage",
+    "hospitality.checkin.manage",
+    "hospitality.folios.manage",
+    "hospitality.housekeeping.manage",
+    "hospitality.service_charge.manage",
+    "hospitality.reports.view",
+  ],
+  salon: [
+    "salon.access",
+    "salon.appointments.manage",
+    "salon.services.manage",
+    "salon.staff.manage",
+    "salon.reports.view",
+  ],
+} as const satisfies Record<string, readonly Permission[]>;
 
 export const ROLES: Role[] = ["owner", "manager", "cashier", "viewer"];
 

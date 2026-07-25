@@ -74,8 +74,21 @@ export function AppShell() {
         <div className="flex flex-col flex-1 overflow-hidden">
           {!isFullscreen && <TrialLifecycleBanner />}
           {!isFullscreen && <Topbar />}
-          <main className={isFullscreen ? "flex-1 overflow-y-auto overflow-x-hidden" : "flex-1 overflow-y-auto overflow-x-hidden bg-background"}>
-            <div key={routeKey} className={cn(isFullscreen ? "" : "p-6", transitionClass)}>
+          <main
+            className={cn(
+              "flex-1 min-h-0 bg-background",
+              isSettingsRoute
+                ? "overflow-hidden"
+                : "overflow-y-auto overflow-x-hidden",
+            )}
+          >
+            <div
+              key={routeKey}
+              className={cn(
+                isFullscreen ? "" : isSettingsRoute ? "h-full min-h-0" : "p-6",
+                !isSettingsRoute && transitionClass,
+              )}
+            >
               <RouteErrorBoundary resetKey={location.pathname}>
                 <Outlet />
               </RouteErrorBoundary>

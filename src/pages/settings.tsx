@@ -87,54 +87,98 @@ export function SettingsPage() {
   };
 
   return (
-    <div className="space-y-5 max-w-3xl">
-      <div className="border border-border rounded-lg p-5 space-y-4">
-        <div className="flex items-center gap-2 mb-2">
-          <Building2 className="h-4 w-4 text-primary" />
-          <h2 className="text-sm font-semibold">Business profile</h2>
+    <div className="max-w-4xl space-y-8">
+      <section className="grid gap-5 lg:grid-cols-[180px_minmax(0,1fr)] lg:gap-10">
+        <div>
+          <h2 className="text-sm font-semibold">Identity & contact</h2>
+          <p className="mt-1 text-xs leading-5 text-muted-foreground">
+            Details printed on receipts, invoices, and customer documents.
+          </p>
         </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <div className="space-y-4">
           <Field label="Business name *">
-            <Input value={form.name} onChange={(e) => update("name", e.target.value)} />
+            <Input value={form.name} onChange={(event) => update("name", event.target.value)} />
           </Field>
-          <Field label="Phone">
-            <Input value={form.phone} onChange={(e) => update("phone", e.target.value)} placeholder="0700 000 000" />
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field label="Phone">
+              <Input
+                value={form.phone}
+                onChange={(event) => update("phone", event.target.value)}
+                placeholder="0700 000 000"
+                inputMode="tel"
+              />
+            </Field>
+            <Field label="Email">
+              <Input
+                type="email"
+                value={form.email}
+                onChange={(event) => update("email", event.target.value)}
+                placeholder="info@business.co.ke"
+              />
+            </Field>
+          </div>
+          <Field label="Address">
+            <Input
+              value={form.address}
+              onChange={(event) => update("address", event.target.value)}
+              placeholder="e.g. Moi Avenue, Nairobi"
+            />
           </Field>
-          <Field label="Email">
-            <Input type="email" value={form.email} onChange={(e) => update("email", e.target.value)} placeholder="info@business.co.ke" />
-          </Field>
-          <Field label="Module type">
+          <Field label="Business module">
             <Input value={business?.type || ""} disabled className="capitalize" />
           </Field>
         </div>
-        <Field label="Address">
-          <Input value={form.address} onChange={(e) => update("address", e.target.value)} placeholder="e.g., Moi Avenue, Nairobi" />
-        </Field>
+      </section>
 
-        <Field label="Business logo">
-          <div className="flex items-center gap-4">
-            <div className="h-16 w-16 rounded-lg border border-border bg-muted/30 flex items-center justify-center overflow-hidden shrink-0">
-              {logo ? <img src={logo} alt="Business logo" className="h-full w-full object-contain" /> : <Building2 className="h-6 w-6 text-muted-foreground" />}
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <label className="inline-flex items-center gap-1.5 rounded-md border border-border px-3 py-1.5 text-[12px] font-medium cursor-pointer hover:bg-accent w-fit">
-                {logo ? "Replace logo" : "Upload logo"}
-                <input type="file" accept="image/png,image/jpeg" className="hidden" onChange={(e) => onLogoFile(e.target.files?.[0])} />
-              </label>
-              {logo && (
-                <button type="button" onClick={() => saveLogo(null)} className="text-[11px] text-destructive hover:underline w-fit">Remove logo</button>
-              )}
-              <span className="text-[11px] text-muted-foreground">PNG or JPG, under 1 MB. Used on receipts, invoices, the customer display and app chrome.</span>
-            </div>
-          </div>
-        </Field>
-
-        <div className="flex justify-end">
-          <Button onClick={handleSave} disabled={saving || !dirty || !form.name}>
-            {saving ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Saving...</> : <><Save className="h-4 w-4 mr-2" /> Save changes</>}
-          </Button>
+      <section className="grid gap-5 border-t border-border pt-7 lg:grid-cols-[180px_minmax(0,1fr)] lg:gap-10">
+        <div>
+          <h2 className="text-sm font-semibold">Business logo</h2>
+          <p className="mt-1 text-xs leading-5 text-muted-foreground">
+            Used throughout customer-facing documents and displays.
+          </p>
         </div>
+        <div className="flex items-start gap-4">
+          <div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-border bg-muted/30">
+            {logo ? (
+              <img src={logo} alt="Business logo" className="h-full w-full object-contain" />
+            ) : (
+              <Building2 className="h-7 w-7 text-muted-foreground" />
+            )}
+          </div>
+          <div className="min-w-0 space-y-2">
+            <label className="inline-flex w-fit cursor-pointer items-center gap-1.5 rounded-md border border-border px-3 py-1.5 text-xs font-medium transition-colors hover:bg-accent">
+              {logo ? "Replace logo" : "Upload logo"}
+              <input
+                type="file"
+                accept="image/png,image/jpeg"
+                className="hidden"
+                onChange={(event) => onLogoFile(event.target.files?.[0])}
+              />
+            </label>
+            {logo && (
+              <button
+                type="button"
+                onClick={() => saveLogo(null)}
+                className="block text-xs text-destructive hover:underline"
+              >
+                Remove logo
+              </button>
+            )}
+            <p className="max-w-lg text-xs leading-5 text-muted-foreground">
+              PNG or JPG, under 1 MB. Shown on receipts, invoices, the customer display, and app chrome.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <div className="flex justify-end border-t border-border pt-5">
+        <Button onClick={handleSave} disabled={saving || !dirty || !form.name}>
+          {saving ? (
+            <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Saving…</>
+          ) : (
+            <><Save className="mr-2 h-4 w-4" /> Save changes</>
+          )}
+        </Button>
       </div>
     </div>
   );

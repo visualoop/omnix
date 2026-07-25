@@ -54,7 +54,7 @@ describe('website route inventory', () => {
 
     expect(APP_API_ROUTES).toEqual(flatten(API_ROUTE_GROUPS))
     expect(APP_API_ROUTES).toEqual(discovered)
-    expect(APP_API_ROUTES).toHaveLength(54)
+    expect(APP_API_ROUTES).toHaveLength(56)
   })
 
   it('contains no duplicate page or API routes', () => {

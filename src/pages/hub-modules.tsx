@@ -215,7 +215,7 @@ export function HospitalityHubPage() {
       title="Hospitality"
       description="Tables, kitchen, rooms, bookings — the whole front-of-house and back-of-house."
       actions={
-        has("hospitality.kitchen.view") ? (
+        has("hospitality.kitchen.bump") ? (
           <>
             <Button
               variant="outline"
@@ -253,8 +253,9 @@ export function HospitalityHubPage() {
         { id: "overview", label: "Overview", icon: LayoutDashboard, component: HospitalityDashboardPage, permission: "hospitality.tables.manage" },
         { id: "tables", label: "Tables", icon: UtensilsCrossed, component: HospitalityTablesPage, permission: "hospitality.tables.manage" },
         { id: "menu", label: "Menu", icon: ClipboardList, component: HospitalityMenuPage, permission: "hospitality.menu.manage" },
-        { id: "orders", label: "Orders", icon: FileText, component: HospitalityOrdersPage, permission: "hospitality.orders.manage" },
-        { id: "rooms", label: "Rooms", icon: Bed, component: HospitalityRoomsPage, permission: "hospitality.rooms.manage" },
+        { id: "orders", label: "Orders", icon: FileText, component: HospitalityOrdersPage, permission: "hospitality.orders.take" },
+        { id: "rooms", label: "Rooms", icon: Bed, component: HospitalityRoomsPage, permission: "hospitality.bookings.manage" },
+        { id: "housekeeping", label: "Housekeeping", icon: Bed, component: HospitalityRoomsPage, permission: "hospitality.housekeeping.manage" },
         { id: "bookings", label: "Bookings", icon: CalendarRange, component: HospitalityBookingsPage, permission: "hospitality.bookings.manage" },
         { id: "folios", label: "Folios", icon: FolderOpen, component: HospitalityFoliosPage, permission: "hospitality.folios.manage" },
         { id: "recipes", label: "Recipes", icon: ChefHat, component: HospitalityRecipesPage, permission: "hospitality.recipes.manage" },

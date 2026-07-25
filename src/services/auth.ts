@@ -1,11 +1,21 @@
 import { invoke } from "@tauri-apps/api/core";
 import { query, execute } from "@/lib/db";
+import {
+  BUILT_IN_ROLE_IDS,
+  LEGACY_SYSTEM_ROLE_IDS,
+  builtInRoleById,
+  defaultBuiltInRoleId,
+  isBuiltInRoleId,
+  type BuiltInRoleId,
+} from "@/lib/built-in-roles";
 
 export interface User {
   id: string;
   username: string;
   full_name: string;
   role: "owner" | "manager" | "cashier" | "viewer";
+  /** Maintained job-role assignment; defaults from role for older users. */
+  built_in_role_id?: BuiltInRoleId;
   active: number;
 }
 
@@ -88,9 +98,12 @@ export async function runSetup(input: SetupInput): Promise<{ business: Business;
      VALUES (?1, ?2, ?3, 'owner', ?4, 1)`,
     [userId, input.username, input.owner_name, passwordHash]
   );
+  await replaceDirectBuiltInRole(userId, "role_owner");
 
   const business = (await query<Business>("SELECT * FROM business WHERE id = ?1", [businessId]))[0];
-  const user = (await query<User>("SELECT * FROM users WHERE id = ?1", [userId]))[0];
+  const [user] = await withBuiltInRoleAssignments(
+    await query<User>("SELECT * FROM users WHERE id = ?1", [userId]),
+  );
   return { business, user };
 }
 
@@ -112,9 +125,9 @@ export async function login(username: string, password: string): Promise<User> {
     throw new Error("Invalid username or password");
   }
 
-  // Strip password hash before returning
+  // Strip password hash before returning and hydrate the maintained job role.
   const { password_hash: _, ...safeUser } = user;
-  return safeUser;
+  return (await withBuiltInRoleAssignments([safeUser]))[0];
 }
 
 // ===== Business helpers =====
@@ -126,8 +139,57 @@ export async function getBusiness(): Promise<Business | null> {
 
 // ===== User management =====
 
+const BUILT_IN_ROLE_PLACEHOLDERS = BUILT_IN_ROLE_IDS.map(
+  (_, index) => `?${index + 1}`,
+).join(", ");
+
+async function withBuiltInRoleAssignments(users: User[]): Promise<User[]> {
+  if (users.length === 0) return users;
+
+  const rows = await query<{ user_id: string; role_id: string }>(
+    `SELECT user_id, role_id
+       FROM user_roles
+      WHERE role_id IN (${BUILT_IN_ROLE_PLACEHOLDERS})`,
+    [...BUILT_IN_ROLE_IDS],
+  );
+  const assignedByUser = new Map<string, Set<string>>();
+  for (const row of rows) {
+    const assigned = assignedByUser.get(row.user_id) ?? new Set<string>();
+    assigned.add(row.role_id);
+    assignedByUser.set(row.user_id, assigned);
+  }
+
+  const specializedIds = BUILT_IN_ROLE_IDS.filter(
+    (roleId) => !LEGACY_SYSTEM_ROLE_IDS.includes(roleId as (typeof LEGACY_SYSTEM_ROLE_IDS)[number]),
+  );
+
+  return users.map((user) => {
+    const assigned = assignedByUser.get(user.id);
+    const specialized = specializedIds.find((roleId) => assigned?.has(roleId));
+    const selected = specialized ?? defaultBuiltInRoleId(user.role);
+    return { ...user, built_in_role_id: selected };
+  });
+}
+
+async function replaceDirectBuiltInRole(userId: string, roleId: BuiltInRoleId): Promise<void> {
+  const placeholders = BUILT_IN_ROLE_IDS.map((_, index) => `?${index + 2}`).join(", ");
+  await execute(
+    `DELETE FROM user_roles
+      WHERE user_id = ?1 AND role_id IN (${placeholders})`,
+    [userId, ...BUILT_IN_ROLE_IDS],
+  );
+  await execute(
+    `INSERT OR IGNORE INTO user_roles (user_id, role_id, branch_id, module_id)
+     VALUES (?1, ?2, NULL, NULL)`,
+    [userId, roleId],
+  );
+}
+
 export async function listUsers(): Promise<User[]> {
-  return query<User>("SELECT id, username, full_name, role, active FROM users ORDER BY full_name");
+  const users = await query<User>(
+    "SELECT id, username, full_name, role, active FROM users ORDER BY full_name",
+  );
+  return withBuiltInRoleAssignments(users);
 }
 
 export interface CreateUserInput {
@@ -135,10 +197,16 @@ export interface CreateUserInput {
   full_name: string;
   password: string;
   role: User["role"];
+  built_in_role_id?: BuiltInRoleId;
 }
 
 export async function createUser(input: CreateUserInput): Promise<User> {
   if (input.password.length < 4) throw new Error("Password too short");
+  const selectedRoleId = input.built_in_role_id ?? defaultBuiltInRoleId(input.role);
+  const selectedRole = builtInRoleById(selectedRoleId);
+  if (!selectedRole || !isBuiltInRoleId(selectedRoleId)) {
+    throw new Error("Choose a valid built-in role");
+  }
   // Check unique username
   const existing = await query<{ count: number }>(
     "SELECT COUNT(*) as count FROM users WHERE username = ?1",
@@ -151,9 +219,14 @@ export async function createUser(input: CreateUserInput): Promise<User> {
   await execute(
     `INSERT INTO users (id, username, full_name, role, password_hash, active)
      VALUES (?1, ?2, ?3, ?4, ?5, 1)`,
-    [id, input.username, input.full_name, input.role, hash]
+    [id, input.username, input.full_name, selectedRole.legacyRole, hash]
   );
-  return (await query<User>("SELECT id, username, full_name, role, active FROM users WHERE id = ?1", [id]))[0];
+  await replaceDirectBuiltInRole(id, selectedRoleId);
+  const users = await query<User>(
+    "SELECT id, username, full_name, role, active FROM users WHERE id = ?1",
+    [id],
+  );
+  return (await withBuiltInRoleAssignments(users))[0];
 }
 
 export async function changePassword(userId: string, newPassword: string): Promise<void> {
@@ -174,18 +247,30 @@ export async function deactivateUser(userId: string): Promise<void> {
   await execute("UPDATE users SET active = 0 WHERE id = ?1", [userId]);
 }
 
-/** Change a user's base role. Blocks demoting the last active owner (which
- *  would lock everyone out of owner-only settings). */
-export async function setUserRole(userId: string, role: User["role"]): Promise<void> {
+/** Change a user's maintained job role. The legacy users.role fallback is
+ *  updated in the same operation, while custom roles, groups, and overrides
+ *  remain untouched. Blocks demoting the last active owner. */
+export async function setUserRole(
+  userId: string,
+  role: User["role"],
+  builtInRoleId?: BuiltInRoleId,
+): Promise<void> {
+  const selectedRoleId = builtInRoleId ?? defaultBuiltInRoleId(role);
+  const selectedRole = builtInRoleById(selectedRoleId);
+  if (!selectedRole || !isBuiltInRoleId(selectedRoleId)) {
+    throw new Error("Choose a valid built-in role");
+  }
+
   const [current] = await query<{ role: string }>("SELECT role FROM users WHERE id = ?1", [userId]);
-  if (current?.role === "owner" && role !== "owner") {
+  if (current?.role === "owner" && selectedRole.legacyRole !== "owner") {
     const [others] = await query<{ count: number }>(
       "SELECT COUNT(*) as count FROM users WHERE role = 'owner' AND active = 1 AND id != ?1",
       [userId]
     );
     if ((others?.count ?? 0) === 0) throw new Error("Cannot change the last owner's role.");
   }
-  await execute("UPDATE users SET role = ?1 WHERE id = ?2", [role, userId]);
+  await execute("UPDATE users SET role = ?1 WHERE id = ?2", [selectedRole.legacyRole, userId]);
+  await replaceDirectBuiltInRole(userId, selectedRoleId);
 }
 
 export async function getActiveUsernames(): Promise<string[]> {

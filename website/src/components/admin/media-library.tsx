@@ -67,6 +67,7 @@ export function MediaLibrary({
   const [uploadAlt, setUploadAlt] = useState('')
   const [uploadHolder, setUploadHolder] = useState('')
   const [uploadSource, setUploadSource] = useState('')
+  const [error, setError] = useState<string | null>(null)
   const [, startTransition] = useTransition()
   const fileRef = useRef<HTMLInputElement>(null)
   const altRef = useRef<HTMLInputElement>(null)
@@ -85,12 +86,12 @@ export function MediaLibrary({
     event.preventDefault()
     const file = fileRef.current?.files?.[0]
     if (!file) {
-      alert('Choose an image before uploading.')
+      setError('Choose an image before uploading.')
       return
     }
 
     if (!uploadBasis) {
-      alert('Select the rights basis before uploading.')
+      setError('Select the rights basis before uploading.')
       return
     }
 
@@ -102,12 +103,13 @@ export function MediaLibrary({
     form.append('rightsHolder', uploadHolder)
     form.append('rightsSource', uploadSource)
 
+    setError(null)
     setBusy('__upload')
     try {
       const response = await fetch('/api/admin/media', { method: 'POST', body: form })
       const data = (await response.json()) as { ok?: boolean; error?: string }
       if (!data.ok) {
-        alert(data.error ?? 'Upload failed')
+        setError(data.error ?? 'Upload failed')
         return
       }
       setUploadAlt('')
@@ -125,6 +127,7 @@ export function MediaLibrary({
   }
 
   async function persist(item: MediaItem, approvalState?: MediaApprovalState) {
+    setError(null)
     setBusy(item.id)
     try {
       const response = await fetch(`/api/admin/media?id=${item.id}`, {
@@ -141,7 +144,7 @@ export function MediaLibrary({
       })
       const data = (await response.json()) as { ok?: boolean; error?: string; approvalState?: MediaApprovalState }
       if (!data.ok) {
-        alert(data.error ?? 'Update failed')
+        setError(data.error ?? 'Update failed')
         return
       }
       updateItem(item.id, { approvalState: data.approvalState ?? 'pending' })
@@ -160,12 +163,13 @@ export function MediaLibrary({
       confirmText: 'Remove from public',
     }))) return
 
+    setError(null)
     setBusy(item.id)
     try {
       const response = await fetch(`/api/admin/media?id=${item.id}`, { method: 'DELETE' })
       const data = (await response.json()) as { ok?: boolean; error?: string; approvalState?: MediaApprovalState }
       if (!data.ok) {
-        alert(data.error ?? 'Delete failed')
+        setError(data.error ?? 'Delete failed')
         return
       }
       // Tombstone, not a hard erase: the row (and its provenance) is kept, so
@@ -185,6 +189,14 @@ export function MediaLibrary({
 
   return (
     <div className="space-y-10">
+      {error ? (
+        <p
+          role="alert"
+          className="rounded-md border border-[var(--color-negative)]/30 bg-[var(--color-negative)]/5 px-4 py-3 text-[13px] text-[var(--color-negative)]"
+        >
+          {error}
+        </p>
+      ) : null}
       <section id="licensed-media-upload" className="scroll-mt-6 border-b border-[var(--color-border)] pb-10">
         <div className="mb-5">
           <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-[var(--color-fg-muted)]">New asset</span>

@@ -30,7 +30,7 @@ import { ModuleLogo } from "@/components/module-logos";
 import { APP_NAME, POWERED_BY } from "@/lib/brand";
 import { useAuthStore } from "@/stores/auth";
 import { useActiveModule, MODULE_DEFINITIONS, type ModuleId } from "@/stores/active-module";
-import { hasAnyPermission, type Permission } from "@/lib/permissions";
+import { hasAnyPermission, MODULE_ACCESS_PERMISSIONS, type Permission } from "@/lib/permissions";
 import { isFeatureAvailable, getFeatureModule } from "@/lib/module-features";
 import { isModuleEntitled } from "@/stores/entitlements";
 import { useEntitlements } from "@/stores/entitlements";
@@ -85,11 +85,11 @@ const SETTINGS_NAV: NavItem = {
  * The hub page shows all child screens as tabs.
  */
 const MODULE_NAV_ENTRIES: Partial<Record<ModuleId, NavItem>> = {
-  dawa: { moduleId: "dawa", to: "/pharmacy", icon: Pill, label: "Pharmacy", permissions: ["pharmacy.dispense"] },
-  retail: { moduleId: "retail", to: "/retail", icon: ShoppingBag, label: "Retail", permissions: ["reports.view"] },
-  hardware: { moduleId: "hardware", to: "/hardware", icon: Wrench, label: "Hardware", permissions: ["hardware.reports.view"] },
-  hospitality: { moduleId: "hospitality", to: "/hospitality", icon: UtensilsCrossed, label: "Hospitality", permissions: ["hospitality.tables.manage"] },
-  salon: { moduleId: "salon", to: "/salon", icon: Sparkle, label: "Salon & Spa", permissions: ["salon.appointments.manage"] },
+  dawa: { moduleId: "dawa", to: "/pharmacy", icon: Pill, label: "Pharmacy", permissions: [...MODULE_ACCESS_PERMISSIONS.dawa] },
+  retail: { moduleId: "retail", to: "/retail", icon: ShoppingBag, label: "Retail", permissions: [...MODULE_ACCESS_PERMISSIONS.retail] },
+  hardware: { moduleId: "hardware", to: "/hardware", icon: Wrench, label: "Hardware", permissions: [...MODULE_ACCESS_PERMISSIONS.hardware] },
+  hospitality: { moduleId: "hospitality", to: "/hospitality", icon: UtensilsCrossed, label: "Hospitality", permissions: [...MODULE_ACCESS_PERMISSIONS.hospitality] },
+  salon: { moduleId: "salon", to: "/salon", icon: Sparkle, label: "Salon & Spa", permissions: [...MODULE_ACCESS_PERMISSIONS.salon] },
 };
 
 export function Sidebar({ onCommandOpen }: { onCommandOpen: () => void }) {

@@ -6,6 +6,7 @@ import { BackButton } from '@/components/layout/back-button'
 import { EntityHero } from '@/components/layout/entity-hero'
 import { AdminPagination, AdminSearch } from '@/components/admin/data-controls'
 import { FilteredEmptyState } from '@/components/ui/state-view'
+import { TicketActions } from '@/components/admin/ticket-actions'
 import { buildClearHref } from '@/lib/list-query'
 import { formatDate, formatDateShort } from '@/lib/format-date'
 import Link from 'next/link'
@@ -36,7 +37,7 @@ export default async function AdminTicketDetailPage({ params, searchParams }: Pa
     msgQ ? ilike(supportMessages.body, `%${msgQ}%`) : undefined,
   )
 
-  const [reporter, assignee, messages, msgCountRow] = await Promise.all([
+  const [reporter, assignee, messages, msgCountRow, allMsgCountRow] = await Promise.all([
     db.query.user.findFirst({ where: eq(user.id, ticket.userId) }),
     ticket.assignedTo ? db.query.user.findFirst({ where: eq(user.id, ticket.assignedTo) }) : null,
     db
@@ -48,9 +49,11 @@ export default async function AdminTicketDetailPage({ params, searchParams }: Pa
       .limit(PAGE_SIZE)
       .offset((msgPage - 1) * PAGE_SIZE),
     db.select({ n: count() }).from(supportMessages).where(msgWhere),
+    db.select({ n: count() }).from(supportMessages).where(eq(supportMessages.ticketId, id)),
   ])
 
   const msgTotal = msgCountRow[0]?.n ?? 0
+  const allMsgTotal = allMsgCountRow[0]?.n ?? 0
   const from = msgTotal === 0 ? 0 : (msgPage - 1) * PAGE_SIZE + 1
   const to = Math.min(msgPage * PAGE_SIZE, msgTotal)
   const msgClearHref = buildClearHref(`/admin/tickets/${id}`, sp as Record<string, string | undefined>, { drop: ['msgQ', 'msgPage'] })
@@ -85,8 +88,14 @@ export default async function AdminTicketDetailPage({ params, searchParams }: Pa
         stats={[
           { label: 'Opened', value: formatDate(ticket.createdAt, true) },
           { label: 'Updated', value: formatDate(ticket.updatedAt, true) },
-          { label: 'Messages', value: msgTotal },
+          { label: 'Messages', value: allMsgTotal },
         ]}
+      />
+
+      <TicketActions
+        ticketId={ticket.id}
+        status={ticket.status}
+        replyPage={Math.max(1, Math.ceil((allMsgTotal + 1) / PAGE_SIZE))}
       />
 
       <section aria-labelledby="ticket-thread-title" className="flex flex-col gap-3">

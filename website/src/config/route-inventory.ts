@@ -128,6 +128,7 @@ export const API_ROUTE_GROUPS = {
     '/api/admin/team/[id]',
     '/api/admin/team/[id]/resend',
     '/api/admin/team-members',
+    '/api/admin/tickets/[id]',
     '/api/admin/users/[id]/reseller',
   ],
   account: [
@@ -142,6 +143,7 @@ export const API_ROUTE_GROUPS = {
     '/api/paystack/init',
     '/api/reseller/issue-license',
     '/api/support/tickets',
+    '/api/support/tickets/[id]/messages',
   ],
   paymentCallback: ['/api/paystack/webhook'],
   desktop: [

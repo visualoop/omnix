@@ -51,6 +51,13 @@ describe("settings-registry", () => {
     expect(legacy?.hidden).toBe(true);
   });
 
+  it("keeps the legacy role-builder route registered but hidden", () => {
+    const roles = registry.find((item) => item.to === "/settings/roles");
+    expect(roles).toBeDefined();
+    expect(roles?.hidden).toBe(true);
+    expect(roles?.description).toContain("Staff");
+  });
+
   it("every SETTINGS_GROUPS entry has at least one item OR is a module-specific group", () => {
     const moduleGroups = new Set(["Dawa", "Retail", "Hardware", "Hospitality"]);
     const groupHasItem = new Set(registry.map((i) => i.group));

@@ -16,6 +16,7 @@ import { AppShell } from "@/components/layout/app-shell";
 import { SettingsLayout } from "@/components/layout/settings-layout";
 import { LicenseGuard } from "@/components/license-guard";
 import { RequireRole } from "@/components/require-role";
+import { MODULE_ACCESS_PERMISSIONS } from "@/lib/permissions";
 import { LoginPage } from "@/pages/login";
 import { SetupWizard } from "@/pages/setup";
 import { DashboardPage } from "@/pages/dashboard";
@@ -139,7 +140,6 @@ import { DamagesPage } from "@/pages/damages";
 import { SalesHistoryPage } from "@/pages/sales-history";
 import { UsersPage } from "@/pages/users";
 import { SettingsPage } from "@/pages/settings";
-import { SettingsRolesPage } from "@/pages/settings-roles";
 import { SettingsGroupsPage } from "@/pages/settings-groups";
 import { SettingsAccessAuditPage } from "@/pages/settings-access-audit";
 import { BackupPage } from "@/pages/backup";
@@ -331,7 +331,7 @@ function AppContent() {
           <Route path="/sales/history" element={<RequireRole permission="sales.view"><SalesHistoryPage /></RequireRole>} />
           <Route path="/sales/:id" element={<RequireRole permission="sales.view"><SaleDetailPage /></RequireRole>} />
           <Route path="/users" element={<RequireRole permission="users.view"><UsersPage /></RequireRole>} />
-          <Route path="/pharmacy" element={<RequireRole permission="pharmacy.dispense"><PharmacyHubPage /></RequireRole>} />
+          <Route path="/pharmacy" element={<RequireRole permission={[...MODULE_ACCESS_PERMISSIONS.dawa]}><PharmacyHubPage /></RequireRole>} />
           <Route path="/pharmacy/dispense" element={<RequireRole permission="pharmacy.dispense"><PharmacyPage /></RequireRole>} />
           <Route path="/pharmacy/prescriptions/:id" element={<RequireRole permission="pharmacy.dispense"><PrescriptionDetailPage /></RequireRole>} />
           <Route path="/pharmacy/eprescriptions" element={<RequireRole permission="pharmacy.dispense"><EprescriptionsPage /></RequireRole>} />
@@ -352,7 +352,7 @@ function AppContent() {
           <Route path="/accounting/fixed-assets" element={<RequireRole permission="reports.pnl"><FixedAssetsPage /></RequireRole>} />
           <Route path="/reports/dead-stock" element={<RequireRole permission="reports.view"><DeadStockPage /></RequireRole>} />
           <Route path="/crm/follow-ups" element={<RequireRole permission="customers.view"><FollowUpsPage /></RequireRole>} />
-          <Route path="/hospitality/rooms" element={<RequireRole permission="hospitality.housekeeping.manage"><RoomStatusPage /></RequireRole>} />
+          <Route path="/hospitality/housekeeping" element={<RequireRole permission="hospitality.housekeeping.manage"><RoomStatusPage /></RequireRole>} />
           <Route path="/reports/analytics" element={<Navigate to="/analytics" replace />} />
           <Route path="/reports/stock-aging" element={<RequireRole permission="reports.view"><StockAgingPage /></RequireRole>} />
           <Route path="/data-quality" element={<RequireRole permission="audit.view"><DataQualityPage /></RequireRole>} />
@@ -400,10 +400,10 @@ function AppContent() {
           <Route path="/banking/accounts" element={<RequireRole permission="banking.view"><BankingPage /></RequireRole>} />
           <Route path="/banking/:id" element={<RequireRole permission="banking.view"><BankAccountDetailPage /></RequireRole>} />
           <Route path="/analytics" element={<RequireRole permission={["reports.view","reports.pnl","etims.view"]}><AnalyticsHubPage /></RequireRole>} />
-          <Route path="/retail" element={<RequireRole permission="reports.view"><RetailHubPage /></RequireRole>} />
-          <Route path="/hardware" element={<RequireRole permission="hardware.reports.view"><HardwareHubPage /></RequireRole>} />
-          <Route path="/hospitality" element={<RequireRole permission="hospitality.tables.manage"><HospitalityHubPage /></RequireRole>} />
-          <Route path="/salon" element={<RequireRole permission="salon.appointments.manage"><SalonHubPage /></RequireRole>} />
+          <Route path="/retail" element={<RequireRole permission={[...MODULE_ACCESS_PERMISSIONS.retail]}><RetailHubPage /></RequireRole>} />
+          <Route path="/hardware" element={<RequireRole permission={[...MODULE_ACCESS_PERMISSIONS.hardware]}><HardwareHubPage /></RequireRole>} />
+          <Route path="/hospitality" element={<RequireRole permission={[...MODULE_ACCESS_PERMISSIONS.hospitality]}><HospitalityHubPage /></RequireRole>} />
+          <Route path="/salon" element={<RequireRole permission={[...MODULE_ACCESS_PERMISSIONS.salon]}><SalonHubPage /></RequireRole>} />
           <Route path="/salon/staff/:id/earnings" element={<RequireRole permission="salon.staff.manage"><SalonStaffEarningsPage /></RequireRole>} />
           <Route path="/retail/brands" element={<RequireRole permission="retail.brands.manage"><BrandsPage /></RequireRole>} />
           <Route path="/retail/dashboard" element={<RequireRole permission="reports.view"><RetailDashboardPage /></RequireRole>} />
@@ -419,7 +419,7 @@ function AppContent() {
             <Route path="branches" element={<RequireRole permission="settings.business"><BranchesPage /></RequireRole>} />
             <Route path="branches/:id" element={<RequireRole permission="settings.business"><BranchDetailPage /></RequireRole>} />
             <Route path="users" element={<RequireRole permission="users.view"><UsersPage /></RequireRole>} />
-            <Route path="roles" element={<RequireRole permission="users.manage"><SettingsRolesPage /></RequireRole>} />
+            <Route path="roles" element={<Navigate to="/settings/users" replace />} />
             <Route path="groups" element={<RequireRole permission="users.manage"><SettingsGroupsPage /></RequireRole>} />
             <Route path="access-audit" element={<RequireRole permission="users.manage"><SettingsAccessAuditPage /></RequireRole>} />
             <Route path="payments" element={<RequireRole permission="settings.business"><PaymentSettingsPage /></RequireRole>} />
@@ -491,7 +491,6 @@ function AppContent() {
           <Route path="/hospitality/rooms" element={<RequireRole permission="hospitality.bookings.manage"><HospitalityRoomsPage /></RequireRole>} />
           <Route path="/hospitality/bookings" element={<RequireRole permission="hospitality.bookings.manage"><HospitalityBookingsPage /></RequireRole>} />
           <Route path="/hospitality/checkin" element={<RequireRole permission="hospitality.checkin.manage"><HospitalityBookingsPage /></RequireRole>} />
-          <Route path="/hospitality/housekeeping" element={<Navigate to="/hospitality/rooms?status=dirty" replace />} />
           <Route path="/hospitality/folios" element={<RequireRole permission="hospitality.folios.manage"><HospitalityFoliosPage /></RequireRole>} />
           <Route path="/hospitality/recipes" element={<RequireRole permission="hospitality.recipes.manage"><HospitalityRecipesPage /></RequireRole>} />
           <Route path="/hospitality/reports" element={<RequireRole permission="hospitality.reports.view"><HospitalityReportsPage /></RequireRole>} />

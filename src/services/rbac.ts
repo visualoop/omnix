@@ -8,21 +8,15 @@
  */
 import { query, execute } from "@/lib/db";
 import {
+  BUILT_IN_ROLES,
+} from "@/lib/built-in-roles";
+import {
   PERMISSION_CATALOG,
-  getPermissionsForRole,
   hasPermission,
-  ROLES,
   type Permission,
   type PermissionGroup,
   type PermissionRisk,
 } from "@/lib/permissions";
-
-const SYSTEM_ROLE_IDS: Record<string, string> = {
-  owner: "role_owner",
-  manager: "role_manager",
-  cashier: "role_cashier",
-  viewer: "role_viewer",
-};
 
 /** Derive the owning module from a permission key prefix. */
 function moduleOf(key: string): string {
@@ -64,18 +58,35 @@ export async function seedRbac(): Promise<void> {
     );
   }
 
-  // 2. System-role grants (owner is implicit-allow-all; still seed for the editor).
-  for (const role of ROLES) {
-    const roleId = SYSTEM_ROLE_IDS[role];
-    if (!roleId) continue;
-    const perms = getPermissionsForRole(role);
-    // Clear existing system grants then re-insert (keeps in sync with TS matrix).
-    await execute(`DELETE FROM role_permissions WHERE role_id = ?1`, [roleId]);
-    for (const key of perms) {
+  // 2. Maintained built-in job roles. Existing custom roles and assignments
+  // stay intact; only these stable system IDs have their grants refreshed.
+  for (const role of BUILT_IN_ROLES) {
+    // A pre-release custom role may have used the same display name. Preserve
+    // it under a clearly marked name so the maintained role can keep its
+    // stable identity without deleting anyone's access.
+    await execute(
+      `UPDATE roles
+          SET name = name || ' (custom ' || substr(id, -4) || ')'
+        WHERE name = ?1 AND id != ?2 AND is_system = 0`,
+      [role.name, role.id],
+    );
+    await execute(
+      `INSERT OR IGNORE INTO roles (id, name, description, is_system, active)
+       VALUES (?1, ?2, ?3, 1, 1)`,
+      [role.id, role.name, role.description],
+    );
+    await execute(
+      `UPDATE roles
+          SET name = ?2, description = ?3, is_system = 1, active = 1
+        WHERE id = ?1`,
+      [role.id, role.name, role.description],
+    );
+    await execute(`DELETE FROM role_permissions WHERE role_id = ?1`, [role.id]);
+    for (const key of role.permissions) {
       await execute(
         `INSERT OR IGNORE INTO role_permissions (role_id, permission_key, effect)
          VALUES (?1, ?2, 'allow')`,
-        [roleId, key],
+        [role.id, key],
       );
     }
   }

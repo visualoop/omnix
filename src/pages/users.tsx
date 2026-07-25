@@ -1,8 +1,9 @@
-import { useState, useEffect } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { confirm } from "@/components/ui/confirm-dialog";
 import {
   CircleNotch as Loader2,
   Lock,
+  MagnifyingGlass as Search,
   Pencil as Edit3,
   ShieldCheck,
   UserPlus,
@@ -10,10 +11,11 @@ import {
   Users,
   WarningCircle as AlertCircle,
 } from "@phosphor-icons/react";
+import { BuiltInRoleCombobox } from "@/components/built-in-role-combobox";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
+import { PaginationBar } from "@/components/pagination-bar";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -29,116 +31,215 @@ import { useAuthStore } from "@/stores/auth";
 import { toast } from "sonner";
 import { APP_NAME } from "@/lib/brand";
 import { Can } from "@/components/require-role";
-import { getPermissionsForRole, ROLE_INFO } from "@/lib/permissions";
-
+import {
+  BUILT_IN_ROLES,
+  builtInRoleById,
+  defaultBuiltInRoleId,
+  type BuiltInRoleId,
+  type BuiltInRoleModule,
+} from "@/lib/built-in-roles";
 import { BackButton } from "@/components/ui/back-button";
-const ROLE_LABELS: Record<User["role"], { label: string; description: string; color: string }> = {
-  owner: { label: "Owner", description: "Full access, cannot be removed", color: "bg-violet-500/10 text-violet-700 border-violet-500/30" },
-  manager: { label: "Manager", description: "Inventory, reports, no settings", color: "bg-blue-500/10 text-blue-700 border-blue-500/30" },
-  cashier: { label: "Cashier", description: "POS only", color: "bg-green-500/10 text-green-700 border-green-500/30" },
-  viewer: { label: "Viewer", description: "Read-only access to reports", color: "bg-muted/30 text-muted-foreground border-border" },
+
+const PAGE_SIZE = 10;
+
+const MODULE_BADGE_TONES: Record<BuiltInRoleModule, string> = {
+  core: "border-sky-500/30 bg-sky-500/10 text-sky-700 dark:text-sky-300",
+  dawa: "border-teal-500/30 bg-teal-500/10 text-teal-700 dark:text-teal-300",
+  retail: "border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-300",
+  hardware: "border-yellow-600/30 bg-yellow-500/10 text-yellow-700 dark:text-yellow-300",
+  hospitality: "border-orange-500/30 bg-orange-500/10 text-orange-700 dark:text-orange-300",
+  salon: "border-rose-500/30 bg-rose-500/10 text-rose-700 dark:text-rose-300",
 };
+
+function roleForUser(user: User) {
+  return builtInRoleById(user.built_in_role_id ?? defaultBuiltInRoleId(user.role));
+}
+
+function StaffRoleBadge({ user }: { user: User }) {
+  const role = roleForUser(user);
+  if (!role) return null;
+  return (
+    <Badge variant="outline" className={MODULE_BADGE_TONES[role.module]}>
+      <ShieldCheck className="mr-1 h-3 w-3" />
+      {role.name}
+    </Badge>
+  );
+}
 
 export function UsersPage() {
   const [users, setUsers] = useState<User[]>([]);
   const [showCreate, setShowCreate] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
-  const currentUser = useAuthStore((s) => s.user);
+  const [search, setSearch] = useState("");
+  const [page, setPage] = useState(1);
+  const currentUser = useAuthStore((state) => state.user);
 
   const load = async () => setUsers(await listUsers());
   useEffect(() => { load(); }, []);
 
-  const activeOwners = users.filter((u) => u.role === "owner" && u.active === 1);
+  const activeOwners = users.filter((user) => user.role === "owner" && user.active === 1);
+  const activeStaff = users.filter((user) => user.active === 1).length;
+  const filteredUsers = useMemo(() => {
+    const term = search.trim().toLowerCase();
+    if (!term) return users;
+    return users.filter((user) => {
+      const role = roleForUser(user);
+      return [user.full_name, user.username, role?.name, role?.moduleLabel]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase()
+        .includes(term);
+    });
+  }, [search, users]);
+  const pageCount = Math.max(1, Math.ceil(filteredUsers.length / PAGE_SIZE));
+  const pageUsers = filteredUsers.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+
+  useEffect(() => {
+    setPage(1);
+  }, [search]);
+  useEffect(() => {
+    setPage((current) => Math.min(current, pageCount));
+  }, [pageCount]);
+
+  const pagination = {
+    rows: pageUsers,
+    loading: false,
+    error: null,
+    total: filteredUsers.length,
+    page,
+    pageSize: PAGE_SIZE,
+    pageCount,
+    hasMore: page < pageCount,
+    search,
+    setPage,
+    setSearch,
+    refresh: load,
+  };
 
   return (
-    <div className="space-y-5">
-      <div className="flex items-start justify-between">
+    <div className="mx-auto max-w-6xl space-y-6">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <BackButton fallback="/" />
           <h1 className="text-xl font-semibold tracking-tight">Staff</h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Manage who can sign in to {APP_NAME}
+          <p className="mt-1 text-sm text-muted-foreground">
+            Control who can sign in to {APP_NAME} and choose a ready-made role for their job.
           </p>
         </div>
         <Can permission="users.manage">
           <Button onClick={() => setShowCreate(true)}>
-            <UserPlus className="h-4 w-4 mr-2" /> Add User
+            <UserPlus className="mr-2 h-4 w-4" /> Add staff member
           </Button>
         </Can>
       </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-4 gap-3">
-        {(["owner", "manager", "cashier", "viewer"] as const).map((role) => {
-          const count = users.filter((u) => u.role === role && u.active === 1).length;
-          return (
-            <div key={role} className="border border-border rounded-lg p-3">
-              <p className="text-xs text-muted-foreground capitalize">{role}s</p>
-              <p className="text-2xl font-semibold font-mono mt-1">{count}</p>
-            </div>
-          );
-        })}
+      <div className="grid grid-cols-3 divide-x divide-border border-y border-border py-4">
+        <div className="px-4 first:pl-0">
+          <p className="text-xs text-muted-foreground">Active staff</p>
+          <p className="mt-1 font-mono text-2xl font-semibold">{activeStaff}</p>
+        </div>
+        <div className="px-4">
+          <p className="text-xs text-muted-foreground">Business owners</p>
+          <p className="mt-1 font-mono text-2xl font-semibold">{activeOwners.length}</p>
+        </div>
+        <div className="px-4">
+          <p className="text-xs text-muted-foreground">Built-in roles</p>
+          <p className="mt-1 font-mono text-2xl font-semibold">{BUILT_IN_ROLES.length}</p>
+        </div>
       </div>
 
-      {/* Users table */}
-      {users.length === 0 ? (
-        <div className="text-center py-12 text-muted-foreground">
-          <Users className="h-10 w-10 mx-auto mb-2 opacity-30" />
-          <p className="text-sm">No users yet</p>
+      <section className="overflow-hidden rounded-lg border border-border">
+        <div className="flex flex-col gap-3 border-b border-border px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h2 className="text-sm font-medium">Staff directory</h2>
+            <p className="mt-0.5 text-xs text-muted-foreground">
+              Built-in roles are maintained by Omnix, so there is no permission matrix to configure.
+            </p>
+          </div>
+          <div className="relative w-full sm:w-72">
+            <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
+            <Input
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              placeholder="Search staff or roles…"
+              className="h-9 pl-8"
+              aria-label="Search staff"
+            />
+          </div>
         </div>
-      ) : (
-        <div className="border border-border rounded-lg overflow-hidden">
-          <table className="w-full text-sm">
-            <thead className="bg-muted/30 border-b border-border">
-              <tr className="text-xs text-muted-foreground">
-                <th className="text-left px-3 py-2 font-medium">Name</th>
-                <th className="text-left px-3 py-2 font-medium">Username</th>
-                <th className="text-left px-3 py-2 font-medium">Role</th>
-                <th className="text-center px-3 py-2 font-medium">Status</th>
-                <th className="text-right px-3 py-2 font-medium"></th>
-              </tr>
-            </thead>
-            <tbody>
-              {users.map((u) => (
-                <tr key={u.id} className="border-b border-border last:border-0 hover:bg-muted/30">
-                  <td className="px-3 py-2.5">
-                    <div className="flex items-center gap-2">
-                      <div className="h-7 w-7 rounded-full bg-primary/10 flex items-center justify-center text-xs font-medium">
-                        {u.full_name.charAt(0).toUpperCase()}
-                      </div>
-                      <span>{u.full_name}</span>
-                      {currentUser?.id === u.id && (
-                        <Badge variant="outline" className="text-xs">You</Badge>
-                      )}
-                    </div>
-                  </td>
-                  <td className="px-3 py-2.5 font-mono text-xs">{u.username}</td>
-                  <td className="px-3 py-2.5">
-                    <Badge variant="outline" className={ROLE_LABELS[u.role].color}>
-                      <ShieldCheck className="h-3 w-3 mr-1" />
-                      {ROLE_LABELS[u.role].label}
-                    </Badge>
-                  </td>
-                  <td className="px-3 py-2.5 text-center">
-                    {u.active === 1 ? (
-                      <Badge className="bg-green-600 hover:bg-green-600">Active</Badge>
-                    ) : (
-                      <Badge variant="secondary">Inactive</Badge>
-                    )}
-                  </td>
-                  <td className="px-3 py-2.5 text-right">
-                    <Can permission="users.manage">
-                      <Button variant="ghost" size="sm" onClick={() => setEditingUser(u)}>
-                        <Edit3 className="h-3.5 w-3.5" />
-                      </Button>
-                    </Can>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+
+        {users.length === 0 ? (
+          <div className="py-12 text-center text-muted-foreground">
+            <Users className="mx-auto mb-2 h-10 w-10 opacity-30" />
+            <p className="text-sm">No staff members yet</p>
+            <p className="mt-1 text-xs">Add the first person who needs their own sign-in.</p>
+          </div>
+        ) : (
+          <>
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[720px] text-sm">
+                <thead className="border-b border-border bg-muted/30">
+                  <tr className="text-xs text-muted-foreground">
+                    <th className="px-4 py-2 text-left font-medium">Name</th>
+                    <th className="px-3 py-2 text-left font-medium">Username</th>
+                    <th className="px-3 py-2 text-left font-medium">Built-in role</th>
+                    <th className="px-3 py-2 text-center font-medium">Status</th>
+                    <th className="px-3 py-2 text-right font-medium"><span className="sr-only">Actions</span></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {pageUsers.length === 0 ? (
+                    <tr>
+                      <td colSpan={5} className="px-4 py-10 text-center text-sm text-muted-foreground">
+                        No staff or roles match “{search}”.
+                      </td>
+                    </tr>
+                  ) : pageUsers.map((user) => (
+                    <tr key={user.id} className="border-b border-border last:border-0 hover:bg-muted/30">
+                      <td className="px-4 py-2.5">
+                        <div className="flex items-center gap-2">
+                          <div className="flex h-7 w-7 items-center justify-center rounded-full bg-primary/10 text-xs font-medium">
+                            {user.full_name.charAt(0).toUpperCase()}
+                          </div>
+                          <span>{user.full_name}</span>
+                          {currentUser?.id === user.id && (
+                            <Badge variant="outline" className="text-xs">You</Badge>
+                          )}
+                        </div>
+                      </td>
+                      <td className="px-3 py-2.5 font-mono text-xs">{user.username}</td>
+                      <td className="px-3 py-2.5"><StaffRoleBadge user={user} /></td>
+                      <td className="px-3 py-2.5 text-center">
+                        {user.active === 1 ? (
+                          <Badge className="bg-emerald-600 hover:bg-emerald-600">Active</Badge>
+                        ) : (
+                          <Badge variant="secondary">Inactive</Badge>
+                        )}
+                      </td>
+                      <td className="px-3 py-2.5 text-right">
+                        <Can permission="users.manage">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setEditingUser(user)}
+                            aria-label={`Edit ${user.full_name}`}
+                            title={`Edit ${user.full_name}`}
+                          >
+                            <Edit3 className="h-3.5 w-3.5" />
+                          </Button>
+                        </Can>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <div className="border-t border-border px-4 pb-3">
+              <PaginationBar list={pagination} />
+            </div>
+          </>
+        )}
+      </section>
 
       {/* Last owner warning */}
       {activeOwners.length === 1 && (
@@ -150,19 +251,19 @@ export function UsersPage() {
         </div>
       )}
 
-      {/* Create user dialog */}
+      {/* Create staff sheet */}
       <Sheet open={showCreate} onOpenChange={setShowCreate}>
-        <SheetContent side="right" className="w-[440px] sm:max-w-[440px]">
+        <SheetContent side="right" className="w-full overflow-y-auto sm:max-w-[520px]">
           <SheetHeader>
-            <SheetTitle>Add User</SheetTitle>
+            <SheetTitle>Add staff member</SheetTitle>
           </SheetHeader>
           <CreateUserForm onCreated={() => { setShowCreate(false); load(); }} />
         </SheetContent>
       </Sheet>
 
-      {/* Edit user panel */}
-      <Sheet open={!!editingUser} onOpenChange={(o) => !o && setEditingUser(null)}>
-        <SheetContent side="right" className="w-[440px] sm:max-w-[440px]">
+      {/* Edit staff sheet */}
+      <Sheet open={!!editingUser} onOpenChange={(open) => !open && setEditingUser(null)}>
+        <SheetContent side="right" className="w-full overflow-y-auto sm:max-w-[520px]">
           <SheetHeader>
             <SheetTitle>{editingUser?.full_name}</SheetTitle>
           </SheetHeader>
@@ -187,6 +288,7 @@ function CreateUserForm({ onCreated }: { onCreated: () => void }) {
     password: "",
     role: "cashier",
   });
+  const [roleId, setRoleId] = useState<BuiltInRoleId>("role_cashier");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -203,8 +305,14 @@ function CreateUserForm({ onCreated }: { onCreated: () => void }) {
     }
     setSubmitting(true);
     try {
-      await createUser(form);
-      toast.success("User created");
+      const selectedRole = builtInRoleById(roleId);
+      if (!selectedRole) throw new Error("Choose a valid built-in role");
+      await createUser({
+        ...form,
+        role: selectedRole.legacyRole,
+        built_in_role_id: roleId,
+      });
+      toast.success("Staff member created");
       onCreated();
     } catch (e) {
       setError(String(e));
@@ -214,45 +322,29 @@ function CreateUserForm({ onCreated }: { onCreated: () => void }) {
   };
 
   return (
-    <div className="space-y-4 mt-4">
-      <Field label="Full Name *">
+    <div className="mt-5 space-y-5">
+      <p className="text-sm leading-6 text-muted-foreground">
+        Give each person their own sign-in, then choose the job that best matches what they do.
+      </p>
+      <Field label="Full name *">
         <Input
           value={form.full_name}
-          onChange={(e) => setForm({ ...form, full_name: e.target.value })}
+          onChange={(event) => setForm({ ...form, full_name: event.target.value })}
           autoFocus
+          autoComplete="name"
         />
       </Field>
       <Field label="Username *">
         <Input
           value={form.username}
-          onChange={(e) => setForm({ ...form, username: e.target.value.toLowerCase() })}
-          placeholder="e.g., john"
+          onChange={(event) => setForm({ ...form, username: event.target.value.toLowerCase() })}
+          placeholder="e.g. john"
           className="font-mono"
+          autoComplete="username"
         />
       </Field>
-      <Field label="Role *">
-        <Select
-          value={form.role}
-          onValueChange={(v) => setForm({ ...form, role: v as User["role"] })}
-        >
-          <SelectTrigger className="w-full">
-            <SelectValue placeholder="Pick a role" />
-          </SelectTrigger>
-          <SelectContent>
-            {(Object.entries(ROLE_LABELS) as [User["role"], typeof ROLE_LABELS[User["role"]]][]).map(([role, info]) => (
-              <SelectItem key={role} value={role}>
-                {info.label} — {info.description}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <p className="text-[11px] text-muted-foreground mt-1.5">
-          {ROLE_INFO[form.role].tagline}
-          {" · "}
-          {form.role === "owner"
-            ? "All permissions"
-            : `${getPermissionsForRole(form.role).length} permissions granted`}
-        </p>
+      <Field label="Built-in role *">
+        <BuiltInRoleCombobox value={roleId} onChange={setRoleId} />
       </Field>
       <Field label="Password *">
         <Input
@@ -304,21 +396,24 @@ function EditUserForm({
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
-  const [role, setRole] = useState<User["role"]>(user.role);
+  const initialRoleId = user.built_in_role_id ?? defaultBuiltInRoleId(user.role);
+  const [roleId, setRoleId] = useState<BuiltInRoleId>(initialRoleId);
   const [savingRole, setSavingRole] = useState(false);
 
   const isSelf = currentUserId === user.id;
+  const selectedRole = builtInRoleById(roleId);
+  const roleChanged = roleId !== initialRoleId;
 
   const handleSaveRole = async () => {
-    if (role === user.role) return;
+    if (!roleChanged || !selectedRole) return;
     setSavingRole(true);
     try {
-      await setUserRole(user.id, role);
-      toast.success(`Role changed to ${ROLE_LABELS[role].label}`);
+      await setUserRole(user.id, selectedRole.legacyRole, roleId);
+      toast.success(`Role changed to ${selectedRole.name}`);
       onSaved();
-    } catch (e) {
-      toast.error(String(e));
-      setRole(user.role);
+    } catch (error) {
+      toast.error(String(error));
+      setRoleId(initialRoleId);
     } finally {
       setSavingRole(false);
     }
@@ -359,22 +454,20 @@ function EditUserForm({
   };
 
   return (
-    <div className="space-y-5 mt-4">
-      <div className="border border-border rounded-lg p-4 space-y-2">
-        <div className="flex justify-between items-center">
+    <div className="mt-5 space-y-6">
+      <div className="space-y-2 border-y border-border py-4">
+        <div className="flex items-center justify-between gap-4">
           <span className="text-xs text-muted-foreground">Username</span>
-          <span className="text-sm font-mono">{user.username}</span>
+          <span className="font-mono text-sm">{user.username}</span>
         </div>
-        <div className="flex justify-between items-center">
+        <div className="flex items-center justify-between gap-4">
           <span className="text-xs text-muted-foreground">Role</span>
-          <Badge variant="outline" className={ROLE_LABELS[user.role].color}>
-            {ROLE_LABELS[user.role].label}
-          </Badge>
+          <StaffRoleBadge user={user} />
         </div>
-        <div className="flex justify-between items-center">
+        <div className="flex items-center justify-between gap-4">
           <span className="text-xs text-muted-foreground">Status</span>
           {user.active === 1 ? (
-            <Badge className="bg-green-600 hover:bg-green-600">Active</Badge>
+            <Badge className="bg-emerald-600 hover:bg-emerald-600">Active</Badge>
           ) : (
             <Badge variant="secondary">Inactive</Badge>
           )}
@@ -382,32 +475,41 @@ function EditUserForm({
       </div>
 
       {/* Change role */}
-      <div className="space-y-2">
+      <section className="space-y-3">
         <div className="flex items-center gap-2">
           <ShieldCheck className="h-4 w-4 text-primary" />
-          <h3 className="text-sm font-medium">Role</h3>
+          <div>
+            <h3 className="text-sm font-medium">Built-in role</h3>
+            <p className="mt-0.5 text-xs text-muted-foreground">Choose the closest match for this person's daily work.</p>
+          </div>
         </div>
         {isOnlyOwner ? (
-          <p className="text-xs text-muted-foreground">This is the only owner — their role can't be changed (it would lock everyone out of admin settings).</p>
+          <p className="text-xs leading-5 text-muted-foreground">
+            This is the only business owner. Add another owner before changing this role so administration is never locked out.
+          </p>
         ) : (
           <>
-            <Select value={role} onValueChange={(v) => setRole(v as User["role"])}>
-              <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                {(["owner", "manager", "cashier", "viewer"] as const).map((r) => (
-                  <SelectItem key={r} value={r}>{ROLE_LABELS[r].label} — {ROLE_LABELS[r].description}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Button onClick={handleSaveRole} disabled={savingRole || role === user.role} className="w-full" variant="outline">
-              {savingRole ? "Saving…" : role === user.role ? "Save role" : `Change to ${ROLE_LABELS[role].label}`}
+            <BuiltInRoleCombobox value={roleId} onChange={setRoleId} disabled={savingRole} />
+            <Button
+              onClick={handleSaveRole}
+              disabled={savingRole || !roleChanged}
+              className="w-full"
+              variant="outline"
+            >
+              {savingRole
+                ? "Saving…"
+                : roleChanged && selectedRole
+                  ? `Change to ${selectedRole.name}`
+                  : "Role is up to date"}
             </Button>
-            {isSelf && role !== user.role && (
-              <p className="text-[11px] text-amber-600 dark:text-amber-400">You're changing your own role — you may lose access to this page.</p>
+            {isSelf && roleChanged && (
+              <p className="text-[11px] text-amber-600 dark:text-amber-400">
+                You're changing your own role and may lose access to this page.
+              </p>
             )}
           </>
         )}
-      </div>
+      </section>
 
       {/* Change password */}
       <div className="space-y-3">
@@ -473,7 +575,7 @@ function EditUserForm({
       )}
     </div>
   );
-
+}
 
 function BranchAssignmentBlock({ userId }: { userId: string }) {
   const [branches, setBranches] = useState<Array<{ id: string; name: string; assigned: boolean }>>([]);
@@ -487,7 +589,7 @@ function BranchAssignmentBlock({ userId }: { userId: string }) {
         listBranches(false),
         listUserBranches(userId),
       ]);
-      const assignedIds = new Set(assigned.map((a: any) => a.id));
+      const assignedIds = new Set(assigned.map((assignment) => assignment.id));
       setBranches(all.map((b) => ({ id: b.id, name: b.name, assigned: assignedIds.has(b.id) })));
     } finally {
       setLoading(false);
@@ -523,7 +625,6 @@ function BranchAssignmentBlock({ userId }: { userId: string }) {
       </div>
     </div>
   );
-}
 }
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {

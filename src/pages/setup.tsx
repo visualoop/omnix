@@ -14,7 +14,7 @@ import { useActiveModule, MODULE_DEFINITIONS, type ModuleId } from "@/stores/act
 import { isModuleEntitled, entitledModules } from "@/stores/entitlements";
 import { IS_PRO, LOCKED_MODULE, MODULES_ALLOWED, VARIANT_NAME } from "@/lib/variant";
 import { useCountry } from "@/stores/country";
-import { listCountries, TOP_MARKETS, getCountry, type CountryCode } from "@/lib/countries";
+import { getCountry, listSetupCountries, type CountryCode } from "@/lib/countries";
 
 interface SetupData {
   businessName: string;
@@ -31,7 +31,7 @@ interface SetupData {
 
 export function SetupWizard() {
   const [step, setStep] = useState(0);
-  const [pickedCountry, setPickedCountry] = useState<CountryCode | null>(null);
+  const [pickedCountry, setPickedCountry] = useState<CountryCode>("KE");
   // Trade variants pre-lock the module to whatever the binary ships.
   // Pro picks the first entitled module as a default (operator can switch on step 1).
   const defaultModule = (
@@ -120,64 +120,35 @@ export function SetupWizard() {
       </div>
       <div className="space-y-2">
         <h2 className="text-2xl font-semibold tracking-tight">Welcome to {VARIANT_NAME}</h2>
-        <p className="text-sm text-muted-foreground max-w-[340px] mx-auto leading-relaxed">
-          First — pick the country you operate in. This sets your currency, tax label, and the
-          local payment methods we wire up by default.
+        <p className="mx-auto max-w-[360px] text-sm leading-relaxed text-muted-foreground">
+          Omnix is currently available in these East African markets. Your choice sets the currency,
+          tax label, and local payment methods used by default.
         </p>
       </div>
 
-      {/* Country quick-pick — top markets first, then "All countries" picker */}
+      {/* First-run availability is intentionally limited to five EAC markets. */}
       <div className="space-y-3">
-        <div className="grid grid-cols-3 gap-1.5 sm:grid-cols-4">
-          {TOP_MARKETS.map((cc) => {
-            const c = getCountry(cc);
-            if (!c) return null;
-            const selected = pickedCountry === cc;
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+          {listSetupCountries().map((country) => {
+            const selected = pickedCountry === country.code;
             return (
               <button
-                key={cc}
+                key={country.code}
                 type="button"
-                onClick={() => setPickedCountry(cc)}
-                className={`flex items-center gap-1.5 rounded-lg border px-2.5 py-2 text-[12px] transition-all ${
+                onClick={() => setPickedCountry(country.code)}
+                className={`flex items-center gap-2 rounded-lg border px-3 py-2.5 text-xs transition-colors ${
                   selected
                     ? "border-primary bg-primary/8 ring-2 ring-primary/15"
                     : "border-border/60 hover:border-primary/40 hover:bg-foreground/[0.03]"
                 }`}
+                aria-pressed={selected}
               >
-                <Flag code={c.code} className="w-6" title={c.name} />
-                <span className="truncate font-medium">{c.name}</span>
+                <Flag code={country.code} className="w-7" title={country.name} />
+                <span className="truncate font-medium">{country.name}</span>
               </button>
             );
           })}
         </div>
-
-        {/* All-countries dropdown for everywhere else */}
-        <details className="text-left">
-          <summary className="cursor-pointer text-[11px] text-muted-foreground hover:text-foreground select-none">
-            Other country (search 180+ countries)
-          </summary>
-          <div className="mt-2 max-h-44 overflow-y-auto rounded-lg border border-border/60 p-1">
-            {listCountries()
-              .filter((c) => !TOP_MARKETS.includes(c.code))
-              .map((c) => {
-                const selected = pickedCountry === c.code;
-                return (
-                  <button
-                    key={c.code}
-                    type="button"
-                    onClick={() => setPickedCountry(c.code)}
-                    className={`flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[12px] transition ${
-                      selected ? "bg-primary/10 text-primary" : "hover:bg-foreground/[0.04]"
-                    }`}
-                  >
-                    <Flag code={c.code} className="w-5" title={c.name} />
-                    <span className="flex-1 truncate">{c.name}</span>
-                    <span className="font-mono text-[10px] text-muted-foreground">{c.currencyCode}</span>
-                  </button>
-                );
-              })}
-          </div>
-        </details>
 
         {pickedCountry && (() => {
           const c = getCountry(pickedCountry);

@@ -87,9 +87,9 @@ export function SettingsLayout() {
   const backToDashboard = () => navigate("/");
 
   return (
-    <div className="-m-6 flex h-[calc(100vh-48px)] bg-background">
+    <div className="flex h-full min-h-0 bg-background">
       {/* ─── Sidebar ─────────────────────────────────────── */}
-      <aside className="w-[280px] shrink-0 border-r border-foreground/10 flex flex-col">
+      <aside className="flex min-h-0 w-[232px] shrink-0 flex-col border-r border-foreground/10 sm:w-[248px] lg:w-[280px]">
         {/* Header — back + masthead */}
         <div className="h-14 border-b border-foreground/10 px-4 flex items-center gap-3">
           <button
@@ -97,6 +97,7 @@ export function SettingsLayout() {
             onClick={backToDashboard}
             className="size-8 rounded-md hover:bg-foreground/[0.04] grid place-items-center text-muted-foreground hover:text-foreground transition-colors"
             title="Back to dashboard"
+            aria-label="Back to dashboard"
           >
             <ArrowLeft className="h-4 w-4" />
           </button>
@@ -130,6 +131,7 @@ export function SettingsLayout() {
                 onClick={() => setQuery("")}
                 className="absolute right-1.5 top-1/2 -translate-y-1/2 size-5 grid place-items-center rounded hover:bg-foreground/[0.06] text-muted-foreground hover:text-foreground"
                 title="Clear search"
+                aria-label="Clear settings search"
               >
                 <X className="h-3 w-3" />
               </button>
@@ -180,8 +182,8 @@ export function SettingsLayout() {
       </aside>
 
       {/* ─── Content ─────────────────────────────────────── */}
-      <section className="flex-1 min-w-0 flex flex-col">
-        <header className="border-b border-foreground/10 px-8 py-5 shrink-0">
+      <section className="flex min-h-0 min-w-0 flex-1 flex-col">
+        <header className="shrink-0 border-b border-foreground/10 px-5 py-4 sm:px-6 lg:px-8 lg:py-5">
           <div>
             <div className="font-mono text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
               {currentItem ? labelForGroup(currentItem.group, countryCode) : "Settings"}
@@ -199,7 +201,7 @@ export function SettingsLayout() {
             )}
           </div>
         </header>
-        <main className="flex-1 overflow-auto px-8 py-7">
+        <main className="min-h-0 flex-1 overflow-auto px-5 py-5 sm:px-6 lg:px-8 lg:py-7">
           <Outlet />
         </main>
       </section>

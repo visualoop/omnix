@@ -343,12 +343,20 @@ describe('Task 24 team, support, profile, affiliate and reseller contracts', () 
     expect(panel).toContain('canManage')
   })
 
-  it('opens support tickets through the tickets API and keeps the thread read-only', () => {
+  it('opens support tickets and lets the owner continue the conversation safely', () => {
     expect(read(COMPONENTS.newTicket)).toContain("'/api/support/tickets'")
-    // The detail page renders replies but invents no reply route/operation.
     const detail = read(PAGES.supportDetail)
-    expect(detail).not.toContain('fetch(')
-    expect(detail).not.toContain('/reply')
+    expect(detail).toContain('SupportMessageForm')
+    expect(detail).toContain('ListSearch')
+    expect(detail).toContain('ListPagination')
+    const form = read('src/components/dashboard/support-message-form.tsx')
+    expect(form).toContain('/api/support/tickets/${ticketId}/messages')
+    expect(form).toContain("method: 'POST'")
+    expect(form).toContain('Sending a follow-up will reopen this ticket')
+    const api = read('src/app/api/support/tickets/[id]/messages/route.ts')
+    expect(api).toContain('and(eq(supportTickets.id, id), eq(supportTickets.userId, session.user.id))')
+    expect(api).toContain("status: 'open'")
+    expect(api).toContain('withDbTransaction')
   })
 
   it('keeps profile validation flowing through the customers API', () => {

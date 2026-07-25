@@ -4,7 +4,7 @@
  *
  * Data layers:
  *   1. RICH_PROFILES — hand-authored entries for the top markets
- *      (KE, TZ, UG, RW, NG, GH, ZA, US, GB, IN, AE, EG). These have
+ *      (KE, TZ, UG, RW, BI, NG, GH, ZA, US, GB, IN, AE, EG). These have
  *      bespoke compliance hooks (eTIMS for Kenya, NHIF/SHA, M-Pesa,
  *      KEBS, etc.) and the right pharmacy term in the local language.
  *
@@ -126,6 +126,16 @@ const RICH_PROFILES: Partial<Record<CountryCode, CountryProfile>> = {
     pharmacyTerm: "Pharmacie",
     phoneCountryCode: "+250", phonePlaceholder: "+250 7XX XXX XXX",
     dateFormat: "DD/MM/YYYY", intlLocale: "rw-RW",
+  },
+  BI: {
+    code: "BI", name: "Burundi", flag: "🇧🇮",
+    currencyCode: "BIF", currencySymbol: "FBu", decimals: 0,
+    taxLabel: "VAT", defaultTaxRate: 18,
+    paymentMethods: ["cash", "airtel_money", "card", "bank"],
+    complianceFeatures: [],
+    pharmacyTerm: "Pharmacie",
+    phoneCountryCode: "+257", phonePlaceholder: "+257 XX XX XX XX",
+    dateFormat: "DD/MM/YYYY", intlLocale: "fr-BI",
   },
   NG: {
     code: "NG", name: "Nigeria", flag: "🇳🇬",
@@ -473,7 +483,16 @@ export function listCountries(): CountryProfile[] {
     .sort((a, b) => a.name.localeCompare(b.name));
 }
 
-/** Top markets first — used in setup wizard quick-pick row. */
+
+/** Countries currently offered during first-run setup, in display order. */
+export const SETUP_COUNTRY_CODES = ["KE", "UG", "TZ", "RW", "BI"] as const;
+
+export function listSetupCountries(): CountryProfile[] {
+  return SETUP_COUNTRY_CODES
+    .map((code) => getCountry(code))
+    .filter((country): country is CountryProfile => country !== null);
+}
+/** Broader market ranking retained for internal discovery outside first-run setup. */
 export const TOP_MARKETS: CountryCode[] = [
   "KE", "TZ", "UG", "RW", "NG", "GH", "ZA", "US", "GB", "IN", "AE", "EG",
 ];

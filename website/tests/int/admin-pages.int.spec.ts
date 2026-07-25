@@ -361,6 +361,26 @@ describe('Task 26 exhaustive detail-collection search + pagination', () => {
     expect(source).toContain('.offset(')
     expect(source).toContain('count()')
   })
+
+  it('lets support staff reply and close or reopen a ticket through an audited API', () => {
+    const page = read(`${ADMIN}/tickets/[id]/page.tsx`)
+    expect(page).toContain('TicketActions')
+    const actions = read('src/components/admin/ticket-actions.tsx')
+    expect(actions).toContain('/api/admin/tickets/${ticketId}')
+    expect(actions).toContain("method: 'POST'")
+    expect(actions).toContain("method: 'PATCH'")
+    expect(actions).toContain('Close ticket')
+    expect(actions).toContain('Reopen ticket')
+    expect(actions).toContain('confirm(')
+
+    const api = read(`${API}/tickets/[id]/route.ts`)
+    expect(api).toContain('isDeskAllowed(role, DESK_ACCESS.tickets)')
+    expect(api).toContain('withDbTransaction')
+    expect(api).toContain("action: 'ticket.reply'")
+    expect(api).toContain("'ticket.close'")
+    expect(api).toContain("'ticket.reopen'")
+    expect(api).toContain('sendSupportReplyEmail')
+  })
 })
 
 // ───────────────────────────────────────────────────────────────────────────
