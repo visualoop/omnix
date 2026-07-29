@@ -58,18 +58,23 @@ describe('licensed media publication gate', () => {
     }
   })
 
-  it('uploads to private quarantine and only creates a public URL during promotion', () => {
+  it('publishes trusted admin uploads directly while retaining optional private review promotion', () => {
     const storage = read('src/lib/r2-media.ts')
     const api = read('src/app/api/admin/media/route.ts')
     expect(storage).toContain("getSetting('s3.media_quarantine_bucket')")
+    expect(storage).toContain('requireQuarantine')
     expect(storage).toContain("CacheControl: 'private, no-store'")
     expect(storage).toContain('getSignedUrl(')
+    expect(storage).toContain('uploadPublishedMedia')
     expect(storage).toContain('promoteQuarantinedMedia')
-    expect(api).toContain("key: ''")
-    expect(api).toContain("url: ''")
+    expect(api).toContain("const publishDirectly = formText(form, 'mode') !== 'review'")
+    expect(api).toContain('uploadPublishedMedia')
+    expect(api).toContain("action: 'media.publish'")
+    expect(api).toContain("objectState: 'published'")
+    expect(api).toContain("approvalState: 'approved'")
+    expect(api).toContain('uploadMediaToQuarantine')
     expect(api).toContain("objectState: 'quarantine'")
     expect(api).toContain("action: 'media.approve'")
-    expect(api).toContain('db.batch([')
   })
 
   it('has no direct marketing-video settings bypass', () => {
@@ -81,12 +86,16 @@ describe('licensed media publication gate', () => {
     expect(homepage).toContain("getSlotImage('hero.video-poster')")
   })
 
-  it('requires an affirmative rights selection in the admin UI', () => {
+  it('requires only the file for Omnix-owned uploads and keeps provenance available as optional detail', () => {
     const ui = read('src/components/admin/media-library.tsx')
-    expect(ui).toContain("useState<MediaRightsBasis | ''>('')")
-    expect(ui).toContain('placeholder="Select rights basis"')
-    expect(ui).not.toContain("useState<MediaRightsBasis>('owned')")
-    expect(ui).toContain("if (!uploadBasis)")
+    expect(ui).toContain("useState<'publish' | 'review'>('publish')")
+    expect(ui).toContain("useState<MediaRightsBasis>('owned')")
+    expect(ui).toContain("useState('Omnix')")
+    expect(ui).toContain('<details')
+    expect(ui).toContain('optional for Omnix-owned files')
+    expect(ui).toContain('ref={fileRef} required type="file"')
+    expect(ui).toContain('disabled={!storageStatus.reviewReady}')
+    expect(ui).not.toContain('if (!uploadBasis)')
   })
 
   it('requires explicit reapproval for changes and does not swallow object-deletion failures', () => {

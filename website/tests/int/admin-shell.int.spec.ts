@@ -77,6 +77,7 @@ describe('Task 25 operator console navigation model', () => {
       'Payments',
       'Releases',
       'Support',
+      'Partner programs',
       'Trust & content',
       'Audit & settings',
     ])
@@ -94,6 +95,7 @@ describe('Task 25 capability-derived visibility', () => {
       '/admin/payments',
       '/admin/releases',
       '/admin/tickets',
+      '/admin/partners',
       '/admin/media',
       '/admin/module-videos',
       '/admin/team-members',
@@ -134,6 +136,7 @@ describe('Task 25 capability-derived visibility', () => {
       '/admin/licenses',
       '/admin/machines',
       '/admin/releases',
+      '/admin/partners',
       '/admin/media',
       '/admin/module-videos',
       '/admin/team-members',

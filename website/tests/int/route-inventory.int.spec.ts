@@ -43,7 +43,7 @@ describe('website route inventory', () => {
   it('accounts for every App Router page', () => {
     expect(APP_PAGE_ROUTES).toEqual(flatten(PAGE_ROUTE_GROUPS))
     expect(APP_PAGE_ROUTES).toEqual(discoveredRoutes('page.tsx'))
-    expect(APP_PAGE_ROUTES).toHaveLength(90)
+    expect(APP_PAGE_ROUTES).toHaveLength(91)
   })
 
   it('accounts for every App Router API/metadata route', () => {
@@ -54,7 +54,7 @@ describe('website route inventory', () => {
 
     expect(APP_API_ROUTES).toEqual(flatten(API_ROUTE_GROUPS))
     expect(APP_API_ROUTES).toEqual(discovered)
-    expect(APP_API_ROUTES).toHaveLength(56)
+    expect(APP_API_ROUTES).toHaveLength(57)
   })
 
   it('contains no duplicate page or API routes', () => {

@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import { headers } from 'next/headers'
 
 import {
   buildWhatsAppHref,
@@ -11,6 +12,7 @@ import {
   type TrustChannel,
 } from '@/components/marketing/trust-pages'
 import { buildAlternatesLanguages } from '@/lib/hreflang'
+import { auth } from '@/lib/auth'
 import { buildSocialMetadata } from '@/lib/seo-metadata'
 import { getSiteSettings } from '@/lib/site-settings'
 
@@ -73,11 +75,25 @@ export default async function SupportPage({
 }: {
   params: Promise<{ locale: string }>
 }) {
-  const [{ locale }, settings] = await Promise.all([params, getSiteSettings()])
+  const reqHeaders = await headers()
+  const [{ locale }, settings, session] = await Promise.all([
+    params,
+    getSiteSettings(),
+    auth.api.getSession({ headers: reqHeaders }).catch(() => null),
+  ])
   const whatsappMessage = 'Hi Omnix, I need help with Omnix.'
   const whatsappSupportHref = buildWhatsAppHref(settings.whatsappUrl, whatsappMessage)
+  const ticketHref = session
+    ? '/dashboard/support'
+    : '/login?next=%2Fdashboard%2Fsupport%2Fnew'
 
   const channels: TrustChannel[] = [
+    {
+      title: 'Support inbox and tickets',
+      body: 'Start a ticket and keep every customer and Omnix reply in the same account-backed conversation. Closed or resolved tickets reopen when you send a follow-up.',
+      href: ticketHref,
+      linkLabel: session ? 'Open your support inbox' : 'Sign in and start a ticket',
+    },
     ...(whatsappSupportHref
       ? [
           {
@@ -102,12 +118,6 @@ export default async function SupportPage({
       linkLabel: `Email ${settings.supportEmail}`,
       external: true,
     },
-    {
-      title: 'Dashboard tickets',
-      body: 'Licensed customers can raise and track a support ticket from the customer dashboard. Sign-in is required so the ticket is tied to your account and licence.',
-      href: '/login?next=%2Fdashboard%2Fsupport',
-      linkLabel: 'Sign in to the dashboard',
-    },
   ]
 
   return (
@@ -116,12 +126,12 @@ export default async function SupportPage({
         kicker="Support"
         title="Real routes to"
         accent="a human."
-        lede="Omnix support is a small set of honest channels. Each one below says what it is for, so you can pick the shortest path to an answer instead of filling in a form that goes nowhere."
+        lede="Open your account-backed support inbox to start or continue a ticket. You and the Omnix team reply in the same visible thread, with WhatsApp, email, and documentation available when they fit better."
         factsTitle="Where help comes from"
         facts={[
           { label: 'Fastest', value: settings.whatsappUrl ? 'Configured WhatsApp line' : 'A booked demo or support email' },
           { label: 'Self-serve', value: 'Documentation with step-by-step guides' },
-          { label: 'Account help', value: 'Customer dashboard (sign-in required)' },
+          { label: 'Account help', value: 'A searchable ticket conversation with Omnix staff' },
           { label: 'Email', value: settings.supportEmail },
         ]}
         locale={locale}

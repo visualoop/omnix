@@ -69,6 +69,19 @@ describe('Task 15 trust routes — localization and conversion', () => {
 })
 
 describe('Task 15 trust routes — honest boundaries', () => {
+  it('routes signed-in and signed-out visitors into real partner and support workflows', () => {
+    expect(PAGES.partners).toContain('auth.api.getSession')
+    expect(PAGES.partners).toContain("'/dashboard/affiliate'")
+    expect(PAGES.partners).toContain("'/login?next=%2Fdashboard%2Faffiliate'")
+    expect(PAGES.partners).toContain("'/dashboard/reseller'")
+    expect(PAGES.partners).toContain("'/login?next=%2Fdashboard%2Freseller'")
+    expect(PAGES.support).toContain('auth.api.getSession')
+    expect(PAGES.support).toContain("? '/dashboard/support'")
+    expect(PAGES.support).toContain("'/login?next=%2Fdashboard%2Fsupport%2Fnew'")
+    expect(PAGES.support).toContain('same account-backed conversation')
+    expect(PAGES.support).toContain('reopen when you send a follow-up')
+  })
+
   it('separates local recording from the connected M-Pesa request', () => {
     expect(PAGES.mpesa).toContain('<BoundaryLedger')
     expect(PAGES.mpesa).toContain('The sale is recorded locally.')

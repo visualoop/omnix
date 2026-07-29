@@ -3,7 +3,7 @@ import { redirect } from 'next/navigation'
 import { count, desc, ilike, or } from 'drizzle-orm'
 import { db, platformMedia } from '@/db'
 import { auth } from '@/lib/auth'
-import { getQuarantinePreviewUrl } from '@/lib/r2-media'
+import { getMediaStorageStatus, getQuarantinePreviewUrl } from '@/lib/r2-media'
 import { MEDIA_SLOTS, getSlotMedia } from '@/lib/media-slots'
 import { MediaLibrary } from '@/components/admin/media-library'
 
@@ -43,7 +43,7 @@ export default async function AdminMediaPage({
   // Register page (bounded) + stable total + fixed slot-coverage grid.
   // Slot coverage is resolved through the same publication gate the public
   // site uses (getSlotMedia), so this never needs to load the whole table.
-  const [items, totalRow, slotMedia] = await Promise.all([
+  const [items, totalRow, slotMedia, storageStatus] = await Promise.all([
     db
       .select()
       .from(platformMedia)
@@ -53,6 +53,7 @@ export default async function AdminMediaPage({
       .offset((page - 1) * PAGE_SIZE),
     db.select({ n: count() }).from(platformMedia).where(where),
     Promise.all(MEDIA_SLOTS.map((slot) => getSlotMedia(slot.slot))),
+    getMediaStorageStatus(),
   ])
 
   const total = totalRow[0]?.n ?? 0
@@ -99,12 +100,13 @@ export default async function AdminMediaPage({
           Licensed media
         </h1>
         <p className="mt-1 max-w-[68ch] text-[14px] leading-relaxed text-[var(--color-fg-muted)]">
-          Every asset needs alt text, a rights basis, a rights holder and a source record. Uploads remain private to this admin workflow until a platform admin approves them.
+          Platform admins can upload and publish an Omnix-owned asset in one step. Add detailed rights information only for licensed, customer-supplied, or third-party media.
         </p>
       </header>
 
       <MediaLibrary
         initialItems={initialItems}
+        storageStatus={storageStatus}
         page={page}
         pageSize={PAGE_SIZE}
         total={total}

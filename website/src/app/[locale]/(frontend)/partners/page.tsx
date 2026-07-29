@@ -1,8 +1,10 @@
 import type { Metadata } from 'next'
+import { headers } from 'next/headers'
 
 import { PartnersForm } from '@/components/marketing/partners-form'
 import {
   TrustClosing,
+  TrustChannelGrid,
   TrustFormLayout,
   TrustHero,
   TrustList,
@@ -10,6 +12,7 @@ import {
   TrustSection,
 } from '@/components/marketing/trust-pages'
 import { buildAlternatesLanguages } from '@/lib/hreflang'
+import { auth } from '@/lib/auth'
 import { buildSocialMetadata } from '@/lib/seo-metadata'
 import { getSiteSettings } from '@/lib/site-settings'
 
@@ -73,8 +76,15 @@ export default async function PartnersPage({
 }: {
   params: Promise<{ locale: string }>
 }) {
-  const [{ locale }, settings] = await Promise.all([params, getSiteSettings()])
+  const reqHeaders = await headers()
+  const [{ locale }, settings, session] = await Promise.all([
+    params,
+    getSiteSettings(),
+    auth.api.getSession({ headers: reqHeaders }).catch(() => null),
+  ])
   const whatsappMessage = 'Hi Omnix, I would like to discuss a partnership.'
+  const affiliateHref = session ? '/dashboard/affiliate' : '/login?next=%2Fdashboard%2Faffiliate'
+  const resellerHref = session ? '/dashboard/reseller' : '/login?next=%2Fdashboard%2Freseller'
 
   return (
     <TrustPage>
@@ -94,6 +104,31 @@ export default async function PartnersPage({
         whatsappUrl={settings.whatsappUrl}
         whatsappMessage={whatsappMessage}
       />
+
+      <TrustSection
+        id="partner-dashboards"
+        alt
+        kicker="Already a partner?"
+        title="Open your working desk."
+        intro="Referral accounts and approved resellers operate from separate, account-backed dashboards. Sign in with the account attached to your partner record."
+      >
+        <TrustChannelGrid
+          channels={[
+            {
+              title: 'Referral and affiliate dashboard',
+              body: 'Create your referral link, copy your code, and follow every credited commission from one ledger.',
+              href: affiliateHref,
+              linkLabel: session ? 'Open affiliate dashboard' : 'Sign in to affiliate dashboard',
+            },
+            {
+              title: 'Approved reseller dashboard',
+              body: 'Issue customer licences at your agreed wholesale rate and track reseller commission and revenue.',
+              href: resellerHref,
+              linkLabel: session ? 'Open reseller dashboard' : 'Sign in to reseller dashboard',
+            },
+          ]}
+        />
+      </TrustSection>
 
       <TrustSection
         id="partner-types"

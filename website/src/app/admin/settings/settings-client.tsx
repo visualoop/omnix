@@ -39,7 +39,7 @@ const CATEGORY_LABELS: Record<string, string> = {
   email_branding: 'Email branding',
   site: 'Site / footer',
   oauth: 'Google OAuth',
-  storage: 'Cloud backup storage',
+  storage: 'Storage & media',
   system: 'System',
   feature_flags: 'Feature flags',
   analytics: 'Analytics',
@@ -56,7 +56,7 @@ const CATEGORY_DESCRIPTIONS: Record<string, string> = {
   email_branding: 'Everything that renders in every email footer — tagline, support contacts, legal name.',
   site: 'Marketing footer + structured-data contact points. Powers the WhatsApp float, the /contact page, and every locale footer.',
   oauth: 'Google sign-in for /login. Requires a redeploy after changing — Better Auth wires at startup.',
-  storage: 'Encrypted desktop backups land in this S3-compatible bucket. R2 recommended.',
+  storage: 'S3-compatible storage for encrypted backups and public media. The private media review bucket is optional; configure it only when uploads need a separate approval step.',
   system: 'Internal Bearer secrets for cron + bootstrap routes.',
   feature_flags: 'Quick toggles. No redeploy needed.',
   analytics: 'GA4 measurement tag.',
@@ -169,7 +169,7 @@ export function SettingsClient({ initial }: Props) {
       </div>
 
       {grouped.map(({ category, items }) => (
-        <section key={category}>
+        <section key={category} id={`settings-${category}`} className="scroll-mt-6">
           <header className="mb-4 flex items-end justify-between border-b border-[var(--color-border)] pb-3">
             <div>
               <div className="font-mono text-[10px] uppercase tracking-[0.22em] text-[var(--color-fg-muted)]">

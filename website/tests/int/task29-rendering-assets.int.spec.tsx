@@ -146,6 +146,7 @@ describe('Task 29 · public marketing layout is stable and cacheable', () => {
   it('the header exposes the stable public actions (Book a demo + Sign in)', () => {
     const header = read('src/components/layout/site-header.tsx')
     expect(header).toContain("label: 'Book a demo'")
+    expect(header).toContain("{ label: 'Partners', href: '/partners' }")
     expect(header).toContain('signInLabel')
   })
 })
@@ -168,7 +169,7 @@ describe('Task 29 · media-slot + site-settings caching preserves fail-closed ga
 
   it('keeps the full fail-closed publication gate inside the cached resolver', () => {
     expect(slots).toContain("eq(platformMedia.approvalState, 'approved')")
-    expect(slots).toContain("eq(auditLog.action, 'media.approve')")
+    expect(slots).toContain("inArray(auditLog.action, ['media.approve', 'media.publish'])")
     expect(slots).toContain("eq(user.role, 'platform_admin')")
     // The objectState=published gate is still present in every public resolver
     // (getSlotMedia, getApprovedMediaById, and the listApprovedMediaPhotos gate).

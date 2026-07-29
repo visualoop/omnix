@@ -17,6 +17,8 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { EmptyState, StatusPill } from '@/components/dashboard/status-utils'
+import { ListPagination, ListSearch } from '@/components/dashboard/list-controls'
+import { FilteredEmptyState } from '@/components/ui/state-view'
 import { cn } from '@/lib/cn'
 import { formatDate } from '@/lib/format-date'
 
@@ -49,9 +51,21 @@ interface Props {
   initialAffiliate: Affiliate | null
   referralUrl: string
   credits: Credit[]
+  creditPage: number
+  creditPageSize: number
+  creditTotal: number
+  creditQuery: string
 }
 
-export function AffiliateClient({ initialAffiliate, referralUrl, credits }: Props) {
+export function AffiliateClient({
+  initialAffiliate,
+  referralUrl,
+  credits,
+  creditPage,
+  creditPageSize,
+  creditTotal,
+  creditQuery,
+}: Props) {
   const router = useRouter()
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -210,44 +224,68 @@ export function AffiliateClient({ initialAffiliate, referralUrl, credits }: Prop
         <Stat label="Unpaid balance" value={money(aff.unpaidBalance)} note="Paid out monthly" />
       </dl>
 
-      <section className="flex flex-col gap-3">
-        <h2 className="font-display text-[18px] font-semibold tracking-[-0.02em] text-[var(--color-fg)]">
-          Recent credits
-        </h2>
+      <section className="flex flex-col gap-4">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <h2 className="font-display text-[18px] font-semibold tracking-[-0.02em] text-[var(--color-fg)]">
+              Credit ledger
+            </h2>
+            <p className="mt-1 text-[12px] text-[var(--color-fg-muted)]">
+              Search by payment, licence, or credit status.
+            </p>
+          </div>
+          <ListSearch label="Search credits" placeholder="Payment, licence, or status…" />
+        </div>
         {credits.length === 0 ? (
-          <EmptyState
-            title="No credits yet"
-            body="Share your referral link with a business that needs Omnix — your first credit lands here when they pay."
-          />
+          creditQuery ? (
+            <FilteredEmptyState
+              query={creditQuery}
+              clearHref="/dashboard/affiliate"
+              entityLabel="credits"
+            />
+          ) : (
+            <EmptyState
+              title="No credits yet"
+              body="Share your referral link with a business that needs Omnix — your first credit lands here when they pay."
+            />
+          )
         ) : (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Date</TableHead>
-                <TableHead className="text-right">Gross</TableHead>
-                <TableHead className="text-right">Your commission</TableHead>
-                <TableHead>Status</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {credits.map((c) => (
-                <TableRow key={c.id}>
-                  <TableCell className="font-mono text-[11px] tabular-nums text-[var(--color-fg-muted)]">
-                    {formatDate(c.createdAt)}
-                  </TableCell>
-                  <TableCell className="text-right font-mono tabular-nums">
-                    {c.currency} {Math.round(c.gross).toLocaleString()}
-                  </TableCell>
-                  <TableCell className="text-right font-mono font-medium tabular-nums">
-                    {c.currency} {Math.round(c.commission).toLocaleString()}
-                  </TableCell>
-                  <TableCell>
-                    <StatusPill kind="commission" status={c.status} />
-                  </TableCell>
+          <div className="flex flex-col">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Date</TableHead>
+                  <TableHead className="text-right">Gross</TableHead>
+                  <TableHead className="text-right">Your commission</TableHead>
+                  <TableHead>Status</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {credits.map((c) => (
+                  <TableRow key={c.id}>
+                    <TableCell className="font-mono text-[11px] tabular-nums text-[var(--color-fg-muted)]">
+                      {formatDate(c.createdAt)}
+                    </TableCell>
+                    <TableCell className="text-right font-mono tabular-nums">
+                      {c.currency} {Math.round(c.gross).toLocaleString()}
+                    </TableCell>
+                    <TableCell className="text-right font-mono font-medium tabular-nums">
+                      {c.currency} {Math.round(c.commission).toLocaleString()}
+                    </TableCell>
+                    <TableCell>
+                      <StatusPill kind="commission" status={c.status} />
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+            <ListPagination
+              page={creditPage}
+              pageSize={creditPageSize}
+              total={creditTotal}
+              label="Affiliate credit pages"
+            />
+          </div>
         )}
       </section>
     </div>

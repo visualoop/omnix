@@ -95,6 +95,7 @@ export const PAGE_ROUTE_GROUPS = {
     '/admin/module-videos',
     '/admin/orgs',
     '/admin/orgs/[id]',
+    '/admin/partners',
     '/admin/payments',
     '/admin/payments/[id]',
     '/admin/releases',
@@ -111,6 +112,7 @@ export const PAGE_ROUTE_GROUPS = {
 
 export const API_ROUTE_GROUPS = {
   platformAdmin: [
+    '/api/admin/affiliates/[id]',
     '/api/admin/customers',
     '/api/admin/licenses/[id]',
     '/api/admin/licenses/[id]/mark-paid',

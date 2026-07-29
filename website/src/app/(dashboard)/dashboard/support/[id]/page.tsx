@@ -98,15 +98,24 @@ export default async function TicketDetailPage({ params, searchParams }: PagePro
             return (
               <li
                 key={message.id}
-                className="rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-surface)] p-4"
+                className={`flex ${fromYou ? 'justify-end' : 'justify-start'}`}
               >
-                <div className="flex items-center justify-between gap-3 text-[11px]">
-                  <span className="font-mono uppercase tracking-[0.16em] text-[var(--color-fg-muted)]">
-                    {fromYou ? 'You' : 'Omnix support'}
-                  </span>
-                  <time className="font-mono text-[var(--color-fg-subtle)]">{formatDateLong(message.createdAt)}</time>
-                </div>
-                <p className="mt-2 whitespace-pre-wrap text-[13px] leading-6 text-[var(--color-fg)]">{message.body}</p>
+                <article
+                  aria-label={`${fromYou ? 'Your message' : 'Message from Omnix support'} sent ${formatDateLong(message.createdAt)}`}
+                  className={`w-fit max-w-[min(88%,44rem)] rounded-[var(--radius-md)] border p-4 ${
+                    fromYou
+                      ? 'border-[var(--color-accent)]/30 bg-[var(--color-accent)]/8'
+                      : 'border-[var(--color-border)] bg-[var(--color-surface)]'
+                  }`}
+                >
+                  <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-1 text-[11px]">
+                    <span className={`font-mono uppercase tracking-[0.16em] ${fromYou ? 'text-[var(--color-accent)]' : 'text-[var(--color-fg-muted)]'}`}>
+                      {fromYou ? 'You' : 'Omnix support'}
+                    </span>
+                    <time className="font-mono text-[var(--color-fg-subtle)]">{formatDateLong(message.createdAt)}</time>
+                  </div>
+                  <p className="mt-2 whitespace-pre-wrap text-[13px] leading-6 text-[var(--color-fg)]">{message.body}</p>
+                </article>
               </li>
             )
           })}

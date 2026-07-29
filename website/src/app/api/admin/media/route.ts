@@ -20,6 +20,7 @@ import {
   getQuarantinePreviewUrl,
   promoteQuarantinedMedia,
   uploadMediaToQuarantine,
+  uploadPublishedMedia,
 } from '@/lib/r2-media'
 
 export const dynamic = 'force-dynamic'
@@ -45,6 +46,15 @@ function revalidateMedia() {
 function formText(form: FormData, key: string): string {
   const value = form.get(key)
   return typeof value === 'string' ? value.trim() : ''
+}
+
+function filenameAlt(filename: string): string {
+  const words = filename
+    .replace(/\.[^.]+$/, '')
+    .replace(/[-_]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+  return words || 'Omnix media'
 }
 
 function isApprovalState(value: unknown): value is MediaApprovalState {
@@ -103,14 +113,76 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: false, error: 'The selected file type does not match this slot.' }, { status: 400 })
   }
 
-  const alt = formText(form, 'alt')
-  const rightsBasis = formText(form, 'rightsBasis')
-  const rightsHolder = formText(form, 'rightsHolder')
-  const rightsSource = formText(form, 'rightsSource')
+  const alt = formText(form, 'alt') || filenameAlt(file.name)
+  const rightsBasis = formText(form, 'rightsBasis') || 'owned'
+  const rightsHolder = formText(form, 'rightsHolder') || 'Omnix'
+  const rightsSource = formText(form, 'rightsSource') || `Platform admin upload · ${file.name}`
   const provenanceError = validateMediaProvenance({ alt, rightsBasis, rightsHolder, rightsSource })
   if (provenanceError) return NextResponse.json({ ok: false, error: provenanceError }, { status: 400 })
   if (!isMediaRightsBasis(rightsBasis)) {
     return NextResponse.json({ ok: false, error: 'Select a valid rights basis.' }, { status: 400 })
+  }
+
+  const bytes = Buffer.from(await file.arrayBuffer())
+  const publishDirectly = formText(form, 'mode') !== 'review'
+
+  if (publishDirectly) {
+    let published: Awaited<ReturnType<typeof uploadPublishedMedia>> | null = null
+    try {
+      published = await uploadPublishedMedia({
+        filename: file.name,
+        contentType: file.type,
+        bytes,
+      })
+      const id = randomUUID()
+      const auditId = randomUUID()
+      const approvedAt = new Date()
+      await db.batch([
+        db.insert(auditLog).values({
+          id: auditId,
+          actorId: access.session!.user.id,
+          action: 'media.publish',
+          resource: `platform_media:${id}`,
+          metadata: { slot, rightsBasis, key: published.key, source: 'direct-admin-upload' },
+        }),
+        db.insert(platformMedia).values({
+          id,
+          key: published.key,
+          url: published.url,
+          quarantineKey: null,
+          objectState: 'published',
+          mimeType: file.type,
+          sizeBytes: published.sizeBytes,
+          filename: file.name,
+          alt,
+          slot,
+          rightsBasis,
+          rightsHolder,
+          rightsSource,
+          approvalState: 'approved',
+          approvedBy: access.session!.user.id,
+          approvalAuditId: auditId,
+          approvedAt,
+          uploadedBy: access.session!.user.id,
+        }),
+      ])
+      revalidateMedia()
+      return NextResponse.json({ ok: true, id, approvalState: 'approved', url: published.url })
+    } catch (error) {
+      let cleanupError: unknown = null
+      if (published) {
+        try {
+          await deletePublishedMedia(published.key)
+        } catch (cleanupFailure) {
+          cleanupError = cleanupFailure
+        }
+      }
+      const message = error instanceof Error ? error.message : String(error)
+      const cleanupMessage = cleanupError
+        ? ` Public object cleanup also failed: ${cleanupError instanceof Error ? cleanupError.message : String(cleanupError)}`
+        : ''
+      return NextResponse.json({ ok: false, error: `${message}${cleanupMessage}` }, { status: 500 })
+    }
   }
 
   let uploaded: Awaited<ReturnType<typeof uploadMediaToQuarantine>> | null = null
@@ -118,7 +190,7 @@ export async function POST(request: Request) {
     uploaded = await uploadMediaToQuarantine({
       filename: file.name,
       contentType: file.type,
-      bytes: Buffer.from(await file.arrayBuffer()),
+      bytes,
     })
     const id = randomUUID()
     await db.insert(platformMedia).values({
@@ -144,11 +216,8 @@ export async function POST(request: Request) {
     revalidateMedia()
     return NextResponse.json({ ok: true, id, approvalState: 'pending' })
   } catch (error) {
-    // Best-effort private cleanup only: the insert failed, so NO DB row (and
-    // therefore no publication or tombstone) claims this private quarantine
-    // object exists. A failed cleanup here leaks at most an orphaned private,
-    // no-store object that is unreachable publicly and unreferenced, so we do
-    // not fail the request on it.
+    // Best-effort private cleanup only: a failed DB insert can leave at most
+    // an unreachable private object, never a publicly resolvable asset.
     if (uploaded) await deleteQuarantinedMedia(uploaded.quarantineKey).catch(() => undefined)
     return NextResponse.json({ ok: false, error: error instanceof Error ? error.message : String(error) }, { status: 500 })
   }

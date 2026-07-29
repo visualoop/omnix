@@ -35,6 +35,7 @@ export type AdminNavIcon =
   | 'licenses'
   | 'payments'
   | 'tickets'
+  | 'partners'
   | 'releases'
   | 'media'
   | 'moduleVideos'
@@ -168,6 +169,18 @@ export const ADMIN_NAVIGATION: readonly AdminNavGroup[] = [
         description: 'Customer support queue',
         icon: 'tickets',
         roles: SUPPORT_STAFF,
+      },
+    ],
+  },
+  {
+    label: 'Partner programs',
+    items: [
+      {
+        href: '/admin/partners',
+        label: 'Affiliates & resellers',
+        description: 'Referral and wholesale partner controls',
+        icon: 'partners',
+        roles: ADMIN_ONLY,
       },
     ],
   },

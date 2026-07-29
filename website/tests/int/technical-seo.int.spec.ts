@@ -100,7 +100,7 @@ describe('Task 28 — legacy route consolidation (permanent redirects)', () => {
     ]) {
       expect(APP_PAGE_ROUTES).toContain(route)
     }
-    expect(APP_PAGE_ROUTES).toHaveLength(90)
+    expect(APP_PAGE_ROUTES).toHaveLength(91)
   })
 })
 

@@ -73,7 +73,7 @@ export const SETTING_DEFINITIONS = [
   { key: 's3.access_key_id',        category: 'storage',   label: 'S3 access key ID',           sensitive: true,  envFallback: 'S3_ACCESS_KEY_ID',     description: '' },
   { key: 's3.secret_access_key',    category: 'storage',   label: 'S3 secret access key',       sensitive: true,  envFallback: 'S3_SECRET_ACCESS_KEY', description: '' },
   { key: 's3.media_bucket',         category: 'storage',   label: 'Public media bucket',        sensitive: false, envFallback: 'S3_MEDIA_BUCKET',      description: 'Bucket used only after a platform admin approves media for publication.' },
-  { key: 's3.media_quarantine_bucket', category: 'storage', label: 'Private media quarantine',    sensitive: false, envFallback: 'S3_MEDIA_QUARANTINE_BUCKET', description: 'Separate private bucket for pending media. Must not have public-read access.' },
+  { key: 's3.media_quarantine_bucket', category: 'storage', label: 'Private media review bucket', sensitive: false, envFallback: 'S3_MEDIA_QUARANTINE_BUCKET', description: 'Optional. Separate private bucket used only when an admin chooses “Send to private review”. Direct publishing does not require it.' },
   { key: 's3.public_url',           category: 'storage',   label: 'Media public base URL',      sensitive: false, envFallback: 'S3_PUBLIC_URL',        description: 'CDN URL prefix for approved media only, e.g. "https://media.omnix.co.ke".' },
 
   // ── Cron / system ──────────────────────────────

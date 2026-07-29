@@ -29,8 +29,8 @@ const hrefsFor = (role: string) =>
 // Route inventory: nothing added or dropped, every section accounted for.
 // ───────────────────────────────────────────────────────────────────────────
 describe('Task 26 admin route inventory', () => {
-  it('keeps the full admin page inventory (23 routes) unchanged', () => {
-    expect(PAGE_ROUTE_GROUPS.admin).toHaveLength(23)
+  it('keeps the full admin page inventory (24 routes) accounted for', () => {
+    expect(PAGE_ROUTE_GROUPS.admin).toHaveLength(24)
     for (const route of [
       '/admin',
       '/admin/users',
@@ -48,6 +48,7 @@ describe('Task 26 admin route inventory', () => {
       '/admin/tickets/[id]',
       '/admin/media',
       '/admin/module-videos',
+      '/admin/partners',
       '/admin/team-members',
       '/admin/audit',
       '/admin/audit/[id]',
@@ -101,7 +102,7 @@ describe('Task 26 independent capability gates (section layouts)', () => {
     expect(guard).toContain("redirect(`/login?next=")
     expect(guard).toContain("redirect('/admin')")
     // platform-admin-only desks
-    for (const desk of ['licenses', 'machines', 'releases', 'staff', 'settings', 'trust', 'customerCreate']) {
+    for (const desk of ['licenses', 'machines', 'releases', 'partners', 'staff', 'settings', 'trust', 'customerCreate']) {
       expect(guard, `${desk} must be platform_admin only`).toContain(`${desk}: ['platform_admin'],`)
     }
     // shared / scoped desks
@@ -157,7 +158,7 @@ describe('Task 26 independent capability gates (section layouts)', () => {
   })
 
   it('hides and rejects platform-admin-only desks from support and sales', () => {
-    for (const href of ['/admin/licenses', '/admin/machines', '/admin/releases']) {
+    for (const href of ['/admin/licenses', '/admin/machines', '/admin/releases', '/admin/partners']) {
       expect(hrefsFor('support_agent')).not.toContain(href)
       expect(hrefsFor('sales_rep')).not.toContain(href)
     }
@@ -174,6 +175,7 @@ describe('Task 26 independent capability gates (section layouts)', () => {
 // Every /api/admin handler independently enforces the real role + 401/403.
 // ───────────────────────────────────────────────────────────────────────────
 const PLATFORM_ADMIN_APIS = [
+  'affiliates/[id]/route.ts',
   'customers/route.ts',
   'users/[id]/reseller/route.ts',
   'licenses/[id]/route.ts',
@@ -222,6 +224,7 @@ describe('Task 26 API authorization', () => {
 // Audit coverage on every mutating action.
 // ───────────────────────────────────────────────────────────────────────────
 const AUDITED: Record<string, string> = {
+  'affiliates/[id]/route.ts': 'affiliate.admin_update',
   'customers/route.ts': 'customer.admin_create',
   'users/[id]/reseller/route.ts': 'reseller.promote',
   'licenses/[id]/route.ts': 'license.delete',
@@ -253,7 +256,7 @@ describe('Task 26 audit coverage', () => {
 // ───────────────────────────────────────────────────────────────────────────
 // Server-side search + pagination on every growing collection.
 // ───────────────────────────────────────────────────────────────────────────
-const PAGINATED_LISTS = ['users', 'licenses', 'machines', 'payments', 'tickets', 'orgs', 'team', 'audit', 'releases']
+const PAGINATED_LISTS = ['users', 'licenses', 'machines', 'payments', 'tickets', 'orgs', 'team', 'audit', 'releases', 'partners']
 
 describe('Task 26 search + pagination', () => {
   it('makes every growing list server-side searchable and paginated with bounded page size', () => {
@@ -313,6 +316,25 @@ describe('Task 26 search + pagination', () => {
     // Uses the shared Button (WC accent tokens), never the legacy bg-primary.
     expect(users, 'must not use legacy bg-primary').not.toContain('bg-primary')
     expect(users).toContain("from '@/components/ui/button'")
+  })
+
+  it('operates affiliates and resellers from one independently authorized partner desk', () => {
+    const page = read(`${ADMIN}/partners/page.tsx`)
+    expect(page).toContain('requireStaffAccess(DESK_ACCESS.partners')
+    expect(page).toContain("type Program = 'affiliates' | 'resellers'")
+    expect(page).toContain("href=\"/admin/partners?program=resellers\"")
+    expect(page).toContain('AdminSelectFilter')
+    expect(page).toContain('PartnerAdminActions')
+    expect(page).toContain('`/admin/users/${row.userId}`')
+    expect(page).toContain('totalCommissionEarned')
+    expect(page).toContain('unpaidCommission')
+
+    const affiliateApi = read(`${API}/affiliates/[id]/route.ts`)
+    expect(affiliateApi).toContain("session.user.role !== 'platform_admin'")
+    expect(affiliateApi).toContain('Number.isInteger(commissionPercent)')
+    expect(affiliateApi).toContain('commissionPercent > 60')
+    expect(affiliateApi).toContain('withDbTransaction')
+    expect(affiliateApi).toContain("action: 'affiliate.admin_update'")
   })
 })
 
@@ -425,8 +447,8 @@ describe('Task 26 trust-page collection search + pagination', () => {
     expect(lib).toContain('.limit(limit)')
     expect(lib).toContain('.offset(offset)')
     expect(lib).toContain('count()')
-    // Trust gate preserved: only approved + audited (media.approve) media.
-    expect(lib).toContain("eq(auditLog.action, 'media.approve')")
+    // Trust gate preserved: only approved media carrying an audited review or direct-publish event.
+    expect(lib).toContain("inArray(auditLog.action, ['media.approve', 'media.publish'])")
     expect(lib).toContain("eq(user.role, 'platform_admin')")
   })
 })
@@ -599,9 +621,11 @@ describe('Task 26 settings + secret handling', () => {
 // Trust: media / module videos / team members lifecycle invariants (Task 8/34).
 // ───────────────────────────────────────────────────────────────────────────
 describe('Task 26 trust invariants preserved', () => {
-  it('keeps the media approval + quarantine→publish provenance lifecycle', () => {
+  it('keeps direct publishing plus the optional quarantine→approval provenance lifecycle', () => {
     const media = read(`${API}/media/route.ts`)
     expect(media).toContain('validateMediaProvenance')
+    expect(media).toContain('uploadPublishedMedia')
+    expect(media).toContain("action: 'media.publish'")
     expect(media).toContain('uploadMediaToQuarantine')
     expect(media).toContain('promoteQuarantinedMedia')
     expect(media).toContain("objectState: 'published'")

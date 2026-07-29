@@ -112,17 +112,31 @@ export default async function AdminTicketDetailPage({ params, searchParams }: Pa
         </div>
 
         <ol className="flex flex-col gap-4">
-          {messages.map((m) => (
-            <li key={m.msg.id} className="rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] p-4">
-              <div className="flex items-baseline justify-between gap-3 border-b border-[var(--color-border)] pb-2 mb-3">
-                <span className="text-[13px] font-medium">{m.sender.name}</span>
-                <time className="font-mono text-[10px] uppercase tracking-[0.16em] text-[var(--color-fg-muted)]">
-                  {formatDateShort(m.msg.createdAt)}
-                </time>
-              </div>
-              <div className="text-[13px] leading-[1.55] text-[var(--color-fg)] whitespace-pre-wrap">{m.msg.body}</div>
-            </li>
-          ))}
+          {messages.map((m) => {
+            const fromCustomer = m.msg.senderId === ticket.userId
+            return (
+              <li key={m.msg.id} className={`flex ${fromCustomer ? 'justify-end' : 'justify-start'}`}>
+                <article
+                  aria-label={`${fromCustomer ? 'Customer message' : 'Omnix staff message'} from ${m.sender.name}`}
+                  className={`w-fit max-w-[min(88%,44rem)] rounded-[var(--radius-md)] border p-4 ${
+                    fromCustomer
+                      ? 'border-[var(--color-accent)]/30 bg-[var(--color-accent)]/8'
+                      : 'border-[var(--color-border)] bg-[var(--color-surface)]'
+                  }`}
+                >
+                  <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1 border-b border-[var(--color-border)] pb-2 mb-3">
+                    <span className="text-[13px] font-medium">
+                      {fromCustomer ? 'Customer' : 'Omnix support'} · {m.sender.name}
+                    </span>
+                    <time className="font-mono text-[10px] uppercase tracking-[0.16em] text-[var(--color-fg-muted)]">
+                      {formatDateShort(m.msg.createdAt)}
+                    </time>
+                  </div>
+                  <div className="whitespace-pre-wrap text-[13px] leading-[1.55] text-[var(--color-fg)]">{m.msg.body}</div>
+                </article>
+              </li>
+            )
+          })}
           {messages.length === 0 && (
             msgQ ? (
               <li><FilteredEmptyState query={msgQ} clearHref={msgClearHref} entityLabel="messages" /></li>

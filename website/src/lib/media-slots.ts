@@ -1,7 +1,7 @@
 /** Licensed marketing-media slots and their only public resolver. */
 import { cache } from 'react'
 import { unstable_cache } from 'next/cache'
-import { and, count, desc, eq, ilike, isNotNull, ne, or, sql } from 'drizzle-orm'
+import { and, count, desc, eq, ilike, inArray, isNotNull, ne, or, sql } from 'drizzle-orm'
 import { auditLog, db, platformMedia, user } from '@/db'
 import { isPublishableMedia, type MediaRightsBasis } from '@/lib/media-governance'
 
@@ -106,7 +106,7 @@ async function fetchSlotMedia(slot: string): Promise<SlotMedia | null> {
         isNotNull(platformMedia.approvedAt),
         eq(user.role, 'platform_admin'),
         eq(auditLog.actorId, platformMedia.approvedBy),
-        eq(auditLog.action, 'media.approve'),
+        inArray(auditLog.action, ['media.approve', 'media.publish']),
         eq(auditLog.resource, sql<string>`'platform_media:' || ${platformMedia.id}`),
         ne(platformMedia.alt, ''),
         ne(platformMedia.rightsBasis, 'unverified'),
@@ -191,7 +191,7 @@ export async function getApprovedMediaById(id: string): Promise<SlotMedia | null
         isNotNull(platformMedia.approvedAt),
         eq(user.role, 'platform_admin'),
         eq(auditLog.actorId, platformMedia.approvedBy),
-        eq(auditLog.action, 'media.approve'),
+        inArray(auditLog.action, ['media.approve', 'media.publish']),
         eq(auditLog.resource, sql<string>`'platform_media:' || ${platformMedia.id}`),
       ))
       .limit(1)
@@ -227,7 +227,7 @@ const publishableGate = () =>
     isNotNull(platformMedia.approvedAt),
     eq(user.role, 'platform_admin'),
     eq(auditLog.actorId, platformMedia.approvedBy),
-    eq(auditLog.action, 'media.approve'),
+    inArray(auditLog.action, ['media.approve', 'media.publish']),
     eq(auditLog.resource, sql<string>`'platform_media:' || ${platformMedia.id}`),
     ne(platformMedia.alt, ''),
     ne(platformMedia.rightsBasis, 'unverified'),

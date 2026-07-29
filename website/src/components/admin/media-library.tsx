@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState, useTransition, type FormEvent } from 'react'
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { confirm } from '@/components/ui/dialog-imperative'
 import { FilteredEmptyState } from '@/components/ui/state-view'
@@ -32,6 +33,15 @@ interface MediaItem {
   createdAt: string
 }
 
+interface MediaStorageStatus {
+  publishReady: boolean
+  reviewReady: boolean
+  publicBucket: string
+  quarantineBucket: string | null
+  missingPublishingSettings: string[]
+  reviewIssue: string | null
+}
+
 interface SlotBinding {
   slot: string
   label: string
@@ -46,6 +56,7 @@ const NO_SLOT = '__none__'
 
 export function MediaLibrary({
   initialItems,
+  storageStatus,
   slotBindings,
   page,
   pageSize,
@@ -53,6 +64,7 @@ export function MediaLibrary({
   query,
 }: {
   initialItems: MediaItem[]
+  storageStatus: MediaStorageStatus
   slotBindings: SlotBinding[]
   page: number
   pageSize: number
@@ -63,14 +75,14 @@ export function MediaLibrary({
   const [items, setItems] = useState(initialItems)
   const [busy, setBusy] = useState<string | null>(null)
   const [uploadSlot, setUploadSlot] = useState<string | null>(null)
-  const [uploadBasis, setUploadBasis] = useState<MediaRightsBasis | ''>('')
+  const [uploadMode, setUploadMode] = useState<'publish' | 'review'>('publish')
+  const [uploadBasis, setUploadBasis] = useState<MediaRightsBasis>('owned')
   const [uploadAlt, setUploadAlt] = useState('')
-  const [uploadHolder, setUploadHolder] = useState('')
+  const [uploadHolder, setUploadHolder] = useState('Omnix')
   const [uploadSource, setUploadSource] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [, startTransition] = useTransition()
   const fileRef = useRef<HTMLInputElement>(null)
-  const altRef = useRef<HTMLInputElement>(null)
 
   // The server hands us exactly the current page (searched + bounded); keep
   // the local mirror in sync so optimistic edits reconcile after refresh().
@@ -79,44 +91,50 @@ export function MediaLibrary({
   function prepareSlot(slot: string) {
     setUploadSlot(slot)
     document.getElementById('licensed-media-upload')?.scrollIntoView({ block: 'start' })
-    altRef.current?.focus()
+    fileRef.current?.focus()
   }
 
   async function upload(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     const file = fileRef.current?.files?.[0]
     if (!file) {
-      setError('Choose an image before uploading.')
+      setError('Choose an image or video before uploading.')
       return
     }
-
-    if (!uploadBasis) {
-      setError('Select the rights basis before uploading.')
+    if (!storageStatus.publishReady) {
+      setError(`Publishing is not ready. Add ${storageStatus.missingPublishingSettings.join(', ')} in Storage & media settings.`)
+      return
+    }
+    if (uploadMode === 'review' && !storageStatus.reviewReady) {
+      setError('Private review is not configured. Choose Publish now or configure a separate private review bucket.')
       return
     }
 
     const form = new FormData()
     form.append('file', file)
+    form.append('mode', uploadMode)
     if (uploadSlot) form.append('slot', uploadSlot)
-    form.append('alt', uploadAlt)
+    if (uploadAlt.trim()) form.append('alt', uploadAlt.trim())
     form.append('rightsBasis', uploadBasis)
-    form.append('rightsHolder', uploadHolder)
-    form.append('rightsSource', uploadSource)
+    if (uploadHolder.trim()) form.append('rightsHolder', uploadHolder.trim())
+    if (uploadSource.trim()) form.append('rightsSource', uploadSource.trim())
 
     setError(null)
     setBusy('__upload')
     try {
       const response = await fetch('/api/admin/media', { method: 'POST', body: form })
-      const data = (await response.json()) as { ok?: boolean; error?: string }
-      if (!data.ok) {
-        setError(data.error ?? 'Upload failed')
+      const data = (await response.json().catch(() => null)) as { ok?: boolean; error?: string } | null
+      if (!response.ok || !data?.ok) {
+        setError(data?.error ?? `Upload failed (${response.status})`)
         return
       }
       setUploadAlt('')
-      setUploadHolder('')
+      setUploadHolder('Omnix')
       setUploadSource('')
       if (fileRef.current) fileRef.current.value = ''
       startTransition(() => router.refresh())
+    } catch (uploadError) {
+      setError(uploadError instanceof Error ? uploadError.message : 'Upload failed. Check the connection and try again.')
     } finally {
       setBusy(null)
     }
@@ -142,13 +160,15 @@ export function MediaLibrary({
           ...(approvalState ? { approvalState } : {}),
         }),
       })
-      const data = (await response.json()) as { ok?: boolean; error?: string; approvalState?: MediaApprovalState }
-      if (!data.ok) {
-        setError(data.error ?? 'Update failed')
+      const data = (await response.json().catch(() => null)) as { ok?: boolean; error?: string; approvalState?: MediaApprovalState } | null
+      if (!response.ok || !data?.ok) {
+        setError(data?.error ?? `Update failed (${response.status})`)
         return
       }
       updateItem(item.id, { approvalState: data.approvalState ?? 'pending' })
       startTransition(() => router.refresh())
+    } catch (updateError) {
+      setError(updateError instanceof Error ? updateError.message : 'Update failed. Check the connection and try again.')
     } finally {
       setBusy(null)
     }
@@ -167,9 +187,9 @@ export function MediaLibrary({
     setBusy(item.id)
     try {
       const response = await fetch(`/api/admin/media?id=${item.id}`, { method: 'DELETE' })
-      const data = (await response.json()) as { ok?: boolean; error?: string; approvalState?: MediaApprovalState }
-      if (!data.ok) {
-        setError(data.error ?? 'Delete failed')
+      const data = (await response.json().catch(() => null)) as { ok?: boolean; error?: string; approvalState?: MediaApprovalState } | null
+      if (!response.ok || !data?.ok) {
+        setError(data?.error ?? `Delete failed (${response.status})`)
         return
       }
       // Tombstone, not a hard erase: the row (and its provenance) is kept, so
@@ -177,6 +197,8 @@ export function MediaLibrary({
       // router.refresh() reconciles with the server's authoritative row.
       updateItem(item.id, { approvalState: data.approvalState ?? 'rejected' })
       startTransition(() => router.refresh())
+    } catch (deleteError) {
+      setError(deleteError instanceof Error ? deleteError.message : 'Delete failed. Check the connection and try again.')
     } finally {
       setBusy(null)
     }
@@ -200,16 +222,36 @@ export function MediaLibrary({
       <section id="licensed-media-upload" className="scroll-mt-6 border-b border-[var(--color-border)] pb-10">
         <div className="mb-5">
           <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-[var(--color-fg-muted)]">New asset</span>
-          <h2 style={{ fontFamily: 'var(--font-display)' }} className="mt-1 text-[20px] font-medium">Record rights before upload</h2>
+          <h2 style={{ fontFamily: 'var(--font-display)' }} className="mt-1 text-[20px] font-medium">Upload and publish</h2>
           <p className="mt-2 max-w-[68ch] text-[13px] leading-relaxed text-[var(--color-fg-muted)]">
-            Uploading does not publish. The record enters Pending review and must be approved after its provenance is checked.
+            Choose a file and, if needed, where it appears. Omnix-owned rights details are recorded automatically; open the optional section only for third-party media.
           </p>
         </div>
-        <form onSubmit={upload} className="grid grid-cols-1 gap-5 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] p-5 lg:grid-cols-2">
+
+        <div className="mb-5 flex flex-col gap-2 border-y border-[var(--color-border)] py-3 text-[12px] sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <span className={storageStatus.publishReady ? 'font-medium text-[var(--color-positive)]' : 'font-medium text-[var(--color-negative)]'}>
+              {storageStatus.publishReady ? `Public publishing ready · ${storageStatus.publicBucket}` : 'Public publishing needs configuration'}
+            </span>
+            <span className="mt-1 block text-[var(--color-fg-muted)]">
+              {storageStatus.reviewReady
+                ? `Private review ready · ${storageStatus.quarantineBucket}`
+                : storageStatus.reviewIssue ?? 'Private review is optional.'}
+            </span>
+          </div>
+          <Link
+            href="/admin/settings#settings-storage"
+            className="shrink-0 font-mono text-[10px] uppercase tracking-[0.16em] text-[var(--color-accent)] underline-offset-4 hover:underline"
+          >
+            Open storage settings →
+          </Link>
+        </div>
+
+        <form onSubmit={upload} className="grid grid-cols-1 gap-5 border-b border-[var(--color-border)] pb-5 lg:grid-cols-2">
           <Field label="Media file" hint="JPEG, PNG, WebP, AVIF, MP4 or WebM · maximum 50 MB">
             <input ref={fileRef} required type="file" accept="image/jpeg,image/png,image/webp,image/avif,video/mp4,video/webm" className="block w-full text-[13px] file:mr-3 file:rounded-md file:border file:border-[var(--color-border)] file:bg-[var(--color-bg)] file:px-3 file:py-2 file:text-[12px]" />
           </Field>
-          <Field label="Public slot" hint="Optional. Only becomes live after approval.">
+          <Field label="Public slot" hint="Optional. Leave unassigned to keep it in the reusable library.">
             <Select value={uploadSlot ?? NO_SLOT} onValueChange={(value) => setUploadSlot(value === NO_SLOT ? null : String(value))}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
@@ -218,27 +260,47 @@ export function MediaLibrary({
               </SelectContent>
             </Select>
           </Field>
-          <Field label="Alt text" hint="Describe the image’s useful content; do not add marketing claims.">
-            <input ref={altRef} required value={uploadAlt} onChange={(event) => setUploadAlt(event.target.value)} className="h-9 w-full rounded-md border border-[var(--color-border)] bg-[var(--color-bg)] px-3 text-[13px] outline-none transition-colors focus:border-[var(--color-accent)]" />
-          </Field>
-          <Field label="Rights basis" hint="How Omnix is legally allowed to publish it.">
-            <Select value={uploadBasis || undefined} onValueChange={(value) => setUploadBasis(value as MediaRightsBasis)}>
-              <SelectTrigger><SelectValue placeholder="Select rights basis" /></SelectTrigger>
+          <Field label="Publish mode" hint="Private review is optional and needs a separate private bucket.">
+            <Select value={uploadMode} onValueChange={(value) => setUploadMode(value as 'publish' | 'review')}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="__select-rights" disabled>Select rights basis</SelectItem>
-                {MEDIA_RIGHTS_BASES.map((basis) => <SelectItem key={basis} value={basis}>{MEDIA_RIGHTS_LABELS[basis]}</SelectItem>)}
+                <SelectItem value="publish">Publish now</SelectItem>
+                <SelectItem value="review" disabled={!storageStatus.reviewReady}>Send to private review</SelectItem>
               </SelectContent>
             </Select>
           </Field>
-          <Field label="Rights holder" hint="Person or organisation that owns the underlying rights.">
-            <input required value={uploadHolder} onChange={(event) => setUploadHolder(event.target.value)} className="h-9 w-full rounded-md border border-[var(--color-border)] bg-[var(--color-bg)] px-3 text-[13px] outline-none transition-colors focus:border-[var(--color-accent)]" />
-          </Field>
-          <Field label="Licence / permission / source reference" hint="Contract ID, release ID, source URL, or internal evidence path.">
-            <input required value={uploadSource} onChange={(event) => setUploadSource(event.target.value)} className="h-9 w-full rounded-md border border-[var(--color-border)] bg-[var(--color-bg)] px-3 text-[13px] outline-none transition-colors focus:border-[var(--color-accent)]" />
-          </Field>
+
+          <details className="lg:col-span-2 border-t border-[var(--color-border)] pt-4">
+            <summary className="cursor-pointer text-[12px] font-medium text-[var(--color-fg)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)]">
+              Rights and accessibility details <span className="font-normal text-[var(--color-fg-muted)]">· optional for Omnix-owned files</span>
+            </summary>
+            <div className="mt-4 grid grid-cols-1 gap-5 lg:grid-cols-2">
+              <Field label="Alt text" hint="Defaults to a readable version of the filename.">
+                <input value={uploadAlt} onChange={(event) => setUploadAlt(event.target.value)} placeholder="Describe useful visual content" className="h-9 w-full rounded-md border border-[var(--color-border)] bg-[var(--color-bg)] px-3 text-[13px] outline-none transition-colors focus:border-[var(--color-accent)]" />
+              </Field>
+              <Field label="Rights basis" hint="Owned by Omnix is the default.">
+                <Select value={uploadBasis} onValueChange={(value) => setUploadBasis(value as MediaRightsBasis)}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {MEDIA_RIGHTS_BASES.map((basis) => <SelectItem key={basis} value={basis}>{MEDIA_RIGHTS_LABELS[basis]}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </Field>
+              <Field label="Rights holder" hint="Defaults to Omnix.">
+                <input value={uploadHolder} onChange={(event) => setUploadHolder(event.target.value)} className="h-9 w-full rounded-md border border-[var(--color-border)] bg-[var(--color-bg)] px-3 text-[13px] outline-none transition-colors focus:border-[var(--color-accent)]" />
+              </Field>
+              <Field label="Licence, permission, or source" hint="Optional for owned media; required context for third-party files.">
+                <input value={uploadSource} onChange={(event) => setUploadSource(event.target.value)} placeholder="Contract, source URL, or internal note" className="h-9 w-full rounded-md border border-[var(--color-border)] bg-[var(--color-bg)] px-3 text-[13px] outline-none transition-colors focus:border-[var(--color-accent)]" />
+              </Field>
+            </div>
+          </details>
+
           <div className="lg:col-span-2 flex justify-end">
-            <button disabled={busy === '__upload' || !uploadBasis} className="rounded-md bg-[var(--color-accent)] px-4 py-2.5 font-mono text-[11px] uppercase tracking-[0.18em] text-white transition-transform active:scale-[0.97] disabled:opacity-50">
-              {busy === '__upload' ? 'Uploading…' : 'Upload for review'}
+            <button
+              disabled={busy === '__upload' || !storageStatus.publishReady || (uploadMode === 'review' && !storageStatus.reviewReady)}
+              className="rounded-md bg-[var(--color-accent)] px-4 py-2.5 font-mono text-[11px] uppercase tracking-[0.18em] text-white transition-transform duration-150 ease-out active:scale-[0.97] disabled:opacity-50"
+            >
+              {busy === '__upload' ? 'Uploading…' : uploadMode === 'review' ? 'Upload for review' : 'Upload and publish'}
             </button>
           </div>
         </form>
@@ -388,6 +450,10 @@ function Field({ label, hint, children }: { label: string; hint?: string; childr
 }
 
 function Status({ state }: { state: MediaApprovalState }) {
-  const tone = state === 'approved' ? 'text-emerald-700 border-emerald-700/30' : state === 'rejected' ? 'text-rose-700 border-rose-700/30' : 'text-amber-700 border-amber-700/30'
-  return <span className={`rounded-full border px-2 py-0.5 font-mono text-[9px] uppercase tracking-[0.16em] ${tone}`}>{state}</span>
+  const tone = state === 'approved'
+    ? 'text-[var(--color-positive)] border-[var(--color-positive)]/30'
+    : state === 'rejected'
+      ? 'text-[var(--color-negative)] border-[var(--color-negative)]/30'
+      : 'text-[var(--color-caution)] border-[var(--color-caution)]/30'
+  return <span className={`rounded-md border px-2 py-0.5 font-mono text-[9px] uppercase tracking-[0.16em] ${tone}`}>{state}</span>
 }

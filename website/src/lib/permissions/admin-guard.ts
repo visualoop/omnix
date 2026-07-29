@@ -42,6 +42,7 @@ export const DESK_ACCESS = {
   releases: ['platform_admin'],
   payments: ['platform_admin', 'sales_rep'],
   tickets: ['platform_admin', 'support_agent'],
+  partners: ['platform_admin'],
   audit: ['platform_admin', 'support_agent'],
   staff: ['platform_admin'],
   settings: ['platform_admin'],

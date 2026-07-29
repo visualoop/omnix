@@ -45,6 +45,7 @@ const NAV: readonly NavItem[] = [
       { label: 'Support', href: '/support', description: 'Get help with Omnix' },
     ],
   },
+  { label: 'Partners', href: '/partners' },
   { label: 'About', href: '/about' },
 ] as const
 
