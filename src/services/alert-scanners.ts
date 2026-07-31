@@ -9,6 +9,7 @@
  */
 import { query } from "@/lib/db";
 import { emit } from "@/services/notifications";
+import { requireActiveBranchId } from "@/stores/active-branch";
 
 const NEAR_EXPIRY_DAYS = 30;
 const LOW_STOCK_MARGIN = 1.0; // trigger at exactly reorder_level
@@ -23,10 +24,11 @@ async function scanExpiring(): Promise<void> {
      JOIN products p ON p.id = b.product_id
      WHERE b.expiry_date IS NOT NULL
        AND b.quantity > 0
+       AND b.branch_id = ?2
        AND julianday(b.expiry_date) - julianday('now') BETWEEN 0 AND ?1
      ORDER BY b.expiry_date ASC
      LIMIT 50`,
-    [NEAR_EXPIRY_DAYS],
+    [NEAR_EXPIRY_DAYS, requireActiveBranchId()],
   );
   for (const r of rows) {
     await emit({
@@ -48,7 +50,7 @@ async function scanLowStock(): Promise<void> {
     `SELECT p.id AS product_id, p.sku, p.name, COALESCE(p.reorder_level, 0) AS reorder_level,
             COALESCE(SUM(b.quantity), 0) AS qty
      FROM products p
-     LEFT JOIN batches b ON b.product_id = p.id
+     LEFT JOIN batches b ON b.product_id = p.id AND b.branch_id = ?2
      WHERE p.deleted_at IS NULL
        AND COALESCE(p.is_service, 0) = 0
        AND COALESCE(p.active, 1) = 1
@@ -57,7 +59,7 @@ async function scanLowStock(): Promise<void> {
         OR (p.reorder_level IS NOT NULL AND p.reorder_level > 0 AND qty <= p.reorder_level * ?1)
      ORDER BY qty ASC
      LIMIT 50`,
-    [LOW_STOCK_MARGIN],
+    [LOW_STOCK_MARGIN, requireActiveBranchId()],
   );
   for (const r of rows) {
     await emit({
@@ -82,11 +84,12 @@ async function scanUnpaidInvoices(): Promise<void> {
             (i.total_amount - i.paid_amount) AS total,
             CAST(julianday('now') - julianday(i.due_date) AS INTEGER) AS days_overdue
      FROM invoices i
-     WHERE i.status IN ('sent', 'partial')
+     WHERE i.branch_id = ?1 AND i.status IN ('sent', 'partial')
        AND i.due_date < date('now')
        AND (i.total_amount - i.paid_amount) > 0
      ORDER BY i.due_date ASC
      LIMIT 20`,
+    [requireActiveBranchId()],
   );
   for (const r of rows) {
     await emit({
@@ -117,11 +120,14 @@ async function scanRefillsDue(): Promise<void> {
   // refill_reminders the daily job stages.
   if (!(await tableExists("refill_reminders"))) return;
   const rows = await query<RefillRow>(
-    `SELECT id, patient_name, drug_summary, due_on
-     FROM refill_reminders
-     WHERE sent_at IS NULL AND date(due_on) <= date('now', '+3 days')
+    `SELECT rr.id, rr.patient_name, rr.drug_summary, rr.due_on
+     FROM refill_reminders rr
+     JOIN prescriptions p ON p.id = rr.prescription_id
+     JOIN sales sale ON sale.id = p.sale_id
+     WHERE rr.sent_at IS NULL AND sale.branch_id = ?1 AND date(due_on) <= date('now', '+3 days')
      ORDER BY due_on ASC
      LIMIT 30`,
+    [requireActiveBranchId()],
   ).catch(() => []);
   for (const r of rows) {
     await emit({
@@ -148,6 +154,7 @@ async function scanLicenseExpiry(): Promise<void> {
        AND julianday(expires_at) - julianday('now') <= 60
      ORDER BY expires_at ASC
      LIMIT 20`,
+    [requireActiveBranchId()],
   ).catch(() => []);
   for (const r of rows) {
     const expired = r.days_left < 0;
@@ -183,9 +190,10 @@ async function scanColdChain(): Promise<void> {
   // Unreviewed cold-chain excursions — vaccine/insulin integrity at risk.
   if (!(await tableExists("cold_chain_analyses"))) return;
   const rows = await query<ColdChainRow>(
-    `SELECT id, root_cause, peak_temperature_c, excursion_start
-     FROM cold_chain_analyses
-     WHERE reviewed_at IS NULL
+    `SELECT a.id, a.root_cause, a.peak_temperature_c, a.excursion_start
+     FROM cold_chain_analyses a
+     JOIN cold_chain_units u ON u.id = a.unit_id
+     WHERE a.reviewed_at IS NULL AND u.branch_id = ?1
      ORDER BY excursion_start DESC
      LIMIT 20`,
   ).catch(() => []);
@@ -215,11 +223,12 @@ async function scanWarrantyExpiry(): Promise<void> {
      FROM equipment_units u
      JOIN products p ON p.id = u.product_id
      LEFT JOIN customers c ON c.id = u.customer_id
-     WHERE u.warranty_expiry IS NOT NULL
+     WHERE u.branch_id = ?1 AND u.warranty_expiry IS NOT NULL
        AND u.status IN ('sold','in_service','rented')
        AND julianday(u.warranty_expiry) - julianday('now') <= 30
      ORDER BY u.warranty_expiry ASC
      LIMIT 30`,
+    [requireActiveBranchId()],
   ).catch(() => []);
   for (const r of rows) {
     const expired = r.days_left < 0;
@@ -248,9 +257,10 @@ async function scanUpcomingAppointments(): Promise<void> {
      FROM salon_appointments a
      LEFT JOIN customers c ON c.id = a.client_id
      LEFT JOIN salon_staff s ON s.id = a.staff_id
-     WHERE a.status IN ('booked','confirmed')
+     WHERE a.branch_id = ?1 AND a.status IN ('booked','confirmed')
        AND a.starts_at >= datetime('now') AND a.starts_at <= datetime('now', '+1 day')
      ORDER BY a.starts_at ASC LIMIT 50`,
+    [requireActiveBranchId()],
   ).catch(() => []);
   for (const r of rows) {
     await emit({

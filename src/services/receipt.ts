@@ -2,6 +2,7 @@ import { query } from "@/lib/db";
 import { BRAND } from "@/lib/brand";
 import QRCode from "qrcode";
 import { intlLocale } from "@/lib/intl";
+import { requireActiveBranchId } from "@/stores/active-branch";
 
 export interface ReceiptData {
   business: {
@@ -66,8 +67,8 @@ export async function buildReceiptData(saleId: string): Promise<ReceiptData | nu
      FROM sales s
      LEFT JOIN users u ON u.id = s.user_id
      LEFT JOIN customers c ON c.id = s.customer_id
-     WHERE s.id = ?1`,
-    [saleId]
+     WHERE s.id = ?1 AND s.branch_id = ?2`,
+    [saleId, requireActiveBranchId()]
   );
   const sale = sales[0];
   if (!sale) return null;

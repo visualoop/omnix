@@ -1,5 +1,5 @@
 import { query, execute } from "@/lib/db";
-import { getActiveBranchId } from "@/stores/active-branch";
+import { getActiveBranchId, requireActiveBranchId } from "@/stores/active-branch";
 import { getTaxSettings, computeTax } from "./tax";
 
 export interface CartItem {
@@ -181,6 +181,7 @@ export async function completeSale(
   sourceId: string | null = null,
   salespersonId: string | null = null,
 ): Promise<{ saleId: string; saleItemIds: string[] }> {
+  const branchId = requireActiveBranchId();
   const saleId = crypto.randomUUID();
 
   // ── Pre-flight stock check ───────────────────────────────────────
@@ -205,10 +206,11 @@ export async function completeSale(
         `SELECT product_id, COALESCE(SUM(quantity), 0) AS available
          FROM batches
          WHERE product_id IN (${placeholders})
+           AND branch_id = ?${productLines.length + 1}
            AND quantity > 0
            AND (expiry_date IS NULL OR expiry_date > date('now'))
          GROUP BY product_id`,
-        productLines.map((i) => i.product_id),
+        [...productLines.map((i) => i.product_id), branchId],
       );
       const stockMap = new Map(stockRows.map((r) => [r.product_id, r.available]));
       for (const line of productLines) {
@@ -271,7 +273,7 @@ export async function completeSale(
   stmts.push({
     sql: `INSERT INTO sales (id, sale_number, customer_id, user_id, branch_id, subtotal, discount_amount, tax_amount, total, payment_status, tip_amount, tip_employee_id, service_charge_amount, source_type, source_id)
      VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15)`,
-    params: [saleId, saleNumber, customerId, userId, getActiveBranchId(), round2(subtotal), round2(discountAmount), round2(taxAmount), round2(total), paymentStatus, round2(tipAmount), tipEmployeeId, round2(serviceChargeAmount), sourceType, sourceId],
+    params: [saleId, saleNumber, customerId, userId, branchId, round2(subtotal), round2(discountAmount), round2(taxAmount), round2(total), paymentStatus, round2(tipAmount), tipEmployeeId, round2(serviceChargeAmount), sourceType, sourceId],
   });
 
   // 2) Items + stock deduction.
@@ -338,10 +340,10 @@ export async function completeSale(
     let remaining = item.quantity;
     const batches = await query<{ id: string; quantity: number }>(
       `SELECT id, quantity FROM batches
-       WHERE product_id = ?1 AND quantity > 0
+       WHERE product_id = ?1 AND branch_id = ?2 AND quantity > 0
          AND (expiry_date IS NULL OR expiry_date > date('now'))
        ORDER BY expiry_date ASC NULLS LAST, received_at ASC`,
-      [item.product_id],
+      [item.product_id, branchId],
     );
     for (const batch of batches) {
       if (remaining <= 0) break;
@@ -426,9 +428,9 @@ export async function completeSale(
       const accountId = await pickBankAccountForMethod(p.method_name);
       if (accountId) {
         stmts.push({
-          sql: `INSERT INTO bank_transactions (id, account_id, transaction_date, transaction_type, amount, description, payment_method, reference, related_sale_id, user_id)
-           VALUES (?1, ?2, datetime('now'), 'deposit', ?3, ?4, ?5, ?6, ?7, ?8)`,
-          params: [crypto.randomUUID(), accountId, round2(p.amount), `Sale ${saleNumber}`, p.method_name.toLowerCase(), p.reference || null, saleId, userId],
+          sql: `INSERT INTO bank_transactions (id, account_id, transaction_date, transaction_type, amount, description, payment_method, reference, related_sale_id, user_id, branch_id)
+           VALUES (?1, ?2, datetime('now'), 'deposit', ?3, ?4, ?5, ?6, ?7, ?8, ?9)`,
+          params: [crypto.randomUUID(), accountId, round2(p.amount), `Sale ${saleNumber}`, p.method_name.toLowerCase(), p.reference || null, saleId, userId, branchId],
         });
         stmts.push({
           sql: `UPDATE bank_accounts SET current_balance = ROUND(COALESCE(current_balance,0) + ?2, 2) WHERE id = ?1`,
@@ -538,7 +540,12 @@ async function signWithEtims(
 }
 
 export async function getSales(limit = 50, branchId?: string): Promise<Sale[]> {
-  const branch = branchId ?? getActiveBranchId();
+  const activeBranchId = getActiveBranchId();
+  if (branchId && branchId !== activeBranchId) {
+    throw new Error("Switch to that branch before viewing sales");
+  }
+  const branch = activeBranchId;
+  if (!branch) return [];
   return query<Sale>(
     "SELECT * FROM sales WHERE status != 'held' AND branch_id = ?2 ORDER BY created_at DESC LIMIT ?1",
     [limit, branch]
@@ -546,12 +553,13 @@ export async function getSales(limit = 50, branchId?: string): Promise<Sale[]> {
 }
 
 export async function voidSale(saleId: string): Promise<void> {
+  const branchId = requireActiveBranchId();
   const { requirePermission } = await import("@/services/rbac");
   await requirePermission("sales.void", { entityType: "sale", entityId: saleId });
 
   const existing = await query<{ status: string }>(
-    "SELECT status FROM sales WHERE id = ?1",
-    [saleId],
+    "SELECT status FROM sales WHERE id = ?1 AND branch_id = ?2",
+    [saleId, branchId],
   );
   if (existing.length === 0) throw new Error("Sale not found");
   if (existing[0].status === "voided") return;
@@ -566,7 +574,7 @@ export async function voidSale(saleId: string): Promise<void> {
   );
 
   const stmts: import("@/lib/db").TxStatement[] = [];
-  stmts.push({ sql: "UPDATE sales SET status = 'voided' WHERE id = ?1", params: [saleId] });
+  stmts.push({ sql: "UPDATE sales SET status = 'voided' WHERE id = ?1 AND branch_id = ?2", params: [saleId, branchId] });
 
   for (const item of items) {
     if (!item.product_id || !item.quantity) continue;
@@ -575,8 +583,8 @@ export async function voidSale(saleId: string): Promise<void> {
     // Restore to the most-recent batch (single target — clean provenance),
     // or create a VOID-RESTORE batch if none exist.
     const batches = await query<{ id: string }>(
-      "SELECT id FROM batches WHERE product_id = ?1 ORDER BY received_at DESC LIMIT 1",
-      [item.product_id],
+      "SELECT id FROM batches WHERE product_id = ?1 AND branch_id = ?2 ORDER BY received_at DESC LIMIT 1",
+      [item.product_id, branchId],
     );
     if (batches[0]) {
       stmts.push({
@@ -590,9 +598,9 @@ export async function voidSale(saleId: string): Promise<void> {
       });
     } else {
       stmts.push({
-        sql: `INSERT INTO batches (id, product_id, quantity, received_at, batch_number)
-         VALUES (?1, ?2, ?3, strftime('%Y-%m-%dT%H:%M:%fZ','now'), 'VOID-RESTORE')`,
-        params: [crypto.randomUUID(), item.product_id, item.quantity],
+        sql: `INSERT INTO batches (id, product_id, branch_id, quantity, received_at, batch_number)
+         VALUES (?1, ?2, ?3, ?4, strftime('%Y-%m-%dT%H:%M:%fZ','now'), 'VOID-RESTORE')`,
+        params: [crypto.randomUUID(), item.product_id, branchId, item.quantity],
       });
       stmts.push({
         sql: `INSERT INTO stock_movements (id, product_id, type, quantity, reference_type, reference_id)
@@ -616,9 +624,9 @@ export async function voidSale(saleId: string): Promise<void> {
     stmts.push({ sql: "UPDATE payments SET voided_at = datetime('now') WHERE id = ?1", params: [p.id] });
     if (p.account_id) {
       stmts.push({
-        sql: `INSERT INTO bank_transactions (id, account_id, transaction_date, transaction_type, amount, description, related_sale_id, user_id)
-         VALUES (?1, ?2, datetime('now'), 'withdrawal', ?3, ?4, ?5, (SELECT user_id FROM sales WHERE id = ?5))`,
-        params: [crypto.randomUUID(), p.account_id, round2(p.amount), `Void of sale ${saleId.slice(0, 8)}`, saleId],
+        sql: `INSERT INTO bank_transactions (id, account_id, transaction_date, transaction_type, amount, description, related_sale_id, user_id, branch_id)
+         VALUES (?1, ?2, datetime('now'), 'withdrawal', ?3, ?4, ?5, (SELECT user_id FROM sales WHERE id = ?5), ?6)`,
+        params: [crypto.randomUUID(), p.account_id, round2(p.amount), `Void of sale ${saleId.slice(0, 8)}`, saleId, branchId],
       });
       stmts.push({
         sql: `UPDATE bank_accounts SET current_balance = ROUND(COALESCE(current_balance,0) - ?2, 2) WHERE id = ?1`,

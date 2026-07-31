@@ -11,7 +11,8 @@
  */
 import { query, execute, transaction } from "@/lib/db";
 import { requirePermission } from "@/services/rbac";
-import { getActiveBranchId } from "@/stores/active-branch";
+import { requireActiveBranchId } from "@/stores/active-branch";
+import { requireBranchOwnedRecord } from "@/lib/branch-ownership";
 import { warrantyState } from "@/services/equipment";
 import { createInvoice } from "@/services/invoicing";
 
@@ -111,8 +112,8 @@ export async function listServiceJobs(opts?: {
   search?: string;
   limit?: number;
 }): Promise<ServiceJob[]> {
-  const where: string[] = [];
-  const params: unknown[] = [];
+  const where: string[] = ["j.branch_id = ?1"];
+  const params: unknown[] = [requireActiveBranchId()];
   if (opts?.status) { params.push(opts.status); where.push(`j.status = ?${params.length}`); }
   if (opts?.search) {
     const like = `%${opts.search.trim()}%`;
@@ -125,7 +126,7 @@ export async function listServiceJobs(opts?: {
 }
 
 export async function getServiceJob(id: string): Promise<ServiceJobDetail | null> {
-  const [job] = await query<ServiceJob>(`${SELECT_JOB} WHERE j.id = ?1`, [id]);
+  const [job] = await query<ServiceJob>(`${SELECT_JOB} WHERE j.id = ?1 AND j.branch_id = ?2`, [id, requireActiveBranchId()]);
   if (!job) return null;
   const parts = await query<ServiceJobPart>(`SELECT * FROM service_job_parts WHERE job_id = ?1 ORDER BY created_at ASC`, [id]);
   const labour = await query<ServiceJobLabour>(`SELECT * FROM service_job_labour WHERE job_id = ?1 ORDER BY created_at ASC`, [id]);
@@ -138,7 +139,8 @@ export async function listJobsForUnit(unitId: string): Promise<ServiceJob[]> {
 
 export async function countJobsByStatus(): Promise<Record<ServiceStatus, number>> {
   const rows = await query<{ status: ServiceStatus; n: number }>(
-    `SELECT status, COUNT(*) AS n FROM service_jobs GROUP BY status`,
+    `SELECT status, COUNT(*) AS n FROM service_jobs WHERE branch_id = ?1 GROUP BY status`,
+    [requireActiveBranchId()],
   );
   const out = { open: 0, in_progress: 0, awaiting_parts: 0, completed: 0, cancelled: 0, invoiced: 0 } as Record<ServiceStatus, number>;
   for (const r of rows) out[r.status] = Number(r.n);
@@ -171,6 +173,7 @@ export async function createServiceJob(input: {
   is_warranty?: boolean;
 }): Promise<{ id: string; job_number: string }> {
   await requirePermission("hardware.equipment.manage", { entityType: "service_job" });
+  await requireBranchOwnedRecord("equipment_units", input.unit_id, "Unit");
 
   const [unit] = await query<{ status: string; warranty_expiry: string | null; customer_id: string | null }>(
     `SELECT status, warranty_expiry, customer_id FROM equipment_units WHERE id = ?1`,
@@ -182,7 +185,7 @@ export async function createServiceJob(input: {
   const warranty = input.is_warranty ?? (warrantyState(unit.warranty_expiry) === "active" || warrantyState(unit.warranty_expiry) === "expiring");
   const id = uid();
   const jobNumber = await nextJobNumber();
-  const branch = getActiveBranchId() || null;
+  const branch = requireActiveBranchId();
   const customerId = input.customer_id ?? unit.customer_id ?? null;
 
   await transaction([
@@ -204,6 +207,7 @@ export async function createServiceJob(input: {
 
 export async function updateJobStatus(id: string, to: ServiceStatus): Promise<void> {
   await requirePermission("hardware.equipment.manage", { entityType: "service_job", entityId: id });
+  await requireBranchOwnedRecord("service_jobs", id, "Job");
   const [row] = await query<{ status: ServiceStatus }>(`SELECT status FROM service_jobs WHERE id = ?1`, [id]);
   if (!row) throw new Error("Job not found.");
   if (!canTransitionJob(row.status, to)) throw new Error(`Cannot move a job from ${row.status} to ${to}.`);
@@ -218,6 +222,7 @@ export async function updateJobFields(id: string, fields: {
   notes?: string | null;
 }): Promise<void> {
   await requirePermission("hardware.equipment.manage", { entityType: "service_job", entityId: id });
+  await requireBranchOwnedRecord("service_jobs", id, "Job");
   const sets: string[] = [];
   const params: unknown[] = [id];
   const push = (col: string, val: unknown) => { params.push(val); sets.push(`${col} = ?${params.length}`); };
@@ -238,6 +243,7 @@ export async function updateJobFields(id: string, fields: {
  */
 export async function completeJob(id: string): Promise<void> {
   await requirePermission("hardware.equipment.manage", { entityType: "service_job", entityId: id });
+  await requireBranchOwnedRecord("service_jobs", id, "Job");
   const [job] = await query<{ status: ServiceStatus; unit_id: string }>(
     `SELECT status, unit_id FROM service_jobs WHERE id = ?1`, [id],
   );
@@ -257,6 +263,7 @@ export async function completeJob(id: string): Promise<void> {
 
 /** Recompute + persist parts_total and labour_total from the line tables. */
 export async function recomputeTotals(jobId: string): Promise<{ parts: number; labour: number }> {
+  await requireBranchOwnedRecord("service_jobs", jobId, "Job");
   const [p] = await query<{ t: number }>(`SELECT COALESCE(SUM(line_total), 0) AS t FROM service_job_parts WHERE job_id = ?1`, [jobId]);
   const [l] = await query<{ t: number }>(`SELECT COALESCE(SUM(line_total), 0) AS t FROM service_job_labour WHERE job_id = ?1`, [jobId]);
   const parts = Number(p?.t ?? 0);
@@ -278,6 +285,7 @@ export async function addPart(jobId: string, input: {
   unit_price?: number;
 }): Promise<void> {
   await requirePermission("hardware.equipment.manage", { entityType: "service_job", entityId: jobId });
+  const branchId = await requireBranchOwnedRecord("service_jobs", jobId, "Job");
   const qty = input.quantity;
   if (!(qty > 0)) throw new Error("Quantity must be greater than zero.");
 
@@ -292,10 +300,10 @@ export async function addPart(jobId: string, input: {
 
   const batches = await query<{ id: string; quantity: number; buying_price: number }>(
     `SELECT id, quantity, COALESCE(buying_price, 0) AS buying_price FROM batches
-     WHERE product_id = ?1 AND quantity > 0
+     WHERE product_id = ?1 AND branch_id = ?2 AND quantity > 0
        AND (expiry_date IS NULL OR expiry_date > date('now'))
      ORDER BY expiry_date ASC NULLS LAST, received_at ASC`,
-    [input.product_id],
+    [input.product_id, branchId],
   );
   const available = batches.reduce((s, b) => s + b.quantity, 0);
   if (available < qty) throw new Error(`Not enough stock — need ${qty}, have ${available}.`);
@@ -332,10 +340,11 @@ export async function removePart(partId: string): Promise<void> {
     `SELECT job_id, product_id, batch_id, quantity FROM service_job_parts WHERE id = ?1`, [partId],
   );
   if (!part) return;
+  const branchId = await requireBranchOwnedRecord("service_jobs", part.job_id, "Job");
   // Restock: return to the original batch if known, else the newest batch.
   let batchId = part.batch_id;
   if (!batchId) {
-    const [b] = await query<{ id: string }>(`SELECT id FROM batches WHERE product_id = ?1 ORDER BY received_at DESC LIMIT 1`, [part.product_id]);
+    const [b] = await query<{ id: string }>(`SELECT id FROM batches WHERE product_id = ?1 AND branch_id = ?2 ORDER BY received_at DESC LIMIT 1`, [part.product_id, branchId]);
     batchId = b?.id ?? null;
   }
   const stmts: { sql: string; params: unknown[] }[] = [
@@ -362,6 +371,7 @@ export async function addLabour(jobId: string, input: {
   technician_id?: string | null;
 }): Promise<void> {
   await requirePermission("hardware.equipment.manage", { entityType: "service_job", entityId: jobId });
+  await requireBranchOwnedRecord("service_jobs", jobId, "Job");
   const total = (input.hours || 0) * (input.rate || 0);
   await execute(
     `INSERT INTO service_job_labour (id, job_id, description, hours, rate, line_total, technician_id)
@@ -375,6 +385,7 @@ export async function removeLabour(labourId: string): Promise<void> {
   await requirePermission("hardware.equipment.manage", { entityType: "service_job_labour", entityId: labourId });
   const [row] = await query<{ job_id: string }>(`SELECT job_id FROM service_job_labour WHERE id = ?1`, [labourId]);
   if (!row) return;
+  await requireBranchOwnedRecord("service_jobs", row.job_id, "Job");
   await execute(`DELETE FROM service_job_labour WHERE id = ?1`, [labourId]);
   await recomputeTotals(row.job_id);
 }

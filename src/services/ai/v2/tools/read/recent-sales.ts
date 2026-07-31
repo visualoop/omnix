@@ -5,6 +5,7 @@ import { z } from "zod";
 import { defineTool } from "../base";
 import { register } from "../registry";
 import { query } from "@/lib/db";
+import { requireActiveBranchId } from "@/stores/active-branch";
 
 const params = z.object({
   limit: z.number().int().min(1).max(50).optional().default(10),
@@ -33,10 +34,10 @@ register(defineTool<z.infer<typeof params>, { count: number }>({
        FROM sales s
        LEFT JOIN customers c ON c.id = s.customer_id
        LEFT JOIN users u ON u.id = s.user_id
-       WHERE s.status != 'held'
+       WHERE s.status != 'held' AND s.branch_id = ?2
        ORDER BY s.created_at DESC
        LIMIT ?1`,
-      [args.limit],
+      [args.limit, requireActiveBranchId()],
     );
     const output = rows.length === 0
       ? "No completed sales."

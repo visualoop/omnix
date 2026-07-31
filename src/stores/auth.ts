@@ -23,6 +23,10 @@ interface AuthState {
   setUser: (user: User | null) => void;
 }
 
+// Permission resolution touches SQLite and can overlap during startup. Only the
+// latest requested branch/module context may update the in-memory cache.
+let permissionLoadVersion = 0;
+
 export const useAuthStore = create<AuthState>()(
   persist(
     (set, get) => ({
@@ -42,8 +46,12 @@ export const useAuthStore = create<AuthState>()(
         try {
           const user = await loginDb(username, password);
           set({ user, loading: false });
-          // Lazy-import to avoid circular dependency
-          import("./active-branch").then((m) => m.useActiveBranch.getState().loadForUser(user.id));
+          // Branch loading owns the initial permission refresh so the cache is
+          // resolved against the assigned operational context, not stale state.
+          // Keep this lazy to avoid a static auth ↔ active-branch cycle.
+          void import("./active-branch")
+            .then((module) => module.useActiveBranch.getState().loadForUser(user.id))
+            .catch(() => get().loadPermissions());
           // Hold the password-derived backup key in memory while the app is open.
           // Used by the cloud-backup auto-scheduler so we don't have to re-prompt.
           // Best-effort — never blocks sign-in.
@@ -59,8 +67,6 @@ export const useAuthStore = create<AuthState>()(
               ).catch(() => {});
             }).catch(() => {});
           }
-          // Resolve + cache effective RBAC permissions for this user.
-          get().loadPermissions();
           // Run a one-shot multi-licence sync so legacy local keys (from
           // before the Better Auth migration) get reconciled with the
           // cloud DB. Fire-and-forget; never blocks sign-in.
@@ -112,6 +118,7 @@ export const useAuthStore = create<AuthState>()(
       },
 
       signOut: () => {
+        permissionLoadVersion += 1;
         set({ user: null, permissions: null });
         import("@/lib/permissions").then((m) => m.setCachedPermissions(null));
         import("./active-branch").then((m) => m.useActiveBranch.getState().clear());
@@ -123,6 +130,7 @@ export const useAuthStore = create<AuthState>()(
       },
 
       loadPermissions: async () => {
+        const requestVersion = ++permissionLoadVersion;
         const user = get().user;
         if (!user) {
           set({ permissions: null });
@@ -133,13 +141,20 @@ export const useAuthStore = create<AuthState>()(
           const branchId = (await import("./active-branch")).getActiveBranchId();
           const active = (await import("./active-module")).useActiveModule.getState().active;
           const perms = await resolveEffectivePermissions(user.id, { branchId, moduleId: active });
+          if (requestVersion !== permissionLoadVersion || get().user?.id !== user.id) return;
+
           // If the user has no RBAC assignments yet, leave null so the static
           // role matrix (users.role) remains the source of truth (back-compat).
           const list = perms.size > 0 ? [...perms] : null;
           const { setCachedPermissions } = await import("@/lib/permissions");
+          if (requestVersion !== permissionLoadVersion || get().user?.id !== user.id) return;
           setCachedPermissions(list);
           set({ permissions: list });
         } catch {
+          if (requestVersion !== permissionLoadVersion || get().user?.id !== user.id) return;
+          const { setCachedPermissions } = await import("@/lib/permissions");
+          if (requestVersion !== permissionLoadVersion || get().user?.id !== user.id) return;
+          setCachedPermissions(null);
           set({ permissions: null });
         }
       },

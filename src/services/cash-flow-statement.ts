@@ -15,6 +15,7 @@
  * grounded for SME users who don't care about D&A schedules.
  */
 import { query } from "@/lib/db";
+import { getActiveBranchId } from "@/stores/active-branch";
 
 export interface CashFlowSection {
   label: string;
@@ -52,7 +53,12 @@ function classify(otherAccountCode: string, otherType: string): "operating" | "i
 }
 
 export async function getCashFlow(fromDate: string, toDate: string): Promise<CashFlowStatement> {
-  // For every journal entry that has at least one line hitting a cash account,
+  const branchId = getActiveBranchId();
+  if (!branchId) {
+    const empty = (label: string): CashFlowSection => ({ label, lines: [], total: 0 });
+    return { from: fromDate, to: toDate, opening_cash: 0, operating: empty("Operating activities"), investing: empty("Investing activities"), financing: empty("Financing activities"), net_change: 0, closing_cash: 0 };
+  }
+  // For every attributable journal entry that has at least one line hitting a cash account,
   // find the paired lines and aggregate.
   const rows = await query<{
     entry_id: string;
@@ -85,8 +91,10 @@ export async function getCashFlow(fromDate: string, toDate: string): Promise<Cas
                             AND l2.account_code NOT IN ('1000','1010','1020','1030')
      JOIN chart_of_accounts c ON c.code = l2.account_code
      WHERE e.posted = 1 AND e.entry_date BETWEEN ?1 AND ?2
+       AND ((e.source_kind = 'sale' AND EXISTS (SELECT 1 FROM sales s WHERE s.id = e.source_id AND s.branch_id = ?3))
+         OR (e.source_kind = 'expense' AND EXISTS (SELECT 1 FROM expenses x WHERE x.id = e.source_id AND x.branch_id = ?3)))
      ORDER BY e.entry_date ASC`,
-    [fromDate, toDate],
+    [fromDate, toDate, branchId],
   );
 
   const operating: CashFlowSection = { label: "Operating activities", lines: [], total: 0 };
@@ -125,8 +133,10 @@ export async function getCashFlow(fromDate: string, toDate: string): Promise<Cas
      FROM journal_lines l
      JOIN journal_entries e ON e.id = l.entry_id
      WHERE e.posted = 1 AND e.entry_date < ?1
-       AND l.account_code IN ('1000','1010','1020','1030')`,
-    [fromDate],
+       AND l.account_code IN ('1000','1010','1020','1030')
+       AND ((e.source_kind = 'sale' AND EXISTS (SELECT 1 FROM sales s WHERE s.id = e.source_id AND s.branch_id = ?2))
+         OR (e.source_kind = 'expense' AND EXISTS (SELECT 1 FROM expenses x WHERE x.id = e.source_id AND x.branch_id = ?2)))`,
+    [fromDate, branchId],
   );
   const opening = openingRow?.balance ?? 0;
   const net = operating.total + investing.total + financing.total;

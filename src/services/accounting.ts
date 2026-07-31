@@ -1,5 +1,5 @@
 import { query, execute } from "@/lib/db";
-import { getActiveBranchId } from "@/stores/active-branch";
+import { getActiveBranchId, requireActiveBranchId } from "@/stores/active-branch";
 import { cogsExpr, cogsExprForReturn } from "@/services/cogs";
 
 export interface ExpenseCategory {
@@ -72,8 +72,10 @@ export async function getExpenseCategories(): Promise<ExpenseCategory[]> {
 
 // Expenses
 export async function getExpenses(startDate?: string, endDate?: string): Promise<Expense[]> {
-  let sql = "SELECT * FROM expenses WHERE 1=1";
-  const params: unknown[] = [];
+  const branchId = getActiveBranchId();
+  if (!branchId) return [];
+  let sql = "SELECT * FROM expenses WHERE branch_id = ?1";
+  const params: unknown[] = [branchId];
   if (startDate) { sql += ` AND expense_date >= ?${params.length + 1}`; params.push(startDate); }
   if (endDate) { sql += ` AND expense_date <= ?${params.length + 1}`; params.push(endDate); }
   sql += " ORDER BY expense_date DESC, created_at DESC LIMIT 200";
@@ -81,6 +83,7 @@ export async function getExpenses(startDate?: string, endDate?: string): Promise
 }
 
 export async function createExpense(input: CreateExpenseInput, userId: string): Promise<string> {
+  const branchId = requireActiveBranchId();
   const id = crypto.randomUUID();
   await execute(
     `INSERT INTO expenses (id, category_id, category_name, amount, description, payment_method, reference, expense_date, notes, recorded_by, branch_id)
@@ -88,7 +91,7 @@ export async function createExpense(input: CreateExpenseInput, userId: string): 
     [id, input.category_id, input.category_name, input.amount, input.description || null,
      input.payment_method || "cash", input.reference || null,
      input.expense_date || new Date().toISOString().slice(0, 10),
-     input.notes || null, userId, getActiveBranchId()]
+     input.notes || null, userId, branchId]
   );
 
   // Mirror to bank as withdrawal for reconciliation
@@ -142,14 +145,16 @@ async function pickAccountForMethod(method: string): Promise<string | null> {
 }
 
 export async function deleteExpense(id: string): Promise<void> {
-  await execute("DELETE FROM expenses WHERE id = ?1", [id]);
+  await execute("DELETE FROM expenses WHERE id = ?1 AND branch_id = ?2", [id, requireActiveBranchId()]);
 }
 
 // Cash register / shift management
 export async function getOpenShift(userId: string): Promise<CashShift | null> {
+  const branchId = getActiveBranchId();
+  if (!branchId) return null;
   const rows = await query<CashShift>(
-    "SELECT * FROM cash_register WHERE user_id = ?1 AND status = 'open' ORDER BY opened_at DESC LIMIT 1",
-    [userId]
+    "SELECT * FROM cash_register WHERE user_id = ?1 AND branch_id = ?2 AND status = 'open' ORDER BY opened_at DESC LIMIT 1",
+    [userId, branchId]
   );
   return rows[0] || null;
 }
@@ -159,31 +164,32 @@ export async function openShift(userId: string, openingBalance: number): Promise
   await execute(
     `INSERT INTO cash_register (id, user_id, opening_balance, status, branch_id)
      VALUES (?1, ?2, ?3, 'open', ?4)`,
-    [id, userId, openingBalance, getActiveBranchId()]
+    [id, userId, openingBalance, requireActiveBranchId()]
   );
   return id;
 }
 
 export async function closeShift(shiftId: string, actualClosing: number, notes?: string): Promise<void> {
+  const branchId = requireActiveBranchId();
   // Calculate expected closing from sales + opening balance
   const shift = await query<CashShift>(
-    "SELECT * FROM cash_register WHERE id = ?1",
-    [shiftId]
+    "SELECT * FROM cash_register WHERE id = ?1 AND branch_id = ?2",
+    [shiftId, branchId]
   );
   if (!shift[0]) throw new Error("Shift not found");
 
   const cashSales = await query<{ total: number }>(
     `SELECT COALESCE(SUM(p.amount), 0) as total
      FROM payments p JOIN sales s ON s.id = p.sale_id
-     WHERE p.method_id = 'cash' AND s.created_at >= ?1`,
-    [shift[0].opened_at]
+     WHERE p.method_id = 'cash' AND s.created_at >= ?1 AND s.branch_id = ?2`,
+    [shift[0].opened_at, branchId]
   );
 
   const expensesPaid = await query<{ total: number }>(
     `SELECT COALESCE(SUM(amount), 0) as total
      FROM expenses
-     WHERE payment_method = 'cash' AND created_at >= ?1`,
-    [shift[0].opened_at]
+     WHERE payment_method = 'cash' AND created_at >= ?1 AND branch_id = ?2`,
+    [shift[0].opened_at, branchId]
   );
 
   const expected = shift[0].opening_balance + (cashSales[0]?.total || 0) - (expensesPaid[0]?.total || 0);
@@ -194,24 +200,28 @@ export async function closeShift(shiftId: string, actualClosing: number, notes?:
      SET status = 'closed', closed_at = datetime('now'),
          expected_closing = ?1, actual_closing = ?2, difference = ?3,
          cash_in = ?4, cash_out = ?5, notes = ?6
-     WHERE id = ?7`,
-    [expected, actualClosing, difference, cashSales[0]?.total || 0, expensesPaid[0]?.total || 0, notes || null, shiftId]
+     WHERE id = ?7 AND branch_id = ?8`,
+    [expected, actualClosing, difference, cashSales[0]?.total || 0, expensesPaid[0]?.total || 0, notes || null, shiftId, branchId]
   );
 }
 
 export async function getRecentShifts(limit = 20): Promise<CashShift[]> {
-  return query<CashShift>("SELECT * FROM cash_register ORDER BY opened_at DESC LIMIT ?1", [limit]);
+  const branchId = getActiveBranchId();
+  if (!branchId) return [];
+  return query<CashShift>("SELECT * FROM cash_register WHERE branch_id = ?2 ORDER BY opened_at DESC LIMIT ?1", [limit, branchId]);
 }
 
 // P&L report
 export async function getPnL(startDate: string, endDate: string): Promise<PnLData> {
+  const branchId = getActiveBranchId();
+  if (!branchId) throw new Error("Select a branch to view profit and loss");
   // Sales revenue
   const salesByMethod = await query<{ method_id: string; total: number }>(
     `SELECT p.method_id, COALESCE(SUM(p.amount), 0) as total
      FROM payments p JOIN sales s ON s.id = p.sale_id
-     WHERE s.status = 'completed' AND date(s.created_at) BETWEEN ?1 AND ?2
+     WHERE s.status = 'completed' AND date(s.created_at) BETWEEN ?1 AND ?2 AND s.branch_id = ?3
      GROUP BY p.method_id`,
-    [startDate, endDate]
+    [startDate, endDate, branchId]
   );
 
   let sales_cash = 0, sales_credit = 0, sales_other = 0;
@@ -221,16 +231,15 @@ export async function getPnL(startDate: string, endDate: string): Promise<PnLDat
     else sales_other += row.total;
   }
 
-  const otherIncome = await query<{ total: number }>(
-    "SELECT COALESCE(SUM(amount), 0) as total FROM other_income WHERE date(income_date) BETWEEN ?1 AND ?2",
-    [startDate, endDate]
-  );
+  // other_income predates branch attribution; excluding it is safer than
+  // duplicating business-wide income into each branch statement.
+  const otherIncome: Array<{ total: number }> = [{ total: 0 }];
 
   const returns = await query<{ total: number }>(
     `SELECT COALESCE(SUM(refund_amount), 0) as total
      FROM sale_returns
-     WHERE date(return_date) BETWEEN ?1 AND ?2`,
-    [startDate, endDate]
+     WHERE date(return_date) BETWEEN ?1 AND ?2 AND branch_id = ?3`,
+    [startDate, endDate, branchId]
   );
   const returnsAmount = returns[0]?.total || 0;
   const totalRevenue = sales_cash + sales_credit + sales_other - returnsAmount + (otherIncome[0]?.total || 0);
@@ -244,24 +253,24 @@ export async function getPnL(startDate: string, endDate: string): Promise<PnLDat
     `SELECT COALESCE(SUM(${cogsExpr("si")} * si.quantity), 0) as total
      FROM sale_items si
      JOIN sales s ON s.id = si.sale_id
-     WHERE s.status = 'completed' AND date(s.created_at) BETWEEN ?1 AND ?2`,
-    [startDate, endDate]
+     WHERE s.status = 'completed' AND date(s.created_at) BETWEEN ?1 AND ?2 AND s.branch_id = ?3`,
+    [startDate, endDate, branchId]
   );
 
   const returnedCogs = await query<{ total: number }>(
     `SELECT COALESCE(SUM(${cogsExprForReturn("sri")} * sri.quantity), 0) as total
      FROM sale_return_items sri
      JOIN sale_returns sr ON sr.id = sri.return_id
-     WHERE date(sr.return_date) BETWEEN ?1 AND ?2`,
-    [startDate, endDate]
+     WHERE date(sr.return_date) BETWEEN ?1 AND ?2 AND sr.branch_id = ?3`,
+    [startDate, endDate, branchId]
   );
 
   // Expenses by category
   const expenses = await query<{ category: string; amount: number }>(
     `SELECT COALESCE(category_name, 'Uncategorized') as category, SUM(amount) as amount
-     FROM expenses WHERE date(expense_date) BETWEEN ?1 AND ?2
+     FROM expenses WHERE date(expense_date) BETWEEN ?1 AND ?2 AND branch_id = ?3
      GROUP BY category_name ORDER BY amount DESC`,
-    [startDate, endDate]
+    [startDate, endDate, branchId]
   );
 
   const totalExpenses = expenses.reduce((s, e) => s + e.amount, 0);

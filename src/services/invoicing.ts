@@ -5,7 +5,8 @@
  * Quotations can be converted to invoices.
  */
 import { query, execute } from "@/lib/db";
-import { getActiveBranchId } from "@/stores/active-branch";
+import { requireActiveBranchId } from "@/stores/active-branch";
+import { requireBranchOwnedRecord } from "@/lib/branch-ownership";
 
 export type InvoiceStatus = "draft" | "sent" | "partial" | "paid" | "overdue" | "cancelled";
 export type QuotationStatus = "draft" | "sent" | "accepted" | "declined" | "expired" | "converted";
@@ -92,8 +93,9 @@ export async function listQuotations(opts?: {
   startDate?: string;
   endDate?: string;
 }): Promise<Quotation[]> {
-  const conditions: string[] = [];
-  const params: any[] = [];
+  const branchId = requireActiveBranchId();
+  const conditions: string[] = ["branch_id = ?1"];
+  const params: unknown[] = [branchId];
   if (opts?.status) { conditions.push(`status = ?${params.length + 1}`); params.push(opts.status); }
   if (opts?.customerId) { conditions.push(`customer_id = ?${params.length + 1}`); params.push(opts.customerId); }
   if (opts?.startDate) { conditions.push(`issue_date >= ?${params.length + 1}`); params.push(opts.startDate); }
@@ -103,7 +105,8 @@ export async function listQuotations(opts?: {
   // Auto-mark expired
   await execute(
     `UPDATE quotations SET status = 'expired'
-     WHERE status IN ('draft','sent') AND date('now') > valid_until`,
+     WHERE branch_id = ?1 AND status IN ('draft','sent') AND date('now') > valid_until`,
+    [branchId],
   );
 
   return query<Quotation>(
@@ -113,7 +116,7 @@ export async function listQuotations(opts?: {
 }
 
 export async function getQuotation(id: string): Promise<{ quotation: Quotation; items: DocumentItem[] } | null> {
-  const [quotation] = await query<Quotation>(`SELECT * FROM quotations WHERE id = ?1`, [id]);
+  const [quotation] = await query<Quotation>(`SELECT * FROM quotations WHERE id = ?1 AND branch_id = ?2`, [id, requireActiveBranchId()]);
   if (!quotation) return null;
   const items = await query<DocumentItem>(
     `SELECT * FROM quotation_items WHERE quotation_id = ?1 ORDER BY sort_order`,
@@ -154,7 +157,7 @@ export async function createQuotation(input: {
        valid_until, status, notes, terms, user_id, branch_id)
      VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, 'draft', ?9, ?10, ?11, ?12)`,
     [id, number, input.customer_id || null, input.customer_name, input.customer_phone || null, input.customer_email || null,
-      input.customer_address || null, input.valid_until, input.notes || null, input.terms || null, input.user_id, getActiveBranchId()],
+      input.customer_address || null, input.valid_until, input.notes || null, input.terms || null, input.user_id, requireActiveBranchId()],
   );
 
   for (let i = 0; i < input.items.length; i++) {
@@ -183,6 +186,7 @@ export async function createQuotation(input: {
 }
 
 export async function updateQuotationStatus(id: string, status: QuotationStatus): Promise<void> {
+  await requireBranchOwnedRecord("quotations", id, "Quotation");
   await execute(`UPDATE quotations SET status = ?2 WHERE id = ?1`, [id, status]);
 }
 
@@ -224,6 +228,7 @@ export async function convertQuotationToInvoice(quotationId: string, dueDate: st
 }
 
 export async function deleteQuotation(id: string): Promise<void> {
+  await requireBranchOwnedRecord("quotations", id, "Quotation");
   await execute(`DELETE FROM quotation_items WHERE quotation_id = ?1`, [id]);
   await execute(`DELETE FROM quotations WHERE id = ?1`, [id]);
 }
@@ -236,19 +241,23 @@ export async function listInvoices(opts?: {
   endDate?: string;
   branchId?: string;
 }): Promise<Invoice[]> {
-  // Auto-mark overdue
+  const branchId = requireActiveBranchId();
+  if (opts?.branchId && opts.branchId !== branchId) {
+    throw new Error("Switch to that branch before viewing invoices");
+  }
+  // Auto-mark overdue for this branch only.
   await execute(
     `UPDATE invoices SET status = 'overdue'
-     WHERE status IN ('sent','partial') AND date('now') > due_date AND amount_paid < total`,
+     WHERE branch_id = ?1 AND status IN ('sent','partial') AND date('now') > due_date AND amount_paid < total`,
+    [branchId],
   );
 
-  const conditions: string[] = [];
-  const params: any[] = [];
+  const conditions: string[] = ["branch_id = ?1"];
+  const params: unknown[] = [branchId];
   if (opts?.status) { conditions.push(`status = ?${params.length + 1}`); params.push(opts.status); }
   if (opts?.customerId) { conditions.push(`customer_id = ?${params.length + 1}`); params.push(opts.customerId); }
   if (opts?.startDate) { conditions.push(`issue_date >= ?${params.length + 1}`); params.push(opts.startDate); }
   if (opts?.endDate) { conditions.push(`issue_date <= ?${params.length + 1}`); params.push(opts.endDate); }
-  if (opts?.branchId) { conditions.push(`branch_id = ?${params.length + 1}`); params.push(opts.branchId); }
   const where = conditions.length ? `WHERE ${conditions.join(" AND ")}` : "";
 
   return query<Invoice>(
@@ -269,7 +278,7 @@ export async function getInvoice(id: string): Promise<{
     notes: string | null;
   }>;
 } | null> {
-  const [invoice] = await query<Invoice>(`SELECT * FROM invoices WHERE id = ?1`, [id]);
+  const [invoice] = await query<Invoice>(`SELECT * FROM invoices WHERE id = ?1 AND branch_id = ?2`, [id, requireActiveBranchId()]);
   if (!invoice) return null;
   const items = await query<DocumentItem>(
     `SELECT * FROM invoice_items WHERE invoice_id = ?1 ORDER BY sort_order`,
@@ -318,7 +327,7 @@ export async function createInvoice(input: {
     [id, number, input.customer_id || null, input.customer_name, input.customer_phone || null, input.customer_email || null,
       input.customer_address || null, input.customer_tax_pin || null, input.sale_id || null, input.quotation_id || null,
       input.issue_date || new Date().toISOString().slice(0, 10), input.due_date,
-      input.notes || null, input.terms || null, input.user_id, getActiveBranchId()],
+      input.notes || null, input.terms || null, input.user_id, requireActiveBranchId()],
   );
 
   let subtotal = 0;
@@ -349,6 +358,7 @@ export async function createInvoice(input: {
 }
 
 export async function markInvoiceSent(id: string): Promise<void> {
+  await requireBranchOwnedRecord("invoices", id, "Invoice");
   await execute(
     `UPDATE invoices SET status = 'sent', sent_at = datetime('now'), updated_at = datetime('now')
      WHERE id = ?1 AND status = 'draft'`,
@@ -365,6 +375,7 @@ export async function recordInvoicePayment(input: {
   notes?: string;
   user_id: string;
 }): Promise<string> {
+  const branchId = await requireBranchOwnedRecord("invoices", input.invoice_id, "Invoice");
   const id = crypto.randomUUID();
   await execute(
     `INSERT INTO invoice_payments (id, invoice_id, amount, payment_method, reference, payment_date, notes, user_id)
@@ -403,11 +414,12 @@ export async function recordInvoicePayment(input: {
     if (lower.includes("mpesa") || lower.includes("m-pesa")) accountType = "mpesa_till";
     else if (lower.includes("bank") || lower.includes("cheque") || lower.includes("transfer") || lower.includes("card")) accountType = "bank";
     const [acc] = await query<{ id: string }>(
-      `SELECT id FROM bank_accounts WHERE account_type = ?1 AND is_active = 1 ORDER BY is_default DESC LIMIT 1`,
-      [accountType],
+      `SELECT id FROM bank_accounts WHERE account_type = ?1 AND is_active = 1 AND (branch_id = ?2 OR branch_id IS NULL) ORDER BY is_default DESC LIMIT 1`,
+      [accountType, branchId],
     );
     const accountId = acc?.id || (await query<{ id: string }>(
-      `SELECT id FROM bank_accounts WHERE is_active = 1 ORDER BY is_default DESC LIMIT 1`,
+      `SELECT id FROM bank_accounts WHERE is_active = 1 AND (branch_id = ?1 OR branch_id IS NULL) ORDER BY is_default DESC LIMIT 1`,
+      [branchId],
     ))[0]?.id;
     if (accountId) {
       await recordTransaction({
@@ -429,6 +441,7 @@ export async function recordInvoicePayment(input: {
 }
 
 export async function cancelInvoice(id: string): Promise<void> {
+  await requireBranchOwnedRecord("invoices", id, "Invoice");
   await execute(
     `UPDATE invoices SET status = 'cancelled', updated_at = datetime('now') WHERE id = ?1`,
     [id],
@@ -458,7 +471,8 @@ export async function getAgedReceivables(): Promise<AgedReceivable[]> {
        CAST(julianday('now') - julianday(due_date) AS INTEGER) AS days_overdue,
        (total - amount_paid) AS outstanding
      FROM invoices
-     WHERE status NOT IN ('paid','cancelled') AND total > amount_paid`,
+     WHERE branch_id = ?1 AND status NOT IN ('paid','cancelled') AND total > amount_paid`,
+    [requireActiveBranchId()],
   );
 
   const map = new Map<string, AgedReceivable>();

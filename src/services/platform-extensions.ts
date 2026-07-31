@@ -7,6 +7,7 @@
  * - Consolidated multi-business dashboard (client-side, hits telemetry API)
  */
 import { execute, query } from "@/lib/db";
+import { requireActiveBranchId } from "@/stores/active-branch";
 
 function newId(): string { return crypto.randomUUID().replace(/-/g, "").slice(0, 16); }
 
@@ -106,7 +107,8 @@ export async function runDataQualityScan(): Promise<number> {
 
   // 2. Negative stock batches.
   const negStock = await query<{ id: string; product_id: string; quantity: number }>(
-    `SELECT id, product_id, quantity FROM batches WHERE quantity < 0`,
+    `SELECT id, product_id, quantity FROM batches WHERE quantity < 0 AND branch_id = ?1`,
+    [requireActiveBranchId()],
   ).catch(() => []);
   for (const b of negStock) {
     await emit("negative_stock", "batch", b.id, { product_id: b.product_id, qty: b.quantity }, "critical");
@@ -117,7 +119,8 @@ export async function runDataQualityScan(): Promise<number> {
     `SELECT s.id, s.total FROM sales s
      JOIN payments p ON p.sale_id = s.id
      JOIN payment_methods pm ON pm.id = p.payment_method_id
-     WHERE pm.name LIKE '%credit%' AND s.customer_id IS NULL LIMIT 100`,
+     WHERE pm.name LIKE '%credit%' AND s.customer_id IS NULL AND s.branch_id = ?1 LIMIT 100`,
+    [requireActiveBranchId()],
   ).catch(() => []);
   for (const s of orphanCredit) {
     await emit("missing_customer", "sale", s.id, { total: s.total }, "critical");
@@ -161,13 +164,14 @@ export async function runAnomalyDetection(): Promise<number> {
   // Sales drop >30% vs 7-day trailing avg.
   const [today] = await query<{ today: number; trailing: number }>(
     `SELECT
-        COALESCE((SELECT SUM(total) FROM sales WHERE date(created_at) = date('now') AND status = 'completed'), 0) AS today,
+        COALESCE((SELECT SUM(total) FROM sales WHERE date(created_at) = date('now') AND status = 'completed' AND branch_id = ?1), 0) AS today,
         COALESCE((SELECT AVG(daily_total) FROM (
           SELECT SUM(total) AS daily_total FROM sales
           WHERE date(created_at) BETWEEN date('now', '-8 days') AND date('now', '-1 days')
-            AND status = 'completed'
+            AND status = 'completed' AND branch_id = ?1
           GROUP BY date(created_at)
         )), 0) AS trailing`,
+    [requireActiveBranchId()],
   ).catch(() => [{ today: 0, trailing: 0 }]);
 
   if (today && today.trailing > 0 && today.today < today.trailing * 0.7) {
@@ -185,9 +189,10 @@ export async function runAnomalyDetection(): Promise<number> {
   const [expiry] = await query<{ recent: number; prior: number }>(
     `SELECT
         COALESCE((SELECT SUM(quantity) FROM shrinkage
-                  WHERE reason LIKE '%expir%' AND date(created_at) >= date('now', '-7 days')), 0) AS recent,
+                  WHERE branch_id = ?1 AND reason LIKE '%expir%' AND date(created_at) >= date('now', '-7 days')), 0) AS recent,
         COALESCE((SELECT SUM(quantity) FROM shrinkage
-                  WHERE reason LIKE '%expir%' AND date(created_at) BETWEEN date('now', '-37 days') AND date('now', '-8 days')), 0) AS prior`,
+                  WHERE branch_id = ?1 AND reason LIKE '%expir%' AND date(created_at) BETWEEN date('now', '-37 days') AND date('now', '-8 days')), 0) AS prior`,
+    [requireActiveBranchId()],
   ).catch(() => [{ recent: 0, prior: 0 }]);
   const priorAvg = (expiry?.prior ?? 0) / 4.28;  // 30 days ÷ 7 for weekly comparison
   if (expiry && expiry.recent > priorAvg * 2 && expiry.recent > 5) {
@@ -249,16 +254,16 @@ export async function globalSearch(qStr: string, limit = 30): Promise<SearchHit[
   });
 
   const sales = await query<{ id: string; sale_number: string; total: number }>(
-    `SELECT id, sale_number, total FROM sales WHERE sale_number LIKE ?1 LIMIT 10`,
-    [pattern],
+    `SELECT id, sale_number, total FROM sales WHERE sale_number LIKE ?1 AND branch_id = ?2 LIMIT 10`,
+    [pattern, requireActiveBranchId()],
   ).catch(() => []);
   for (const s of sales) hits.push({
     entity_kind: "sale", entity_id: s.id, title: s.sale_number, subtitle: `KES ${s.total.toFixed(2)}`, score: 1,
   });
 
   const invoices = await query<{ id: string; invoice_number: string; customer_name: string | null }>(
-    `SELECT id, invoice_number, customer_name FROM invoices WHERE invoice_number LIKE ?1 LIMIT 10`,
-    [pattern],
+    `SELECT id, invoice_number, customer_name FROM invoices WHERE invoice_number LIKE ?1 AND branch_id = ?2 LIMIT 10`,
+    [pattern, requireActiveBranchId()],
   ).catch(() => []);
   for (const inv of invoices) hits.push({
     entity_kind: "invoice", entity_id: inv.id, title: inv.invoice_number, subtitle: inv.customer_name, score: 1,

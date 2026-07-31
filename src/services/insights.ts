@@ -45,19 +45,20 @@ export async function reorderSuggestions(opts: { windowDays?: number; leadDays?:
   const leadDays = opts.leadDays ?? 7;
   const limit = opts.limit ?? 50;
   const branchId = getActiveBranchId();
+  if (!branchId) return [];
 
   const rows = await query<{
     product_id: string; name: string; stock_qty: number; reorder_level: number;
     units_sold: number; preferred_supplier: string | null;
   }>(
     `SELECT p.id AS product_id, p.name, p.reorder_level,
-            COALESCE((SELECT SUM(b.quantity) FROM batches b WHERE b.product_id = p.id), 0) AS stock_qty,
+            COALESCE((SELECT SUM(b.quantity) FROM batches b WHERE b.product_id = p.id AND b.branch_id = ?2), 0) AS stock_qty,
             COALESCE((SELECT SUM(si.quantity) FROM sale_items si
                         JOIN sales s ON s.id = si.sale_id
                        WHERE si.product_id = p.id AND s.status = 'completed' AND s.branch_id = ?2
                          AND julianday('now') - julianday(s.created_at) < ?1), 0) AS units_sold,
             (SELECT sup.name FROM batches b2 JOIN suppliers sup ON sup.id = b2.supplier_id
-              WHERE b2.product_id = p.id AND b2.supplier_id IS NOT NULL
+              WHERE b2.product_id = p.id AND b2.branch_id = ?2 AND b2.supplier_id IS NOT NULL
               ORDER BY b2.received_at DESC LIMIT 1) AS preferred_supplier
        FROM products p
       WHERE p.active = 1 AND COALESCE(p.kind, 'physical') = 'physical'`,
@@ -104,6 +105,8 @@ export interface DeadStockItem {
 export async function deadStock(opts: { idleDays?: number; limit?: number } = {}): Promise<{ items: DeadStockItem[]; total_value: number }> {
   const idleDays = opts.idleDays ?? 60;
   const limit = opts.limit ?? 50;
+  const branchId = getActiveBranchId();
+  if (!branchId) return { items: [], total_value: 0 };
 
   const rows = await query<{
     product_id: string; name: string; stock_qty: number; value_at_cost: number; last_sale: string | null; product_created_at: string | null;
@@ -112,13 +115,14 @@ export async function deadStock(opts: { idleDays?: number; limit?: number } = {}
             COALESCE(SUM(b.quantity), 0) AS stock_qty,
             COALESCE(SUM(b.quantity * b.buying_price), 0) AS value_at_cost,
             (SELECT MAX(s.created_at) FROM sale_items si JOIN sales s ON s.id = si.sale_id
-              WHERE si.product_id = p.id AND s.status = 'completed') AS last_sale,
+              WHERE si.product_id = p.id AND s.status = 'completed' AND s.branch_id = ?1) AS last_sale,
             p.created_at AS product_created_at
        FROM batches b
        JOIN products p ON p.id = b.product_id
-      WHERE p.active = 1 AND b.quantity > 0
+      WHERE p.active = 1 AND b.branch_id = ?1 AND b.quantity > 0
       GROUP BY p.id, p.name, p.created_at
      HAVING stock_qty > 0`,
+    [branchId],
   );
 
   const items: DeadStockItem[] = [];
@@ -213,6 +217,7 @@ export async function profitLeaders(opts: { windowDays?: number; limit?: number 
   const windowDays = opts.windowDays ?? 30;
   const limit = opts.limit ?? 10;
   const branchId = getActiveBranchId();
+  if (!branchId) return [];
   const rows = await query<{ product_id: string; name: string; qty_sold: number; revenue: number; profit: number }>(
     `SELECT si.product_id, si.product_name AS name,
             COALESCE(SUM(si.quantity), 0) AS qty_sold,
@@ -254,6 +259,7 @@ export interface RevenueChange {
 export async function revenueChange(opts: { windowDays?: number } = {}): Promise<RevenueChange> {
   const windowDays = opts.windowDays ?? 7;
   const branchId = getActiveBranchId();
+  if (!branchId) return { window_days: windowDays, current_revenue: 0, previous_revenue: 0, delta: 0, delta_pct: null, top_gainers: [], top_losers: [] };
 
   const periodRevenue = async (fromDaysAgo: number, toDaysAgo: number) => {
     const [r] = await query<{ revenue: number }>(
@@ -315,6 +321,7 @@ export interface CashierPerformance {
 export async function cashierPerformance(opts: { windowDays?: number } = {}): Promise<CashierPerformance[]> {
   const windowDays = opts.windowDays ?? 30;
   const branchId = getActiveBranchId();
+  if (!branchId) return [];
   const rows = await query<{ user_id: string; name: string; sales_count: number; revenue: number; voids: number }>(
     `SELECT s.user_id,
             COALESCE(u.full_name, u.username, 'Unknown') AS name,
@@ -356,6 +363,8 @@ export interface CustomerInsight {
 export async function customerInsights(opts: { windowDays?: number; limit?: number } = {}): Promise<CustomerInsight[]> {
   const windowDays = opts.windowDays ?? 180;
   const limit = opts.limit ?? 200;
+  const branchId = getActiveBranchId();
+  if (!branchId) return [];
   const rows = await query<{
     customer_id: string; name: string; orders: number; total_spent: number; last_purchase: string | null; first_purchase: string | null;
   }>(
@@ -366,11 +375,11 @@ export async function customerInsights(opts: { windowDays?: number; limit?: numb
             MIN(s.created_at) AS first_purchase
        FROM customers c
        JOIN sales s ON s.customer_id = c.id AND s.status = 'completed'
-      WHERE c.active = 1
+      WHERE c.active = 1 AND s.branch_id = ?3
         AND julianday('now') - julianday(s.created_at) < ?1
       GROUP BY c.id, c.name
       LIMIT ?2`,
-    [windowDays, limit],
+    [windowDays, limit, branchId],
   );
   const now = Date.now();
   const spends = rows.map((r) => r.total_spent).sort((a, b) => b - a);
@@ -416,6 +425,8 @@ export interface SupplierScore {
 export async function supplierScorecard(opts: { windowDays?: number; limit?: number } = {}): Promise<SupplierScore[]> {
   const windowDays = opts.windowDays ?? 365;
   const limit = opts.limit ?? 50;
+  const branchId = getActiveBranchId();
+  if (!branchId) return [];
   const rows = await query<{
     supplier_id: string; name: string; orders: number; total_spent: number;
     on_time: number; received_count: number; ordered_qty: number; received_qty: number;
@@ -430,11 +441,11 @@ export async function supplierScorecard(opts: { windowDays?: number; limit?: num
             COALESCE(SUM((SELECT SUM(poi.received_quantity) FROM purchase_order_items poi WHERE poi.po_id = po.id)), 0) AS received_qty
        FROM purchase_orders po
        JOIN suppliers sup ON sup.id = po.supplier_id
-      WHERE julianday('now') - julianday(po.created_at) < ?1
+      WHERE julianday('now') - julianday(po.created_at) < ?1 AND po.branch_id = ?3
       GROUP BY po.supplier_id, sup.name
       ORDER BY total_spent DESC
       LIMIT ?2`,
-    [windowDays, limit],
+    [windowDays, limit, branchId],
   );
   return rows.map((r) => ({
     supplier_id: r.supplier_id,
@@ -463,10 +474,13 @@ function normaliseName(s: string): string {
 
 export async function duplicateProducts(opts: { limit?: number } = {}): Promise<DuplicateGroup[]> {
   const limit = opts.limit ?? 50;
+  const branchId = getActiveBranchId();
+  if (!branchId) return [];
   const rows = await query<{ id: string; name: string; sku: string | null; barcode: string | null; stock_qty: number }>(
     `SELECT p.id, p.name, p.sku, p.barcode,
-            COALESCE((SELECT SUM(b.quantity) FROM batches b WHERE b.product_id = p.id), 0) AS stock_qty
+            COALESCE((SELECT SUM(b.quantity) FROM batches b WHERE b.product_id = p.id AND b.branch_id = ?1), 0) AS stock_qty
        FROM products p WHERE p.active = 1`,
+    [branchId],
   );
   const byBarcode = new Map<string, typeof rows>();
   const byName = new Map<string, typeof rows>();
@@ -509,13 +523,14 @@ export async function expiryRisk(opts: { withinDays?: number; limit?: number } =
   const withinDays = opts.withinDays ?? 90;
   const limit = opts.limit ?? 100;
   const branchId = getActiveBranchId();
+  if (!branchId) return { items: [], total_value: 0 };
   const rows = await query<{
     product_id: string; name: string; batch_number: string | null; quantity: number; expiry_date: string; buying_price: number;
   }>(
     `SELECT b.product_id, p.name, b.batch_number, b.quantity, b.expiry_date, b.buying_price
        FROM batches b JOIN products p ON p.id = b.product_id
       WHERE b.quantity > 0 AND b.expiry_date IS NOT NULL
-        AND (b.branch_id = ?2 OR b.branch_id IS NULL)
+        AND b.branch_id = ?2
         AND julianday(b.expiry_date) - julianday('now') <= ?1
       ORDER BY b.expiry_date ASC
       LIMIT ?3`,

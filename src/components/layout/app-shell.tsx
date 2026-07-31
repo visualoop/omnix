@@ -12,80 +12,94 @@ import { OnboardingTour } from "@/components/onboarding-tour";
 import { ShortcutsOverlay } from "@/components/shortcuts-overlay";
 import { IdleAutoLock } from "@/components/idle-auto-lock";
 import { ApprovalDialog } from "@/components/ai/approval-dialog";
+import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { useAutoCloudBackup } from "@/hooks/use-auto-cloud-backup";
+import { useDeviceCapabilities } from "@/hooks/use-form-factor";
+import { useActiveBranch } from "@/stores/active-branch";
 
-/** Return the top-level route prefix, e.g. "/settings/license" → "settings". */
 function sectionOf(pathname: string): string {
-  const m = pathname.match(/^\/([^/]+)/);
-  return m ? m[1] : "";
+  const match = pathname.match(/^\/([^/]+)/);
+  return match ? match[1] : "";
 }
 
 export function AppShell() {
   const [cmdOpen, setCmdOpen] = useState(false);
+  const [mobileNavigationOpen, setMobileNavigationOpen] = useState(false);
   const openCmd = useCallback(() => setCmdOpen(true), []);
   const location = useLocation();
-  // routeKey is what we set on the <Outlet> wrapper to drive the
-  // animate-in animation. Within a section (e.g. /settings/*), we keep the
-  // SAME key + drop the slide so the inner content doesn't shake/scroll.
-  const prevSection = useRef(sectionOf(location.pathname));
-  const stableSectionKey = useRef(prevSection.current);
+  const { formFactor, prefersReducedMotion } = useDeviceCapabilities();
+  const branchRevision = useActiveBranch((state) => state.revision);
+  const branchScope = useActiveBranch((state) => state.scope);
+  const activeBranchId = useActiveBranch((state) => state.active?.id ?? "unassigned");
+  const desktop = formFactor === "desktop";
+  const previousSection = useRef(sectionOf(location.pathname));
+  const stableSectionKey = useRef(previousSection.current);
   const [routeKey, setRouteKey] = useState(location.pathname);
-  const [transitionClass, setTransitionClass] = useState("animate-in fade-in-0 duration-150");
+  const [transitionClass, setTransitionClass] = useState(
+    prefersReducedMotion ? "" : "animate-in fade-in-0 duration-150",
+  );
   const isSettingsRoute = location.pathname.startsWith("/settings");
-  // Fullscreen-canvas routes — POS sale interface, customer display.
-  // Sidebar + topbar hide so cashier has the entire screen for selling.
   const isFullscreen =
     location.pathname === "/pos/sale" ||
     location.pathname.startsWith("/pos/sale/") ||
     location.pathname.startsWith("/customer-display");
-  // Window (F11) fullscreen hides ONLY the titlebar strip — not the sidebar —
-  // so the window fills the screen without the app reflowing.
-  const windowFullscreen = useFullscreenStore((s) => s.isFullscreen);
+  const windowFullscreen = useFullscreenStore((state) => state.isFullscreen);
   const chromeHidden = isFullscreen || windowFullscreen;
+  const showApplicationNavigation = !isSettingsRoute && !isFullscreen;
 
   useAutoCloudBackup();
 
   useEffect(() => {
+    setMobileNavigationOpen(false);
     const nextSection = sectionOf(location.pathname);
-    const isIntraSection = nextSection === prevSection.current;
+    const isIntraSection = nextSection === previousSection.current;
 
     if (isIntraSection) {
-      // Stay within the section: keep the section-stable key, no slide.
-      // Outlet content updates in place; settings layout's own scroll persists.
       setRouteKey(stableSectionKey.current);
       setTransitionClass("");
     } else {
-      // New section: re-key + animate.
       setRouteKey(location.pathname);
       stableSectionKey.current = location.pathname;
-      setTransitionClass("animate-in fade-in-0 slide-in-from-bottom-1 duration-200");
+      setTransitionClass(
+        prefersReducedMotion ? "" : "animate-in fade-in-0 slide-in-from-bottom-1 duration-200",
+      );
     }
-    prevSection.current = nextSection;
-  }, [location.pathname]);
+    previousSection.current = nextSection;
+  }, [location.pathname, prefersReducedMotion]);
+
+  useEffect(() => {
+    if (desktop) setMobileNavigationOpen(false);
+  }, [desktop]);
 
   return (
-    <div className="flex flex-col h-[100dvh] w-full overflow-hidden bg-background text-foreground">
+    <div className="flex h-[100dvh] w-full flex-col overflow-hidden bg-background text-foreground">
       <WindowTitlebar hidden={chromeHidden} />
       <div
         className="flex flex-1 overflow-hidden"
         style={{ marginTop: chromeHidden ? 0 : TITLEBAR_HEIGHT_PX }}
       >
-        {!isSettingsRoute && !isFullscreen && <Sidebar onCommandOpen={openCmd} />}
-        <div className="flex flex-col flex-1 overflow-hidden">
-          {!isFullscreen && <TrialLifecycleBanner />}
-          {!isFullscreen && <Topbar />}
+        {showApplicationNavigation && desktop ? <Sidebar onCommandOpen={openCmd} /> : null}
+        <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
+          {!isFullscreen ? <TrialLifecycleBanner /> : null}
+          {!isFullscreen ? (
+            <Topbar
+              onNavigationOpen={showApplicationNavigation && !desktop ? () => setMobileNavigationOpen(true) : undefined}
+            />
+          ) : null}
           <main
             className={cn(
-              "flex-1 min-h-0 bg-background",
-              isSettingsRoute
-                ? "overflow-hidden"
-                : "overflow-y-auto overflow-x-hidden",
+              "min-h-0 flex-1 bg-background",
+              isSettingsRoute ? "overflow-hidden" : "overflow-y-auto overflow-x-hidden",
             )}
           >
             <div
-              key={routeKey}
+              key={`${routeKey}:${branchScope}:${activeBranchId}:${branchRevision}`}
               className={cn(
-                isFullscreen ? "" : isSettingsRoute ? "h-full min-h-0" : "p-6",
+                isFullscreen
+                  ? ""
+                  : isSettingsRoute
+                    ? "h-full min-h-0"
+                    : "p-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:p-6",
                 !isSettingsRoute && transitionClass,
               )}
             >
@@ -96,6 +110,25 @@ export function AppShell() {
           </main>
         </div>
       </div>
+
+      <Sheet open={mobileNavigationOpen} onOpenChange={setMobileNavigationOpen}>
+        <SheetContent
+          side="left"
+          className="!inset-y-0 !top-0 w-[min(20rem,calc(100vw-2rem))] max-w-none rounded-none p-0 motion-reduce:transition-none [&>div]:px-0"
+          aria-describedby={undefined}
+        >
+          <SheetTitle className="sr-only">Application navigation</SheetTitle>
+          <Sidebar
+            mobile
+            onCommandOpen={() => {
+              setMobileNavigationOpen(false);
+              openCmd();
+            }}
+            onNavigate={() => setMobileNavigationOpen(false)}
+          />
+        </SheetContent>
+      </Sheet>
+
       <CommandPalette open={cmdOpen} onOpenChange={setCmdOpen} />
       <OnboardingTour />
       <ShortcutsOverlay />

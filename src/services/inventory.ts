@@ -1,4 +1,5 @@
 import { query, execute } from "@/lib/db";
+import { getActiveBranchId, requireActiveBranchId } from "@/stores/active-branch";
 
 export interface Product {
   id: string;
@@ -68,22 +69,25 @@ export async function getProducts(search?: string): Promise<Product[]> {
  * refine your search to find a specific item."
  */
 export async function getProductsPage(search?: string, limit: number = PRODUCTS_PAGE_SIZE): Promise<ProductsPage> {
+  const branchId = getActiveBranchId();
   const where = `WHERE p.active = 1 AND p.kind = 'physical' AND COALESCE(p.is_service, 0) = 0${
     search ? " AND (p.name LIKE ?1 OR p.barcode LIKE ?1 OR p.sku LIKE ?1)" : ""
-  }`
-  const params = search ? [`%${search}%`] : []
+  }`;
+  const params: unknown[] = search ? [`%${search}%`] : [];
 
   const [totalRow] = await query<{ count: number }>(
     `SELECT COUNT(*) AS count FROM products p ${where}`,
     params,
-  )
-  const total = totalRow?.count ?? 0
+  );
+  const total = totalRow?.count ?? 0;
+  params.push(branchId);
+  const branchParam = `?${params.length}`;
 
   const sql = `
     SELECT p.*,
       COALESCE(pp.buying_price, 0) as buying_price,
       COALESCE(pp.selling_price, 0) as selling_price,
-      COALESCE((SELECT SUM(b.quantity) FROM batches b WHERE b.product_id = p.id), 0) as stock_qty,
+      COALESCE((SELECT SUM(b.quantity) FROM batches b WHERE b.product_id = p.id AND b.branch_id = ${branchParam}), 0) as stock_qty,
       c.name as category_name
     FROM products p
     LEFT JOIN product_prices pp ON pp.product_id = p.id AND pp.price_list_id = 'default'
@@ -91,9 +95,9 @@ export async function getProductsPage(search?: string, limit: number = PRODUCTS_
     ${where}
     ORDER BY p.name ASC
     LIMIT ${Math.max(1, Math.floor(limit))}
-  `
-  const rows = await query<Product>(sql, params)
-  return { rows, total, hasMore: total > rows.length }
+  `;
+  const rows = await query<Product>(sql, params);
+  return { rows, total, hasMore: total > rows.length };
 }
 
 export async function getProduct(id: string): Promise<Product | null> {
@@ -102,12 +106,12 @@ export async function getProduct(id: string): Promise<Product | null> {
       c.name as category_name,
       COALESCE(pp.buying_price, 0) as buying_price,
       COALESCE(pp.selling_price, 0) as selling_price,
-      COALESCE((SELECT SUM(b.quantity) FROM batches b WHERE b.product_id = p.id), 0) as stock_qty
+      COALESCE((SELECT SUM(b.quantity) FROM batches b WHERE b.product_id = p.id AND b.branch_id = ?2), 0) as stock_qty
     FROM products p
     LEFT JOIN categories c ON c.id = p.category_id
     LEFT JOIN product_prices pp ON pp.product_id = p.id AND pp.price_list_id = 'default'
     WHERE p.id = ?1`,
-    [id]
+    [id, getActiveBranchId()]
   );
   return rows[0] || null;
 }
@@ -138,9 +142,9 @@ export async function createProduct(input: CreateProductInput): Promise<string> 
   if (input.initial_stock && input.initial_stock > 0) {
     const batchId = crypto.randomUUID();
     await execute(
-      `INSERT INTO batches (id, product_id, batch_number, quantity, buying_price)
-       VALUES (?1, ?2, 'INITIAL', ?3, ?4)`,
-      [batchId, id, input.initial_stock, input.buying_price]
+      `INSERT INTO batches (id, product_id, branch_id, batch_number, quantity, buying_price)
+       VALUES (?1, ?2, ?3, 'INITIAL', ?4, ?5)`,
+      [batchId, id, requireActiveBranchId(), input.initial_stock, input.buying_price]
     );
     await execute(
       `INSERT INTO stock_movements (id, product_id, batch_id, type, quantity, notes)
@@ -215,11 +219,12 @@ export async function deleteCategory(id: string): Promise<void> {
 }
 
 export async function adjustStock(productId: string, quantity: number, reason: string): Promise<void> {
+  const branchId = requireActiveBranchId();
   const batchId = crypto.randomUUID();
   await execute(
-    `INSERT INTO batches (id, product_id, batch_number, quantity, buying_price)
-     VALUES (?1, ?2, 'ADJ', ?3, 0)`,
-    [batchId, productId, quantity]
+    `INSERT INTO batches (id, product_id, branch_id, batch_number, quantity, buying_price)
+     VALUES (?1, ?2, ?3, 'ADJ', ?4, 0)`,
+    [batchId, productId, branchId, quantity]
   );
   await execute(
     `INSERT INTO stock_movements (id, product_id, batch_id, type, quantity, notes)
@@ -231,12 +236,18 @@ export async function adjustStock(productId: string, quantity: number, reason: s
 export async function getStockMovements(productId?: string): Promise<Array<{
   id: string; product_name: string; type: string; quantity: number; notes: string | null; created_at: string;
 }>> {
+  const branchId = getActiveBranchId();
+  if (!branchId) return [];
   const sql = `
     SELECT sm.id, p.name as product_name, sm.type, sm.quantity, sm.notes, sm.created_at
     FROM stock_movements sm
     JOIN products p ON p.id = sm.product_id
-    ${productId ? "WHERE sm.product_id = ?1" : ""}
+    LEFT JOIN batches b ON b.id = sm.batch_id
+    WHERE (b.branch_id = ?1 OR (sm.batch_id IS NULL AND EXISTS (
+      SELECT 1 FROM batches scoped WHERE scoped.product_id = sm.product_id AND scoped.branch_id = ?1
+    )))
+    ${productId ? "AND sm.product_id = ?2" : ""}
     ORDER BY sm.created_at DESC LIMIT 100
   `;
-  return query(sql, productId ? [productId] : []);
+  return query(sql, productId ? [branchId, productId] : [branchId]);
 }

@@ -3,6 +3,7 @@
  * Batched together to keep the surface tight.
  */
 import { execute, query, transaction } from "@/lib/db";
+import { requireActiveBranchId } from "@/stores/active-branch";
 
 function newId(): string { return crypto.randomUUID().replace(/-/g, "").slice(0, 16); }
 
@@ -252,6 +253,8 @@ export async function createRentalAgreement(input: {
   branch_id?: string;
   notes?: string;
 }): Promise<string> {
+  const branchId = requireActiveBranchId();
+  if (input.branch_id && input.branch_id !== branchId) throw new Error("Switch to that branch before creating a rental");
   const id = newId();
   const year = new Date().getFullYear();
   const [row] = await query<{ n: string }>(
@@ -265,8 +268,8 @@ export async function createRentalAgreement(input: {
   const unitIds = input.items.map((i) => i.equipment_unit_id).filter((x): x is string => !!x);
   if (unitIds.length) {
     const rows = await query<{ id: string; status: string }>(
-      `SELECT id, status FROM equipment_units WHERE id IN (${unitIds.map((_, i) => `?${i + 1}`).join(",")})`,
-      unitIds,
+      `SELECT id, status FROM equipment_units WHERE id IN (${unitIds.map((_, i) => `?${i + 1}`).join(",")}) AND branch_id = ?${unitIds.length + 1}`,
+      [...unitIds, branchId],
     );
     const blocked = rows.filter((r) => !["in_stock", "sold"].includes(r.status));
     if (blocked.length) throw new Error(`Unit not available to hire (status ${blocked[0].status}).`);
@@ -277,7 +280,7 @@ export async function createRentalAgreement(input: {
     sql: `INSERT INTO rental_agreements
             (id, agreement_number, customer_id, branch_id, starts_at, ends_at, deposit_amount, notes)
           VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)`,
-    params: [id, number, input.customer_id, input.branch_id ?? null, input.starts_at, input.ends_at, input.deposit_amount ?? 0, input.notes ?? null],
+    params: [id, number, input.customer_id, branchId, input.starts_at, input.ends_at, input.deposit_amount ?? 0, input.notes ?? null],
   }];
   for (const it of input.items) {
     stmts.push({
@@ -306,16 +309,22 @@ export async function returnRental(
   agreementId: string,
   opts?: { damageFee?: number; lateFee?: number; condition?: string; meterIn?: Record<string, number> },
 ): Promise<void> {
+  const branchId = requireActiveBranchId();
+  const [agreement] = await query<{ id: string }>(
+    `SELECT id FROM rental_agreements WHERE id = ?1 AND branch_id = ?2 LIMIT 1`,
+    [agreementId, branchId],
+  );
+  if (!agreement) throw new Error("Rental agreement not found in the active branch");
   const now = new Date().toISOString();
   const items = await query<{ id: string; equipment_unit_id: string | null }>(
-    `SELECT id, equipment_unit_id FROM rental_items WHERE agreement_id = ?1`,
-    [agreementId],
+    `SELECT ri.id, ri.equipment_unit_id FROM rental_items ri JOIN rental_agreements a ON a.id = ri.agreement_id WHERE ri.agreement_id = ?1 AND a.branch_id = ?2`,
+    [agreementId, branchId],
   );
   const stmts: { sql: string; params: unknown[] }[] = [{
     sql: `UPDATE rental_agreements
           SET status = 'returned', actual_returned_at = ?2, damage_fee = ?3, late_fee = ?4
-          WHERE id = ?1`,
-    params: [agreementId, now, opts?.damageFee ?? 0, opts?.lateFee ?? 0],
+          WHERE id = ?1 AND branch_id = ?5`,
+    params: [agreementId, now, opts?.damageFee ?? 0, opts?.lateFee ?? 0, branchId],
   }];
   for (const it of items) {
     const meterIn = opts?.meterIn?.[it.id];
@@ -357,8 +366,8 @@ export interface RentalAgreementRow {
 }
 
 export async function listRentalAgreements(opts?: { status?: string; search?: string }): Promise<RentalAgreementRow[]> {
-  const where: string[] = [];
-  const params: unknown[] = [];
+  const where: string[] = ["a.branch_id = ?1"];
+  const params: unknown[] = [requireActiveBranchId()];
   if (opts?.status) { params.push(opts.status); where.push(`a.status = ?${params.length}`); }
   if (opts?.search) { params.push(`%${opts.search.trim()}%`, `%${opts.search.trim()}%`); where.push(`(a.agreement_number LIKE ?${params.length - 1} OR c.name LIKE ?${params.length})`); }
   const clause = where.length ? `WHERE ${where.join(" AND ")}` : "";
@@ -406,8 +415,8 @@ async function listRentalAgreementsById(id: string): Promise<RentalAgreementRow[
             (SELECT COUNT(*) FROM rental_items ri WHERE ri.agreement_id = a.id) AS item_count,
             (SELECT COALESCE(SUM(ri.daily_rate * ri.quantity), 0) FROM rental_items ri WHERE ri.agreement_id = a.id) AS daily_total
      FROM rental_agreements a LEFT JOIN customers c ON c.id = a.customer_id
-     WHERE a.id = ?1`,
-    [id],
+     WHERE a.id = ?1 AND a.branch_id = ?2`,
+    [id, requireActiveBranchId()],
   );
 }
 
@@ -418,9 +427,9 @@ export async function getActiveHireForUnit(unitId: string): Promise<{ agreement_
      FROM rental_items ri
      JOIN rental_agreements a ON a.id = ri.agreement_id
      LEFT JOIN customers c ON c.id = a.customer_id
-     WHERE ri.equipment_unit_id = ?1 AND a.status = 'active'
+     WHERE ri.equipment_unit_id = ?1 AND a.status = 'active' AND a.branch_id = ?2
      ORDER BY a.created_at DESC LIMIT 1`,
-    [unitId],
+    [unitId, requireActiveBranchId()],
   );
   return row ?? null;
 }

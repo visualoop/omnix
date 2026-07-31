@@ -5,7 +5,7 @@
  * (tea, fuel, paper, etc.). Logs top-ups, expenses, reimbursements.
  */
 import { query, execute } from "@/lib/db";
-import { getActiveBranchId } from "@/stores/active-branch";
+import { requireActiveBranchId } from "@/stores/active-branch";
 
 export interface PettyCashEntry {
   id: string;
@@ -41,7 +41,7 @@ export async function recordPettyCash(input: {
   await execute(
     `INSERT INTO petty_cash (id, amount, type, description, receipt_ref, user_id, branch_id)
      VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)`,
-    [id, signed, input.type, input.description, input.receipt_ref || null, input.user_id, getActiveBranchId()],
+    [id, signed, input.type, input.description, input.receipt_ref || null, input.user_id, requireActiveBranchId()],
   );
   return id;
 }

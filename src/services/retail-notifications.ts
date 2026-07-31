@@ -10,6 +10,7 @@
  * isn't spammed on every scheduler tick.
  */
 import { query, execute } from "@/lib/db";
+import { requireActiveBranchId } from "@/stores/active-branch";
 
 export interface CustomerNotification {
   id: string;
@@ -51,9 +52,9 @@ export async function queueLaybyReminders(withinDays = 7): Promise<number> {
   }>(
     `SELECT id, layby_number, customer_id, customer_name, customer_phone, balance_due, expires_at
        FROM laybys
-      WHERE status = 'active' AND balance_due > 0
+      WHERE branch_id = ?2 AND status = 'active' AND balance_due > 0
         AND julianday(expires_at) - julianday('now') BETWEEN 0 AND ?1`,
-    [withinDays],
+    [withinDays, requireActiveBranchId()],
   );
   let queued = 0;
   for (const l of rows) {
@@ -78,7 +79,8 @@ export async function queueSpecialOrderReady(): Promise<number> {
     id: string; customer_id: string | null; customer_name: string | null; customer_phone: string | null;
   }>(
     `SELECT id, customer_id, customer_name, customer_phone
-       FROM special_orders WHERE status = 'received' AND customer_phone IS NOT NULL`,
+       FROM special_orders WHERE branch_id = ?1 AND status = 'received' AND customer_phone IS NOT NULL`,
+    [requireActiveBranchId()],
   );
   let queued = 0;
   for (const o of rows) {

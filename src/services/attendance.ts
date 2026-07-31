@@ -2,7 +2,7 @@
  * Attendance service
  */
 import { query, execute } from "@/lib/db";
-import { getActiveBranchId } from "@/stores/active-branch";
+import { getActiveBranchId, requireActiveBranchId } from "@/stores/active-branch";
 
 export type AttendanceStatus = "present" | "absent" | "sick" | "leave" | "holiday" | "half-day";
 
@@ -30,12 +30,17 @@ export async function listAttendance(opts?: {
   employeeId?: string;
   branchId?: string;
 }): Promise<AttendanceWithEmployee[]> {
-  const conditions: string[] = [];
-  const params: any[] = [];
+  const activeBranchId = getActiveBranchId();
+  if (opts?.branchId && opts.branchId !== activeBranchId) {
+    throw new Error("Switch to that branch before viewing attendance");
+  }
+  const branchId = activeBranchId;
+  if (!branchId) return [];
+  const conditions: string[] = [`a.branch_id = ?1`];
+  const params: unknown[] = [branchId];
   if (opts?.startDate) { conditions.push(`a.work_date >= ?${params.length + 1}`); params.push(opts.startDate); }
   if (opts?.endDate) { conditions.push(`a.work_date <= ?${params.length + 1}`); params.push(opts.endDate); }
   if (opts?.employeeId) { conditions.push(`a.employee_id = ?${params.length + 1}`); params.push(opts.employeeId); }
-  if (opts?.branchId) { conditions.push(`a.branch_id = ?${params.length + 1}`); params.push(opts.branchId); }
   const where = conditions.length ? `WHERE ${conditions.join(" AND ")}` : "";
 
   return query<AttendanceWithEmployee>(
@@ -50,10 +55,12 @@ export async function listAttendance(opts?: {
 }
 
 export async function getTodayAttendance(employeeId: string): Promise<Attendance | null> {
+  const branchId = getActiveBranchId();
+  if (!branchId) return null;
   const today = new Date().toISOString().slice(0, 10);
   const rows = await query<Attendance>(
-    `SELECT * FROM attendance WHERE employee_id = ?1 AND work_date = ?2`,
-    [employeeId, today],
+    `SELECT * FROM attendance WHERE employee_id = ?1 AND work_date = ?2 AND branch_id = ?3`,
+    [employeeId, today, branchId],
   );
   return rows[0] || null;
 }
@@ -74,7 +81,7 @@ export async function clockIn(employeeId: string, notes?: string): Promise<strin
   await execute(
     `INSERT INTO attendance (id, employee_id, work_date, clock_in, status, notes, branch_id)
      VALUES (?1, ?2, ?3, ?4, 'present', ?5, ?6)`,
-    [id, employeeId, today, now, notes || null, getActiveBranchId()],
+    [id, employeeId, today, now, notes || null, requireActiveBranchId()],
   );
   return id;
 }
@@ -96,9 +103,10 @@ export async function setAttendanceStatus(input: {
   status: AttendanceStatus;
   notes?: string;
 }): Promise<string> {
+  const branchId = requireActiveBranchId();
   const rows = await query<{ id: string }>(
-    `SELECT id FROM attendance WHERE employee_id = ?1 AND work_date = ?2`,
-    [input.employee_id, input.work_date],
+    `SELECT id FROM attendance WHERE employee_id = ?1 AND work_date = ?2 AND branch_id = ?3`,
+    [input.employee_id, input.work_date, branchId],
   );
   if (rows[0]) {
     await execute(
@@ -111,7 +119,7 @@ export async function setAttendanceStatus(input: {
   await execute(
     `INSERT INTO attendance (id, employee_id, work_date, status, notes, branch_id)
      VALUES (?1, ?2, ?3, ?4, ?5, ?6)`,
-    [id, input.employee_id, input.work_date, input.status, input.notes || null, getActiveBranchId()],
+    [id, input.employee_id, input.work_date, input.status, input.notes || null, branchId],
   );
   return id;
 }
@@ -138,9 +146,11 @@ export async function getEmployeePeriodStats(employeeId: string, startDate: stri
   days_leave: number;
   total_minutes_worked: number;
 }> {
+  const branchId = getActiveBranchId();
+  if (!branchId) return { days_present: 0, days_absent: 0, days_sick: 0, days_leave: 0, total_minutes_worked: 0 };
   const rows = await query<Attendance>(
-    `SELECT * FROM attendance WHERE employee_id = ?1 AND work_date >= ?2 AND work_date <= ?3`,
-    [employeeId, startDate, endDate],
+    `SELECT * FROM attendance WHERE employee_id = ?1 AND work_date >= ?2 AND work_date <= ?3 AND branch_id = ?4`,
+    [employeeId, startDate, endDate, branchId],
   );
   let stats = { days_present: 0, days_absent: 0, days_sick: 0, days_leave: 0, total_minutes_worked: 0 };
   for (const r of rows) {

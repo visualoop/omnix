@@ -5,6 +5,7 @@
  * Commissions: rules per staff producing per-sale ledger entries payable via payroll.
  */
 import { execute, query } from "@/lib/db";
+import { requireActiveBranchId } from "@/stores/active-branch";
 
 export interface SalesTarget {
   id: string;
@@ -65,6 +66,7 @@ export async function listTargets(period: string = currentPeriod()): Promise<Sal
           SELECT SUM(s.total) FROM sales s
           WHERE s.user_id = st.staff_id
             AND s.status = 'completed'
+            AND s.branch_id = ?2
             AND strftime('%Y-%m', s.created_at) = st.period
         ), 0) AS achieved_amount
      FROM sales_targets st
@@ -72,7 +74,7 @@ export async function listTargets(period: string = currentPeriod()): Promise<Sal
      LEFT JOIN employees e ON e.id = st.staff_id
      WHERE st.period = ?1
      ORDER BY (target_amount - achieved_amount) ASC`,
-    [period],
+    [period, requireActiveBranchId()],
   );
 }
 

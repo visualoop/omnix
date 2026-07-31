@@ -8,6 +8,7 @@
  */
 import { query, execute } from "@/lib/db";
 import { requirePermission } from "@/services/rbac";
+import { requireActiveBranchId } from "@/stores/active-branch";
 
 const uid = () => crypto.randomUUID();
 
@@ -36,7 +37,8 @@ export interface ServicePeriodSession {
 export async function listServicePeriods(): Promise<ServicePeriod[]> {
   return query<ServicePeriod>(
     `SELECT id, branch_id, name, starts_at, ends_at, active, created_at
-     FROM service_periods WHERE active = 1 ORDER BY starts_at`,
+     FROM service_periods WHERE active = 1 AND branch_id = ?1 ORDER BY starts_at`,
+    [requireActiveBranchId()],
   );
 }
 
@@ -47,22 +49,29 @@ export async function upsertServicePeriod(input: {
   endsAt: string;
 }): Promise<string> {
   await requirePermission("hospitality.tables.manage", { entityType: "service_period" });
+  const branchId = requireActiveBranchId();
   const id = input.id ?? uid();
+  if (input.id) {
+    const [owned] = await query<{ id: string }>(`SELECT id FROM service_periods WHERE id = ?1 AND branch_id = ?2`, [id, branchId]);
+    if (!owned) throw new Error("Service period not found in the active branch");
+  }
   await execute(
-    `INSERT INTO service_periods (id, name, starts_at, ends_at)
-     VALUES (?1, ?2, ?3, ?4)
+    `INSERT INTO service_periods (id, name, starts_at, ends_at, branch_id)
+     VALUES (?1, ?2, ?3, ?4, ?5)
      ON CONFLICT(id) DO UPDATE SET
        name = excluded.name,
        starts_at = excluded.starts_at,
        ends_at = excluded.ends_at`,
-    [id, input.name, input.startsAt, input.endsAt],
+    [id, input.name, input.startsAt, input.endsAt, branchId],
   );
   return id;
 }
 
 export async function deleteServicePeriod(id: string): Promise<void> {
   await requirePermission("hospitality.tables.manage", { entityType: "service_period", entityId: id });
-  await execute(`UPDATE service_periods SET active = 0 WHERE id = ?1`, [id]);
+  const branchId = requireActiveBranchId();
+  const result = await execute(`UPDATE service_periods SET active = 0 WHERE id = ?1 AND branch_id = ?2`, [id, branchId]);
+  if (result.rowsAffected === 0) throw new Error("Service period not found in the active branch");
 }
 
 /** The session currently open right now, if any. UI header shows this. */
@@ -73,8 +82,9 @@ export async function currentOpenSession(): Promise<ServicePeriodSession | null>
             s.gross_sales, s.gross_covers
      FROM service_period_sessions s
      JOIN service_periods sp ON sp.id = s.period_id
-     WHERE s.closed_at IS NULL
+     WHERE s.closed_at IS NULL AND sp.branch_id = ?1
      ORDER BY s.opened_at DESC LIMIT 1`,
+    [requireActiveBranchId()],
   );
   return rows[0] ?? null;
 }
@@ -83,11 +93,14 @@ export async function currentOpenSession(): Promise<ServicePeriodSession | null>
  *  auto-closed with a note so we never have two open at once. */
 export async function openSession(periodId: string, userId?: string): Promise<string> {
   await requirePermission("hospitality.orders.take", { entityType: "service_period_session" });
+  const branchId = requireActiveBranchId();
+  const [period] = await query<{ id: string }>(`SELECT id FROM service_periods WHERE id = ?1 AND branch_id = ?2`, [periodId, branchId]);
+  if (!period) throw new Error("Service period not found in the active branch");
   // Close any previously-open session.
   await execute(
     `UPDATE service_period_sessions SET closed_at = datetime('now'), closed_by = ?1
-     WHERE closed_at IS NULL`,
-    [userId ?? null],
+     WHERE closed_at IS NULL AND period_id IN (SELECT id FROM service_periods WHERE branch_id = ?2)`,
+    [userId ?? null, branchId],
   );
   const id = uid();
   await execute(
@@ -100,9 +113,10 @@ export async function openSession(periodId: string, userId?: string): Promise<st
 export async function closeSession(sessionId: string, userId?: string): Promise<void> {
   await requirePermission("hospitality.orders.take", { entityType: "service_period_session", entityId: sessionId });
   // Compute gross sales + covers from hospitality_orders inside the session window.
+  const branchId = requireActiveBranchId();
   const [session] = await query<{ opened_at: string }>(
-    `SELECT opened_at FROM service_period_sessions WHERE id = ?1`,
-    [sessionId],
+    `SELECT s.opened_at FROM service_period_sessions s JOIN service_periods sp ON sp.id = s.period_id WHERE s.id = ?1 AND sp.branch_id = ?2`,
+    [sessionId, branchId],
   );
   if (!session) throw new Error("Session not found");
   const [totals] = await query<{ sales: number; covers: number }>(
@@ -111,8 +125,8 @@ export async function closeSession(sessionId: string, userId?: string): Promise<
        COALESCE(SUM(o.party_size), 0) AS covers
      FROM hospitality_orders o
      LEFT JOIN hospitality_order_items oi ON oi.order_id = o.id AND oi.status != 'voided'
-     WHERE o.opened_at >= ?1 AND o.opened_at <= datetime('now')`,
-    [session.opened_at],
+     WHERE o.opened_at >= ?1 AND o.opened_at <= datetime('now') AND o.branch_id = ?2`,
+    [session.opened_at, branchId],
   );
   await execute(
     `UPDATE service_period_sessions

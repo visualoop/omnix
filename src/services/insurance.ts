@@ -1,6 +1,7 @@
 import { fetch } from "@tauri-apps/plugin-http";
 import { query, execute } from "@/lib/db";
 import { encryptSecret, decryptSecret } from "@/services/secrets";
+import { requireActiveBranchId } from "@/stores/active-branch";
 
 export interface InsuranceProvider {
   id: string;
@@ -358,6 +359,9 @@ export function calculateCopay(member: InsuranceMember, grossAmount: number): {
 }
 
 export async function createClaim(input: CreateClaimInput): Promise<string> {
+  const branchId = requireActiveBranchId();
+  const [sale] = await query<{ id: string }>(`SELECT id FROM sales WHERE id = ?1 AND branch_id = ?2`, [input.sale_id, branchId]);
+  if (!sale) throw new Error("Sale not found in the active branch");
   // Invariant: the split must reconstruct the gross to the cent, or the
   // claim will be rejected by the payer. Guard before persisting.
   const sumC = Math.round(input.copay_amount * 100) + Math.round(input.claim_amount * 100);
@@ -407,9 +411,9 @@ export async function listClaims(filter?: {
   start_date?: string;
   end_date?: string;
 }): Promise<InsuranceClaim[]> {
-  const conditions: string[] = [];
-  const params: unknown[] = [];
-  let idx = 1;
+  const conditions: string[] = ["s.branch_id = ?1"];
+  const params: unknown[] = [requireActiveBranchId()];
+  let idx = 2;
 
   if (filter?.status) {
     conditions.push(`c.status = ?${idx++}`);
@@ -434,6 +438,7 @@ export async function listClaims(filter?: {
     `SELECT c.*, p.name as provider_name, p.code as provider_code
      FROM insurance_claims c
      JOIN insurance_providers p ON p.id = c.provider_id
+     JOIN sales s ON s.id = c.sale_id
      ${where}
      ORDER BY c.created_at DESC LIMIT 200`,
     params
@@ -445,13 +450,15 @@ export async function getClaim(id: string): Promise<InsuranceClaim | null> {
     `SELECT c.*, p.name as provider_name, p.code as provider_code
      FROM insurance_claims c
      JOIN insurance_providers p ON p.id = c.provider_id
-     WHERE c.id = ?1`,
-    [id]
+     JOIN sales s ON s.id = c.sale_id
+     WHERE c.id = ?1 AND s.branch_id = ?2`,
+    [id, requireActiveBranchId()]
   );
   return rows[0] || null;
 }
 
 export async function getClaimItems(claimId: string): Promise<InsuranceClaimItem[]> {
+  if (!(await getClaim(claimId))) return [];
   return query<InsuranceClaimItem>(
     "SELECT * FROM insurance_claim_items WHERE claim_id = ?1",
     [claimId]
@@ -463,6 +470,7 @@ export async function updateClaimStatus(
   status: InsuranceClaim["status"],
   data?: { claim_number?: string; rejection_reason?: string; approved_amount?: number; paid_amount?: number }
 ): Promise<void> {
+  if (!(await getClaim(id))) throw new Error("Claim not found in the active branch");
   await execute(
     `UPDATE insurance_claims 
      SET status = ?1, 
@@ -681,10 +689,14 @@ export async function flushShaClaimQueue(): Promise<{
   failed: number;
 }> {
   const due = await query<ShaQueueEntry>(
-    `SELECT * FROM sha_claim_queue
-      WHERE resolved_at IS NULL AND julianday(next_retry_at) <= julianday('now')
+    `SELECT q.* FROM sha_claim_queue q
+      JOIN insurance_claims c ON c.id = q.claim_id
+      JOIN sales s ON s.id = c.sale_id
+      WHERE q.resolved_at IS NULL AND julianday(q.next_retry_at) <= julianday('now')
+        AND s.branch_id = ?1
       ORDER BY next_retry_at ASC
       LIMIT 50`,
+    [requireActiveBranchId()],
   );
   let submitted = 0, stillPending = 0, failed = 0;
   for (const entry of due) {
@@ -698,9 +710,12 @@ export async function flushShaClaimQueue(): Promise<{
 
 export async function listShaQueue(includeResolved = false): Promise<ShaQueueEntry[]> {
   return query<ShaQueueEntry>(
-    `SELECT * FROM sha_claim_queue
-      ${includeResolved ? "" : "WHERE resolved_at IS NULL"}
-      ORDER BY created_at DESC LIMIT 200`,
+    `SELECT q.* FROM sha_claim_queue q
+      JOIN insurance_claims c ON c.id = q.claim_id
+      JOIN sales s ON s.id = c.sale_id
+      WHERE s.branch_id = ?1 ${includeResolved ? "" : "AND q.resolved_at IS NULL"}
+      ORDER BY q.created_at DESC LIMIT 200`,
+    [requireActiveBranchId()],
   );
 }
 
@@ -726,10 +741,11 @@ export async function createBatch(providerId: string, periodStart: string, perio
   // Aggregate draft claims for the period
   const claims = await query<{ id: string; claim_amount: number }>(
     `SELECT id, claim_amount FROM insurance_claims 
-     WHERE provider_id = ?1 AND status = 'draft' 
+     WHERE provider_id = ?1 AND status = 'draft'
+       AND sale_id IN (SELECT id FROM sales WHERE branch_id = ?4)
        AND date(created_at) BETWEEN ?2 AND ?3 
        AND batch_id IS NULL`,
-    [providerId, periodStart, periodEnd]
+    [providerId, periodStart, periodEnd, requireActiveBranchId()]
   );
 
   if (claims.length === 0) {
@@ -759,13 +775,14 @@ export async function createBatch(providerId: string, periodStart: string, perio
 }
 
 export async function listBatches(providerId?: string): Promise<InsuranceBatch[]> {
-  const where = providerId ? "WHERE b.provider_id = ?1" : "";
-  const params = providerId ? [providerId] : [];
+  const branchId = requireActiveBranchId();
+  const where = providerId ? "WHERE b.provider_id = ?2" : "WHERE 1 = 1";
+  const params = providerId ? [branchId, providerId] : [branchId];
   return query<InsuranceBatch>(
     `SELECT b.*, p.name as provider_name 
      FROM insurance_batches b 
      JOIN insurance_providers p ON p.id = b.provider_id
-     ${where} 
+     ${where} AND EXISTS (SELECT 1 FROM insurance_claims c JOIN sales s ON s.id = c.sale_id WHERE c.batch_id = b.id AND s.branch_id = ?1)
      ORDER BY b.created_at DESC
      LIMIT 500`,
     params
@@ -773,6 +790,9 @@ export async function listBatches(providerId?: string): Promise<InsuranceBatch[]
 }
 
 export async function settleBatch(batchId: string, settledAmount: number): Promise<void> {
+  const branchId = requireActiveBranchId();
+  const [owned] = await query<{ id: string }>(`SELECT b.id FROM insurance_batches b WHERE b.id = ?1 AND EXISTS (SELECT 1 FROM insurance_claims c JOIN sales s ON s.id = c.sale_id WHERE c.batch_id = b.id AND s.branch_id = ?2) AND NOT EXISTS (SELECT 1 FROM insurance_claims c JOIN sales s ON s.id = c.sale_id WHERE c.batch_id = b.id AND s.branch_id <> ?2)`, [batchId, branchId]);
+  if (!owned) throw new Error("Insurance batch not found in the active branch");
   await execute(
     `UPDATE insurance_batches 
      SET status = 'settled', settled_at = datetime('now'), settled_amount = ?1 
@@ -807,7 +827,8 @@ export async function getInsuranceStats(): Promise<{
        SUM(CASE WHEN status = 'submitted' THEN 1 ELSE 0 END) as submitted_count,
        COALESCE(SUM(CASE WHEN status = 'paid' AND date(paid_at) >= date('now', 'start of month') THEN paid_amount ELSE 0 END), 0) as paid_this_month,
        SUM(CASE WHEN status = 'rejected' THEN 1 ELSE 0 END) as rejected_count
-     FROM insurance_claims`
+     FROM insurance_claims c JOIN sales s ON s.id = c.sale_id WHERE s.branch_id = ?1`,
+    [requireActiveBranchId()],
   );
   return rows[0] || { total_outstanding: 0, draft_count: 0, submitted_count: 0, paid_this_month: 0, rejected_count: 0 };
 }

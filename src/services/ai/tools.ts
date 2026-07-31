@@ -18,6 +18,7 @@
 import { tool } from "ai"
 import { z } from "zod"
 import { query } from "@/lib/db"
+import { requireActiveBranchId } from "@/stores/active-branch"
 
 export interface ToolContext {
   /** Navigate to a route. Wrapper around react-router's navigate(string). */
@@ -159,9 +160,10 @@ export function buildAssistantTools(ctx: ToolContext) {
                   s.created_at
              FROM sales s
              LEFT JOIN customers c ON c.id = s.customer_id
+            WHERE s.branch_id = ?2
             ORDER BY datetime(s.created_at) DESC
             LIMIT ?1`,
-          [limit],
+          [limit, requireActiveBranchId()],
         )
         return { count: rows.length, items: rows }
       },

@@ -1,5 +1,6 @@
 import { query, execute } from "@/lib/db";
 import type { CartItem } from "@/services/sales";
+import { getActiveBranchId, requireActiveBranchId } from "@/stores/active-branch";
 
 export interface Prescription {
   id: string;
@@ -240,10 +241,11 @@ export async function preparePrescriptionForPosCheckout(
        JOIN products p ON p.id = b.product_id
       WHERE b.product_id IN (${placeholders})
         AND b.quantity > 0
+        AND b.branch_id = ?${productIds.length + 1}
         AND b.expiry_date IS NOT NULL
         AND julianday(b.expiry_date) - julianday('now') <= 30
       ORDER BY b.expiry_date ASC`,
-    productIds,
+    [...productIds, requireActiveBranchId()],
   );
 
   // Interaction + allergy checks. Non-blocking here — POS surfaces them
@@ -283,8 +285,9 @@ export async function preparePrescriptionForPosCheckout(
          JOIN cold_chain_units u ON u.id = l.unit_id
         WHERE l.in_range = 0
           AND julianday('now') - julianday(l.reading_at) <= 1
-          AND u.active = 1
+          AND u.active = 1 AND u.branch_id = ?1
         ORDER BY l.reading_at DESC`,
+      [requireActiveBranchId()],
     );
     const affected = coldChainRows.map((r) => r.product_name);
     for (const ex of excursions) {
@@ -394,10 +397,11 @@ export async function getExpiringItems(daysWindow: number = 90): Promise<ExpiryI
      LEFT JOIN pharmacy_products pp ON pp.product_id = p.id
      WHERE b.expiry_date IS NOT NULL 
        AND b.quantity > 0
+       AND b.branch_id = ?2
        AND julianday(b.expiry_date) - julianday('now') <= ?1
      ORDER BY b.expiry_date ASC
      LIMIT 500`,
-    [daysWindow]
+    [daysWindow, requireActiveBranchId()]
   );
 }
 
@@ -406,12 +410,20 @@ export async function getControlledLog(productId?: string): Promise<Array<{
   id: string; product_name: string; action: string; quantity: number;
   patient_name: string | null; balance_after: number; created_at: string;
 }>> {
+  const branchId = getActiveBranchId();
+  if (!branchId) return [];
+  const params: unknown[] = [branchId];
+  const productFilter = productId ? `AND cl.product_id = ?2` : "";
+  if (productId) params.push(productId);
   return query(
-    `SELECT id, product_name, action, quantity, patient_name, balance_after, created_at
-     FROM controlled_log
-     ${productId ? "WHERE product_id = ?1" : ""}
-     ORDER BY created_at DESC LIMIT 100`,
-    productId ? [productId] : []
+    `SELECT cl.id, cl.product_name, cl.action, cl.quantity, cl.patient_name, cl.balance_after, cl.created_at
+     FROM controlled_log cl
+     LEFT JOIN batches b ON b.id = cl.batch_id
+     LEFT JOIN prescriptions rx ON rx.id = cl.prescription_id
+     LEFT JOIN sales s ON s.id = rx.sale_id
+     WHERE (b.branch_id = ?1 OR s.branch_id = ?1) ${productFilter}
+     ORDER BY cl.created_at DESC LIMIT 100`,
+    params,
   );
 }
 
@@ -524,8 +536,8 @@ export async function autoPostControlledLog(
     // Recompute balance_after from the sum of batches — this is what
     // PPB inspectors will reconcile against the physical count.
     const [bal] = await query<{ balance: number }>(
-      `SELECT COALESCE(SUM(quantity), 0) AS balance FROM batches WHERE product_id = ?1`,
-      [line.product_id],
+      `SELECT COALESCE(SUM(quantity), 0) AS balance FROM batches WHERE product_id = ?1 AND branch_id = ?2`,
+      [line.product_id, requireActiveBranchId()],
     );
     await execute(
       `INSERT INTO controlled_log (

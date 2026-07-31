@@ -31,6 +31,7 @@
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ListPage, ListQuery } from "@/lib/list-types";
+import { useActiveBranch } from "@/stores/active-branch";
 
 interface Options {
   pageSize?: number;
@@ -71,6 +72,7 @@ export function useListData<T>(
   const [search, setSearchInternal] = useState(opts.initialSearch ?? "");
   const [debouncedSearch, setDebouncedSearch] = useState(search);
   const [refreshToken, setRefreshToken] = useState(0);
+  const branchRevision = useActiveBranch((state) => state.revision);
 
   // Track in-flight requests so a stale response never overwrites a fresh one.
   const reqSeqRef = useRef(0);
@@ -104,7 +106,10 @@ export function useListData<T>(
         setError(String(e));
         setLoading(false);
       });
-  }, [fetcher, debouncedSearch, page, pageSize, refreshToken]);
+    return () => {
+      if (mySeq === reqSeqRef.current) reqSeqRef.current += 1;
+    };
+  }, [fetcher, debouncedSearch, page, pageSize, refreshToken, branchRevision]);
 
   const pageCount = useMemo(
     () => Math.max(1, Math.ceil(total / pageSize)),

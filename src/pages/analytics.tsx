@@ -10,6 +10,8 @@ import { runReport, type ReportQuery, type ReportRow } from "@/services/report-b
 import { intlLocale } from "@/lib/intl";
 
 import { BackButton } from "@/components/ui/back-button";
+import { Badge } from "@/components/ui/badge";
+import { useActiveBranch } from "@/stores/active-branch";
 type TabId = "sales" | "inventory" | "purchases" | "finance";
 
 const TABS: Array<{ id: TabId; label: string; icon: typeof ChartLine }> = [
@@ -29,6 +31,9 @@ export function AnalyticsPage() {
   const [tab, setTab] = useState<TabId>("sales");
   const [dashboards, setDashboards] = useState<Record<string, ReportRow[]>>({});
   const [loading, setLoading] = useState(true);
+  const scope = useActiveBranch((state) => state.scope);
+  const activeBranch = useActiveBranch((state) => state.active);
+  const contextRevision = useActiveBranch((state) => state.revision);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -57,7 +62,7 @@ export function AnalyticsPage() {
       }));
       setDashboards(out);
     } finally { setLoading(false); }
-  }, [tab]);
+  }, [tab, contextRevision]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -76,6 +81,14 @@ export function AnalyticsPage() {
           Curated dashboards across sales, inventory, purchases, and finance. Powered by the report-builder engine.
         </p>
       </header>
+
+      <div className="flex items-center justify-between gap-3 border-l-2 border-primary bg-foreground/[0.025] px-3 py-2">
+        <div>
+          <div className="text-[10px] font-medium uppercase tracking-[0.16em] text-muted-foreground">Analytics context</div>
+          <div className="mt-0.5 text-sm font-medium">{scope === "all" ? "All assigned branches" : activeBranch?.name ?? "No branch assigned"}</div>
+        </div>
+        {scope === "all" ? <Badge variant="outline">Read-only</Badge> : <Badge variant="secondary">Operational branch</Badge>}
+      </div>
 
       <div className="flex gap-1 border-b border-border">
         {TABS.map((t) => {

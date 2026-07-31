@@ -1,5 +1,10 @@
 import Database from "@tauri-apps/plugin-sql";
 import { fetch } from "@tauri-apps/plugin-http";
+import {
+  assertBranchContextWritable,
+  assertCurrentBranchContext,
+  captureBranchContext,
+} from "@/lib/branch-context";
 
 let db: Database | null = null;
 let tuned = false;
@@ -140,37 +145,52 @@ function normalizeParams(values?: unknown[]): unknown[] {
 }
 
 export async function query<T>(sql: string, bindValues?: unknown[]): Promise<T[]> {
+  const branchContext = captureBranchContext();
   await ensureModeChecked();
+  assertCurrentBranchContext(branchContext);
 
+  let rows: T[];
   if (clientMode) {
     // Proxy to master. NEVER proxy reads from settings table that hold network config —
     // we'd loop. Reads of `network.*` settings always go to local DB.
     if (sql.includes("network.")) {
       const database = await getDb();
-      return database.select<T[]>(sql, bindValues);
+      rows = await database.select<T[]>(sql, bindValues);
+    } else {
+      const res = await fetch(`${clientMode.url}/api/db/query`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${clientMode.token}`,
+        },
+        body: JSON.stringify({ sql, params: normalizeParams(bindValues) }),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error((body as { error?: string }).error || `Query failed (${res.status})`);
+      }
+      const data = (await res.json()) as { rows: T[] };
+      rows = data.rows;
     }
-    const res = await fetch(`${clientMode.url}/api/db/query`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${clientMode.token}`,
-      },
-      body: JSON.stringify({ sql, params: normalizeParams(bindValues) }),
-    });
-    if (!res.ok) {
-      const body = await res.json().catch(() => ({}));
-      throw new Error((body as { error?: string }).error || `Query failed (${res.status})`);
-    }
-    const data = (await res.json()) as { rows: T[] };
-    return data.rows;
+  } else {
+    const database = await getDb();
+    rows = await database.select<T[]>(sql, bindValues);
   }
 
-  const database = await getDb();
-  return database.select<T[]>(sql, bindValues);
+  // A slow response from branch A must never populate a page that has
+  // already remounted for branch B (or the All Branches aggregate).
+  assertCurrentBranchContext(branchContext);
+  return rows;
 }
 
 export async function execute(sql: string, bindValues?: unknown[]) {
+  const branchContext = captureBranchContext();
   await ensureModeChecked();
+  // Check immediately before dispatch. Operational services also bind a
+  // concrete branch captured via requireActiveBranchId(), so an accepted
+  // write can never silently retarget after a switch.
+  assertCurrentBranchContext(branchContext);
+  assertBranchContextWritable();
 
   if (clientMode) {
     // Settings writes related to network config still go to local DB

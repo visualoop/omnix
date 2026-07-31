@@ -1,5 +1,5 @@
 import { query, execute } from "@/lib/db";
-import { getActiveBranchId } from "@/stores/active-branch";
+import { getActiveBranchId, requireActiveBranchId } from "@/stores/active-branch";
 import { pagedQuery } from "@/lib/paged-query";
 import type { ListPage, ListQuery } from "@/lib/list-types";
 
@@ -206,9 +206,11 @@ export interface POItem {
 }
 
 export async function listPurchaseOrders(filter?: { status?: string; supplier_id?: string }): Promise<PurchaseOrder[]> {
-  const conditions: string[] = [];
-  const params: unknown[] = [];
-  let idx = 1;
+  const branchId = getActiveBranchId();
+  if (!branchId) return [];
+  const conditions: string[] = [`po.branch_id = ?1`];
+  const params: unknown[] = [branchId];
+  let idx = 2;
   if (filter?.status) { conditions.push(`po.status = ?${idx++}`); params.push(filter.status); }
   if (filter?.supplier_id) { conditions.push(`po.supplier_id = ?${idx++}`); params.push(filter.supplier_id); }
   const where = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
@@ -225,13 +227,15 @@ export async function listPurchaseOrders(filter?: { status?: string; supplier_id
 }
 
 export async function getPurchaseOrder(id: string): Promise<{ po: PurchaseOrder; items: POItem[] } | null> {
+  const branchId = getActiveBranchId();
+  if (!branchId) return null;
   const pos = await query<PurchaseOrder>(
     `SELECT po.*, s.name as supplier_name, s.phone as supplier_phone, s.email as supplier_email, u.full_name as user_name
      FROM purchase_orders po
      LEFT JOIN suppliers s ON s.id = po.supplier_id
      LEFT JOIN users u ON u.id = po.user_id
-     WHERE po.id = ?1`,
-    [id]
+     WHERE po.id = ?1 AND po.branch_id = ?2`,
+    [id, branchId]
   );
   if (!pos[0]) return null;
   const items = await query<POItem>("SELECT * FROM purchase_order_items WHERE po_id = ?1", [id]);
@@ -254,6 +258,7 @@ async function nextPONumber(): Promise<string> {
 }
 
 export async function createPurchaseOrder(input: CreatePOInput): Promise<string> {
+  const branchId = requireActiveBranchId();
   const poId = crypto.randomUUID();
   const poNumber = await nextPONumber();
   const subtotal = input.items.reduce((s, i) => s + i.unit_cost * i.quantity, 0);
@@ -263,7 +268,7 @@ export async function createPurchaseOrder(input: CreatePOInput): Promise<string>
     `INSERT INTO purchase_orders (id, po_number, supplier_id, user_id, expected_date, subtotal, total, notes, branch_id)
      VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)`,
     [poId, poNumber, input.supplier_id, input.user_id, input.expected_date || null,
-     subtotal, total, input.notes || null, getActiveBranchId()]
+     subtotal, total, input.notes || null, branchId]
   );
 
   for (const [idx, item] of input.items.entries()) {
@@ -278,7 +283,7 @@ export async function createPurchaseOrder(input: CreatePOInput): Promise<string>
 }
 
 export async function updatePOStatus(id: string, status: PurchaseOrder["status"]): Promise<void> {
-  await execute("UPDATE purchase_orders SET status = ?1, updated_at = datetime('now') WHERE id = ?2", [status, id]);
+  await execute("UPDATE purchase_orders SET status = ?1, updated_at = datetime('now') WHERE id = ?2 AND branch_id = ?3", [status, id, requireActiveBranchId()]);
 }
 
 // ============================================================
@@ -309,6 +314,7 @@ async function nextGRNNumber(): Promise<string> {
 }
 
 export async function createGoodsReceipt(input: CreateGRNInput): Promise<string> {
+  const branchId = requireActiveBranchId();
   const grnId = crypto.randomUUID();
   const grnNumber = await nextGRNNumber();
   const total = input.items.reduce((s, i) => s + i.unit_cost * i.quantity, 0);
@@ -333,9 +339,9 @@ export async function createGoodsReceipt(input: CreateGRNInput): Promise<string>
     // Add to inventory: create batch
     const batchId = crypto.randomUUID();
     await execute(
-      `INSERT INTO batches (id, product_id, batch_number, expiry_date, buying_price, quantity, supplier_id, received_at)
-       VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, datetime('now'))`,
-      [batchId, item.product_id, item.batch_number || null, item.expiry_date || null,
+      `INSERT INTO batches (id, product_id, branch_id, batch_number, expiry_date, buying_price, quantity, supplier_id, received_at)
+       VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, datetime('now'))`,
+      [batchId, item.product_id, branchId, item.batch_number || null, item.expiry_date || null,
        item.unit_cost, item.quantity, input.supplier_id]
     );
 
@@ -424,6 +430,7 @@ async function nextReturnNumber(): Promise<string> {
 }
 
 export async function createSaleReturn(input: CreateReturnInput): Promise<string> {
+  const branchId = requireActiveBranchId();
   const id = crypto.randomUUID();
   const number = await nextReturnNumber();
   const round2 = (n: number) => Math.round(n * 100) / 100;
@@ -439,7 +446,7 @@ export async function createSaleReturn(input: CreateReturnInput): Promise<string
      VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)`,
     params: [id, number, input.sale_id || null, input.customer_id || null, input.user_id,
       input.reason, input.refund_method, round2(input.refund_amount),
-      input.restock_to_inventory ? 1 : 0, input.notes || null, getActiveBranchId()],
+      input.restock_to_inventory ? 1 : 0, input.notes || null, branchId],
   });
 
   for (const item of input.items) {
@@ -453,8 +460,8 @@ export async function createSaleReturn(input: CreateReturnInput): Promise<string
 
     if (input.restock_to_inventory) {
       const batches = await query<{ id: string }>(
-        "SELECT id FROM batches WHERE product_id = ?1 ORDER BY received_at DESC LIMIT 1",
-        [item.product_id],
+        "SELECT id FROM batches WHERE product_id = ?1 AND branch_id = ?2 ORDER BY received_at DESC LIMIT 1",
+        [item.product_id, branchId],
       );
       if (batches[0]) {
         stmts.push({
@@ -463,9 +470,9 @@ export async function createSaleReturn(input: CreateReturnInput): Promise<string
         });
       } else {
         stmts.push({
-          sql: `INSERT INTO batches (id, product_id, quantity, received_at, batch_number)
-           VALUES (?1, ?2, ?3, strftime('%Y-%m-%dT%H:%M:%fZ','now'), 'RETURN-RESTOCK')`,
-          params: [crypto.randomUUID(), item.product_id, item.quantity],
+          sql: `INSERT INTO batches (id, product_id, branch_id, quantity, received_at, batch_number)
+           VALUES (?1, ?2, ?3, ?4, strftime('%Y-%m-%dT%H:%M:%fZ','now'), 'RETURN-RESTOCK')`,
+          params: [crypto.randomUUID(), item.product_id, branchId, item.quantity],
         });
       }
       stmts.push({
@@ -502,10 +509,10 @@ export async function createSaleReturn(input: CreateReturnInput): Promise<string
       const accountId = await pickBankAccountForMethod(refundMethod);
       if (accountId) {
         stmts.push({
-          sql: `INSERT INTO bank_transactions (id, account_id, transaction_date, transaction_type, amount, description, payment_method, related_sale_id, user_id)
-           VALUES (?1, ?2, datetime('now'), 'withdrawal', ?3, ?4, ?5, ?6, ?7)`,
+          sql: `INSERT INTO bank_transactions (id, account_id, transaction_date, transaction_type, amount, description, payment_method, related_sale_id, user_id, branch_id)
+           VALUES (?1, ?2, datetime('now'), 'withdrawal', ?3, ?4, ?5, ?6, ?7, ?8)`,
           params: [crypto.randomUUID(), accountId, round2(input.refund_amount), `Refund ${number}`,
-            refundMethod, input.sale_id || null, input.user_id],
+            refundMethod, input.sale_id || null, input.user_id, branchId],
         });
         stmts.push({
           sql: `UPDATE bank_accounts SET current_balance = ROUND(COALESCE(current_balance,0) - ?2, 2) WHERE id = ?1`,
@@ -554,13 +561,17 @@ export async function createSaleReturn(input: CreateReturnInput): Promise<string
 }
 
 export async function listReturns(): Promise<SaleReturn[]> {
+  const branchId = getActiveBranchId();
+  if (!branchId) return [];
   return query<SaleReturn>(
     `SELECT r.*, c.name as customer_name, u.full_name as cashier_name, s.sale_number
      FROM sale_returns r
      LEFT JOIN customers c ON c.id = r.customer_id
      LEFT JOIN users u ON u.id = r.user_id
      LEFT JOIN sales s ON s.id = r.sale_id
-     ORDER BY r.created_at DESC LIMIT 200`
+     WHERE r.branch_id = ?1
+     ORDER BY r.created_at DESC LIMIT 200`,
+    [branchId],
   );
 }
 
@@ -598,12 +609,13 @@ export interface StockTakeItem {
 }
 
 export async function createStockTake(userId: string, notes?: string): Promise<string> {
+  const branchId = requireActiveBranchId();
   const id = crypto.randomUUID();
   const ref = `ST-${Date.now()}`;
 
   await execute(
     `INSERT INTO stock_takes (id, reference, user_id, notes, branch_id) VALUES (?1, ?2, ?3, ?4, ?5)`,
-    [id, ref, userId, notes || null, getActiveBranchId()]
+    [id, ref, userId, notes || null, branchId]
   );
 
   // Snapshot current stock for all active STOCKABLE products only. Salon
@@ -612,13 +624,14 @@ export async function createStockTake(userId: string, notes?: string): Promise<s
   // same filter the inventory list uses.
   const products = await query<{ id: string; current_stock: number; buying_price: number }>(
     `SELECT p.id,
-       COALESCE((SELECT SUM(b.quantity) FROM batches b WHERE b.product_id = p.id), 0) as current_stock,
+       COALESCE((SELECT SUM(b.quantity) FROM batches b WHERE b.product_id = p.id AND b.branch_id = ?1), 0) as current_stock,
        COALESCE(pp.buying_price, 0) as buying_price
      FROM products p
      LEFT JOIN product_prices pp ON pp.product_id = p.id
      WHERE p.active = 1
        AND COALESCE(p.kind, 'physical') = 'physical'
-       AND COALESCE(p.is_service, 0) = 0`
+       AND COALESCE(p.is_service, 0) = 0`,
+    [branchId],
   );
 
   for (const p of products) {
@@ -633,12 +646,16 @@ export async function createStockTake(userId: string, notes?: string): Promise<s
 }
 
 export async function listStockTakes(): Promise<StockTake[]> {
+  const branchId = getActiveBranchId();
+  if (!branchId) return [];
   return query<StockTake>(
     `SELECT st.*, u.full_name as user_name,
        (SELECT COUNT(*) FROM stock_take_items WHERE stock_take_id = st.id) as item_count
      FROM stock_takes st
      LEFT JOIN users u ON u.id = st.user_id
-     ORDER BY st.started_at DESC`
+     WHERE st.branch_id = ?1
+     ORDER BY st.started_at DESC`,
+    [branchId],
   );
 }
 
