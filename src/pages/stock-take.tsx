@@ -1,3 +1,5 @@
+import { MobileRouteContext } from "@/components/shared/mobile-route-context";
+import { money } from "@/lib/money";
 import { useState, useEffect } from "react";
 import { confirm } from "@/components/ui/confirm-dialog";
 import { useNavigate, useParams } from "react-router-dom";
@@ -26,7 +28,7 @@ import { useAuthStore } from "@/stores/auth";
 import { toast } from "sonner";
 import { intlLocale } from "@/lib/intl";
 
-export function StockTakesPage() {
+function StockTakesPageContent() {
   const [creating, setCreating] = useState(false);
   const navigate = useNavigate();
   const userId = useAuthStore((s) => s.user?.id);
@@ -137,7 +139,7 @@ export function StockTakesPage() {
   );
 }
 
-export function StockTakeDetailPage() {
+function StockTakeDetailPageContent() {
   const { id } = useParams<{ id: string }>();
   const [take, setTake] = useState<StockTake | null>(null);
   const [items, setItems] = useState<StockTakeItem[]>([]);
@@ -195,7 +197,7 @@ export function StockTakeDetailPage() {
 
   return (
     <div className="space-y-5">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
         <div className="flex items-center gap-3">
           <Button variant="ghost" size="sm" onClick={() => navigate("/stock-take")}>
             <ArrowLeft className="h-4 w-4" />
@@ -208,7 +210,7 @@ export function StockTakeDetailPage() {
           </div>
         </div>
         {take.status === "in_progress" && (
-          <div className="flex gap-2">
+          <div className="flex w-full flex-wrap gap-2 lg:w-auto">
             <Button variant="outline" onClick={() => handleComplete(false)} disabled={completing}>
               <Save className="h-4 w-4 mr-2" /> Complete (no adjust)
             </Button>
@@ -225,13 +227,13 @@ export function StockTakeDetailPage() {
           <div>
             <p className="text-sm font-medium">Completed {take.completed_at && new Date(take.completed_at).toLocaleString(intlLocale())}</p>
             <p className="text-xs text-muted-foreground mt-0.5">
-              Total variance: {take.total_variance > 0 ? "+" : ""}{take.total_variance.toFixed(0)} units · Value: KES {take.total_value_variance.toFixed(2)}
+              Total variance: {take.total_variance > 0 ? "+" : ""}{take.total_variance.toFixed(0)} units · Value: {money(take.total_value_variance)}
             </p>
           </div>
         </div>
       )}
 
-      <div className="grid grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 gap-2 lg:grid-cols-4 lg:gap-3">
         <SmallStat label="Total" value={items.length} />
         <SmallStat label="Counted" value={counted.length} color="green" />
         <SmallStat label="Uncounted" value={uncounted.length} color={uncounted.length > 0 ? "amber" : "default"} />
@@ -336,5 +338,23 @@ function SmallStat({ label, value, color = "default" }: { label: string; value: 
       <p className="text-xs text-muted-foreground">{label}</p>
       <p className="text-2xl font-semibold font-mono mt-0.5">{value}</p>
     </div>
+  );
+}
+
+export function StockTakesPage() {
+  return (
+    <>
+      <MobileRouteContext />
+      <StockTakesPageContent />
+    </>
+  );
+}
+
+export function StockTakeDetailPage() {
+  return (
+    <>
+      <MobileRouteContext />
+      <StockTakeDetailPageContent />
+    </>
   );
 }

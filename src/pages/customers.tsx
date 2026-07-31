@@ -31,8 +31,12 @@ import { useAuthStore } from "@/stores/auth";
 import { PaymentRecordDialog } from "@/components/payment-record-dialog";
 import { toast } from "sonner";
 import { intlLocale } from "@/lib/intl";
+import { currencyCode, phonePlaceholder } from "@/lib/locale";
 import { money } from "@/lib/money";
 import { MODULES_ALLOWED } from "@/lib/variant";
+import { MobileRouteContext } from "@/components/shared/mobile-route-context";
+import { hasPermission } from "@/lib/permissions";
+import { useCountry } from "@/stores/country";
 
 // Patient profiles are a Dawa (pharmacy) concept — only surface them when the
 // pharmacy module is actually installed, not on Salon/Retail/etc.
@@ -43,7 +47,11 @@ export function CustomersPage() {
   const [creating, setCreating] = useState(false);
   const [payingCustomer, setPayingCustomer] = useState<Customer | null>(null);
   const navigate = useNavigate();
-  const userId = useAuthStore((s) => s.user?.id);
+  const user = useAuthStore((s) => s.user);
+  const userId = user?.id;
+  const canEditCustomers = hasPermission(user, "customers.edit");
+  const canRecordPayment = hasPermission(user, "customers.payment");
+  const canOpenPatient = DAWA_ENABLED && hasPermission(user, "pharmacy.dispense");
 
   const list = useListData(pageCustomers, { pageSize: 50 });
   // Aggregate stats over ALL customers (not just the current page).
@@ -68,14 +76,15 @@ export function CustomersPage() {
         eyebrow="Directory"
         title="Customers"
         description={`Manage customer accounts, credit${DAWA_ENABLED ? ", and patient profiles" : ""}.`}
-        actions={
-          <Button onClick={() => setCreating(true)}>
-            <Plus className="h-4 w-4 mr-2" /> Add customer
+        actions={canEditCustomers ? (
+          <Button onClick={() => setCreating(true)} className="min-h-11 w-full lg:min-h-0 lg:w-auto">
+            <Plus className="mr-2 size-4" /> Add customer
           </Button>
-        }
+        ) : undefined}
       />
+      <MobileRouteContext />
 
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-3 sm:gap-3">
         <StatCard label="Total Customers" value={String(list.total)} icon={Users} />
         <StatCard label="Total Receivable" value={money(stats.owed)} icon={CreditCard} highlight={stats.owed > 0} />
         <StatCard label="Over Credit Limit" value={String(stats.overLimit)} icon={CreditCard} highlight={stats.overLimit > 0} danger />
@@ -87,7 +96,7 @@ export function CustomersPage() {
           value={list.search}
           onChange={(e) => list.setSearch(e.target.value)}
           placeholder="Search by name, phone, email..."
-          className="pl-9"
+          className="h-11 pl-9 lg:h-9"
         />
       </div>
 
@@ -95,86 +104,165 @@ export function CustomersPage() {
         <div className="border border-border rounded-lg p-12 text-center text-muted-foreground">
           <Users className="h-10 w-10 mx-auto mb-2 opacity-30" />
           <p className="text-sm">{list.search ? "No customers match your search" : "No customers found"}</p>
-          <p className="text-xs mt-1">{list.search ? "Try a different name, phone, or email" : "Add your first customer to track sales and credit"}</p>
+          <p className="mt-1 text-xs">{list.search ? "Try a different name, phone, or email" : "Add your first customer to track sales and credit"}</p>
+          {!list.search && canEditCustomers && (
+            <Button onClick={() => setCreating(true)} className="mt-4 min-h-11">
+              <Plus className="size-4" /> Add first customer
+            </Button>
+          )}
         </div>
       ) : (
-        <div className="border border-border rounded-lg overflow-hidden">
-          <table className="w-full text-sm">
-            <thead className="bg-muted/30 border-b border-border">
-              <tr className="text-xs text-muted-foreground">
-                <th className="text-left px-3 py-2 font-medium">Name</th>
-                <th className="text-left px-3 py-2 font-medium">Contact</th>
-                <th className="text-right px-3 py-2 font-medium">Credit Limit</th>
-                <th className="text-right px-3 py-2 font-medium">Balance</th>
-                <th className="text-right px-3 py-2 font-medium"></th>
-              </tr>
-            </thead>
-            <tbody>
-              {list.rows.map((c) => {
-                const overLim = c.credit_limit > 0 && c.balance > c.credit_limit;
-                return (
-                  <tr
-                    key={c.id}
-                    onClick={() => navigate(`/customers/${c.id}`)}
-                    className="border-b border-border last:border-0 hover:bg-muted/30 cursor-pointer"
+        <>
+          <div data-mobile-list="customers" className="space-y-2 lg:hidden">
+            {list.rows.map((customer) => {
+              const overLimit = customer.credit_limit > 0 && customer.balance > customer.credit_limit;
+              return (
+                <article key={customer.id} className="overflow-hidden rounded-lg border border-border bg-background">
+                  <button
+                    type="button"
+                    onClick={() => navigate(`/customers/${customer.id}`)}
+                    className="min-h-11 w-full px-4 py-3 text-left active:bg-muted/40"
+                    aria-label={`Open ${customer.name}`}
                   >
-                    <td className="px-3 py-2.5">
-                      <div className="flex items-center gap-2">
-                        <div className="h-7 w-7 rounded-full bg-primary/10 flex items-center justify-center text-xs font-medium">
-                          {c.name.charAt(0).toUpperCase()}
+                    <div className="flex items-start gap-3">
+                      <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-sm font-semibold">
+                        {customer.name.charAt(0).toUpperCase()}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-start justify-between gap-3">
+                          <p className="truncate font-medium">{customer.name}</p>
+                          <p className={`shrink-0 font-mono text-sm ${overLimit ? "font-semibold text-red-700" : ""}`}>
+                            {money(customer.balance)}
+                          </p>
                         </div>
-                        <div className="font-medium hover:underline underline-offset-4">{c.name}</div>
+                        <p className="mt-0.5 truncate text-xs text-muted-foreground">
+                          {customer.phone || customer.email || "No contact details"}
+                        </p>
+                        <div className="mt-2 flex items-center justify-between text-xs text-muted-foreground">
+                          <span>Credit limit {customer.credit_limit > 0 ? money(customer.credit_limit) : "Cash only"}</span>
+                          {overLimit && <Badge variant="destructive">Over limit</Badge>}
+                        </div>
                       </div>
-                    </td>
-                    <td className="px-3 py-2.5">
-                      {c.phone && <div className="text-xs flex items-center gap-1"><Phone className="h-3 w-3" />{c.phone}</div>}
-                      {c.email && <div className="text-xs flex items-center gap-1"><Mail className="h-3 w-3" />{c.email}</div>}
-                    </td>
-                    <td className="px-3 py-2.5 text-right font-mono text-xs">
-                      {c.credit_limit > 0 ? c.credit_limit.toFixed(0) : "—"}
-                    </td>
-                    <td className="px-3 py-2.5 text-right font-mono">
-                      {c.balance > 0 ? (
-                        <span className={overLim ? "text-red-700 font-semibold" : "text-amber-700"}>
-                          {c.balance.toFixed(2)}
-                          {overLim && <Badge variant="destructive" className="ml-1.5 text-[10px]">Over Limit</Badge>}
-                        </span>
-                      ) : (
-                        <span className="text-muted-foreground">0.00</span>
-                      )}
-                    </td>
-                    <td className="px-3 py-2.5 text-right" onClick={(e) => e.stopPropagation()}>
-                      <div className="flex justify-end gap-1">
-                        {c.balance > 0 && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => setPayingCustomer(c)}
-                            title="Record payment"
-                            className="text-emerald-700 hover:text-emerald-800"
-                          >
-                            <Wallet className="h-3.5 w-3.5" />
-                          </Button>
-                        )}
-                        {DAWA_ENABLED && (
-                          <Button variant="ghost" size="sm" onClick={() => navigate(`/patients/${c.id}`)} title="Patient profile">
-                            <Pill className="h-3.5 w-3.5" />
-                          </Button>
-                        )}
-                        <Button variant="ghost" size="sm" onClick={() => setEditing(c)} title="Edit">
-                          <Edit3 className="h-3.5 w-3.5" />
+                    </div>
+                  </button>
+                  {(canRecordPayment || canOpenPatient || canEditCustomers) && (
+                    <div className="flex flex-wrap border-t border-border">
+                      {customer.balance > 0 && canRecordPayment && (
+                        <Button
+                          variant="ghost"
+                          onClick={() => setPayingCustomer(customer)}
+                          className="min-h-11 min-w-[44px] flex-1 rounded-none border-r border-border"
+                        >
+                          <Wallet className="size-4" /> Payment
                         </Button>
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+                      )}
+                      {canOpenPatient && (
+                        <Button
+                          variant="ghost"
+                          onClick={() => navigate(`/patients/${customer.id}`)}
+                          className="min-h-11 min-w-[44px] flex-1 rounded-none border-r border-border"
+                        >
+                          <Pill className="size-4" /> Patient
+                        </Button>
+                      )}
+                      {canEditCustomers && (
+                        <Button
+                          variant="ghost"
+                          onClick={() => setEditing(customer)}
+                          className="min-h-11 min-w-[44px] flex-1 rounded-none"
+                        >
+                          <Edit3 className="size-4" /> Edit
+                        </Button>
+                      )}
+                    </div>
+                  )}
+                </article>
+              );
+            })}
+          </div>
+
+          <div data-desktop-table="customers" className="hidden overflow-hidden rounded-lg border border-border lg:block">
+            <table className="w-full text-sm">
+              <thead className="border-b border-border bg-muted/30">
+                <tr className="text-xs text-muted-foreground">
+                  <th className="px-3 py-2 text-left font-medium">Name</th>
+                  <th className="px-3 py-2 text-left font-medium">Contact</th>
+                  <th className="px-3 py-2 text-right font-medium">Credit Limit</th>
+                  <th className="px-3 py-2 text-right font-medium">Balance</th>
+                  <th className="px-3 py-2 text-right font-medium"></th>
+                </tr>
+              </thead>
+              <tbody>
+                {list.rows.map((customer) => {
+                  const overLimit = customer.credit_limit > 0 && customer.balance > customer.credit_limit;
+                  return (
+                    <tr
+                      key={customer.id}
+                      onClick={() => navigate(`/customers/${customer.id}`)}
+                      className="cursor-pointer border-b border-border last:border-0 hover:bg-muted/30"
+                    >
+                      <td className="px-3 py-2.5">
+                        <div className="flex items-center gap-2">
+                          <div className="flex size-7 items-center justify-center rounded-full bg-primary/10 text-xs font-medium">
+                            {customer.name.charAt(0).toUpperCase()}
+                          </div>
+                          <div className="font-medium hover:underline hover:underline-offset-4">{customer.name}</div>
+                        </div>
+                      </td>
+                      <td className="px-3 py-2.5">
+                        {customer.phone && <div className="flex items-center gap-1 text-xs"><Phone className="size-3" />{customer.phone}</div>}
+                        {customer.email && <div className="flex items-center gap-1 text-xs"><Mail className="size-3" />{customer.email}</div>}
+                      </td>
+                      <td className="px-3 py-2.5 text-right font-mono text-xs">
+                        {customer.credit_limit > 0 ? money(customer.credit_limit) : "—"}
+                      </td>
+                      <td className="px-3 py-2.5 text-right font-mono">
+                        {customer.balance > 0 ? (
+                          <span className={overLimit ? "font-semibold text-red-700" : "text-amber-700"}>
+                            {money(customer.balance)}
+                            {overLimit && <Badge variant="destructive" className="ml-1.5 text-[10px]">Over Limit</Badge>}
+                          </span>
+                        ) : (
+                          <span className="text-muted-foreground">{money(0)}</span>
+                        )}
+                      </td>
+                      <td className="px-3 py-2.5 text-right" onClick={(event) => event.stopPropagation()}>
+                        <div className="flex justify-end gap-1">
+                          {customer.balance > 0 && canRecordPayment && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => setPayingCustomer(customer)}
+                              title="Record payment"
+                              className="text-emerald-700 hover:text-emerald-800"
+                            >
+                              <Wallet className="size-3.5" />
+                            </Button>
+                          )}
+                          {canOpenPatient && (
+                            <Button variant="ghost" size="sm" onClick={() => navigate(`/patients/${customer.id}`)} title="Patient profile">
+                              <Pill className="size-3.5" />
+                            </Button>
+                          )}
+                          {canEditCustomers && (
+                            <Button variant="ghost" size="sm" onClick={() => setEditing(customer)} title="Edit">
+                              <Edit3 className="size-3.5" />
+                            </Button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </>
       )}
 
-      <PaginationBar list={list} />
+      <div className="[&_button]:min-h-11 lg:[&_button]:min-h-0">
+        <PaginationBar list={list} />
+      </div>
 
       <CustomerForm
         open={creating || !!editing}
@@ -187,12 +275,12 @@ export function CustomersPage() {
         open={!!payingCustomer}
         onClose={() => setPayingCustomer(null)}
         title="Record Customer Payment"
-        subtitle={payingCustomer ? `${payingCustomer.name} owes KES ${payingCustomer.balance.toFixed(2)}` : ""}
+        subtitle={payingCustomer ? `${payingCustomer.name} owes ${money(payingCustomer.balance)}` : ""}
         maxAmount={payingCustomer?.balance}
         onSubmit={async ({ amount, method, reference, note }) => {
           if (!payingCustomer || !userId) return;
           await recordCustomerPayment(payingCustomer.id, amount, method, userId, reference, note);
-          toast.success(`Payment of KES ${amount.toFixed(2)} recorded`);
+          toast.success(`Payment of ${money(amount)} recorded`);
           refreshAll();
         }}
       />
@@ -231,6 +319,9 @@ function CustomerForm({ open, customer, onClose, onSaved }: {
   } | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const navigate = useNavigate();
+  const countryCode = useCountry((s) => s.code);
+  const user = useAuthStore((s) => s.user);
+  const canOpenPatient = DAWA_ENABLED && hasPermission(user, "pharmacy.dispense");
 
   useEffect(() => {
     if (customer) {
@@ -258,13 +349,13 @@ function CustomerForm({ open, customer, onClose, onSaved }: {
 
   return (
     <Sheet open={open} onOpenChange={(o) => !o && onClose()}>
-      <SheetContent side="right" className="w-[500px] sm:max-w-[500px] overflow-y-auto">
+      <SheetContent side="right" className="w-full max-w-full overflow-y-auto sm:w-[500px] sm:max-w-[500px]">
         <SheetHeader>
           <SheetTitle>{customer ? customer.name : "New Customer"}</SheetTitle>
         </SheetHeader>
 
         {stats && customer && (
-          <div className="grid grid-cols-3 gap-2 mt-4">
+          <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-3">
             <div className="border border-border rounded-md p-2.5">
               <div className="flex items-center gap-1 text-xs text-muted-foreground mb-1">
                 <ShoppingBag className="h-3 w-3" /> Purchases
@@ -273,7 +364,7 @@ function CustomerForm({ open, customer, onClose, onSaved }: {
             </div>
             <div className="border border-border rounded-md p-2.5">
               <div className="text-xs text-muted-foreground mb-1">Lifetime Value</div>
-              <div className="text-sm font-semibold font-mono">{stats.total_amount.toFixed(0)}</div>
+              <div className="text-sm font-semibold font-mono">{money(stats.total_amount)}</div>
             </div>
             <div className="border border-border rounded-md p-2.5">
               <div className="text-xs text-muted-foreground mb-1">Last Visit</div>
@@ -288,14 +379,14 @@ function CustomerForm({ open, customer, onClose, onSaved }: {
 
         <div className="space-y-3 mt-4">
           <Field label="Name *">
-            <Input value={form.name || ""} onChange={(e) => setForm({ ...form, name: e.target.value })} autoFocus />
+            <Input value={form.name || ""} onChange={(e) => setForm({ ...form, name: e.target.value })} className="h-11" autoFocus />
           </Field>
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <Field label="Phone">
-              <Input value={form.phone || ""} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
+              <Input value={form.phone || ""} onChange={(e) => setForm({ ...form, phone: e.target.value })} placeholder={phonePlaceholder(countryCode)} inputMode="tel" className="h-11" />
             </Field>
             <Field label="Email">
-              <Input type="email" value={form.email || ""} onChange={(e) => setForm({ ...form, email: e.target.value })} />
+              <Input type="email" value={form.email || ""} onChange={(e) => setForm({ ...form, email: e.target.value })} className="h-11" />
             </Field>
           </div>
           <Field label="Address">
@@ -306,12 +397,12 @@ function CustomerForm({ open, customer, onClose, onSaved }: {
               placeholder="Physical / delivery address — flows onto quotes and delivery notes"
             />
           </Field>
-          <Field label="Credit Limit (KES)">
+          <Field label={`Credit Limit (${currencyCode(countryCode)})`}>
             <Input
               type="number"
               value={form.credit_limit ?? 0}
               onChange={(e) => setForm({ ...form, credit_limit: Number(e.target.value) || 0 })}
-              className="font-mono"
+              className="h-11 font-mono"
             />
             <p className="text-xs text-muted-foreground mt-1">
               0 = no credit (cash only). Customer can owe up to this amount.
@@ -326,7 +417,7 @@ function CustomerForm({ open, customer, onClose, onSaved }: {
 
           {customer && customer.balance > 0 && (
             <div className="border border-amber-500/50 bg-amber-500/5 rounded-md p-2.5">
-              <p className="text-xs font-medium">Outstanding Balance: KES {customer.balance.toFixed(2)}</p>
+              <p className="text-xs font-medium">Outstanding Balance: {money(customer.balance)}</p>
               <p className="text-xs text-muted-foreground mt-0.5">
                 Customer owes this amount on credit. Record payments to reduce.
               </p>
@@ -334,17 +425,17 @@ function CustomerForm({ open, customer, onClose, onSaved }: {
           )}
 
           <div className="flex gap-2 pt-2">
-            <Button variant="outline" onClick={onClose} className="flex-1" disabled={submitting}>Cancel</Button>
-            <Button onClick={handleSave} className="flex-1" disabled={submitting}>
+            <Button variant="outline" onClick={onClose} className="min-h-11 flex-1" disabled={submitting}>Cancel</Button>
+            <Button onClick={handleSave} className="min-h-11 flex-1" disabled={submitting}>
               {submitting ? "Saving..." : "Save"}
             </Button>
           </div>
 
-          {customer && DAWA_ENABLED && (
+          {customer && canOpenPatient && (
             <Button
               variant="outline"
               onClick={() => { onClose(); navigate(`/patients/${customer.id}`); }}
-              className="w-full"
+              className="min-h-11 w-full"
             >
               <Pill className="h-3.5 w-3.5 mr-2" /> View Patient Profile
             </Button>

@@ -14,6 +14,7 @@
  */
 import jsPDF from "jspdf"
 import autoTable from "jspdf-autotable"
+import { intlLocale } from "@/lib/intl"
 
 export const PAGE_WIDTH_MM = 210 // A4
 export const PAGE_HEIGHT_MM = 297
@@ -132,14 +133,14 @@ export function newDocLandscape(): jsPDF {
 
 /** Format a money number for in-PDF display (no currency symbol — caller decides). */
 export function fmtAmount(n: number): string {
-  return new Intl.NumberFormat("en-KE", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n)
+  return new Intl.NumberFormat(intlLocale(), { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n)
 }
 
 /** Format a date for column display (e.g. "12 Jun 2026"). */
 export function fmtDate(d: Date | string): string {
   const date = typeof d === "string" ? new Date(d) : d
   if (isNaN(date.getTime())) return "—"
-  return date.toLocaleDateString("en-KE", { day: "2-digit", month: "short", year: "numeric" })
+  return date.toLocaleDateString(intlLocale(), { day: "2-digit", month: "short", year: "numeric" })
 }
 
 // ─── Tabular report helper ────────────────────────────────────────

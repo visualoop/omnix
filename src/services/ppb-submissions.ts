@@ -14,6 +14,7 @@
 import { fetch } from "@tauri-apps/plugin-http";
 import { query, execute } from "@/lib/db";
 import { encryptSecret, decryptSecret } from "@/services/secrets";
+import { isFeatureEnabled, requireCountryFeature } from "@/lib/features";
 
 export interface PpbSettings {
   id: number;
@@ -85,6 +86,13 @@ export function isSubmissionDue(asOf: Date, autoSubmitDay: number): { due: boole
 }
 
 export async function getPpbSettings(): Promise<PpbSettings> {
+  if (!isFeatureEnabled("ppb_register")) {
+    return {
+      id: 1, enabled: 0, api_endpoint: null, api_key_encrypted: null,
+      facility_code: null, superintendent_pharmacist_id: null,
+      superintendent_license_number: null, auto_submit_day: 10,
+    };
+  }
   const rows = await query<PpbSettings>(`SELECT * FROM ppb_settings WHERE id = 1`);
   const s = rows[0] ?? {
     id: 1, enabled: 0, api_endpoint: null, api_key_encrypted: null,
@@ -103,6 +111,7 @@ export async function savePpbSettings(input: {
   superintendent_license_number?: string | null;
   auto_submit_day?: number;
 }): Promise<void> {
+  requireCountryFeature("ppb_register", "Kenya PPB submissions");
   const encKey = input.api_key === undefined
     ? undefined
     : input.api_key === null ? null : await encryptSecret(input.api_key);
@@ -128,6 +137,7 @@ export async function savePpbSettings(input: {
 
 /** Assemble the report body for a period from controlled_log + AMR + claims. */
 export async function assembleReport(window: QuarterWindow): Promise<Record<string, unknown>> {
+  requireCountryFeature("ppb_register", "Kenya PPB submissions");
   const start = window.start;
   const end = window.end + " 23:59:59";
 
@@ -162,6 +172,7 @@ export async function assembleReport(window: QuarterWindow): Promise<Record<stri
 
 /** Create (or fetch existing) a draft submission row for a window. */
 export async function ensureSubmission(window: QuarterWindow): Promise<string> {
+  requireCountryFeature("ppb_register", "Kenya PPB submissions");
   const existing = await query<{ id: string }>(
     `SELECT id FROM ppb_submissions WHERE period_type = 'quarterly' AND period_start = ?1 AND period_end = ?2`,
     [window.start, window.end],
@@ -207,6 +218,9 @@ async function postSubmission(submissionId: string, settings: PpbSettings): Prom
 }
 
 export async function submitToPpb(submissionId: string): Promise<{ ok: boolean; ref?: string; error?: string }> {
+  if (!isFeatureEnabled("ppb_register")) {
+    return { ok: false, error: "Kenya PPB submissions are not available for the active business country." };
+  }
   const settings = await getPpbSettings();
   const result = await postSubmission(submissionId, settings);
   if (result.ok) {
@@ -231,6 +245,7 @@ export async function submitToPpb(submissionId: string): Promise<{ ok: boolean; 
  * due, ensures a submission row exists and attempts submission.
  */
 export async function runPpbAutoSubmission(asOf: Date = new Date()): Promise<{ ran: boolean; submissionId?: string; ok?: boolean }> {
+  if (!isFeatureEnabled("ppb_register")) return { ran: false };
   const settings = await getPpbSettings();
   if (!settings.enabled) return { ran: false };
 
@@ -252,5 +267,6 @@ export async function runPpbAutoSubmission(asOf: Date = new Date()): Promise<{ r
 }
 
 export async function listSubmissions(): Promise<PpbSubmission[]> {
+  if (!isFeatureEnabled("ppb_register")) return [];
   return query<PpbSubmission>(`SELECT * FROM ppb_submissions ORDER BY period_end DESC LIMIT 100`);
 }

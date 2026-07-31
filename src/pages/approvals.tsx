@@ -1,3 +1,4 @@
+import { MobileRouteContext } from "@/components/shared/mobile-route-context";
 import { useEffect, useState, useCallback } from "react";
 import { CheckCircle, Check, X } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
@@ -19,7 +20,7 @@ const KIND_LABEL: Record<string, string> = {
   debit_note: "Debit note",
 };
 
-export function ApprovalsPage() {
+function ApprovalsPageContent() {
   const user = useAuthStore((s) => s.user);
   const [items, setItems] = useState<ApprovalRequest[]>([]);
   const [loading, setLoading] = useState(true);
@@ -88,5 +89,14 @@ export function ApprovalsPage() {
         </div>
       )}
     </div>
+  );
+}
+
+export function ApprovalsPage() {
+  return (
+    <>
+      <MobileRouteContext />
+      <ApprovalsPageContent />
+    </>
   );
 }

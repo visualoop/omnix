@@ -1,3 +1,4 @@
+import { MobileRouteContext } from "@/components/shared/mobile-route-context";
 import { useEffect, useState } from "react";
 import { Calculator, Calendar } from "@phosphor-icons/react";
 import { Input } from "@/components/ui/input";
@@ -14,7 +15,7 @@ const TYPE_LABEL: Record<AccountType, string> = {
   expense: "Expenses",
 };
 
-export function TrialBalancePage() {
+function TrialBalancePageContent() {
   const [asOf, setAsOf] = useState(new Date().toISOString().slice(0, 10));
   const [rows, setRows] = useState<TrialBalanceRow[]>([]);
   const [loading, setLoading] = useState(false);
@@ -39,7 +40,7 @@ export function TrialBalancePage() {
 
   return (
     <div className="max-w-4xl mx-auto w-full space-y-5">
-      <header className="flex items-start justify-between">
+      <header className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <BackButton fallback="/analytics" />
           <h1 className="text-xl font-semibold flex items-center gap-2">
@@ -50,9 +51,9 @@ export function TrialBalancePage() {
             match, every journal entry posted is balanced.
           </p>
         </div>
-        <div className="relative">
+        <div className="relative w-full sm:w-auto">
           <Calendar className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground pointer-events-none" />
-          <Input type="date" value={asOf} onChange={(e) => setAsOf(e.target.value)} className="pl-8 w-[160px]" />
+          <Input type="date" value={asOf} onChange={(e) => setAsOf(e.target.value)} className="w-full pl-8 sm:w-[160px]" />
         </div>
       </header>
 
@@ -115,5 +116,14 @@ export function TrialBalancePage() {
         </div>
       )}
     </div>
+  );
+}
+
+export function TrialBalancePage() {
+  return (
+    <>
+      <MobileRouteContext />
+      <TrialBalancePageContent />
+    </>
   );
 }

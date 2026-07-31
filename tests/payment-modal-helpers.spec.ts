@@ -94,9 +94,14 @@ vi.mock("@paystack/inline-js", () => ({
 }));
 
 import { payByPaystackPopup } from "@/services/paystack-popup";
+import { useCountry } from "@/stores/country";
 
 describe("payByPaystackPopup", () => {
-  beforeEach(() => { lastOptions = null; driver = null; });
+  beforeEach(() => {
+    lastOptions = null;
+    driver = null;
+    useCountry.setState({ code: "KE", currencyCode: "KES", loaded: true });
+  });
 
   it("converts KES to the minor unit (×100) and passes KES currency", () => {
     payByPaystackPopup({ publicKey: "pk_test_x", email: "a@b.com", amountKes: 1500, reference: "OMX-1" });
@@ -109,6 +114,26 @@ describe("payByPaystackPopup", () => {
   it("rounds fractional KES to whole cents", () => {
     payByPaystackPopup({ publicKey: "pk", email: "a@b.com", amountKes: 99.999, reference: "r" });
     expect(lastOptions?.amount).toBe(10000);
+  });
+
+  it.each([
+    ["UG", "UGX"],
+    ["TZ", "TZS"],
+    ["RW", "RWF"],
+  ] as const)("rejects unsupported %s Paystack charges without currency substitution", async (code, currencyCode) => {
+    useCountry.setState({ code, currencyCode, loaded: true });
+
+    const result = await payByPaystackPopup({
+      publicKey: "pk",
+      email: "a@b.com",
+      amountKes: 100,
+      reference: `unsupported-${code}`,
+    });
+
+    expect(result).toMatchObject({ status: "error", reference: `unsupported-${code}` });
+    expect(result.message).toContain(`does not support ${currencyCode}`);
+    expect(result.message).toContain("No currency conversion was applied");
+    expect(lastOptions).toBeNull();
   });
 
   it("resolves success when onSuccess fires", async () => {

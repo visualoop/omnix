@@ -18,6 +18,7 @@
  */
 import { execute as dbExecute, query } from "@/lib/db";
 import type { Permission } from "@/lib/permissions";
+import { money } from "@/lib/money";
 
 export type ActionId =
   | "set_product_category"
@@ -146,7 +147,7 @@ const draftPO: ActionDef<DraftPOPayload> = {
     const lines: PreviewLine[] = [
       { label: "Supplier", value: p.supplier_name },
       { label: "Line items", value: String(p.items.length) },
-      { label: "Estimated total", value: `KES ${total.toLocaleString()}` },
+      { label: "Estimated total", value: money(total) },
       ...p.items.slice(0, 8).map((i) => ({ label: "·", value: `${i.product_name} × ${i.quantity}` })),
       ...(p.items.length > 8 ? [{ label: "·", value: `…and ${p.items.length - 8} more` }] : []),
     ];

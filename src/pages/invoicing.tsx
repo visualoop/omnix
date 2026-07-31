@@ -1,3 +1,4 @@
+import { MobileRouteContext } from "@/components/shared/mobile-route-context";
 import { useEffect, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import {
@@ -26,11 +27,11 @@ import { pageInvoices } from "@/services/paged";
 import { useListData } from "@/hooks/use-list-data";
 import { PaginationBar } from "@/components/pagination-bar";
 import { useActiveBranch } from "@/stores/active-branch";
-import { money as KES } from "@/lib/money";
+import { money } from "@/lib/money";
 import { intlLocale } from "@/lib/intl";
 
 
-export function InvoicingPage() {
+function InvoicingPageContent() {
   const navigate = useNavigate();
   const [tab, setTab] = useState<"invoices" | "quotations" | "aged">("invoices");
   const branchId = useActiveBranch((s) => s.active?.id);
@@ -43,7 +44,7 @@ export function InvoicingPage() {
         title="Invoicing"
         description="Quotations, B2B invoices, and aged receivables."
         actions={
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <Button variant="outline" onClick={() => navigate("/invoicing/recurring")}>
               <Repeat className="h-4 w-4 mr-1.5" /> Recurring
             </Button>
@@ -108,10 +109,10 @@ function InvoiceList({ branchId }: { branchId?: string }) {
 
   return (
     <div className="space-y-3">
-      <div className="grid grid-cols-3 gap-3">
-        <Stat label="Total invoiced" value={KES(totals.invoiced)} />
-        <Stat label="Outstanding" value={KES(totalUnpaid)} color="text-amber-600" />
-        <Stat label="Collected" value={KES(totalPaid)} color="text-emerald-600" />
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-3 sm:gap-3">
+        <Stat label="Total invoiced" value={money(totals.invoiced)} />
+        <Stat label="Outstanding" value={money(totalUnpaid)} color="text-amber-600" />
+        <Stat label="Collected" value={money(totalPaid)} color="text-emerald-600" />
       </div>
 
       <div className="flex gap-2">
@@ -167,9 +168,9 @@ function InvoiceList({ branchId }: { branchId?: string }) {
                     {formatDate(i.due_date)}
                     {i.status === "overdue" && <Badge variant="destructive" className="ml-1 text-[9px]">Overdue</Badge>}
                   </td>
-                  <td className="px-3 py-2 text-right text-xs font-mono tabular-nums">{KES(i.total)}</td>
+                  <td className="px-3 py-2 text-right text-xs font-mono tabular-nums">{money(i.total)}</td>
                   <td className="px-3 py-2 text-right text-xs font-mono tabular-nums">
-                    {i.total - i.amount_paid > 0 ? KES(i.total - i.amount_paid) : "—"}
+                    {i.total - i.amount_paid > 0 ? money(i.total - i.amount_paid) : "—"}
                   </td>
                   <td className="px-3 py-2 text-center">
                     <InvoiceStatusBadge status={i.status} />
@@ -231,7 +232,7 @@ function QuotationList() {
                 <td className="px-3 py-2 text-xs">{q.customer_name}</td>
                 <td className="px-3 py-2 text-xs text-muted-foreground">{formatDate(q.issue_date)}</td>
                 <td className="px-3 py-2 text-xs text-muted-foreground">{formatDate(q.valid_until)}</td>
-                <td className="px-3 py-2 text-right text-xs font-mono tabular-nums">{KES(q.total)}</td>
+                <td className="px-3 py-2 text-right text-xs font-mono tabular-nums">{money(q.total)}</td>
                 <td className="px-3 py-2 text-center">
                   <QuotationStatusBadge status={q.status} />
                 </td>
@@ -263,12 +264,12 @@ function AgedReceivablesView() {
 
   return (
     <div className="space-y-3">
-      <div className="grid grid-cols-5 gap-2">
-        <Stat label="Current" value={KES(totals.current)} color="text-emerald-600" />
-        <Stat label="31-60 days" value={KES(totals.days_30)} color="text-amber-600" />
-        <Stat label="61-90 days" value={KES(totals.days_60)} color="text-orange-600" />
-        <Stat label="90+ days" value={KES(totals.days_90)} color="text-red-600" />
-        <Stat label="Total Outstanding" value={KES(totals.total)} highlight />
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-5">
+        <Stat label="Current" value={money(totals.current)} color="text-emerald-600" />
+        <Stat label="31-60 days" value={money(totals.days_30)} color="text-amber-600" />
+        <Stat label="61-90 days" value={money(totals.days_60)} color="text-orange-600" />
+        <Stat label="90+ days" value={money(totals.days_90)} color="text-red-600" />
+        <Stat label="Total Outstanding" value={money(totals.total)} highlight />
       </div>
 
       <div className="border border-border rounded-md overflow-hidden">
@@ -298,11 +299,11 @@ function AgedReceivablesView() {
               data.map((r) => (
                 <tr key={r.customer_id || r.customer_name} className="border-b border-border/60">
                   <td className="px-3 py-2 text-xs font-medium">{r.customer_name}</td>
-                  <td className="px-3 py-2 text-right text-xs font-mono tabular-nums">{r.current > 0 ? KES(r.current) : "—"}</td>
-                  <td className="px-3 py-2 text-right text-xs font-mono tabular-nums text-amber-600">{r.days_30 > 0 ? KES(r.days_30) : "—"}</td>
-                  <td className="px-3 py-2 text-right text-xs font-mono tabular-nums text-orange-600">{r.days_60 > 0 ? KES(r.days_60) : "—"}</td>
-                  <td className="px-3 py-2 text-right text-xs font-mono tabular-nums text-red-600">{r.days_90 > 0 ? KES(r.days_90) : "—"}</td>
-                  <td className="px-3 py-2 text-right text-xs font-mono tabular-nums font-semibold">{KES(r.total)}</td>
+                  <td className="px-3 py-2 text-right text-xs font-mono tabular-nums">{r.current > 0 ? money(r.current) : "—"}</td>
+                  <td className="px-3 py-2 text-right text-xs font-mono tabular-nums text-amber-600">{r.days_30 > 0 ? money(r.days_30) : "—"}</td>
+                  <td className="px-3 py-2 text-right text-xs font-mono tabular-nums text-orange-600">{r.days_60 > 0 ? money(r.days_60) : "—"}</td>
+                  <td className="px-3 py-2 text-right text-xs font-mono tabular-nums text-red-600">{r.days_90 > 0 ? money(r.days_90) : "—"}</td>
+                  <td className="px-3 py-2 text-right text-xs font-mono tabular-nums font-semibold">{money(r.total)}</td>
                 </tr>
               ))
             )}
@@ -313,7 +314,7 @@ function AgedReceivablesView() {
       {totals.days_90 > 0 && (
         <div className="text-xs text-red-600 flex items-center gap-1.5">
           <AlertCircle className="h-3.5 w-3.5" />
-          {KES(totals.days_90)} is over 90 days overdue. Consider follow-up or write-off.
+          {money(totals.days_90)} is over 90 days overdue. Consider follow-up or write-off.
         </div>
       )}
     </div>
@@ -355,4 +356,13 @@ function QuotationStatusBadge({ status }: { status: QuotationStatus }) {
 
 function formatDate(s: string): string {
   return new Date(s).toLocaleDateString(intlLocale(), { day: "2-digit", month: "short", year: "numeric" });
+}
+
+export function InvoicingPage() {
+  return (
+    <>
+      <MobileRouteContext />
+      <InvoicingPageContent />
+    </>
+  );
 }

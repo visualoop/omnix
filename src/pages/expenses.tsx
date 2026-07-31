@@ -1,3 +1,4 @@
+import { MobileRouteContext } from "@/components/shared/mobile-route-context";
 import { useState, useEffect, useCallback } from "react";
 import {
   Plus,
@@ -8,6 +9,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { PageHeader } from "@/components/layout/page-header";
+import { Combobox } from "@/components/ui/combobox";
+import { money } from "@/lib/money";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
@@ -18,7 +21,7 @@ import { PaginationBar } from "@/components/pagination-bar";
 import { useAuthStore } from "@/stores/auth";
 import { toast } from "sonner";
 
-export function ExpensesPage() {
+function ExpensesPageContent() {
   const [categories, setCategories] = useState<ExpenseCategory[]>([]);
   const [panelOpen, setPanelOpen] = useState(false);
   const [period, setPeriod] = useState(30);
@@ -98,10 +101,7 @@ export function ExpensesPage() {
 
       <div className="border border-border rounded-lg p-4">
         <span className="text-xs text-muted-foreground">Total Expenses</span>
-        <p className="text-2xl font-semibold mt-1 font-mono">
-          <span className="text-xs text-muted-foreground mr-1">KES</span>
-          {total.toFixed(2)}
-        </p>
+<p className="mt-1 font-mono text-2xl font-semibold">{money(total)}</p>
       </div>
 
       {expenses.length === 0 ? (
@@ -213,14 +213,18 @@ function ExpensePanel({ open, onClose, categories, onSaved }: { open: boolean; o
 
   return (
     <Sheet open={open} onOpenChange={(v) => !v && onClose()}>
-      <SheetContent className="w-[400px]">
+      <SheetContent className="w-full max-w-full overflow-y-auto sm:w-[400px] sm:max-w-[400px]">
         <SheetHeader><SheetTitle>Add Expense</SheetTitle></SheetHeader>
         <div className="space-y-4 mt-6">
           <Field label="Category *">
-            <Select value={form.category_id} onValueChange={(v) => setForm({ ...form, category_id: String(v) })}><SelectTrigger><SelectValue placeholder="Select category" /></SelectTrigger><SelectContent>
-              
-              {categories.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
-            </SelectContent></Select>
+            <Combobox
+              value={form.category_id}
+              onChange={(categoryId) => setForm({ ...form, category_id: categoryId })}
+              options={categories.map((category) => ({ value: category.id, label: category.name }))}
+              placeholder="Select category"
+              searchPlaceholder="Search expense categories…"
+              emptyText="No expense categories exist. Add one before recording an expense."
+            />
           </Field>
 
           <Field label="Amount *">
@@ -231,7 +235,7 @@ function ExpensePanel({ open, onClose, categories, onSaved }: { open: boolean; o
             <Input value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="What was this for?" />
           </Field>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <Field label="Payment method">
               <Select value={form.payment_method} onValueChange={(v) => setForm({ ...form, payment_method: String(v) })}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>
                 <SelectItem value="cash">Cash</SelectItem>
@@ -273,5 +277,14 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
       <label className="text-xs font-medium text-muted-foreground">{label}</label>
       {children}
     </div>
+  );
+}
+
+export function ExpensesPage() {
+  return (
+    <>
+      <MobileRouteContext />
+      <ExpensesPageContent />
+    </>
   );
 }

@@ -1,3 +1,5 @@
+import { MobileRouteContext } from "@/components/shared/mobile-route-context";
+import { money } from "@/lib/money";
 import { useState, useEffect } from "react";
 import {
   FileText,
@@ -14,7 +16,7 @@ import { printShiftHandover } from "@/services/shift-handover";
 import { useAuthStore } from "@/stores/auth";
 import { toast } from "sonner";
 
-export function CashRegisterPage() {
+function CashRegisterPageContent() {
   const user = useAuthStore((s) => s.user);
   const [openShiftData, setOpenShiftData] = useState<CashShift | null>(null);
   const [shifts, setShifts] = useState<CashShift[]>([]);
@@ -62,7 +64,7 @@ export function CashRegisterPage() {
             </div>
             <div>
               <p className="text-xs text-muted-foreground">Opening balance</p>
-              <p className="text-sm font-mono">KES {openShiftData.opening_balance.toFixed(2)}</p>
+              <p className="text-sm font-mono">{money(openShiftData.opening_balance)}</p>
             </div>
           </div>
         </div>
@@ -154,5 +156,14 @@ export function CashRegisterPage() {
         onClosed={() => { setCloseDialog(false); load(); }}
       />
     </div>
+  );
+}
+
+export function CashRegisterPage() {
+  return (
+    <>
+      <MobileRouteContext />
+      <CashRegisterPageContent />
+    </>
   );
 }

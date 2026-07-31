@@ -16,12 +16,25 @@
 import { useCountry } from "@/stores/country";
 import { getCountry, type ComplianceFeature } from "@/lib/countries";
 
+/** Pure predicate for code paths and tests that already have a country code. */
+export function isFeatureEnabledForCountry(
+  code: string | null | undefined,
+  feature: ComplianceFeature,
+): boolean {
+  if (!code) return false;
+  return getCountry(code)?.complianceFeatures.includes(feature) ?? false;
+}
+
 /** Synchronous read — uses Zustand state directly. */
 export function isFeatureEnabled(feature: ComplianceFeature): boolean {
-  const code = useCountry.getState().code;
-  if (!code) return false;
-  const profile = getCountry(code);
-  return profile?.complianceFeatures.includes(feature) ?? false;
+  return isFeatureEnabledForCountry(useCountry.getState().code, feature);
+}
+
+/** Reject a country-specific service operation before it reads or writes data. */
+export function requireCountryFeature(feature: ComplianceFeature, label: string): void {
+  if (!isFeatureEnabled(feature)) {
+    throw new Error(`${label} is not available for the active business country.`);
+  }
 }
 
 /** React-friendly selector (re-renders when country changes). */

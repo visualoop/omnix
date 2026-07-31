@@ -1,5 +1,9 @@
 import { fetch } from "@tauri-apps/plugin-http";
 import { query, execute } from "@/lib/db";
+import { useCountry } from "@/stores/country";
+import { getCountry } from "@/lib/countries";
+import { toIntlDigits } from "@/lib/phone";
+import { getPaystackCurrency } from "@/lib/paystack-currency";
 
 export interface PaystackConfig {
   id: string;
@@ -69,7 +73,8 @@ export async function disablePaystack(): Promise<void> {
 // Verify Paystack credentials by calling /bank endpoint (lightweight check)
 export async function verifyPaystackKey(secretKey: string): Promise<{ ok: boolean; error?: string }> {
   try {
-    const res = await fetch(`${PAYSTACK_BASE}/bank?country=kenya`, {
+    const countryName = getCountry(useCountry.getState().code ?? "")?.name.toLowerCase() ?? "";
+    const res = await fetch(`${PAYSTACK_BASE}/bank?country=${encodeURIComponent(countryName)}`, {
       method: "GET",
       headers: { Authorization: `Bearer ${secretKey}` },
     });
@@ -88,12 +93,14 @@ export async function initiateMpesaCharge(params: {
   email: string;
   saleId?: string;
 }): Promise<{ reference: string; display_text?: string; transaction_id: string }> {
+  const currency = getPaystackCurrency();
   const config = await getPaystackConfig();
   if (!config?.secret_key || !config.active) {
     throw new Error("Paystack not configured");
   }
 
-  const cleanPhone = formatKenyanPhone(params.phone);
+  const cleanPhone = toIntlDigits(params.phone);
+  if (!cleanPhone) throw new Error("Enter a valid mobile number for the active business country.");
   const txId = crypto.randomUUID();
 
   // Record pending transaction
@@ -113,7 +120,7 @@ export async function initiateMpesaCharge(params: {
       body: JSON.stringify({
         email: params.email,
         amount: Math.round(params.amount * 100), // Paystack uses kobo/cents
-        currency: "KES",
+        currency,
         mobile_money: {
           phone: cleanPhone,
           provider: "mpesa",
@@ -231,13 +238,4 @@ export async function getRecentTransactions(limit = 50): Promise<PaymentTransact
     "SELECT * FROM payment_transactions ORDER BY initiated_at DESC LIMIT ?1",
     [limit]
   );
-}
-
-// Helper: format Kenyan phone to 254XXXXXXXXX
-function formatKenyanPhone(phone: string): string {
-  const digits = phone.replace(/\D/g, "");
-  if (digits.startsWith("254")) return digits;
-  if (digits.startsWith("0")) return "254" + digits.slice(1);
-  if (digits.startsWith("7") || digits.startsWith("1")) return "254" + digits;
-  return digits;
 }

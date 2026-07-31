@@ -4,6 +4,11 @@
  * Each function returns a CSV string. Caller saves to disk via Tauri or browser download.
  */
 import { query } from "@/lib/db";
+import { requireCountryFeature } from "@/lib/features";
+
+function requireKenyanPayrollExport(): void {
+  requireCountryFeature("kra_pin", "Kenya statutory payroll exports");
+}
 
 const csvEscape = (v: any): string => {
   const s = v === null || v === undefined ? "" : String(v);
@@ -52,6 +57,7 @@ async function getPayrollRows(runId: string): Promise<PayrollExportRow[]> {
  * Headers per KRA's PAYE_iTax_Excel_Template (simplified column set).
  */
 export async function exportPayeP10Csv(runId: string): Promise<string> {
+  requireKenyanPayrollExport();
   const rows = await getPayrollRows(runId);
   const header = csvRow([
     "PIN of Employee",
@@ -92,6 +98,7 @@ export async function exportPayeP10Csv(runId: string): Promise<string> {
  * NSSF Year 4 monthly return CSV.
  */
 export async function exportNssfReturnCsv(runId: string): Promise<string> {
+  requireKenyanPayrollExport();
   const rows = await getPayrollRows(runId);
   const header = csvRow([
     "Member Number",
@@ -122,6 +129,7 @@ export async function exportNssfReturnCsv(runId: string): Promise<string> {
  * SHIF (formerly NHIF) monthly contribution return.
  */
 export async function exportShifReturnCsv(runId: string): Promise<string> {
+  requireKenyanPayrollExport();
   const rows = await getPayrollRows(runId);
   const header = csvRow([
     "SHIF Number",
@@ -146,6 +154,7 @@ export async function exportShifReturnCsv(runId: string): Promise<string> {
  * Affordable Housing Levy (AHL) monthly return.
  */
 export async function exportHousingLevyReturnCsv(runId: string): Promise<string> {
+  requireKenyanPayrollExport();
   const rows = await getPayrollRows(runId);
   const header = csvRow([
     "KRA PIN",

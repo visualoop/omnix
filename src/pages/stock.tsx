@@ -1,14 +1,15 @@
+import { MobileRouteContext } from "@/components/shared/mobile-route-context";
 import { useState, useEffect } from "react";
 import { getStockMovements, getProducts, adjustStock, type Product } from "@/services/inventory";
 import { Button } from "@/components/ui/button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Combobox } from "@/components/ui/combobox";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { toast } from "sonner";
 
 import { BackButton } from "@/components/ui/back-button";
-export function StockPage() {
+function StockPageContent() {
   const [movements, setMovements] = useState<Array<{
     id: string; product_name: string; type: string; quantity: number; notes: string | null; created_at: string;
   }>>([]);
@@ -19,9 +20,11 @@ export function StockPage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <BackButton fallback="/inventory" />
-        <h1 className="text-xl font-semibold tracking-tight">Stock Movements</h1>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <BackButton fallback="/inventory" />
+          <h1 className="text-xl font-semibold tracking-tight">Stock Movements</h1>
+        </div>
         <Button size="sm" onClick={() => setAdjustOpen(true)}>Adjust Stock</Button>
       </div>
 
@@ -83,21 +86,19 @@ function AdjustPanel({ open, onClose, onSaved }: { open: boolean; onClose: () =>
 
   return (
     <Sheet open={open} onOpenChange={(v) => !v && onClose()}>
-      <SheetContent className="w-[380px]">
+      <SheetContent className="w-full max-w-full overflow-y-auto sm:w-[380px] sm:max-w-[380px]">
         <SheetHeader><SheetTitle>Adjust Stock</SheetTitle></SheetHeader>
         <div className="space-y-4 mt-6">
           <div className="space-y-1.5">
             <label className="text-xs font-medium text-muted-foreground">Product</label>
-            <Select value={productId} onValueChange={(v) => setProductId(v as string)}>
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder="Select product" />
-              </SelectTrigger>
-              <SelectContent>
-                {products.map((p) => (
-                  <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <Combobox
+              value={productId}
+              onChange={setProductId}
+              options={products.map((product) => ({ value: product.id, label: product.name, hint: product.sku ?? undefined }))}
+              placeholder="Select product"
+              searchPlaceholder="Search products…"
+              emptyText="No products match. Add products from Inventory first."
+            />
           </div>
           <div className="space-y-1.5">
             <label className="text-xs font-medium text-muted-foreground">Quantity (+ to add, - to remove)</label>
@@ -111,5 +112,14 @@ function AdjustPanel({ open, onClose, onSaved }: { open: boolean; onClose: () =>
         </div>
       </SheetContent>
     </Sheet>
+  );
+}
+
+export function StockPage() {
+  return (
+    <>
+      <MobileRouteContext />
+      <StockPageContent />
+    </>
   );
 }

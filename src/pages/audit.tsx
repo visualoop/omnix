@@ -1,3 +1,4 @@
+import { MobileRouteContext } from "@/components/shared/mobile-route-context";
 import { useCallback, useState } from "react";
 import {
   Pulse as Activity,
@@ -19,7 +20,7 @@ import { PaginationBar } from "@/components/pagination-bar";
 
 import { BackButton } from "@/components/ui/back-button";
 
-export function AuditLogPage() {
+function AuditLogPageContent() {
   const [filter, setFilter] = useState<"all" | "license" | "sale" | "void" | "permission">("all");
 
   const fetcher = useCallback(
@@ -152,5 +153,14 @@ function AuditRow({ entry }: { entry: AuditRowType }) {
         </div>
       </div>
     </div>
+  );
+}
+
+export function AuditLogPage() {
+  return (
+    <>
+      <MobileRouteContext />
+      <AuditLogPageContent />
+    </>
   );
 }

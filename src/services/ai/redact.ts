@@ -4,10 +4,10 @@
  * person or business should ever ship to a third-party LLM provider."
  *
  * Patterns covered:
- *   - Kenyan phone numbers: 07xx, 01xx, +2547xx, 2547xx, etc.
+ *   - East African phone numbers: local or +250/+254/+255/+256
  *   - Email addresses
- *   - KRA PIN format (A123456789B → 11 chars, alpha-num-alpha)
- *   - Kenyan ID numbers (8-digit standalone)
+ *   - Tax identifiers, including KRA's alpha-numeric PIN format
+ *   - Standalone national/registration identifier numbers
  *   - Bearer tokens / API keys (prefix-style sk-, gsk_, sk_, OMNIX-)
  *
  * Names are NOT auto-redacted (too many false positives on product names
@@ -16,12 +16,12 @@
  */
 
 const PATTERNS: Array<[RegExp, string]> = [
-  // Phone numbers (Kenya): +254XXXXXXXXX, 254XXXXXXXXX, 0XXXXXXXXX (10-13 digits)
-  [/(?:\+?254|0)[17]\d{8}\b/g, "[PHONE]"],
+  // Launch-country phones: +250/+254/+255/+256 or a local leading zero.
+  [/(?:\+?(?:250|254|255|256)|0)[1-9]\d{7,9}\b/g, "[PHONE]"],
   // Generic emails
   [/[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}/gi, "[EMAIL]"],
-  // KRA PIN: letter, 9 digits, letter (case-insensitive)
-  [/\b[A-Za-z]\d{9}[A-Za-z]\b/g, "[KRA_PIN]"],
+  // Alpha-numeric tax ID format used by KRA and similar authorities.
+  [/\b[A-Za-z]\d{9}[A-Za-z]\b/g, "[TAX_ID]"],
   // Kenyan national ID — standalone 7-9 digit run not preceded/followed by another digit
   [/(?<!\d)\d{7,9}(?!\d)/g, "[ID]"],
   // API keys with common prefixes

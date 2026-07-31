@@ -1,3 +1,4 @@
+import { MobileRouteContext } from "@/components/shared/mobile-route-context";
 import { useEffect, useState } from "react";
 import { confirm, prompt } from "@/components/ui/confirm-dialog";
 import {
@@ -8,7 +9,7 @@ import {
   X,
 } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Combobox } from "@/components/ui/combobox";
 import { PageHeader } from "@/components/layout/page-header";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -29,7 +30,7 @@ import { useAuthStore } from "@/stores/auth";
 import { toast } from "sonner";
 import { intlLocale } from "@/lib/intl";
 
-export function LeavePage() {
+function LeavePageContent() {
   const [tab, setTab] = useState<LeaveStatus>("pending");
   const [requests, setRequests] = useState<LeaveRequestWithDetails[]>([]);
   const [types, setTypes] = useState<LeaveType[]>([]);
@@ -248,26 +249,30 @@ function NewLeaveRequest({ open, onClose, onSaved, types, employees }: {
 
   return (
     <Sheet open={open} onOpenChange={(o) => !o && onClose()}>
-      <SheetContent side="right" className="w-[440px] sm:max-w-[440px]">
+      <SheetContent side="right" className="w-full max-w-full overflow-y-auto sm:w-[440px] sm:max-w-[440px]">
         <SheetHeader>
           <SheetTitle>New Leave Request</SheetTitle>
         </SheetHeader>
         <div className="flex-1 overflow-auto space-y-3">
           <Field label="Employee">
-            <Select value={form.employee_id} onValueChange={(v) => setForm({ ...form, employee_id: String(v) })}><SelectTrigger><SelectValue placeholder="Select employee..." /></SelectTrigger><SelectContent>
-              
-              {employees.map((e) => (
-                <SelectItem key={e.id} value={e.id}>{e.full_name} — {e.employee_number}</SelectItem>
-              ))}
-            </SelectContent></Select>
+            <Combobox
+              value={form.employee_id}
+              onChange={(employeeId) => setForm({ ...form, employee_id: employeeId })}
+              options={employees.map((employee) => ({ value: employee.id, label: employee.full_name, hint: employee.employee_number }))}
+              placeholder="Select employee"
+              searchPlaceholder="Search employees…"
+              emptyText="No employees available. Add an employee first."
+            />
           </Field>
           <Field label="Leave Type">
-            <Select value={form.leave_type_id} onValueChange={(v) => setForm({ ...form, leave_type_id: String(v) })}><SelectTrigger><SelectValue placeholder="Select type..." /></SelectTrigger><SelectContent>
-              
-              {types.map((t) => (
-                <SelectItem key={t.id} value={t.id}>{t.name} ({t.days_per_year}d/yr)</SelectItem>
-              ))}
-            </SelectContent></Select>
+            <Combobox
+              value={form.leave_type_id}
+              onChange={(leaveTypeId) => setForm({ ...form, leave_type_id: leaveTypeId })}
+              options={types.map((type) => ({ value: type.id, label: type.name, hint: `${type.days_per_year}d/yr` }))}
+              placeholder="Select leave type"
+              searchPlaceholder="Search leave types…"
+              emptyText="No leave types are configured. Ask an administrator to add one."
+            />
           </Field>
 
           {balance && (
@@ -280,7 +285,7 @@ function NewLeaveRequest({ open, onClose, onSaved, types, employees }: {
             </Card>
           )}
 
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <Field label="Start Date">
               <Input type="date" value={form.start_date} onChange={(e) => setForm({ ...form, start_date: e.target.value })} />
             </Field>
@@ -327,4 +332,13 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 
 function formatDate(s: string): string {
   return new Date(s).toLocaleDateString(intlLocale(), { day: "2-digit", month: "short", year: "numeric" });
+}
+
+export function LeavePage() {
+  return (
+    <>
+      <MobileRouteContext />
+      <LeavePageContent />
+    </>
+  );
 }

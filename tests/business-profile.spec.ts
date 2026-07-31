@@ -13,11 +13,14 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 
 // Mock the db layer the service depends on.
 const queryMock = vi.fn();
+const executeMock = vi.fn();
 vi.mock("@/lib/db", () => ({
   query: (...args: unknown[]) => queryMock(...args),
+  execute: (...args: unknown[]) => executeMock(...args),
 }));
 
 import { getBusinessProfile, getBusinessName } from "@/services/business-profile";
+import { useCountry } from "@/stores/country";
 
 function routeQuery(sql: string): unknown[] {
   if (/FROM\s+business/i.test(sql)) {
@@ -41,7 +44,10 @@ function routeQuery(sql: string): unknown[] {
 describe("getBusinessProfile", () => {
   beforeEach(() => {
     queryMock.mockReset();
+    executeMock.mockReset();
+    executeMock.mockResolvedValue(1);
     queryMock.mockImplementation((sql: string) => Promise.resolve(routeQuery(sql)));
+    useCountry.setState({ code: null, currencyCode: null, loaded: false });
   });
 
   it("reads the real business name from the business table, not a placeholder", async () => {
@@ -50,9 +56,18 @@ describe("getBusinessProfile", () => {
     expect(p.name).not.toBe("Your Business");
   });
 
-  it("folds in the KRA PIN from etims_config", async () => {
+  it("folds in the KRA PIN from etims_config for Kenya", async () => {
     const p = await getBusinessProfile();
     expect(p.kraPin).toBe("P051234567X");
+  });
+
+  it("does not expose Kenya KRA data for another business country", async () => {
+    useCountry.setState({ code: "UG", currencyCode: "UGX", loaded: true });
+
+    const p = await getBusinessProfile();
+
+    expect(p.kraPin).toBeNull();
+    expect(queryMock.mock.calls.some(([sql]) => /FROM\s+etims_config/i.test(String(sql)))).toBe(false);
   });
 
   it("carries address, phone, email through", async () => {

@@ -23,6 +23,9 @@ import {
   toBytes,
 } from "@/services/pdf-engine"
 import autoTable from "jspdf-autotable"
+import { intlLocale } from "@/lib/intl"
+import { getBusinessCurrencyCode } from "@/stores/country"
+import { requireCountryFeature } from "@/lib/features"
 
 // ─── P&L ──────────────────────────────────────────────────────────
 
@@ -65,7 +68,7 @@ export function renderPnlPdf(input: PnlPdfInput): Uint8Array {
       { label: "Expenses", value: fmtAmount(input.totals.expenses) },
       { label: "Net profit", value: fmtAmount(input.totals.netProfit) },
     ],
-    notes: "All figures in KES unless otherwise stated. Generated from completed sales only.",
+    notes: `All figures in ${getBusinessCurrencyCode()} unless otherwise stated. Generated from completed sales only.`,
   }
   return renderTabularReport(tab)
 }
@@ -252,6 +255,7 @@ export interface Vat3PdfInput {
 }
 
 export function renderVat3Pdf(input: Vat3PdfInput): Uint8Array {
+  requireCountryFeature("vat3", "Kenya VAT3 reporting");
   const payable = input.outputVat - input.inputVat
   return renderTabularReport({
     brand: input.brand,
@@ -361,7 +365,7 @@ export function renderStockTakeVariancePdf(input: StockTakeVariancePdfInput): Ui
       { label: "Expected", align: "right", width: 22 },
       { label: "Counted", align: "right", width: 22 },
       { label: "Δ", align: "right", width: 22 },
-      { label: "Value Δ (KES)", money: true, width: 30 },
+      { label: `Value Δ (${getBusinessCurrencyCode()})`, money: true, width: 30 },
     ],
     rows: input.rows.map((r) => [
       r.productName,
@@ -511,8 +515,8 @@ export function renderClaimsPdf(input: ClaimsPdfInput): Uint8Array {
       { label: "Insurer", width: 35 },
       { label: "Submitted", width: 25 },
       { label: "Status", width: 25 },
-      { label: "Claim (KES)", money: true, width: 30 },
-      { label: "Paid (KES)", money: true, width: 30 },
+      { label: `Claim (${getBusinessCurrencyCode()})`, money: true, width: 30 },
+      { label: `Paid (${getBusinessCurrencyCode()})`, money: true, width: 30 },
     ],
     rows: input.rows.map((r) => [
       r.claimNumber,
@@ -603,6 +607,7 @@ export interface P9PdfInput {
 }
 
 export function renderP9Pdf(input: P9PdfInput): Uint8Array {
+  requireCountryFeature("kra_pin", "Kenya P9 tax certificates");
   const totals = input.months.reduce(
     (s, m) => ({
       basicSalary: s.basicSalary + m.basicSalary,
@@ -678,6 +683,7 @@ export interface P10PdfInput {
 }
 
 export function renderP10Pdf(input: P10PdfInput): Uint8Array {
+  requireCountryFeature("kra_pin", "Kenya P10 PAYE returns");
   const totals = input.rows.reduce(
     (s, r) => ({
       grossPay: s.grossPay + r.grossPay,
@@ -764,8 +770,8 @@ export function renderZReportPdf(input: ZReportPdfInput): Uint8Array {
   pdf.setTextColor(0)
   pdf.setFont("helvetica", "bold")
   pdf.text(input.cashier, MARGIN_MM, y + 9)
-  pdf.text(new Date(input.shiftStart).toLocaleString("en-KE"), MARGIN_MM + 60, y + 9)
-  pdf.text(new Date(input.shiftEnd).toLocaleString("en-KE"), MARGIN_MM + 110, y + 9)
+  pdf.text(new Date(input.shiftStart).toLocaleString(intlLocale()), MARGIN_MM + 60, y + 9)
+  pdf.text(new Date(input.shiftEnd).toLocaleString(intlLocale()), MARGIN_MM + 110, y + 9)
   y += 16
 
   // Payments table

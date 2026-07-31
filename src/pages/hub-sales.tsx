@@ -4,6 +4,7 @@
  * Sales history, returns, invoicing, recurring, promotions, held.
  * /sales (sales history) keeps working as a direct route.
  */
+import { MobileRouteContext } from "@/components/shared/mobile-route-context";
 import { useAuthStore } from "@/stores/auth";
 import { hasPermission, type Permission } from "@/lib/permissions";
 import {
@@ -20,7 +21,7 @@ import { InvoicingPage } from "@/pages/invoicing";
 import { RecurringInvoicesPage } from "@/pages/recurring-invoices";
 import { PromotionsPage } from "@/pages/promotions";
 
-export function SalesHubPage() {
+function SalesHubPageContent() {
   const user = useAuthStore((s) => s.user);
   const has = (perm: string) => hasPermission(user, perm as Permission);
   return (
@@ -37,5 +38,14 @@ export function SalesHubPage() {
       ]}
       hasPermission={has}
     />
+  );
+}
+
+export function SalesHubPage() {
+  return (
+    <>
+      <MobileRouteContext />
+      <SalesHubPageContent />
+    </>
   );
 }

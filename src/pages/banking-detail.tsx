@@ -1,3 +1,4 @@
+import { MobileRouteContext } from "@/components/shared/mobile-route-context";
 import { useEffect, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
 import {
@@ -14,6 +15,7 @@ import {
   WarningCircle as AlertCircle,
 } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
+import { Combobox } from "@/components/ui/combobox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
@@ -32,12 +34,12 @@ import {
 } from "@/services/banking";
 import { useAuthStore } from "@/stores/auth";
 import { toast } from "sonner";
-import { money as KES } from "@/lib/money";
+import { money } from "@/lib/money";
 import { intlLocale } from "@/lib/intl";
 
 
 import { BackButton } from "@/components/ui/back-button";
-export function BankAccountDetailPage() {
+function BankAccountDetailPageContent() {
   const { id } = useParams<{ id: string }>();
   const userId = useAuthStore((s) => s.user?.id);
   const [account, setAccount] = useState<BankAccount | null>(null);
@@ -82,7 +84,7 @@ export function BankAccountDetailPage() {
   return (
     <div className="space-y-5">
       <div>
-        <div className="flex items-start justify-between">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
           <div>
             <BackButton fallback="/banking" />
             <h1 className="text-xl font-semibold tracking-tight flex items-center gap-2">
@@ -95,7 +97,7 @@ export function BankAccountDetailPage() {
                account.account_type}
             </p>
           </div>
-          <div className="flex gap-2">
+          <div className="flex w-full flex-wrap gap-2 lg:w-auto">
             <Button variant="outline" onClick={() => setShowImport(true)}>
               <Upload className="h-3.5 w-3.5 mr-1.5" /> Import Statement
             </Button>
@@ -109,13 +111,13 @@ export function BankAccountDetailPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-4 gap-3">
-        <Stat label="Current Balance" value={KES(account.current_balance)} highlight />
-        <Stat label="Reconciled" value={recon ? KES(recon.reconciled_balance) : "—"} color="text-emerald-600" />
-        <Stat label="Unreconciled In" value={recon ? KES(recon.unreconciled_in) : "—"} color="text-blue-600" />
+      <div className="grid grid-cols-2 gap-2 lg:grid-cols-4 lg:gap-3">
+        <Stat label="Current Balance" value={money(account.current_balance)} highlight />
+        <Stat label="Reconciled" value={recon ? money(recon.reconciled_balance) : "—"} color="text-emerald-600" />
+        <Stat label="Unreconciled In" value={recon ? money(recon.unreconciled_in) : "—"} color="text-blue-600" />
         <Stat
           label="Unreconciled Out"
-          value={recon ? KES(recon.unreconciled_out) : "—"}
+          value={recon ? money(recon.unreconciled_out) : "—"}
           color="text-amber-600"
           hint={recon?.unreconciled_count ? `${recon.unreconciled_count} txn${recon.unreconciled_count !== 1 ? "s" : ""}` : undefined}
         />
@@ -253,7 +255,7 @@ export function BankAccountDetailPage() {
                         )}
                       </td>
                       <td className="px-3 py-2 text-right text-xs font-mono tabular-nums">
-                        {KES(imp.statement_ending_balance)}
+                        {money(imp.statement_ending_balance)}
                       </td>
                     </tr>
                   ))}
@@ -364,7 +366,7 @@ function NewTransactionDialog({ open, onClose, onSaved, accountId, userId }: {
           <DialogTitle>New Transaction</DialogTitle>
         </DialogHeader>
         <div className="space-y-3 py-2">
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div className="space-y-1">
               <label className="text-[11px] font-medium text-muted-foreground">Type</label>
               <Select value={form.transaction_type} onValueChange={(v) => setForm({ ...form, transaction_type: String(v) as BankTxType })}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>
@@ -397,7 +399,7 @@ function NewTransactionDialog({ open, onClose, onSaved, accountId, userId }: {
             <Input value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="e.g., M-Pesa from John" />
           </div>
 
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div className="space-y-1">
               <label className="text-[11px] font-medium text-muted-foreground">Counterparty</label>
               <Input value={form.counterparty_name} onChange={(e) => setForm({ ...form, counterparty_name: e.target.value })} placeholder="Optional" />
@@ -464,7 +466,7 @@ function TransferDialog({ open, onClose, onSaved, currentAccount, userId }: {
     if (amount > currentAccount.current_balance) {
       if (!(await confirm({
         title: "Amount exceeds balance",
-        description: `Source account has only ${KES(currentAccount.current_balance)}. Continue anyway?`,
+        description: `Source account has only ${money(currentAccount.current_balance)}. Continue anyway?`,
         variant: "warning",
       }))) return;
     }
@@ -493,20 +495,28 @@ function TransferDialog({ open, onClose, onSaved, currentAccount, userId }: {
         </DialogHeader>
         <div className="space-y-3 py-2">
           <div className="text-xs bg-muted/30 rounded p-2">
-            From: <b>{currentAccount.name}</b> · Balance {KES(currentAccount.current_balance)}
+            From: <b>{currentAccount.name}</b> · Balance {money(currentAccount.current_balance)}
           </div>
 
           <div className="space-y-1">
             <label className="text-[11px] font-medium text-muted-foreground">To Account</label>
-            <Select value={toAccountId} onValueChange={(v) => setToAccountId(String(v))}><SelectTrigger><SelectValue placeholder="Select destination..." /></SelectTrigger><SelectContent>
-              
-              {accounts.filter((a) => a.id !== currentAccount.id).map((a) => (
-                <SelectItem key={a.id} value={a.id}>{a.name} · {KES(a.current_balance)}</SelectItem>
-              ))}
-            </SelectContent></Select>
+            <Combobox
+              value={toAccountId}
+              onChange={setToAccountId}
+              options={accounts
+                .filter((candidate) => candidate.id !== currentAccount.id)
+                .map((candidate) => ({
+                  value: candidate.id,
+                  label: candidate.name,
+                  hint: money(candidate.current_balance),
+                }))}
+              placeholder="Select destination"
+              searchPlaceholder="Search accounts…"
+              emptyText="No other accounts exist. Add a bank or cash account first."
+            />
           </div>
 
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div className="space-y-1">
               <label className="text-[11px] font-medium text-muted-foreground">Amount</label>
               <Input type="number" value={amount} onChange={(e) => setAmount(parseFloat(e.target.value) || 0)} autoFocus />
@@ -654,7 +664,7 @@ function ImportStatementDialog({ open, onClose, onImported, accountId, userId }:
                 </Button>
               </div>
 
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <div className="space-y-1">
                   <label className="text-[11px] font-medium text-muted-foreground">Period Start</label>
                   <Input type="date" value={periodStart} onChange={(e) => setPeriodStart(e.target.value)} />
@@ -770,7 +780,7 @@ function StatementImportSheet({ importId, accountId, userId, onClose, onChange }
 
   return (
     <Sheet open={!!importId} onOpenChange={(o) => !o && onClose()}>
-      <SheetContent side="right" className="w-[800px] sm:max-w-[800px]">
+      <SheetContent side="right" className="w-full max-w-full overflow-y-auto sm:w-[800px] sm:max-w-[800px]">
         <SheetHeader>
           <SheetTitle>Statement Import — {data.import.period_start} to {data.import.period_end}</SheetTitle>
         </SheetHeader>
@@ -779,7 +789,7 @@ function StatementImportSheet({ importId, accountId, userId, onClose, onChange }
             <Stat label="Total Lines" value={String(data.import.line_count)} />
             <Stat label="Matched" value={String(data.import.matched_count)} color="text-emerald-600" />
             <Stat label="Unmatched" value={String(data.import.unmatched_count)} color={data.import.unmatched_count > 0 ? "text-amber-600" : ""} />
-            <Stat label="End Balance" value={KES(data.import.statement_ending_balance)} />
+            <Stat label="End Balance" value={money(data.import.statement_ending_balance)} />
           </div>
 
           {unmatchedLines.length > 0 && (
@@ -866,5 +876,14 @@ function StatementImportSheet({ importId, accountId, userId, onClose, onChange }
         </div>
       </SheetContent>
     </Sheet>
+  );
+}
+
+export function BankAccountDetailPage() {
+  return (
+    <>
+      <MobileRouteContext />
+      <BankAccountDetailPageContent />
+    </>
   );
 }

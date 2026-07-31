@@ -1,3 +1,4 @@
+import { MobileRouteContext } from "@/components/shared/mobile-route-context";
 import { useState, useEffect } from "react";
 import {
   Download,
@@ -11,9 +12,16 @@ import { exportToCSV } from "@/lib/export";
 import { renderVat3Pdf } from "@/services/reports-pdf";
 import { loadBrandHeader, downloadBytes } from "@/services/pdf-brand";
 import { money } from "@/lib/money";
+import { taxLabel } from "@/lib/locale";
+import { useCountry } from "@/stores/country";
 
 import { BackButton } from "@/components/ui/back-button";
-export function VatReportPage() {
+function VatReportPageContent() {
+  const countryCode = useCountry((state) => state.code);
+  const countryProfile = useCountry((state) => state.profile());
+  const activeTaxLabel = taxLabel(countryCode);
+  const standardRate = countryProfile?.defaultTaxRate ?? 0;
+  const supportsKenyaVat3 = countryCode === "KE";
   // Default to current month
   const today = new Date();
   const monthStart = new Date(today.getFullYear(), today.getMonth(), 1).toISOString().slice(0, 10);
@@ -44,7 +52,7 @@ export function VatReportPage() {
       period_start: startDate,
       period_end: endDate,
       total_sales: report.total_sales,
-      taxable_sales_16pct: report.taxable_sales,
+      taxable_sales_standard_rate: report.taxable_sales,
       exempt_sales: report.exempt_sales,
       output_vat: report.output_vat,
       invoices_signed: report.signed_count,
@@ -61,34 +69,28 @@ export function VatReportPage() {
 
   return (
     <div className="space-y-5 max-w-4xl">
-      <div className="flex items-start justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <BackButton fallback="/reports" />
-          <h1 className="text-xl font-semibold tracking-tight">VAT Return</h1>
+          <h1 className="text-xl font-semibold tracking-tight">{activeTaxLabel} Return</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Output VAT summary for KRA monthly filing (VAT3 form)
+            {supportsKenyaVat3 ? "Output VAT summary for KRA monthly filing (VAT3 form)" : `Output ${activeTaxLabel} summary for the selected period`}
           </p>
         </div>
-        <div className="flex gap-2">
-          <Button
-            onClick={async () => {
-              if (!report) return;
-              const brand = await loadBrandHeader();
-              const bytes = renderVat3Pdf({
-                brand,
-                startDate,
-                endDate,
-                salesNet: report.taxable_sales,
-                outputVat: report.output_vat,
-                purchasesNet: 0,
-                inputVat: 0,
-              });
-              downloadBytes(bytes, `vat3-${startDate}-to-${endDate}`);
-            }}
-            disabled={!report}
-          >
-            <Download className="h-4 w-4 mr-2" /> PDF
-          </Button>
+        <div className="flex flex-wrap gap-2">
+          {supportsKenyaVat3 && (
+            <Button
+              onClick={async () => {
+                if (!report) return;
+                const brand = await loadBrandHeader();
+                const bytes = renderVat3Pdf({ brand, startDate, endDate, salesNet: report.taxable_sales, outputVat: report.output_vat, purchasesNet: 0, inputVat: 0 });
+                downloadBytes(bytes, `vat3-${startDate}-to-${endDate}`);
+              }}
+              disabled={!report}
+            >
+              <Download className="h-4 w-4 mr-2" /> VAT3 PDF
+            </Button>
+          )}
           <Button variant="outline" onClick={handleExport} disabled={!report}>
             CSV
           </Button>
@@ -96,19 +98,19 @@ export function VatReportPage() {
       </div>
 
       {/* Period selector */}
-      <div className="flex items-center gap-3 border border-border rounded-lg p-3">
+      <div className="flex flex-col items-stretch gap-3 rounded-lg border border-border p-3 sm:flex-row sm:items-center">
         <DateRangePicker
           value={{ start: startDate, end: endDate }}
           onChange={(r) => { setStartDate(r.start); setEndDate(r.end); }}
         />
-        <div className="flex gap-1.5 ml-auto">
+        <div className="flex flex-wrap gap-1.5 sm:ml-auto">
           <Button variant="outline" size="sm" onClick={() => setMonth(0)}>This Month</Button>
           <Button variant="outline" size="sm" onClick={() => setMonth(-1)}>Last Month</Button>
         </div>
       </div>
 
       {/* Compliance warning */}
-      {report && report.pending_count > 0 && (
+      {supportsKenyaVat3 && report && report.pending_count > 0 && (
         <div className="border border-amber-500/50 bg-amber-500/5 rounded-lg p-3 flex items-start gap-3">
           <AlertTriangle className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
           <div>
@@ -123,27 +125,27 @@ export function VatReportPage() {
       {/* VAT Statement */}
       <div className="border border-border rounded-lg overflow-hidden">
         <div className="bg-muted/30 border-b border-border px-5 py-3">
-          <h2 className="font-semibold">VAT Return Statement</h2>
+          <h2 className="font-semibold">{activeTaxLabel} Return Statement</h2>
           <p className="text-xs text-muted-foreground mt-0.5">{startDate} to {endDate}</p>
         </div>
         <div className="p-5 space-y-4">
           <Section title="Sales">
-            <Row label="Total Sales (incl. VAT)" value={report?.total_sales ?? 0} bold />
-            <Row label="Standard-rated Sales (16% VAT)" value={report?.taxable_sales ?? 0} indent />
+            <Row label={`Total Sales (incl. ${activeTaxLabel})`} value={report?.total_sales ?? 0} bold />
+            <Row label={`Standard-rated Sales (${standardRate}% ${activeTaxLabel})`} value={report?.taxable_sales ?? 0} indent />
             <Row label="Exempt / Zero-rated Sales" value={report?.exempt_sales ?? 0} indent />
           </Section>
 
           <div className="border-t border-border" />
 
-          <Section title="Output VAT">
-            <Row label="Output VAT (16%)" value={report?.output_vat ?? 0} bold highlight />
+          <Section title={`Output ${activeTaxLabel}`}>
+            <Row label={`Output ${activeTaxLabel} (${standardRate}%)`} value={report?.output_vat ?? 0} bold highlight />
           </Section>
 
           <div className="border-t border-border" />
 
           <Section title="Invoice Status">
             <Row label="Total Invoices Issued" value={report?.invoice_count ?? 0} count />
-            <Row label="Signed by KRA" value={report?.signed_count ?? 0} count indent />
+            <Row label={supportsKenyaVat3 ? "Signed by KRA" : "Accepted by tax service"} value={report?.signed_count ?? 0} count indent />
             <Row label="Pending / Failed" value={report?.pending_count ?? 0} count indent danger={(report?.pending_count ?? 0) > 0} />
           </Section>
 
@@ -151,8 +153,11 @@ export function VatReportPage() {
             <div className="flex items-start gap-3 text-xs text-muted-foreground">
               <FileSpreadsheet className="h-4 w-4 shrink-0 mt-0.5" />
               <p>
-                File this return on <a href="https://itax.kra.go.ke" target="_blank" rel="noopener noreferrer" className="text-primary underline">iTax</a> by the 20th of the following month.
-                Use these figures to populate VAT3 form: General Rate (16%) sales and Output VAT.
+                {supportsKenyaVat3 ? (
+                  <>File this return on <a href="https://itax.kra.go.ke" target="_blank" rel="noopener noreferrer" className="text-primary underline">iTax</a> by the 20th of the following month. Use these figures for the VAT3 general-rate section.</>
+                ) : (
+                  <>Use these standard-rate and output {activeTaxLabel} figures with the filing process required by your local tax authority.</>
+                )}
               </p>
             </div>
           </div>
@@ -183,5 +188,14 @@ function Row({
         {count ? value.toLocaleString() : money(value)}
       </span>
     </div>
+  );
+}
+
+export function VatReportPage() {
+  return (
+    <>
+      <MobileRouteContext />
+      <VatReportPageContent />
+    </>
   );
 }

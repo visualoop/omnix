@@ -8,6 +8,7 @@
  * Direct routes (/dashboard, /pnl, /reports/...) stay intact for deep
  * links and bookmarks.
  */
+import { MobileRouteContext } from "@/components/shared/mobile-route-context";
 import { useAuthStore } from "@/stores/auth";
 import { hasPermission, type Permission } from "@/lib/permissions";
 import {
@@ -38,7 +39,7 @@ import { VatReportPage } from "@/pages/vat-report";
 import { EtimsQueuePage } from "@/pages/etims-queue";
 import { TipsReportPage } from "@/pages/tips-report";
 
-export function AnalyticsHubPage() {
+function AnalyticsHubPageContent() {
   const user = useAuthStore((s) => s.user);
   const has = (perm: string) => hasPermission(user, perm as Permission);
   return (
@@ -62,5 +63,14 @@ export function AnalyticsHubPage() {
       ]}
       hasPermission={has}
     />
+  );
+}
+
+export function AnalyticsHubPage() {
+  return (
+    <>
+      <MobileRouteContext />
+      <AnalyticsHubPageContent />
+    </>
   );
 }

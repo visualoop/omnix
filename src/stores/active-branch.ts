@@ -7,6 +7,8 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { getUserBranches, getDefaultBranchId, type Branch } from "@/services/branches";
+import { getCountryFieldMetadata } from "@/lib/countries";
+import { useCountry } from "@/stores/country";
 
 interface ActiveBranchState {
   active: Branch | null;
@@ -33,7 +35,8 @@ export const useActiveBranch = create<ActiveBranchState>()(
             const fallback: Branch = {
               id: defId, code: "MAIN", name: "Main Branch",
               address: null, phone: null, email: null, manager_id: null,
-              is_default: 1, active: 1, timezone: "Africa/Nairobi",
+              is_default: 1, active: 1,
+              timezone: getCountryFieldMetadata(useCountry.getState().code).timezone,
               kra_pin: null, etims_device_id: null, open_time: null,
               close_time: null, notes: null,
               created_at: new Date().toISOString(),

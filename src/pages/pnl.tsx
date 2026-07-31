@@ -16,7 +16,7 @@
  *     before that). Delta chips in tabular-nums. No 'TrendingUp' icons.
  *   - Expense breakdown is a horizontal stacked bar with one row per
  *     category, sorted by share. Category labels right-aligned, share %
- *     in mono, KES amount in mono.
+ *     in mono, active-country amount in mono.
  *   - Income statement table at the bottom keeps the canonical
  *     accountant order: Revenue → COGS → Gross Profit → Operating
  *     Expenses → Net Profit.
@@ -34,6 +34,7 @@
  *     accountant expects.
  *   - All numbers are tabular-nums so columns align in print.
  */
+import { MobileRouteContext } from "@/components/shared/mobile-route-context";
 import { useState, useEffect, useMemo } from "react";
 import { motion, useMotionValue, useTransform, animate } from "motion/react";
 import {
@@ -45,7 +46,7 @@ import { getPnL, type PnLData } from "@/services/accounting";
 import { exportToCSV } from "@/lib/export";
 import { renderPnlPdf } from "@/services/reports-pdf";
 import { loadBrandHeader, downloadBytes } from "@/services/pdf-brand";
-import { money as KES } from "@/lib/money";
+import { currencySymbol, money } from "@/lib/money";
 import { intlLocale } from "@/lib/intl";
 
 function formatRange(start: string, end: string): string {
@@ -68,7 +69,7 @@ function shiftRangeByDays(start: string, end: string, days: number) {
   };
 }
 
-export function PnLPage() {
+function PnLPageContent() {
   const today = new Date().toISOString().slice(0, 10);
   const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().slice(0, 10);
 
@@ -316,7 +317,7 @@ function KPIBlock({
         {label}
       </div>
       <div className="mt-2 flex items-baseline gap-2">
-        <span className="font-mono text-[12px] tabular-nums text-foreground/55">KSh</span>
+        <span className="font-mono text-[12px] tabular-nums text-foreground/55">{currencySymbol()}</span>
         <motion.span
           style={{ fontFamily: "var(--font-display)" }}
           className={`${sizeClass} leading-[0.95] tracking-[-0.02em] font-medium tabular-nums ${
@@ -343,7 +344,7 @@ function KPIBlock({
           <span className="text-foreground/55">{caption}</span>
         ) : null}
         {delta !== null && priorValue !== null ? (
-          <span className="text-foreground/40">vs. prior {KES(Math.abs(priorValue))}</span>
+          <span className="text-foreground/40">vs. prior {money(Math.abs(priorValue))}</span>
         ) : null}
       </div>
     </div>
@@ -410,7 +411,7 @@ function ExpenseBreakdown({
               </div>
             </div>
             <span className="font-mono text-[14px] tabular-nums text-foreground self-end pb-1">
-              {KES(r.amount)}
+              {money(r.amount)}
             </span>
           </div>
         );
@@ -457,7 +458,7 @@ function Statement({ data }: { data: PnLData }) {
             data.net_profit >= 0 ? "text-foreground" : "text-rose-700 dark:text-rose-400"
           }`}
         >
-          {data.net_profit < 0 ? "(" : ""}{KES(Math.abs(data.net_profit))}{data.net_profit < 0 ? ")" : ""}
+          {data.net_profit < 0 ? "(" : ""}{money(Math.abs(data.net_profit))}{data.net_profit < 0 ? ")" : ""}
         </span>
       </div>
     </div>
@@ -484,7 +485,7 @@ function Line({ label, value, negative }: { label: string; value: number; negati
           negative ? "text-rose-700 dark:text-rose-400" : "text-foreground"
         }`}
       >
-        {negative ? "(" : ""}{KES(Math.abs(value))}{negative ? ")" : ""}
+        {negative ? "(" : ""}{money(Math.abs(value))}{negative ? ")" : ""}
       </span>
     </div>
   );
@@ -497,8 +498,17 @@ function Subtotal({ label, value }: { label: string; value: number }) {
         {label}
       </span>
       <span className="font-mono text-[15px] font-semibold tabular-nums text-foreground">
-        {value < 0 ? "(" : ""}{KES(Math.abs(value))}{value < 0 ? ")" : ""}
+        {value < 0 ? "(" : ""}{money(Math.abs(value))}{value < 0 ? ")" : ""}
       </span>
     </div>
+  );
+}
+
+export function PnLPage() {
+  return (
+    <>
+      <MobileRouteContext />
+      <PnLPageContent />
+    </>
   );
 }

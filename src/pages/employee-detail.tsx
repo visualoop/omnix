@@ -3,6 +3,8 @@
  *
  * Tabs: Profile · Compensation · Attendance · Documents
  */
+import { MobileRouteContext } from "@/components/shared/mobile-route-context";
+import { money } from "@/lib/money";
 import { useEffect, useState } from "react"
 import { useParams, useNavigate } from "react-router-dom"
 import { Breadcrumbs } from "@/components/ui/breadcrumbs"
@@ -25,8 +27,6 @@ import {
 } from "@/services/salon"
 const SALON_ENABLED = MODULES_ALLOWED.includes("salon")
 
-const KES = (n: number) =>
-  new Intl.NumberFormat("en-KE", { style: "currency", currency: "KES", maximumFractionDigits: 0 }).format(n)
 
 interface AttendanceSummary {
   days_present: number
@@ -34,7 +34,7 @@ interface AttendanceSummary {
   total_hours: number
 }
 
-export function EmployeeDetailPage() {
+function EmployeeDetailPageContent() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const [employee, setEmployee] = useState<Employee | null>(null)
@@ -111,7 +111,7 @@ export function EmployeeDetailPage() {
         stats={[
           { label: "Hired", value: format(new Date(employee.hire_date), "d MMM yyyy") },
           { label: "Tenure", value: tenure > 0 ? `${tenure}y` : "<1y" },
-          { label: "Pay", value: KES(employee.base_salary || employee.daily_rate || employee.hourly_rate || 0) },
+          { label: "Pay", value: money(employee.base_salary || employee.daily_rate || employee.hourly_rate || 0) },
           { label: "Pay type", value: employee.pay_type },
           { label: "Days (30d)", value: `${attendance?.days_present ?? 0}` },
           { label: "Hours (30d)", value: (attendance?.total_hours ?? 0).toFixed(0) },
@@ -163,12 +163,12 @@ function EarningsTab({ employeeId }: { employeeId: string }) {
 
   const payOut = async () => {
     if (!userId || outstanding <= 0) return
-    if (!(await confirm({ title: `Pay ${staff.display_name}?`, description: `Marks their outstanding salon commissions (${KES(outstanding)}) as paid and records the payout.` }))) return
+    if (!(await confirm({ title: `Pay ${staff.display_name}?`, description: `Marks their outstanding salon commissions (${money(outstanding)}) as paid and records the payout.` }))) return
     setPaying(true)
     try {
       const to = new Date(); to.setHours(23, 59, 59, 999)
       const res = await payStaffCommissions({ staff_id: staff.id, uptoIso: to.toISOString(), userId, periodDate: new Date().toISOString().slice(0, 10) })
-      toast.success(`Paid ${KES(res.amount)} (${res.count} commission${res.count === 1 ? "" : "s"})`)
+      toast.success(`Paid ${money(res.amount)} (${res.count} commission${res.count === 1 ? "" : "s"})`)
       load()
     } catch (e) { toast.error(String(e)) } finally { setPaying(false) }
   }
@@ -177,12 +177,12 @@ function EarningsTab({ employeeId }: { employeeId: string }) {
     <div className="space-y-5">
       <div className="flex items-center justify-between gap-3">
         <div className="text-[11px] uppercase tracking-wider text-muted-foreground">Salon earnings · last 30 days</div>
-        {outstanding > 0 && <Button size="sm" disabled={paying} onClick={payOut}>{paying ? "…" : `Pay ${KES(outstanding)}`}</Button>}
+        {outstanding > 0 && <Button size="sm" disabled={paying} onClick={payOut}>{paying ? "…" : `Pay ${money(outstanding)}`}</Button>}
       </div>
-      <div className="grid grid-cols-3 gap-3">
-        <div className="rounded-lg border border-border p-3"><div className="text-[10.5px] uppercase tracking-wider text-muted-foreground">Earned</div><div className="text-[18px] font-semibold tabular-nums mt-0.5">{KES(earned)}</div></div>
-        <div className="rounded-lg border border-border p-3"><div className="text-[10.5px] uppercase tracking-wider text-muted-foreground">Paid</div><div className="text-[18px] font-semibold tabular-nums mt-0.5 text-muted-foreground">{KES(paid)}</div></div>
-        <div className="rounded-lg border border-border p-3"><div className="text-[10.5px] uppercase tracking-wider text-muted-foreground">Outstanding</div><div className="text-[18px] font-semibold tabular-nums mt-0.5 text-amber-600 dark:text-amber-400">{KES(outstanding)}</div></div>
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-3 sm:gap-3">
+        <div className="rounded-lg border border-border p-3"><div className="text-[10.5px] uppercase tracking-wider text-muted-foreground">Earned</div><div className="text-[18px] font-semibold tabular-nums mt-0.5">{money(earned)}</div></div>
+        <div className="rounded-lg border border-border p-3"><div className="text-[10.5px] uppercase tracking-wider text-muted-foreground">Paid</div><div className="text-[18px] font-semibold tabular-nums mt-0.5 text-muted-foreground">{money(paid)}</div></div>
+        <div className="rounded-lg border border-border p-3"><div className="text-[10.5px] uppercase tracking-wider text-muted-foreground">Outstanding</div><div className="text-[18px] font-semibold tabular-nums mt-0.5 text-amber-600 dark:text-amber-400">{money(outstanding)}</div></div>
       </div>
 
       <div>
@@ -196,8 +196,8 @@ function EarningsTab({ employeeId }: { employeeId: string }) {
                   <tr key={d.day} className="border-t border-border">
                     <td className="px-3 py-2">{new Date(d.day).toLocaleDateString([], { weekday: "short", day: "numeric", month: "short" })}</td>
                     <td className="px-3 py-2 text-right tabular-nums">{d.jobs}</td>
-                    <td className="px-3 py-2 text-right font-mono tabular-nums">{KES(d.earned)}</td>
-                    <td className="px-3 py-2 text-right font-mono tabular-nums text-muted-foreground">{d.paid >= d.earned - 0.01 ? "Paid" : KES(d.paid)}</td>
+                    <td className="px-3 py-2 text-right font-mono tabular-nums">{money(d.earned)}</td>
+                    <td className="px-3 py-2 text-right font-mono tabular-nums text-muted-foreground">{d.paid >= d.earned - 0.01 ? "Paid" : money(d.paid)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -219,7 +219,7 @@ function EarningsTab({ employeeId }: { employeeId: string }) {
                     <td className="px-3 py-2">{l.service_name ?? (l.kind === "retail" ? "Retail" : "—")}</td>
                     <td className="px-3 py-2 text-muted-foreground">{l.client_name ?? "Walk-in"}</td>
                     <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">{l.pct}%</td>
-                    <td className="px-3 py-2 text-right font-mono tabular-nums font-medium">{KES(l.amount)}</td>
+                    <td className="px-3 py-2 text-right font-mono tabular-nums font-medium">{money(l.amount)}</td>
                     <td className="px-3 py-2 text-right">{l.paid_at ? <span className="text-[11px] text-emerald-600 dark:text-emerald-400">Paid</span> : <Badge variant="outline" className="text-[10px] border-amber-500/40 text-amber-600 dark:text-amber-400">Owed</Badge>}</td>
                   </tr>
                 ))}
@@ -252,9 +252,9 @@ function CompTab({ employee: e }: { employee: Employee }) {
   return (
     <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
       <Field label="Pay type" value={e.pay_type} />
-      <Field label="Base salary" value={KES(e.base_salary)} />
-      <Field label="Daily rate" value={e.daily_rate ? KES(e.daily_rate) : null} />
-      <Field label="Hourly rate" value={e.hourly_rate ? KES(e.hourly_rate) : null} />
+      <Field label="Base salary" value={money(e.base_salary)} />
+      <Field label="Daily rate" value={e.daily_rate ? money(e.daily_rate) : null} />
+      <Field label="Hourly rate" value={e.hourly_rate ? money(e.hourly_rate) : null} />
       <Field label="Commission" value={e.commission_rate != null ? `${e.commission_rate}%` : null} />
       <Field label="Bank" value={e.bank_name} />
       <Field label="Bank account" value={e.bank_account} />
@@ -296,4 +296,13 @@ function Field({ label, value, className = "" }: { label: string; value?: string
       <dd className="text-[14px] text-foreground/90">{value || <span className="text-muted-foreground/60">—</span>}</dd>
     </div>
   )
+}
+
+export function EmployeeDetailPage() {
+  return (
+    <>
+      <MobileRouteContext />
+      <EmployeeDetailPageContent />
+    </>
+  );
 }

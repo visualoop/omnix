@@ -20,6 +20,8 @@
  * place that knows where the data really lives.
  */
 import { query } from "@/lib/db";
+import { isKenya } from "@/lib/features";
+import { useCountry } from "@/stores/country";
 
 export interface BusinessProfile {
   /** Registered/trading name. Never the "Your Business" placeholder
@@ -61,6 +63,8 @@ const EMPTY: BusinessProfile = {
  */
 export async function getBusinessProfile(): Promise<BusinessProfile> {
   try {
+    if (!useCountry.getState().loaded) await useCountry.getState().load();
+    const kenya = isKenya();
     const [bizRows, etimsRows, settingRows] = await Promise.all([
       query<{
         name: string;
@@ -69,9 +73,11 @@ export async function getBusinessProfile(): Promise<BusinessProfile> {
         phone: string | null;
         email: string | null;
       }>(`SELECT name, type, address, phone, email FROM business LIMIT 1`),
-      query<{ kra_pin: string | null }>(
-        `SELECT kra_pin FROM etims_config LIMIT 1`,
-      ).catch(() => [] as Array<{ kra_pin: string | null }>),
+      kenya
+        ? query<{ kra_pin: string | null }>(
+            `SELECT kra_pin FROM etims_config LIMIT 1`,
+          ).catch(() => [] as Array<{ kra_pin: string | null }>)
+        : Promise.resolve([] as Array<{ kra_pin: string | null }>),
       query<{ key: string; value: string }>(
         `SELECT key, value FROM settings
          WHERE key IN ('business.logo_path','business.website','business.kra_pin')`,
@@ -88,7 +94,7 @@ export async function getBusinessProfile(): Promise<BusinessProfile> {
       phone: biz.phone,
       email: biz.email,
       // Prefer the eTIMS-registered PIN; fall back to a settings override.
-      kraPin: etimsRows[0]?.kra_pin || settings["business.kra_pin"] || null,
+      kraPin: kenya ? etimsRows[0]?.kra_pin || settings["business.kra_pin"] || null : null,
       logoPath: settings["business.logo_path"] || null,
       website: settings["business.website"] || null,
       type: biz.type || null,

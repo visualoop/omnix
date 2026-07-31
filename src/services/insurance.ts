@@ -1,6 +1,7 @@
 import { fetch } from "@tauri-apps/plugin-http";
 import { query, execute } from "@/lib/db";
 import { encryptSecret, decryptSecret } from "@/services/secrets";
+import { isFeatureEnabled } from "@/lib/features";
 
 export interface InsuranceProvider {
   id: string;
@@ -95,13 +96,13 @@ export async function getProviders(activeOnly = true): Promise<InsuranceProvider
     p.api_key = await decryptSecret(p.api_key);
     p.api_secret = await decryptSecret(p.api_secret);
   }
-  return rows;
+  return isFeatureEnabled("sha") ? rows : rows.filter((provider) => provider.type !== "sha");
 }
 
 export async function getProvider(id: string): Promise<InsuranceProvider | null> {
   const rows = await query<InsuranceProvider>("SELECT * FROM insurance_providers WHERE id = ?1", [id]);
   const p = rows[0];
-  if (!p) return null;
+  if (!p || (p.type === "sha" && !isFeatureEnabled("sha"))) return null;
   p.api_key = await decryptSecret(p.api_key);
   p.api_secret = await decryptSecret(p.api_secret);
   return p;
@@ -118,6 +119,13 @@ export async function updateProvider(id: string, input: {
   test_mode?: boolean;
   requires_preauth?: boolean;
 }): Promise<void> {
+  const [providerIdentity] = await query<{ type: InsuranceProvider["type"] }>(
+    "SELECT type FROM insurance_providers WHERE id = ?1",
+    [id],
+  );
+  if (providerIdentity?.type === "sha" && !isFeatureEnabled("sha")) {
+    throw new Error("SHA is not available for the active business country.");
+  }
   // Encrypt any secrets the caller is updating. `undefined` means "leave
   // as-is" (COALESCE below); `null` means "clear it". A concrete string
   // gets encrypted before hitting the DB.
@@ -500,6 +508,9 @@ export async function submitClaimToSha(claimId: string): Promise<{
   queued?: boolean;
   willRetry?: boolean;
 }> {
+  if (!isFeatureEnabled("sha")) {
+    return { ok: false, error: "SHA is not available for the active business country." };
+  }
   const claim = await getClaim(claimId);
   if (!claim) return { ok: false, error: "Claim not found" };
   if (claim.status !== "draft") {
@@ -680,6 +691,9 @@ export async function flushShaClaimQueue(): Promise<{
   stillPending: number;
   failed: number;
 }> {
+  if (!isFeatureEnabled("sha")) {
+    return { attempted: 0, submitted: 0, stillPending: 0, failed: 0 };
+  }
   const due = await query<ShaQueueEntry>(
     `SELECT * FROM sha_claim_queue
       WHERE resolved_at IS NULL AND julianday(next_retry_at) <= julianday('now')
@@ -697,6 +711,7 @@ export async function flushShaClaimQueue(): Promise<{
 }
 
 export async function listShaQueue(includeResolved = false): Promise<ShaQueueEntry[]> {
+  if (!isFeatureEnabled("sha")) return [];
   return query<ShaQueueEntry>(
     `SELECT * FROM sha_claim_queue
       ${includeResolved ? "" : "WHERE resolved_at IS NULL"}

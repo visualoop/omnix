@@ -1,3 +1,4 @@
+import { MobileRouteContext } from "@/components/shared/mobile-route-context";
 import {
   ArrowsLeftRight as ArrowRightLeft,
   Check,
@@ -19,7 +20,7 @@ import { useActiveBranch } from "@/stores/active-branch";
 import { useNavigate } from "react-router-dom";
 import { intlLocale } from "@/lib/intl";
 
-export function StockTransfersPage() {
+function StockTransfersPageContent() {
   const branchId = useActiveBranch((s) => s.active?.id);
   const navigate = useNavigate();
 
@@ -127,4 +128,13 @@ function StatusBadge({ status }: { status: StockTransferWithDetails["status"] })
     case "cancelled":
       return <Badge variant="destructive">Cancelled</Badge>;
   }
+}
+
+export function StockTransfersPage() {
+  return (
+    <>
+      <MobileRouteContext />
+      <StockTransfersPageContent />
+    </>
+  );
 }

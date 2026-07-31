@@ -1,3 +1,4 @@
+import { MobileRouteContext } from "@/components/shared/mobile-route-context";
 import { Receipt, Plus, MagnifyingGlass } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,14 +9,14 @@ import { PaginationBar } from "@/components/pagination-bar";
 import { intlLocale } from "@/lib/intl";
 
 import { BackButton } from "@/components/ui/back-button";
-export function DebitNotesPage() {
+function DebitNotesPageContent() {
   const list = useListData(pageDebitNotes, { pageSize: 50 });
 
   const fmt = (n: number) => n.toLocaleString(intlLocale(), { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
   return (
     <div className="max-w-4xl space-y-5">
-      <header className="flex items-start justify-between">
+      <header className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <BackButton fallback="/suppliers" />
           <h1 className="text-xl font-semibold flex items-center gap-2">
@@ -71,5 +72,14 @@ export function DebitNotesPage() {
 
       <PaginationBar list={list} />
     </div>
+  );
+}
+
+export function DebitNotesPage() {
+  return (
+    <>
+      <MobileRouteContext />
+      <DebitNotesPageContent />
+    </>
   );
 }

@@ -1,3 +1,4 @@
+import { MobileRouteContext } from "@/components/shared/mobile-route-context";
 import { useEffect, useState, useCallback } from "react";
 import {
   ArrowCircleDown as ArrowDownCircle,
@@ -23,9 +24,9 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { TableRowSkeleton } from "@/components/ui/skeletons";
 import { toast } from "sonner";
 import { intlLocale } from "@/lib/intl";
-import { money } from "@/lib/money";
+import { currencySymbol, money } from "@/lib/money";
 
-export function PettyCashPage() {
+function PettyCashPageContent() {
   const [summary, setSummary] = useState<PettyCashSummary | null>(null);
   const [dialogType, setDialogType] = useState<"topup" | "expense" | null>(null);
   const userId = useAuthStore((s) => s.user?.id);
@@ -74,7 +75,7 @@ export function PettyCashPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-3 sm:gap-3">
         <StatCard
           label="Current Balance"
           value={money((summary?.current_balance || 0))}
@@ -208,7 +209,7 @@ function PettyCashDialog({ type, onClose, onSaved, userId }: {
         receipt_ref: reference.trim() || undefined,
         user_id: userId,
       });
-      toast.success(`Recorded KES ${a.toFixed(2)}`);
+      toast.success(`Recorded ${money(a)}`);
       onSaved();
     } catch (e) {
       toast.error(String(e));
@@ -239,7 +240,7 @@ function PettyCashDialog({ type, onClose, onSaved, userId }: {
                 placeholder="0.00"
                 autoFocus
               />
-              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm font-medium">KES</span>
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm font-medium">{currencySymbol()}</span>
             </div>
           </div>
 
@@ -273,5 +274,14 @@ function PettyCashDialog({ type, onClose, onSaved, userId }: {
         </div>
       </div>
     </div>
+  );
+}
+
+export function PettyCashPage() {
+  return (
+    <>
+      <MobileRouteContext />
+      <PettyCashPageContent />
+    </>
   );
 }

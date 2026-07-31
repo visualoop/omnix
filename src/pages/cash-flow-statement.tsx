@@ -1,3 +1,4 @@
+import { MobileRouteContext } from "@/components/shared/mobile-route-context";
 import { useEffect, useState } from "react";
 import { CurrencyCircleDollar as Cash } from "@phosphor-icons/react";
 import { DateRangePicker } from "@/components/date-range-picker";
@@ -10,7 +11,7 @@ function firstOfMonth(): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-01`;
 }
 
-export function CashFlowStatementPage() {
+function CashFlowStatementPageContent() {
   const [from, setFrom] = useState(firstOfMonth());
   const [to, setTo] = useState(new Date().toISOString().slice(0, 10));
   const [cf, setCf] = useState<CashFlowStatement | null>(null);
@@ -25,7 +26,7 @@ export function CashFlowStatementPage() {
 
   return (
     <div className="max-w-4xl space-y-5">
-      <header className="flex items-start justify-between">
+      <header className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
         <div>
           <BackButton fallback="/reports" />
           <h1 className="text-xl font-semibold flex items-center gap-2">
@@ -35,10 +36,12 @@ export function CashFlowStatementPage() {
             Where cash came from and where it went. Split into Operating, Investing, and Financing activities.
           </p>
         </div>
-        <DateRangePicker
-          value={{ start: from, end: to }}
-          onChange={(r) => { setFrom(r.start); setTo(r.end); }}
-        />
+        <div className="w-full sm:w-auto">
+          <DateRangePicker
+            value={{ start: from, end: to }}
+            onChange={(r) => { setFrom(r.start); setTo(r.end); }}
+          />
+        </div>
       </header>
 
       {loading || !cf ? (
@@ -89,5 +92,14 @@ function Section({ section, fmt }: { section: CashFlowSection; fmt: (n: number) 
         <span className="font-mono tabular-nums">{fmt(section.total)}</span>
       </div>
     </div>
+  );
+}
+
+export function CashFlowStatementPage() {
+  return (
+    <>
+      <MobileRouteContext />
+      <CashFlowStatementPageContent />
+    </>
   );
 }

@@ -26,6 +26,7 @@ vi.mock("@/lib/db", () => ({
 }))
 
 vi.mock("@/stores/country", () => ({
+  getBusinessCurrencyCode: () => "KES",
   useCountry: { getState: () => ({ code: "KE" }) },
 }))
 

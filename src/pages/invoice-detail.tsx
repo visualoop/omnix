@@ -1,3 +1,4 @@
+import { MobileRouteContext } from "@/components/shared/mobile-route-context";
 import { useEffect, useState } from "react";
 import { confirm } from "@/components/ui/confirm-dialog";
 import { useNavigate, useParams } from "react-router-dom";
@@ -27,7 +28,8 @@ import {
 import { ShareDocMenu } from "@/components/share-doc-menu";
 import { useAuthStore } from "@/stores/auth";
 import { toast } from "sonner";
-import { money as KES } from "@/lib/money";
+import { money } from "@/lib/money";
+import { useCountry } from "@/stores/country";
 import { intlLocale } from "@/lib/intl";
 
 import { BackButton } from "@/components/ui/back-button";
@@ -35,8 +37,9 @@ const formatDate = (s: string) => new Date(s).toLocaleDateString(intlLocale(), {
 
 interface Props { type: "invoice" | "quotation" }
 
-export function DocumentDetailPage({ type }: Props) {
+function DocumentDetailPageContent({ type }: Props) {
   const { id } = useParams<{ id: string }>();
+  const countryCode = useCountry((state) => state.code);
   const navigate = useNavigate();
   const userId = useAuthStore((s) => s.user?.id);
   const [data, setData] = useState<{
@@ -111,7 +114,7 @@ export function DocumentDetailPage({ type }: Props) {
   return (
     <div className="space-y-5 max-w-4xl">
       <div>
-        <div className="flex items-start justify-between">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <BackButton fallback="/invoicing" />
             <h1 className="text-xl font-semibold tracking-tight flex items-center gap-2">
@@ -183,7 +186,7 @@ export function DocumentDetailPage({ type }: Props) {
           phone={doc.customer_phone}
           email={doc.customer_email}
           subject={`${isInvoice ? "Invoice" : "Quotation"} ${number}`}
-          message={`Hello ${doc.customer_name}, please find ${isInvoice ? "invoice" : "quotation"} ${number} (total ${KES(doc.total)}). The PDF is attached.`}
+          message={`Hello ${doc.customer_name}, please find ${isInvoice ? "invoice" : "quotation"} ${number} (total ${money(doc.total)}). The PDF is attached.`}
         />
       </div>
 
@@ -219,7 +222,7 @@ export function DocumentDetailPage({ type }: Props) {
             {doc.customer_address && <div className="text-xs whitespace-pre-line">{doc.customer_address}</div>}
             {doc.customer_phone && <div className="text-xs">{doc.customer_phone}</div>}
             {doc.customer_email && <div className="text-xs">{doc.customer_email}</div>}
-            {isInvoice && data.invoice!.customer_tax_pin && (
+            {isInvoice && countryCode === "KE" && data.invoice!.customer_tax_pin && (
               <div className="text-xs font-mono">KRA PIN: {data.invoice!.customer_tax_pin}</div>
             )}
           </div>
@@ -271,17 +274,17 @@ export function DocumentDetailPage({ type }: Props) {
               )}
               <div className="flex justify-between text-base font-bold border-t-2 border-foreground pt-1.5">
                 <span>TOTAL</span>
-                <span className="font-mono tabular-nums">{KES(doc.total)}</span>
+                <span className="font-mono tabular-nums">{money(doc.total)}</span>
               </div>
               {isInvoice && data.invoice!.amount_paid > 0 && (
                 <>
                   <div className="flex justify-between text-xs text-emerald-700">
                     <span>Paid</span>
-                    <span className="font-mono tabular-nums">{KES(data.invoice!.amount_paid)}</span>
+                    <span className="font-mono tabular-nums">{money(data.invoice!.amount_paid)}</span>
                   </div>
                   <div className="flex justify-between text-sm font-semibold">
                     <span>Balance Due</span>
-                    <span className="font-mono tabular-nums">{KES(data.invoice!.total - data.invoice!.amount_paid)}</span>
+                    <span className="font-mono tabular-nums">{money(data.invoice!.total - data.invoice!.amount_paid)}</span>
                   </div>
                 </>
               )}
@@ -328,7 +331,7 @@ export function DocumentDetailPage({ type }: Props) {
                     <td className="px-1 py-1.5">{formatDate(p.payment_date)}</td>
                     <td className="px-1 py-1.5 capitalize">{p.payment_method}</td>
                     <td className="px-1 py-1.5 font-mono">{p.reference || "—"}</td>
-                    <td className="px-1 py-1.5 text-right font-mono tabular-nums">{KES(p.amount)}</td>
+                    <td className="px-1 py-1.5 text-right font-mono tabular-nums">{money(p.amount)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -413,13 +416,13 @@ function PaymentDialog({ open, onClose, onSaved, invoice, userId }: {
         </DialogHeader>
         <div className="space-y-3 py-2">
           <div className="text-xs bg-muted/30 rounded p-2">
-            Outstanding balance: <b className="font-mono">{KES(balance)}</b>
+            Outstanding balance: <b className="font-mono">{money(balance)}</b>
           </div>
           <div className="space-y-1">
             <label className="text-[11px] font-medium text-muted-foreground">Amount *</label>
             <Input type="number" value={amount} onChange={(e) => setAmount(parseFloat(e.target.value) || 0)} />
           </div>
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div className="space-y-1">
               <label className="text-[11px] font-medium text-muted-foreground">Method *</label>
               <Select value={method} onValueChange={(v) => setMethod(v as string)}>
@@ -533,4 +536,13 @@ function QuotationBadge({ status }: { status: QuotationStatus }) {
     case "expired": return <Badge variant="outline" className="opacity-60">Expired</Badge>;
     case "converted": return <Badge className="bg-purple-600 hover:bg-purple-600">Converted</Badge>;
   }
+}
+
+export function DocumentDetailPage(props: Props) {
+  return (
+    <>
+      <MobileRouteContext />
+      <DocumentDetailPageContent {...props} />
+    </>
+  );
 }

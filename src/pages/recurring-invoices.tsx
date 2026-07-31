@@ -1,3 +1,4 @@
+import { MobileRouteContext } from "@/components/shared/mobile-route-context";
 import { useEffect, useState } from "react";
 import {
   Calendar,
@@ -26,7 +27,7 @@ import { listCustomers } from "@/services/erp";
 import { getProducts, type Product } from "@/services/inventory";
 import { useAuthStore } from "@/stores/auth";
 import { toast } from "sonner";
-import { money as KES } from "@/lib/money";
+import { money } from "@/lib/money";
 import { intlLocale } from "@/lib/intl";
 
 
@@ -39,7 +40,7 @@ const FREQ_LABELS: Record<RecurringFrequency, string> = {
   annually: "Annually",
 };
 
-export function RecurringInvoicesPage() {
+function RecurringInvoicesPageContent() {
   const userId = useAuthStore((s) => s.user?.id);
   const [templates, setTemplates] = useState<RecurringTemplate[]>([]);
   const [loading, setLoading] = useState(true);
@@ -93,7 +94,7 @@ export function RecurringInvoicesPage() {
 
   return (
     <div className="space-y-5">
-      <div className="flex items-start justify-between">
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
         <div>
           <BackButton fallback="/invoicing" />
           <h1 className="text-xl font-semibold tracking-tight flex items-center gap-2">
@@ -103,7 +104,7 @@ export function RecurringInvoicesPage() {
             Subscription billing — generate invoices on schedule. Auto-runs on each login.
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex w-full flex-wrap gap-2 lg:w-auto">
           <Button variant="outline" onClick={runNow} disabled={running}>
             {running ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <Calendar className="h-3.5 w-3.5 mr-1.5" />}
             Run Schedule
@@ -116,7 +117,7 @@ export function RecurringInvoicesPage() {
 
       {dueCount > 0 && (
         <Card className="border-amber-300 bg-amber-50">
-          <CardContent className="p-3 flex items-center gap-3">
+          <CardContent className="flex flex-col items-start gap-3 p-3 sm:flex-row sm:items-center">
             <Calendar className="h-5 w-5 text-amber-700" />
             <div className="flex-1">
               <p className="text-sm font-semibold text-amber-900">
@@ -124,7 +125,7 @@ export function RecurringInvoicesPage() {
               </p>
               <p className="text-xs text-amber-800">Click "Run Schedule" to generate invoices now</p>
             </div>
-            <Button onClick={runNow} disabled={running} className="bg-amber-700 hover:bg-amber-800">
+            <Button onClick={runNow} disabled={running} className="w-full bg-amber-700 hover:bg-amber-800 sm:w-auto">
               {running ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : null}
               Run Now
             </Button>
@@ -279,7 +280,7 @@ function NewTemplateSheet({ open, onClose, onSaved }: {
 
   return (
     <Sheet open={open} onOpenChange={(o) => !o && onClose()}>
-      <SheetContent side="right" className="w-[560px] sm:max-w-[560px]">
+      <SheetContent side="right" className="w-full max-w-full overflow-y-auto sm:w-[560px] sm:max-w-[560px]">
         <SheetHeader>
           <SheetTitle>New Recurring Template</SheetTitle>
         </SheetHeader>
@@ -321,7 +322,7 @@ function NewTemplateSheet({ open, onClose, onSaved }: {
                 </div>
               )}
             </div>
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <Input value={customer.phone} onChange={(e) => setCustomer({ ...customer, phone: e.target.value })} placeholder="Phone" />
               <Input value={customer.email} onChange={(e) => setCustomer({ ...customer, email: e.target.value })} placeholder="Email" />
             </div>
@@ -329,7 +330,7 @@ function NewTemplateSheet({ open, onClose, onSaved }: {
 
           <div className="border-t border-border pt-3 space-y-2">
             <h3 className="text-xs font-semibold text-muted-foreground">Schedule</h3>
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <Field label="Frequency">
                 <Select value={frequency} onValueChange={(v) => setFrequency(String(v) as RecurringFrequency)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>
                   {Object.entries(FREQ_LABELS).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}
@@ -339,7 +340,7 @@ function NewTemplateSheet({ open, onClose, onSaved }: {
                 <Input type="number" min={1} value={intervalCount} onChange={(e) => setIntervalCount(parseInt(e.target.value) || 1)} />
               </Field>
             </div>
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <Field label="Starts On *">
                 <Input type="date" value={startsOn} onChange={(e) => setStartsOn(e.target.value)} />
               </Field>
@@ -359,7 +360,7 @@ function NewTemplateSheet({ open, onClose, onSaved }: {
           <div className="border-t border-border pt-3 space-y-2">
             <div className="flex items-center justify-between">
               <h3 className="text-xs font-semibold text-muted-foreground">Line Items</h3>
-              <span className="text-[11px] font-mono">Total: {KES(total)}</span>
+              <span className="text-[11px] font-mono">Total: {money(total)}</span>
             </div>
             <div className="relative">
               <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
@@ -382,7 +383,7 @@ function NewTemplateSheet({ open, onClose, onSaved }: {
                       className="w-full text-left px-3 py-1.5 text-xs hover:bg-accent flex justify-between"
                     >
                       <span>{p.name}</span>
-                      <span className="text-muted-foreground">KES {p.selling_price}</span>
+                      <span className="text-muted-foreground">{money(p.selling_price)}</span>
                     </button>
                   ))}
                 </div>
@@ -461,5 +462,14 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
       <label className="text-[11px] font-medium text-muted-foreground">{label}</label>
       {children}
     </div>
+  );
+}
+
+export function RecurringInvoicesPage() {
+  return (
+    <>
+      <MobileRouteContext />
+      <RecurringInvoicesPageContent />
+    </>
   );
 }

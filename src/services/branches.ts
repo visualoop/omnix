@@ -2,6 +2,8 @@
  * Branches service — multi-location support.
  */
 import { query, execute } from "@/lib/db";
+import { getCountryFieldMetadata } from "@/lib/countries";
+import { useCountry } from "@/stores/country";
 
 export interface Branch {
   id: string;
@@ -70,6 +72,10 @@ export async function getDefaultBranchId(): Promise<string> {
 
 export async function upsertBranch(input: Partial<Branch> & { code: string; name: string }): Promise<string> {
   const id = input.id || crypto.randomUUID();
+  const countryCode = useCountry.getState().code;
+  const timezone = input.timezone || getCountryFieldMetadata(countryCode).timezone;
+  const kenyaOnlyKraPin = countryCode === "KE" ? input.kra_pin || null : null;
+  const kenyaOnlyEtimsDevice = countryCode === "KE" ? input.etims_device_id || null : null;
   if (input.id) {
     await execute(
       `UPDATE branches SET
@@ -80,8 +86,8 @@ export async function upsertBranch(input: Partial<Branch> & { code: string; name
       [
         id, input.code, input.name, input.address || null, input.phone || null,
         input.email || null, input.manager_id || null, input.active ?? 1,
-        input.timezone || "Africa/Nairobi", input.kra_pin || null,
-        input.etims_device_id || null, input.open_time || null,
+        timezone, kenyaOnlyKraPin,
+        kenyaOnlyEtimsDevice, input.open_time || null,
         input.close_time || null, input.notes || null,
       ],
     );
@@ -93,8 +99,8 @@ export async function upsertBranch(input: Partial<Branch> & { code: string; name
       [
         id, input.code, input.name, input.address || null, input.phone || null,
         input.email || null, input.manager_id || null, input.active ?? 1,
-        input.timezone || "Africa/Nairobi", input.kra_pin || null,
-        input.etims_device_id || null, input.open_time || null,
+        timezone, kenyaOnlyKraPin,
+        kenyaOnlyEtimsDevice, input.open_time || null,
         input.close_time || null, input.notes || null,
       ],
     );

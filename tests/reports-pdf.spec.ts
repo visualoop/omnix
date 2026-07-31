@@ -9,7 +9,7 @@
  *
  * No DB. No fs. No window. Runs in node + vitest.
  */
-import { describe, it, expect } from "vitest"
+import { beforeEach, describe, it, expect } from "vitest"
 import {
   renderPnlPdf,
   renderDayBookPdf,
@@ -29,6 +29,11 @@ import {
   renderZReportPdf,
 } from "@/services/reports-pdf"
 import type { BrandHeader } from "@/services/pdf-engine"
+import { useCountry } from "@/stores/country"
+
+beforeEach(() => {
+  useCountry.setState({ code: "KE", currencyCode: "KES", loaded: true })
+})
 
 const BRAND: BrandHeader = {
   businessName: "Acme Pharmacy",
@@ -336,5 +341,29 @@ describe("renderZReportPdf", () => {
       cashVariance: -100,
     })
     assertPdf(bytes)
+  })
+})
+
+
+describe("Kenya statutory PDF gating", () => {
+  it("rejects VAT3, P9, and P10 outside Kenya", () => {
+    useCountry.setState({ code: "UG", currencyCode: "UGX", loaded: true })
+
+    expect(() => renderVat3Pdf({
+      brand: BRAND,
+      startDate: "2026-06-01",
+      endDate: "2026-06-30",
+      salesNet: 100,
+      outputVat: 16,
+      purchasesNet: 50,
+      inputVat: 8,
+    })).toThrow("not available")
+    expect(() => renderP9Pdf({
+      brand: BRAND,
+      year: 2026,
+      employee: { fullName: "Jane Doe", employeeNumber: "EMP001", kraPin: "A012345678X" },
+      months: [],
+    })).toThrow("not available")
+    expect(() => renderP10Pdf({ brand: BRAND, period: "2026-06", rows: [] })).toThrow("not available")
   })
 })

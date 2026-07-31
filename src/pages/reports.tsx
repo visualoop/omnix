@@ -1,3 +1,4 @@
+import { MobileRouteContext } from "@/components/shared/mobile-route-context";
 import { useState, useEffect } from "react";
 import {
   Download,
@@ -12,7 +13,7 @@ import { ComparisonPanel } from "@/components/shared/comparison-panel";
 import { money } from "@/lib/money";
 
 import { BackButton } from "@/components/ui/back-button";
-export function ReportsPage() {
+function ReportsPageContent() {
   const [period, setPeriod] = useState(30);
   const [salesByDay, setSalesByDay] = useState<SalesByDay[]>([]);
   const [topProducts, setTopProducts] = useState<TopProduct[]>([]);
@@ -36,13 +37,13 @@ export function ReportsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <BackButton fallback="/" />
           <h1 className="text-xl font-semibold tracking-tight">Sales Reports</h1>
           <p className="text-sm text-muted-foreground mt-1">Last {period} days</p>
         </div>
-        <div className="flex gap-1 border border-border rounded-md p-0.5">
+        <div className="grid w-full grid-cols-4 gap-1 rounded-md border border-border p-0.5 sm:w-auto">
           {[7, 30, 90, 365].map((d) => (
             <button
               key={d}
@@ -58,7 +59,7 @@ export function ReportsPage() {
       </div>
 
       {/* Summary stats */}
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-3 sm:gap-3">
         <SummaryCard label="Total Revenue" value={money(totalRevenue)} />
         <SummaryCard label="Transactions" value={String(totalSales)} />
         <SummaryCard label="Average Sale" value={money(avgSale)} />
@@ -215,5 +216,14 @@ function SummaryCard({ label, value }: { label: string; value: string }) {
       <span className="text-xs text-muted-foreground">{label}</span>
       <p className="text-2xl font-semibold mt-1 font-mono">{value}</p>
     </div>
+  );
+}
+
+export function ReportsPage() {
+  return (
+    <>
+      <MobileRouteContext />
+      <ReportsPageContent />
+    </>
   );
 }

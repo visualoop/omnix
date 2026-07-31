@@ -9,6 +9,8 @@ import { getBusinessProfile } from "@/services/business-profile";
 import type { PayrollRun, Payslip } from "@/services/payroll";
 import { intlLocale } from "@/lib/intl";
 import { money } from "@/lib/money";
+import { getBusinessCurrencyCode } from "@/stores/country";
+import { isKenya } from "@/lib/features";
 
 const MARGIN = 15;
 const PAGE_WIDTH = 210;
@@ -36,6 +38,8 @@ interface PayslipForPdf extends Payslip {
 
 function renderPayslip(pdf: jsPDF, payslip: PayslipForPdf, run: PayrollRun, business: BusinessInfo, startY = MARGIN) {
   let y = startY;
+  const currencyCode = getBusinessCurrencyCode();
+  const kenyaPayroll = isKenya();
 
   // Header
   pdf.setFont("helvetica", "bold");
@@ -96,7 +100,7 @@ function renderPayslip(pdf: jsPDF, payslip: PayslipForPdf, run: PayrollRun, busi
 
   autoTable(pdf, {
     startY: y,
-    head: [["Earnings", "Amount (KES)"]],
+    head: [["Earnings", `Amount (${currencyCode})`]],
     body: [
       ...earnings.map(([k, v]) => [k, v.toFixed(2)]),
       [{ content: "Gross Pay", styles: { fontStyle: "bold" } }, { content: payslip.gross_pay.toFixed(2), styles: { fontStyle: "bold" } }],
@@ -109,30 +113,32 @@ function renderPayslip(pdf: jsPDF, payslip: PayslipForPdf, run: PayrollRun, busi
   });
   y = (pdf as any).lastAutoTable.finalY + 4;
 
-  // Statutory Deductions
-  autoTable(pdf, {
-    startY: y,
-    head: [["Statutory Deductions", "Amount (KES)"]],
-    body: [
-      ["PAYE (Income Tax)", payslip.paye.toFixed(2)],
-      ["NSSF", payslip.nssf_employee.toFixed(2)],
-      ["SHIF (Social Health)", payslip.shif.toFixed(2)],
-      ["Housing Levy", payslip.housing_levy_employee.toFixed(2)],
-    ],
-    theme: "plain",
-    styles: { fontSize: 9, cellPadding: 1.5 },
-    headStyles: { fillColor: [220, 38, 38], textColor: 255, fontSize: 8, fontStyle: "bold" },
-    columnStyles: { 1: { halign: "right", font: "courier", cellWidth: 40 } },
-    margin: { left: MARGIN, right: MARGIN },
-  });
-  y = (pdf as any).lastAutoTable.finalY + 4;
+  // Kenya statutory deductions are never shown for another country.
+  if (kenyaPayroll) {
+    autoTable(pdf, {
+      startY: y,
+      head: [["Statutory Deductions", `Amount (${currencyCode})`]],
+      body: [
+        ["PAYE (Income Tax)", payslip.paye.toFixed(2)],
+        ["NSSF", payslip.nssf_employee.toFixed(2)],
+        ["SHIF (Social Health)", payslip.shif.toFixed(2)],
+        ["Housing Levy", payslip.housing_levy_employee.toFixed(2)],
+      ],
+      theme: "plain",
+      styles: { fontSize: 9, cellPadding: 1.5 },
+      headStyles: { fillColor: [220, 38, 38], textColor: 255, fontSize: 8, fontStyle: "bold" },
+      columnStyles: { 1: { halign: "right", font: "courier", cellWidth: 40 } },
+      margin: { left: MARGIN, right: MARGIN },
+    });
+    y = (pdf as any).lastAutoTable.finalY + 4;
+  }
 
   // Other deductions if any
   const hasOther = payslip.advances > 0 || payslip.loans > 0 || payslip.other_deductions > 0;
   if (hasOther) {
     autoTable(pdf, {
       startY: y,
-      head: [["Other Deductions", "Amount (KES)"]],
+      head: [["Other Deductions", `Amount (${currencyCode})`]],
       body: [
         ...(payslip.advances > 0 ? [["Advances", payslip.advances.toFixed(2)]] : []),
         ...(payslip.loans > 0 ? [["Loans", payslip.loans.toFixed(2)]] : []),
@@ -158,15 +164,17 @@ function renderPayslip(pdf: jsPDF, payslip: PayslipForPdf, run: PayrollRun, busi
   pdf.text(fmtKES(payslip.net_pay), PAGE_WIDTH - MARGIN - 4, y + 8, { align: "right" });
   y += 16;
 
-  // Employer-side info
-  pdf.setFont("helvetica", "normal");
-  pdf.setFontSize(7);
-  pdf.setTextColor(100);
-  pdf.text(
-    `Employer-side contributions: NSSF ${payslip.nssf_employer.toFixed(0)} · Housing ${payslip.housing_levy_employer.toFixed(0)} · NITA ${payslip.nita_levy.toFixed(0)}`,
-    MARGIN, y,
-  );
-  y += 8;
+  // Employer-side Kenya statutory information.
+  if (kenyaPayroll) {
+    pdf.setFont("helvetica", "normal");
+    pdf.setFontSize(7);
+    pdf.setTextColor(100);
+    pdf.text(
+      `Employer-side contributions: NSSF ${payslip.nssf_employer.toFixed(0)} · Housing ${payslip.housing_levy_employer.toFixed(0)} · NITA ${payslip.nita_levy.toFixed(0)}`,
+      MARGIN, y,
+    );
+    y += 8;
+  }
 
   // Signature lines
   pdf.setFontSize(8);

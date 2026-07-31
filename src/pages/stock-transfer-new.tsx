@@ -1,3 +1,4 @@
+import { MobileRouteContext } from "@/components/shared/mobile-route-context";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
@@ -8,7 +9,7 @@ import {
   Trash as Trash2,
 } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Combobox } from "@/components/ui/combobox";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { listBranches, type BranchWithStats } from "@/services/branches";
@@ -17,6 +18,7 @@ import { createTransfer, dispatchTransfer } from "@/services/stock-transfers";
 import { useActiveBranch } from "@/stores/active-branch";
 import { useAuthStore } from "@/stores/auth";
 import { toast } from "sonner";
+import { money } from "@/lib/money";
 
 import { BackButton } from "@/components/ui/back-button";
 interface TransferLine {
@@ -27,7 +29,7 @@ interface TransferLine {
   available: number;
 }
 
-export function NewStockTransferPage() {
+function NewStockTransferPageContent() {
   const navigate = useNavigate();
   const userId = useAuthStore((s) => s.user?.id);
   const activeBranch = useActiveBranch((s) => s.active);
@@ -125,20 +127,33 @@ export function NewStockTransferPage() {
 
       <Card>
         <CardContent className="p-4 space-y-3">
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div className="space-y-1">
               <label className="text-[11px] font-medium text-muted-foreground">From Branch *</label>
-              <Select value={fromBranchId} onValueChange={(v) => setFromBranchId(String(v))}><SelectTrigger><SelectValue placeholder="Select source..." /></SelectTrigger><SelectContent>
-                
-                {branches.map((b) => <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>)}
-              </SelectContent></Select>
+              <Combobox
+                value={fromBranchId}
+                onChange={(branchId) => {
+                  setFromBranchId(branchId);
+                  if (branchId === toBranchId) setToBranchId("");
+                }}
+                options={branches.map((branch) => ({ value: branch.id, label: branch.name }))}
+                placeholder="Select source"
+                searchPlaceholder="Search branches…"
+                emptyText="No branches exist. Add a branch in Settings first."
+              />
             </div>
             <div className="space-y-1">
               <label className="text-[11px] font-medium text-muted-foreground">To Branch *</label>
-              <Select value={toBranchId} onValueChange={(v) => setToBranchId(String(v))}><SelectTrigger><SelectValue placeholder="Select destination..." /></SelectTrigger><SelectContent>
-                
-                {branches.filter((b) => b.id !== fromBranchId).map((b) => <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>)}
-              </SelectContent></Select>
+              <Combobox
+                value={toBranchId}
+                onChange={setToBranchId}
+                options={branches
+                  .filter((branch) => branch.id !== fromBranchId)
+                  .map((branch) => ({ value: branch.id, label: branch.name }))}
+                placeholder="Select destination"
+                searchPlaceholder="Search branches…"
+                emptyText="No other branch exists. Add another branch in Settings first."
+              />
             </div>
           </div>
           <div className="space-y-1">
@@ -232,7 +247,7 @@ export function NewStockTransferPage() {
                   <td colSpan={2} className="px-2 py-1.5 text-xs">Total</td>
                   <td className="px-2 py-1.5 text-right text-xs tabular-nums">{totalQty}</td>
                   <td></td>
-                  <td className="px-2 py-1.5 text-right text-xs tabular-nums font-mono">KES {totalCost.toFixed(2)}</td>
+                  <td className="px-2 py-1.5 text-right text-xs tabular-nums font-mono">{money(totalCost)}</td>
                   <td></td>
                 </tr>
               </tbody>
@@ -253,5 +268,14 @@ export function NewStockTransferPage() {
         </Button>
       </div>
     </div>
+  );
+}
+
+export function NewStockTransferPage() {
+  return (
+    <>
+      <MobileRouteContext />
+      <NewStockTransferPageContent />
+    </>
   );
 }

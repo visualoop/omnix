@@ -8,6 +8,7 @@
  * expiring — computed from live SQL so the operator lands on a page that
  * already tells them what needs attention today.
  */
+import { MobileRouteContext } from "@/components/shared/mobile-route-context";
 import { useEffect, useState } from "react";
 import { useAuthStore } from "@/stores/auth";
 import { hasPermission, type Permission } from "@/lib/permissions";
@@ -31,7 +32,7 @@ import { StockTakesPage } from "@/pages/stock-take";
 import { SuppliersPage } from "@/pages/suppliers";
 import { DamagesPage } from "@/pages/damages";
 import { query } from "@/lib/db";
-import { money as KES } from "@/lib/money";
+import { money } from "@/lib/money";
 
 interface Kpis {
   products: number;
@@ -88,7 +89,7 @@ function KpiTile({ label, value, tone }: { label: string; value: string; tone?: 
   );
 }
 
-export function InventoryHubPage() {
+function InventoryHubPageContent() {
   const user = useAuthStore((s) => s.user);
   const has = (perm: string) => hasPermission(user, perm as Permission);
   const [kpis, setKpis] = useState<Kpis | null>(null);
@@ -101,7 +102,7 @@ export function InventoryHubPage() {
     <div className="flex flex-wrap items-center gap-4 divide-x divide-border/60">
       <KpiTile label="Products" value={kpis.products.toLocaleString()} />
       <KpiTile label="Units" value={kpis.units.toLocaleString()} />
-      <KpiTile label="Stock value" value={KES(kpis.stockValueCost)} />
+      <KpiTile label="Stock value" value={money(kpis.stockValueCost)} />
       <KpiTile
         label="Low stock"
         value={kpis.lowStock.toLocaleString()}
@@ -133,5 +134,14 @@ export function InventoryHubPage() {
       ]}
       hasPermission={has}
     />
+  );
+}
+
+export function InventoryHubPage() {
+  return (
+    <>
+      <MobileRouteContext />
+      <InventoryHubPageContent />
+    </>
   );
 }

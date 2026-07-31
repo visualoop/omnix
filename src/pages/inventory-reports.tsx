@@ -1,3 +1,4 @@
+import { MobileRouteContext } from "@/components/shared/mobile-route-context";
 import { useState, useEffect } from "react";
 import {
   Download,
@@ -9,9 +10,10 @@ import { exportToCSV } from "@/lib/export";
 import { renderReorderListPdf, renderDeadStockPdf } from "@/services/reports-pdf";
 import { loadBrandHeader, downloadBytes } from "@/services/pdf-brand";
 import { ComparisonBar } from "@/components/charts";
+import { money } from "@/lib/money";
 
 import { BackButton } from "@/components/ui/back-button";
-export function InventoryReportsPage() {
+function InventoryReportsPageContent() {
   const [valuation, setValuation] = useState<{ at_cost: number; at_retail: number; total_items: number } | null>(null);
   const [reorder, setReorder] = useState<Array<{ id: string; name: string; current_stock: number; reorder_level: number; deficit: number }>>([]);
   const [dead, setDead] = useState<Array<{ id: string; name: string; current_stock: number; last_sale: string | null }>>([]);
@@ -61,7 +63,7 @@ export function InventoryReportsPage() {
 
       {tab === "valuation" && valuation && (
         <div className="space-y-4">
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-3 sm:gap-3">
             <ValueCard label="At Cost" value={valuation.at_cost} />
             <ValueCard label="At Retail" value={valuation.at_retail} highlight />
             <ValueCard label="Potential Profit" value={valuation.at_retail - valuation.at_cost} tone="success" />
@@ -215,8 +217,7 @@ function ValueCard({ label, value, highlight, tone = "default" }: { label: strin
     <div className={`border rounded-lg p-4 ${highlight ? "border-primary/50 bg-primary/5" : tone === "success" ? "border-green-500/50 bg-green-500/5" : "border-border"}`}>
       <span className="text-xs text-muted-foreground">{label}</span>
       <p className="text-2xl font-semibold mt-1 font-mono">
-        <span className="text-xs text-muted-foreground mr-1">KES</span>
-        {value.toFixed(0)}
+{money(value)}
       </p>
     </div>
   );
@@ -228,5 +229,14 @@ function EmptyState({ icon: Icon, text }: { icon: typeof Package; text: string }
       <Icon className="h-8 w-8 mx-auto text-muted-foreground/50 mb-2" />
       <p className="text-sm text-muted-foreground">{text}</p>
     </div>
+  );
+}
+
+export function InventoryReportsPage() {
+  return (
+    <>
+      <MobileRouteContext />
+      <InventoryReportsPageContent />
+    </>
   );
 }

@@ -2,6 +2,7 @@
  * Daily Operations Report — end-of-day manager view.
  * Shows ALL products sold, payments, returns, petty cash, shift status, expenses.
  */
+import { MobileRouteContext } from "@/components/shared/mobile-route-context";
 import { useEffect, useState } from "react";
 import {
   ArrowCounterClockwise as RotateCcw,
@@ -24,7 +25,7 @@ import { PrintHeader } from "@/lib/print";
 import { exportToCSV } from "@/lib/export";
 import { renderDayBookPdf } from "@/services/reports-pdf";
 import { loadBrandHeader, downloadBytes } from "@/services/pdf-brand";
-import { money as KES } from "@/lib/money";
+import { money } from "@/lib/money";
 
 
 import { BackButton } from "@/components/ui/back-button";
@@ -58,7 +59,7 @@ interface DailyData {
   shiftClosing: number;
 }
 
-export function DailyOperationsPage() {
+function DailyOperationsPageContent() {
   const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
   const [data, setData] = useState<DailyData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -206,13 +207,13 @@ export function DailyOperationsPage() {
       <PrintHeader title="Daily Operations Report" subtitle={data.date} />
 
       {/* Header */}
-      <div className="flex items-start justify-between print-hide">
+      <div className="flex flex-col gap-3 print-hide lg:flex-row lg:items-start lg:justify-between">
         <div>
           <BackButton fallback="/" />
           <h1 className="text-xl font-semibold tracking-tight">Daily Operations</h1>
           <p className="text-sm text-muted-foreground mt-1">End-of-day summary: everything sold, payments, returns, and cash movement.</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex w-full flex-wrap gap-2 lg:w-auto">
           <Button
             variant="outline"
             size="sm"
@@ -242,13 +243,13 @@ export function DailyOperationsPage() {
       </div>
 
       {/* Date picker */}
-      <div className="flex items-center gap-3 print-hide">
+      <div className="flex flex-wrap items-center gap-3 print-hide">
         <Calendar className="h-4 w-4 text-muted-foreground" />
         <Input
           type="date"
           value={date}
           onChange={(e) => setDate(e.target.value)}
-          className="w-44"
+          className="w-full flex-1 sm:w-44 sm:flex-none"
         />
         <span className="text-sm text-muted-foreground">{data.date}</span>
       </div>
@@ -257,7 +258,7 @@ export function DailyOperationsPage() {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <Card><CardContent className="p-3">
           <div className="text-[10px] uppercase text-muted-foreground">Net Sales</div>
-          <div className="font-mono font-bold text-lg">{KES(grandTotal)}</div>
+          <div className="font-mono font-bold text-lg">{money(grandTotal)}</div>
           <div className="text-[10px] text-muted-foreground">{data.payments.length} methods</div>
         </CardContent></Card>
         <Card><CardContent className="p-3">
@@ -268,11 +269,11 @@ export function DailyOperationsPage() {
         <Card><CardContent className="p-3">
           <div className="text-[10px] uppercase text-muted-foreground">Returns</div>
           <div className="font-mono font-bold text-lg">{data.returnsCount}</div>
-          <div className="text-[10px] text-muted-foreground">{KES(data.returnsTotal)}</div>
+          <div className="text-[10px] text-muted-foreground">{money(data.returnsTotal)}</div>
         </CardContent></Card>
         <Card><CardContent className="p-3">
           <div className="text-[10px] uppercase text-muted-foreground">Net Cash</div>
-          <div className="font-mono font-bold text-lg">{KES(netCash)}</div>
+          <div className="font-mono font-bold text-lg">{money(netCash)}</div>
           <div className="text-[10px] text-muted-foreground">after expenses & petty</div>
         </CardContent></Card>
       </div>
@@ -287,7 +288,7 @@ export function DailyOperationsPage() {
             <div key={p.method} className="flex justify-between py-1.5 px-3 bg-muted/30 rounded text-sm">
               <span>{p.method}</span>
               <span className="font-mono tabular-nums">
-                {p.count} txns — {KES(p.total)}
+                {p.count} txns — {money(p.total)}
               </span>
             </div>
           ))}
@@ -350,7 +351,7 @@ export function DailyOperationsPage() {
             <RotateCcw className="h-3.5 w-3.5 text-muted-foreground" /> Returns
           </h3>
           <p className="text-sm text-muted-foreground">
-            {data.returnsCount} return{data.returnsCount !== 1 ? "s" : ""} totaling {KES(data.returnsTotal)}
+            {data.returnsCount} return{data.returnsCount !== 1 ? "s" : ""} totaling {money(data.returnsTotal)}
           </p>
         </section>
       )}
@@ -362,7 +363,16 @@ function Row({ label, value, color = "" }: { label: string; value: number; color
   return (
     <div className="flex justify-between py-1.5 px-3 bg-muted/30 rounded">
       <span>{label}</span>
-      <span className={`font-mono tabular-nums ${color}`}>{value < 0 ? "-" : ""}{KES(Math.abs(value))}</span>
+      <span className={`font-mono tabular-nums ${color}`}>{value < 0 ? "-" : ""}{money(Math.abs(value))}</span>
     </div>
+  );
+}
+
+export function DailyOperationsPage() {
+  return (
+    <>
+      <MobileRouteContext />
+      <DailyOperationsPageContent />
+    </>
   );
 }
