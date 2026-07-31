@@ -1,0 +1,9 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "android-minimal",
+  "description": "Fail-closed baseline for the local Android main webview; native adapter permissions are added only after their typed plugins exist.",
+  "local": true,
+  "windows": ["main"],
+  "platforms": ["android"],
+  "permissions": ["core:default"]
+}

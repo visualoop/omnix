@@ -1,0 +1,11 @@
+WireGuard Tunnel Library for Android
+Maven coordinate: com.wireguard.android:tunnel:1.0.20260102
+Project: https://www.wireguard.com/
+Source: https://git.zx2c4.com/wireguard-android
+
+This distribution includes software developed by WireGuard.
+The Maven artifact declares the Apache Software License, Version 2.0.
+A copy of that license is available at:
+https://www.apache.org/licenses/LICENSE-2.0.txt
+
+Retain this notice and any notices shipped in the upstream AAR when redistributing the dependency.

@@ -1,0 +1,17 @@
+// Merge these values into the generated android { } block; do not add a second block.
+compileSdk = 35
+
+compileOptions {
+    sourceCompatibility = JavaVersion.VERSION_17
+    targetCompatibility = JavaVersion.VERSION_17
+    isCoreLibraryDesugaringEnabled = true
+}
+
+kotlinOptions {
+    jvmTarget = "17"
+}
+
+defaultConfig {
+    minSdk = 28
+    targetSdk = 35
+}
