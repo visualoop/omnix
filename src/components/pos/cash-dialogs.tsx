@@ -23,13 +23,16 @@ import { useAuthStore } from "@/stores/auth";
 import { query } from "@/lib/db";
 import { toast } from "sonner";
 import { money as KES } from "@/lib/money";
+import { cn } from "@/lib/utils";
+import type { PosFormFactor } from "@/components/pos/use-pos-form-factor";
 
 
 // ─── Open Shift Dialog ─────────────────────────────────────────────────
-export function OpenShiftDialog({ open, onClose, onOpened }: {
+export function OpenShiftDialog({ open, onClose, onOpened, formFactor = "desktop" }: {
   open: boolean;
   onClose: () => void;
   onOpened: () => void;
+  formFactor?: PosFormFactor;
 }) {
   const userId = useAuthStore((s) => s.user?.id);
   const [openingBalance, setOpeningBalance] = useState("");
@@ -58,7 +61,12 @@ export function OpenShiftDialog({ open, onClose, onOpened }: {
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent>
+      <DialogContent
+        showCloseButton={formFactor === "desktop"}
+        className={cn(
+          formFactor !== "desktop" && "!inset-0 !left-0 !top-0 !h-[100dvh] !max-h-none !w-full !max-w-none !translate-x-0 !translate-y-0 !rounded-none !bg-background pt-[max(1rem,env(safe-area-inset-top))] pb-[max(1rem,env(safe-area-inset-bottom))] [&_button]:min-h-11 [&_input]:min-h-11 motion-reduce:!duration-0 [&_button]:focus-visible:outline-none [&_button]:focus-visible:ring-2 [&_button]:focus-visible:ring-ring [&_input]:focus-visible:outline-none [&_input]:focus-visible:ring-2 [&_input]:focus-visible:ring-ring",
+        )}
+      >
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Unlock className="h-4 w-4 text-emerald-400" /> Open Cash Shift
@@ -125,10 +133,11 @@ export function OpenShiftDialog({ open, onClose, onOpened }: {
 }
 
 // ─── Close Shift Dialog (Z-report-style) ────────────────────────────────
-export function CloseShiftDialog({ open, onClose, onClosed }: {
+export function CloseShiftDialog({ open, onClose, onClosed, formFactor = "desktop" }: {
   open: boolean;
   onClose: () => void;
   onClosed: () => void;
+  formFactor?: PosFormFactor;
 }) {
   const userId = useAuthStore((s) => s.user?.id);
   const [shift, setShift] = useState<CashShift | null>(null);
@@ -180,7 +189,15 @@ export function CloseShiftDialog({ open, onClose, onClosed }: {
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="max-w-lg">
+      <DialogContent
+        showCloseButton={formFactor === "desktop"}
+        className={cn(
+          "flex flex-col",
+          formFactor === "desktop"
+            ? "max-w-lg"
+            : "!inset-0 !left-0 !top-0 !h-[100dvh] !max-h-none !w-full !max-w-none !translate-x-0 !translate-y-0 !rounded-none !bg-background pt-[max(1rem,env(safe-area-inset-top))] pb-[max(1rem,env(safe-area-inset-bottom))] [&_button]:min-h-11 [&_input]:min-h-11 motion-reduce:!duration-0 [&_button]:focus-visible:outline-none [&_button]:focus-visible:ring-2 [&_button]:focus-visible:ring-ring [&_input]:focus-visible:outline-none [&_input]:focus-visible:ring-2 [&_input]:focus-visible:ring-ring",
+        )}
+      >
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Lock className="h-4 w-4 text-rose-400" /> Close Cash Shift (End of Day)
@@ -190,7 +207,7 @@ export function CloseShiftDialog({ open, onClose, onClosed }: {
           <div className="py-8 text-center text-sm text-muted-foreground">No open shift to close</div>
         ) : (
           <>
-            <div className="space-y-3 py-2">
+            <div className={cn("space-y-3 py-2", formFactor !== "desktop" && "min-h-0 flex-1 overflow-y-auto overscroll-contain")}>
               <Card className="bg-muted/30">
                 <CardContent className="p-3 space-y-1.5">
                   <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Shift Summary</div>

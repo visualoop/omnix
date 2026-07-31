@@ -71,7 +71,13 @@ import { money as KES } from "@/lib/money";
 import { useCountry } from "@/stores/country";
 import { pharmacyTerm } from "@/lib/locale";
 import { intlLocale } from "@/lib/intl";
+import { MobilePosShell } from "@/components/pos/MobilePosShell";
+import { usePosFormFactor, type PosFormFactor } from "@/components/pos/use-pos-form-factor";
 
+export interface POSSalePageProps {
+  /** Foundation seam: the shared responsive hook can pass this directly. */
+  formFactor?: PosFormFactor;
+}
 
 /** Module-aware accent palette so Dawa feels different from Retail. */
 function useModuleAccent() {
@@ -132,10 +138,11 @@ function useModuleAccent() {
   };
 }
 
-export function POSSalePage() {
+export function POSSalePage({ formFactor: formFactorOverride }: POSSalePageProps = {}) {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const location = useLocation();
+  const formFactor = usePosFormFactor(formFactorOverride);
 
   // Preload the customer when arriving from a customer's "New Sale" button
   // (navigate("/pos/sale", { state: { customerId } })).
@@ -502,7 +509,9 @@ export function POSSalePage() {
   })) as Array<Product | PopularProduct>;
 
   return (
-    <div className="flex flex-col h-screen w-full overflow-hidden bg-muted/30">
+    <div className={formFactor === "desktop" ? "flex flex-col h-screen w-full overflow-hidden bg-muted/30" : "h-[100dvh] w-full overflow-hidden bg-background"}>
+      {formFactor === "desktop" ? (
+        <>
       {/* Quote mode ribbon — makes the mode unmissable and lets the
           operator back out to normal POS or straight to the quotations list. */}
       {quoteMode ? (
@@ -811,13 +820,57 @@ export function POSSalePage() {
           />
         </div>
       </div>
+        </>
+      ) : (
+        <MobilePosShell
+          formFactor={formFactor}
+          moduleLabel={activeModule === "dawa" ? pharmacyTerm(countryCode) : activeModule === "retail" ? "Retail" : activeModule === "hardware" ? "Hardware" : activeModule === "hospitality" ? "Hospitality" : activeModule === "salon" ? "Salon" : "Standard"}
+          branchName={branch?.name ?? "Local branch"}
+          accent={accent}
+          search={search}
+          searchRef={searchRef}
+          products={displayed}
+          categories={categories}
+          activeCategoryId={activeCategoryId}
+          items={items}
+          customerId={customerId}
+          subtotal={subtotal()}
+          taxTotal={taxTotal()}
+          grandTotal={grandTotal()}
+          discountAmount={cartDiscountAmount()}
+          tip={tip}
+          serviceChargeAmount={serviceChargeAmount}
+          taxMode={taxMode}
+          shiftOpen={shift !== null}
+          quoteMode={quoteMode}
+          heldCount={heldCount}
+          sourceLabel={sourceLabel}
+          paymentOpen={payOpen}
+          onExit={() => navigate("/")}
+          onSearchChange={setSearch}
+          onScanRequest={() => searchRef.current?.focus()}
+          onSelectCategory={setActiveCategoryId}
+          onAddProduct={(product) => handleAddProduct(product as Product)}
+          onUpdateQty={updateQty}
+          onRemoveItem={removeItem}
+          onSetTaxMode={setTaxMode}
+          onPark={() => setHeldOpen(true)}
+          onReturns={() => setReturnOpen(true)}
+          onDiscount={() => setDiscountOpen(true)}
+          onTip={() => setTipDialog(true)}
+          onClear={clear}
+          onOpenShift={() => setOpenShiftDialog(true)}
+          onShiftAction={() => shift ? setCloseShiftDialog(true) : setOpenShiftDialog(true)}
+          onCheckout={() => (quoteMode ? setSaveQuoteOpen(true) : setPayOpen(true))}
+        />
+      )}
 
       {/* ─── DIALOGS ────────────────────────────────────────────────── */}
-      <PaymentModal open={payOpen} onClose={() => setPayOpen(false)} />
+      <PaymentModal open={payOpen} onClose={() => setPayOpen(false)} formFactor={formFactor} />
       <SaveQuoteSheet open={saveQuoteOpen} onClose={() => setSaveQuoteOpen(false)} />
-      <HeldSalesDialog open={heldOpen} onClose={() => setHeldOpen(false)} />
-      <ReturnDialog open={returnOpen} onClose={() => setReturnOpen(false)} />
-      <DiscountDialog open={discountOpen} onClose={() => setDiscountOpen(false)} />
+      <HeldSalesDialog open={heldOpen} onClose={() => setHeldOpen(false)} formFactor={formFactor} />
+      <ReturnDialog open={returnOpen} onClose={() => setReturnOpen(false)} formFactor={formFactor} />
+      <DiscountDialog open={discountOpen} onClose={() => setDiscountOpen(false)} formFactor={formFactor} />
       <PromoDialog open={promoOpen} onClose={() => setPromoOpen(false)} onApply={(amount, type, promo) => {
         useCartStore.getState().setDiscount(amount, type, promo ? { id: promo.id, label: promo.name } : null);
       }} />
@@ -825,6 +878,7 @@ export function POSSalePage() {
       <OpenShiftDialog
         open={openShiftDialog}
         onClose={() => setOpenShiftDialog(false)}
+        formFactor={formFactor}
         onOpened={async () => {
           setOpenShiftDialog(false);
           if (user?.id) setShift(await getOpenShift(user.id));
@@ -833,6 +887,7 @@ export function POSSalePage() {
       <CloseShiftDialog
         open={closeShiftDialog}
         onClose={() => setCloseShiftDialog(false)}
+        formFactor={formFactor}
         onClosed={async () => {
           setCloseShiftDialog(false);
           if (user?.id) setShift(await getOpenShift(user.id));
@@ -846,8 +901,10 @@ export function POSSalePage() {
       <TipDialog
         open={tipDialog}
         onClose={() => setTipDialog(false)}
+        formFactor={formFactor}
       />
       <VariantPickerDialog
+        formFactor={formFactor}
         product={pendingVariantPick}
         onClose={() => setPendingVariantPick(null)}
         onPick={async (p, variant) => {
@@ -898,6 +955,7 @@ export function POSSalePage() {
         }}
       />
       <UnitPickerDialog
+        formFactor={formFactor}
         open={!!unitPickerFor}
         productId={unitPickerFor?.id ?? null}
         productName={unitPickerFor?.name ?? ""}

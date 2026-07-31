@@ -15,14 +15,18 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { availableUnits, specSummary, type EquipmentUnit } from "@/services/equipment";
+import { cn } from "@/lib/utils";
+import type { PosFormFactor } from "@/components/pos/use-pos-form-factor";
 
 export function UnitPickerDialog({
+  formFactor = "desktop",
   open,
   productId,
   productName,
   onPick,
   onClose,
 }: {
+  formFactor?: PosFormFactor;
   open: boolean;
   productId: string | null;
   productName: string;
@@ -45,7 +49,14 @@ export function UnitPickerDialog({
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent
+        className={cn(
+          "flex flex-col",
+          formFactor === "desktop"
+            ? "sm:max-w-lg"
+            : "!inset-0 !top-0 !left-0 !h-[100dvh] !max-h-none !w-full !max-w-none !translate-x-0 !translate-y-0 !rounded-none !bg-background !backdrop-blur-none pt-[max(1rem,env(safe-area-inset-top))] pb-[max(1rem,env(safe-area-inset-bottom))] [&_button]:min-h-11 motion-reduce:!duration-0 [&_button]:focus-visible:outline-none [&_button]:focus-visible:ring-2 [&_button]:focus-visible:ring-ring",
+        )}
+      >
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-[15px]">
             <Wrench className="size-4 text-primary" />
@@ -65,7 +76,7 @@ export function UnitPickerDialog({
             No in-stock units for this product. Receive units first.
           </div>
         ) : (
-          <div className="max-h-[50vh] overflow-auto -mx-1 px-1 space-y-2">
+          <div className={cn("overflow-auto -mx-1 px-1 space-y-2", formFactor === "desktop" ? "max-h-[50vh]" : "min-h-0 flex-1")}>
             {units.map((u) => {
               const spec = specSummary(u.specs_json);
               return (
