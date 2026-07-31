@@ -34,11 +34,23 @@ import { getProducts, type Product } from "@/services/inventory";
 import { useAuthStore } from "@/stores/auth";
 import { useCartStore } from "@/stores/cart";
 import { toast } from "sonner";
-import { money as KES } from "@/lib/money";
+import { OperationalContext } from "@/components/shared/operational-context";
+import { money as KES, currencySymbol } from "@/lib/money";
+import { useActiveCountry } from "@/stores/country";
 import { intlLocale } from "@/lib/intl";
 
 
 import { BackButton } from "@/components/ui/back-button";
+
+const PAYMENT_LABELS: Record<string, string> = {
+  cash: "Cash",
+  mpesa: "M-Pesa",
+  airtel_money: "Airtel Money",
+  mtn_momo: "MTN MoMo",
+  tigo_pesa: "Tigo Pesa",
+  card: "Card",
+  bank: "Bank transfer",
+};
 export function LaybysPage() {
   const [tab, setTab] = useState<"active" | "completed" | "cancelled" | "expired">("active");
   const [creating, setCreating] = useState(false);
@@ -59,7 +71,7 @@ export function LaybysPage() {
 
   return (
     <div className="space-y-5">
-      <div className="flex items-start justify-between">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <BackButton fallback="/retail" />
           <h1 className="text-xl font-semibold tracking-tight flex items-center gap-2">
@@ -69,10 +81,12 @@ export function LaybysPage() {
             Pay-in-installments. Customer pays a deposit, claims items when fully paid up.
           </p>
         </div>
-        <Button onClick={() => setCreating(true)}>
+        <Button className="h-11 w-full sm:w-auto lg:h-9" onClick={() => setCreating(true)}>
           <Plus className="h-4 w-4 mr-1.5" /> New Layby
         </Button>
       </div>
+
+      <OperationalContext compact />
 
       {tab === "active" && (
         <Card className="bg-amber-50 border-amber-200">
@@ -91,7 +105,7 @@ export function LaybysPage() {
             value={list.search}
             onChange={(e) => list.setSearch(e.target.value)}
             placeholder="Search layby number or customer..."
-            className="pl-9"
+            className="h-11 pl-9 lg:h-9"
           />
         </div>
       </div>
@@ -105,7 +119,29 @@ export function LaybysPage() {
         </TabsList>
 
         <TabsPanel value={tab} className="mt-3">
-          <div className="border border-border rounded-md overflow-hidden">
+          <>
+            <div className="space-y-2 lg:hidden" aria-label="Layby records">
+              {loading ? (
+                <div className="py-8 text-center text-sm text-muted-foreground">Loading laybys…</div>
+              ) : laybys.length === 0 ? (
+                <EmptyState icon={CalendarClock} title={`No ${tab} laybys`} description={tab === "active" ? "Customers can pay a deposit and pick up later when fully paid." : ""} cta={tab === "active" ? { label: "New Layby", onClick: () => setCreating(true), icon: Plus } : undefined} />
+              ) : laybys.map((layby) => {
+                const daysLeft = Math.ceil((new Date(layby.expires_at).getTime() - Date.now()) / 86400000);
+                return (
+                  <button key={layby.id} type="button" onClick={() => setViewing(layby.id)} className="min-h-11 w-full rounded-md border border-border p-4 text-left active:scale-[0.99]">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0"><p className="font-medium truncate">{layby.customer_name}</p><p className="mt-1 font-mono text-xs text-muted-foreground">{layby.layby_number}</p></div>
+                      <StatusBadge status={layby.status} />
+                    </div>
+                    <div className="mt-4 grid grid-cols-2 gap-3 border-t border-border pt-3 text-xs">
+                      <div><span className="text-muted-foreground">Balance</span><p className="mt-1 font-mono font-semibold text-amber-700">{KES(layby.balance_due)}</p></div>
+                      <div className="text-right"><span className="text-muted-foreground">Due</span><p className="mt-1">{new Date(layby.expires_at).toLocaleDateString(intlLocale(), { day: "2-digit", month: "short" })}</p>{layby.status === "active" && <p className={daysLeft < 7 ? "mt-1 text-red-600" : "mt-1 text-muted-foreground"}>{daysLeft > 0 ? `${daysLeft} days left` : "Expired"}</p>}</div>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+            <div className="hidden border border-border rounded-md overflow-hidden lg:block">
             <table className="w-full text-sm">
               <thead className="bg-muted/30 border-b border-border">
                 <tr>
@@ -164,7 +200,8 @@ export function LaybysPage() {
                 )}
               </tbody>
             </table>
-          </div>
+            </div>
+          </>
         </TabsPanel>
       </Tabs>
 
@@ -197,6 +234,8 @@ function NewLaybyDialog({ open, onClose, onCreated }: {
   onCreated: () => void;
 }) {
   const userId = useAuthStore((s) => s.user?.id);
+  const { profile } = useActiveCountry();
+  const paymentMethods = profile?.paymentMethods ?? ["cash", "card", "bank"];
   const [customer, setCustomer] = useState({ id: "", name: "", phone: "" });
   const [customerSearch, setCustomerSearch] = useState("");
   const [customerSuggestions, setCustomerSuggestions] = useState<any[]>([]);
@@ -334,7 +373,7 @@ function NewLaybyDialog({ open, onClose, onCreated }: {
                       className="w-full text-left px-3 py-1.5 text-xs hover:bg-accent flex justify-between"
                     >
                       <span>{p.name}</span>
-                      <span className="text-muted-foreground">KES {p.selling_price}</span>
+                      <span className="text-muted-foreground">{KES(p.selling_price)}</span>
                     </button>
                   ))}
                 </div>
@@ -392,23 +431,20 @@ function NewLaybyDialog({ open, onClose, onCreated }: {
           )}
 
           {/* Deposit + Expiry */}
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3 sm:gap-2">
             <div className="space-y-1">
-              <label className="text-[11px] font-medium text-muted-foreground">Deposit (KES)</label>
+              <label className="text-[11px] font-medium text-muted-foreground">Deposit ({currencySymbol()})</label>
               <Input type="number" value={deposit} onChange={(e) => setDeposit(parseFloat(e.target.value) || 0)} />
               {total > 0 && (
                 <div className="text-[10px] text-muted-foreground">
-                  {((deposit / total) * 100).toFixed(0)}% of total · Balance KES {(total - deposit).toFixed(2)}
+                  {((deposit / total) * 100).toFixed(0)}% of total · Balance {KES(total - deposit)}
                 </div>
               )}
             </div>
             <div className="space-y-1">
               <label className="text-[11px] font-medium text-muted-foreground">Method</label>
               <Select value={depositMethod} onValueChange={(v) => setDepositMethod(String(v))}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>
-                <SelectItem value="cash">Cash</SelectItem>
-                <SelectItem value="mpesa">M-Pesa</SelectItem>
-                <SelectItem value="card">Card</SelectItem>
-                <SelectItem value="bank">Bank Transfer</SelectItem>
+                {paymentMethods.map((method) => <SelectItem key={method} value={method}>{PAYMENT_LABELS[method] ?? method.replace(/_/g, " ")}</SelectItem>)}
               </SelectContent></Select>
             </div>
             <div className="space-y-1">
@@ -419,7 +455,7 @@ function NewLaybyDialog({ open, onClose, onCreated }: {
 
           {deposit > 0 && (
             <div className="space-y-1">
-              <label className="text-[11px] font-medium text-muted-foreground">Reference (M-Pesa code, etc.)</label>
+              <label className="text-[11px] font-medium text-muted-foreground">Payment reference (optional)</label>
               <Input value={depositRef} onChange={(e) => setDepositRef(e.target.value)} placeholder="Optional" />
             </div>
           )}
@@ -481,7 +517,7 @@ function LaybyDetailSheet({ laybyId, onClose, onChange }: {
 
   return (
     <Sheet open={!!laybyId} onOpenChange={(o) => !o && onClose()}>
-      <SheetContent side="right" className="w-[600px] sm:max-w-[600px]">
+      <SheetContent side="right" className="w-full max-w-full sm:w-[600px] sm:max-w-[600px]">
         <SheetHeader>
           <SheetTitle>{layby.layby_number}</SheetTitle>
         </SheetHeader>
@@ -624,6 +660,8 @@ function RecordPaymentDialog({ layby, userId, onClose, onSaved }: {
   onClose: () => void;
   onSaved: () => void;
 }) {
+  const { profile } = useActiveCountry();
+  const paymentMethods = profile?.paymentMethods ?? ["cash", "card", "bank"];
   const [amount, setAmount] = useState(layby.balance_due);
   const [method, setMethod] = useState("cash");
   const [reference, setReference] = useState("");
@@ -671,10 +709,9 @@ function RecordPaymentDialog({ layby, userId, onClose, onSaved }: {
                 <SelectValue placeholder="Pick a method" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="cash">Cash</SelectItem>
-                <SelectItem value="mpesa">M-Pesa</SelectItem>
-                <SelectItem value="card">Card</SelectItem>
-                <SelectItem value="bank">Bank Transfer</SelectItem>
+                {paymentMethods.map((paymentMethod) => (
+                  <SelectItem key={paymentMethod} value={paymentMethod}>{PAYMENT_LABELS[paymentMethod] ?? paymentMethod.replace(/_/g, " ")}</SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>

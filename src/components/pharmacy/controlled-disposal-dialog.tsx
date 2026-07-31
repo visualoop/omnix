@@ -68,7 +68,7 @@ export function ControlledDisposalDialog({ item, onClose, onSaved }: Props) {
 
   return (
     <Dialog open={!!item} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="sm:max-w-lg max-h-[85vh] overflow-y-auto">
+      <DialogContent className="w-[calc(100vw-1rem)] sm:max-w-lg max-h-[85vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Witnessed destruction — controlled substance</DialogTitle>
           <DialogDescription>
@@ -82,7 +82,7 @@ export function ControlledDisposalDialog({ item, onClose, onSaved }: Props) {
           <Field label="Destruction method *">
             <Input value={method} onChange={(e) => setMethod(e.target.value)} placeholder="e.g. Incineration via NEMA-licensed contractor" autoFocus />
           </Field>
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
             <Field label="Witness 1 name *"><Input value={w1} onChange={(e) => setW1(e.target.value)} /></Field>
             <Field label="Witness 1 license"><Input value={w1lic} onChange={(e) => setW1lic(e.target.value)} placeholder="PPB / KMPDC #" /></Field>
             <Field label="Witness 2 name *"><Input value={w2} onChange={(e) => setW2(e.target.value)} /></Field>
@@ -102,7 +102,7 @@ export function ControlledDisposalDialog({ item, onClose, onSaved }: Props) {
           </Field>
         </div>
 
-        <DialogFooter>
+        <DialogFooter className="[&_button]:h-11 lg:[&_button]:h-9">
           <Button variant="ghost" onClick={onClose} disabled={submitting}>Cancel</Button>
           <Button
             onClick={submit}

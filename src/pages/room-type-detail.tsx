@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
 import { query } from "@/lib/db";
 import { money as KES } from "@/lib/money";
+import { OperationalContext } from "@/components/shared/operational-context";
 
 interface RoomType {
   id: string;
@@ -83,8 +84,9 @@ export function RoomTypeDetailPage() {
         title={type.name}
         description={`Base rate ${KES(type.base_rate)}/night · Max ${type.max_occupancy} guest${type.max_occupancy === 1 ? "" : "s"}`}
       />
+      <OperationalContext compact />
 
-      <div className="grid grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <Kpi label="Rooms" value={rooms.length.toLocaleString()} />
         <Kpi label="Occupied" value={`${occupied} / ${rooms.length}`} tone={occupied ? "warn" : "muted"} />
         <Kpi label="Available" value={available.toLocaleString()} tone={available ? "accent" : "muted"} />
@@ -98,12 +100,12 @@ export function RoomTypeDetailPage() {
           {[...byFloor.entries()].map(([floor, rs]) => (
             <div key={floor}>
               <div className="text-[11px] uppercase tracking-wide text-muted-foreground mb-2">Floor {floor}</div>
-              <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 gap-2.5">
+              <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
                 {rs.map((r) => (
                   <button
                     key={r.id}
                     onClick={() => navigate(`/hospitality/rooms/${r.id}`)}
-                    className="rounded-lg border border-border p-3 text-left hover:bg-accent/40 transition-colors"
+                    className="min-h-11 rounded-lg border border-border p-3 text-left hover:bg-accent/40 transition-colors"
                   >
                     <div className="flex items-center justify-between">
                       <span className="font-semibold">{r.room_number}</span>

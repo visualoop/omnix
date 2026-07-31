@@ -238,7 +238,7 @@ export function ReceiveUnitsDialog({
           )}
         </div>
 
-        <DialogFooter className="border-t border-border px-5 py-4 flex-shrink-0">
+        <DialogFooter className="[&_button]:h-11 lg:[&_button]:h-9 border-t border-border px-5 py-4 flex-shrink-0">
           <Button variant="outline" size="sm" onClick={onClose} disabled={submitting}>Cancel</Button>
           <Button size="sm" onClick={save} disabled={submitting || !productId || products.length === 0}>
             {submitting ? <Loader2 className="size-4 animate-spin" /> : <Plus className="size-4" />}

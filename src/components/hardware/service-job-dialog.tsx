@@ -88,7 +88,7 @@ export function CreateServiceJobDialog({
 
   return (
     <Dialog open={open} onOpenChange={(o) => { if (!o) { reset(); onClose(); } else { ensureTechs(); } }}>
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent className="w-[calc(100vw-1rem)] sm:max-w-lg">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-[15px]">
             <Wrench className="size-4 text-primary" /> New service job
@@ -136,7 +136,7 @@ export function CreateServiceJobDialog({
             <Textarea value={fault} onChange={(e) => setFault(e.target.value)} placeholder="What's wrong with the machine?" rows={3} />
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <label className="text-[11px] font-medium text-muted-foreground">Meter in (hours/km)</label>
               <Input type="number" value={meterIn} onChange={(e) => setMeterIn(e.target.value)} placeholder="0" className="text-right tabular-nums" />
@@ -153,7 +153,7 @@ export function CreateServiceJobDialog({
           </div>
         </div>
 
-        <DialogFooter>
+        <DialogFooter className="[&_button]:h-11 lg:[&_button]:h-9">
           <Button variant="outline" size="sm" onClick={() => { reset(); onClose(); }} disabled={submitting}>Cancel</Button>
           <Button size="sm" onClick={submit} disabled={submitting || !unit}>
             {submitting ? <Loader2 className="size-4 animate-spin" /> : <Wrench className="size-4" />}

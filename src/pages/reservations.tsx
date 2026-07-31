@@ -17,6 +17,11 @@ import {
   type ReservationStatus,
 } from "@/services/reservations";
 import { intlLocale } from "@/lib/intl";
+import { OperationalContext } from "@/components/shared/operational-context";
+import { useClientPagination } from "@/hooks/use-client-pagination";
+import { PaginationBar } from "@/components/pagination-bar";
+import { useActiveCountry } from "@/stores/country";
+import { phonePlaceholder } from "@/lib/locale";
 
 import { BackButton } from "@/components/ui/back-button";
 const STATUS_LABEL: Record<ReservationStatus, string> = {
@@ -43,6 +48,7 @@ export function ReservationsPage() {
   const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
   const [loading, setLoading] = useState(false);
   const [openNew, setOpenNew] = useState(false);
+  const [search, setSearch] = useState("");
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -67,10 +73,13 @@ export function ReservationsPage() {
     await deleteReservation(id);
     load();
   };
+  const needle = search.trim().toLowerCase();
+  const filteredItems = items.filter((reservation) => !needle || [reservation.guest_name, reservation.guest_phone, reservation.status, reservation.notes].some((value) => value?.toLowerCase().includes(needle)));
+  const { pageRows: reservationRows, pagination: reservationPagination } = useClientPagination(filteredItems, 12, `${kind}:${date}:${search}`);
 
   return (
     <div className="max-w-5xl space-y-4">
-      <header className="flex items-start justify-between">
+      <header className="flex flex-col items-start justify-between gap-3 sm:flex-row">
         <div>
           <BackButton fallback="/hospitality" />
           <h1 className="text-xl font-semibold flex items-center gap-2">
@@ -80,18 +89,19 @@ export function ReservationsPage() {
             Table + room bookings. Filter by day, mark statuses, follow up on no-shows.
           </p>
         </div>
-        <Button onClick={() => setOpenNew(true)}>
+        <Button className="h-11 w-full sm:w-auto lg:h-9" onClick={() => setOpenNew(true)}>
           <Plus className="h-4 w-4 mr-1.5" /> New reservation
         </Button>
       </header>
+      <OperationalContext compact />
 
-      <div className="flex gap-2 items-center border-b border-border pb-2">
+      <div className="flex flex-wrap gap-2 items-center border-b border-border pb-2">
         <div className="flex gap-1 bg-muted rounded-md p-0.5">
           {(["table", "room"] as const).map((k) => (
             <button
               key={k}
               onClick={() => setKind(k)}
-              className={`px-3 py-1 text-[12.5px] rounded ${
+              className={`min-h-11 px-3 py-1 text-[12.5px] rounded lg:min-h-0 ${
                 kind === k ? "bg-background shadow-sm" : "text-muted-foreground"
               }`}
             >
@@ -101,9 +111,10 @@ export function ReservationsPage() {
         </div>
         <div className="relative">
           <Calendar className="absolute left-2 top-2 h-4 w-4 text-muted-foreground pointer-events-none" />
-          <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="pl-8 w-[160px] h-8 text-[13px]" />
+          <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="h-11 w-[160px] pl-8 text-[13px] lg:h-8" />
         </div>
       </div>
+      <Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search guest, phone, status, or notes…" className="h-11 w-full sm:max-w-sm lg:h-8" />
 
       {loading ? (
         <div className="py-12 text-center text-sm text-muted-foreground">Loading…</div>
@@ -114,13 +125,16 @@ export function ReservationsPage() {
             No {kind} reservations for {new Date(date).toLocaleDateString(intlLocale())}.
           </div>
         </div>
+      ) : filteredItems.length === 0 ? (
+        <div className="py-12 text-center text-sm text-muted-foreground">No reservations match this search.</div>
       ) : (
-        <div className="space-y-1.5">
-          {items.map((r) => (
-            <div key={r.id} className="rounded-md border border-border p-3 flex items-center gap-3">
+        <>
+        <div className="space-y-2">
+          {reservationRows.map((r) => (
+            <article key={r.id} className="rounded-md border border-border p-4 flex flex-col gap-3 sm:flex-row sm:items-center">
               <ClockCounterClockwise className="h-4 w-4 text-muted-foreground shrink-0" />
               <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 text-[13.5px]">
+                <div className="flex flex-wrap items-center gap-2 text-[13.5px]">
                   <span className="font-semibold">{new Date(r.arrival_at.replace(" ", "T")).toLocaleTimeString(intlLocale(), { hour: "2-digit", minute: "2-digit" })}</span>
                   <span>·</span>
                   <User className="h-3.5 w-3.5 text-muted-foreground" />
@@ -136,25 +150,27 @@ export function ReservationsPage() {
                 </div>
                 {r.notes && <div className="text-[12px] text-muted-foreground mt-0.5">{r.notes}</div>}
               </div>
-              <span className={`text-[11px] px-2 py-0.5 rounded-full uppercase tracking-wider ${STATUS_COLOR[r.status]}`}>
+              <span className={`w-fit text-[11px] px-2 py-0.5 rounded-full uppercase tracking-wider ${STATUS_COLOR[r.status]}`}>
                 {STATUS_LABEL[r.status]}
               </span>
               {r.status === "confirmed" && (
                 <>
-                  <Button size="sm" variant="outline" onClick={() => handleStatus(r.id, kind === "table" ? "seated" : "checked_in")}>
+                  <Button size="sm" variant="outline" className="h-11 sm:w-auto lg:h-8" onClick={() => handleStatus(r.id, kind === "table" ? "seated" : "checked_in")}>
                     {kind === "table" ? "Seat" : "Check in"}
                   </Button>
-                  <Button size="sm" variant="ghost" onClick={() => handleStatus(r.id, "no_show")}>
+                  <Button size="sm" variant="ghost" className="h-11 sm:w-auto lg:h-8" onClick={() => handleStatus(r.id, "no_show")}>
                     No-show
                   </Button>
                 </>
               )}
-              <Button size="sm" variant="ghost" onClick={() => handleDelete(r.id)}>
+              <Button size="sm" variant="ghost" className="h-11 sm:w-auto lg:h-8" onClick={() => handleDelete(r.id)}>
                 Remove
               </Button>
-            </div>
+            </article>
           ))}
         </div>
+        <PaginationBar list={reservationPagination} />
+        </>
       )}
 
       <NewReservationDialog
@@ -184,6 +200,7 @@ function NewReservationDialog({
   });
   const [notes, setNotes] = useState("");
   const [busy, setBusy] = useState(false);
+  const { code } = useActiveCountry();
 
   const save = async () => {
     if (!name.trim()) { toast.error("Guest name required"); return; }
@@ -219,7 +236,7 @@ function NewReservationDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
+      <DialogContent className="w-[calc(100vw-1rem)] max-w-lg sm:w-full">
         <DialogHeader>
           <DialogTitle>New {kind} reservation</DialogTitle>
         </DialogHeader>
@@ -228,10 +245,10 @@ function NewReservationDialog({
             <label className="text-[12px] text-muted-foreground">Guest name</label>
             <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Wanjiku" autoFocus />
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div>
               <label className="text-[12px] text-muted-foreground">Phone</label>
-              <Input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="0722…" />
+              <Input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder={phonePlaceholder(code)} />
             </div>
             {kind === "table" && (
               <div>
@@ -250,8 +267,8 @@ function NewReservationDialog({
           </div>
         </div>
         <DialogFooter>
-          <Button variant="ghost" onClick={() => onOpenChange(false)}>Cancel</Button>
-          <Button onClick={save} disabled={busy}>{busy ? "Saving…" : "Create"}</Button>
+          <Button variant="ghost" className="h-11" onClick={() => onOpenChange(false)}>Cancel</Button>
+          <Button className="h-11" onClick={save} disabled={busy}>{busy ? "Saving…" : "Create"}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

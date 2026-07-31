@@ -17,6 +17,7 @@ import { useCartStore } from "@/stores/cart";
 import { prepareQuoteForPosCheckout } from "@/services/hardware";
 import { confirm } from "@/components/ui/confirm-dialog";
 import { toast } from "sonner";
+import { OperationalContext } from "@/components/shared/operational-context";
 
 interface Quote {
   id: string;
@@ -215,13 +216,14 @@ export function QuotationDetailPage() {
 
   return (
     <div className="space-y-6">
+      <OperationalContext />
       <PageHeader
         back={{ fallback: "/hardware?tab=quotations" }}
         eyebrow="Hardware quotation"
         title={quote.quotation_number}
         description={quote.customer_name}
         actions={
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2 [&_button]:min-h-11 lg:[&_button]:min-h-0">
             <Badge variant="outline" className={`text-xs ${STATUS_CLASSES[quote.status] || ""}`}>
               {quote.status}
             </Badge>
@@ -262,7 +264,7 @@ export function QuotationDetailPage() {
       />
 
       {/* Meta */}
-      <div className="grid grid-cols-4 gap-3 text-sm">
+      <div className="grid grid-cols-2 gap-3 text-sm lg:grid-cols-4">
         <MetaField label="Customer" value={quote.customer_name} />
         <MetaField label="Phone" value={quote.customer_phone ?? "—"} />
         <MetaField
@@ -276,7 +278,8 @@ export function QuotationDetailPage() {
       </div>
 
       {/* Items */}
-      <div className="rounded-lg border border-border overflow-hidden">
+      <div className="space-y-2 lg:hidden">{items.map((item) => <article key={item.id} className="rounded-md border border-border p-4"><p className="font-medium">{item.description}</p><p className="mt-1 text-xs text-muted-foreground">{item.quantity} {item.unit ?? "pcs"} × {KES(item.unit_price)}</p><div className="mt-3 flex items-center justify-between border-t border-border pt-3 text-xs"><span className="text-muted-foreground">{item.discount_amount > 0 ? `Discount −${KES(item.discount_amount)}` : "No line discount"}</span><span className="font-mono font-semibold">{KES(item.line_total)}</span></div></article>)}</div>
+      <div className="hidden overflow-hidden rounded-lg border border-border lg:block">
         <table className="w-full text-sm">
           <thead className="bg-muted/30 border-b border-border">
             <tr>
@@ -326,6 +329,8 @@ export function QuotationDetailPage() {
           </tfoot>
         </table>
       </div>
+
+      <div className="rounded-md border border-border p-4 lg:hidden"><div className="flex justify-between text-sm"><span className="text-muted-foreground">Subtotal</span><span className="font-mono">{KES(quote.subtotal)}</span></div>{quote.discount_amount > 0 && <div className="mt-2 flex justify-between text-sm"><span className="text-muted-foreground">Discount</span><span className="font-mono">−{KES(quote.discount_amount)}</span></div>}<div className="mt-3 flex justify-between border-t border-border pt-3 font-semibold"><span>Total</span><span className="font-mono">{KES(quote.total)}</span></div></div>
 
       {quote.notes && (
         <section>

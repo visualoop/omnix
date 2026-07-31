@@ -6,7 +6,6 @@ import {
   CheckCircle,
   DownloadSimple,
   FileText,
-  MagnifyingGlass,
   Prescription as PrescriptionIcon,
   X,
 } from "@phosphor-icons/react";
@@ -18,7 +17,9 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { TableRowSkeleton } from "@/components/ui/skeletons";
 import { BackButton } from "@/components/ui/back-button";
 import { PaginationBar } from "@/components/pagination-bar";
+import { OperationalContext } from "@/components/shared/operational-context";
 import { useListData } from "@/hooks/use-list-data";
+import { useFeatureEnabled } from "@/lib/features";
 import { pageEprescriptions } from "@/services/paged";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import {
@@ -41,25 +42,38 @@ export function EprescriptionsPage() {
   const [detailItems, setDetailItems] = useState<DhaEprescriptionItem[]>([]);
   const [importing, setImporting] = useState(false);
   const [pending, setPending] = useState(0);
+  const [online, setOnline] = useState(() => typeof navigator === "undefined" || navigator.onLine);
+  const shaEnabled = useFeatureEnabled("sha");
   const userId = useAuthStore((s) => s.user?.id);
   const navigate = useNavigate();
+  const list = useListData(pageEprescriptions, { pageSize: 20 });
 
-  const list = useListData(pageEprescriptions, { pageSize: 50 });
   const refreshPending = () => { countPendingEprescriptions().then(setPending).catch(() => {}); };
   useEffect(() => { refreshPending(); }, [list.total]);
-  const refreshAll = () => { list.refresh(); refreshPending(); };
-
+  useEffect(() => {
+    const update = () => setOnline(navigator.onLine);
+    window.addEventListener("online", update);
+    window.addEventListener("offline", update);
+    return () => {
+      window.removeEventListener("online", update);
+      window.removeEventListener("offline", update);
+    };
+  }, []);
   useEffect(() => {
     if (!detail) { setDetailItems([]); return; }
     getEprescriptionItems(detail.id).then(setDetailItems);
   }, [detail]);
 
+  const refreshAll = () => { list.refresh(); refreshPending(); };
   const sync = async () => {
+    if (!online) {
+      toast.error("Internet is offline. Local prescriptions remain available; sync when connected.");
+      return;
+    }
     setSyncing(true);
     try {
-      // Find the SHA provider (AfyaLink is the SHA HIE gateway).
       const providers = await getProviders(true);
-      const sha = providers.find((p) => p.type === "sha");
+      const sha = providers.find((provider) => provider.type === "sha");
       if (!sha) {
         toast.error("No SHA provider configured. Set one up in Insurance settings.");
         return;
@@ -68,9 +82,7 @@ export function EprescriptionsPage() {
       if (result.ok) {
         toast.success(`Synced ${result.imported} e-prescription${result.imported === 1 ? "" : "s"}`);
         refreshAll();
-      } else {
-        toast.error(result.error || "Sync failed");
-      }
+      } else toast.error(result.error || "Sync failed");
     } finally { setSyncing(false); }
   };
 
@@ -83,180 +95,107 @@ export function EprescriptionsPage() {
       setDetail(null);
       refreshAll();
       navigate(`/pharmacy/prescriptions/${rxId}`);
-    } catch (e) {
-      toast.error(String(e));
-    } finally {
-      setImporting(false);
-    }
+    } catch (error) {
+      toast.error(String(error));
+    } finally { setImporting(false); }
   };
+
+  if (!shaEnabled) {
+    return (
+      <div className="space-y-4">
+        <BackButton fallback="/pharmacy" />
+        <OperationalContext compact />
+        <EmptyState
+          icon={PrescriptionIcon}
+          title="E-prescriptions are not available in this country"
+          description="This AfyaLink and SHA workflow is enabled only for Kenya. Local prescription entry remains available from Dispense."
+          cta={{ label: "Open dispense", onClick: () => navigate("/pharmacy?tab=dispense"), icon: PrescriptionIcon }}
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-5">
-      <div className="flex items-start justify-between">
+      <div className="flex flex-col items-stretch gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <BackButton fallback="/pharmacy" />
-          <h1 className="text-xl font-semibold tracking-tight flex items-center gap-2">
+          <h1 className="flex items-center gap-2 text-xl font-semibold tracking-tight">
             <PrescriptionIcon className="h-5 w-5 text-teal-600" /> DHA e-Prescriptions
           </h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            E-scripts issued via the AfyaLink Health Information Exchange. Review and import into the dispensing queue.
+          <p className="mt-1 max-w-prose text-sm text-muted-foreground">
+            Review AfyaLink e-scripts and import them into the regulated dispensing queue.
           </p>
         </div>
-        <Button onClick={sync} disabled={syncing}>
-          <Sync className={`h-4 w-4 mr-1.5 ${syncing ? "animate-spin" : ""}`} />
-          {syncing ? "Syncing…" : "Sync from AfyaLink"}
+        <Button className="min-h-11 sm:self-start" onClick={sync} disabled={syncing || !online}>
+          <Sync className={`mr-1.5 h-4 w-4 ${syncing ? "animate-spin" : ""}`} />
+          {syncing ? "Syncing…" : online ? "Sync from AfyaLink" : "Sync when online"}
         </Button>
       </div>
+      <OperationalContext compact />
 
       {pending > 0 && (
         <Card className="border-teal-500/40 bg-teal-500/5">
           <CardContent className="p-3 text-sm">
-            <span className="font-semibold text-teal-700">{pending} pending e-prescription{pending === 1 ? "" : "s"}</span>
-            {" "}awaiting review.
+            <span className="font-semibold text-teal-700">{pending} pending e-prescription{pending === 1 ? "" : "s"}</span>{" "}awaiting review.
           </CardContent>
         </Card>
       )}
 
-      <div className="relative max-w-sm">
-        <MagnifyingGlass className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-        <Input
-          value={list.search}
-          onChange={(e) => list.setSearch(e.target.value)}
-          placeholder="Search patient, prescriber, DHA ref…"
-          className="pl-9"
-        />
-      </div>
+      <Input
+        aria-label="Search e-prescriptions"
+        value={list.search}
+        onChange={(event) => list.setSearch(event.target.value)}
+        placeholder="Search patient, prescriber, DHA ref…"
+        className="h-11 max-w-sm"
+      />
 
       {list.loading ? (
-        <div className="border border-border rounded-lg overflow-hidden">
+        <div className="overflow-hidden rounded-lg border border-border">
           <table className="w-full text-sm"><tbody><TableRowSkeleton cells={6} rows={4} /></tbody></table>
         </div>
       ) : list.rows.length === 0 ? (
         <EmptyState
           icon={PrescriptionIcon}
           title={list.search ? "No matching e-prescriptions" : "No e-prescriptions yet"}
-          description={list.search ? "Try a different patient, prescriber, or DHA reference." : "Sync from AfyaLink to pull e-scripts issued to this pharmacy's facility code."}
-          cta={list.search ? undefined : { label: "Sync from AfyaLink", onClick: sync, icon: Sync }}
+          description={list.search ? "Try a different patient, prescriber, or DHA reference." : "Sync from AfyaLink to pull e-scripts issued to this facility."}
+          cta={list.search ? undefined : { label: online ? "Sync from AfyaLink" : "Sync unavailable offline", onClick: sync, icon: Sync }}
         />
       ) : (
-        <div className="border border-border rounded-lg overflow-hidden">
-          <table className="w-full text-sm">
-            <thead className="bg-muted/30 border-b border-border">
-              <tr className="text-xs text-muted-foreground">
-                <th className="text-left px-3 py-2 font-medium">Patient</th>
-                <th className="text-left px-3 py-2 font-medium">Prescriber</th>
-                <th className="text-left px-3 py-2 font-medium">Issued</th>
-                <th className="text-left px-3 py-2 font-medium">DHA ref</th>
-                <th className="text-center px-3 py-2 font-medium">Status</th>
-                <th className="text-right px-3 py-2 font-medium"></th>
-              </tr>
-            </thead>
-            <tbody>
-              {list.rows.map((r) => (
-                <tr
-                  key={r.id}
-                  className="border-b border-border last:border-0 hover:bg-muted/30 cursor-pointer"
-                  onClick={() => setDetail(r)}
-                >
-                  <td className="px-3 py-2.5">
-                    <div className="font-medium">{r.patient_name}</div>
-                    {r.patient_phone && <div className="text-xs text-muted-foreground">{r.patient_phone}</div>}
-                  </td>
-                  <td className="px-3 py-2.5 text-muted-foreground">{r.prescriber_name || "—"}</td>
-                  <td className="px-3 py-2.5 text-xs text-muted-foreground">
-                    {new Date(r.issued_at).toLocaleDateString(intlLocale(), { day: "2-digit", month: "short", year: "numeric" })}
-                  </td>
-                  <td className="px-3 py-2.5 font-mono text-xs text-muted-foreground">{r.dha_id}</td>
-                  <td className="px-3 py-2.5 text-center"><StatusBadge status={r.status} /></td>
-                  <td className="px-3 py-2.5 text-right">
-                    <FileText className="h-3.5 w-3.5 text-muted-foreground inline" />
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <>
+          <div className="space-y-2 lg:hidden" aria-label="E-prescription cards">
+            {list.rows.map((record) => (
+              <button key={record.id} type="button" onClick={() => setDetail(record)} className="min-h-11 w-full rounded-md border border-border p-4 text-left active:scale-[0.99]">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0"><p className="truncate font-medium">{record.patient_name}</p><p className="mt-1 text-xs text-muted-foreground">{record.prescriber_name || "Prescriber not supplied"}</p></div>
+                  <StatusBadge status={record.status} />
+                </div>
+                <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-border pt-3 text-xs text-muted-foreground">
+                  <span>{new Date(record.issued_at).toLocaleDateString(intlLocale(), { day: "2-digit", month: "short", year: "numeric" })}</span>
+                  <span className="font-mono">{record.dha_id}</span>
+                </div>
+              </button>
+            ))}
+          </div>
+          <div className="hidden overflow-hidden rounded-lg border border-border lg:block">
+            <table className="w-full text-sm">
+              <thead className="border-b border-border bg-muted/30"><tr className="text-xs text-muted-foreground"><th className="px-3 py-2 text-left font-medium">Patient</th><th className="px-3 py-2 text-left font-medium">Prescriber</th><th className="px-3 py-2 text-left font-medium">Issued</th><th className="px-3 py-2 text-left font-medium">DHA ref</th><th className="px-3 py-2 text-center font-medium">Status</th><th className="px-3 py-2" /></tr></thead>
+              <tbody>{list.rows.map((record) => <tr key={record.id} className="cursor-pointer border-b border-border last:border-0 hover:bg-muted/30" onClick={() => setDetail(record)}><td className="px-3 py-2.5"><div className="font-medium">{record.patient_name}</div>{record.patient_phone && <div className="text-xs text-muted-foreground">{record.patient_phone}</div>}</td><td className="px-3 py-2.5 text-muted-foreground">{record.prescriber_name || "—"}</td><td className="px-3 py-2.5 text-xs text-muted-foreground">{new Date(record.issued_at).toLocaleDateString(intlLocale(), { day: "2-digit", month: "short", year: "numeric" })}</td><td className="px-3 py-2.5 font-mono text-xs text-muted-foreground">{record.dha_id}</td><td className="px-3 py-2.5 text-center"><StatusBadge status={record.status} /></td><td className="px-3 py-2.5 text-right"><FileText className="inline h-3.5 w-3.5 text-muted-foreground" /></td></tr>)}</tbody>
+            </table>
+          </div>
+        </>
       )}
-
       <PaginationBar list={list} />
 
-      <Sheet open={!!detail} onOpenChange={(o) => !o && setDetail(null)}>
-        <SheetContent side="right" className="w-[520px] sm:max-w-[520px] overflow-y-auto">
-          <SheetHeader>
-            <SheetTitle>E-prescription detail</SheetTitle>
-          </SheetHeader>
-          {detail && (
-            <div className="space-y-4 mt-4">
-              <div className="border border-border rounded-lg p-3 space-y-1 text-sm">
-                <div className="font-medium">{detail.patient_name}</div>
-                <div className="text-xs text-muted-foreground">
-                  {detail.patient_id_number && <>ID {detail.patient_id_number} · </>}
-                  {detail.patient_phone || "no phone"}
-                </div>
-                <div className="text-xs text-muted-foreground mt-1">
-                  Prescriber: {detail.prescriber_name || "—"}
-                  {detail.prescriber_license && <> ({detail.prescriber_license})</>}
-                </div>
-                {detail.diagnosis_text && (
-                  <div className="text-xs text-muted-foreground">Dx: {detail.diagnosis_text}</div>
-                )}
-              </div>
-
-              <div className="border border-border rounded-lg overflow-hidden">
-                <div className="bg-muted/30 px-3 py-2 text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                  Items ({detailItems.length})
-                </div>
-                <ul className="divide-y divide-border">
-                  {detailItems.map((it) => (
-                    <li key={it.id} className="px-3 py-2 text-xs">
-                      <div className="flex items-center justify-between">
-                        <span className="font-medium">{it.drug_name} {it.strength}</span>
-                        {it.matched_product_id ? (
-                          <Badge className="bg-emerald-600 hover:bg-emerald-600 text-[9px]">Matched</Badge>
-                        ) : (
-                          <Badge variant="destructive" className="text-[9px]">No match</Badge>
-                        )}
-                      </div>
-                      <div className="text-muted-foreground mt-0.5">
-                        {[it.dosage, it.frequency, it.duration].filter(Boolean).join(" · ")} · Qty {it.quantity}
-                      </div>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-
-              {detail.status === "pending" && (
-                <div className="flex gap-2">
-                  <Button onClick={doImport} disabled={importing} className="flex-1">
-                    <DownloadSimple className="h-3.5 w-3.5 mr-1.5" />
-                    {importing ? "Importing…" : "Import to prescriptions"}
-                  </Button>
-                  <Button
-                    variant="outline"
-                    className="text-destructive"
-                    onClick={async () => {
-                      if (!(await confirm({ title: "Reject this e-prescription?" }))) return;
-                      await rejectEprescription(detail.id, "Rejected by pharmacist");
-                      toast.success("Rejected");
-                      setDetail(null);
-                      refreshAll();
-                    }}
-                  >
-                    <X className="h-3.5 w-3.5" />
-                  </Button>
-                </div>
-              )}
-              {detail.status === "imported" && detail.imported_prescription_id && (
-                <Button
-                  variant="outline"
-                  className="w-full"
-                  onClick={() => navigate(`/pharmacy/prescriptions/${detail.imported_prescription_id}`)}
-                >
-                  <CheckCircle className="h-3.5 w-3.5 mr-1.5" /> View imported prescription
-                </Button>
-              )}
-            </div>
-          )}
+      <Sheet open={!!detail} onOpenChange={(open) => !open && setDetail(null)}>
+        <SheetContent side="right" className="w-full overflow-y-auto sm:max-w-[520px]">
+          <SheetHeader><SheetTitle>E-prescription detail</SheetTitle></SheetHeader>
+          {detail && <div className="mt-4 space-y-4">
+            <div className="space-y-1 rounded-lg border border-border p-3 text-sm"><div className="font-medium">{detail.patient_name}</div><div className="text-xs text-muted-foreground">{detail.patient_id_number && <>ID {detail.patient_id_number} · </>}{detail.patient_phone || "no phone"}</div><div className="mt-1 text-xs text-muted-foreground">Prescriber: {detail.prescriber_name || "—"}{detail.prescriber_license && <> ({detail.prescriber_license})</>}</div>{detail.diagnosis_text && <div className="text-xs text-muted-foreground">Dx: {detail.diagnosis_text}</div>}</div>
+            <div className="overflow-hidden rounded-lg border border-border"><div className="bg-muted/30 px-3 py-2 text-xs font-medium uppercase tracking-wider text-muted-foreground">Items ({detailItems.length})</div><ul className="divide-y divide-border">{detailItems.map((item) => <li key={item.id} className="px-3 py-3 text-xs"><div className="flex items-center justify-between gap-2"><span className="font-medium">{item.drug_name} {item.strength}</span>{item.matched_product_id ? <Badge className="bg-emerald-600 text-[9px] hover:bg-emerald-600">Matched</Badge> : <Badge variant="destructive" className="text-[9px]">No match</Badge>}</div><div className="mt-1 text-muted-foreground">{[item.dosage, item.frequency, item.duration].filter(Boolean).join(" · ")} · Qty {item.quantity}</div></li>)}</ul></div>
+            {detail.status === "pending" && <div className="flex flex-col gap-2 sm:flex-row"><Button onClick={doImport} disabled={importing} className="min-h-11 flex-1"><DownloadSimple className="mr-1.5 h-3.5 w-3.5" />{importing ? "Importing…" : "Import to prescriptions"}</Button><Button variant="outline" className="min-h-11 text-destructive" aria-label="Reject e-prescription" onClick={async () => { if (!(await confirm({ title: "Reject this e-prescription?" }))) return; await rejectEprescription(detail.id, "Rejected by pharmacist"); toast.success("Rejected"); setDetail(null); refreshAll(); }}><X className="h-3.5 w-3.5" /> Reject</Button></div>}
+            {detail.status === "imported" && detail.imported_prescription_id && <Button variant="outline" className="min-h-11 w-full" onClick={() => navigate(`/pharmacy/prescriptions/${detail.imported_prescription_id}`)}><CheckCircle className="mr-1.5 h-3.5 w-3.5" /> View imported prescription</Button>}
+          </div>}
         </SheetContent>
       </Sheet>
     </div>
@@ -264,8 +203,8 @@ export function EprescriptionsPage() {
 }
 
 function StatusBadge({ status }: { status: DhaEprescription["status"] }) {
-  if (status === "imported") return <Badge className="bg-emerald-600 hover:bg-emerald-600 text-[10px]">Imported</Badge>;
+  if (status === "imported") return <Badge className="bg-emerald-600 text-[10px] hover:bg-emerald-600">Imported</Badge>;
   if (status === "rejected") return <Badge variant="destructive" className="text-[10px]">Rejected</Badge>;
   if (status === "expired") return <Badge variant="secondary" className="text-[10px]">Expired</Badge>;
-  return <Badge variant="outline" className="text-teal-700 border-teal-500 text-[10px]">Pending</Badge>;
+  return <Badge variant="outline" className="border-teal-500 text-[10px] text-teal-700">Pending</Badge>;
 }

@@ -219,7 +219,7 @@ export function IngredientPickerSheet({ open, onClose, excludeIds = [], onPick }
             )}
           </div>
 
-          <SheetFooter className="border-t border-border p-3 flex-row gap-2 sm:justify-between">
+          <SheetFooter className="[&_button]:h-11 lg:[&_button]:h-9 border-t border-border p-3 flex-row gap-2 sm:justify-between">
             <Button
               variant="outline"
               size="sm"

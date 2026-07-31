@@ -47,7 +47,7 @@ export function DispatchDialog({ open, onClose, onSaved, noteId, noteNumber }: P
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="max-w-sm">
+      <DialogContent className="w-[calc(100vw-1rem)] max-w-sm">
         <DialogHeader>
           <DialogTitle>Dispatch · {noteNumber}</DialogTitle>
         </DialogHeader>
@@ -61,7 +61,7 @@ export function DispatchDialog({ open, onClose, onSaved, noteId, noteNumber }: P
             <Input value={driver} onChange={(e) => setDriver(e.target.value)} placeholder="e.g. Peter Kamau" />
           </label>
         </div>
-        <DialogFooter>
+        <DialogFooter className="[&_button]:h-11 lg:[&_button]:h-9">
           <Button variant="ghost" onClick={onClose} disabled={saving}>Cancel</Button>
           <Button onClick={save} disabled={saving}>{saving ? "Dispatching…" : "Confirm dispatch"}</Button>
         </DialogFooter>

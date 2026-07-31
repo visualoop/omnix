@@ -23,6 +23,9 @@ import { money as KES } from "@/lib/money";
 import { ContractorAccountDialog } from "@/components/hardware/contractor-account-dialog";
 import { RecordPaymentDialog } from "@/components/hardware/record-payment-dialog";
 import { AdjustmentDialog } from "@/components/hardware/adjustment-dialog";
+import { OperationalContext } from "@/components/shared/operational-context";
+import { useClientPagination } from "@/hooks/use-client-pagination";
+import { PaginationBar } from "@/components/pagination-bar";
 
 interface Customer { id: string; name: string; phone: string | null; email: string | null; address: string | null; }
 interface AccountHeader { credit_limit: number; balance: number; terms_days: number; on_hold: number; }
@@ -98,12 +101,14 @@ export function ContractorDetailPage() {
   const limit = account?.credit_limit ?? 0;
   const available = Math.max(0, limit - balance);
   const utilization = limit > 0 ? (balance / limit) * 100 : 0;
+  const { pageRows: ledgerRows, pagination: ledgerPagination } = useClientPagination(ledger, 12, customerId);
 
   return (
-    <div className="space-y-6 max-w-5xl mx-auto">
-      <div className="flex items-center justify-between">
+    <div className="mx-auto max-w-5xl space-y-6">
+      <OperationalContext />
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <BackButton fallback="/hardware?tab=accounts" label="Back to accounts" />
-        <div className="flex gap-2">
+        <div className="grid grid-cols-2 gap-2 sm:flex [&_button]:min-h-11 lg:[&_button]:min-h-0">
           <Button size="sm" variant="outline" onClick={() => setPaymentOpen(true)}>
             <CurrencyDollar className="h-3.5 w-3.5 mr-1.5" /> Record payment
           </Button>
@@ -120,8 +125,8 @@ export function ContractorDetailPage() {
       </div>
 
       {/* Header card */}
-      <div className="rounded-xl border border-border bg-card p-5">
-        <div className="flex items-start justify-between mb-4">
+      <div className="rounded-md border border-border bg-card p-5">
+        <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <h1 className="text-2xl font-semibold">{customer.name}</h1>
             <div className="text-xs text-muted-foreground mt-1 space-x-3">
@@ -136,7 +141,7 @@ export function ContractorDetailPage() {
             </Badge>
           ) : null}
         </div>
-        <div className="grid grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 gap-2 lg:grid-cols-4 lg:gap-3">
           <Kpi label="Credit limit" value={KES(limit)} />
           <Kpi label="Balance" value={KES(balance)} tone={balance > limit ? "danger" : "default"} />
           <Kpi label="Available" value={KES(available)} tone={available === 0 ? "warning" : "default"} />
@@ -152,7 +157,9 @@ export function ContractorDetailPage() {
             No ledger entries yet.
           </div>
         ) : (
-          <div className="border border-border rounded-lg overflow-hidden">
+          <>
+          <div className="space-y-2 lg:hidden">{ledgerRows.map((entry) => <article key={entry.id} className="rounded-md border border-border p-4"><div className="flex items-start justify-between gap-3"><div><p className={cn("font-medium capitalize", LEDGER_STYLE[entry.entry_type])}>{entry.entry_type}</p><p className="mt-1 text-xs text-muted-foreground">{entry.created_at.slice(0,10)} · {entry.reference ?? "No reference"}</p></div><span className={cn("font-mono font-semibold", LEDGER_STYLE[entry.entry_type])}>{entry.entry_type === "payment" ? "−" : ""}{KES(Math.abs(entry.amount))}</span></div><p className="mt-3 border-t border-border pt-3 text-right text-xs text-muted-foreground">Balance <span className="font-mono text-foreground">{KES(entry.balance_after)}</span></p></article>)}</div>
+          <div className="hidden overflow-hidden rounded-lg border border-border lg:block">
             <table className="w-full text-[13px]">
               <thead className="bg-muted/30 text-[10px] uppercase tracking-wide text-muted-foreground">
                 <tr>
@@ -164,7 +171,7 @@ export function ContractorDetailPage() {
                 </tr>
               </thead>
               <tbody>
-                {ledger.map((e) => (
+                {ledgerRows.map((e) => (
                   <tr key={e.id} className="border-t border-border">
                     <td className="px-3 py-2 text-xs text-muted-foreground font-mono">{e.created_at.slice(0, 10)}</td>
                     <td className={cn("px-3 py-2 text-xs capitalize font-medium", LEDGER_STYLE[e.entry_type])}>{e.entry_type}</td>
@@ -178,6 +185,8 @@ export function ContractorDetailPage() {
               </tbody>
             </table>
           </div>
+          <PaginationBar list={ledgerPagination} />
+          </>
         )}
       </div>
 
@@ -193,7 +202,7 @@ export function ContractorDetailPage() {
             ) : (
               <ul className="space-y-1.5">
                 {quotes.map((q) => (
-                  <li key={q.id} className="flex items-center justify-between text-[13px] hover:bg-accent/40 -mx-1 px-1 rounded cursor-pointer" onClick={() => navigate(`/hardware/quotations/${q.id}`)}>
+                  <li key={q.id} className="flex min-h-11 items-center justify-between text-[13px] hover:bg-accent/40 -mx-1 px-1 rounded cursor-pointer" onClick={() => navigate(`/hardware/quotations/${q.id}`)}>
                     <span className="font-mono">{q.quotation_number}</span>
                     <div className="flex items-center gap-2">
                       <Badge variant="outline" className="text-[9px] capitalize">{q.status}</Badge>

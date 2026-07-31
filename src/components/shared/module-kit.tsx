@@ -19,6 +19,7 @@ import type { ReactNode } from "react";
 import type { Icon } from "@phosphor-icons/react";
 import { cn } from "@/lib/utils";
 import type { ModuleId } from "@/stores/active-module";
+import { OperationalContext } from "@/components/shared/operational-context";
 
 /* ── Per-module accent tokens ─────────────────────────────────────────── */
 
@@ -117,8 +118,9 @@ export function ModuleMasthead({
   actions?: ReactNode;
 }) {
   return (
-    <div className="flex items-start justify-between gap-4 mb-6">
-      <div className="flex items-stretch gap-3">
+    <>
+    <div className="mb-4 flex flex-col items-stretch gap-4 sm:flex-row sm:items-start sm:justify-between">
+      <div className="flex min-w-0 items-stretch gap-3">
         {/* the accent rule — the repeated mark that brands every screen */}
         <span aria-hidden className={cn("w-1 rounded-full shrink-0", accent.rule)} />
         <div>
@@ -129,8 +131,10 @@ export function ModuleMasthead({
           {subtitle && <p className="text-sm text-muted-foreground mt-1 max-w-prose">{subtitle}</p>}
         </div>
       </div>
-      {actions && <div className="flex items-center gap-2 shrink-0">{actions}</div>}
+      {actions && <div className="flex flex-wrap items-center gap-2 sm:shrink-0 [&_button]:min-h-11 lg:[&_button]:min-h-0">{actions}</div>}
     </div>
+    <OperationalContext />
+    </>
   );
 }
 

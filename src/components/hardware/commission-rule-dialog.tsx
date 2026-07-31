@@ -79,7 +79,7 @@ export function CommissionRuleDialog({ open, onClose, onSaved, editing }: Props)
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="max-w-sm">
+      <DialogContent className="w-[calc(100vw-1rem)] max-w-sm">
         <DialogHeader>
           <DialogTitle>{editing ? "Edit rule" : "New commission rule"}</DialogTitle>
           <DialogDescription>
@@ -103,7 +103,7 @@ export function CommissionRuleDialog({ open, onClose, onSaved, editing }: Props)
             </div>
           </label>
         </div>
-        <DialogFooter>
+        <DialogFooter className="[&_button]:h-11 lg:[&_button]:h-9">
           <Button variant="ghost" onClick={onClose} disabled={saving}>Cancel</Button>
           <Button onClick={save} disabled={saving}>{saving ? "Saving…" : editing ? "Save" : "Add"}</Button>
         </DialogFooter>

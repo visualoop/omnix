@@ -18,6 +18,7 @@ import {
 } from "@phosphor-icons/react";
 import { toast } from "sonner";
 import { AllergenPicker } from "@/components/hospitality/allergen-picker";
+import { currencySymbol } from "@/lib/money";
 
 export interface MenuItemFormValues {
   name: string;
@@ -100,7 +101,7 @@ export function MenuItemDialog({ open, onClose, onSubmit, initial, categories = 
 
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="w-[calc(100vw-1rem)] max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <UtensilsCrossed className="h-4 w-4 text-primary" />
@@ -132,8 +133,8 @@ export function MenuItemDialog({ open, onClose, onSubmit, initial, categories = 
             />
           </Field>
 
-          <div className="grid grid-cols-2 gap-3">
-            <Field label="Dine-in price (KES) *">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <Field label={`Dine-in price (${currencySymbol()}) *`}>
               <Input
                 type="number"
                 inputMode="decimal"
@@ -158,7 +159,7 @@ export function MenuItemDialog({ open, onClose, onSubmit, initial, categories = 
             </Field>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Field label="Prep time (min)">
               <Input
                 type="number"

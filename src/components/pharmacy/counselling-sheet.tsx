@@ -74,7 +74,7 @@ export function CounsellingSheet({
 
   return (
     <Sheet open={open} onOpenChange={(o) => !o && onClose()}>
-      <SheetContent side="right" className="w-[520px] sm:max-w-[520px] overflow-y-auto">
+      <SheetContent side="right" className="w-full max-w-full overflow-y-auto sm:max-w-[520px]">
         <SheetHeader>
           <SheetTitle className="flex items-center gap-2">
             <ChatCircleText className="h-5 w-5 text-teal-600" /> Counsel {patientName}

@@ -39,12 +39,19 @@ import { exportToCSV } from "@/lib/export";
 import { renderClaimsPdf } from "@/services/reports-pdf";
 import { loadBrandHeader, downloadBytes } from "@/services/pdf-brand";
 import { toast } from "sonner";
+import { OperationalContext } from "@/components/shared/operational-context";
 import { prompt } from "@/components/ui/confirm-dialog";
 import { intlLocale } from "@/lib/intl";
 import { money } from "@/lib/money";
+import { useFeatureEnabled } from "@/lib/features";
+import { useAuthStore } from "@/stores/auth";
+import { hasPermission } from "@/lib/permissions";
 
 import { BackButton } from "@/components/ui/back-button";
 export function ClaimsPage() {
+  const showSha = useFeatureEnabled("sha");
+  const user = useAuthStore((s) => s.user);
+  const canSubmit = hasPermission(user, "claims.submit");
   const [tab, setTab] = useState<"claims" | "batches">("claims");
   const [batches, setBatches] = useState<InsuranceBatch[]>([]);
   const [stats, setStats] = useState<{
@@ -71,6 +78,9 @@ export function ClaimsPage() {
   );
   const list = useListData(fetcher, { pageSize: 50 });
   const claims = list.rows as unknown as InsuranceClaim[];
+  const visibleClaims = claims.filter((claim) => showSha || !/\bsha\b/i.test(claim.provider_code ?? ""));
+  const visibleProviders = providers.filter((provider) => showSha || provider.type !== "sha");
+  const visibleBatches = batches.filter((batch) => showSha || !/\bsha\b/i.test(batch.provider_name ?? ""));
 
   const load = useCallback(async () => {
     list.refresh();
@@ -87,7 +97,7 @@ export function ClaimsPage() {
 
   return (
     <div className="space-y-5">
-      <div className="flex items-start justify-between">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div>
           <BackButton fallback="/pharmacy" />
           <h1 className="text-xl font-semibold tracking-tight">Insurance Claims</h1>
@@ -95,15 +105,15 @@ export function ClaimsPage() {
             Manage claims and submission batches
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2 [&>button]:min-h-11 lg:[&>button]:min-h-0">
           <Button
             variant="outline"
             onClick={async () => {
               const brand = await loadBrandHeader();
               const bytes = renderClaimsPdf({
                 brand,
-                rangeLabel: `Generated ${new Date().toLocaleDateString("en-KE", { dateStyle: "medium" })}`,
-                rows: claims.map((c) => ({
+                rangeLabel: `Generated ${new Date().toLocaleDateString(intlLocale(), { dateStyle: "medium" })}`,
+                rows: visibleClaims.map((c) => ({
                   claimNumber: c.claim_number ?? c.id.slice(0, 8),
                   patientName: c.member_name,
                   insurer: c.provider_id,
@@ -118,18 +128,22 @@ export function ClaimsPage() {
           >
             <Download className="h-4 w-4 mr-2" /> PDF
           </Button>
-          <Button variant="outline" onClick={() => exportToCSV(`claims-${new Date().toISOString().slice(0,10)}`, claims)}>
+          <Button variant="outline" onClick={() => exportToCSV(`claims-${new Date().toISOString().slice(0,10)}`, visibleClaims)}>
             CSV
           </Button>
-          <Button onClick={() => setShowBatchDialog(true)} disabled={(stats?.draft_count ?? 0) === 0}>
-            <Send className="h-4 w-4 mr-2" /> Submit Batch
-          </Button>
+          {canSubmit && (
+            <Button onClick={() => setShowBatchDialog(true)} disabled={(stats?.draft_count ?? 0) === 0}>
+              <Send className="h-4 w-4 mr-2" /> Submit Batch
+            </Button>
+          )}
         </div>
       </div>
 
       {/* Stats */}
+      <OperationalContext compact />
+
       {stats && (
-        <div className="grid grid-cols-5 gap-3">
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5 lg:gap-3">
           <StatCard
             label="Outstanding"
             value={money(stats.total_outstanding)}
@@ -151,8 +165,8 @@ export function ClaimsPage() {
       {/* Tabs */}
       <div className="flex gap-1 border-b border-border">
         {[
-          { id: "claims", label: `Claims (${claims.length})` },
-          { id: "batches", label: `Batches (${batches.length})` },
+          { id: "claims", label: `Claims (${visibleClaims.length})` },
+          { id: "batches", label: `Batches (${visibleBatches.length})` },
         ].map((t) => (
           <button
             key={t.id}
@@ -171,18 +185,18 @@ export function ClaimsPage() {
       {tab === "claims" && (
         <>
           {/* Filters */}
-          <div className="flex gap-2">
-            <div className="relative flex-1 max-w-sm">
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:flex">
+            <div className="relative sm:col-span-2 lg:max-w-sm lg:flex-1">
               <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
               <Input
                 value={list.search}
                 onChange={(e) => list.setSearch(e.target.value)}
                 placeholder="Search claim number, member, patient..."
-                className="pl-9 h-9"
+                className="h-11 pl-9 lg:h-9"
               />
             </div>
             <Select value={statusFilter} onValueChange={(v) => setStatusFilter(String(v))}>
-              <SelectTrigger className="h-9 w-44">
+              <SelectTrigger className="h-11 w-full lg:h-9 lg:w-44">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -196,12 +210,12 @@ export function ClaimsPage() {
               </SelectContent>
             </Select>
             <Select value={providerFilter} onValueChange={(v) => setProviderFilter(String(v))}>
-              <SelectTrigger className="h-9 w-44">
+              <SelectTrigger className="h-11 w-full lg:h-9 lg:w-44">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Providers</SelectItem>
-                {providers.map((p) => (
+                {visibleProviders.map((p) => (
                   <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
                 ))}
               </SelectContent>
@@ -209,13 +223,31 @@ export function ClaimsPage() {
           </div>
 
           {/* Claims table */}
-          {claims.length === 0 ? (
+          {visibleClaims.length === 0 ? (
             <div className="text-center py-12 text-muted-foreground">
               <Shield className="h-10 w-10 mx-auto mb-2 opacity-30" />
               <p className="text-sm">No claims found</p>
             </div>
           ) : (
-            <div className="border border-border rounded-lg overflow-hidden">
+            <>
+              <div className="space-y-2 lg:hidden" aria-label="Insurance claim records">
+                {visibleClaims.map((claim) => (
+                  <button key={claim.id} type="button" onClick={() => setActiveClaim(claim)} className="min-h-11 w-full rounded-md border border-border p-4 text-left active:scale-[0.99]">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="font-medium truncate">{claim.member_name}</p>
+                        <p className="mt-1 font-mono text-xs text-muted-foreground">{claim.member_number} · {claim.provider_code}</p>
+                      </div>
+                      <ClaimStatusBadge status={claim.status} />
+                    </div>
+                    <div className="mt-4 grid grid-cols-2 gap-3 border-t border-border pt-3 text-xs">
+                      <div><span className="text-muted-foreground">Claim</span><p className="mt-1 font-mono font-semibold">{money(claim.claim_amount)}</p></div>
+                      <div className="text-right"><span className="text-muted-foreground">Paid</span><p className="mt-1 font-mono text-green-700">{money(claim.paid_amount)}</p></div>
+                    </div>
+                  </button>
+                ))}
+              </div>
+              <div className="hidden overflow-hidden rounded-lg border border-border lg:block">
               <table className="w-full text-sm">
                 <thead className="bg-muted/30 border-b border-border">
                   <tr className="text-xs text-muted-foreground">
@@ -229,7 +261,7 @@ export function ClaimsPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {claims.map((c) => (
+                  {visibleClaims.map((c) => (
                     <tr
                       key={c.id}
                       className="border-b border-border last:border-0 hover:bg-muted/30 cursor-pointer"
@@ -242,9 +274,9 @@ export function ClaimsPage() {
                       <td className="px-3 py-2.5">
                         <Badge variant="outline">{c.provider_code}</Badge>
                       </td>
-                      <td className="px-3 py-2.5 text-right font-mono">{c.gross_amount.toFixed(0)}</td>
-                      <td className="px-3 py-2.5 text-right font-mono font-medium">{c.claim_amount.toFixed(0)}</td>
-                      <td className="px-3 py-2.5 text-right font-mono text-green-700">{c.paid_amount.toFixed(0)}</td>
+                      <td className="px-3 py-2.5 text-right font-mono">{money(c.gross_amount)}</td>
+                      <td className="px-3 py-2.5 text-right font-mono font-medium">{money(c.claim_amount)}</td>
+                      <td className="px-3 py-2.5 text-right font-mono text-green-700">{money(c.paid_amount)}</td>
                       <td className="px-3 py-2.5 text-center">
                         <ClaimStatusBadge status={c.status} />
                       </td>
@@ -255,30 +287,31 @@ export function ClaimsPage() {
                   ))}
                 </tbody>
               </table>
-            </div>
+              </div>
+            </>
           )}
           <PaginationBar list={list} />
         </>
       )}
 
       {tab === "batches" && (
-        <BatchesTab batches={batches} onSettled={load} />
+        <BatchesTab batches={visibleBatches} canSettle={canSubmit} onSettled={load} />
       )}
 
       {/* Claim detail panel */}
       <Sheet open={!!activeClaim} onOpenChange={(o) => !o && setActiveClaim(null)}>
-        <SheetContent side="right" className="w-[520px] sm:max-w-[520px]">
+        <SheetContent side="right" className="w-full max-w-full sm:w-[520px] sm:max-w-[520px]">
           <SheetHeader>
             <SheetTitle>Claim Detail</SheetTitle>
           </SheetHeader>
-          {activeClaim && <ClaimDetail claim={activeClaim} onUpdated={() => { load(); setActiveClaim(null); }} />}
+          {activeClaim && <ClaimDetail claim={activeClaim} canSubmit={canSubmit} onUpdated={() => { load(); setActiveClaim(null); }} />}
         </SheetContent>
       </Sheet>
 
       {/* Batch dialog */}
-      {showBatchDialog && (
+      {canSubmit && showBatchDialog && (
         <BatchDialog
-          providers={providers}
+          providers={visibleProviders}
           onClose={() => setShowBatchDialog(false)}
           onCreated={() => { load(); setShowBatchDialog(false); }}
         />
@@ -329,7 +362,7 @@ function StatCard({
   );
 }
 
-function ClaimDetail({ claim, onUpdated }: { claim: InsuranceClaim; onUpdated: () => void }) {
+function ClaimDetail({ claim, canSubmit, onUpdated }: { claim: InsuranceClaim; canSubmit: boolean; onUpdated: () => void }) {
   const [items, setItems] = useState<InsuranceClaimItem[]>([]);
   const [paidAmount, setPaidAmount] = useState("");
   const [rejectionReason, setRejectionReason] = useState("");
@@ -437,7 +470,7 @@ function ClaimDetail({ claim, onUpdated }: { claim: InsuranceClaim; onUpdated: (
       )}
 
       {/* Actions for non-final states */}
-      {(claim.status === "submitted" || claim.status === "approved" || claim.status === "partially_paid") && (
+      {canSubmit && (claim.status === "submitted" || claim.status === "approved" || claim.status === "partially_paid") && (
         <div className="space-y-3 border-t border-border pt-4">
           <div className="space-y-1.5">
             <label className="text-xs font-medium text-muted-foreground">Mark Paid Amount</label>
@@ -481,13 +514,13 @@ function Row({
     <div className="flex justify-between items-center text-sm">
       <span className={`${bold ? "font-medium" : "text-muted-foreground"} ${colorClass}`}>{label}</span>
       <span className={`font-mono ${bold ? "font-semibold" : ""} ${colorClass}`}>
-        KES {value.toFixed(2)}
+        {money(value)}
       </span>
     </div>
   );
 }
 
-function BatchesTab({ batches, onSettled }: { batches: InsuranceBatch[]; onSettled: () => void }) {
+function BatchesTab({ batches, canSettle, onSettled }: { batches: InsuranceBatch[]; canSettle: boolean; onSettled: () => void }) {
   if (batches.length === 0) {
     return (
       <div className="text-center py-12 text-muted-foreground">
@@ -499,7 +532,7 @@ function BatchesTab({ batches, onSettled }: { batches: InsuranceBatch[]; onSettl
   }
 
   const handleSettle = async (batchId: string, totalAmount: number) => {
-    const input = await prompt({ title: "Settle batch", description: `Enter the settled amount`, defaultValue: totalAmount.toFixed(2), placeholder: "Amount (KES)", required: true });
+    const input = await prompt({ title: "Settle batch", description: `Enter the settled amount (${money(totalAmount)} due)`, defaultValue: totalAmount.toFixed(2), placeholder: "Amount", required: true });
     if (!input) return;
     const amt = parseFloat(input);
     if (isNaN(amt)) return;
@@ -509,7 +542,18 @@ function BatchesTab({ batches, onSettled }: { batches: InsuranceBatch[]; onSettl
   };
 
   return (
-    <div className="border border-border rounded-lg overflow-hidden">
+    <>
+      <div className="space-y-2 lg:hidden" aria-label="Claim submission batches">
+        {batches.map((batch) => (
+          <article key={batch.id} className="rounded-md border border-border p-4">
+            <div className="flex items-start justify-between gap-3"><div><p className="font-mono text-sm font-medium">{batch.batch_number}</p><p className="mt-1 text-xs text-muted-foreground">{batch.provider_name}</p></div><Badge variant={batch.status === "settled" ? "default" : "outline"}>{batch.status === "submitted" ? "Pending" : batch.status}</Badge></div>
+            <div className="mt-4 grid grid-cols-2 gap-3 border-t border-border pt-3 text-xs"><div><span className="text-muted-foreground">Total</span><p className="mt-1 font-mono font-semibold">{money(batch.total_amount)}</p></div><div className="text-right"><span className="text-muted-foreground">Claims</span><p className="mt-1 font-mono">{batch.claim_count}</p></div></div>
+            <p className="mt-3 text-xs text-muted-foreground">{batch.period_start} – {batch.period_end}</p>
+            {canSettle && batch.status !== "settled" && <Button variant="outline" onClick={() => handleSettle(batch.id, batch.total_amount)} className="mt-3 h-11 w-full">Settle batch</Button>}
+          </article>
+        ))}
+      </div>
+      <div className="hidden border border-border rounded-lg overflow-hidden lg:block">
       <table className="w-full text-sm">
         <thead className="bg-muted/30 border-b border-border">
           <tr className="text-xs text-muted-foreground">
@@ -532,9 +576,9 @@ function BatchesTab({ batches, onSettled }: { batches: InsuranceBatch[]; onSettl
                 {b.period_start} → {b.period_end}
               </td>
               <td className="px-3 py-2.5 text-right font-mono">{b.claim_count}</td>
-              <td className="px-3 py-2.5 text-right font-mono">{b.total_amount.toFixed(0)}</td>
+              <td className="px-3 py-2.5 text-right font-mono">{money(b.total_amount)}</td>
               <td className="px-3 py-2.5 text-right font-mono text-green-700">
-                {b.settled_amount?.toFixed(0) || "—"}
+                {b.settled_amount != null ? money(b.settled_amount) : "—"}
               </td>
               <td className="px-3 py-2.5 text-center">
                 {b.status === "settled" ? (
@@ -548,7 +592,7 @@ function BatchesTab({ batches, onSettled }: { batches: InsuranceBatch[]; onSettl
                 )}
               </td>
               <td className="px-3 py-2.5 text-right">
-                {b.status !== "settled" && (
+                {canSettle && b.status !== "settled" && (
                   <Button size="sm" variant="ghost" onClick={() => handleSettle(b.id, b.total_amount)}>
                     Settle
                   </Button>
@@ -558,7 +602,8 @@ function BatchesTab({ batches, onSettled }: { batches: InsuranceBatch[]; onSettl
           ))}
         </tbody>
       </table>
-    </div>
+      </div>
+    </>
   );
 }
 
@@ -594,7 +639,7 @@ function BatchDialog({
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div className="bg-background border border-border rounded-lg p-5 w-[420px] space-y-4">
+      <div className="bg-background border border-border rounded-lg p-5 w-[calc(100vw-2rem)] max-w-[420px] max-h-[90vh] overflow-auto space-y-4">
         <h3 className="font-semibold">Create Submission Batch</h3>
         <p className="text-xs text-muted-foreground">
           Bundle all draft claims for a provider in this period into a single submission batch.
@@ -614,7 +659,7 @@ function BatchDialog({
               </SelectContent>
             </Select>
           </div>
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-2">
             <div className="space-y-1.5">
               <label className="text-xs font-medium text-muted-foreground">From</label>
               <Input type="date" value={start} onChange={(e) => setStart(e.target.value)} />

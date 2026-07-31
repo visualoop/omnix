@@ -1,7 +1,6 @@
 import { useEffect, useState, useCallback } from "react";
 import {
   CalendarPlus,
-  Check,
   CircleNotch as Loader2,
   Phone,
   Plus,
@@ -17,6 +16,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter } from "@/com
 import { Tabs, TabsList, TabsTrigger, TabsPanel } from "@/components/ui/tabs";
 import { TableRowSkeleton } from "@/components/ui/skeletons";
 import { EmptyState } from "@/components/ui/empty-state";
+import { Badge } from "@/components/ui/badge";
 import {
   createSpecialOrder, updateSpecialOrderStatus, parseSpecialOrderItems,
   prepareSpecialOrderForPosCheckout,
@@ -30,7 +30,10 @@ import { useAuthStore } from "@/stores/auth";
 import { useCartStore } from "@/stores/cart";
 import { toast } from "sonner";
 import { intlLocale } from "@/lib/intl";
-import { money } from "@/lib/money";
+import { money, currencySymbol } from "@/lib/money";
+import { useActiveCountry } from "@/stores/country";
+import { phonePlaceholder } from "@/lib/locale";
+import { OperationalContext } from "@/components/shared/operational-context";
 
 import { BackButton } from "@/components/ui/back-button";
 const STATUS_LABELS: Record<SpecialOrder["status"], string> = {
@@ -64,7 +67,8 @@ export function SpecialOrdersPage() {
 
   return (
     <div className="space-y-5">
-      <div className="flex items-start justify-between">
+      <OperationalContext />
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <BackButton fallback="/retail" />
           <h1 className="text-xl font-semibold tracking-tight flex items-center gap-2">
@@ -74,19 +78,19 @@ export function SpecialOrdersPage() {
             Pre-orders and items not in stock. Track from request → ordered from supplier → received → fulfilled to customer.
           </p>
         </div>
-        <Button onClick={() => setCreating(true)}>
+        <Button onClick={() => setCreating(true)} className="h-11 w-full sm:w-auto">
           <Plus className="h-4 w-4 mr-1.5" /> New Special Order
         </Button>
       </div>
 
       <div className="flex items-center gap-2">
-        <div className="relative flex-1 max-w-sm">
+        <div className="relative w-full max-w-sm">
           <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
           <Input
             value={list.search}
             onChange={(e) => list.setSearch(e.target.value)}
             placeholder="Search order number or customer..."
-            className="pl-9"
+            className="h-11 pl-9 lg:h-9"
           />
         </div>
       </div>
@@ -101,7 +105,26 @@ export function SpecialOrdersPage() {
         </TabsList>
 
         <TabsPanel value={tab} className="mt-3">
-          <div className="border border-border rounded-md overflow-hidden">
+          <div className="space-y-2 lg:hidden" aria-label="Special order records">
+            {loading ? (
+              <div className="py-8 text-center text-sm text-muted-foreground">Loading special orders…</div>
+            ) : orders.length === 0 ? (
+              <EmptyState icon={CalendarPlus} title={`No ${STATUS_LABELS[tab].toLowerCase()} special orders`} description="Customers can request items not in stock and you can track supplier progress here." cta={tab === "pending" ? { label: "New Special Order", onClick: () => setCreating(true), icon: Plus } : undefined} />
+            ) : orders.map((o) => {
+              const items = parseSpecialOrderItems(o.items_json);
+              return (
+                <article key={o.id} className="rounded-md border border-border p-4">
+                  <div className="flex items-start justify-between gap-3"><div className="min-w-0"><p className="truncate font-medium">{o.customer_name || "Walk-in"}</p><p className="mt-1 font-mono text-xs text-muted-foreground">SO-{o.id.slice(0, 8).toUpperCase()}</p></div><Badge variant="outline">{STATUS_LABELS[o.status]}</Badge></div>
+                  <div className="mt-3 space-y-1 border-t border-border pt-3 text-xs">{items.slice(0, 3).map((item, index) => <p key={index}><span className="font-mono">{item.quantity} ×</span> {item.product_name}</p>)}{items.length > 3 && <p className="text-muted-foreground">+{items.length - 3} more items</p>}</div>
+                  <div className="mt-3 flex items-center justify-between text-xs text-muted-foreground"><span>{o.needed_by ? `Needed ${new Date(o.needed_by).toLocaleDateString(intlLocale(), { day: "2-digit", month: "short" })}` : "No due date"}</span><span className="font-mono">{o.estimated_value ? money(o.estimated_value) : "—"}</span></div>
+                  {o.status === "pending" && <div className="mt-3 grid grid-cols-2 gap-2"><Button variant="outline" className="h-11" onClick={() => advance(o.id, "ordered")}>Order</Button><Button variant="ghost" className="h-11 text-red-600" onClick={() => advance(o.id, "cancelled")}>Cancel</Button></div>}
+                  {o.status === "ordered" && <Button variant="outline" className="mt-3 h-11 w-full" onClick={() => advance(o.id, "received")}>Mark received</Button>}
+                  {o.status === "received" && <Button className="mt-3 h-11 w-full" onClick={async () => { try { const checkout = await prepareSpecialOrderForPosCheckout(o.id); if (!checkout) { toast.error("Cannot fulfill this order"); return; } useCartStore.getState().loadSnapshot(checkout.items, 0, checkout.customerId, { source: { type: "special_order", id: o.id, label: `SO — ${checkout.customerName || "Special Order"}` } }); toast.success("Special order loaded into POS cart"); navigate("/pos/sale"); } catch (e) { toast.error(String(e)); } }}><ShoppingCart className="mr-1 h-4 w-4" /> Fulfill in POS</Button>}
+                </article>
+              );
+            })}
+          </div>
+          <div className="hidden overflow-hidden rounded-md border border-border lg:block">
             <table className="w-full text-sm">
               <thead className="bg-muted/30 border-b border-border">
                 <tr>
@@ -183,9 +206,7 @@ export function SpecialOrdersPage() {
                                 }}>
                                   <ShoppingCart className="h-3 w-3 mr-1" /> Fulfill via POS
                                 </Button>
-                                <Button variant="ghost" size="sm" onClick={() => advance(o.id, "fulfilled")}>
-                                  <Check className="h-3 w-3 mr-1" /> Quick fulfill
-                                </Button>
+
                               </div>
                             )}
                           </div>
@@ -217,6 +238,7 @@ function NewSpecialOrderSheet({ open, onClose, onSaved }: {
   onSaved: () => void;
 }) {
   const userId = useAuthStore((s) => s.user?.id);
+  const { code } = useActiveCountry();
   const [customerName, setCustomerName] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
   const [customerId, setCustomerId] = useState<string | null>(null);
@@ -268,7 +290,7 @@ function NewSpecialOrderSheet({ open, onClose, onSaved }: {
 
   return (
     <Sheet open={open} onOpenChange={(o) => !o && onClose()}>
-      <SheetContent side="right" className="w-[480px] sm:max-w-[480px]">
+      <SheetContent side="right" className="w-full max-w-full sm:w-[480px] sm:max-w-[480px]">
         <SheetHeader>
           <SheetTitle>New Special Order</SheetTitle>
         </SheetHeader>
@@ -303,7 +325,7 @@ function NewSpecialOrderSheet({ open, onClose, onSaved }: {
 
           <div className="space-y-1">
             <label className="text-[11px] font-medium text-muted-foreground">Phone</label>
-            <Input value={customerPhone} onChange={(e) => setCustomerPhone(e.target.value)} placeholder="07XX XXX XXX" />
+            <Input value={customerPhone} onChange={(e) => setCustomerPhone(e.target.value)} placeholder={phonePlaceholder(code)} type="tel" />
           </div>
 
           <div className="border-t border-border pt-3">
@@ -346,13 +368,13 @@ function NewSpecialOrderSheet({ open, onClose, onSaved }: {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-2">
             <div className="space-y-1">
               <label className="text-[11px] font-medium text-muted-foreground">Needed By</label>
               <Input type="date" value={neededBy} onChange={(e) => setNeededBy(e.target.value)} />
             </div>
             <div className="space-y-1">
-              <label className="text-[11px] font-medium text-muted-foreground">Estimated Value (KES)</label>
+              <label className="text-[11px] font-medium text-muted-foreground">Estimated value ({currencySymbol()})</label>
               <Input type="number" value={estimatedValue} onChange={(e) => setEstimatedValue(parseFloat(e.target.value) || 0)} />
             </div>
           </div>
@@ -367,8 +389,8 @@ function NewSpecialOrderSheet({ open, onClose, onSaved }: {
           </div>
         </div>
         <SheetFooter>
-          <Button variant="outline" size="sm" onClick={onClose} disabled={submitting}>Cancel</Button>
-          <Button size="sm" onClick={save} disabled={submitting}>
+          <Button variant="outline" size="sm" className="h-11" onClick={onClose} disabled={submitting}>Cancel</Button>
+          <Button size="sm" className="h-11" onClick={save} disabled={submitting}>
             {submitting && <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />}
             Create
           </Button>

@@ -8,7 +8,7 @@
  * Each row → /patients/[id] (the existing patient-profile detail page).
  * Search filters by name OR phone; both columns are case-insensitive.
  */
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Plus,
@@ -30,77 +30,21 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { query, execute } from "@/lib/db";
+import { execute } from "@/lib/db";
+import { pagePatients, type PatientListRow } from "@/services/paged";
+import { useListData } from "@/hooks/use-list-data";
+import { PaginationBar } from "@/components/pagination-bar";
+import { useActiveCountry } from "@/stores/country";
+import { phonePlaceholder } from "@/lib/locale";
 import { toast } from "sonner";
-
-interface PatientRow {
-  customer_id: string;
-  name: string;
-  phone: string | null;
-  email: string | null;
-  date_of_birth: string | null;
-  gender: string | null;
-  allergy_count: number;
-  prescription_count: number;
-  last_visit: string | null;
-}
+import { OperationalContext } from "@/components/shared/operational-context";
 
 export function PatientsPage() {
   const navigate = useNavigate();
-  const [search, setSearch] = useState("");
-  const [rows, setRows] = useState<PatientRow[]>([]);
-  const [loading, setLoading] = useState(true);
+  const list = useListData<PatientListRow>(pagePatients, { pageSize: 24 });
+  const rows = list.rows;
+  const loading = list.loading;
   const [addOpen, setAddOpen] = useState(false);
-
-  const load = async () => {
-    setLoading(true);
-    try {
-      // Single query with LEFT JOINs + GROUP BY (DW-25). Prior version
-      // ran 3 subqueries per row → O(N) at up to 500 rows. This version
-      // is O(1) execution plans plus the row count.
-      const result = await query<PatientRow>(
-        `SELECT
-           c.id AS customer_id,
-           c.name,
-           c.phone,
-           c.email,
-           pp.date_of_birth,
-           pp.gender,
-           COUNT(DISTINCT a.id) AS allergy_count,
-           COUNT(DISTINCT r.id) AS prescription_count,
-           MAX(r.created_at)    AS last_visit
-         FROM customers c
-         INNER JOIN patient_profiles pp ON pp.customer_id = c.id
-         LEFT JOIN patient_allergies a ON a.customer_id = c.id
-         LEFT JOIN prescriptions r
-                ON r.customer_id = c.id
-                OR (r.customer_id IS NULL AND r.patient_name = c.name)
-         GROUP BY c.id, c.name, c.phone, c.email, pp.date_of_birth, pp.gender
-         ORDER BY c.name ASC
-         LIMIT 500`,
-      );
-      setRows(result);
-    } catch (e) {
-      toast.error("Couldn't load patients", { description: String(e) });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    load();
-  }, []);
-
-  const filtered = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    if (!q) return rows;
-    return rows.filter(
-      (r) =>
-        r.name.toLowerCase().includes(q) ||
-        (r.phone ?? "").toLowerCase().includes(q) ||
-        (r.email ?? "").toLowerCase().includes(q),
-    );
-  }, [rows, search]);
 
   return (
     <div className="flex flex-col gap-6">
@@ -116,41 +60,42 @@ export function PatientsPage() {
           </Button>
         }
       />
+      <OperationalContext compact />
 
       {/* Search */}
       <div className="relative w-full max-w-md">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground pointer-events-none" />
         <Input
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
+          value={list.search}
+          onChange={(e) => list.setSearch(e.target.value)}
           placeholder="Search patient by name, phone, or email…"
-          className="pl-9"
+          className="h-11 pl-9 lg:h-9"
         />
       </div>
 
       {/* List */}
       {loading ? (
         <div className="py-12 text-center text-sm text-muted-foreground">Loading patients…</div>
-      ) : filtered.length === 0 ? (
+      ) : rows.length === 0 ? (
         <div className="rounded-md border border-dashed border-foreground/10 p-12 text-center">
           <User className="mx-auto size-8 text-muted-foreground" />
           <p className="mt-3 text-[14px] font-medium">
-            {search ? "No patients match." : "No patients yet."}
+            {list.search ? "No patients match." : "No patients yet."}
           </p>
           <p className="mt-1 text-[12px] text-muted-foreground">
-            {search
+            {list.search
               ? "Adjust the search above."
               : "Add a patient to start tracking allergies and prescription history."}
           </p>
         </div>
       ) : (
         <ul className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
-          {filtered.map((p) => (
+          {rows.map((p) => (
             <li key={p.customer_id}>
               <button
                 type="button"
                 onClick={() => navigate(`/patients/${p.customer_id}`)}
-                className="flex w-full flex-col gap-3 rounded-md border border-foreground/10 bg-foreground/[0.02] p-4 text-left transition-colors hover:border-foreground/30 hover:bg-foreground/[0.04]"
+                className="flex min-h-11 w-full flex-col gap-3 rounded-md border border-foreground/10 bg-foreground/[0.02] p-4 text-left transition-[border-color,background-color,transform] active:scale-[0.99] hover:border-foreground/30 hover:bg-foreground/[0.04]"
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0 flex-1">
@@ -183,6 +128,8 @@ export function PatientsPage() {
           ))}
         </ul>
       )}
+
+      <PaginationBar list={list} />
 
       <AddPatientDialog
         open={addOpen}
@@ -230,6 +177,7 @@ function AddPatientDialog({
   onClose: () => void;
   onCreated: (id: string) => void;
 }) {
+  const { code } = useActiveCountry();
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [dob, setDob] = useState("");
@@ -296,7 +244,7 @@ function AddPatientDialog({
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-3">
             <div className="space-y-1.5">
               <label className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
                 Phone
@@ -304,7 +252,7 @@ function AddPatientDialog({
               <Input
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
-                placeholder="+254 712 345 678"
+                placeholder={phonePlaceholder(code)}
                 type="tel"
               />
             </div>

@@ -78,7 +78,7 @@ export function RefillAmendDialog({ open, prescriptionId, patientName, userId, o
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="sm:max-w-lg max-h-[80vh] overflow-y-auto">
+      <DialogContent className="w-[calc(100vw-1rem)] sm:max-w-lg max-h-[80vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Refill for {patientName}</DialogTitle>
           <DialogDescription>
@@ -95,11 +95,11 @@ export function RefillAmendDialog({ open, prescriptionId, patientName, userId, o
               return (
                 <div key={it.id} className="border border-border rounded-md p-3 space-y-2">
                   <div className="font-medium text-sm">{it.product_name}</div>
-                  <div className="grid grid-cols-3 gap-2">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                     <div>
                       <label className="text-[10px] uppercase tracking-wider text-muted-foreground">Dosage</label>
                       <Input
-                        className="h-8 text-xs"
+                        className="h-11 lg:h-8 text-xs"
                         placeholder={it.dosage || "1 tab"}
                         value={a.dosage ?? ""}
                         onChange={(e) => updateAmend(it.id, { dosage: e.target.value || undefined })}
@@ -108,7 +108,7 @@ export function RefillAmendDialog({ open, prescriptionId, patientName, userId, o
                     <div>
                       <label className="text-[10px] uppercase tracking-wider text-muted-foreground">Frequency</label>
                       <Input
-                        className="h-8 text-xs"
+                        className="h-11 lg:h-8 text-xs"
                         placeholder={it.frequency || "TDS"}
                         value={a.frequency ?? ""}
                         onChange={(e) => updateAmend(it.id, { frequency: e.target.value || undefined })}
@@ -117,7 +117,7 @@ export function RefillAmendDialog({ open, prescriptionId, patientName, userId, o
                     <div>
                       <label className="text-[10px] uppercase tracking-wider text-muted-foreground">Duration</label>
                       <Input
-                        className="h-8 text-xs"
+                        className="h-11 lg:h-8 text-xs"
                         placeholder={it.duration || "5 days"}
                         value={a.duration ?? ""}
                         onChange={(e) => updateAmend(it.id, { duration: e.target.value || undefined })}
@@ -127,7 +127,7 @@ export function RefillAmendDialog({ open, prescriptionId, patientName, userId, o
                   <div className="flex items-center gap-2">
                     <label className="text-[10px] uppercase tracking-wider text-muted-foreground">Qty</label>
                     <Input
-                      className="h-8 text-xs w-24"
+                      className="h-11 lg:h-8 text-xs w-24"
                       type="number"
                       placeholder={String(it.quantity_prescribed)}
                       value={a.quantity_prescribed ?? ""}
@@ -149,7 +149,7 @@ export function RefillAmendDialog({ open, prescriptionId, patientName, userId, o
           )}
         </div>
 
-        <DialogFooter>
+        <DialogFooter className="[&_button]:h-11 lg:[&_button]:h-9">
           <Button variant="ghost" onClick={onClose}>Cancel</Button>
           <Button onClick={handleSubmit} disabled={submitting}>
             {submitting ? "Creating…" : "Create refill"}

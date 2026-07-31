@@ -198,7 +198,7 @@ export function BookingDialog({ open, onClose, onCreated, roomTypes, userId, pre
               </Field>
             ) : null}
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <Field label="Check-in" required>
                 <Input type="date" value={checkIn} onChange={(e) => setCheckIn(e.target.value)} />
               </Field>
@@ -237,7 +237,7 @@ export function BookingDialog({ open, onClose, onCreated, roomTypes, userId, pre
             </Field>
           </div>
 
-          <SheetFooter className="border-t border-border p-3 flex-row gap-2 sm:justify-end">
+          <SheetFooter className="[&_button]:h-11 lg:[&_button]:h-9 border-t border-border p-3 flex-row gap-2 sm:justify-end">
             <Button variant="ghost" onClick={onClose} disabled={saving}>Cancel</Button>
             <Button onClick={save} disabled={saving}>{saving ? "Saving…" : "Create booking"}</Button>
           </SheetFooter>

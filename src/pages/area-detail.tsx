@@ -17,6 +17,8 @@ import { prompt, confirm } from "@/components/ui/confirm-dialog";
 import { query, execute } from "@/lib/db";
 import { toast } from "sonner";
 import { intlLocale } from "@/lib/intl";
+import { money } from "@/lib/money";
+import { OperationalContext } from "@/components/shared/operational-context";
 
 interface Area {
   id: string;
@@ -124,7 +126,7 @@ export function AreaDetailPage() {
         title={area.name}
         description={`${tables.length} table${tables.length === 1 ? "" : "s"} · ${totalSeats} seats · created ${new Date(area.created_at).toLocaleDateString(intlLocale(), { dateStyle: "medium" })}`}
         actions={
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2 [&_button]:h-11 lg:[&_button]:h-8">
             <Button variant="outline" size="sm" onClick={rename}>
               <Pencil className="h-3.5 w-3.5 mr-1.5" /> Rename
             </Button>
@@ -134,20 +136,21 @@ export function AreaDetailPage() {
           </div>
         }
       />
+      <OperationalContext compact />
 
       {/* KPI strip */}
-      <div className="grid grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <Kpi label="Tables" value={tables.length.toLocaleString()} />
         <Kpi label="Seats" value={totalSeats.toLocaleString()} />
         <Kpi label="Occupied" value={`${occupiedCount} / ${tables.length}`} tone={occupiedCount ? "warn" : "muted"} />
-        <Kpi label="Open tabs" value={activeOrders > 0 ? `${activeOrders} · KES ${openTabTotal.toFixed(0)}` : "—"} tone={activeOrders ? "accent" : "muted"} />
+        <Kpi label="Open tabs" value={activeOrders > 0 ? `${activeOrders} · ${money(openTabTotal)}` : "—"} tone={activeOrders ? "accent" : "muted"} />
       </div>
 
       {/* Tables grid */}
       <div>
-        <div className="flex items-center justify-between mb-2">
+        <div className="mb-2 flex flex-col items-start justify-between gap-2 sm:flex-row sm:items-center">
           <h2 className="text-[13px] uppercase tracking-wider text-muted-foreground font-semibold">Tables</h2>
-          <Button size="sm" variant="ghost" onClick={() => navigate("/hospitality")}>
+          <Button size="sm" variant="ghost" className="h-11 lg:h-8" onClick={() => navigate("/hospitality")}>
             <Plus className="h-3.5 w-3.5 mr-1" /> Manage from Hospitality hub
           </Button>
         </div>
@@ -170,7 +173,7 @@ export function AreaDetailPage() {
                 <button
                   key={t.id}
                   onClick={() => navigate(`/hospitality/tables/${t.id}`)}
-                  className="text-left rounded-lg border border-border p-3 hover:bg-accent/40 transition-colors"
+                  className="min-h-11 text-left rounded-lg border border-border p-3 hover:bg-accent/40 transition-colors"
                 >
                   <div className="flex items-center justify-between">
                     <span className="font-semibold">{t.table_code}</span>
@@ -183,7 +186,7 @@ export function AreaDetailPage() {
                   </div>
                   {order ? (
                     <div className="mt-2 text-[11px] text-amber-700 dark:text-amber-400 font-mono tabular-nums">
-                      #{order.order_number} · KES {order.total.toFixed(0)}
+                      #{order.order_number} · {money(order.total)}
                     </div>
                   ) : null}
                 </button>

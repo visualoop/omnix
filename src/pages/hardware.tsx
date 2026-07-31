@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   CheckCircle as CheckCircle2,
   Clock,
@@ -27,6 +27,8 @@ import { useNavigate } from "react-router-dom";
 import { useCartStore } from "@/stores/cart";
 import { useAuthStore } from "@/stores/auth";
 import { hasPermission } from "@/lib/permissions";
+import { useClientPagination } from "@/hooks/use-client-pagination";
+import { PaginationBar } from "@/components/pagination-bar";
 import { money as KES } from "@/lib/money";
 import { ContractorAccountDialog } from "@/components/hardware/contractor-account-dialog";
 import { CommissionRuleDialog } from "@/components/hardware/commission-rule-dialog";
@@ -94,7 +96,7 @@ export function HardwareDashboardPage() {
         <Card className="mt-4">
           <CardContent className="p-4">
             <div className="text-sm font-medium mb-3">Aged receivables</div>
-            <div className="grid grid-cols-5 gap-2 text-center">
+            <div className="grid grid-cols-2 gap-2 text-center sm:grid-cols-5">
               {([
                 ["Current", aging.current, "current" as BucketKey],
                 ["1–30", aging.d1_30, "d1_30" as BucketKey],
@@ -105,7 +107,7 @@ export function HardwareDashboardPage() {
                 <button
                   key={label}
                   onClick={() => setOpenBucket(k)}
-                  className="rounded-md border border-border p-2.5 hover:bg-accent/40 transition-colors text-left"
+                  className="min-h-11 rounded-md border border-border p-2.5 text-left transition-colors hover:bg-accent/40"
                 >
                   <div className="text-[10px] uppercase tracking-wide text-muted-foreground">{label}</div>
                   <div className="font-mono tabular-nums text-sm mt-1">{KES(v)}</div>
@@ -133,6 +135,9 @@ export function HardwareQuotationsPage() {
 
   const load = () => { setLoading(true); listQuotations().then(setQuotes).finally(() => setLoading(false)); };
   useEffect(() => { load(); }, []);
+
+  const filteredQuotes = useMemo(() => quotes.filter((q) => (!statusFilter || q.status === statusFilter) && (!search || q.quotation_number.toLowerCase().includes(search.toLowerCase()) || (q.customer_name?.toLowerCase().includes(search.toLowerCase()) ?? false))), [quotes, search, statusFilter]);
+  const { pageRows: quoteRows, pagination: quotePagination } = useClientPagination(filteredQuotes, 12, `${statusFilter ?? "all"}:${search}`);
 
   const sendToPos = async (q: Quotation) => {
     setBusy(q.id);
@@ -172,7 +177,7 @@ export function HardwareQuotationsPage() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search quote # or customer…"
-              className="h-8 text-xs max-w-[240px]"
+              className="h-11 w-full text-xs sm:max-w-[240px] lg:h-8"
             />
             <div className="flex flex-wrap items-center gap-1">
               <StatusChip label="All" active={statusFilter === null} onClick={() => setStatusFilter(null)} />
@@ -181,10 +186,13 @@ export function HardwareQuotationsPage() {
               ))}
             </div>
             <div className="ml-auto text-[11px] text-muted-foreground font-mono tabular-nums">
-              {quotes.filter((q) => (!statusFilter || q.status === statusFilter) && (!search || q.quotation_number.toLowerCase().includes(search.toLowerCase()) || (q.customer_name?.toLowerCase().includes(search.toLowerCase()) ?? false))).length} of {quotes.length}
+              {filteredQuotes.length} of {quotes.length}
             </div>
           </div>
-        <ModuleTable>
+        <div className="space-y-2 lg:hidden" aria-label="Hardware quotations">
+          {quoteRows.map((q) => { const canSend = q.status === "draft" || q.status === "sent" || q.status === "accepted"; return <article key={q.id} className="rounded-md border border-border p-4"><button type="button" onClick={() => navigate(`/hardware/quotations/${q.id}`)} className="min-h-11 w-full text-left"><div className="flex items-start justify-between gap-3"><div><p className="font-mono font-medium">{q.quotation_number}</p><p className="mt-1 text-xs text-muted-foreground">{q.customer_name || "Walk-in quote"}</p></div><Badge variant="outline" className={cn("capitalize", STATUS_STYLE[q.status])}>{q.status}</Badge></div><div className="mt-3 flex items-center justify-between border-t border-border pt-3 text-xs"><span className="text-muted-foreground">Valid {q.valid_until ?? "not set"}</span><span className="font-mono font-semibold">{KES(q.total)}</span></div></button>{canSend && <Button variant="outline" disabled={busy === q.id} onClick={() => sendToPos(q)} className="mt-3 h-11 w-full">{busy === q.id ? "Loading…" : "Send to POS"}</Button>}</article>; })}
+        </div>
+        <ModuleTable className="hidden lg:block">
           <ModuleTHead>
             <tr>
               <th className="text-left px-3 py-2">Quote #</th>
@@ -195,9 +203,7 @@ export function HardwareQuotationsPage() {
             </tr>
           </ModuleTHead>
           <tbody>
-            {quotes
-              .filter((q) => (!statusFilter || q.status === statusFilter) && (!search || q.quotation_number.toLowerCase().includes(search.toLowerCase()) || (q.customer_name?.toLowerCase().includes(search.toLowerCase()) ?? false)))
-              .map((q) => {
+            {quoteRows.map((q) => {
               const canSend = q.status === "draft" || q.status === "sent" || q.status === "accepted";
               return (
                 <tr
@@ -225,6 +231,7 @@ export function HardwareQuotationsPage() {
             })}
           </tbody>
         </ModuleTable>
+        <PaginationBar list={quotePagination} />
         </>
       )}
     </div>
@@ -237,7 +244,7 @@ function StatusChip({ label, active, onClick }: { label: string; active: boolean
     <button
       onClick={onClick}
       className={cn(
-        "text-[11px] px-2 py-0.5 rounded-full border transition-colors capitalize",
+        "min-h-11 px-3 py-1 text-[11px] rounded-full border transition-colors capitalize lg:min-h-0 lg:px-2 lg:py-0.5",
         active
           ? "border-foreground/30 bg-foreground/[0.06] text-foreground"
           : "border-border text-muted-foreground hover:text-foreground",
@@ -268,6 +275,8 @@ export function HardwareDeliveryNotesPage() {
       .then(setNotes).finally(() => setLoading(false));
   };
   useEffect(() => { load(); }, []);
+  const filteredNotes = useMemo(() => notes.filter((n) => (!statusFilter || n.status === statusFilter) && (!search || n.note_number.toLowerCase().includes(search.toLowerCase()) || (n.delivery_address?.toLowerCase().includes(search.toLowerCase()) ?? false))), [notes, search, statusFilter]);
+  const { pageRows: noteRows, pagination: notePagination } = useClientPagination(filteredNotes, 12, `${statusFilter ?? "all"}:${search}`);
 
   const advanceToDelivered = async (n: DeliveryNote) => {
     try { await markDelivered(n.id); load(); }
@@ -300,7 +309,7 @@ export function HardwareDeliveryNotesPage() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search note # or address…"
-              className="h-8 text-xs max-w-[240px]"
+              className="h-11 w-full text-xs sm:max-w-[240px] lg:h-8"
             />
             <div className="flex flex-wrap items-center gap-1">
               <StatusChip label="All" active={statusFilter === null} onClick={() => setStatusFilter(null)} />
@@ -309,7 +318,8 @@ export function HardwareDeliveryNotesPage() {
               ))}
             </div>
           </div>
-        <ModuleTable>
+        <div className="space-y-2 lg:hidden" aria-label="Delivery notes">{noteRows.map((n) => <article key={n.id} className="rounded-md border border-border p-4"><div className="flex items-start justify-between gap-3"><div><p className="font-mono font-medium">{n.note_number}</p><p className="mt-1 text-xs text-muted-foreground">{n.delivery_address || "No address recorded"}</p></div><Badge variant="outline" className={cn("capitalize", STATUS_STYLE[n.status])}>{n.status}</Badge></div>{canManage && n.status === "pending" && <Button variant="outline" className="mt-3 h-11 w-full" onClick={() => setDispatchTarget(n)}>Dispatch</Button>}{canManage && n.status === "dispatched" && <Button variant="outline" className="mt-3 h-11 w-full" onClick={() => advanceToDelivered(n)}>Mark delivered</Button>}</article>)}</div>
+        <ModuleTable className="hidden lg:block">
           <ModuleTHead>
             <tr>
               <th className="text-left px-3 py-2">Note #</th>
@@ -319,9 +329,7 @@ export function HardwareDeliveryNotesPage() {
             </tr>
           </ModuleTHead>
           <tbody>
-            {notes
-              .filter((n) => (!statusFilter || n.status === statusFilter) && (!search || n.note_number.toLowerCase().includes(search.toLowerCase()) || (n.delivery_address?.toLowerCase().includes(search.toLowerCase()) ?? false)))
-              .map((n) => (
+            {noteRows.map((n) => (
               <tr key={n.id} className="border-t border-border hover:bg-accent/30 transition-colors">
                 <td className="px-3 py-2 font-mono">{n.note_number}</td>
                 <td className="px-3 py-2 text-muted-foreground truncate max-w-[240px]">{n.delivery_address ?? "—"}</td>
@@ -335,6 +343,7 @@ export function HardwareDeliveryNotesPage() {
             ))}
           </tbody>
         </ModuleTable>
+        <PaginationBar list={notePagination} />
         </>
       )}
     </div>
@@ -363,6 +372,8 @@ export function HardwareAccountsPage() {
   };
 
   useEffect(() => { load(); }, []);
+  const filteredAccounts = useMemo(() => rows.filter((row) => !search || row.name.toLowerCase().includes(search.toLowerCase())), [rows, search]);
+  const { pageRows: accountRows, pagination: accountPagination } = useClientPagination(filteredAccounts, 12, search);
 
   return (
     <div>
@@ -386,13 +397,14 @@ export function HardwareAccountsPage() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search contractor…"
-              className="h-8 text-xs max-w-[240px]"
+              className="h-11 w-full text-xs sm:max-w-[240px] lg:h-8"
             />
             <div className="ml-auto text-[11px] text-muted-foreground font-mono tabular-nums">
-              {rows.filter((r) => !search || r.name.toLowerCase().includes(search.toLowerCase())).length} of {rows.length}
+              {filteredAccounts.length} of {rows.length}
             </div>
           </div>
-        <ModuleTable>
+        <div className="space-y-2 lg:hidden" aria-label="Contractor accounts">{accountRows.map((r) => <button key={r.customer_id} type="button" onClick={() => navigate(`/hardware/accounts/${r.customer_id}`)} className="min-h-11 w-full rounded-md border border-border p-4 text-left"><div className="flex items-start justify-between gap-3"><p className="font-medium">{r.name}</p>{r.on_hold ? <Badge variant="destructive">On hold</Badge> : <Badge variant="outline">Active</Badge>}</div><div className="mt-3 grid grid-cols-2 gap-3 border-t border-border pt-3 text-xs"><div><span className="text-muted-foreground">Balance</span><p className="mt-1 font-mono font-semibold">{KES(r.balance)}</p></div><div className="text-right"><span className="text-muted-foreground">Available</span><p className="mt-1 font-mono">{KES(Math.max(0, r.credit_limit - r.balance))}</p></div></div></button>)}</div>
+        <ModuleTable className="hidden lg:block">
           <ModuleTHead>
             <tr>
               <th className="text-left px-3 py-2">Customer</th>
@@ -403,9 +415,7 @@ export function HardwareAccountsPage() {
             </tr>
           </ModuleTHead>
           <tbody>
-            {rows
-              .filter((r) => !search || r.name.toLowerCase().includes(search.toLowerCase()))
-              .map((r) => (
+            {accountRows.map((r) => (
               <tr key={r.customer_id} className="border-t border-border hover:bg-accent/30 transition-colors cursor-pointer" onClick={() => navigate(`/hardware/accounts/${r.customer_id}`)}>
                 <td className="px-3 py-2 font-medium">{r.name}</td>
                 <td className="px-3 py-2 text-right font-mono tabular-nums">{KES(r.credit_limit)}</td>
@@ -416,6 +426,7 @@ export function HardwareAccountsPage() {
             ))}
           </tbody>
         </ModuleTable>
+        <PaginationBar list={accountPagination} />
         </>
       )}
     </div>
@@ -448,6 +459,9 @@ export function HardwareCommissionsPage() {
   };
 
   useEffect(() => { load(); }, []);
+  const filteredCommissions = useMemo(() => rows.filter((row) => !search || row.employee.toLowerCase().includes(search.toLowerCase())), [rows, search]);
+  const { pageRows: commissionRows, pagination: commissionPagination } = useClientPagination(filteredCommissions, 12, search);
+  const { pageRows: ruleRows, pagination: rulePagination } = useClientPagination(rules, 12, tab);
 
   return (
     <div>
@@ -476,7 +490,9 @@ export function HardwareCommissionsPage() {
         rules.length === 0 ? (
           <ModuleEmpty icon={Percent} title="No commission rules yet" hint="Add a rule so commissions accrue when salespeople close sales." />
         ) : (
-          <ModuleTable>
+          <>
+          <div className="space-y-2 lg:hidden" aria-label="Commission rules">{ruleRows.map((r) => <button key={r.id} type="button" onClick={() => { setEditingRule(r); setRuleDialogOpen(true); }} className="min-h-11 w-full rounded-md border border-border p-4 text-left"><div className="flex items-start justify-between gap-3"><div><p className="font-medium">{r.employee_name}</p><p className="mt-1 text-xs text-muted-foreground">{r.category_name ?? "All categories"}</p></div><span className="font-mono font-semibold">{r.percent}%</span></div></button>)}</div>
+          <ModuleTable className="hidden lg:block">
             <ModuleTHead>
               <tr>
                 <th className="text-left px-3 py-2">Salesperson</th>
@@ -486,7 +502,7 @@ export function HardwareCommissionsPage() {
               </tr>
             </ModuleTHead>
             <tbody>
-              {rules.map((r) => (
+              {ruleRows.map((r) => (
                 <tr key={r.id} className="border-t border-border hover:bg-accent/30">
                   <td className="px-3 py-2 font-medium">{r.employee_name}</td>
                   <td className="px-3 py-2 text-muted-foreground">{r.category_name ?? "All"}</td>
@@ -498,6 +514,8 @@ export function HardwareCommissionsPage() {
               ))}
             </tbody>
           </ModuleTable>
+          <PaginationBar list={rulePagination} />
+          </>
         )
       ) : rows.length === 0 ? (
         <ModuleEmpty
@@ -510,9 +528,10 @@ export function HardwareCommissionsPage() {
       ) : (
         <>
           <div className="flex items-center gap-2 mb-3">
-            <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search salesperson…" className="h-8 text-xs max-w-[240px]" />
+            <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search salesperson…" className="h-11 w-full text-xs sm:max-w-[240px] lg:h-8" />
           </div>
-          <ModuleTable>
+          <div className="space-y-2 lg:hidden" aria-label="Commission accruals">{commissionRows.map((r) => <article key={r.employee} className="rounded-md border border-border p-4"><div className="flex items-start justify-between gap-3"><div><p className="font-medium">{r.employee}</p><p className="mt-1 text-xs text-muted-foreground">{r.count} sales</p></div><span className="font-mono font-semibold">{KES(r.total)}</span></div></article>)}</div>
+          <ModuleTable className="hidden lg:block">
             <ModuleTHead>
               <tr>
                 <th className="text-left px-3 py-2">Salesperson</th>
@@ -521,7 +540,7 @@ export function HardwareCommissionsPage() {
               </tr>
             </ModuleTHead>
             <tbody>
-              {rows.filter((r) => !search || r.employee.toLowerCase().includes(search.toLowerCase())).map((r) => (
+              {commissionRows.map((r) => (
                 <tr key={r.employee} className="border-t border-border hover:bg-accent/30 transition-colors">
                   <td className="px-3 py-2 font-medium">{r.employee}</td>
                   <td className="px-3 py-2 text-right font-mono tabular-nums">{r.count}</td>
@@ -530,6 +549,7 @@ export function HardwareCommissionsPage() {
               ))}
             </tbody>
           </ModuleTable>
+          <PaginationBar list={commissionPagination} />
         </>
       )}
 
@@ -673,7 +693,7 @@ export function HardwareReportsPage() {
         <Card>
           <CardContent className="p-4">
             <div className="text-sm font-medium mb-3 flex items-center gap-2"><Clock className="h-4 w-4 text-muted-foreground" /> Aged receivables</div>
-            <div className="grid grid-cols-5 gap-2 text-center">
+            <div className="grid grid-cols-2 gap-2 text-center sm:grid-cols-5">
               {([
                 ["Current", aging.current, "current" as BucketKey],
                 ["1–30", aging.d1_30, "d1_30" as BucketKey],
@@ -748,6 +768,7 @@ export function HardwareFleetPage() {
       .then(([u, c]) => { setUnits(u); setCounts(c); })
       .finally(() => setLoading(false));
   };
+  const { pageRows: unitRows, pagination: unitPagination } = useClientPagination(units, 12, `${statusFilter ?? "all"}:${search}`);
   // Reload on filter/search change (search is server-side).
   useEffect(() => {
     const t = setTimeout(load, search ? 200 : 0);
@@ -792,7 +813,7 @@ export function HardwareFleetPage() {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Warranty lookup — serial, engine, chassis…"
-            className="h-8 text-xs pl-8"
+            className="h-11 text-xs pl-8 lg:h-8"
           />
         </div>
         <div className="flex flex-wrap items-center gap-1">
@@ -815,7 +836,9 @@ export function HardwareFleetPage() {
           hint={search ? "Check the serial number, or receive the unit first." : "Turn on “Track by serial” on an equipment product, then receive units here."}
         />
       ) : (
-        <ModuleTable>
+        <>
+        <div className="space-y-2 lg:hidden" aria-label="Equipment units">{unitRows.map((u) => { const w = warrantyLabel(u); return <button key={u.id} type="button" onClick={() => setDetail(u)} className="min-h-11 w-full rounded-md border border-border p-4 text-left"><div className="flex items-start justify-between gap-3"><div className="min-w-0"><p className="truncate font-medium">{u.product_name}</p><p className="mt-1 font-mono text-xs text-muted-foreground">{u.serial_number}</p></div><Badge variant="outline" className={cn("capitalize", UNIT_STATUS_STYLE[u.status])}>{u.status.replace("_", " ")}</Badge></div><div className="mt-3 flex items-center justify-between border-t border-border pt-3 text-xs"><span className="truncate text-muted-foreground">{specSummary(u.specs_json) || "No specifications"}</span><Badge variant="outline" className={WARRANTY_STYLE[w.state]}>{w.text}</Badge></div></button>; })}</div>
+        <ModuleTable className="hidden lg:block">
           <ModuleTHead>
             <tr>
               <th className="text-left px-3 py-2">Serial</th>
@@ -826,7 +849,7 @@ export function HardwareFleetPage() {
             </tr>
           </ModuleTHead>
           <tbody>
-            {units.map((u) => {
+            {unitRows.map((u) => {
               const w = warrantyLabel(u);
               return (
                 <tr
@@ -844,6 +867,8 @@ export function HardwareFleetPage() {
             })}
           </tbody>
         </ModuleTable>
+        <PaginationBar list={unitPagination} />
+        </>
       )}
     </div>
   );
@@ -930,7 +955,7 @@ function UnitDetailSheet({ unit, onClose, onNewJob, onOpenJob }: {
             <div className="flex items-center justify-between mb-1.5">
               <span className="text-[10px] uppercase tracking-wider text-muted-foreground">Service history</span>
               {unit.status !== "written_off" && (
-                <Button variant="outline" size="sm" className="h-7 text-[11px]" onClick={() => onNewJob(unit)}>
+                <Button variant="outline" size="sm" className="h-11 text-[11px] lg:h-7" onClick={() => onNewJob(unit)}>
                   <Plus className="h-3 w-3 mr-1" /> New job
                 </Button>
               )}
@@ -1001,6 +1026,7 @@ export function HardwareServicePage() {
       .then(([j, c]) => { setJobs(j); setCounts(c); })
       .finally(() => setLoading(false));
   };
+  const { pageRows: jobRows, pagination: jobPagination } = useClientPagination(jobs, 12, `${statusFilter ?? "all"}:${search}`);
   useEffect(() => {
     const t = setTimeout(load, search ? 200 : 0);
     return () => clearTimeout(t);
@@ -1027,7 +1053,7 @@ export function HardwareServicePage() {
       <div className="flex flex-wrap items-center gap-2 mb-3">
         <div className="relative max-w-[280px] w-full">
           <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
-          <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search job #, serial, customer…" className="h-8 text-xs pl-8" />
+          <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search job #, serial, customer…" className="h-11 text-xs pl-8 lg:h-8" />
         </div>
         <div className="flex flex-wrap items-center gap-1">
           <StatusChip label="All" active={statusFilter === null} onClick={() => setStatusFilter(null)} />
@@ -1049,7 +1075,9 @@ export function HardwareServicePage() {
           hint={search ? "Try a different job number or serial." : "Open a job against a machine from here or its unit page."}
         />
       ) : (
-        <ModuleTable>
+        <>
+        <div className="space-y-2 lg:hidden" aria-label="Service jobs">{jobRows.map((j) => <button key={j.id} type="button" onClick={() => setOpenJobId(j.id)} className="min-h-11 w-full rounded-md border border-border p-4 text-left"><div className="flex items-start justify-between gap-3"><div><p className="font-mono font-medium">{j.job_number}</p><p className="mt-1 text-xs text-muted-foreground">{j.product_name} · {j.serial_number}</p></div><Badge variant="outline" className={cn("capitalize", JOB_STATUS_STYLE[j.status])}>{j.status.replace("_", " ")}</Badge></div><div className="mt-3 flex items-center justify-between border-t border-border pt-3 text-xs"><span>{j.customer_name || "No customer"}</span><span className="font-mono font-semibold">{j.is_warranty ? "Warranty" : KES(j.parts_total + j.labour_total)}</span></div></button>)}</div>
+        <ModuleTable className="hidden lg:block">
           <ModuleTHead>
             <tr>
               <th className="text-left px-3 py-2">Job #</th>
@@ -1060,7 +1088,7 @@ export function HardwareServicePage() {
             </tr>
           </ModuleTHead>
           <tbody>
-            {jobs.map((j) => (
+            {jobRows.map((j) => (
               <tr key={j.id} onClick={() => setOpenJobId(j.id)} className="border-t border-border hover:bg-accent/30 transition-colors cursor-pointer">
                 <td className="px-3 py-2 font-mono">{j.job_number}</td>
                 <td className="px-3 py-2">
@@ -1074,6 +1102,8 @@ export function HardwareServicePage() {
             ))}
           </tbody>
         </ModuleTable>
+        <PaginationBar list={jobPagination} />
+        </>
       )}
     </div>
   );
@@ -1104,6 +1134,7 @@ export function HardwareRentalsPage() {
     listRentalAgreements({ search: search.trim() || undefined, status: statusFilter ?? undefined })
       .then(setRows).finally(() => setLoading(false));
   };
+  const { pageRows: rentalRows, pagination: rentalPagination } = useClientPagination(rows, 12, `${statusFilter ?? "all"}:${search}`);
   useEffect(() => {
     const t = setTimeout(load, search ? 200 : 0);
     return () => clearTimeout(t);
@@ -1132,7 +1163,7 @@ export function HardwareRentalsPage() {
       <div className="flex flex-wrap items-center gap-2 mb-3">
         <div className="relative max-w-[280px] w-full">
           <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
-          <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search agreement # or customer…" className="h-8 text-xs pl-8" />
+          <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search agreement # or customer…" className="h-11 text-xs pl-8 lg:h-8" />
         </div>
         <div className="flex flex-wrap items-center gap-1">
           <StatusChip label="All" active={statusFilter === null} onClick={() => setStatusFilter(null)} />
@@ -1145,7 +1176,9 @@ export function HardwareRentalsPage() {
       {loading ? <ModuleSpinner /> : rows.length === 0 ? (
         <ModuleEmpty icon={Truck} title={search ? "No rental matches" : "No rentals yet"} hint={search ? "Try another agreement number or customer." : "Hire out a machine to create the first rental agreement."} />
       ) : (
-        <ModuleTable>
+        <>
+        <div className="space-y-2 lg:hidden" aria-label="Rental agreements">{rentalRows.map((r) => <article key={r.id} className="rounded-md border border-border p-4"><div className="flex items-start justify-between gap-3"><div><p className="font-mono font-medium">{r.agreement_number}</p><p className="mt-1 text-xs text-muted-foreground">{r.customer_name || "No customer"}</p></div><Badge variant="outline" className={cn("capitalize", RENTAL_STATUS_STYLE[overdue(r) ? "overdue" : r.status])}>{overdue(r) ? "overdue" : r.status}</Badge></div><div className="mt-3 flex items-center justify-between border-t border-border pt-3 text-xs"><span>{r.starts_at.slice(0,10)} → {r.ends_at.slice(0,10)}</span><span className="font-mono">{KES(r.daily_total)}/day</span></div>{canManage && r.status === "active" && <Button variant="outline" className="mt-3 h-11 w-full" onClick={() => setReturnId(r.id)}>Return equipment</Button>}</article>)}</div>
+        <ModuleTable className="hidden lg:block">
           <ModuleTHead>
             <tr>
               <th className="text-left px-3 py-2">Agreement</th>
@@ -1157,7 +1190,7 @@ export function HardwareRentalsPage() {
             </tr>
           </ModuleTHead>
           <tbody>
-            {rows.map((r) => (
+            {rentalRows.map((r) => (
               <tr key={r.id} className="border-t border-border hover:bg-accent/30 transition-colors">
                 <td className="px-3 py-2 font-mono">{r.agreement_number}</td>
                 <td className="px-3 py-2">{r.customer_name ?? "—"}</td>
@@ -1180,6 +1213,8 @@ export function HardwareRentalsPage() {
             ))}
           </tbody>
         </ModuleTable>
+        <PaginationBar list={rentalPagination} />
+        </>
       )}
     </div>
   );

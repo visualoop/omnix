@@ -63,6 +63,7 @@ import {
 } from "recharts";
 import { money as KES } from "@/lib/money";
 import { cn } from "@/lib/utils";
+import { OperationalContext } from "@/components/shared/operational-context";
 import { AllergenPicker } from "@/components/hospitality/allergen-picker";
 
 export function MenuItemDetailPage() {
@@ -164,16 +165,16 @@ export function MenuItemDetailPage() {
   const bottleneck = availability?.bottleneck_product_name;
 
   return (
-    <div className="w-full p-6 pb-24 space-y-6">
+    <div className="w-full space-y-6 p-3 pb-24 sm:p-6">
       {/* ─── Top bar ─────────────────────────────────────────────── */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col items-start justify-between gap-3 sm:flex-row sm:items-center">
         <button
           onClick={() => navigate("/hospitality?tab=menu")}
           className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
         >
           <ArrowLeft className="h-4 w-4" /> Back to menu
         </button>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2 [&_button]:min-h-11 lg:[&_button]:min-h-0">
           <button
             onClick={toggleActive}
             className={cn(
@@ -210,6 +211,7 @@ export function MenuItemDetailPage() {
           </Button>
         </div>
       </div>
+      <OperationalContext compact />
 
       {/* ─── Header (image + inline edits) ────────────────────────── */}
       <div className="rounded-xl border border-border bg-card overflow-hidden">
@@ -326,7 +328,7 @@ export function MenuItemDetailPage() {
 
       {/* ─── Availability strip ──────────────────────────────────── */}
       <div className={cn(
-        "rounded-xl border p-4 flex items-center gap-4",
+        "rounded-xl border p-4 flex flex-col items-start gap-4 sm:flex-row sm:items-center",
         !availability
           ? "border-amber-500/40 bg-amber-500/10"
           : "border-border bg-card",
