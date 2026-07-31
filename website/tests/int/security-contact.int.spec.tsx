@@ -61,14 +61,14 @@ describe('general contact acquisition route', () => {
   it('renders procedural channels with demo primary, WhatsApp secondary, and support email', () => {
     render(
       <ContactForm
-        locale="ng"
+        locale="ug"
         supportEmail="support@omnix.co.ke"
         whatsappUrl="https://wa.me/254700000000"
         whatsappDisplay="+254 700 000 000"
       />,
     )
 
-    expect(hrefOf(screen.getByRole('link', { name: 'Book a demo' }))).toBe('/ng/contact?type=demo')
+    expect(hrefOf(screen.getByRole('link', { name: 'Book a demo' }))).toBe('/ug/contact?type=demo')
     expect(hrefOf(screen.getByRole('link', { name: 'Ask on WhatsApp' }))).toContain('https://wa.me/254700000000?text=')
     expect(hrefOf(screen.getByRole('link', { name: 'Email support' }))).toContain('mailto:support@omnix.co.ke')
     expect(screen.getByText(/This page does not send a message for you/)).toBeTruthy()

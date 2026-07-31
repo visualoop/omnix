@@ -109,6 +109,3 @@ export async function PATCH(req: Request) {
 
   return NextResponse.json({ ok: true })
 }
-
-// Constants exported for tests + future cron jobs that touch profile data.
-export { COLUMN_FIELDS, META_FIELDS }

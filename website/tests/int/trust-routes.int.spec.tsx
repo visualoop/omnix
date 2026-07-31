@@ -32,10 +32,19 @@ const ALL_PAGES = Object.entries(PAGES)
 afterEach(cleanup)
 
 describe('Task 15 trust routes — localization and conversion', () => {
-  it('localizes canonical, hreflang, and demo CTAs for every trust route', () => {
-    for (const [route, source] of ALL_PAGES) {
+  it('localizes neutral trust routes and keeps Kenya-only integrations canonical under /ke', () => {
+    for (const route of ['about', 'team', 'partners', 'support'] as const) {
+      const source = PAGES[route]
       expect(source, `${route} canonical`).toContain(`const canonical = \`\${SITE_URL}/\${locale}/${route}\``)
       expect(source, `${route} hreflang`).toContain(`buildAlternatesLanguages('/${route}')`)
+    }
+    for (const route of ['mpesa', 'etims', 'sha'] as const) {
+      const source = PAGES[route]
+      expect(source, `${route} Kenya canonical`).toContain(`const canonical = \`\${SITE_URL}/ke/${route}\``)
+      expect(source, `${route} Kenya hreflang`).toContain(`buildKenyaOnlyAlternatesLanguages('/${route}')`)
+      expect(source, `${route} no general hreflang`).not.toContain('buildAlternatesLanguages(')
+    }
+    for (const [route, source] of ALL_PAGES) {
       expect(source, `${route} imports trust primitives`).toContain(
         "from '@/components/marketing/trust-pages'",
       )
@@ -177,10 +186,10 @@ describe('Task 15 trust primitives — rendered behaviour', () => {
   })
 
   it('drops the WhatsApp secondary when the line is not configured', () => {
-    render(<TrustHero {...heroProps} locale="ng" whatsappUrl={null} />)
+    render(<TrustHero {...heroProps} locale="ug" whatsappUrl={null} />)
     expect(screen.queryByRole('link', { name: 'Ask on WhatsApp' })).toBeNull()
     expect(screen.getAllByRole('link', { name: 'Book a demo' })[0].getAttribute('href')).toBe(
-      '/ng/contact?type=demo',
+      '/ug/contact?type=demo',
     )
   })
 

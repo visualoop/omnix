@@ -9,7 +9,7 @@ import {
   TrustProse,
   TrustSection,
 } from '@/components/marketing/trust-pages'
-import { buildAlternatesLanguages } from '@/lib/hreflang'
+import { buildKenyaOnlyAlternatesLanguages } from '@/lib/hreflang'
 import { buildSocialMetadata } from '@/lib/seo-metadata'
 import { getSiteSettings } from '@/lib/site-settings'
 
@@ -24,7 +24,7 @@ export async function generateMetadata({
   params: Promise<{ locale: string }>
 }): Promise<Metadata> {
   const { locale } = await params
-  const canonical = `${SITE_URL}/${locale}/mpesa`
+  const canonical = `${SITE_URL}/ke/mpesa`
 
   return {
     title: 'M-Pesa at the Omnix counter — how it works and where the line is',
@@ -32,7 +32,7 @@ export async function generateMetadata({
       'How Omnix records an M-Pesa sale locally while STK push, paybill, and till confirmation cross the internet to Safaricom. What Omnix does, what your Daraja account does, and what stays statutory.',
     alternates: {
       canonical,
-      languages: buildAlternatesLanguages('/mpesa'),
+      languages: buildKenyaOnlyAlternatesLanguages('/mpesa'),
     },
     ...buildSocialMetadata({
       locale,

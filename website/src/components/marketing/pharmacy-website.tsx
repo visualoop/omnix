@@ -22,7 +22,7 @@ interface PharmacyWebsiteProps {
   whatsappUrl?: string | null
 }
 
-export const PHARMACY_CAPABILITIES = [
+const PHARMACY_CORE_CAPABILITIES = [
   {
     title: 'Dispensing and patient records',
     body: 'Capture prescriptions with patient and prescriber details, add medicines, review patient history, and take the prepared prescription into checkout.',
@@ -35,6 +35,9 @@ export const PHARMACY_CAPABILITIES = [
     title: 'Controlled register',
     body: 'Keep controlled-medicine entries with the medicine, patient, batch, quantity, prescriber, and dispenser details used by the pharmacy.',
   },
+] as const
+
+const KENYA_PHARMACY_CAPABILITIES = [
   {
     title: 'Pharmacy POS and M-Pesa',
     body: 'Sell prescription and over-the-counter items through the same pharmacy POS. Use a configured M-Pesa provider, including STK push, or record another payment method.',
@@ -47,6 +50,17 @@ export const PHARMACY_CAPABILITIES = [
     title: 'SHA and private insurance',
     body: 'Work with configured SHA or private insurance providers, claim details, covered amounts, and patient copay at the point of dispensing.',
   },
+] as const
+
+const REGIONAL_PHARMACY_CAPABILITY = {
+  title: 'Pharmacy POS and payment records',
+  body: 'Sell prescription and over-the-counter items through the same pharmacy POS and record the payment method used. Confirm any provider connection available in your market during the demo.',
+} as const
+
+/** Kenya capability set retained for product verification and the /ke page. */
+export const PHARMACY_CAPABILITIES = [
+  ...PHARMACY_CORE_CAPABILITIES,
+  ...KENYA_PHARMACY_CAPABILITIES,
 ] as const
 
 const WORKFLOW = [
@@ -89,6 +103,10 @@ export function PharmacyWebsite({
   const demoHref = `/${locale}/contact?type=demo&product=pharmacy`
   const whatsappHref = whatsappDemoHref(whatsappUrl)
   const hasApprovedMedia = Boolean(heroVideo || heroImage)
+  const isKenya = locale === 'ke'
+  const capabilities = isKenya
+    ? PHARMACY_CAPABILITIES
+    : [...PHARMACY_CORE_CAPABILITIES, REGIONAL_PHARMACY_CAPABILITY]
 
   return (
     <div className={styles.page} data-pharmacy-website>
@@ -209,7 +227,7 @@ export function PharmacyWebsite({
           </header>
 
           <div className={styles.capabilityGrid}>
-            {PHARMACY_CAPABILITIES.map((capability) => (
+            {capabilities.map((capability) => (
               <article key={capability.title}>
                 <h3>{capability.title}</h3>
                 <p>{capability.body}</p>
@@ -227,7 +245,11 @@ export function PharmacyWebsite({
               <h2 id="boundary-heading">The pharmacy record stays on the shop computer.</h2>
             </div>
             <div className={styles.boundaryCopy}>
-              <p>Core sales, stock, prescription, and patient work uses the local desktop database. Internet-connected services such as M-Pesa, KRA eTIMS submission, and online insurance checks need a working connection.</p>
+              {isKenya ? (
+                <p>Core sales, stock, prescription, and patient work uses the local desktop database. Internet-connected services such as M-Pesa, KRA eTIMS submission, and online insurance checks need a working connection.</p>
+              ) : (
+                <p>Core sales, stock, prescription, and patient work uses the local desktop database. Any online payment, tax, or insurance connection needs a working connection and is available only where Omnix supports the provider and your business has completed its setup.</p>
+              )}
               <p>Omnix provides software workflows and recordkeeping tools. Your pharmacy remains responsible for its configuration, operating procedures, and statutory obligations.</p>
             </div>
           </div>

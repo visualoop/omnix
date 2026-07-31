@@ -6,7 +6,7 @@ import { notFound } from 'next/navigation'
 import { ArrowLeft, Icon } from '@/components/icons'
 import { PageContainer } from '@/components/layout/layout-primitives'
 import { ArticleJsonLd } from '@/components/seo/jsonld'
-import { buildAlternatesLanguages } from '@/lib/hreflang'
+import { buildKenyaOnlyAlternatesLanguages } from '@/lib/hreflang'
 import { buildSocialMetadata } from '@/lib/seo-metadata'
 import { postBySlug, postSlugs, relatedPosts, type BlogPostSeed } from '@/lib/blog-seed'
 
@@ -35,13 +35,13 @@ export async function generateMetadata({
   if (!post) {
     return { title: 'Post not found', robots: { index: false, follow: false } }
   }
-  const canonical = `${SITE_URL}/${locale}/blog/${post.slug}`
+  const canonical = `${SITE_URL}/ke/blog/${post.slug}`
   return {
     title: post.title,
     description: post.excerpt,
     alternates: {
       canonical,
-      languages: buildAlternatesLanguages(`/blog/${post.slug}`),
+      languages: buildKenyaOnlyAlternatesLanguages(`/blog/${post.slug}`),
     },
     ...buildSocialMetadata({
       locale,

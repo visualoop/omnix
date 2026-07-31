@@ -1,90 +1,89 @@
 import { defineRouting } from 'next-intl/routing'
 
-/**
- * Locale routing — language codes + country codes in one list.
- *
- * Two kinds of locale here:
- *
- *   1. Language-only codes (en, sw, fr, pt, es, ar). Legacy. Users who
- *      want a translation regardless of country still hit /sw/pricing.
- *      Currency for these comes from geo / cookie.
- *
- *   2. Country codes (ke, us, gb, ng, gh, za, in, rw, tz, ug, eg, ae).
- *      New. The primary URL shape going forward. /ke/pricing renders in
- *      English with KES; /us/pricing renders in English with USD; /eg
- *      renders in Arabic with EGP.
- *
- * Country codes resolve to the right LANGUAGE through COUNTRY_TO_LANG
- * in i18n/request.ts. Currency is read in the price layer from
- * COUNTRY_TO_CURRENCY.
- *
- * defaultLocale = 'ke' because Kenya is the home market.
- *
- * localePrefix = 'always' so every URL is explicit. Bare /pricing
- * redirects to /{detected-country}/pricing in middleware.
- *
- * The locale segment is what Vercel sees in the URL. Visitors landing
- * cold from a Google search in the US get redirected to /us/...; the
- * page reads in English with USD; their geo cookie locks it in.
- */
-export const COUNTRY_LOCALES = [
-  'ke', 'us', 'gb', 'ng', 'gh', 'za',
-  'in', 'rw', 'tz', 'ug', 'eg', 'ae',
+import type { DisplayCurrency } from '@/lib/currency'
+
+/** Publicly launched, selectable, renderable and indexable markets. */
+export const COUNTRY_LOCALES = ['ke', 'ug', 'tz', 'rw'] as const
+export type LaunchMarketLocale = (typeof COUNTRY_LOCALES)[number]
+
+/** Historical prefixes accepted only so middleware can issue a one-hop 308. */
+export const LEGACY_COUNTRY_LOCALES = ['us', 'gb', 'ng', 'gh', 'za', 'in', 'eg', 'ae'] as const
+export const LANGUAGE_LOCALES = ['en', 'sw', 'fr', 'pt', 'es', 'ar'] as const
+export const LEGACY_LOCALES = [...LEGACY_COUNTRY_LOCALES, ...LANGUAGE_LOCALES] as const
+
+/** All prefixes that route helpers must recognize and strip. */
+export const ROUTABLE_COUNTRY_LOCALES = [...COUNTRY_LOCALES, ...LEGACY_LOCALES] as const
+
+export const COUNTRY_TO_LANG: Readonly<Record<LaunchMarketLocale, 'en'>> = {
+  ke: 'en',
+  ug: 'en',
+  tz: 'en',
+  rw: 'en',
+}
+
+/** Country route → local list-price display currency. This is not settlement configuration. */
+export const COUNTRY_TO_CURRENCY: Readonly<Record<LaunchMarketLocale, DisplayCurrency>> = {
+  ke: 'KES',
+  ug: 'UGX',
+  tz: 'TZS',
+  rw: 'RWF',
+}
+
+/** Public route families whose authored content and integrations are Kenya-specific. */
+export const KENYA_ONLY_ROUTE_FAMILIES = [
+  'guides',
+  'locations',
+  'etims',
+  'sha',
+  'mpesa',
+  'blog',
+  'docs',
 ] as const
 
-export const LANGUAGE_LOCALES = ['en', 'sw', 'fr', 'pt', 'es', 'ar'] as const
+const KENYA_ONLY_ROUTE_SET = new Set<string>(KENYA_ONLY_ROUTE_FAMILIES)
 
-/** Country code → language code for message loading.
- *
- * Country codes are CURRENCY ROUTES, not language routes. Every country
- * loads English copy; the only thing that changes per country prefix is
- * the currency on the price components (KES vs USD vs NGN vs ...).
- *
- * Users who want a translated experience pick a LANGUAGE locale
- * (/sw/pricing, /fr/pricing, /ar/pricing). They can pick currency
- * separately via cookie / settings.
- */
-export const COUNTRY_TO_LANG: Record<string, string> = {
-  ke: 'en', us: 'en', gb: 'en', ng: 'en', gh: 'en', za: 'en',
-  in: 'en', rw: 'en', tz: 'en', ug: 'en', eg: 'en', ae: 'en',
+export function isLaunchMarketLocale(locale: string): locale is LaunchMarketLocale {
+  return (COUNTRY_LOCALES as readonly string[]).includes(locale.toLowerCase())
 }
 
-/** Country code → ISO 4217 currency for price components.
- *
- * Restricted to Paystack-supported currencies (KES, NGN, GHS, ZAR, USD).
- * Visitors from non-native-Paystack countries (UK/EU/Tanzania/Uganda/
- * India/Egypt/UAE etc.) see USD prices and pay in USD. Paystack settles
- * the foreign exchange.
+/**
+ * Build an internal public URL without inventing a non-Kenya copy of authored
+ * Kenya-only content. Query and fragment suffixes are preserved verbatim from
+ * trusted, code-defined hrefs.
  */
-export const COUNTRY_TO_CURRENCY: Record<string, string> = {
-  ke: 'KES', ng: 'NGN', gh: 'GHS', za: 'ZAR',
-  // Everything else: Paystack accepts USD universally.
-  us: 'USD', gb: 'USD', in: 'USD',
-  tz: 'USD', ug: 'USD', rw: 'USD', eg: 'USD', ae: 'USD',
+export function publicMarketHref(locale: string, href: string): string {
+  const normalizedHref = href.startsWith('/') ? href : `/${href}`
+  const family = normalizedHref.split(/[/?#]/).filter(Boolean)[0] ?? ''
+  const market = KENYA_ONLY_ROUTE_SET.has(family)
+    ? 'ke'
+    : isLaunchMarketLocale(locale)
+      ? locale.toLowerCase()
+      : 'ke'
+  return `/${market}${normalizedHref === '/' ? '' : normalizedHref}`
 }
 
-/** Geo header value (ISO 3166-1 alpha-2) → routed locale.
- *
- * Defaults to 'us' (USD) when geo is missing or the visitor's country
- * is not in the COUNTRY_LOCALES list. The home market is still 'ke'
- * but the *fallback for the rest of the world* is USD.
- */
-export function localeForGeoCountry(country: string | null | undefined): string {
-  if (!country) return 'us'
-  const lc = country.toLowerCase()
-  return (COUNTRY_LOCALES as readonly string[]).includes(lc) ? lc : 'us'
+export function isKenyaOnlyRoutePath(pathname: string): boolean {
+  const parts = pathname.split('/').filter(Boolean)
+  const first = parts[0]?.toLowerCase() ?? ''
+  const familyIndex = (ROUTABLE_COUNTRY_LOCALES as readonly string[]).includes(first) ? 1 : 0
+  return KENYA_ONLY_ROUTE_SET.has(parts[familyIndex]?.toLowerCase() ?? '')
+}
+
+export function displayCurrencyForLocale(locale: string | null | undefined): DisplayCurrency {
+  const normalized = (locale ?? '').toLowerCase()
+  return isLaunchMarketLocale(normalized) ? COUNTRY_TO_CURRENCY[normalized] : 'KES'
+}
+
+/** Geo routing is launch-market-only. Unknown and legacy geos land on /ke. */
+export function localeForGeoCountry(country: string | null | undefined): LaunchMarketLocale {
+  const normalized = (country ?? '').toLowerCase()
+  return isLaunchMarketLocale(normalized) ? normalized : 'ke'
 }
 
 export const routing = defineRouting({
-  locales: [...COUNTRY_LOCALES, ...LANGUAGE_LOCALES],
+  locales: COUNTRY_LOCALES,
   defaultLocale: 'ke',
-  // 'always' — bare /pricing without a country prefix is invalid; the
-  // middleware redirects it to /{geo-detected}/pricing on first hit.
-  // 'as-needed' would clash with the redirect by stripping the default
-  // locale prefix, causing a redirect loop.
   localePrefix: 'always',
-  // Country path segments (ke/us/gb/...) are routing keys, not language
-  // tags. next-intl would otherwise emit invalid `hreflang="ke"` response
-  // headers. Page metadata supplies the valid en-KE/en-US/... alternates.
+  // Page metadata supplies valid en-KE/en-UG/en-TZ/en-RW alternates.
   alternateLinks: false,
 })

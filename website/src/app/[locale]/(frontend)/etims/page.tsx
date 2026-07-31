@@ -9,7 +9,7 @@ import {
   TrustProse,
   TrustSection,
 } from '@/components/marketing/trust-pages'
-import { buildAlternatesLanguages } from '@/lib/hreflang'
+import { buildKenyaOnlyAlternatesLanguages } from '@/lib/hreflang'
 import { buildSocialMetadata } from '@/lib/seo-metadata'
 import { getSiteSettings } from '@/lib/site-settings'
 
@@ -24,7 +24,7 @@ export async function generateMetadata({
   params: Promise<{ locale: string }>
 }): Promise<Metadata> {
   const { locale } = await params
-  const canonical = `${SITE_URL}/${locale}/etims`
+  const canonical = `${SITE_URL}/ke/etims`
 
   return {
     title: 'KRA eTIMS in Omnix — local invoices, connected signing',
@@ -32,7 +32,7 @@ export async function generateMetadata({
       'How Omnix creates a tax invoice locally and signs and submits it to KRA eTIMS over a connection. What needs internet, what registration you must hold, and what filing stays your statutory duty.',
     alternates: {
       canonical,
-      languages: buildAlternatesLanguages('/etims'),
+      languages: buildKenyaOnlyAlternatesLanguages('/etims'),
     },
     ...buildSocialMetadata({
       locale,

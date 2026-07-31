@@ -1,15 +1,29 @@
 import type { Metadata } from 'next'
-import { cookies } from 'next/headers'
 
 import { PricingWebsite } from '@/components/marketing/pricing-website'
-import { pricing } from '@/config/pricing'
-import { COUNTRY_TO_CURRENCY } from '@/i18n/routing'
+import { displayPricingFor } from '@/config/pricing'
+import {
+  displayCurrencyForLocale,
+  isLaunchMarketLocale,
+  type LaunchMarketLocale,
+} from '@/i18n/routing'
 import { buildAlternatesLanguages } from '@/lib/hreflang'
 import { buildSocialMetadata } from '@/lib/seo-metadata'
-import { CURRENCIES, currencyForCountry, type SupportedCurrency } from '@/lib/currency'
+import { formatPrice } from '@/lib/currency'
 import { getSiteSettings } from '@/lib/site-settings'
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://omnix.co.ke'
+
+const MARKET_NAMES: Readonly<Record<LaunchMarketLocale, string>> = {
+  ke: 'Kenya',
+  ug: 'Uganda',
+  tz: 'Tanzania',
+  rw: 'Rwanda',
+}
+
+function marketName(locale: string): string {
+  return MARKET_NAMES[isLaunchMarketLocale(locale) ? locale : 'ke']
+}
 
 export async function generateMetadata({
   params,
@@ -17,11 +31,17 @@ export async function generateMetadata({
   params: Promise<{ locale: string }>
 }): Promise<Metadata> {
   const { locale } = await params
+  const currency = displayCurrencyForLocale(locale)
+  const prices = displayPricingFor(currency)
+  const country = marketName(locale)
+  const formattedPrice = formatPrice(prices.starter.oneTimeFee, currency)
   const canonical = `${SITE_URL}/${locale}/pricing`
+  const title = `Omnix pricing in ${country} — ${formattedPrice} one-time licence`
+  const description = `${formattedPrice} is the configured one-time starter price displayed for ${country}. The licence is perpetual; optional compliance updates are priced separately.`
 
   return {
-    title: 'Omnix pricing — KES 30,000 one-time perpetual licence',
-    description: 'A KES 30,000 one-time starter licence for one Omnix product on one device. The licence is perpetual; optional compliance updates are not required to keep it working.',
+    title,
+    description,
     alternates: {
       canonical,
       languages: buildAlternatesLanguages('/pricing'),
@@ -29,24 +49,11 @@ export async function generateMetadata({
     ...buildSocialMetadata({
       locale,
       url: canonical,
-      title: 'Omnix pricing — pay once for a perpetual licence',
-      description:
-        'Choose one of five Omnix products. The starter licence is perpetual, with compliance updates available separately.',
+      title,
+      description,
       type: 'website',
     }),
   }
-}
-
-async function resolveCurrency(locale: string | undefined): Promise<SupportedCurrency> {
-  if (locale) {
-    const fromLocale = COUNTRY_TO_CURRENCY[locale.toLowerCase()]
-    if (fromLocale && fromLocale in CURRENCIES) return fromLocale as SupportedCurrency
-  }
-
-  const cookieStore = await cookies()
-  const savedCurrency = cookieStore.get('omnix_currency')?.value
-  if (savedCurrency && savedCurrency in CURRENCIES) return savedCurrency as SupportedCurrency
-  return currencyForCountry(undefined)
 }
 
 export default async function PricingPage({
@@ -55,20 +62,20 @@ export default async function PricingPage({
   params: Promise<{ locale: string }>
 }) {
   const { locale } = await params
-  const [settings, currency] = await Promise.all([
-    getSiteSettings(),
-    resolveCurrency(locale),
-  ])
+  const currency = displayCurrencyForLocale(locale)
+  const prices = displayPricingFor(currency)
+  const settings = await getSiteSettings()
 
   return (
     <PricingWebsite
       locale={locale}
+      marketName={marketName(locale)}
       currency={currency}
-      oneTimeFee={pricing.starter.oneTimeFee[currency]}
-      maintenanceYearly={pricing.starter.maintenanceYearly[currency]}
-      cloudBackupMonthly={pricing.cloudBackupMonthly[currency]}
-      extraBranchOneTime={pricing.extraBranchOneTime[currency]}
-      extraMachineOneTime={pricing.extraMachineOneTime[currency]}
+      oneTimeFee={prices.starter.oneTimeFee}
+      maintenanceYearly={prices.starter.maintenanceYearly}
+      cloudBackupMonthly={prices.cloudBackupMonthly}
+      extraBranchOneTime={prices.extraBranchOneTime}
+      extraMachineOneTime={prices.extraMachineOneTime}
       whatsappUrl={settings.whatsappUrl}
     />
   )

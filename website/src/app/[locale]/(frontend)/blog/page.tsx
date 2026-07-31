@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { Icon } from '@/components/icons'
 import { PageContainer } from '@/components/layout/layout-primitives'
 import { Button } from '@/components/ui/button'
-import { buildAlternatesLanguages } from '@/lib/hreflang'
+import { buildKenyaOnlyAlternatesLanguages } from '@/lib/hreflang'
 import { buildSocialMetadata } from '@/lib/seo-metadata'
 import { publishedPosts, type BlogPostSeed } from '@/lib/blog-seed'
 
@@ -24,14 +24,14 @@ export async function generateMetadata({
   params: Promise<{ locale: string }>
 }): Promise<Metadata> {
   const { locale } = await params
-  const canonical = `${SITE_URL}/${locale}/blog`
+  const canonical = `${SITE_URL}/ke/blog`
   return {
     title: 'Blog — notes from building Omnix',
     description:
       'Field notes on building offline-first business software for Kenyan trades: compliance changes, product decisions, and how the parts of Omnix actually work.',
     alternates: {
       canonical,
-      languages: buildAlternatesLanguages('/blog'),
+      languages: buildKenyaOnlyAlternatesLanguages('/blog'),
     },
     ...buildSocialMetadata({
       locale,

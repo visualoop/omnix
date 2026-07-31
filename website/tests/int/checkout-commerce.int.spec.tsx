@@ -17,6 +17,7 @@ import {
 } from '@/lib/checkout-status'
 import { pricingFor } from '@/config/pricing'
 import { CheckoutOutcome } from '@/components/checkout/checkout-outcome'
+import { ManualSettlementState } from '@/components/checkout/checkout-form'
 
 const ROOT = process.cwd()
 const read = (path: string) => readFileSync(join(ROOT, path), 'utf8')
@@ -100,11 +101,17 @@ describe('Task 22 · server-authoritative pricing', () => {
     expect(initRoute).not.toContain('body.amount')
     expect(initRoute).not.toContain('body.currency')
     expect(initRoute).not.toContain('body.email')
-    expect(initRoute).toContain('const p = pricingFor(currency)')
+    expect(initRoute).toContain('const p = pricingFor(settlementCurrency)')
     expect(initRoute).toContain('const amount = computeAmount(body.purpose, lic.variant, p)')
     expect(initRoute).toContain('amountSmallestUnit: amount * 100')
     expect(initRoute).toContain('email: session.user.email')
-    expect(initRoute).toContain("(lic.currency as SupportedCurrency) ?? 'KES'")
+    expect(initRoute).toContain("const storedDisplayCurrency = lic.currency ?? session.user.currency ?? 'KES'")
+    expect(initRoute).toContain('const preflight = checkoutSettlementPreflight(storedDisplayCurrency)')
+    expect(initRoute).toContain("code: 'manual_settlement_required'")
+    expect(initRoute).toContain('settlementCurrency: null')
+    expect(initRoute).toContain('const settlementCurrency = preflight.settlementCurrency')
+    expect(initRoute).not.toContain("license.currency as 'KES'")
+    expect(initRoute).not.toContain('as SupportedCurrency')
   })
 
   it('the starter price is the KES 30,000 one-time perpetual licence for every public product', () => {
@@ -117,6 +124,45 @@ describe('Task 22 · server-authoritative pricing', () => {
     expect(initRoute).toContain("body.purpose === 'license_fee' && !isPublicVariant(lic.variant)")
     expect(initRoute).toContain('variant not available for purchase')
   })
+
+
+describe('Checkout display versus settlement preflight', () => {
+  it.each([
+    ['UGX', 850_000, '/ug/contact?type=sales'],
+    ['TZS', 570_000, '/tz/contact?type=sales'],
+    ['RWF', 300_000, '/rw/contact?type=sales'],
+  ] as const)('renders %s as manual before Paystack', (currency, amount, contactHref) => {
+    const { container } = render(
+      <ManualSettlementState
+        displayAmount={amount}
+        displayCurrency={currency}
+        contactHref={contactHref}
+      />,
+    )
+
+    expect(screen.getByText('Manual settlement required')).toBeTruthy()
+    expect(screen.getByText(`Online payment is not available in ${currency} yet.`)).toBeTruthy()
+    expect(screen.getByText(/We will not convert or relabel it as another currency/)).toBeTruthy()
+    expect(screen.getByRole('link', { name: 'Contact Omnix before payment' }).getAttribute('href')).toBe(contactHref)
+    expect(screen.getByText('No online charge has been created')).toBeTruthy()
+    expect(screen.queryByRole('button', { name: /Pay / })).toBeNull()
+    expect(container.querySelector('script[src*="paystack"]')).toBeNull()
+    cleanup()
+  })
+
+  it('keeps display and settlement names explicit through the KES Paystack response', () => {
+    expect(checkoutForm).toContain('displayAmount')
+    expect(checkoutForm).toContain('displayCurrency')
+    expect(checkoutForm).toContain('settlementCurrency')
+    expect(checkoutForm).toContain('init.settlementAmount')
+    expect(checkoutForm).toContain('init.settlementCurrency')
+    expect(initRoute).toContain('settlementAmount: amount * 100')
+    expect(initRoute).toContain('displayCurrency: storedDisplayCurrency')
+    expect(orderReviewPage).toContain("settlement.kind === 'paystack'")
+    expect(orderReviewPage).toContain('<ManualSettlementState')
+    expect(orderReviewPage).not.toContain("license.currency as 'KES'")
+  })
+})
 })
 
 // ─────────────────────────────────────────────────────────────────────
@@ -410,6 +456,9 @@ describe('Task 22 · honest, optional-compliance copy', () => {
 
   it('the payment handoff states the Paystack redirect and online requirement honestly', () => {
     expect(checkoutForm).toContain('Paystack opens a secure window')
+    expect(checkoutForm).toContain('shows only the payment methods available')
+    expect(checkoutForm).not.toContain('channels:')
+    expect(checkoutForm).not.toContain('M-Pesa STK push, card and bank transfer all run')
     expect(checkoutForm).toContain('An internet connection is needed for this step')
     expect(checkoutForm).toContain('the app itself runs offline once installed')
   })

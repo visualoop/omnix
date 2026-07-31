@@ -33,7 +33,7 @@ test.describe('Task 12 Hospitality product website', () => {
     await page.goto('/ke/hospitality')
     await expect(page.getByText(/Configured M-Pesa and KRA eTIMS workflow/i)).toBeVisible()
 
-    await page.goto('/ng/hospitality')
+    await page.goto('/ug/hospitality')
     await expect(page.getByText(/Configured M-Pesa and KRA eTIMS workflow/i)).toHaveCount(0)
     await expect(page.getByText(/available only where Omnix supports the provider/i)).toBeVisible()
   })

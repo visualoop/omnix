@@ -12,8 +12,8 @@ import { COUNTRY_LOCALES } from '@/i18n/routing'
  * Per-locale sitemap.
  *
  * Only canonical, indexable, non-redirecting public routes are emitted, once
- * per country locale (/ke, /us, /gb, /ng, /gh, /za, /in, /rw, /tz, /ug, /eg,
- * /ae) so Google indexes each market variant separately.
+ * per launch market (/ke, /ug, /tz, /rw) so Google indexes each active
+ * market variant separately.
  *
  * Deliberately EXCLUDED:
  *   - legacy redirects: /ai, /dawa, /pro, /payroll-pack, /modules/[slug]
@@ -23,8 +23,8 @@ import { COUNTRY_LOCALES } from '@/i18n/routing'
  *   - query-string and protected-download URLs
  *
  * `alternates.languages` declares every locale's counterpart with valid BCP-47
- * hreflang codes (en-KE, en-US, …, x-default) via buildAlternatesLanguages so
- * Google treats the market variants as equivalents.
+ * hreflang codes (en-KE, en-UG, en-TZ, en-RW, x-default) via
+ * buildAlternatesLanguages so Google treats the market variants as equivalents.
  *
  * EXCEPTION — Kenya-only content: national buyer guides (/guides) and local
  * city hubs (/locations) describe the Kenyan market only. They are emitted
@@ -65,12 +65,8 @@ const STATIC_ENTRIES: StaticEntry[] = [
   { path: '/pricing', changeFrequency: 'weekly', priority: 0.8 },
   { path: '/downloads', changeFrequency: 'weekly', priority: 0.6 },
   { path: '/migration', changeFrequency: 'monthly', priority: 0.6 },
-  // Compliance / integration topics.
-  { path: '/etims', changeFrequency: 'monthly', priority: 0.6 },
-  { path: '/mpesa', changeFrequency: 'monthly', priority: 0.6 },
-  { path: '/sha', changeFrequency: 'monthly', priority: 0.6 },
-  // NOTE: /guides is deliberately NOT here. Buyer guides are Kenya-only
-  // content and are emitted once under /ke below — never per-market.
+  // NOTE: /etims, /sha, /mpesa, /blog, /docs, /guides and /locations
+  // are Kenya-only content and are emitted once under /ke below.
   // Company / trust.
   { path: '/about', changeFrequency: 'monthly', priority: 0.5 },
   { path: '/contact', changeFrequency: 'monthly', priority: 0.5 },
@@ -79,9 +75,7 @@ const STATIC_ENTRIES: StaticEntry[] = [
   { path: '/team', changeFrequency: 'monthly', priority: 0.4 },
   { path: '/security', changeFrequency: 'monthly', priority: 0.5 },
   { path: '/developers', changeFrequency: 'monthly', priority: 0.4 },
-  // Content hubs.
-  { path: '/blog', changeFrequency: 'weekly', priority: 0.5 },
-  { path: '/docs', changeFrequency: 'weekly', priority: 0.5 },
+  // Content hubs that have market-neutral copy.
   { path: '/changelog', changeFrequency: 'weekly', priority: 0.5 },
   { path: '/roadmap', changeFrequency: 'monthly', priority: 0.4 },
   // Legal.
@@ -118,39 +112,56 @@ export default function sitemap(): MetadataRoute.Sitemap {
         alternates: { languages: buildAlternatesLanguages(entry.path) },
       })
     }
-
-    // Blog posts — authored publish date.
-    for (const p of blogPosts) {
-      const path = `/blog/${p.slug}`
-      out.push({
-        url: `${base}/${cc}${path}`,
-        lastModified: p.publishedAt,
-        changeFrequency: 'monthly',
-        priority: scaledPriority(cc, 0.5),
-        alternates: { languages: buildAlternatesLanguages(path) },
-      })
-    }
-
-    // Docs — only published (TODO scaffolds and missing docs are excluded so
-    // placeholder content is never advertised for indexing).
-    for (const d of publishedDocs) {
-      const path = `/docs/${d.slug}`
-      out.push({
-        url: `${base}/${cc}${path}`,
-        lastModified: SITE_LAST_MODIFIED,
-        changeFrequency: 'monthly',
-        priority: scaledPriority(cc, 0.5),
-        alternates: { languages: buildAlternatesLanguages(path) },
-      })
-    }
   }
 
   // ── Kenya-only content ────────────────────────────────────────────────
-  // National buyer guides and local city hubs describe the Kenyan market only.
-  // They are emitted ONCE under /ke — never duplicated across the 12 market
-  // locales — with Kenya-only hreflang (en-KE + x-default → /ke). Emitting them
-  // per-market would be duplicate / scaled local SEO (a doorway pattern).
+  // These routes are emitted once under /ke with en-KE + x-default
+  // alternates. Emitting identical Kenya-specific copy per market would
+  // create inaccurate, duplicate regional pages.
 
+  // Kenya statutory and provider integrations. The current copy and setup
+  // instructions are specifically about KRA, SHA and Safaricom Kenya.
+  for (const entry of [
+    { path: '/etims', priority: 0.6 },
+    { path: '/sha', priority: 0.6 },
+    { path: '/mpesa', priority: 0.6 },
+    { path: '/blog', priority: 0.5 },
+    { path: '/docs', priority: 0.5 },
+  ] as const) {
+    out.push({
+      url: `${base}/ke${entry.path}`,
+      lastModified: SITE_LAST_MODIFIED,
+      changeFrequency: entry.path === '/blog' || entry.path === '/docs' ? 'weekly' : 'monthly',
+      priority: entry.priority,
+      alternates: { languages: buildKenyaOnlyAlternatesLanguages(entry.path) },
+    })
+  }
+
+  // Reviewed blog articles currently speak to Kenyan operations and statutory
+  // integrations, so they do not masquerade as Uganda/Tanzania/Rwanda copies.
+  for (const post of blogPosts) {
+    const path = `/blog/${post.slug}`
+    out.push({
+      url: `${base}/ke${path}`,
+      lastModified: post.publishedAt,
+      changeFrequency: 'monthly',
+      priority: 0.5,
+      alternates: { languages: buildKenyaOnlyAlternatesLanguages(path) },
+    })
+  }
+
+  // Published docs currently contain Kenya setup, KRA, SHA and Safaricom
+  // instructions. Placeholder and retired docs remain excluded by the gate.
+  for (const doc of publishedDocs) {
+    const path = `/docs/${doc.slug}`
+    out.push({
+      url: `${base}/ke${path}`,
+      lastModified: SITE_LAST_MODIFIED,
+      changeFrequency: 'monthly',
+      priority: 0.5,
+      alternates: { languages: buildKenyaOnlyAlternatesLanguages(path) },
+    })
+  }
   // National buyer guides — only guides that pass the publication gate.
   out.push({
     url: `${base}/ke/guides`,

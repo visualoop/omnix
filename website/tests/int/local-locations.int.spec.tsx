@@ -405,24 +405,24 @@ describe('Task 18 — LocationHub render', () => {
   })
 
   it('shows the five products, each with matching product + demo links (locale-aware)', () => {
-    render(<LocationHub location={loc} locale="ng" whatsappUrl="https://wa.me/254700000000" />)
+    render(<LocationHub location={loc} locale="ug" whatsappUrl="https://wa.me/254700000000" />)
 
     for (const id of REQUIRED_PRODUCT_IDS) {
       const item = document.querySelector(`[data-location-product="${id}"]`)
       expect(item, `product ${id}`).not.toBeNull()
       const productLink = item?.querySelector('[data-location-product-link]')
-      expect(productLink?.getAttribute('href')).toBe(`/ng${LOCATION_PRODUCT_META[id].path}`)
+      expect(productLink?.getAttribute('href')).toBe(`/ug${LOCATION_PRODUCT_META[id].path}`)
     }
 
     // Demo-led conversion, locale-aware.
     for (const link of screen.getAllByRole('link', { name: /Book a demo/ })) {
-      expect(link.getAttribute('href')).toMatch(/^\/ng\/contact\?type=demo/)
+      expect(link.getAttribute('href')).toMatch(/^\/ug\/contact\?type=demo/)
     }
     // Per-product demo pre-selection.
     const pharmacyDemo = document
       .querySelector('[data-location-product="pharmacy"]')
       ?.querySelector('a[href*="product=pharmacy"]')
-    expect(pharmacyDemo?.getAttribute('href')).toBe('/ng/contact?type=demo&product=pharmacy')
+    expect(pharmacyDemo?.getAttribute('href')).toBe('/ug/contact?type=demo&product=pharmacy')
 
     // WhatsApp secondary.
     const whatsapp = screen.getByRole('link', { name: /Ask on WhatsApp/ })

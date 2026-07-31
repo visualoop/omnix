@@ -376,6 +376,147 @@
   line-height: 1.6;
 }
 
+.market {
+  padding-block: var(--space-section);
+  border-block-end: 1px solid var(--color-border);
+}
+
+.marketGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-10);
+}
+
+.marketSummary h2,
+.faqHeading h2 {
+  max-width: 16ch;
+  margin-block-start: var(--space-3);
+  font-size: clamp(2.15rem, 5vw, 4rem);
+  font-weight: 700;
+  letter-spacing: -0.05em;
+  line-height: 1;
+}
+
+.marketSummary > p:not(.overline) {
+  max-width: 64ch;
+  margin-block: var(--space-5) 0;
+  color: var(--color-fg-muted);
+  font-size: 1rem;
+  line-height: 1.7;
+}
+
+.marketIdentity {
+  margin-block: var(--space-8) 0;
+  border-block-start: 1px solid var(--color-border-strong);
+}
+
+.marketIdentity > div {
+  display: grid;
+  grid-template-columns: minmax(7rem, 0.45fr) minmax(0, 1fr);
+  gap: var(--space-4);
+  padding-block: var(--space-3);
+  border-block-end: 1px solid var(--color-border);
+}
+
+.marketIdentity dt,
+.marketLabel {
+  margin: 0;
+  color: var(--color-fg-subtle);
+  font-family: var(--font-ui);
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  line-height: 1.5;
+  text-transform: uppercase;
+}
+
+.marketIdentity dd {
+  margin: 0;
+  font-size: 0.875rem;
+  font-weight: 650;
+}
+
+.marketBoundaries {
+  border-block-start: 3px solid var(--color-accent);
+}
+
+.marketBoundaries article {
+  padding-block: var(--space-6);
+  border-block-end: 1px solid var(--color-border-strong);
+}
+
+.marketBoundaries h3 {
+  margin-block-start: var(--space-2);
+  font-size: 1.15rem;
+  font-weight: 700;
+  letter-spacing: -0.025em;
+}
+
+.marketBoundaries article > p:last-child,
+.useCaseGrid p,
+.faqList p {
+  margin-block: var(--space-3) 0;
+  color: var(--color-fg-muted);
+  font-size: 0.9rem;
+  line-height: 1.65;
+}
+
+.useCaseGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  margin-block-start: var(--space-12);
+  border-block-start: 1px solid var(--color-border-strong);
+}
+
+.useCaseGrid article {
+  padding-block: var(--space-6);
+  border-block-end: 1px solid var(--color-border-strong);
+}
+
+.useCaseGrid h3 {
+  max-width: 22ch;
+  font-size: 1.1rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.faq {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-8);
+  margin-block-start: var(--space-16);
+  padding-block-start: var(--space-10);
+  border-block-start: 1px solid var(--color-border-strong);
+}
+
+.faqList {
+  border-block-start: 1px solid var(--color-border-strong);
+}
+
+.faqList details {
+  border-block-end: 1px solid var(--color-border-strong);
+}
+
+.faqList summary {
+  cursor: pointer;
+  padding-block: var(--space-5);
+  font-size: 0.95rem;
+  font-weight: 700;
+  line-height: 1.45;
+}
+
+.faqList details[open] {
+  padding-block-end: var(--space-5);
+}
+
+.faqList details[open] summary {
+  color: var(--color-accent);
+}
+
+.faqList p {
+  max-width: 66ch;
+}
+
 .closing {
   padding-block: var(--space-section);
 }
@@ -422,6 +563,31 @@
 }
 
 @media (min-width: 48rem) {
+  .marketGrid {
+    grid-template-columns: minmax(0, 1.1fr) minmax(18rem, 0.9fr);
+    gap: var(--space-16);
+  }
+
+  .useCaseGrid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .useCaseGrid article {
+    padding: var(--space-6);
+    border-inline-start: 1px solid var(--color-border-strong);
+    border-block-end: 0;
+  }
+
+  .useCaseGrid article:first-child {
+    padding-inline-start: 0;
+    border-inline-start: 0;
+  }
+
+  .faq {
+    grid-template-columns: minmax(14rem, 0.7fr) minmax(0, 1.3fr);
+    gap: var(--space-16);
+  }
+
   .sectionHeading {
     grid-template-columns: minmax(0, 1.4fr) minmax(0, 0.75fr);
   }

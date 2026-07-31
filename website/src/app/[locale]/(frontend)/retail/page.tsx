@@ -11,7 +11,7 @@ import { getSlotImage, getSlotMedia } from '@/lib/media-slots'
 import { getPublishedModuleDemoVideo } from '@/lib/module-demo-video'
 import { getSiteSettings } from '@/lib/site-settings'
 import { SoftwareJsonLd } from '@/components/seo/jsonld'
-import { currencyForCountry } from '@/lib/currency'
+import { displayCurrencyForLocale } from '@/i18n/routing'
 import { setRequestLocale } from 'next-intl/server'
 
 // No force-dynamic: this product page has no request-specific input (locale is
@@ -28,33 +28,33 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { locale } = await params
   const canonical = `${SITE_URL}/${locale}/retail`
+  const isKenya = locale === 'ke'
+  const connectedCopy = isKenya ? ', configured M-Pesa and KRA eTIMS workflows' : ''
 
   return {
-    title: 'Retail POS and inventory software for Kenyan shops · Omnix',
-    description:
-      'Retail POS for barcode sales, product variants, inventory, price lists, loyalty, promotions, layby, shelf labels, purchasing, cash, M-Pesa, and KRA eTIMS workflows.',
+    title: `Retail POS and inventory software${isKenya ? ' for Kenyan shops' : ''} · Omnix`,
+    description: `Retail POS for barcode sales, product variants, inventory, price lists, loyalty, promotions, layby, shelf labels, purchasing and cash${connectedCopy}.`,
     alternates: {
       canonical,
       languages: buildAlternatesLanguages('/retail'),
     },
     keywords: [
-      'retail POS Kenya',
-      'duka POS Kenya',
-      'mini-mart POS Kenya',
-      'barcode POS Kenya',
+      'retail POS',
+      'mini-mart POS',
+      'barcode POS',
       'retail inventory software',
       'product variants POS',
       'retail price lists',
-      'layby software Kenya',
-      'M-Pesa retail POS',
-      'KRA eTIMS retail POS',
+      'layby software',
+      ...(isKenya ? ['retail POS Kenya', 'M-Pesa retail POS', 'KRA eTIMS retail POS'] : []),
     ],
     ...buildSocialMetadata({
       locale,
       url: canonical,
       title: 'Omnix Retail POS for the shelf and till',
-      description:
-        'Barcode sales, variants, inventory, pricing, purchasing, payments, and connected eTIMS workflows in one Windows retail product.',
+      description: isKenya
+        ? 'Barcode sales, variants, inventory, pricing, purchasing, payments, and configured eTIMS workflows in one Windows retail product.'
+        : 'Barcode sales, variants, inventory, pricing, purchasing, and payment records in one offline-first Windows retail product.',
       type: 'website',
     }),
   }
@@ -92,7 +92,7 @@ export default async function RetailPage({
 
   return (
     <>
-      <SoftwareJsonLd product="retail" currency={currencyForCountry(locale)} locale={locale} />
+      <SoftwareJsonLd product="retail" currency={displayCurrencyForLocale(locale)} locale={locale} />
       <RetailWebsite
         locale={locale}
         heroImage={heroImage}

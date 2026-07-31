@@ -12,15 +12,17 @@
  * touch our server — Paystack hosts the entire payment surface.
  */
 import * as React from 'react'
+import Link from 'next/link'
 import Script from 'next/script'
 import { CreditCard, Globe, Lock } from '@/components/icons'
 import { Button } from '@/components/ui/button'
 import { Alert } from '@/components/ui/alert'
+import type { DisplayCurrency, SettlementCurrency } from '@/lib/currency'
 
 interface InitResponse {
   reference: string
-  amount: number
-  currency: string
+  settlementAmount: number
+  settlementCurrency: SettlementCurrency
   email: string
   publicKey: string
 }
@@ -32,8 +34,7 @@ interface PaystackPopCtor {
       email: string
       amount: number
       reference?: string
-      currency?: string
-      channels?: string[]
+      currency?: SettlementCurrency
       metadata?: Record<string, unknown>
       onSuccess: (transaction: { reference: string; status?: string }) => void
       onCancel: () => void
@@ -50,18 +51,67 @@ declare global {
 
 const PAYSTACK_INLINE_JS = 'https://js.paystack.co/v2/inline.js'
 
+export function ManualSettlementState({
+  displayAmount,
+  displayCurrency,
+  contactHref,
+}: {
+  displayAmount: number
+  displayCurrency: Exclude<DisplayCurrency, 'KES'>
+  contactHref: string
+}) {
+  return (
+    <div className="flex flex-col gap-5">
+      <div className="rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-surface)] p-5 sm:p-6">
+        <div className="flex items-start gap-3">
+          <Globe className="mt-0.5 size-5 shrink-0 text-[var(--color-accent)]" />
+          <div className="min-w-0 flex-1">
+            <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.2em] text-[var(--color-accent)]">
+              Manual settlement required
+            </p>
+            <h2 className="mt-2 font-display text-[19px] font-semibold tracking-[-0.02em] text-[var(--color-fg)]">
+              Online payment is not available in {displayCurrency} yet.
+            </h2>
+            <p className="mt-2 max-w-[48ch] text-[13px] leading-[1.65] text-[var(--color-fg-muted)]">
+              Your order total remains {displayCurrency} {displayAmount.toLocaleString()}. We will not convert or relabel
+              it as another currency. Contact Omnix to confirm a supported payment method and the exact settlement
+              currency before sending money.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <Button asChild size="xl" className="w-full">
+        <Link href={contactHref}>Contact Omnix before payment</Link>
+      </Button>
+
+      <div className="flex flex-col items-center gap-1.5 text-center">
+        <div className="flex items-center justify-center gap-2 text-[12px] text-[var(--color-fg-muted)]">
+          <Lock className="size-3" />
+          <span>No online charge has been created</span>
+        </div>
+        <div className="font-mono text-[10px] uppercase tracking-[0.2em] text-[var(--color-fg-subtle)]">
+          Display total · {displayCurrency} {displayAmount.toLocaleString()}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 type Status = 'idle' | 'starting' | 'redirecting' | 'cancelled' | 'error'
 
 export function CheckoutForm({
   licenseId,
   purpose,
-  amount,
-  currency,
+  displayAmount,
+  displayCurrency,
+  settlementCurrency,
 }: {
   licenseId: string
   purpose: string
-  amount: number
-  currency: string
+  displayAmount: number
+  displayCurrency: 'KES'
+  settlementCurrency: 'KES'
 }) {
   const [scriptReady, setScriptReady] = React.useState(false)
   const [status, setStatus] = React.useState<Status>('idle')
@@ -91,10 +141,9 @@ export function CheckoutForm({
       pop.newTransaction({
         key: init.publicKey,
         email: init.email,
-        amount: init.amount,
-        currency: init.currency,
+        amount: init.settlementAmount,
+        currency: init.settlementCurrency,
         reference: init.reference,
-        channels: ['card', 'mobile_money', 'bank', 'bank_transfer'],
         metadata: {
           custom_fields: [
             { display_name: 'License', variable_name: 'license_id', value: licenseId },
@@ -126,7 +175,7 @@ export function CheckoutForm({
       : 'Opening secure window…'
     : !scriptReady
       ? 'Loading payment…'
-      : `Pay ${currency} ${amount.toLocaleString()}`
+      : `Pay ${settlementCurrency} ${displayAmount.toLocaleString()}`
 
   return (
     <>
@@ -138,11 +187,12 @@ export function CheckoutForm({
             <CreditCard className="mt-0.5 size-5 shrink-0 text-[var(--color-accent)]" />
             <div className="min-w-0 flex-1">
               <div className="font-display text-[17px] font-semibold tracking-[-0.01em] text-[var(--color-fg)]">
-                Pay with M-Pesa, card or bank
+                Pay online with Paystack
               </div>
               <p className="mt-1.5 max-w-[46ch] text-[13px] leading-[1.6] text-[var(--color-fg-muted)]">
-                Paystack opens a secure window to complete payment. M-Pesa STK push, card and bank transfer all run
-                there — your card details never reach our server.
+                Paystack opens a secure window and shows only the payment methods available for this transaction and
+                merchant setup. Confirm the method and KES total there before authorising payment; card details never
+                reach our server.
               </p>
               <p className="mt-2 inline-flex items-center gap-1.5 text-[12px] leading-[1.5] text-[var(--color-fg-subtle)]">
                 <Globe className="size-3.5" />
@@ -184,10 +234,10 @@ export function CheckoutForm({
         <div className="flex flex-col items-center gap-1.5">
           <div className="flex items-center justify-center gap-2 text-[12px] text-[var(--color-fg-muted)]">
             <Lock className="size-3" />
-            <span>Secured by Paystack · Card details never touch our server</span>
+            <span>Secured by Paystack · Settlement currency confirmed before charge</span>
           </div>
           <div className="font-mono text-[10px] uppercase tracking-[0.2em] text-[var(--color-fg-subtle)]">
-            {currency} {amount.toLocaleString()} · One-time
+            Display {displayCurrency} {displayAmount.toLocaleString()} · Settlement {settlementCurrency} {displayAmount.toLocaleString()}
           </div>
         </div>
       </div>

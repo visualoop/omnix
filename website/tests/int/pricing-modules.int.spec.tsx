@@ -82,12 +82,15 @@ describe('Task 14 pricing acquisition route', () => {
     }
   })
 
-  it('reads every public price from server config and uses locale-free hreflang input', () => {
-    expect(pricingRoute).toContain('pricing.starter.oneTimeFee[currency]')
-    expect(pricingRoute).toContain('pricing.starter.maintenanceYearly[currency]')
-    expect(pricingRoute).toContain('pricing.cloudBackupMonthly[currency]')
-    expect(pricingRoute).toContain('pricing.extraBranchOneTime[currency]')
-    expect(pricingRoute).toContain('pricing.extraMachineOneTime[currency]')
+  it('reads every public price from the explicit display config and uses locale-free hreflang input', () => {
+    expect(pricingRoute).toContain("import { displayPricingFor } from '@/config/pricing'")
+    expect(pricingRoute).toContain('const currency = displayCurrencyForLocale(locale)')
+    expect(pricingRoute).toContain('const prices = displayPricingFor(currency)')
+    expect(pricingRoute).toContain('oneTimeFee={prices.starter.oneTimeFee}')
+    expect(pricingRoute).toContain('maintenanceYearly={prices.starter.maintenanceYearly}')
+    expect(pricingRoute).toContain('cloudBackupMonthly={prices.cloudBackupMonthly}')
+    expect(pricingRoute).toContain('extraBranchOneTime={prices.extraBranchOneTime}')
+    expect(pricingRoute).toContain('extraMachineOneTime={prices.extraMachineOneTime}')
     expect(pricingRoute).toContain("buildAlternatesLanguages('/pricing')")
   })
 })
@@ -107,15 +110,15 @@ describe('Task 14 modules acquisition route', () => {
   })
 
   it('localizes product and demo links and keeps WhatsApp conditional', () => {
-    const { rerender } = render(<ModulesWebsite locale="ng" />)
-    expect(screen.getByRole('link', { name: 'View Pharmacy' }).getAttribute('href')).toBe('/ng/pharmacy')
-    expect(screen.getByRole('link', { name: 'View Salon & Spa' }).getAttribute('href')).toBe('/ng/salon')
+    const { rerender } = render(<ModulesWebsite locale="ug" />)
+    expect(screen.getByRole('link', { name: 'View Pharmacy' }).getAttribute('href')).toBe('/ug/pharmacy')
+    expect(screen.getByRole('link', { name: 'View Salon & Spa' }).getAttribute('href')).toBe('/ug/salon')
     for (const link of screen.getAllByRole('link', { name: 'Book a demo' })) {
-      expect(link.getAttribute('href')).toBe('/ng/contact?type=demo')
+      expect(link.getAttribute('href')).toBe('/ug/contact?type=demo')
     }
     expect(screen.queryByRole('link', { name: 'Ask on WhatsApp' })).toBeNull()
 
-    rerender(<ModulesWebsite locale="ng" whatsappUrl="https://wa.me/254700000000" />)
+    rerender(<ModulesWebsite locale="ug" whatsappUrl="https://wa.me/254700000000" />)
     expect(screen.getAllByRole('link', { name: 'Ask on WhatsApp' })).toHaveLength(2)
   })
 

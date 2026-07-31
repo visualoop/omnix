@@ -67,7 +67,7 @@ type ResultCode =
 /** Variant types that conflict on the same physical machine. Pro covers
  *  every trade so Pro + trade (in either direction) is rejected. Two
  *  of the same trade variant on one machine is also rejected. */
-export function isVariantConflict(existing: string, incoming: string): boolean {
+function isVariantConflict(existing: string, incoming: string): boolean {
   if (existing === incoming) return true
   if (existing === 'pro' || incoming === 'pro') return true
   return false

@@ -11,7 +11,7 @@ import { getSlotImage, getSlotMedia } from '@/lib/media-slots'
 import { getPublishedModuleDemoVideo } from '@/lib/module-demo-video'
 import { getSiteSettings } from '@/lib/site-settings'
 import { SoftwareJsonLd } from '@/components/seo/jsonld'
-import { currencyForCountry } from '@/lib/currency'
+import { displayCurrencyForLocale } from '@/i18n/routing'
 import { setRequestLocale } from 'next-intl/server'
 
 // No force-dynamic: this product page has no request-specific input (locale is
@@ -28,25 +28,26 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { locale } = await params
   const canonical = `${SITE_URL}/${locale}/pharmacy`
+  const isKenya = locale === 'ke'
+  const connectedCopy = isKenya
+    ? ', configured M-Pesa, KRA eTIMS, SHA and private-insurance workflows'
+    : ''
 
   return {
-    title: 'Pharmacy software and pharmacy POS for Kenya · Omnix',
-    description:
-      'Pharmacy software for dispensing, pharmacy POS, prescriptions and patient records, batch and expiry stock, controlled register, M-Pesa, KRA eTIMS, SHA and private insurance workflows.',
+    title: `Pharmacy software and pharmacy POS${isKenya ? ' for Kenya' : ''} · Omnix`,
+    description: `Pharmacy software for dispensing, POS, prescriptions and patient records, batch and expiry stock, and controlled-register workflows${connectedCopy}.`,
     alternates: {
       canonical,
       languages: buildAlternatesLanguages('/pharmacy'),
     },
     keywords: [
-      'pharmacy software Kenya',
-      'pharmacy POS Kenya',
-      'dispensing software Kenya',
+      'pharmacy software',
+      'pharmacy POS',
+      'dispensing software',
       'batch expiry pharmacy stock',
       'pharmacy prescription records',
       'controlled register pharmacy',
-      'M-Pesa pharmacy POS',
-      'KRA eTIMS pharmacy',
-      'SHA pharmacy billing',
+      ...(isKenya ? ['pharmacy software Kenya', 'M-Pesa pharmacy POS', 'KRA eTIMS pharmacy', 'SHA pharmacy billing'] : []),
     ],
     ...buildSocialMetadata({
       locale,
@@ -91,7 +92,7 @@ export default async function PharmacyPage({
 
   return (
     <>
-      <SoftwareJsonLd product="pharmacy" currency={currencyForCountry(locale)} locale={locale} />
+      <SoftwareJsonLd product="pharmacy" currency={displayCurrencyForLocale(locale)} locale={locale} />
       <PharmacyWebsite
         locale={locale}
         heroImage={heroImage}

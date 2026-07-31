@@ -5,7 +5,8 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { Icon } from '@/components/icons'
 import { cn } from '@/lib/cn'
-import { LanguageSwitcher } from '@/components/layout/language-switcher'
+import { publicMarketHref } from '@/i18n/routing'
+import { MarketSwitcher } from '@/components/layout/language-switcher'
 import { ThemeToggle } from '@/components/theme/theme-toggle'
 import { BRAND_NAME } from '@/lib/brand'
 import { Button } from '@/components/ui/button'
@@ -66,7 +67,7 @@ export function SiteHeader({
 }) {
   const pathname = usePathname()
   const localePath = React.useCallback(
-    (href: string) => `/${locale}${href === '/' ? '' : href}`,
+    (href: string) => publicMarketHref(locale, href),
     [locale],
   )
   const routePath = pathname === `/${locale}` ? '/' : pathname.slice(locale.length + 1) || '/'
@@ -241,8 +242,8 @@ export function SiteHeader({
             tight tablet widths. gap-3 tightens spacing so the row doesn't
             wrap into two lines. */}
         <div className="flex items-center justify-end gap-3 shrink-0">
-          <div className="hidden w-[72px] shrink-0 lg:block">
-            <LanguageSwitcher locale={locale} className="w-full rounded-md border border-[var(--color-border)] bg-transparent py-1 pl-2 pr-7 font-[family-name:var(--font-ui)] text-[12px] text-[var(--color-fg-muted)] hover:border-[var(--color-fg-subtle)] hover:text-[var(--color-fg)] focus:border-[var(--color-accent)] focus:outline-none cursor-pointer" />
+          <div className="hidden w-[164px] shrink-0 lg:block">
+            <MarketSwitcher locale={locale} className="w-full rounded-md border border-[var(--color-border)] bg-transparent py-1 pl-2 pr-7 font-[family-name:var(--font-ui)] text-[12px] text-[var(--color-fg-muted)] hover:border-[var(--color-fg-subtle)] hover:text-[var(--color-fg)] focus:border-[var(--color-accent)] focus:outline-none cursor-pointer" />
           </div>
           <ThemeToggle className="hidden shrink-0 lg:inline-flex" />
           {isAuthed ? (
@@ -355,10 +356,10 @@ export function SiteHeader({
           )}
           <div className="flex items-center justify-between pt-2">
             <span className="font-mono text-[10px] font-medium uppercase tracking-[0.22em] text-[var(--color-fg-subtle)]">
-              Appearance & language
+              Appearance & market
             </span>
             <div className="flex items-center gap-2">
-              <LanguageSwitcher locale={locale} className="inline-flex rounded-md border border-[var(--color-border)] bg-transparent py-1 pl-2 pr-7 font-[family-name:var(--font-ui)] text-[12px] text-[var(--color-fg-muted)] cursor-pointer" />
+              <MarketSwitcher locale={locale} className="inline-flex rounded-md border border-[var(--color-border)] bg-transparent py-1 pl-2 pr-7 font-[family-name:var(--font-ui)] text-[12px] text-[var(--color-fg-muted)] cursor-pointer" />
               <ThemeToggle />
             </div>
           </div>

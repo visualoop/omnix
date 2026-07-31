@@ -3,7 +3,8 @@ import { and, eq } from 'drizzle-orm'
 import { auth } from '@/lib/auth'
 import { db, licenses, payments } from '@/db'
 import { newReference, initTransaction } from '@/lib/paystack'
-import { pricingFor, type SupportedCurrency } from '@/config/pricing'
+import { pricingFor } from '@/config/pricing'
+import { checkoutSettlementPreflight, isDisplayCurrency } from '@/lib/currency'
 import { createId } from '@/lib/ids'
 import { getSetting } from '@/lib/platform-settings'
 import { isPublicVariant } from '@/lib/buy-resolver'
@@ -40,9 +41,38 @@ export async function POST(req: Request) {
     return Response.json({ error: 'variant not available for purchase' }, { status: 403 })
   }
 
-  // Compute amount in smallest currency unit (cents/kobo).
-  const currency = (lic.currency as SupportedCurrency) ?? 'KES'
-  const p = pricingFor(currency)
+  // The licence currency is the market's display currency, not permission to
+  // charge that ISO code. Run the same preflight as the order-review UI and
+  // never convert, relabel, or create a provider transaction for an unsupported
+  // display/settlement pair.
+  const storedDisplayCurrency = lic.currency ?? session.user.currency ?? 'KES'
+  if (!isDisplayCurrency(storedDisplayCurrency)) {
+    return Response.json(
+      {
+        code: 'unsupported_display_currency',
+        error: `the licence display currency ${storedDisplayCurrency} requires manual review before payment`,
+        displayCurrency: storedDisplayCurrency,
+        settlementCurrency: null,
+      },
+      { status: 409 },
+    )
+  }
+
+  const preflight = checkoutSettlementPreflight(storedDisplayCurrency)
+  if (preflight.kind === 'manual') {
+    return Response.json(
+      {
+        code: 'manual_settlement_required',
+        error: `online settlement is not available in ${preflight.displayCurrency}; contact Omnix before payment`,
+        displayCurrency: preflight.displayCurrency,
+        settlementCurrency: null,
+      },
+      { status: 409 },
+    )
+  }
+
+  const settlementCurrency = preflight.settlementCurrency
+  const p = pricingFor(settlementCurrency)
   const amount = computeAmount(body.purpose, lic.variant, p)
   if (amount <= 0) return Response.json({ error: 'no amount due' }, { status: 400 })
 
@@ -53,7 +83,7 @@ export async function POST(req: Request) {
   const init = await initTransaction({
     email: session.user.email,
     amountSmallestUnit: amount * 100,
-    currency,
+    currency: settlementCurrency,
     reference,
     metadata: {
       license_id: lic.id,
@@ -72,7 +102,7 @@ export async function POST(req: Request) {
     paystackReference: reference,
     purpose: body.purpose,
     amount,
-    currency,
+    currency: settlementCurrency,
     status: 'pending',
     metadata: refCode ? { refCode } : null,
   })
@@ -80,8 +110,9 @@ export async function POST(req: Request) {
   const publicKey = (await getSetting('paystack.public_key')) ?? ''
   return Response.json({
     reference,
-    amount: amount * 100,
-    currency,
+    settlementAmount: amount * 100,
+    settlementCurrency,
+    displayCurrency: storedDisplayCurrency,
     email: session.user.email,
     publicKey,
     accessCode: init.accessCode,

@@ -36,14 +36,14 @@ describe('Task 13 Hardware & Equipment product website', () => {
     const { rerender } = render(<HardwareWebsite locale="ke" licencePriceKes={30_000} />)
     expect(screen.getByText(/M-Pesa requests and KRA eTIMS submission require internet access/i)).not.toBeNull()
     expect(screen.getByText(/queued for retry/i)).not.toBeNull()
-    rerender(<HardwareWebsite locale="ng" licencePriceKes={30_000} />)
+    rerender(<HardwareWebsite locale="ug" licencePriceKes={30_000} />)
     expect(document.querySelector('[data-hardware-website]')?.textContent).not.toMatch(/M-Pesa|KRA eTIMS/i)
     expect(screen.getByText(/available only where Omnix supports the provider/i)).not.toBeNull()
   })
 
   it('uses localized demo links, configured WhatsApp, and useful fail-closed media', () => {
-    const { rerender } = render(<HardwareWebsite locale="ng" licencePriceKes={30_000} />)
-    for (const link of screen.getAllByRole('link', { name: 'Book a Hardware & Equipment demo' })) expect(link.getAttribute('href')).toBe('/ng/contact?type=demo&product=hardware')
+    const { rerender } = render(<HardwareWebsite locale="ug" licencePriceKes={30_000} />)
+    for (const link of screen.getAllByRole('link', { name: 'Book a Hardware & Equipment demo' })) expect(link.getAttribute('href')).toBe('/ug/contact?type=demo&product=hardware')
     expect(screen.queryByRole('link', { name: 'Ask on WhatsApp' })).toBeNull()
     expect(document.querySelector('[data-media-state="empty"]')).not.toBeNull()
     expect(screen.getByText('Five typical stock lines and units')).not.toBeNull()

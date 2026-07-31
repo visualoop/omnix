@@ -5,8 +5,14 @@ import { and, eq } from 'drizzle-orm'
 import { ArrowLeft, ReceiptText, ShieldCheck } from '@/components/icons'
 import { auth } from '@/lib/auth'
 import { db, licenses } from '@/db'
-import { CheckoutForm } from '@/components/checkout/checkout-form'
-import { pricingFor } from '@/config/pricing'
+import { CheckoutForm, ManualSettlementState } from '@/components/checkout/checkout-form'
+import { Button } from '@/components/ui/button'
+import { displayPricingFor } from '@/config/pricing'
+import {
+  checkoutSettlementPreflight,
+  isDisplayCurrency,
+  marketLocaleForDisplayCurrency,
+} from '@/lib/currency'
 import { PUBLIC_PRODUCTS, publicProductName } from '@/lib/buy-resolver'
 
 export const metadata = { title: 'Order review', robots: { index: false } }
@@ -42,7 +48,14 @@ export default async function CheckoutPage({
   }
 
   const purpose = type ?? 'license_fee'
-  const p = pricingFor((license.currency as 'KES') ?? 'KES')
+  const storedDisplayCurrency = license.currency ?? session.user.currency ?? 'KES'
+  if (!isDisplayCurrency(storedDisplayCurrency)) {
+    return <UnsupportedCurrencyNotice currency={storedDisplayCurrency} />
+  }
+
+  const displayCurrency = storedDisplayCurrency
+  const p = displayPricingFor(displayCurrency)
+  const settlement = checkoutSettlementPreflight(displayCurrency)
   const lines = computeLines({ purpose, variant: license.variant, p })
   const total = lines.reduce((s, l) => s + l.amount, 0)
   const isPro = license.variant === 'pro'
@@ -66,7 +79,9 @@ export default async function CheckoutPage({
           {purposeLabel(purpose)}
         </h1>
         <p className="mt-2 max-w-xl text-[14px] leading-[1.6] text-[var(--color-fg-muted)]">
-          Review the licence and total below, then pay securely with M-Pesa, card or bank via Paystack.
+          {settlement.kind === 'paystack'
+            ? 'Review the licence and total below, then continue to the KES Paystack checkout.'
+            : `Review the ${displayCurrency} list price below. Online settlement is not available in ${displayCurrency}, so no Paystack charge will be opened.`}
         </p>
 
         {/* Variant lock — the product is fixed by the licence row so the
@@ -108,7 +123,7 @@ export default async function CheckoutPage({
                 <li key={l.label} className="flex items-baseline justify-between gap-4 text-[14px]">
                   <span className="text-[var(--color-fg)]">{l.label}</span>
                   <span className="font-mono tabular-nums text-[var(--color-fg-muted)]">
-                    {p.currency} {l.amount.toLocaleString()}
+                    {displayCurrency} {l.amount.toLocaleString()}
                   </span>
                 </li>
               ))}
@@ -120,7 +135,7 @@ export default async function CheckoutPage({
                 <span className="font-display text-[44px] font-semibold leading-none tabular-nums tracking-[-0.03em] text-[var(--color-accent)]">
                   {total.toLocaleString()}
                 </span>
-                <span className="font-mono text-[14px] tabular-nums text-[var(--color-fg-muted)]">{p.currency}</span>
+                <span className="font-mono text-[14px] tabular-nums text-[var(--color-fg-muted)]">{displayCurrency}</span>
               </div>
               <div className="mt-1.5 font-mono text-[10px] uppercase tracking-[0.16em] text-[var(--color-fg-subtle)]">
                 One-time · Perpetual licence · No subscription
@@ -129,7 +144,7 @@ export default async function CheckoutPage({
 
             {purpose === 'license_fee' ? (
               <div className="mt-5 rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg)] p-4 text-[12px] leading-[1.6] text-[var(--color-fg-muted)]">
-                Compliance updates ({p.currency} {maintenanceYearly.toLocaleString()}/year) are{' '}
+                Compliance updates ({displayCurrency} {maintenanceYearly.toLocaleString()}/year) are{' '}
                 <strong className="text-[var(--color-fg)]">optional</strong> and billed separately.{' '}
                 Skipping them does not deactivate your perpetual licence.
               </div>
@@ -149,8 +164,53 @@ export default async function CheckoutPage({
           </aside>
 
           <section>
-            <CheckoutForm licenseId={license.id} purpose={purpose} amount={total} currency={p.currency} />
+            {settlement.kind === 'paystack' ? (
+              <CheckoutForm
+                licenseId={license.id}
+                purpose={purpose}
+                displayAmount={total}
+                displayCurrency={settlement.displayCurrency}
+                settlementCurrency={settlement.settlementCurrency}
+              />
+            ) : (
+              <ManualSettlementState
+                displayAmount={total}
+                displayCurrency={settlement.displayCurrency}
+                contactHref={`/${marketLocaleForDisplayCurrency(displayCurrency)}/contact?type=sales`}
+              />
+            )}
           </section>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function UnsupportedCurrencyNotice({ currency }: { currency: string }) {
+  return (
+    <div className="px-6 py-8 sm:px-8 sm:py-10">
+      <div className="mx-auto max-w-2xl">
+        <Link
+          href="/dashboard/licenses"
+          className="inline-flex items-center gap-2 rounded-[var(--radius-sm)] border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-1.5 text-[13px] font-medium text-[var(--color-fg-muted)] outline-none transition-colors hover:border-[var(--color-border-strong)] hover:text-[var(--color-fg)] focus-visible:outline-2 focus-visible:outline-[var(--color-accent)]"
+        >
+          <ArrowLeft className="size-3.5" />
+          Back to licences
+        </Link>
+        <div className="mt-10 rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-surface)] p-8 lg:p-10">
+          <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.2em] text-[var(--color-accent)]">
+            Payment review required
+          </p>
+          <h1 className="mt-3 font-display text-[clamp(1.5rem,3vw,2rem)] font-semibold leading-tight tracking-[-0.03em] text-[var(--color-fg)]">
+            This licence has an unsupported display currency.
+          </h1>
+          <p className="mt-4 text-[14px] leading-[1.65] text-[var(--color-fg-muted)]">
+            The licence is recorded in {currency}. We will not replace it with KES or open a payment until Omnix has
+            confirmed the correct list price and settlement method.
+          </p>
+          <Button asChild size="lg" className="mt-7 w-full sm:w-auto">
+            <Link href="/ke/contact?type=sales">Contact Omnix before payment</Link>
+          </Button>
         </div>
       </div>
     </div>
@@ -230,7 +290,7 @@ function computeLines({
 }: {
   purpose: string
   variant: string
-  p: ReturnType<typeof pricingFor>
+  p: ReturnType<typeof displayPricingFor>
 }): { label: string; amount: number }[] {
   // Pricing is driven by VARIANT. Public products (dawa / retail /
   // hospitality / hardware / salon) are the single "starter" price. The

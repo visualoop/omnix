@@ -7,7 +7,7 @@ import { getSlotImage, getSlotMedia } from '@/lib/media-slots'
 import { getPublishedModuleDemoVideo } from '@/lib/module-demo-video'
 import { getSiteSettings } from '@/lib/site-settings'
 import { SoftwareJsonLd } from '@/components/seo/jsonld'
-import { currencyForCountry } from '@/lib/currency'
+import { displayCurrencyForLocale } from '@/i18n/routing'
 import { setRequestLocale } from 'next-intl/server'
 
 // No force-dynamic: this product page has no request-specific input (locale is
@@ -68,7 +68,7 @@ export default async function SalonPage({ params }: { params: Promise<{ locale: 
 
   return (
     <>
-      <SoftwareJsonLd product="salon" currency={currencyForCountry(locale)} locale={locale} />
+      <SoftwareJsonLd product="salon" currency={displayCurrencyForLocale(locale)} locale={locale} />
       <SalonWebsite locale={locale} heroImage={heroImage} heroVideo={heroVideo} demoVideo={demoVideo} whatsappUrl={settings.whatsappUrl} />
     </>
   )

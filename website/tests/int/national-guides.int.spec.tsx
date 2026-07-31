@@ -259,17 +259,17 @@ describe('Task 17 — BuyerGuide render', () => {
   })
 
   it('links to the matching product page and a locale-aware, product-scoped demo', () => {
-    render(<BuyerGuide guide={guide} locale="ng" whatsappUrl="https://wa.me/254700000000" />)
+    render(<BuyerGuide guide={guide} locale="ug" whatsappUrl="https://wa.me/254700000000" />)
 
     for (const link of screen.getAllByRole('link', { name: 'Book a demo' })) {
-      expect(link.getAttribute('href')).toBe('/ng/contact?type=demo&product=retail')
+      expect(link.getAttribute('href')).toBe('/ug/contact?type=demo&product=retail')
     }
     const productLinks = screen.getAllByRole('link', { name: 'View Omnix Retail' })
     expect(productLinks.length).toBeGreaterThanOrEqual(1)
     for (const link of productLinks) {
-      expect(link.getAttribute('href')).toBe('/ng/retail')
+      expect(link.getAttribute('href')).toBe('/ug/retail')
     }
-    expect(screen.getByRole('link', { name: 'All buyer guides' }).getAttribute('href')).toBe('/ng/guides')
+    expect(screen.getByRole('link', { name: 'All buyer guides' }).getAttribute('href')).toBe('/ug/guides')
 
     for (const link of screen.getAllByRole('link', { name: 'Ask on WhatsApp' })) {
       expect(link.getAttribute('href')).toMatch(/^https:\/\/wa\.me\/254700000000\?text=/)

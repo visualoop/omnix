@@ -5,6 +5,7 @@
  * platform_settings (admin-editable) with env fallback.
  */
 import { getSetting } from '@/lib/platform-settings'
+import type { SettlementCurrency } from '@/lib/currency'
 
 const PAYSTACK_BASE = 'https://api.paystack.co'
 
@@ -64,7 +65,7 @@ export function newReference(prefix = 'OMNIX'): string {
 export async function initTransaction(input: {
   email: string
   amountSmallestUnit: number
-  currency: string
+  currency: SettlementCurrency
   reference: string
   metadata?: Record<string, unknown>
 }): Promise<{ authorizationUrl: string; accessCode: string; reference: string }> {

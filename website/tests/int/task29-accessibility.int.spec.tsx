@@ -38,6 +38,7 @@ vi.mock('next/navigation', () => ({
 }))
 // Isolate the header's navigation behaviour from unrelated chrome.
 vi.mock('@/components/layout/language-switcher', () => ({
+  MarketSwitcher: () => null,
   LanguageSwitcher: () => null,
 }))
 vi.mock('@/components/theme/theme-toggle', () => ({

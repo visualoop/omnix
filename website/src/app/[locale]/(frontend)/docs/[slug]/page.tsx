@@ -6,7 +6,7 @@ import { notFound } from 'next/navigation'
 import { ArrowLeft, Icon } from '@/components/icons'
 import { PageContainer } from '@/components/layout/layout-primitives'
 import { Button } from '@/components/ui/button'
-import { buildAlternatesLanguages } from '@/lib/hreflang'
+import { buildKenyaOnlyAlternatesLanguages } from '@/lib/hreflang'
 import { buildSocialMetadata } from '@/lib/seo-metadata'
 import { DOCS_SEED, docBySlug, docSlugs } from '@/lib/docs-seed'
 import { isDocPlaceholder, isLegacyExcludedDocSlug, isPublishedDoc } from '@/lib/docs-visibility'
@@ -46,13 +46,13 @@ export async function generateMetadata({
       robots: { index: false, follow: true },
     }
   }
-  const canonical = `${SITE_URL}/${locale}/docs/${doc.slug}`
+  const canonical = `${SITE_URL}/ke/docs/${doc.slug}`
   return {
     title: `${doc.title} — Omnix docs`,
     description: doc.excerpt,
     alternates: {
       canonical,
-      languages: buildAlternatesLanguages(`/docs/${doc.slug}`),
+      languages: buildKenyaOnlyAlternatesLanguages(`/docs/${doc.slug}`),
     },
     ...buildSocialMetadata({
       locale,

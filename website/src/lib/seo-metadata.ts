@@ -25,6 +25,7 @@
 import type { Metadata } from 'next'
 
 import { BRAND_NAME } from '@/lib/brand'
+import type { LaunchMarketLocale } from '@/i18n/routing'
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://omnix.co.ke'
 
@@ -39,10 +40,11 @@ export const OG_IMAGE_HEIGHT = 630
  * each country maps to `en_<REGION>`. This mirrors the country list in
  * i18n/routing's COUNTRY_LOCALES exactly.
  */
-export const OG_LOCALE_BY_COUNTRY: Record<string, string> = {
-  ke: 'en_KE', us: 'en_US', gb: 'en_GB', ng: 'en_NG', gh: 'en_GH',
-  za: 'en_ZA', in: 'en_IN', rw: 'en_RW', tz: 'en_TZ', ug: 'en_UG',
-  eg: 'en_EG', ae: 'en_AE',
+export const OG_LOCALE_BY_COUNTRY: Readonly<Record<LaunchMarketLocale, string>> = {
+  ke: 'en_KE',
+  ug: 'en_UG',
+  tz: 'en_TZ',
+  rw: 'en_RW',
 }
 
 /**
@@ -53,7 +55,8 @@ export const DEFAULT_OG_LOCALE = 'en_KE'
 
 /** Map a URL locale segment to its Open Graph locale. */
 export function ogLocaleFor(locale: string): string {
-  return OG_LOCALE_BY_COUNTRY[locale.toLowerCase()] ?? DEFAULT_OG_LOCALE
+  const normalized = locale.toLowerCase()
+  return (OG_LOCALE_BY_COUNTRY as Readonly<Record<string, string>>)[normalized] ?? DEFAULT_OG_LOCALE
 }
 
 /**
