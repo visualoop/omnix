@@ -110,6 +110,18 @@ export const PAGE_ROUTE_GROUPS = {
   ],
 } as const satisfies Record<string, readonly string[]>
 
+/**
+ * Concrete customer guides rendered by the dynamic /docs/[slug] page.
+ * These are content routes, not separate App Router files, so they stay out
+ * of APP_PAGE_ROUTES while remaining visible to route/sitemap audits.
+ */
+export const DOC_CONTENT_ROUTES = [
+  '/[locale]/docs/windows-desktop-hub',
+  '/[locale]/docs/android-app',
+  '/[locale]/docs/browser-companion',
+  '/[locale]/docs/private-mesh',
+] as const
+
 export const API_ROUTE_GROUPS = {
   platformAdmin: [
     '/api/admin/affiliates/[id]',
