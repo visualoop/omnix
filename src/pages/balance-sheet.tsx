@@ -1,3 +1,4 @@
+import { MobileRouteContext } from "@/components/shared/mobile-route-context";
 import { useEffect, useState } from "react";
 import { Scales, Calendar } from "@phosphor-icons/react";
 import { Input } from "@/components/ui/input";
@@ -5,7 +6,7 @@ import { getBalanceSheet, type BalanceSheet } from "@/services/gl";
 import { intlLocale } from "@/lib/intl";
 
 import { BackButton } from "@/components/ui/back-button";
-export function BalanceSheetPage() {
+function BalanceSheetPageContent() {
   const [asOf, setAsOf] = useState(new Date().toISOString().slice(0, 10));
   const [bs, setBs] = useState<BalanceSheet | null>(null);
   const [loading, setLoading] = useState(false);
@@ -21,7 +22,7 @@ export function BalanceSheetPage() {
 
   return (
     <div className="max-w-5xl mx-auto w-full space-y-5">
-      <header className="flex items-start justify-between">
+      <header className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <BackButton fallback="/analytics" />
           <h1 className="text-xl font-semibold flex items-center gap-2">
@@ -31,16 +32,16 @@ export function BalanceSheetPage() {
             Snapshot of what you own, what you owe, and what&rsquo;s left over. Assets = Liabilities + Equity.
           </p>
         </div>
-        <div className="relative">
+        <div className="relative w-full sm:w-auto">
           <Calendar className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground pointer-events-none" />
-          <Input type="date" value={asOf} onChange={(e) => setAsOf(e.target.value)} className="pl-8 w-[160px]" />
+          <Input type="date" value={asOf} onChange={(e) => setAsOf(e.target.value)} className="w-full pl-8 sm:w-[160px]" />
         </div>
       </header>
 
       {loading || !bs ? (
         <div className="py-12 text-center text-sm text-muted-foreground">Loading…</div>
       ) : (
-        <div className="grid grid-cols-2 gap-5">
+        <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
           {/* Assets column */}
           <section className="rounded-lg border border-border p-4">
             <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground mb-2">
@@ -134,5 +135,14 @@ export function BalanceSheetPage() {
         </div>
       )}
     </div>
+  );
+}
+
+export function BalanceSheetPage() {
+  return (
+    <>
+      <MobileRouteContext />
+      <BalanceSheetPageContent />
+    </>
   );
 }

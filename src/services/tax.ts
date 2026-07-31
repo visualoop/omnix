@@ -18,6 +18,8 @@
  */
 import { query } from "@/lib/db";
 import { round2 } from "@/lib/money";
+import { getCountry } from "@/lib/countries";
+import { useCountry } from "@/stores/country";
 
 export type TaxMode = "off" | "inclusive" | "exclusive";
 
@@ -38,9 +40,15 @@ export async function getTaxSettings(): Promise<TaxSettings> {
   const map = new Map(rows.map((r) => [r.key, r.value]));
   const modeRaw = map.get("tax.mode");
   const mode: TaxMode = modeRaw === "off" || modeRaw === "inclusive" || modeRaw === "exclusive" ? modeRaw : "exclusive";
-  const defaultRate = Number(map.get("tax.default_rate") ?? "16");
-  const label = map.get("tax.label") || "VAT";
-  const value: TaxSettings = { mode, defaultRate: Number.isFinite(defaultRate) ? defaultRate : 16, label };
+  const countryProfile = getCountry(useCountry.getState().code ?? "");
+  const countryDefaultRate = countryProfile?.defaultTaxRate ?? 0;
+  const defaultRate = Number(map.get("tax.default_rate") ?? countryDefaultRate);
+  const label = map.get("tax.label") || countryProfile?.taxLabel || "Tax";
+  const value: TaxSettings = {
+    mode,
+    defaultRate: Number.isFinite(defaultRate) ? defaultRate : countryDefaultRate,
+    label,
+  };
   cache = { value, expiresAt: Date.now() + TTL_MS };
   return value;
 }

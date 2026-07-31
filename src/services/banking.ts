@@ -10,6 +10,7 @@
  */
 import { query, execute } from "@/lib/db";
 import { getActiveBranchId, requireActiveBranchId } from "@/stores/active-branch";
+import { getBusinessCurrencyCode } from "@/stores/country";
 
 export type BankAccountType = "bank" | "mpesa_till" | "mpesa_paybill" | "cash_box" | "credit_card" | "mobile_money";
 export type BankTxType = "deposit" | "withdrawal" | "transfer_in" | "transfer_out" | "fee" | "interest" | "adjustment";
@@ -88,7 +89,7 @@ export async function upsertBankAccount(input: Partial<BankAccount> & { name: st
         branch=?6, currency=?7, opening_balance=?8, opening_date=?9, is_default=?10, is_active=?11, notes=?12
        WHERE id=?1 AND (branch_id = ?13 OR branch_id IS NULL)`,
       [id, input.name, input.account_type, input.bank_name || null, input.account_number || null,
-        input.branch || null, input.currency || "KES", input.opening_balance || 0,
+        input.branch || null, input.currency || getBusinessCurrencyCode(), input.opening_balance || 0,
         input.opening_date || new Date().toISOString().slice(0, 10),
         input.is_default ?? 0, input.is_active ?? 1, input.notes || null, branchId],
     );
@@ -98,7 +99,7 @@ export async function upsertBankAccount(input: Partial<BankAccount> & { name: st
          opening_balance, opening_date, current_balance, is_default, is_active, notes, branch_id)
        VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14)`,
       [id, input.name, input.account_type, input.bank_name || null, input.account_number || null,
-        input.branch || null, input.currency || "KES",
+        input.branch || null, input.currency || getBusinessCurrencyCode(),
         input.opening_balance || 0, input.opening_date || new Date().toISOString().slice(0, 10),
         input.opening_balance || 0,
         input.is_default ?? 0, input.is_active ?? 1, input.notes || null,

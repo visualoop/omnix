@@ -3,6 +3,7 @@ import { BRAND } from "@/lib/brand";
 import QRCode from "qrcode";
 import { intlLocale } from "@/lib/intl";
 import { requireActiveBranchId } from "@/stores/active-branch";
+import { isFeatureEnabled } from "@/lib/features";
 
 export interface ReceiptData {
   business: {
@@ -83,15 +84,17 @@ export async function buildReceiptData(saleId: string): Promise<ReceiptData | nu
     [saleId]
   );
 
-  const kraRows = await query<{
-    seller_pin: string;
-    kra_invoice_no: string | null;
-    kra_internal_control_no: string | null;
-  }>(
-    `SELECT seller_pin, kra_invoice_no, kra_internal_control_no
-     FROM etims_invoices WHERE sale_id = ?1 AND status = 'signed'`,
-    [saleId]
-  );
+  const kraRows = isFeatureEnabled("etims")
+    ? await query<{
+        seller_pin: string;
+        kra_invoice_no: string | null;
+        kra_internal_control_no: string | null;
+      }>(
+        `SELECT seller_pin, kra_invoice_no, kra_internal_control_no
+         FROM etims_invoices WHERE sale_id = ?1 AND status = 'signed'`,
+        [saleId],
+      )
+    : [];
   const kra = kraRows[0]?.kra_invoice_no ? {
     pin: kraRows[0].seller_pin,
     invoice_no: kraRows[0].kra_invoice_no!,
@@ -186,16 +189,17 @@ async function renderReceiptHTML(d: ReceiptData): Promise<string> {
   const { taxLabel } = await import("@/lib/locale");
   const { useCountry } = await import("@/stores/country");
   const taxLabelStr = taxLabel(useCountry.getState().code);
+  const kra = isFeatureEnabled("etims") ? d.kra : null;
 
   let kraSection = "";
-  if (d.kra) {
-    const qrText = `${d.kra.invoice_no} / ${d.kra.pin}`;
+  if (kra) {
+    const qrText = `${kra.invoice_no} / ${kra.pin}`;
     const qrUrl = await generateQrDataUrl(qrText);
     kraSection = `
     <hr>
     <div class="center sm bold">KRA TAX INVOICE</div>
-    <div class="center sm">CU Invoice: ${escapeHtml(d.kra.invoice_no)}</div>
-    <div class="center sm muted" style="word-break:break-all;">CU: ${escapeHtml(d.kra.internal_control_no)}</div>
+    <div class="center sm">CU Invoice: ${escapeHtml(kra.invoice_no)}</div>
+    <div class="center sm muted" style="word-break:break-all;">CU: ${escapeHtml(kra.internal_control_no)}</div>
     ${qrUrl ? `<div class="center" style="margin:6px 0;"><img src="${qrUrl}" width="100" height="100" alt="QR" /></div>` : `<div class="qr-placeholder sm">QR Code<br><span class="muted">(scan to verify)</span></div>`}
   `;
   }
@@ -266,7 +270,7 @@ async function renderReceiptHTML(d: ReceiptData): Promise<string> {
   ${d.business.address ? `<div class="center sm">${escapeHtml(d.business.address)}</div>` : ""}
   ${d.business.phone ? `<div class="center sm">Tel: ${escapeHtml(d.business.phone)}</div>` : ""}
   ${d.business.email ? `<div class="center sm">${escapeHtml(d.business.email)}</div>` : ""}
-  ${d.kra ? `<div class="center sm">KRA PIN: ${escapeHtml(d.kra.pin)}</div>` : ""}
+  ${kra ? `<div class="center sm">KRA PIN: ${escapeHtml(kra.pin)}</div>` : ""}
 
   <hr>
 

@@ -15,6 +15,7 @@ import { isModuleEntitled, entitledModules } from "@/stores/entitlements";
 import { IS_PRO, LOCKED_MODULE, MODULES_ALLOWED, VARIANT_NAME } from "@/lib/variant";
 import { useCountry } from "@/stores/country";
 import { getCountry, listSetupCountries, type CountryCode } from "@/lib/countries";
+import { addressPlaceholder, phonePlaceholder } from "@/lib/locale";
 
 interface SetupData {
   businessName: string;
@@ -126,7 +127,7 @@ export function SetupWizard() {
         </p>
       </div>
 
-      {/* First-run availability is intentionally limited to five EAC markets. */}
+      {/* First-run availability is intentionally limited to four EAC markets. */}
       <div className="space-y-3">
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
           {listSetupCountries().map((country) => {
@@ -239,7 +240,7 @@ export function SetupWizard() {
       <div>
         <h2 className="text-lg font-semibold tracking-tight">Your business</h2>
         <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
-          This appears on receipts, invoices, and eTIMS submissions.
+          These details appear on receipts, invoices, and compliance documents available in your country.
         </p>
       </div>
       <div className="space-y-3">
@@ -253,14 +254,14 @@ export function SetupWizard() {
         </Field>
         <Field label="Address">
           <Input
-            placeholder={MODULE_DEFINITIONS[data.moduleId].setupPlaceholders.address}
+            placeholder={addressPlaceholder(pickedCountry)}
             value={data.address}
             onChange={(e) => update("address", e.target.value)}
           />
         </Field>
         <Field label="Phone">
           <Input
-            placeholder={MODULE_DEFINITIONS[data.moduleId].setupPlaceholders.phone}
+            placeholder={phonePlaceholder(pickedCountry)}
             value={data.phone}
             onChange={(e) => update("phone", e.target.value)}
           />

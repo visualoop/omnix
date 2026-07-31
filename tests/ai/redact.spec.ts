@@ -40,15 +40,15 @@ describe('redact() — emails', () => {
 
 describe('redact() — KRA PINs', () => {
   it('redacts a valid PIN format', () => {
-    expect(redact('Pin A123456789Z confirmed')).toBe('Pin [KRA_PIN] confirmed')
+    expect(redact('Pin A123456789Z confirmed')).toBe('Pin [TAX_ID] confirmed')
   })
 
   it('redacts lowercase PINs too', () => {
-    expect(redact('p987654321q')).toBe('[KRA_PIN]')
+    expect(redact('p987654321q')).toBe('[TAX_ID]')
   })
 
   it('does not redact 11-char alphanumerics that lack the format', () => {
-    expect(redact('A123456ZZ12')).not.toBe('[KRA_PIN]')
+    expect(redact('A123456ZZ12')).not.toBe('[TAX_ID]')
   })
 })
 
@@ -119,7 +119,7 @@ describe('redactMessages()', () => {
     }]
     const out = redactMessages(messages)
     const part = (out[0].content as Array<{ type: string; text?: string }>)[0]
-    expect(part.text).toBe('pin [KRA_PIN]')
+    expect(part.text).toBe('pin [TAX_ID]')
   })
 
   it('does not mutate original messages', () => {

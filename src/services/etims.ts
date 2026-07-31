@@ -1,5 +1,6 @@
 import { fetch } from "@tauri-apps/plugin-http";
 import { query, execute } from "@/lib/db";
+import { isFeatureEnabled, requireCountryFeature } from "@/lib/features";
 
 export interface EtimsConfig {
   id: string;
@@ -48,6 +49,7 @@ export interface SaleItemForEtims {
 
 // Configuration
 export async function getEtimsConfig(): Promise<EtimsConfig | null> {
+  if (!isFeatureEnabled("etims")) return null;
   const rows = await query<EtimsConfig>("SELECT * FROM etims_config WHERE id = 'default'");
   return rows[0] || null;
 }
@@ -59,6 +61,7 @@ export async function saveEtimsConfig(input: {
   business_name: string;
   test_mode: boolean;
 }): Promise<void> {
+  requireCountryFeature("etims", "KRA eTIMS");
   await execute(
     `UPDATE etims_config 
      SET kra_pin = ?1, vscu_serial = ?2, branch_id = ?3, business_name = ?4,
@@ -69,11 +72,15 @@ export async function saveEtimsConfig(input: {
 }
 
 export async function disableEtims(): Promise<void> {
+  requireCountryFeature("etims", "KRA eTIMS");
   await execute("UPDATE etims_config SET active = 0 WHERE id = 'default'");
 }
 
 // Verify connection (call /info endpoint)
 export async function verifyEtimsConnection(): Promise<{ ok: boolean; error?: string }> {
+  if (!isFeatureEnabled("etims")) {
+    return { ok: false, error: "KRA eTIMS is not available for the active business country." };
+  }
   const config = await getEtimsConfig();
   if (!config?.kra_pin || !config.vscu_serial) {
     return { ok: false, error: "Missing KRA PIN or VSCU serial" };
@@ -107,6 +114,7 @@ export async function signInvoice(saleId: string, items: SaleItemForEtims[], tot
   buyerPin?: string;
   buyerName?: string;
 }): Promise<{ status: string; invoice_id: string; kra_internal_control_no?: string }> {
+  requireCountryFeature("etims", "KRA eTIMS");
   const config = await getEtimsConfig();
   if (!config?.active || !config.kra_pin) {
     throw new Error("eTIMS not configured");
@@ -235,12 +243,14 @@ export async function signInvoice(saleId: string, items: SaleItemForEtims[], tot
 
 // Get pending/queued invoices
 export async function getPendingInvoices(): Promise<EtimsInvoice[]> {
+  if (!isFeatureEnabled("etims")) return [];
   return query<EtimsInvoice>(
     "SELECT * FROM etims_invoices WHERE status IN ('pending','queued','failed') ORDER BY created_at ASC LIMIT 500"
   );
 }
 
 export async function getRecentInvoices(limit = 50): Promise<EtimsInvoice[]> {
+  if (!isFeatureEnabled("etims")) return [];
   return query<EtimsInvoice>(
     "SELECT * FROM etims_invoices ORDER BY created_at DESC LIMIT ?1",
     [limit]
@@ -249,6 +259,7 @@ export async function getRecentInvoices(limit = 50): Promise<EtimsInvoice[]> {
 
 // Retry queued invoices (called periodically)
 export async function retryQueuedInvoices(): Promise<{ retried: number; succeeded: number }> {
+  if (!isFeatureEnabled("etims")) return { retried: 0, succeeded: 0 };
   const queued = await query<EtimsInvoice & { payload_json: string }>(
     "SELECT * FROM etims_invoices WHERE status = 'queued' AND retry_count < 5 ORDER BY created_at ASC LIMIT 10"
   );
@@ -277,6 +288,7 @@ export async function getVatReport(startDate: string, endDate: string): Promise<
   signed_count: number;
   pending_count: number;
 }> {
+  requireCountryFeature("vat3", "Kenya VAT3 reporting");
   const rows = await query<{
     total_sales: number;
     taxable_sales: number;

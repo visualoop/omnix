@@ -3,6 +3,7 @@
  *
  * Bank accounts, petty cash, expenses. Direct routes still work.
  */
+import { MobileRouteContext } from "@/components/shared/mobile-route-context";
 import { useAuthStore } from "@/stores/auth";
 import { hasPermission, type Permission } from "@/lib/permissions";
 import {
@@ -15,7 +16,7 @@ import { BankingPage } from "@/pages/banking";
 import { PettyCashPage } from "@/pages/petty-cash";
 import { ExpensesPage } from "@/pages/expenses";
 
-export function BankingHubPage() {
+function BankingHubPageContent() {
   const user = useAuthStore((s) => s.user);
   const has = (perm: string) => hasPermission(user, perm as Permission);
   return (
@@ -30,5 +31,14 @@ export function BankingHubPage() {
       ]}
       hasPermission={has}
     />
+  );
+}
+
+export function BankingHubPage() {
+  return (
+    <>
+      <MobileRouteContext />
+      <BankingHubPageContent />
+    </>
   );
 }

@@ -1,9 +1,9 @@
 /**
- * fx-refresh.ts — auto-refresh KES exchange rates once a day.
+ * fx-refresh.ts — auto-refresh exchange rates for the immutable business
+ * base currency once a day.
  *
- * Uses open.er-api.com (free, no key, HTTPS). Fetch base=KES; server returns
- * KES→X rates for every supported currency. We store those pairs into
- * exchange_rates with source='auto'.
+ * Uses open.er-api.com (free, no key, HTTPS). The active country determines
+ * the base currency; rates are stored in both directions.
  *
  * Offline-safe: aborts if navigator.onLine is false. Uses a 5s fetch timeout
  * so a hung network doesn't stall the background loop.
@@ -13,6 +13,7 @@
  */
 import { query, execute } from "@/lib/db";
 import { setRate, listCurrencies } from "@/services/currencies";
+import { getBusinessCurrencyCode } from "@/stores/country";
 
 const FX_ENDPOINT = "https://open.er-api.com/v6/latest";
 const LAST_REFRESH_KEY = "fx.last_refresh_at";
@@ -66,7 +67,8 @@ export async function refreshFxRates(opts: { force?: boolean } = {}): Promise<nu
   if (!opts.force && !(await isDue())) return 0;
 
   try {
-    const res = await fetchWithTimeout(`${FX_ENDPOINT}/KES`, 6000);
+    const baseCurrency = getBusinessCurrencyCode();
+    const res = await fetchWithTimeout(`${FX_ENDPOINT}/${baseCurrency}`, 6000);
     if (!res.ok) return 0;
     const data = (await res.json()) as OpenErApiResponse;
     if (data.result !== "success" || !data.rates) return 0;
@@ -75,7 +77,7 @@ export async function refreshFxRates(opts: { force?: boolean } = {}): Promise<nu
     // 160 pairs when the user only cares about USD/EUR/UGX.
     const enabled = await listCurrencies(true);
     if (enabled.length <= 1) {
-      // Only KES enabled → nothing to fetch.
+      // Only the base currency is enabled, so there are no pairs to fetch.
       await markRefreshed();
       return 0;
     }
@@ -83,12 +85,11 @@ export async function refreshFxRates(opts: { force?: boolean } = {}): Promise<nu
     const asOf = new Date(data.time_last_update_unix * 1000).toISOString().slice(0, 10);
     let written = 0;
     for (const c of enabled) {
-      if (c.code === "KES") continue;
+      if (c.code === baseCurrency) continue;
       const rate = data.rates[c.code];
       if (typeof rate !== "number" || rate <= 0) continue;
-      // KES → foreign at this rate; and foreign → KES as inverse
-      await setRate("KES", c.code, rate, asOf, "auto");
-      await setRate(c.code, "KES", 1 / rate, asOf, "auto");
+      await setRate(baseCurrency, c.code, rate, asOf, "auto");
+      await setRate(c.code, baseCurrency, 1 / rate, asOf, "auto");
       written += 2;
     }
 

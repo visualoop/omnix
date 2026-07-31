@@ -5,6 +5,7 @@ import {
   TrendUp as TrendingUp,
 } from "@phosphor-icons/react";
 import { getSalesComparison } from "@/services/reports";
+import { getBusinessCurrencyCode } from "@/stores/country";
 
 interface Props {
   currentDays: number;
@@ -40,7 +41,7 @@ export function ComparisonPanel({ currentDays }: Props) {
           label="Revenue"
           current={data.current.revenue}
           previous={data.previous.revenue}
-          prefix="KES"
+          prefix={getBusinessCurrencyCode()}
         />
         <ComparisonMetric
           label="Transactions"
@@ -51,7 +52,7 @@ export function ComparisonPanel({ currentDays }: Props) {
           label="Profit"
           current={data.current.profit}
           previous={data.previous.profit}
-          prefix="KES"
+          prefix={getBusinessCurrencyCode()}
         />
       </div>
     </div>

@@ -1,3 +1,5 @@
+import { MobileRouteContext } from "@/components/shared/mobile-route-context";
+import { money } from "@/lib/money";
 import { useEffect, useState } from "react";
 import { confirm } from "@/components/ui/confirm-dialog";
 import { useParams } from "react-router-dom";
@@ -26,7 +28,7 @@ interface TransferData {
   items: StockTransferItem[];
 }
 
-export function StockTransferDetailPage() {
+function StockTransferDetailPageContent() {
   const { id } = useParams<{ id: string }>();
   const userId = useAuthStore((s) => s.user?.id);
   const [data, setData] = useState<TransferData | null>(null);
@@ -90,7 +92,7 @@ export function StockTransferDetailPage() {
   return (
     <div className="space-y-5">
       <div>
-        <div className="flex items-start justify-between">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <BackButton fallback="/stock-transfers" />
             <h1 className="text-xl font-semibold tracking-tight flex items-center gap-2">
@@ -176,7 +178,7 @@ export function StockTransferDetailPage() {
                   : totalReceived}
               </td>
               <td></td>
-              <td className="px-3 py-2 text-right text-xs tabular-nums font-mono">KES {totalCost.toFixed(2)}</td>
+              <td className="px-3 py-2 text-right text-xs tabular-nums font-mono">{money(totalCost)}</td>
             </tr>
           </tbody>
         </table>
@@ -230,4 +232,13 @@ function StatusBadge({ status }: { status: StockTransfer["status"] }) {
     case "received": return <Badge className="bg-emerald-600 hover:bg-emerald-600"><Check className="h-2.5 w-2.5 mr-0.5" /> Received</Badge>;
     case "cancelled": return <Badge variant="destructive">Cancelled</Badge>;
   }
+}
+
+export function StockTransferDetailPage() {
+  return (
+    <>
+      <MobileRouteContext />
+      <StockTransferDetailPageContent />
+    </>
+  );
 }

@@ -15,7 +15,7 @@
  *   formatMoney(1234.5, "KE")  // "KSh 1,235"
  *   formatMoney(1234.5, "US")  // "$1,234.50"
  */
-import { getCountry, type CountryCode } from "./countries";
+import { getCountry, getCountryFieldMetadata, type CountryCode } from "./countries";
 
 const FALLBACK_LOCALE = "en";
 
@@ -89,4 +89,30 @@ export function pharmacyTerm(code: CountryCode | null | undefined): string {
 /** Phone placeholder for input fields. */
 export function phonePlaceholder(code: CountryCode | null | undefined): string {
   return profile(code)?.phonePlaceholder ?? "+1 (XXX) XXX-XXXX";
+}
+
+/** Country-aware address example, neutral when no rich profile exists. */
+export function addressPlaceholder(code: CountryCode | null | undefined): string {
+  return getCountryFieldMetadata(code).addressPlaceholder;
+}
+
+/** Regulatory tax identifier label (KRA PIN / URA TIN / TRA TIN / RRA TIN). */
+export function taxIdLabel(code: CountryCode | null | undefined): string {
+  return getCountryFieldMetadata(code).taxIdLabel;
+}
+
+export function taxIdPlaceholder(code: CountryCode | null | undefined): string {
+  return getCountryFieldMetadata(code).taxIdPlaceholder;
+}
+
+export function registrationLabel(code: CountryCode | null | undefined): string {
+  return getCountryFieldMetadata(code).registrationLabel;
+}
+
+export function registrationPlaceholder(code: CountryCode | null | undefined): string {
+  return getCountryFieldMetadata(code).registrationPlaceholder;
+}
+
+export function countryTimezone(code: CountryCode | null | undefined): string {
+  return getCountryFieldMetadata(code).timezone;
 }

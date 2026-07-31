@@ -11,6 +11,8 @@ import { toast } from "sonner";
 import { getBusinessProfile } from "@/services/business-profile";
 import type { Invoice, Quotation, DocumentItem } from "@/services/invoicing";
 import { intlLocale } from "@/lib/intl";
+import { taxIdLabel } from "@/lib/locale";
+import { useCountry } from "@/stores/country";
 import { money } from "@/lib/money";
 
 const PAGE_WIDTH = 210;  // A4 mm
@@ -220,7 +222,7 @@ async function buildDocumentPdf(
   if (doc.customer_email) { pdf.text(doc.customer_email, MARGIN, y); y += 4; }
   if (doc.customer_tax_pin) {
     pdf.setFont("helvetica", "bold");
-    pdf.text(`KRA PIN: ${doc.customer_tax_pin}`, MARGIN, y);
+    pdf.text(`${taxIdLabel(useCountry.getState().code)}: ${doc.customer_tax_pin}`, MARGIN, y);
     pdf.setFont("helvetica", "normal");
     y += 4;
   }

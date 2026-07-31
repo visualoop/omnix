@@ -5,6 +5,7 @@
  * payroll. Each existing page renders unchanged inside the active tab.
  * Existing /hr/* routes still work as direct links.
  */
+import { MobileRouteContext } from "@/components/shared/mobile-route-context";
 import { useAuthStore } from "@/stores/auth";
 import { hasPermission, type Permission } from "@/lib/permissions";
 import {
@@ -19,7 +20,7 @@ import { AttendancePage } from "@/pages/attendance";
 import { LeavePage } from "@/pages/leave";
 import { PayrollPage } from "@/pages/payroll";
 
-export function PeopleHubPage() {
+function PeopleHubPageContent() {
   const user = useAuthStore((s) => s.user);
   const has = (perm: string) => hasPermission(user, perm as Permission);
   return (
@@ -35,5 +36,14 @@ export function PeopleHubPage() {
       ]}
       hasPermission={has}
     />
+  );
+}
+
+export function PeopleHubPage() {
+  return (
+    <>
+      <MobileRouteContext />
+      <PeopleHubPageContent />
+    </>
   );
 }

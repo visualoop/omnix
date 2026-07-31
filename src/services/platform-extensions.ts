@@ -8,6 +8,7 @@
  */
 import { execute, query } from "@/lib/db";
 import { requireActiveBranchId } from "@/stores/active-branch";
+import { money } from "@/lib/money";
 
 function newId(): string { return crypto.randomUUID().replace(/-/g, "").slice(0, 16); }
 
@@ -258,7 +259,7 @@ export async function globalSearch(qStr: string, limit = 30): Promise<SearchHit[
     [pattern, requireActiveBranchId()],
   ).catch(() => []);
   for (const s of sales) hits.push({
-    entity_kind: "sale", entity_id: s.id, title: s.sale_number, subtitle: `KES ${s.total.toFixed(2)}`, score: 1,
+    entity_kind: "sale", entity_id: s.id, title: s.sale_number, subtitle: money(s.total), score: 1,
   });
 
   const invoices = await query<{ id: string; invoice_number: string; customer_name: string | null }>(

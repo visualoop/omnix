@@ -1,3 +1,4 @@
+import { MobileRouteContext } from "@/components/shared/mobile-route-context";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
@@ -27,8 +28,10 @@ import {
   type ReconciliationSummary,
 } from "@/services/banking";
 import { toast } from "sonner";
-import { money as KES } from "@/lib/money";
+import { money } from "@/lib/money";
 import { intlLocale } from "@/lib/intl";
+import { currencyCode } from "@/lib/locale";
+import { useCountry } from "@/stores/country";
 
 
 const ACCOUNT_TYPE_LABELS: Record<BankAccountType, string> = {
@@ -49,7 +52,7 @@ const ACCOUNT_TYPE_ICON: Record<BankAccountType, typeof Banknote> = {
   mobile_money: Smartphone,
 };
 
-export function BankingPage() {
+function BankingPageContent() {
   const navigate = useNavigate();
   const [accounts, setAccounts] = useState<BankAccount[]>([]);
   const [transactions, setTransactions] = useState<BankTransactionWithAccount[]>([]);
@@ -97,7 +100,7 @@ export function BankingPage() {
       <Card className="bg-gradient-to-br from-primary/5 to-primary/0">
         <CardContent className="p-4">
           <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Total Cash on Hand</p>
-          <p className="text-3xl font-semibold font-mono mt-1">{KES(totalBalance)}</p>
+          <p className="text-3xl font-semibold font-mono mt-1">{money(totalBalance)}</p>
           <p className="text-xs text-muted-foreground mt-1">
             Across {accounts.length} account{accounts.length !== 1 ? "s" : ""}
           </p>
@@ -113,7 +116,7 @@ export function BankingPage() {
 
         <TabsPanel value="overview" className="mt-3">
           {loading ? (
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               {[1, 2, 3, 4].map((i) => (
                 <div key={i} className="h-32 rounded-md bg-muted/30 animate-pulse" />
               ))}
@@ -130,7 +133,7 @@ export function BankingPage() {
               </CardContent>
             </Card>
           ) : (
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               {accounts.map((a) => {
                 const Icon = ACCOUNT_TYPE_ICON[a.account_type] || Banknote;
                 const summary = recon.get(a.id);
@@ -162,7 +165,7 @@ export function BankingPage() {
                         </Button>
                       </div>
                       <div className="text-2xl font-semibold font-mono tabular-nums">
-                        {KES(a.current_balance)}
+                        {money(a.current_balance)}
                       </div>
                       {summary && summary.unreconciled_count > 0 && (
                         <div className="text-[10px] text-amber-600">
@@ -278,6 +281,7 @@ function AccountForm({ open, account, onClose, onSaved }: {
 }) {
   const [form, setForm] = useState<Partial<BankAccount>>({});
   const [submitting, setSubmitting] = useState(false);
+  const countryCode = useCountry((state) => state.code);
 
   useEffect(() => {
     if (open) {
@@ -285,13 +289,13 @@ function AccountForm({ open, account, onClose, onSaved }: {
       else setForm({
         name: "",
         account_type: "bank",
-        currency: "KES",
+        currency: currencyCode(countryCode),
         opening_balance: 0,
         is_active: 1,
         opening_date: new Date().toISOString().slice(0, 10),
       });
     }
-  }, [account, open]);
+  }, [account, countryCode, open]);
 
   const save = async () => {
     if (!form.name) { toast.error("Name required"); return; }
@@ -317,7 +321,7 @@ function AccountForm({ open, account, onClose, onSaved }: {
 
   return (
     <Sheet open={open} onOpenChange={(o) => !o && onClose()}>
-      <SheetContent side="right" className="w-[440px] sm:max-w-[440px]">
+      <SheetContent side="right" className="w-full max-w-full overflow-y-auto sm:w-[440px] sm:max-w-[440px]">
         <SheetHeader>
           <SheetTitle>{account ? account.name : "New Account"}</SheetTitle>
         </SheetHeader>
@@ -342,7 +346,7 @@ function AccountForm({ open, account, onClose, onSaved }: {
               <Field label="Bank Name">
                 <Input value={form.bank_name || ""} onChange={(e) => setForm({ ...form, bank_name: e.target.value })} placeholder="e.g., KCB, Equity, Co-op" />
               </Field>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <Field label="Account Number">
                   <Input value={form.account_number || ""} onChange={(e) => setForm({ ...form, account_number: e.target.value })} className="font-mono" />
                 </Field>
@@ -359,7 +363,7 @@ function AccountForm({ open, account, onClose, onSaved }: {
             </Field>
           )}
 
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <Field label="Opening Balance">
               <Input
                 type="number"
@@ -387,7 +391,7 @@ function AccountForm({ open, account, onClose, onSaved }: {
             <div className="border-t border-border pt-3 space-y-2">
               <div className="flex justify-between text-xs">
                 <span className="text-muted-foreground">Current Balance</span>
-                <span className="font-mono font-semibold">{KES(account.current_balance)}</span>
+                <span className="font-mono font-semibold">{money(account.current_balance)}</span>
               </div>
               {!account.is_default && (
                 <Button variant="outline" size="sm" className="w-full" onClick={setAsDefault}>
@@ -448,24 +452,24 @@ function CashflowView() {
     <div className="space-y-3">
       <DateRangePicker value={period} onChange={setPeriod} compact />
 
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-3 sm:gap-3">
         <Card>
           <CardContent className="p-3">
             <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Total In</p>
-            <p className="text-xl font-semibold font-mono mt-1 text-emerald-600">{KES(totalIn)}</p>
+            <p className="text-xl font-semibold font-mono mt-1 text-emerald-600">{money(totalIn)}</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="p-3">
             <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Total Out</p>
-            <p className="text-xl font-semibold font-mono mt-1 text-red-600">{KES(totalOut)}</p>
+            <p className="text-xl font-semibold font-mono mt-1 text-red-600">{money(totalOut)}</p>
           </CardContent>
         </Card>
         <Card className={net >= 0 ? "border-emerald-600/30" : "border-red-600/30"}>
           <CardContent className="p-3">
             <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Net</p>
             <p className={`text-xl font-semibold font-mono mt-1 ${net >= 0 ? "text-emerald-600" : "text-red-600"}`}>
-              {net >= 0 ? "+" : ""}{KES(net)}
+              {net >= 0 ? "+" : ""}{money(net)}
             </p>
           </CardContent>
         </Card>
@@ -489,8 +493,8 @@ function CashflowView() {
                       {new Date(d.day).toLocaleDateString(intlLocale(), { day: "2-digit", month: "short" })}
                     </div>
                     <div className="flex-1 flex gap-px h-3.5">
-                      <div className="bg-emerald-500/70 rounded-l" style={{ width: `${(d.cash_in / maxBar) * 50}%` }} title={`In: ${KES(d.cash_in)}`} />
-                      <div className="bg-red-500/70 rounded-r" style={{ width: `${(d.cash_out / maxBar) * 50}%` }} title={`Out: ${KES(d.cash_out)}`} />
+                      <div className="bg-emerald-500/70 rounded-l" style={{ width: `${(d.cash_in / maxBar) * 50}%` }} title={`In: ${money(d.cash_in)}`} />
+                      <div className="bg-red-500/70 rounded-r" style={{ width: `${(d.cash_out / maxBar) * 50}%` }} title={`Out: ${money(d.cash_out)}`} />
                     </div>
                     <div className={`w-20 text-right text-[10px] font-mono ${d.net >= 0 ? "text-emerald-700" : "text-red-700"}`}>
                       {d.net >= 0 ? "+" : ""}{d.net.toFixed(0)}
@@ -524,8 +528,8 @@ function CashflowView() {
                   {bySource.map((s) => (
                     <tr key={s.source} className="border-b border-border/60">
                       <td className="py-1.5">{s.source}</td>
-                      <td className="py-1.5 text-right tabular-nums font-mono text-emerald-600">{s.cash_in > 0 ? KES(s.cash_in) : "—"}</td>
-                      <td className="py-1.5 text-right tabular-nums font-mono text-red-600">{s.cash_out > 0 ? KES(s.cash_out) : "—"}</td>
+                      <td className="py-1.5 text-right tabular-nums font-mono text-emerald-600">{s.cash_in > 0 ? money(s.cash_in) : "—"}</td>
+                      <td className="py-1.5 text-right tabular-nums font-mono text-red-600">{s.cash_out > 0 ? money(s.cash_out) : "—"}</td>
                       <td className="py-1.5 text-right tabular-nums text-muted-foreground">{s.count}</td>
                     </tr>
                   ))}
@@ -536,5 +540,14 @@ function CashflowView() {
         </Card>
       </div>
     </div>
+  );
+}
+
+export function BankingPage() {
+  return (
+    <>
+      <MobileRouteContext />
+      <BankingPageContent />
+    </>
   );
 }

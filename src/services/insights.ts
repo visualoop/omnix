@@ -18,6 +18,7 @@
 import { query } from "@/lib/db";
 import { getActiveBranchId } from "@/stores/active-branch";
 import { cogsExpr } from "@/services/cogs";
+import { money } from "@/lib/money";
 
 /* ─────────────────────────────────────────────────────────────────────────
  * Reorder suggestions — not just "what's low" but "how much to buy".
@@ -598,7 +599,7 @@ export async function topFindings(): Promise<Finding[]> {
       kind: "expiry",
       severity: "warning",
       headline: `${expiry.items.length} batch${expiry.items.length === 1 ? "" : "es"} expiring within 30 days`,
-      detail: `KES ${expiry.total_value.toLocaleString()} of stock at risk. Earliest: ${expiry.items[0].name} in ${expiry.items[0].days_to_expiry} days.`,
+      detail: `${money(expiry.total_value)} of stock at risk. Earliest: ${expiry.items[0].name} in ${expiry.items[0].days_to_expiry} days.`,
       route: "/pharmacy/expiry",
       metric: expiry.total_value,
     });
@@ -608,7 +609,7 @@ export async function topFindings(): Promise<Finding[]> {
     findings.push({
       kind: "dead_stock",
       severity: "info",
-      headline: `${dead.items.length} dead-stock item${dead.items.length === 1 ? "" : "s"} worth KES ${dead.total_value.toLocaleString()}`,
+      headline: `${dead.items.length} dead-stock item${dead.items.length === 1 ? "" : "s"} worth ${money(dead.total_value)}`,
       detail: `Capital tied up in stock that hasn't sold in 60+ days. Biggest: ${dead.items[0]?.name}.`,
       route: "/inventory",
       metric: dead.total_value,
@@ -633,8 +634,8 @@ export async function topFindings(): Promise<Finding[]> {
       severity: "warning",
       headline: `Revenue down ${Math.abs(rev.delta_pct)}% vs the previous ${rev.window_days} days`,
       detail: rev.top_losers.length > 0
-        ? `Biggest drop: ${rev.top_losers[0].name} (KES ${Math.abs(rev.top_losers[0].delta).toLocaleString()}).`
-        : `KES ${Math.abs(rev.delta).toLocaleString()} less than the prior period.`,
+        ? `Biggest drop: ${rev.top_losers[0].name} (${money(Math.abs(rev.top_losers[0].delta))}).`
+        : `${money(Math.abs(rev.delta))} less than the prior period.`,
       route: "/reports",
       metric: rev.delta_pct,
     });

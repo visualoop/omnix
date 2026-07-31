@@ -18,6 +18,7 @@
  * drives the client-side popup and reports what the popup told us.
  */
 import PaystackPop from "@paystack/inline-js";
+import { getPaystackCurrency } from "@/lib/paystack-currency";
 
 export interface PaystackPopupArgs {
   /** Paystack PUBLIC key (pk_test_… / pk_live_…). Never the secret. */
@@ -25,7 +26,7 @@ export interface PaystackPopupArgs {
   /** Customer email — Paystack requires one. Use a store-level fallback
    *  (e.g. sales@business) when the customer is anonymous. */
   email: string;
-  /** Amount in KES (major units). Converted to the minor unit inside. */
+  /** Amount in KES major units. Other launch-country currencies are rejected explicitly. */
   amountKes: number;
   /** Our transaction reference so we can reconcile + verify server-side. */
   reference: string;
@@ -43,8 +44,8 @@ export interface PaystackPopupResult {
  * Open the Paystack Popup for a transaction. Resolves when the customer
  * completes or dismisses the popup.
  *
- * KES is a zero-subunit-sensitive currency on Paystack: amounts are
- * still passed in the minor unit (cents), so we multiply by 100.
+ * Paystack receives amounts in its minor unit, so major-unit values are
+ * multiplied by 100 before submission.
  */
 export function payByPaystackPopup(args: PaystackPopupArgs): Promise<PaystackPopupResult> {
   return new Promise((resolve) => {
@@ -54,7 +55,7 @@ export function payByPaystackPopup(args: PaystackPopupArgs): Promise<PaystackPop
         key: args.publicKey,
         email: args.email,
         amount: Math.round(args.amountKes * 100),
-        currency: "KES",
+        currency: getPaystackCurrency(),
         reference: args.reference,
         metadata: args.metadata,
         onSuccess: (txn: { reference: string }) => {

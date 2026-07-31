@@ -7,6 +7,8 @@
  *
  * Tabs: Items · Payments · Audit
  */
+import { MobileRouteContext } from "@/components/shared/mobile-route-context";
+import { money } from "@/lib/money";
 import { useEffect, useState } from "react"
 import { useParams, useNavigate } from "react-router-dom"
 import { Breadcrumbs } from "@/components/ui/breadcrumbs"
@@ -22,8 +24,6 @@ import { useEntityHistory } from "@/hooks/use-entity-history"
 import { Printer, ArrowUUpLeft } from "@phosphor-icons/react"
 import { format } from "date-fns"
 
-const KES = (n: number) =>
-  new Intl.NumberFormat("en-KE", { style: "currency", currency: "KES", maximumFractionDigits: 2 }).format(n)
 
 interface SaleItemRow {
   id: string
@@ -46,7 +46,7 @@ interface SaleWithDetails extends Sale {
   customer_name?: string | null
 }
 
-export function SaleDetailPage() {
+function SaleDetailPageContent() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const [sale, setSale] = useState<SaleWithDetails | null>(null)
@@ -150,10 +150,10 @@ export function SaleDetailPage() {
         }
         stats={[
           { label: "Items", value: items.length },
-          { label: "Subtotal", value: KES(sale.subtotal) },
-          { label: "Tax", value: KES(sale.tax_amount) },
-          { label: "Discount", value: KES(sale.discount_amount), tone: sale.discount_amount > 0 ? "positive" : "muted" },
-          { label: "Total", value: KES(sale.total) },
+          { label: "Subtotal", value: money(sale.subtotal) },
+          { label: "Tax", value: money(sale.tax_amount) },
+          { label: "Discount", value: money(sale.discount_amount), tone: sale.discount_amount > 0 ? "positive" : "muted" },
+          { label: "Total", value: money(sale.total) },
         ]}
       />
       <LazyTabs
@@ -186,9 +186,9 @@ function ItemsTab({ items }: { items: SaleItemRow[] }) {
           <tr key={it.id} className="border-b border-foreground/5">
             <td className="py-2.5">{it.product_name}</td>
             <td className="text-right tabular-nums">{it.quantity}</td>
-            <td className="text-right font-mono tabular-nums">{KES(it.unit_price)}</td>
-            <td className="text-right font-mono tabular-nums text-muted-foreground">{it.discount > 0 ? KES(it.discount) : "—"}</td>
-            <td className="text-right font-mono tabular-nums">{KES(it.total)}</td>
+            <td className="text-right font-mono tabular-nums">{money(it.unit_price)}</td>
+            <td className="text-right font-mono tabular-nums text-muted-foreground">{it.discount > 0 ? money(it.discount) : "—"}</td>
+            <td className="text-right font-mono tabular-nums">{money(it.total)}</td>
           </tr>
         ))}
       </tbody>
@@ -208,7 +208,7 @@ function PaymentsTab({ payments }: { payments: PaymentRow[] }) {
               {p.reference ?? "—"} · {format(new Date(p.created_at), "d MMM yyyy HH:mm")}
             </span>
           </div>
-          <span className="font-mono text-[13px] tabular-nums">{KES(p.amount)}</span>
+          <span className="font-mono text-[13px] tabular-nums">{money(p.amount)}</span>
         </li>
       ))}
     </ul>
@@ -234,4 +234,13 @@ function AuditTab({ id }: { id: string }) {
       ))}
     </ol>
   )
+}
+
+export function SaleDetailPage() {
+  return (
+    <>
+      <MobileRouteContext />
+      <SaleDetailPageContent />
+    </>
+  );
 }

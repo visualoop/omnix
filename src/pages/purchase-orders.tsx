@@ -1,3 +1,4 @@
+import { MobileRouteContext } from "@/components/shared/mobile-route-context";
 import { useState, useEffect, useCallback } from "react";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
 import {
@@ -34,7 +35,7 @@ import { toast } from "sonner";
 import { useTrialWriteGuard } from "@/components/trial-lifecycle";
 import { money } from "@/lib/money";
 
-export function PurchaseOrdersPage() {
+function PurchaseOrdersPageContent() {
   const [filter, setFilter] = useState<"all" | "draft" | "sent" | "partial" | "received">("all");
   const navigate = useNavigate();
 
@@ -146,7 +147,7 @@ interface CartItem {
   unit_cost: number;
 }
 
-export function NewPurchaseOrderPage() {
+function NewPurchaseOrderPageContent() {
   const trialGuard = useTrialWriteGuard();
   const [, setSuppliers] = useState<Supplier[]>([]);
   const [supplierId, setSupplierId] = useState("");
@@ -243,7 +244,7 @@ export function NewPurchaseOrderPage() {
         <h1 className="text-xl font-semibold tracking-tight">New Purchase Order</h1>
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div className="space-y-3">
           <Field label="Supplier *">
             <EntityCombobox
@@ -293,7 +294,7 @@ export function NewPurchaseOrderPage() {
               >
                 <div className="font-medium">{p.name}</div>
                 <div className="text-xs text-muted-foreground">
-                  Cost: KES {p.buying_price.toFixed(2)} · Stock: {p.stock_qty}
+                  Cost: {money(p.buying_price)} · Stock: {p.stock_qty}
                 </div>
               </button>
             ))}
@@ -338,7 +339,7 @@ export function NewPurchaseOrderPage() {
               ))}
               <tr className="bg-muted/20 font-semibold">
                 <td colSpan={3} className="px-3 py-2 text-right">Total:</td>
-                <td className="px-3 py-2 text-right font-mono">KES {total.toFixed(2)}</td>
+                <td className="px-3 py-2 text-right font-mono">{money(total)}</td>
                 <td></td>
               </tr>
             </tbody>
@@ -363,7 +364,7 @@ export function NewPurchaseOrderPage() {
   );
 }
 
-export function PurchaseOrderDetailPage() {
+function PurchaseOrderDetailPageContent() {
   const { id } = useParams<{ id: string }>();
   const [data, setData] = useState<{ po: PurchaseOrder; items: Awaited<ReturnType<typeof getPurchaseOrder>> extends infer R ? R extends { items: infer I } ? I : never : never } | null>(null);
   const [showReceive, setShowReceive] = useState(false);
@@ -384,7 +385,7 @@ export function PurchaseOrderDetailPage() {
 
   return (
     <div className="space-y-5 max-w-5xl">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
         <div className="flex items-center gap-3">
           <Button variant="ghost" size="sm" onClick={() => navigate("/purchase-orders")}>
             <ArrowLeft className="h-4 w-4" />
@@ -394,7 +395,7 @@ export function PurchaseOrderDetailPage() {
             <p className="text-sm text-muted-foreground mt-0.5">{po.supplier_name}</p>
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex w-full flex-wrap items-center gap-2 lg:w-auto">
           <POStatusBadge status={po.status} />
           <ShareDocMenu
             getPdf={() => buildPurchaseOrderPdf(po, items)}
@@ -413,7 +414,7 @@ export function PurchaseOrderDetailPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-3 sm:gap-3">
         <InfoCard label="Order Date" value={po.order_date} />
         <InfoCard label="Expected" value={po.expected_date || "—"} />
         <InfoCard label="Total" value={money(po.total)} />
@@ -662,5 +663,32 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
       <label className="text-xs font-medium text-muted-foreground">{label}</label>
       {children}
     </div>
+  );
+}
+
+export function PurchaseOrdersPage() {
+  return (
+    <>
+      <MobileRouteContext />
+      <PurchaseOrdersPageContent />
+    </>
+  );
+}
+
+export function NewPurchaseOrderPage() {
+  return (
+    <>
+      <MobileRouteContext />
+      <NewPurchaseOrderPageContent />
+    </>
+  );
+}
+
+export function PurchaseOrderDetailPage() {
+  return (
+    <>
+      <MobileRouteContext />
+      <PurchaseOrderDetailPageContent />
+    </>
   );
 }

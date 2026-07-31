@@ -12,6 +12,8 @@
  * Update the constants below when KRA / NSSF announce new rates.
  */
 import { query, execute } from "@/lib/db";
+import type { CountryCode } from "@/lib/countries";
+import { useCountry } from "@/stores/country";
 
 // ─── Constants (as of February 2026) ────────────────────────────────
 export const PAYROLL_RATES_2026 = {
@@ -49,6 +51,7 @@ export const PAYROLL_RATES_2026 = {
 };
 
 export interface PayrollInput {
+  country_code?: CountryCode | null;
   base_salary: number;
   overtime?: number;
   commission?: number;
@@ -127,6 +130,44 @@ export function calculatePayroll(input: PayrollInput): PayrollOutput {
   const allowances = input.allowances || 0;
   const other_earnings = input.other_earnings || 0;
   const gross = base + overtime + commission + bonus + allowances + other_earnings;
+  const countryCode = input.country_code ?? useCountry.getState().code ?? "KE";
+
+  // Country payroll engines are deliberately not guessed. Until a local
+  // statutory engine exists, non-Kenyan businesses receive only explicitly
+  // entered deductions — never Kenya's PAYE/NSSF/SHIF/AHL/NITA values.
+  if (countryCode !== "KE") {
+    const advances = input.advances || 0;
+    const loans = input.loans || 0;
+    const otherDeductions = input.other_deductions || 0;
+    const deductionsTotal = advances + loans + otherDeductions;
+    const round = (n: number) => Math.round(n * 100) / 100;
+    return {
+      base_salary: round(base),
+      overtime: round(overtime),
+      commission: round(commission),
+      bonus: round(bonus),
+      allowances: round(allowances),
+      other_earnings: round(other_earnings),
+      gross_pay: round(gross),
+      nssf_employee: 0,
+      taxable_income: 0,
+      paye_before_relief: 0,
+      personal_relief: 0,
+      insurance_relief: 0,
+      paye: 0,
+      shif: 0,
+      housing_levy_employee: 0,
+      advances: round(advances),
+      loans: round(loans),
+      other_deductions: round(otherDeductions),
+      deductions_total: round(deductionsTotal),
+      net_pay: round(gross - deductionsTotal),
+      nssf_employer: 0,
+      housing_levy_employer: 0,
+      nita_levy: 0,
+      total_employer_cost: round(gross),
+    };
+  }
 
   // NSSF (employee, capped, deducted pre-tax)
   const nssfPensionable = Math.min(gross, r.nssf.upper_earnings_limit);
@@ -301,9 +342,10 @@ export async function createPayrollRun(input: {
   let grossTotal = 0;
   let deductionsTotal = 0;
   let netTotal = 0;
+  const countryCode = useCountry.getState().code ?? "KE";
 
   for (const emp of employees) {
-    const calc = calculatePayroll({ base_salary: emp.base_salary });
+    const calc = calculatePayroll({ base_salary: emp.base_salary, country_code: countryCode });
     const payslipId = crypto.randomUUID();
     await execute(
       `INSERT INTO payslips (

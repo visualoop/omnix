@@ -75,6 +75,63 @@ export interface CountryProfile {
   isSanctioned?: boolean;
 }
 
+export interface CountryFieldMetadata {
+  addressPlaceholder: string;
+  taxIdLabel: string;
+  taxIdPlaceholder: string;
+  registrationLabel: string;
+  registrationPlaceholder: string;
+  timezone: string;
+}
+
+const NEUTRAL_FIELD_METADATA: CountryFieldMetadata = {
+  addressPlaceholder: "Enter the business street, town, and region",
+  taxIdLabel: "Tax identification number",
+  taxIdPlaceholder: "Enter the business tax ID",
+  registrationLabel: "Registration number",
+  registrationPlaceholder: "Enter the business registration number",
+  timezone: "UTC",
+};
+
+const COUNTRY_FIELD_METADATA: Partial<Record<CountryCode, CountryFieldMetadata>> = {
+  KE: {
+    addressPlaceholder: "e.g. Moi Avenue, Nairobi",
+    taxIdLabel: "KRA PIN",
+    taxIdPlaceholder: "e.g. P051234567X",
+    registrationLabel: "Business registration number",
+    registrationPlaceholder: "Enter the business registration number",
+    timezone: "Africa/Nairobi",
+  },
+  UG: {
+    addressPlaceholder: "e.g. Kampala Road, Kampala",
+    taxIdLabel: "URA TIN",
+    taxIdPlaceholder: "e.g. 1000123456",
+    registrationLabel: "Business registration number",
+    registrationPlaceholder: "Enter the business registration number",
+    timezone: "Africa/Kampala",
+  },
+  TZ: {
+    addressPlaceholder: "e.g. Samora Avenue, Dar es Salaam",
+    taxIdLabel: "TRA TIN",
+    taxIdPlaceholder: "e.g. 100-123-456",
+    registrationLabel: "Business registration number",
+    registrationPlaceholder: "Enter the business registration number",
+    timezone: "Africa/Dar_es_Salaam",
+  },
+  RW: {
+    addressPlaceholder: "e.g. KN 4 Avenue, Kigali",
+    taxIdLabel: "RRA TIN",
+    taxIdPlaceholder: "e.g. 123456789",
+    registrationLabel: "Business registration number",
+    registrationPlaceholder: "Enter the business registration number",
+    timezone: "Africa/Kigali",
+  },
+};
+
+export function getCountryFieldMetadata(code: CountryCode | null | undefined): CountryFieldMetadata {
+  return (code && COUNTRY_FIELD_METADATA[code]) || NEUTRAL_FIELD_METADATA;
+}
+
 /* ── Sanctioned (OFAC + EU export-control) ─────────────────────── */
 const SANCTIONED_CODES = new Set<CountryCode>([
   "CU", // Cuba
@@ -485,7 +542,7 @@ export function listCountries(): CountryProfile[] {
 
 
 /** Countries currently offered during first-run setup, in display order. */
-export const SETUP_COUNTRY_CODES = ["KE", "UG", "TZ", "RW", "BI"] as const;
+export const SETUP_COUNTRY_CODES = ["KE", "UG", "TZ", "RW"] as const;
 
 export function listSetupCountries(): CountryProfile[] {
   return SETUP_COUNTRY_CODES

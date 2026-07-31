@@ -1,5 +1,7 @@
 import { query, execute } from "@/lib/db";
 import { getActiveBranchId, requireActiveBranchId } from "@/stores/active-branch";
+import { getCountry } from "@/lib/countries";
+import { useCountry } from "@/stores/country";
 
 export interface Product {
   id: string;
@@ -118,15 +120,15 @@ export async function getProduct(id: string): Promise<Product | null> {
 
 export async function createProduct(input: CreateProductInput): Promise<string> {
   const id = crypto.randomUUID();
-  // Resolve effective tax rate: explicit on input → use it; else fall back
-  // to the default in settings (`tax.default_rate`); else 16% as last resort.
+  // Resolve effective tax rate: explicit input → saved default → country profile.
   let effectiveTaxRate = input.tax_rate;
   if (effectiveTaxRate === undefined || effectiveTaxRate === null) {
     const rows = await query<{ value: string }>(
       `SELECT value FROM settings WHERE key = 'tax.default_rate' LIMIT 1`,
     );
     const fromSettings = rows[0]?.value ? parseFloat(rows[0].value) : NaN;
-    effectiveTaxRate = Number.isFinite(fromSettings) ? fromSettings : 16.0;
+    const countryDefault = getCountry(useCountry.getState().code ?? "")?.defaultTaxRate ?? 0;
+    effectiveTaxRate = Number.isFinite(fromSettings) ? fromSettings : countryDefault;
   }
   await execute(
     `INSERT INTO products (id, name, sku, barcode, category_id, unit, description, reorder_level, tax_rate)

@@ -1,3 +1,4 @@
+import { MobileRouteContext } from "@/components/shared/mobile-route-context";
 import { useEffect, useState, useCallback } from "react";
 import { Bank, Link as LinkIcon, X } from "@phosphor-icons/react";
 import { useParams } from "react-router-dom";
@@ -15,7 +16,7 @@ import {
 import { intlLocale } from "@/lib/intl";
 
 import { BackButton } from "@/components/ui/back-button";
-export function BankReconciliationPage() {
+function BankReconciliationPageContent() {
   const { id: bankAccountId } = useParams<{ id: string }>();
   const [lines, setLines] = useState<StatementLine[]>([]);
   const [txns, setTxns] = useState<BookTxn[]>([]);
@@ -63,7 +64,7 @@ export function BankReconciliationPage() {
       </header>
 
       {summary && (
-        <div className="grid grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 gap-2 lg:grid-cols-4 lg:gap-3">
           {[
             { label: "Statement total", value: fmt(summary.statement_total) },
             { label: "Book total", value: fmt(summary.book_total) },
@@ -78,7 +79,7 @@ export function BankReconciliationPage() {
         </div>
       )}
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <section className="rounded-lg border border-border">
           <div className="px-3 py-2 border-b border-border text-[12px] font-semibold uppercase tracking-wider">
             Statement lines
@@ -157,5 +158,14 @@ export function BankReconciliationPage() {
         </section>
       </div>
     </div>
+  );
+}
+
+export function BankReconciliationPage() {
+  return (
+    <>
+      <MobileRouteContext />
+      <BankReconciliationPageContent />
+    </>
   );
 }

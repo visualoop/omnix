@@ -1,3 +1,4 @@
+import { MobileRouteContext } from "@/components/shared/mobile-route-context";
 import { Link } from "react-router-dom";
 import {
   ArrowsLeftRight as ArrowLeftRight,
@@ -17,6 +18,8 @@ import {
   Warning as AlertTriangle,
 } from "@phosphor-icons/react";
 import { intlLocale } from "@/lib/intl";
+import { taxLabel } from "@/lib/locale";
+import { useCountry } from "@/stores/country";
 
 interface ReportLink {
   to: string;
@@ -148,7 +151,10 @@ const categories = [
   { id: "pharmacy", label: "Pharmacy", icon: Pill },
 ] as const;
 
-export function ReportsIndexPage() {
+function ReportsIndexPageContent() {
+  const countryCode = useCountry((state) => state.code);
+  const activeTaxLabel = taxLabel(countryCode);
+  const visibleReports = reports.filter((report) => report.to !== "/etims" || countryCode === "KE");
   const today = new Date().toLocaleDateString(intlLocale(), {
     weekday: "long",
     day: "numeric",
@@ -158,19 +164,19 @@ export function ReportsIndexPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-start justify-between">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h1 className="text-xl font-semibold tracking-tight">Reports</h1>
           <p className="text-sm text-muted-foreground mt-1">All reports and analytics in one place</p>
         </div>
-        <div className="text-right">
+        <div className="text-left sm:text-right">
           <Calendar className="h-4 w-4 text-muted-foreground inline mr-1.5" />
           <span className="text-xs text-muted-foreground">{today}</span>
         </div>
       </div>
 
       {categories.map((cat) => {
-        const items = reports.filter((r) => r.category === cat.id);
+        const items = visibleReports.filter((r) => r.category === cat.id);
         if (items.length === 0) return null;
         return (
           <section key={cat.id}>
@@ -192,9 +198,13 @@ export function ReportsIndexPage() {
                       <report.icon className="h-4 w-4 text-primary" />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <h3 className="text-sm font-medium">{report.title}</h3>
+                      <h3 className="text-sm font-medium">
+                        {report.to === "/vat-report" ? `${activeTaxLabel} Return` : report.title}
+                      </h3>
                       <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
-                        {report.description}
+                        {report.to === "/vat-report" && countryCode !== "KE"
+                          ? `${activeTaxLabel} summary for the selected filing period`
+                          : report.description}
                       </p>
                     </div>
                   </div>
@@ -205,5 +215,14 @@ export function ReportsIndexPage() {
         );
       })}
     </div>
+  );
+}
+
+export function ReportsIndexPage() {
+  return (
+    <>
+      <MobileRouteContext />
+      <ReportsIndexPageContent />
+    </>
   );
 }

@@ -8,6 +8,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { query, execute } from "@/lib/db";
 import { toast } from "sonner";
+import { useCountry } from "@/stores/country";
+import { addressPlaceholder, phonePlaceholder } from "@/lib/locale";
 
 interface Business {
   id: string;
@@ -19,6 +21,7 @@ interface Business {
 }
 
 export function SettingsPage() {
+  const countryCode = useCountry((state) => state.code);
   const [business, setBusiness] = useState<Business | null>(null);
   const [form, setForm] = useState({ name: "", address: "", phone: "", email: "" });
   const [saving, setSaving] = useState(false);
@@ -104,7 +107,7 @@ export function SettingsPage() {
               <Input
                 value={form.phone}
                 onChange={(event) => update("phone", event.target.value)}
-                placeholder="0700 000 000"
+                placeholder={phonePlaceholder(countryCode)}
                 inputMode="tel"
               />
             </Field>
@@ -113,7 +116,7 @@ export function SettingsPage() {
                 type="email"
                 value={form.email}
                 onChange={(event) => update("email", event.target.value)}
-                placeholder="info@business.co.ke"
+                placeholder="info@business.example"
               />
             </Field>
           </div>
@@ -121,7 +124,7 @@ export function SettingsPage() {
             <Input
               value={form.address}
               onChange={(event) => update("address", event.target.value)}
-              placeholder="e.g. Moi Avenue, Nairobi"
+              placeholder={addressPlaceholder(countryCode)}
             />
           </Field>
           <Field label="Business module">

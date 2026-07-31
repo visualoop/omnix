@@ -12,13 +12,14 @@ import {
   type Currency, type ExchangeRate,
 } from "@/services/currencies";
 import { intlLocale } from "@/lib/intl";
+import { getBusinessCurrencyCode } from "@/stores/country";
 
 export function CurrenciesPage() {
   const [currencies, setCurrencies] = useState<Currency[]>([]);
   const [rates, setRates] = useState<ExchangeRate[]>([]);
   const [loading, setLoading] = useState(true);
   const [fromCode, setFromCode] = useState("USD");
-  const [toCode, setToCode] = useState("KES");
+  const [toCode, setToCode] = useState(getBusinessCurrencyCode);
   const [rate, setRateInput] = useState("");
   const [asOfDate, setAsOfDate] = useState(new Date().toISOString().slice(0, 10));
 
@@ -49,7 +50,7 @@ export function CurrenciesPage() {
       <PageHeader
         eyebrow="Money"
         title="Currencies & FX rates"
-        description="Base currency is KES. Add rates for other currencies so you can price invoices in USD, EUR, UGX, etc. Reports convert everything back to KES at the rate captured on the transaction date."
+        description={`Base currency is ${getBusinessCurrencyCode()}. Add rates for other currencies; reports convert back to the base at the rate captured on each transaction date.`}
         back={{ fallback: "/settings" }}
         actions={<RefreshFxButton onRefreshed={load} />}
       />

@@ -7,13 +7,13 @@
  * The full receive workflow still lives on the PO detail page — this
  * is the audit / search view.
  */
+import { MobileRouteContext } from "@/components/shared/mobile-route-context";
 import { useEffect, useState } from "react";
 import { CalendarBlank, Package, Warning } from "@phosphor-icons/react";
 import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { query } from "@/lib/db";
-import { money as KES } from "@/lib/money";
+import { money } from "@/lib/money";
 import { cn } from "@/lib/utils";
 import { useNavigate } from "react-router-dom";
 
@@ -31,7 +31,7 @@ interface GRN {
   item_count: number;
 }
 
-export function GoodsReceiptsPage() {
+function GoodsReceiptsPageContent() {
   const [rows, setRows] = useState<GRN[]>([]);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
@@ -136,7 +136,7 @@ export function GoodsReceiptsPage() {
                   </td>
                   <td className="px-3 py-2 text-right font-mono tabular-nums">{r.item_count}</td>
                   <td className="px-3 py-2 text-right">
-                    <span className="font-mono tabular-nums font-medium">{KES(r.total)}</span>
+                    <span className="font-mono tabular-nums font-medium">{money(r.total)}</span>
                     {r.reversed_at ? (
                       <div className="text-[9px] text-rose-600 inline-flex items-center gap-0.5 mt-0.5">
                         <Warning className="h-2.5 w-2.5" /> reversed
@@ -153,5 +153,12 @@ export function GoodsReceiptsPage() {
   );
 }
 
-/** Silence unused import if some icons stay unused after minor edits. */
-export const _GoodsReceiptsBadge = Badge;
+
+export function GoodsReceiptsPage() {
+  return (
+    <>
+      <MobileRouteContext />
+      <GoodsReceiptsPageContent />
+    </>
+  );
+}

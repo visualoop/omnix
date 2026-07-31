@@ -1,3 +1,4 @@
+import { MobileRouteContext } from "@/components/shared/mobile-route-context";
 import { useEffect, useState } from "react";
 import {
   CaretLeft as ChevronLeft,
@@ -27,7 +28,7 @@ const STATUS_OPTIONS: { value: AttendanceStatus; label: string; color: string }[
   { value: "half-day", label: "½", color: "bg-teal-500 text-white" },
 ];
 
-export function AttendancePage() {
+function AttendancePageContent() {
   const [employees, setEmployees] = useState<EmployeeWithDetails[]>([]);
   const [records, setRecords] = useState<AttendanceWithEmployee[]>([]);
   const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
@@ -92,7 +93,7 @@ export function AttendancePage() {
         }
       />
 
-      <div className="grid grid-cols-5 gap-3">
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5 lg:gap-3">
         <Stat label="Present" value={counts.present} color="text-emerald-600" />
         <Stat label="Absent" value={counts.absent} color="text-red-600" />
         <Stat label="Sick" value={counts.sick} color="text-amber-600" />
@@ -203,4 +204,13 @@ function addDays(dateStr: string, n: number): string {
 
 function formatTime(iso: string): string {
   return new Date(iso).toLocaleTimeString(intlLocale(), { hour: "2-digit", minute: "2-digit", hour12: false });
+}
+
+export function AttendancePage() {
+  return (
+    <>
+      <MobileRouteContext />
+      <AttendancePageContent />
+    </>
+  );
 }

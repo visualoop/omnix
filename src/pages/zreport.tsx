@@ -1,3 +1,4 @@
+import { MobileRouteContext } from "@/components/shared/mobile-route-context";
 import { useState, useEffect } from "react";
 import {
   Calendar,
@@ -16,7 +17,7 @@ import { ai } from "@/services/ai";
 import { Sparkle as Sparkles } from "@phosphor-icons/react";
 
 import { BackButton } from "@/components/ui/back-button";
-export function ZReportPage() {
+function ZReportPageContent() {
   const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
   const [report, setReport] = useState<ZReport | null>(null);
   const [loading, setLoading] = useState(false);
@@ -75,7 +76,7 @@ export function ZReportPage() {
 
   return (
     <div className="space-y-5">
-      <div className="flex items-start justify-between">
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
         <div>
           <BackButton fallback="/reports" />
           <h1 className="text-xl font-semibold tracking-tight flex items-center gap-2">
@@ -88,14 +89,14 @@ export function ZReportPage() {
             then Z at close to hand over to the owner.
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="grid w-full grid-cols-1 gap-2 sm:grid-cols-[160px_1fr_1fr] lg:flex lg:w-auto">
           <div className="relative">
             <Calendar className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground pointer-events-none" />
             <Input
               type="date"
               value={date}
               onChange={(e) => setDate(e.target.value)}
-              className="pl-8 w-[160px]"
+              className="w-full pl-8 sm:w-[160px]"
             />
           </div>
           <Button onClick={handlePrintX} variant="outline" disabled={!report || loading}>
@@ -241,5 +242,14 @@ function Row({ label, value, bold, positive, negative }: {
         {value}
       </span>
     </div>
+  );
+}
+
+export function ZReportPage() {
+  return (
+    <>
+      <MobileRouteContext />
+      <ZReportPageContent />
+    </>
   );
 }

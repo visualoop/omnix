@@ -1,9 +1,9 @@
 /**
  * Multi-currency support.
  *
- * Base currency = KES. Every money field defaults to KES; opting-in on an
- * invoice / expense / etc. means storing (amount, currency, fx_rate_at_capture).
- * Reports convert everything back to KES using the recorded fx_rate.
+ * The base currency comes from the persisted business country. Opting in on
+ * an invoice / expense / etc. stores (amount, currency, fx_rate_at_capture).
+ * Reports convert back to that immutable base using the captured rate.
  *
  * Rate source: 'manual' (owner types it) or 'cbk' (CBK daily rate, fetched
  * by a scheduled task — not yet wired). Historic rates persist so reports

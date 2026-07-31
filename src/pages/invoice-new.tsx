@@ -1,3 +1,7 @@
+import { MobileRouteContext } from "@/components/shared/mobile-route-context";
+import { money } from "@/lib/money";
+import { phonePlaceholder } from "@/lib/locale";
+import { useCountry } from "@/stores/country";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
@@ -35,8 +39,9 @@ interface Props {
   type: "invoice" | "quotation";
 }
 
-export function NewDocumentPage({ type }: Props) {
+function NewDocumentPageContent({ type }: Props) {
   const navigate = useNavigate();
+  const countryCode = useCountry((state) => state.code);
   const userId = useAuthStore((s) => s.user?.id);
   const trialGuard = useTrialWriteGuard();
   const [customer, setCustomer] = useState({
@@ -252,13 +257,15 @@ export function NewDocumentPage({ type }: Props) {
               </div>
             )}
           </div>
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
             <Input
               value={customer.customer_phone}
               onChange={(e) => setCustomer({ ...customer, customer_phone: e.target.value })}
-              placeholder="Phone"
+              placeholder={phonePlaceholder(countryCode)}
+              inputMode="tel"
             />
             <Input
+              type="email"
               value={customer.customer_email}
               onChange={(e) => setCustomer({ ...customer, customer_email: e.target.value })}
               placeholder="Email"
@@ -269,7 +276,7 @@ export function NewDocumentPage({ type }: Props) {
             onChange={(e) => setCustomer({ ...customer, customer_address: e.target.value })}
             placeholder="Address"
           />
-          {type === "invoice" && (
+          {type === "invoice" && countryCode === "KE" && (
             <Input
               value={customer.customer_tax_pin}
               onChange={(e) => setCustomer({ ...customer, customer_tax_pin: e.target.value })}
@@ -305,7 +312,7 @@ export function NewDocumentPage({ type }: Props) {
                     className="w-full text-left px-3 py-1.5 text-xs hover:bg-accent flex justify-between"
                   >
                     <span>{p.name}</span>
-                    <span className="text-muted-foreground tabular-nums">KES {p.selling_price}</span>
+                    <span className="text-muted-foreground tabular-nums">{money(p.selling_price)}</span>
                   </button>
                 ))}
               </div>
@@ -400,7 +407,7 @@ export function NewDocumentPage({ type }: Props) {
             </div>
             <div className="flex justify-between text-base font-semibold border-t border-border pt-2">
               <span>Total</span>
-              <span className="font-mono tabular-nums">KES {total.toFixed(2)}</span>
+              <span className="font-mono tabular-nums">{money(total)}</span>
             </div>
           </div>
         </CardContent>
@@ -409,7 +416,7 @@ export function NewDocumentPage({ type }: Props) {
       <Card>
         <CardContent className="p-4 space-y-3">
           <h2 className="font-semibold text-sm">Details</h2>
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div className="space-y-1">
               <label className="text-[11px] font-medium text-muted-foreground">Issue date</label>
               <Input value={issueDate} disabled />
@@ -447,5 +454,14 @@ export function NewDocumentPage({ type }: Props) {
         </Button>
       </div>
     </div>
+  );
+}
+
+export function NewDocumentPage(props: Props) {
+  return (
+    <>
+      <MobileRouteContext />
+      <NewDocumentPageContent {...props} />
+    </>
   );
 }

@@ -77,33 +77,47 @@ export function ShareDocMenu({
   const doDownload = () => withPdf((bytes) => downloadBytes(bytes, filename));
   const doPrint = () => withPdf((bytes) => previewBytes(bytes));
 
-  const doWhatsApp = () => withPdf(async (bytes) => {
-    // Save the PDF so it's ready to attach, then open the chat prefilled.
-    downloadBytes(bytes, filename);
-    const base = waDigits ? `https://wa.me/${waDigits}` : "https://wa.me/";
-    const url = `${base}?text=${encodeURIComponent(message)}`;
-    const { openUrl } = await import("@tauri-apps/plugin-opener");
-    await openUrl(url);
-    toast.info("Attach the downloaded PDF in WhatsApp", { description: "Links can't auto-attach files — the PDF is in your downloads." });
-  });
+  const requireOnline = () => {
+    if (typeof navigator !== "undefined" && !navigator.onLine) {
+      toast.error("You're offline", { description: "Download or print the PDF now, then share it when the connection returns." });
+      return false;
+    }
+    return true;
+  };
 
-  const doEmail = () => withPdf(async (bytes) => {
-    downloadBytes(bytes, filename);
-    const subj = encodeURIComponent(subject || filename);
-    const body = encodeURIComponent(message);
-    const url = `mailto:${email ?? ""}?subject=${subj}&body=${body}`;
-    const { openUrl } = await import("@tauri-apps/plugin-opener");
-    await openUrl(url);
-    toast.info("Attach the downloaded PDF to the email", { description: "The PDF is in your downloads." });
-  });
+  const doWhatsApp = () => {
+    if (!requireOnline()) return;
+    void withPdf(async (bytes) => {
+      // Save the PDF so it's ready to attach, then open the chat prefilled.
+      downloadBytes(bytes, filename);
+      const base = waDigits ? `https://wa.me/${waDigits}` : "https://wa.me/";
+      const url = `${base}?text=${encodeURIComponent(message)}`;
+      const { openUrl } = await import("@tauri-apps/plugin-opener");
+      await openUrl(url);
+      toast.info("Attach the downloaded PDF in WhatsApp", { description: "Links can't auto-attach files — the PDF is in your downloads." });
+    });
+  };
+
+  const doEmail = () => {
+    if (!requireOnline()) return;
+    void withPdf(async (bytes) => {
+      downloadBytes(bytes, filename);
+      const subj = encodeURIComponent(subject || filename);
+      const body = encodeURIComponent(message);
+      const url = `mailto:${email ?? ""}?subject=${subj}&body=${body}`;
+      const { openUrl } = await import("@tauri-apps/plugin-opener");
+      await openUrl(url);
+      toast.info("Attach the downloaded PDF to the email", { description: "The PDF is in your downloads." });
+    });
+  };
 
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger render={<Button variant={variant} size={size} className={className} disabled={busy} />}>
+      <DropdownMenuTrigger render={<Button variant={variant} size={size} className={`min-h-11 lg:min-h-0 ${className ?? ""}`} disabled={busy} />}>
         {busy ? <CircleNotch className="h-4 w-4 mr-1.5 animate-spin" /> : <ShareIcon className="h-4 w-4 mr-1.5" />}
         {label}
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-52">
+      <DropdownMenuContent align="end" className="w-60 [&_[role=menuitem]]:min-h-11 lg:w-52 lg:[&_[role=menuitem]]:min-h-0">
         <DropdownMenuItem onClick={doDownload}><DownloadSimple className="h-4 w-4 mr-2" /> Download PDF</DropdownMenuItem>
         <DropdownMenuItem onClick={doPrint}><Printer className="h-4 w-4 mr-2" /> Print</DropdownMenuItem>
         <DropdownMenuSeparator />

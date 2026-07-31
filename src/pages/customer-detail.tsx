@@ -10,6 +10,8 @@
  *   - Payments   every payment they made
  *   - Activity   merged feed via useEntityHistory
  */
+import { MobileRouteContext } from "@/components/shared/mobile-route-context";
+import { money } from "@/lib/money";
 import { useEffect, useState } from "react"
 import { useParams, useNavigate } from "react-router-dom"
 import { Breadcrumbs } from "@/components/ui/breadcrumbs"
@@ -22,10 +24,8 @@ import { useEntityHistory } from "@/hooks/use-entity-history"
 import { Pencil, ShoppingCart, Receipt as ReceiptIcon } from "@phosphor-icons/react"
 import { format } from "date-fns"
 
-const KES = (n: number) =>
-  new Intl.NumberFormat("en-KE", { style: "currency", currency: "KES", maximumFractionDigits: 0 }).format(n)
 
-export function CustomerDetailPage() {
+function CustomerDetailPageContent() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const [customer, setCustomer] = useState<Customer | null>(null)
@@ -79,7 +79,7 @@ export function CustomerDetailPage() {
         subtitle={[customer.phone, customer.email].filter(Boolean).join(" · ") || "No contact details"}
         badges={
           customer.credit_limit && customer.credit_limit > 0
-            ? [{ label: `Credit ${KES(customer.credit_limit)}`, variant: "outline" }]
+            ? [{ label: `Credit ${money(customer.credit_limit)}`, variant: "outline" }]
             : undefined
         }
         actions={
@@ -96,10 +96,10 @@ export function CustomerDetailPage() {
         }
         stats={[
           { label: "Sales", value: stats?.total_purchases ?? 0 },
-          { label: "Lifetime spend", value: KES(stats?.total_amount ?? 0) },
+          { label: "Lifetime spend", value: money(stats?.total_amount ?? 0) },
           {
             label: "Outstanding",
-            value: KES(stats?.outstanding_balance ?? 0),
+            value: money(stats?.outstanding_balance ?? 0),
             tone: (stats?.outstanding_balance ?? 0) > 0 ? "warning" : "muted",
           },
           {
@@ -128,8 +128,8 @@ function OverviewTab({ customer }: { customer: Customer }) {
       <Field label="Phone" value={customer.phone} />
       <Field label="Email" value={customer.email} />
       <Field label="Address" value={customer.address} className="md:col-span-2" />
-      <Field label="Credit limit" value={customer.credit_limit ? KES(customer.credit_limit) : null} />
-      <Field label="Balance" value={KES(customer.balance ?? 0)} />
+      <Field label="Credit limit" value={customer.credit_limit ? money(customer.credit_limit) : null} />
+      <Field label="Balance" value={money(customer.balance ?? 0)} />
       <Field label="Notes" value={customer.notes} className="md:col-span-2" />
     </div>
   )
@@ -160,7 +160,7 @@ function SalesTab({ id }: { id: string }) {
               <span className="text-[11px] text-muted-foreground">{format(new Date(s.at), "d MMM yyyy · HH:mm")}</span>
             </div>
           </div>
-          <span className="font-mono text-[13px] tabular-nums">{KES(s.amount ?? 0)}</span>
+          <span className="font-mono text-[13px] tabular-nums">{money(s.amount ?? 0)}</span>
         </li>
       ))}
     </ul>
@@ -180,7 +180,7 @@ function PaymentsTab({ id }: { id: string }) {
             <span className="text-[13px] font-medium">{p.label}</span>
             <span className="text-[11px] text-muted-foreground">{format(new Date(p.at), "d MMM yyyy · HH:mm")}</span>
           </div>
-          <span className="font-mono text-[13px] tabular-nums text-emerald-600">{KES(p.amount ?? 0)}</span>
+          <span className="font-mono text-[13px] tabular-nums text-emerald-600">{money(p.amount ?? 0)}</span>
         </li>
       ))}
     </ul>
@@ -204,10 +204,19 @@ function ActivityTab({ id }: { id: string }) {
             {e.summary && <span className="text-[12px] text-muted-foreground">{e.summary}</span>}
           </div>
           {e.amount !== undefined && (
-            <span className="font-mono text-[12px] tabular-nums">{KES(e.amount)}</span>
+            <span className="font-mono text-[12px] tabular-nums">{money(e.amount)}</span>
           )}
         </li>
       ))}
     </ol>
   )
+}
+
+export function CustomerDetailPage() {
+  return (
+    <>
+      <MobileRouteContext />
+      <CustomerDetailPageContent />
+    </>
+  );
 }

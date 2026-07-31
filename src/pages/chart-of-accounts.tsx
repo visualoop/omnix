@@ -1,3 +1,4 @@
+import { MobileRouteContext } from "@/components/shared/mobile-route-context";
 import { useEffect, useState } from "react";
 import { ListNumbers } from "@phosphor-icons/react";
 import { listAccounts, type Account, type AccountType } from "@/services/gl";
@@ -12,7 +13,7 @@ const TYPE_LABEL: Record<AccountType, string> = {
 };
 const TYPE_ORDER: AccountType[] = ["asset", "liability", "equity", "revenue", "expense"];
 
-export function ChartOfAccountsPage() {
+function ChartOfAccountsPageContent() {
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -30,7 +31,7 @@ export function ChartOfAccountsPage() {
           <ListNumbers className="h-5 w-5 text-primary" /> Chart of accounts
         </h1>
         <p className="text-sm text-muted-foreground mt-1">
-          The list of accounts you post to. Kenyan SME standard structure, ready to use.
+          The list of accounts you post to. Standard SME structure, ready to use.
           System accounts are locked; custom ones you add live alongside them.
         </p>
       </header>
@@ -70,5 +71,14 @@ export function ChartOfAccountsPage() {
         </div>
       )}
     </div>
+  );
+}
+
+export function ChartOfAccountsPage() {
+  return (
+    <>
+      <MobileRouteContext />
+      <ChartOfAccountsPageContent />
+    </>
   );
 }

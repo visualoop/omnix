@@ -37,9 +37,11 @@ import { useActiveModule, MODULE_DEFINITIONS } from "@/stores/active-module";
 import { useAuthStore } from "@/stores/auth";
 import { useCountry } from "@/stores/country";
 import { pharmacyTerm } from "@/lib/locale";
-import { money, moneyHero } from "@/lib/money";
+import { currencySymbol, money, moneyHero } from "@/lib/money";
 import { StatStrip } from "@/components/dashboard/stat-strip";
 import { DashboardHeroArt } from "@/components/dashboard/hero-art";
+import { MobileRouteContext } from "@/components/shared/mobile-route-context";
+import { hasPermission } from "@/lib/permissions";
 
 export function DashboardPage() {
   const navigate = useNavigate();
@@ -52,7 +54,13 @@ export function DashboardPage() {
   const [topProducts, setTopProducts] = useState<TopProduct[]>([]);
   const [paymentMix, setPaymentMix] = useState<SalesByPaymentMethod[]>([]);
   const [now, setNow] = useState(() => new Date());
-  const activeBranchId = useActiveBranch((s) => s.active?.id);
+  const activeBranch = useActiveBranch((s) => s.active);
+  const activeBranchId = activeBranch?.id;
+  const canStartSale = hasPermission(user, "pos.use");
+  const canViewInventory = hasPermission(user, "inventory.view");
+  const canViewCustomers = hasPermission(user, "customers.view");
+  const canViewReports = hasPermission(user, "reports.view");
+  const canRunZReport = hasPermission(user, "reports.zreport");
 
   useEffect(() => {
     Promise.all([
@@ -89,15 +97,15 @@ export function DashboardPage() {
       const tag = (e.target as HTMLElement | null)?.tagName;
       if (tag === "INPUT" || tag === "TEXTAREA") return;
       const k = e.key.toLowerCase();
-      if (k === "s") navigate("/pos/sale");
-      else if (k === "i") navigate("/inventory");
-      else if (k === "c") navigate("/customers");
-      else if (k === "r") navigate("/analytics?tab=sales");
-      else if (k === "z") navigate("/reports/zreport");
+      if (k === "s" && canStartSale) navigate("/pos/sale");
+      else if (k === "i" && canViewInventory) navigate("/inventory");
+      else if (k === "c" && canViewCustomers) navigate("/customers");
+      else if (k === "r" && canViewReports) navigate("/analytics?tab=sales");
+      else if (k === "z" && canRunZReport) navigate("/reports/zreport");
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [navigate]);
+  }, [canRunZReport, canStartSale, canViewCustomers, canViewInventory, canViewReports, navigate]);
 
   const moduleLabel =
     moduleId === "dawa" ? pharmacyTerm(countryCode)
@@ -118,7 +126,7 @@ export function DashboardPage() {
   return (
     <div className="min-h-[calc(100vh-48px)] -m-6 bg-background">
       {/* ─── Masthead ────────────────────────────────── */}
-      <header className="border-b border-foreground/15 px-8 md:px-14 py-3 flex items-baseline justify-between text-foreground/80">
+      <header className="flex flex-col gap-2 border-b border-foreground/15 px-4 py-3 text-foreground/80 sm:flex-row sm:items-baseline sm:justify-between sm:px-6 lg:px-14">
         <div className="flex items-baseline gap-3 font-mono text-[10px] uppercase tracking-[0.22em]">
           <span className="font-semibold text-foreground">Omnix · {moduleLabel}</span>
           <span aria-hidden className="text-foreground/30">/</span>
@@ -128,11 +136,12 @@ export function DashboardPage() {
           {dateMast} · {yearMast} · {timeMast}
         </div>
       </header>
+      <MobileRouteContext />
 
       {/* ─── Hero — today's revenue ───────────────── */}
-      <section className="relative px-8 md:px-14 pt-10 pb-6 md:pt-14 md:pb-8">
+      <section className="relative px-4 pb-6 pt-8 sm:px-6 sm:pt-10 lg:px-14 lg:pb-8 lg:pt-14">
         <div className="max-w-[1240px] grid gap-8 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] lg:items-start">
-          {/* Left — the untouched giant KES headline */}
+          {/* Left — the desktop revenue headline, compacted for small screens */}
           <div>
             <div className="font-mono text-[10px] uppercase tracking-[0.28em] text-foreground/60">
               {todayCount > 0 ? "Today's take" : "Open the day"}
@@ -145,11 +154,11 @@ export function DashboardPage() {
                 className="mt-3 flex items-start gap-3"
               >
                 <span className="font-mono text-[18px] mt-4 text-foreground/55 tabular-nums">
-                  {money(0).replace(/[\d.,\s]/g, "").trim() || "KSh"}
+                  {currencySymbol()}
                 </span>
                 <span
                   style={{ fontFamily: "var(--font-display, serif)" }}
-                  className="text-[clamp(64px,11vw,140px)] leading-[0.95] tracking-[-0.02em] font-medium tabular-nums"
+                  className="text-[clamp(48px,18vw,88px)] leading-[0.95] tracking-[-0.02em] font-medium tabular-nums lg:text-[clamp(64px,11vw,140px)]"
                 >
                   <motion.span>{display}</motion.span>
                 </span>
@@ -160,7 +169,7 @@ export function DashboardPage() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
                 style={{ fontFamily: "var(--font-display, serif)" }}
-                className="mt-3 text-[clamp(48px,8vw,100px)] leading-[0.95] tracking-[-0.02em] font-medium italic"
+                className="mt-3 text-[clamp(42px,14vw,72px)] leading-[0.95] tracking-[-0.02em] font-medium italic lg:text-[clamp(48px,8vw,100px)]"
               >
                 No sales yet today.
               </motion.h1>
@@ -206,22 +215,22 @@ export function DashboardPage() {
       <DashboardInsights />
 
       {/* ─── Action menu — keyboard-led ────────────── */}
-      <section className="px-8 md:px-14 pb-12">
+      <section className="px-4 pb-12 sm:px-6 lg:px-14">
         <div className="font-mono text-[10px] uppercase tracking-[0.28em] text-foreground/60 pb-3 border-b border-foreground/15">
           Begin
         </div>
         <ul className="divide-y divide-foreground/10">
-          <ActionRow k="S" label="New sale" hint="Open POS" icon={ShoppingCart} onClick={() => navigate("/pos/sale")} primary />
-          <ActionRow k="I" label="Inventory" hint="Stock + categories" icon={SquaresFour} onClick={() => navigate("/inventory")} />
-          <ActionRow k="C" label="Customers" hint="Member directory" icon={Users} onClick={() => navigate("/customers")} />
-          <ActionRow k="R" label="Sales reports" hint="Last 30 days" icon={ChartBar} onClick={() => navigate("/analytics?tab=sales")} />
-          <ActionRow k="Z" label="Z-Report" hint="End of day totals" icon={Receipt} onClick={() => navigate("/reports/zreport")} muted />
+          {canStartSale && <ActionRow k="S" label="New sale" hint="Open POS" icon={ShoppingCart} onClick={() => navigate("/pos/sale")} primary />}
+          {canViewInventory && <ActionRow k="I" label="Inventory" hint="Stock + categories" icon={SquaresFour} onClick={() => navigate("/inventory")} />}
+          {canViewCustomers && <ActionRow k="C" label="Customers" hint="Member directory" icon={Users} onClick={() => navigate("/customers")} />}
+          {canViewReports && <ActionRow k="R" label="Sales reports" hint="Last 30 days" icon={ChartBar} onClick={() => navigate("/analytics?tab=sales")} />}
+          {canRunZReport && <ActionRow k="Z" label="Z-Report" hint="End of day totals" icon={Receipt} onClick={() => navigate("/reports/zreport")} muted />}
         </ul>
       </section>
 
       {/* ─── Charts — hairline rules, no cards ─────── */}
       {salesByDay.length > 0 || paymentMix.length > 0 || topProducts.length > 0 ? (
-        <section className="px-8 md:px-14 pb-16 grid grid-cols-1 lg:grid-cols-2 gap-x-12 gap-y-10">
+        <section className="grid grid-cols-1 gap-x-12 gap-y-10 px-4 pb-16 sm:px-6 lg:grid-cols-2 lg:px-14">
           {salesByDay.length > 0 ? (
             <div>
               <div className="font-mono text-[10px] uppercase tracking-[0.28em] text-foreground/60 pb-3 border-b border-foreground/15">
@@ -294,7 +303,7 @@ function ActionRow({ k, label, hint, icon: Icon, onClick, primary, muted }: Acti
     <li>
       <button
         onClick={onClick}
-        className={`group flex w-full items-baseline gap-5 py-5 text-left transition-colors ${
+        className={`group flex min-h-11 w-full items-center gap-3 py-4 text-left transition-colors sm:gap-5 lg:items-baseline lg:py-5 ${
           muted ? "text-foreground/60 hover:text-foreground" : "hover:bg-foreground/[0.02]"
         }`}
       >
@@ -316,7 +325,7 @@ function ActionRow({ k, label, hint, icon: Icon, onClick, primary, muted }: Acti
         >
           {label}
         </span>
-        <span className="ml-auto pl-6 font-mono text-[11px] uppercase tracking-[0.18em] text-foreground/50">
+        <span className="ml-auto hidden pl-6 font-mono text-[11px] uppercase tracking-[0.18em] text-foreground/50 sm:block">
           {hint}
         </span>
       </button>

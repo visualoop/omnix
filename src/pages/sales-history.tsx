@@ -22,6 +22,9 @@ import { useActiveBranch } from "@/stores/active-branch";
 import { toast } from "sonner";
 import { intlLocale } from "@/lib/intl";
 import { money } from "@/lib/money";
+import { MobileRouteContext } from "@/components/shared/mobile-route-context";
+import { useAuthStore } from "@/stores/auth";
+import { hasPermission } from "@/lib/permissions";
 
 interface SaleRow {
   id: string;
@@ -49,6 +52,8 @@ export function SalesHistoryPage() {
   const [period, setPeriod] = useState<"today" | "week" | "month" | "all">("today");
   const [activeSale, setActiveSale] = useState<SaleDetail | null>(null);
   const activeBranchId = useActiveBranch((state) => state.scope === "branch" ? state.active?.id ?? null : null);
+  const user = useAuthStore((state) => state.user);
+  const canViewSales = hasPermission(user, "sales.view");
 
   const fetcher = useCallback(
     (q: { search?: string; page?: number; pageSize?: number }) => {
@@ -61,9 +66,9 @@ export function SalesHistoryPage() {
     [period, activeBranchId],
   );
   const list = useListData(fetcher, { pageSize: 50 });
-  const sales = (list.rows as unknown as SaleRow[]).map((s) => ({
-    ...s,
-    customer: (s as any).customer_name ?? null,
+  const sales = (list.rows as unknown as SaleRow[]).map((sale) => ({
+    ...sale,
+    customer: sale.customer_name ?? null,
   }));
   const loading = list.loading;
 
@@ -105,22 +110,23 @@ export function SalesHistoryPage() {
         title="Sales"
         description="Browse, view detail, and reprint past receipts."
       />
+      <MobileRouteContext />
 
       {/* Stats */}
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-3 sm:gap-3">
         <StatCard label={`${period === "today" ? "Today" : period === "week" ? "This Week" : period === "month" ? "This Month" : "All Time"} Sales`} value={money(totalSales)} icon={Banknote} />
         <StatCard label="Transactions" value={String(sales.length)} icon={Receipt} />
         <StatCard label="Avg Sale" value={sales.length > 0 ? money(totalSales / sales.length) : money(0)} icon={Calendar} />
       </div>
 
       {/* Filters */}
-      <div className="flex gap-2">
-        <div className="flex gap-1 border border-border rounded-md p-0.5">
+      <div className="flex flex-col gap-2 lg:flex-row">
+        <div className="grid grid-cols-4 gap-1 rounded-md border border-border p-0.5">
           {(["today", "week", "month", "all"] as const).map((p) => (
             <button
               key={p}
               onClick={() => setPeriod(p)}
-              className={`px-3 py-1.5 rounded text-xs font-medium transition-colors ${
+              className={`min-h-11 rounded px-2 py-1.5 text-xs font-medium transition-colors lg:min-h-0 lg:px-3 ${
                 period === p ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-accent"
               }`}
             >
@@ -134,7 +140,7 @@ export function SalesHistoryPage() {
             value={list.search}
             onChange={(e) => list.setSearch(e.target.value)}
             placeholder="Search by receipt #, customer, cashier..."
-            className="pl-9"
+            className="h-11 pl-9 lg:h-9"
           />
         </div>
       </div>
@@ -148,60 +154,112 @@ export function SalesHistoryPage() {
           <p className="text-sm">No sales in this period</p>
         </div>
       ) : (
-        <div className="border border-border rounded-lg overflow-hidden">
-          <table className="w-full text-sm">
-            <thead className="bg-muted/30 border-b border-border">
-              <tr className="text-xs text-muted-foreground">
-                <th className="text-left px-3 py-2 font-medium">Receipt #</th>
-                <th className="text-left px-3 py-2 font-medium">Date</th>
-                <th className="text-left px-3 py-2 font-medium">Cashier</th>
-                <th className="text-left px-3 py-2 font-medium">Customer</th>
-                <th className="text-right px-3 py-2 font-medium">Items</th>
-                <th className="text-right px-3 py-2 font-medium">Total</th>
-                <th className="text-center px-3 py-2 font-medium">Status</th>
-                <th className="text-right px-3 py-2 font-medium"></th>
-              </tr>
-            </thead>
-            <tbody>
-              {sales.map((sale) => (
-                <tr
-                  key={sale.id}
-                  onClick={() => navigate(`/sales/${sale.id}`)}
-                  className="border-b border-border last:border-0 hover:bg-muted/30 cursor-pointer"
+        <>
+          <div data-mobile-list="sales" className="space-y-2 lg:hidden">
+            {sales.map((sale) => (
+              <article key={sale.id} className="overflow-hidden rounded-lg border border-border bg-background">
+                <button
+                  type="button"
+                  onClick={() => canViewSales && navigate(`/sales/${sale.id}`)}
+                  className="min-h-11 w-full px-4 py-3 text-left active:bg-muted/40"
+                  aria-label={`Open receipt ${sale.sale_number}`}
                 >
-                  <td className="px-3 py-2 font-mono text-xs hover:underline underline-offset-4">#{sale.sale_number}</td>
-                  <td className="px-3 py-2 text-xs whitespace-nowrap">
-                    {new Date(sale.created_at).toLocaleString(intlLocale(), {
-                      day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit",
-                    })}
-                  </td>
-                  <td className="px-3 py-2">{sale.cashier || "—"}</td>
-                  <td className="px-3 py-2">{sale.customer || <span className="text-muted-foreground">Walk-in</span>}</td>
-                  <td className="px-3 py-2 text-right font-mono">{sale.item_count}</td>
-                  <td className="px-3 py-2 text-right font-mono font-medium">{sale.total.toFixed(2)}</td>
-                  <td className="px-3 py-2 text-center">
-                    <PaymentBadge status={sale.payment_status} saleStatus={sale.status} />
-                  </td>
-                  <td className="px-3 py-2 text-right">
-                    <div className="flex justify-end gap-1">
-                      <Button variant="ghost" size="sm" onClick={() => openDetail(sale.id)}>
-                        <Eye className="h-3.5 w-3.5" />
-                      </Button>
-                      <Button variant="ghost" size="sm" onClick={() => handleReprint(sale.id)}>
-                        <Printer className="h-3.5 w-3.5" />
-                      </Button>
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="font-mono text-xs font-semibold">#{sale.sale_number}</p>
+                      <p className="mt-1 truncate text-sm font-medium">{sale.customer || "Walk-in customer"}</p>
                     </div>
-                  </td>
+                    <p className="shrink-0 font-mono text-sm font-semibold">{money(sale.total)}</p>
+                  </div>
+                  <div className="mt-3 flex items-center justify-between gap-3 text-xs text-muted-foreground">
+                    <span>
+                      {new Date(sale.created_at).toLocaleString(intlLocale(), {
+                        day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit",
+                      })}
+                    </span>
+                    <span>{sale.item_count} {sale.item_count === 1 ? "item" : "items"}</span>
+                    <PaymentBadge status={sale.payment_status} saleStatus={sale.status} />
+                  </div>
+                </button>
+                {canViewSales && (
+                  <div className="grid grid-cols-2 border-t border-border">
+                    <Button
+                      variant="ghost"
+                      onClick={() => openDetail(sale.id)}
+                      className="min-h-11 rounded-none border-r border-border"
+                    >
+                      <Eye className="size-4" /> Quick view
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      onClick={() => handleReprint(sale.id)}
+                      className="min-h-11 rounded-none"
+                    >
+                      <Printer className="size-4" /> Reprint
+                    </Button>
+                  </div>
+                )}
+              </article>
+            ))}
+          </div>
+
+          <div data-desktop-table="sales" className="hidden overflow-hidden rounded-lg border border-border lg:block">
+            <table className="w-full text-sm">
+              <thead className="border-b border-border bg-muted/30">
+                <tr className="text-xs text-muted-foreground">
+                  <th className="px-3 py-2 text-left font-medium">Receipt #</th>
+                  <th className="px-3 py-2 text-left font-medium">Date</th>
+                  <th className="px-3 py-2 text-left font-medium">Cashier</th>
+                  <th className="px-3 py-2 text-left font-medium">Customer</th>
+                  <th className="px-3 py-2 text-right font-medium">Items</th>
+                  <th className="px-3 py-2 text-right font-medium">Total</th>
+                  <th className="px-3 py-2 text-center font-medium">Status</th>
+                  <th className="px-3 py-2 text-right font-medium"></th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                {sales.map((sale) => (
+                  <tr
+                    key={sale.id}
+                    onClick={() => canViewSales && navigate(`/sales/${sale.id}`)}
+                    className="cursor-pointer border-b border-border last:border-0 hover:bg-muted/30"
+                  >
+                    <td className="px-3 py-2 font-mono text-xs hover:underline hover:underline-offset-4">#{sale.sale_number}</td>
+                    <td className="whitespace-nowrap px-3 py-2 text-xs">
+                      {new Date(sale.created_at).toLocaleString(intlLocale(), {
+                        day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit",
+                      })}
+                    </td>
+                    <td className="px-3 py-2">{sale.cashier || "—"}</td>
+                    <td className="px-3 py-2">{sale.customer || <span className="text-muted-foreground">Walk-in</span>}</td>
+                    <td className="px-3 py-2 text-right font-mono">{sale.item_count}</td>
+                    <td className="px-3 py-2 text-right font-mono font-medium">{money(sale.total)}</td>
+                    <td className="px-3 py-2 text-center">
+                      <PaymentBadge status={sale.payment_status} saleStatus={sale.status} />
+                    </td>
+                    <td className="px-3 py-2 text-right" onClick={(event) => event.stopPropagation()}>
+                      {canViewSales && (
+                        <div className="flex justify-end gap-1">
+                          <Button variant="ghost" size="sm" onClick={() => openDetail(sale.id)} title="Quick view">
+                            <Eye className="size-3.5" />
+                          </Button>
+                          <Button variant="ghost" size="sm" onClick={() => handleReprint(sale.id)} title="Reprint receipt">
+                            <Printer className="size-3.5" />
+                          </Button>
+                        </div>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
       )}
 
       {/* Detail Sheet */}
       <Sheet open={!!activeSale} onOpenChange={(o) => !o && setActiveSale(null)}>
-        <SheetContent side="right" className="w-[500px] sm:max-w-[500px]">
+        <SheetContent side="right" className="w-full max-w-full overflow-y-auto sm:w-[500px] sm:max-w-[500px]">
           <SheetHeader>
             <SheetTitle>Receipt #{activeSale?.sale_number}</SheetTitle>
           </SheetHeader>
@@ -209,7 +267,9 @@ export function SalesHistoryPage() {
         </SheetContent>
       </Sheet>
 
-      <PaginationBar list={list} />
+      <div className="[&_button]:min-h-11 lg:[&_button]:min-h-0">
+        <PaginationBar list={list} />
+      </div>
     </div>
   );
 }
@@ -271,9 +331,9 @@ function SaleDetailView({ sale, onReprint }: { sale: SaleDetail; onReprint: () =
             <div key={i} className="px-3 py-2 flex justify-between text-sm">
               <div>
                 <p>{it.product_name}</p>
-                <p className="text-xs text-muted-foreground">{it.quantity} × {it.unit_price.toFixed(2)}</p>
+                <p className="text-xs text-muted-foreground">{it.quantity} × {money(it.unit_price)}</p>
               </div>
-              <p className="font-mono">{it.total.toFixed(2)}</p>
+              <p className="font-mono">{money(it.total)}</p>
             </div>
           ))}
         </div>
@@ -298,13 +358,13 @@ function SaleDetailView({ sale, onReprint }: { sale: SaleDetail; onReprint: () =
                 <p>{p.method_name}</p>
                 {p.reference && <p className="text-xs text-muted-foreground font-mono">{p.reference}</p>}
               </div>
-              <p className="font-mono">{p.amount.toFixed(2)}</p>
+              <p className="font-mono">{money(p.amount)}</p>
             </div>
           ))}
         </div>
       </div>
 
-      <Button onClick={onReprint} className="w-full">
+      <Button onClick={onReprint} className="min-h-11 w-full">
         <Printer className="h-4 w-4 mr-2" /> Reprint Receipt
       </Button>
     </div>
@@ -316,7 +376,7 @@ function Row({ label, value, bold }: { label: string; value: number; bold?: bool
     <div className="flex justify-between text-sm">
       <span className={bold ? "font-medium" : "text-muted-foreground"}>{label}</span>
       <span className={`font-mono ${bold ? "font-semibold" : ""}`}>
-        {value < 0 ? "-" : ""}KES {Math.abs(value).toFixed(2)}
+        {value < 0 ? "-" : ""}{money(Math.abs(value))}
       </span>
     </div>
   );

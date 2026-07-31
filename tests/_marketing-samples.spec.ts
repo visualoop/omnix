@@ -12,6 +12,7 @@ import { describe, it, expect } from "vitest"
 import { writeFileSync, mkdirSync, existsSync } from "node:fs"
 import { dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
+import { useCountry } from "@/stores/country"
 import {
   renderVat3Pdf,
   renderP9Pdf,
@@ -39,6 +40,7 @@ const writeBytes = (path: string, bytes: Uint8Array) =>
 
 describe("marketing sample PDFs", () => {
   it("writes 6 sample PDFs to website/public/samples/", () => {
+    useCountry.setState({ code: "KE", currencyCode: "KES", loaded: true })
     mkdirSync(OUT, { recursive: true })
 
     writeBytes(

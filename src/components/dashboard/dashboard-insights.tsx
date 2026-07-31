@@ -35,7 +35,7 @@ export function DashboardInsights() {
   if (!findings || findings.length === 0) return null;
 
   return (
-    <section className="px-8 md:px-14 pb-12">
+    <section className="px-4 pb-12 sm:px-6 lg:px-14">
       <div className="font-mono text-[10px] uppercase tracking-[0.28em] text-foreground/60 pb-3 border-b border-foreground/15">
         Needs attention
       </div>
@@ -90,19 +90,19 @@ function FindingRow({ finding, onOpen }: { finding: Finding; onOpen: () => void 
       <div className="flex items-start gap-3">
         <span className={`mt-1.5 h-2 w-2 rounded-full shrink-0 ${SEV_DOT[finding.severity]}`} aria-hidden />
         <div className="flex-1 min-w-0">
-          <div className="flex items-baseline justify-between gap-3">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-baseline sm:justify-between sm:gap-3">
             <h3
               style={{ fontFamily: "var(--font-display, serif)" }}
               className="text-[18px] leading-tight tracking-[-0.01em] text-foreground"
             >
               {finding.headline}
             </h3>
-            <div className="flex items-center gap-3 shrink-0">
+            <div className="flex shrink-0 items-center gap-2">
               <button
                 type="button"
                 onClick={explain}
                 disabled={busy}
-                className="inline-flex items-center gap-1 font-mono text-[10px] uppercase tracking-[0.14em] text-foreground/55 hover:text-foreground transition-colors cursor-pointer disabled:opacity-50"
+                className="inline-flex min-h-11 items-center gap-1 px-2 font-mono text-[10px] uppercase tracking-[0.14em] text-foreground/55 transition-colors hover:text-foreground disabled:opacity-50"
               >
                 {busy ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />}
                 Ask AI
@@ -111,7 +111,7 @@ function FindingRow({ finding, onOpen }: { finding: Finding; onOpen: () => void 
                 <button
                   type="button"
                   onClick={onOpen}
-                  className="inline-flex items-center gap-1 font-mono text-[10px] uppercase tracking-[0.14em] text-foreground/55 hover:text-foreground transition-colors cursor-pointer"
+                  className="inline-flex min-h-11 items-center gap-1 px-2 font-mono text-[10px] uppercase tracking-[0.14em] text-foreground/55 transition-colors hover:text-foreground"
                 >
                   Open <ArrowRight className="h-3 w-3" />
                 </button>

@@ -51,6 +51,7 @@ import {
 import type { Icon as LucideIcon } from "@phosphor-icons/react";
 import type { ModuleId } from "@/stores/active-module";
 import type { Permission } from "@/lib/permissions";
+import { isKenya } from "@/lib/features";
 
 /**
  * Seven job-oriented groups, ordered by how often the owner touches them.
@@ -158,9 +159,17 @@ export function registerSettings(items: SettingsNavItem[]): void {
   }
 }
 
-/** The full, current registry (core + any registered module settings). */
+const KENYA_ONLY_SETTINGS = new Set([
+  "/settings/etims",
+  "/settings/insurance",
+  "/settings/pharmacy-licenses",
+  "/settings/pharmacy-ppb",
+]);
+
+/** The full registry, with country compliance entries removed at source. */
 export function settingsRegistry(): SettingsNavItem[] {
-  return [...CORE_SETTINGS, ...moduleSettings];
+  const items = [...CORE_SETTINGS, ...moduleSettings];
+  return isKenya() ? items : items.filter((item) => !KENYA_ONLY_SETTINGS.has(item.to));
 }
 
 // ── Hardware module + Hospitality module contributions ─────

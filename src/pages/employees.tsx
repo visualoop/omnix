@@ -1,3 +1,4 @@
+import { MobileRouteContext } from "@/components/shared/mobile-route-context";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { confirm, prompt } from "@/components/ui/confirm-dialog";
@@ -12,6 +13,9 @@ import {
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { PageHeader } from "@/components/layout/page-header";
+import { Combobox } from "@/components/ui/combobox";
+import { currencyCode, phonePlaceholder } from "@/lib/locale";
+import { useCountry } from "@/stores/country";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter } from "@/components/ui/sheet";
@@ -30,7 +34,7 @@ import { calculatePayroll } from "@/services/payroll";
 import { toast } from "sonner";
 import { money } from "@/lib/money";
 
-export function EmployeesPage() {
+function EmployeesPageContent() {
   const [employees, setEmployees] = useState<EmployeeWithDetails[]>([]);
   const navigate = useNavigate();
   const [departments, setDepartments] = useState<Department[]>([]);
@@ -80,13 +84,13 @@ export function EmployeesPage() {
         }
       />
 
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-3 sm:gap-3">
         <Stat label="Active employees" value={String(employees.filter((e) => e.active === 1).length)} />
         <Stat label="Monthly salary cost" value={money(totalSalaryCost)} />
         <Stat label="Total employer cost" value={money(totalEmployerCost)} hint="Incl. NSSF, Housing, NITA" />
       </div>
 
-      <div className="flex gap-2 items-center">
+      <div className="flex flex-col items-stretch gap-2 sm:flex-row sm:items-center">
         <div className="relative flex-1 max-w-sm">
           <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
           <Input
@@ -203,6 +207,7 @@ function EmployeeForm({ open, employee, departments, branches, onClose, onSaved 
   const [users, setUsers] = useState<LinkableUser[]>([]);
   const [createLoginOpen, setCreateLoginOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const countryCode = useCountry((state) => state.code);
   const [empNumber, setEmpNumber] = useState("");
 
   useEffect(() => {
@@ -253,7 +258,7 @@ function EmployeeForm({ open, employee, departments, branches, onClose, onSaved 
 
   return (
     <Sheet open={open} onOpenChange={(o) => !o && onClose()}>
-      <SheetContent side="right" className="w-[520px] sm:max-w-[520px]">
+      <SheetContent side="right" className="w-full max-w-full overflow-y-auto sm:w-[520px] sm:max-w-[520px]">
         <SheetHeader>
           <SheetTitle>{employee ? employee.full_name : "New Employee"}</SheetTitle>
         </SheetHeader>
@@ -274,7 +279,7 @@ function EmployeeForm({ open, employee, departments, branches, onClose, onSaved 
               <Field label="Full Name *">
                 <Input value={form.full_name || ""} onChange={(e) => setForm({ ...form, full_name: e.target.value })} autoFocus />
               </Field>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <Field label="National ID">
                   <Input value={form.id_number || ""} onChange={(e) => setForm({ ...form, id_number: e.target.value })} />
                 </Field>
@@ -290,9 +295,14 @@ function EmployeeForm({ open, employee, departments, branches, onClose, onSaved 
                   <SelectItem value="other">Other</SelectItem>
                 </SelectContent></Select>
               </Field>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <Field label="Phone">
-                  <Input value={form.phone || ""} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
+                  <Input
+                    value={form.phone || ""}
+                    onChange={(e) => setForm({ ...form, phone: e.target.value })}
+                    placeholder={phonePlaceholder(countryCode)}
+                    inputMode="tel"
+                  />
                 </Field>
                 <Field label="Email">
                   <Input type="email" value={form.email || ""} onChange={(e) => setForm({ ...form, email: e.target.value })} />
@@ -303,7 +313,7 @@ function EmployeeForm({ open, employee, departments, branches, onClose, onSaved 
               </Field>
               <div className="border-t border-border pt-3 space-y-3 mt-3">
                 <div className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Next of Kin</div>
-                <div className="grid grid-cols-2 gap-2">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                   <Field label="Name">
                     <Input value={form.next_of_kin_name || ""} onChange={(e) => setForm({ ...form, next_of_kin_name: e.target.value })} />
                   </Field>
@@ -312,7 +322,12 @@ function EmployeeForm({ open, employee, departments, branches, onClose, onSaved 
                   </Field>
                 </div>
                 <Field label="Phone">
-                  <Input value={form.next_of_kin_phone || ""} onChange={(e) => setForm({ ...form, next_of_kin_phone: e.target.value })} />
+                  <Input
+                    value={form.next_of_kin_phone || ""}
+                    onChange={(e) => setForm({ ...form, next_of_kin_phone: e.target.value })}
+                    placeholder={phonePlaceholder(countryCode)}
+                    inputMode="tel"
+                  />
                 </Field>
               </div>
             </TabsPanel>
@@ -320,12 +335,14 @@ function EmployeeForm({ open, employee, departments, branches, onClose, onSaved 
             <TabsPanel value="employment" className="space-y-3 mt-3">
               <Field label="System User Account" hint="Optional. Link only staff who need to log in to Omnix.">
                 <div className="flex gap-2">
-                  <Select value={form.user_id || ""} onValueChange={(v) => setForm({ ...form, user_id: String(v) || null })}><SelectTrigger><SelectValue placeholder="No login access" /></SelectTrigger><SelectContent>
-                    
-                    {users.map((u) => (
-                      <SelectItem key={u.id} value={u.id}>{u.full_name} (@{u.username}) - {u.role}</SelectItem>
-                    ))}
-                  </SelectContent></Select>
+                  <Combobox
+                    value={form.user_id || ""}
+                    onChange={(userId) => setForm({ ...form, user_id: userId || null })}
+                    options={users.map((account) => ({ value: account.id, label: account.full_name, hint: `@${account.username}`, description: account.role }))}
+                    placeholder="No login access"
+                    searchPlaceholder="Search user accounts…"
+                    emptyText="No unlinked accounts. Create one for this employee."
+                  />
                   <Button type="button" variant="outline" size="sm" onClick={() => setCreateLoginOpen(true)}>
                     Create
                   </Button>
@@ -334,21 +351,15 @@ function EmployeeForm({ open, employee, departments, branches, onClose, onSaved 
               <Field label="Job Title *">
                 <Input value={form.job_title || ""} onChange={(e) => setForm({ ...form, job_title: e.target.value })} />
               </Field>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <Field label="Department">
-                  <Select value={form.department_id || ""} onValueChange={(v) => setForm({ ...form, department_id: String(v) || null })}><SelectTrigger><SelectValue placeholder="—" /></SelectTrigger><SelectContent>
-                    
-                    {departments.map((d) => <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>)}
-                  </SelectContent></Select>
+                  <Combobox value={form.department_id || ""} onChange={(departmentId) => setForm({ ...form, department_id: departmentId || null })} options={departments.map((department) => ({ value: department.id, label: department.name }))} placeholder="No department" searchPlaceholder="Search departments…" emptyText="No departments configured." />
                 </Field>
                 <Field label="Branch">
-                  <Select value={form.branch_id || ""} onValueChange={(v) => setForm({ ...form, branch_id: String(v) || null })}><SelectTrigger><SelectValue placeholder="—" /></SelectTrigger><SelectContent>
-                    
-                    {branches.map((b) => <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>)}
-                  </SelectContent></Select>
+                  <Combobox value={form.branch_id || ""} onChange={(branchId) => setForm({ ...form, branch_id: branchId || null })} options={branches.map((branch) => ({ value: branch.id, label: branch.name }))} placeholder="No branch" searchPlaceholder="Search branches…" emptyText="No branches configured." />
                 </Field>
               </div>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <Field label="Type">
                   <Select value={form.employment_type || "permanent"} onValueChange={(v) => setForm({ ...form, employment_type: String(v) as any })}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>
                     <SelectItem value="permanent">Permanent</SelectItem>
@@ -402,7 +413,7 @@ function EmployeeForm({ open, employee, departments, branches, onClose, onSaved 
                   <SelectItem value="commission_only">Commission Only</SelectItem>
                 </SelectContent></Select>
               </Field>
-              <Field label="Base Salary (KES / month)">
+              <Field label={`Base Salary (${currencyCode(countryCode)} / month)`}>
                 <Input
                   type="number"
                   value={form.base_salary || 0}
@@ -479,7 +490,7 @@ function EmployeeForm({ open, employee, departments, branches, onClose, onSaved 
                       <Row label="Net pay" value={payslip.net_pay} />
                     </div>
                     <div className="text-[10px] text-muted-foreground pt-1">
-                      Total cost to employer: KES {payslip.total_employer_cost.toFixed(0)}
+                      Total cost to employer: {money(payslip.total_employer_cost)}
                     </div>
                   </CardContent>
                 </Card>
@@ -498,7 +509,12 @@ function EmployeeForm({ open, employee, departments, branches, onClose, onSaved 
               </Field>
               <div className="border-t border-border pt-3 mt-3">
                 <Field label="M-Pesa Number" hint="If paid via M-Pesa instead of bank">
-                  <Input value={form.paybill_or_phone || ""} onChange={(e) => setForm({ ...form, paybill_or_phone: e.target.value })} placeholder="0700 000 000" />
+                  <Input
+                    value={form.paybill_or_phone || ""}
+                    onChange={(e) => setForm({ ...form, paybill_or_phone: e.target.value })}
+                    placeholder={phonePlaceholder(countryCode)}
+                    inputMode="tel"
+                  />
                 </Field>
               </div>
             </TabsPanel>
@@ -568,7 +584,7 @@ function CreateLoginSheet({ open, employeeName, employeeEmail, onClose, onCreate
 
   return (
     <Sheet open={open} onOpenChange={(o) => !o && onClose()}>
-      <SheetContent side="right" className="w-[420px] sm:max-w-[420px]">
+      <SheetContent side="right" className="w-full max-w-full overflow-y-auto sm:w-[420px] sm:max-w-[420px]">
         <SheetHeader>
           <SheetTitle>Create User Account</SheetTitle>
         </SheetHeader>
@@ -624,5 +640,14 @@ function Row({ label, value }: { label: string; value: number }) {
       <span className="text-muted-foreground">{label}</span>
       <span className="font-mono tabular-nums">{Math.abs(value).toFixed(2)}</span>
     </div>
+  );
+}
+
+export function EmployeesPage() {
+  return (
+    <>
+      <MobileRouteContext />
+      <EmployeesPageContent />
+    </>
   );
 }

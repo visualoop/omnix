@@ -50,9 +50,10 @@ import { ReceiveStockDialog } from "@/components/inventory/receive-stock-dialog"
 import { VariantsDrawer } from "@/components/inventory/variants-drawer"
 import { toast } from "sonner"
 import { confirm } from "@/components/ui/confirm-dialog"
-
-const KES = (n: number) =>
-  new Intl.NumberFormat("en-KE", { style: "currency", currency: "KES", maximumFractionDigits: 2 }).format(n)
+import { MobileRouteContext } from "@/components/shared/mobile-route-context"
+import { useAuthStore } from "@/stores/auth"
+import { hasPermission } from "@/lib/permissions"
+import { money } from "@/lib/money"
 
 interface BatchRow {
   id: string
@@ -84,6 +85,9 @@ export function ProductDetailPage() {
   const [receiveOpen, setReceiveOpen] = useState(false)
   const [variantsOpen, setVariantsOpen] = useState(false)
   const [editing, setEditing] = useState(false)
+  const user = useAuthStore((state) => state.user)
+  const canEdit = hasPermission(user, "inventory.edit")
+  const canCreatePo = hasPermission(user, "purchase_orders.create")
 
   const reload = () => {
     if (!id) return
@@ -153,9 +157,12 @@ export function ProductDetailPage() {
   ).length
 
   return (
-    <div className="p-6">
+    <div className="p-4 sm:p-6">
       <BackButton fallback="/inventory/products" label="Back to products" />
-      <div className="flex flex-col gap-5 max-w-[1280px] w-full mx-auto mt-3">
+      <div className="mt-3">
+        <MobileRouteContext />
+      </div>
+      <div className="mx-auto mt-3 flex w-full max-w-[1280px] flex-col gap-5">
       <Breadcrumbs
         items={[
           { label: "Inventory", to: "/inventory" },
@@ -177,43 +184,52 @@ export function ProductDetailPage() {
         ]}
         actions={
           <>
-            <Button size="sm" onClick={() => setReceiveOpen(true)}>
-              <PlusCircle className="h-3.5 w-3.5" />
-              Receive stock
-            </Button>
-            <Button size="sm" variant="outline" onClick={() => navigate("/purchase-orders/new", { state: { poSeed: { items: [{ product_id: product.id, product_name: product.name, quantity: Math.max(1, product.reorder_level - onHand), unit_cost: product.buying_price || 0 }] } } })}>
-              <ShoppingCart className="h-3.5 w-3.5" />
-              Reorder
-            </Button>
-            <Button size="sm" variant="outline" onClick={() => setVariantsOpen(true)}>
-              <Layers className="h-3.5 w-3.5" />
-              Variants ({variants.length})
-            </Button>
-            <Button size="sm" variant={editing ? "default" : "outline"} onClick={() => setEditing((v) => !v)}>
-              <Pencil className="h-3.5 w-3.5" />
-              {editing ? "Done editing" : "Edit"}
-            </Button>
+            {canEdit && (
+              <Button size="sm" onClick={() => setReceiveOpen(true)} className="min-h-11 flex-1 sm:flex-none lg:min-h-0">
+                <PlusCircle className="h-3.5 w-3.5" />
+                Receive stock
+              </Button>
+            )}
+            {canCreatePo && (
+              <Button size="sm" variant="outline" className="min-h-11 flex-1 sm:flex-none lg:min-h-0" onClick={() => navigate("/purchase-orders/new", { state: { poSeed: { items: [{ product_id: product.id, product_name: product.name, quantity: Math.max(1, product.reorder_level - onHand), unit_cost: product.buying_price || 0 }] } } })}>
+                <ShoppingCart className="h-3.5 w-3.5" />
+                Reorder
+              </Button>
+            )}
+            {canEdit && (
+              <>
+                <Button size="sm" variant="outline" onClick={() => setVariantsOpen(true)} className="min-h-11 flex-1 sm:flex-none lg:min-h-0">
+                  <Layers className="h-3.5 w-3.5" />
+                  Variants ({variants.length})
+                </Button>
+                <Button size="sm" variant={editing ? "default" : "outline"} onClick={() => setEditing((value) => !value)} className="min-h-11 flex-1 sm:flex-none lg:min-h-0">
+                  <Pencil className="h-3.5 w-3.5" />
+                  {editing ? "Done editing" : "Edit"}
+                </Button>
+              </>
+            )}
           </>
         }
         stats={[
           { label: "On hand", value: onHand.toString(), tone: onHand <= 0 ? "danger" : onHand <= product.reorder_level ? "warning" : "muted" },
-          { label: "Cost", value: KES(product.buying_price) },
-          { label: "Sell", value: KES(product.selling_price) },
+          { label: "Cost", value: money(product.buying_price) },
+          { label: "Sell", value: money(product.selling_price) },
           { label: "Margin", value: margin !== null ? `${margin}%` : "—", tone: margin !== null && margin > 30 ? "positive" : "muted" },
-          { label: "Value @ cost", value: KES(valueAtCost) },
+          { label: "Value @ cost", value: money(valueAtCost) },
           { label: "Reorder at", value: product.reorder_level.toString() },
         ]}
       />
       <LazyTabs
+        className="[&_[role=tablist]]:flex-nowrap [&_[role=tablist]]:overflow-x-auto lg:[&_[role=tablist]]:flex-wrap lg:[&_[role=tablist]]:overflow-visible"
         tabs={[
           { id: "overview", label: "Overview", render: () => <OverviewTab product={product} editing={editing} onSaved={() => { setEditing(false); reload() }} /> },
-          { id: "stock", label: "Stock", count: batches.length, render: () => <BatchesTab batches={batches} /> },
-          { id: "variants", label: "Variants", count: variants.length, render: () => <VariantsTab variants={variants} onManage={() => setVariantsOpen(true)} /> },
+          { id: "stock", label: "Stock", count: batches.length, render: () => <BatchesTab batches={batches} canReceive={canEdit} onReceive={() => setReceiveOpen(true)} /> },
+          { id: "variants", label: "Variants", count: variants.length, render: () => <VariantsTab variants={variants} canManage={canEdit} onManage={() => setVariantsOpen(true)} /> },
           ...(((product as unknown as { tracked_by_serial?: number }).tracked_by_serial === 1)
             ? [{ id: "units", label: "Units", render: () => <UnitsTab productId={product.id} /> }]
             : []),
-          { id: "substitutes", label: "Substitutes", render: () => <SubstitutesTab product={product} /> },
-          { id: "images", label: "Images", render: () => <ImagesTab product={product} onSaved={reload} /> },
+          { id: "substitutes", label: "Substitutes", render: () => <SubstitutesTab product={product} canEdit={canEdit} /> },
+          { id: "images", label: "Images", render: () => <ImagesTab product={product} onSaved={reload} canEdit={canEdit} /> },
           { id: "sales", label: "Sales", render: () => <SalesTab id={product.id} /> },
           { id: "suppliers", label: "Suppliers", count: suppliers.length, render: () => <SuppliersTab suppliers={suppliers} /> },
           { id: "activity", label: "Activity", render: () => <ActivityTab id={product.id} /> },
@@ -314,8 +330,8 @@ function OverviewTab({ product, editing, onSaved }: { product: Product; editing:
         <Field label="Category" value={product.category_name ?? "Uncategorised"} />
         <Field label="VAT rate" value={`${product.tax_rate}%`} />
         <Field label="Reorder level" value={String(product.reorder_level)} />
-        <Field label="Cost" value={KES(product.buying_price)} />
-        <Field label="Sell" value={KES(product.selling_price)} />
+        <Field label="Cost" value={money(product.buying_price)} />
+        <Field label="Sell" value={money(product.selling_price)} />
         <Field label="Description" value={product.description} className="md:col-span-2" />
       </div>
     )
@@ -349,6 +365,7 @@ function OverviewTab({ product, editing, onSaved }: { product: Product; editing:
             options={categories.map((c) => ({ value: c.id, label: c.name }))}
             placeholder="Uncategorised"
             searchPlaceholder="Search or create category…"
+            className="[&_button]:h-11 lg:[&_button]:h-9"
             onCreate={async (name) => {
               // Create the category inline so the user can keep typing
               // without leaving the form.
@@ -396,7 +413,7 @@ function OverviewTab({ product, editing, onSaved }: { product: Product; editing:
           className="md:col-span-2"
         />
       </div>
-      <div className="flex items-center justify-end gap-2 border-t border-foreground/10 pt-4">
+      <div className="flex items-center justify-end gap-2 border-t border-foreground/10 pt-4 [&_button]:min-h-11 lg:[&_button]:min-h-0">
         <Button type="button" variant="outline" size="sm" onClick={onSaved} disabled={saving}>
           <XIcon className="h-3.5 w-3.5" />
           Cancel
@@ -440,7 +457,7 @@ function EditField({
           value={value}
           onChange={(e) => onChange(e.target.value)}
           rows={3}
-          className="rounded-md border border-foreground/15 bg-background px-3 py-2 text-[14px] outline-none focus:border-foreground/40 resize-y"
+          className="min-h-11 rounded-md border border-foreground/15 bg-background px-3 py-2 text-[14px] outline-none focus:border-foreground/40 resize-y"
           placeholder={placeholder}
         />
       ) : (
@@ -450,6 +467,7 @@ function EditField({
           onChange={(e) => onChange(e.target.value)}
           required={required}
           placeholder={placeholder}
+          className="h-11"
         />
       )}
     </label>
@@ -465,39 +483,57 @@ function Field({ label, value, className = "" }: { label: string; value?: string
   )
 }
 
-function BatchesTab({ batches }: { batches: BatchRow[] }) {
-  if (batches.length === 0) return <p className="text-sm text-muted-foreground">No batches yet.</p>
+function BatchesTab({ batches, canReceive, onReceive }: {
+  batches: BatchRow[]
+  canReceive: boolean
+  onReceive: () => void
+}) {
+  if (batches.length === 0) {
+    return (
+      <div className="rounded-md border border-dashed border-foreground/15 p-8 text-center">
+        <p className="text-sm text-muted-foreground">No stock has been received for this product.</p>
+        {canReceive && <Button onClick={onReceive} className="mt-4 min-h-11"><PlusCircle className="size-4" /> Receive first stock</Button>}
+      </div>
+    )
+  }
+  const statusFor = (batch: BatchRow) => {
+    const expired = batch.expiry_date && isBefore(new Date(batch.expiry_date), new Date())
+    const expiring = batch.expiry_date && !expired && isBefore(new Date(batch.expiry_date), addDays(new Date(), 30))
+    return { expired, expiring }
+  }
   return (
-    <table className="w-full text-[13px]">
-      <thead>
-        <tr className="border-b border-foreground/10 font-mono text-[10px] uppercase tracking-[0.16em] text-muted-foreground">
-          <th className="text-left py-2 font-normal">Batch</th>
-          <th className="text-left py-2 font-normal">Supplier</th>
-          <th className="text-left py-2 font-normal">Received</th>
-          <th className="text-left py-2 font-normal">Expires</th>
-          <th className="text-right py-2 font-normal">Qty</th>
-          <th className="text-right py-2 font-normal">Cost</th>
-        </tr>
-      </thead>
-      <tbody>
-        {batches.map((b) => {
-          const isExpired = b.expiry_date && isBefore(new Date(b.expiry_date), new Date())
-          const isExpiring = b.expiry_date && !isExpired && isBefore(new Date(b.expiry_date), addDays(new Date(), 30))
+    <>
+      <div data-mobile-list="product-batches" className="max-h-[60vh] space-y-2 overflow-y-auto pr-1 lg:hidden">
+        {batches.map((batch) => {
+          const { expired, expiring } = statusFor(batch)
           return (
-            <tr key={b.id} className="border-b border-foreground/5">
-              <td className="py-2.5">{b.batch_number || "—"}</td>
-              <td className="py-2.5">{b.supplier_name || "—"}</td>
-              <td className="py-2.5 text-muted-foreground">{format(new Date(b.received_at), "d MMM yyyy")}</td>
-              <td className={`py-2.5 ${isExpired ? "text-red-600" : isExpiring ? "text-amber-600" : "text-muted-foreground"}`}>
-                {b.expiry_date ? format(new Date(b.expiry_date), "d MMM yyyy") : "—"}
-              </td>
-              <td className="py-2.5 text-right tabular-nums">{b.quantity}</td>
-              <td className="py-2.5 text-right font-mono tabular-nums">{KES(b.buying_price)}</td>
-            </tr>
+            <article key={batch.id} className="rounded-lg border border-border p-4">
+              <div className="flex items-start justify-between gap-3">
+                <div><p className="font-medium">{batch.batch_number || "Unnumbered batch"}</p><p className="mt-0.5 text-xs text-muted-foreground">{batch.supplier_name || "No supplier recorded"}</p></div>
+                <strong className="font-mono">{batch.quantity}</strong>
+              </div>
+              <dl className="mt-3 grid grid-cols-3 gap-3 border-t border-border pt-3 text-xs">
+                <div><dt className="text-muted-foreground">Received</dt><dd>{format(new Date(batch.received_at), "d MMM yyyy")}</dd></div>
+                <div><dt className="text-muted-foreground">Expires</dt><dd className={expired ? "text-red-600" : expiring ? "text-amber-600" : ""}>{batch.expiry_date ? format(new Date(batch.expiry_date), "d MMM yyyy") : "—"}</dd></div>
+                <div><dt className="text-muted-foreground">Unit cost</dt><dd className="font-mono">{money(batch.buying_price)}</dd></div>
+              </dl>
+            </article>
           )
         })}
-      </tbody>
-    </table>
+      </div>
+      <div data-desktop-table="product-batches" className="hidden overflow-x-auto lg:block">
+        <table className="w-full text-[13px]">
+          <thead><tr className="border-b border-foreground/10 font-mono text-[10px] uppercase tracking-[0.16em] text-muted-foreground">
+            <th className="py-2 text-left font-normal">Batch</th><th className="py-2 text-left font-normal">Supplier</th><th className="py-2 text-left font-normal">Received</th><th className="py-2 text-left font-normal">Expires</th><th className="py-2 text-right font-normal">Qty</th><th className="py-2 text-right font-normal">Cost</th>
+          </tr></thead>
+          <tbody>{batches.map((batch) => { const { expired, expiring } = statusFor(batch); return (
+            <tr key={batch.id} className="border-b border-foreground/5">
+              <td className="py-2.5">{batch.batch_number || "—"}</td><td className="py-2.5">{batch.supplier_name || "—"}</td><td className="py-2.5 text-muted-foreground">{format(new Date(batch.received_at), "d MMM yyyy")}</td><td className={`py-2.5 ${expired ? "text-red-600" : expiring ? "text-amber-600" : "text-muted-foreground"}`}>{batch.expiry_date ? format(new Date(batch.expiry_date), "d MMM yyyy") : "—"}</td><td className="py-2.5 text-right tabular-nums">{batch.quantity}</td><td className="py-2.5 text-right font-mono tabular-nums">{money(batch.buying_price)}</td>
+            </tr>
+          ) })}</tbody>
+        </table>
+      </div>
+    </>
   )
 }
 
@@ -507,11 +543,11 @@ function SalesTab({ id }: { id: string }) {
   if (loading) return <div className="text-sm text-muted-foreground">Loading…</div>
   if (sales.length === 0) return <p className="text-sm text-muted-foreground">Not sold yet.</p>
   return (
-    <ul className="flex flex-col divide-y divide-foreground/5 rounded-md border border-foreground/10">
+    <ul className="flex max-h-[60vh] flex-col divide-y divide-foreground/5 overflow-y-auto rounded-md border border-foreground/10">
       {sales.map((s) => (
         <li
           key={s.id}
-          className="flex items-center justify-between gap-4 px-4 py-3 hover:bg-foreground/[0.02] cursor-pointer"
+          className="flex min-h-11 items-center justify-between gap-4 px-4 py-3 hover:bg-foreground/[0.02] cursor-pointer"
           onClick={() => s.route && (window.location.href = s.route)}
         >
           <div className="flex flex-col">
@@ -520,7 +556,7 @@ function SalesTab({ id }: { id: string }) {
               {format(new Date(s.at), "d MMM yyyy · HH:mm")}
             </span>
           </div>
-          <span className="font-mono text-[13px] tabular-nums">{KES(s.amount ?? 0)}</span>
+          <span className="font-mono text-[13px] tabular-nums">{money(s.amount ?? 0)}</span>
         </li>
       ))}
     </ul>
@@ -531,11 +567,11 @@ function SuppliersTab({ suppliers }: { suppliers: SupplierAggregate[] }) {
   if (suppliers.length === 0)
     return <p className="text-sm text-muted-foreground">No suppliers recorded yet.</p>
   return (
-    <ul className="flex flex-col divide-y divide-foreground/5 rounded-md border border-foreground/10">
+    <ul className="flex max-h-[60vh] flex-col divide-y divide-foreground/5 overflow-y-auto rounded-md border border-foreground/10">
       {suppliers.map((s) => (
         <li
           key={s.supplier_id}
-          className="flex items-center justify-between gap-4 px-4 py-3 hover:bg-foreground/[0.02] cursor-pointer"
+          className="flex min-h-11 items-center justify-between gap-4 px-4 py-3 hover:bg-foreground/[0.02] cursor-pointer"
           onClick={() => (window.location.href = `/suppliers/${s.supplier_id}`)}
         >
           <div className="flex flex-col">
@@ -544,9 +580,9 @@ function SuppliersTab({ suppliers }: { suppliers: SupplierAggregate[] }) {
               Last received {format(new Date(s.last_received), "d MMM yyyy")}
             </span>
           </div>
-          <div className="flex gap-4">
+          <div className="flex shrink-0 flex-col items-end gap-0.5 sm:flex-row sm:gap-4">
             <span className="font-mono text-[12px] text-muted-foreground tabular-nums">{s.total_qty}</span>
-            <span className="font-mono text-[13px] tabular-nums">{KES(s.total_cost)}</span>
+            <span className="font-mono text-[13px] tabular-nums">{money(s.total_cost)}</span>
           </div>
         </li>
       ))}
@@ -559,11 +595,11 @@ function ActivityTab({ id }: { id: string }) {
   if (loading) return <div className="text-sm text-muted-foreground">Loading…</div>
   if (events.length === 0) return <p className="text-sm text-muted-foreground">No activity yet.</p>
   return (
-    <ol className="flex flex-col gap-3">
+    <ol className="flex max-h-[60vh] flex-col gap-3 overflow-y-auto pr-1">
       {events.map((e) => (
         <li
           key={e.id}
-          className="grid grid-cols-[80px_1fr_auto] items-baseline gap-4 border-b border-foreground/5 pb-2.5"
+          className="grid grid-cols-[64px_1fr] items-baseline gap-3 border-b border-foreground/5 pb-2.5 sm:grid-cols-[80px_1fr_auto] sm:gap-4"
         >
           <time className="font-mono text-[10px] uppercase tracking-[0.16em] text-muted-foreground">
             {format(new Date(e.at), "d MMM HH:mm")}
@@ -573,7 +609,7 @@ function ActivityTab({ id }: { id: string }) {
             {e.summary && <span className="text-[12px] text-muted-foreground">{e.summary}</span>}
           </div>
           {e.amount !== undefined && (
-            <span className="font-mono text-[12px] tabular-nums">{KES(e.amount)}</span>
+            <span className="col-start-2 font-mono text-[12px] tabular-nums sm:col-start-auto">{money(e.amount)}</span>
           )}
         </li>
       ))}
@@ -582,79 +618,41 @@ function ActivityTab({ id }: { id: string }) {
 }
 
 
-function VariantsTab({ variants, onManage }: { variants: ProductVariant[]; onManage: () => void }) {
+function VariantsTab({ variants, canManage, onManage }: { variants: ProductVariant[]; canManage: boolean; onManage: () => void }) {
   if (variants.length === 0) {
     return (
       <div className="rounded-md border border-dashed border-foreground/15 p-8 text-center">
-        <Layers className="mx-auto h-8 w-8 text-muted-foreground/40 mb-3" />
-        <p className="text-sm text-muted-foreground">
-          No variants yet. Variants let you track stock per colour, size, shade, or any axis.
-        </p>
-        <Button size="sm" className="mt-4" onClick={onManage}>
-          <Layers className="h-3.5 w-3.5" />
-          Add variants
-        </Button>
+        <Layers className="mx-auto mb-3 size-8 text-muted-foreground/40" />
+        <p className="text-sm text-muted-foreground">No variants yet. Variants track stock by colour, size, shade, or another option.</p>
+        {canManage && <Button className="mt-4 min-h-11" onClick={onManage}><Layers className="size-4" /> Add variants</Button>}
       </div>
     )
   }
   return (
     <div className="flex flex-col gap-3">
-      <div className="flex items-center justify-between">
-        <p className="text-[12px] text-muted-foreground">
-          {variants.length} variant{variants.length === 1 ? "" : "s"}. Click the button to add, edit, or retire any.
-        </p>
-        <Button size="sm" variant="outline" onClick={onManage}>
-          <Layers className="h-3.5 w-3.5" />
-          Manage variants
-        </Button>
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <p className="text-xs text-muted-foreground">{variants.length} variant{variants.length === 1 ? "" : "s"}.</p>
+        {canManage && <Button variant="outline" onClick={onManage} className="min-h-11 sm:w-auto lg:min-h-0"><Layers className="size-4" /> Manage variants</Button>}
       </div>
-      <table className="w-full text-[13px]">
-        <thead>
-          <tr className="border-b border-foreground/10 font-mono text-[10px] uppercase tracking-[0.16em] text-muted-foreground">
-            <th className="text-left py-2 font-normal">Variant</th>
-            <th className="text-left py-2 font-normal">SKU</th>
-            <th className="text-left py-2 font-normal">Axis</th>
-            <th className="text-right py-2 font-normal">Cost</th>
-            <th className="text-right py-2 font-normal">Sell</th>
-            <th className="text-right py-2 font-normal">Stock</th>
-            <th className="text-left py-2 font-normal">Status</th>
-          </tr>
-        </thead>
-        <tbody>
-          {variants.map((v) => (
-            <tr key={v.id} className="border-b border-foreground/5">
-              <td className="py-2.5">{v.variant_name}</td>
-              <td className="py-2.5 font-mono text-[11px] text-muted-foreground">{v.variant_sku}</td>
-              <td className="py-2.5 text-[12px] text-muted-foreground">
-                {[v.color, v.size, v.shade].filter(Boolean).join(" · ") || "—"}
-              </td>
-              <td className="py-2.5 text-right font-mono tabular-nums">
-                {v.buying_price !== null ? KES(v.buying_price) : "—"}
-              </td>
-              <td className="py-2.5 text-right font-mono tabular-nums">
-                {v.selling_price !== null ? KES(v.selling_price) : "—"}
-              </td>
-              <td className="py-2.5 text-right font-mono tabular-nums">{v.stock_qty}</td>
-              <td className="py-2.5">
-                {v.active ? (
-                  <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-emerald-600">
-                    Active
-                  </span>
-                ) : (
-                  <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground/70">
-                    Retired
-                  </span>
-                )}
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+      <div data-mobile-list="product-variants" className="max-h-[60vh] space-y-2 overflow-y-auto pr-1 lg:hidden">
+        {variants.map((variant) => (
+          <article key={variant.id} className="rounded-lg border border-border p-4">
+            <div className="flex items-start justify-between gap-3"><div className="min-w-0"><p className="truncate font-medium">{variant.variant_name}</p><p className="truncate font-mono text-[11px] text-muted-foreground">{variant.variant_sku || "No SKU"}</p></div><span className={`font-mono text-[10px] uppercase tracking-[0.16em] ${variant.active ? "text-emerald-600" : "text-muted-foreground"}`}>{variant.active ? "Active" : "Retired"}</span></div>
+            <p className="mt-2 text-xs text-muted-foreground">{[variant.color, variant.size, variant.shade].filter(Boolean).join(" · ") || "No option values"}</p>
+            <dl className="mt-3 grid grid-cols-3 gap-3 border-t border-border pt-3 text-xs"><div><dt className="text-muted-foreground">Stock</dt><dd className="font-mono">{variant.stock_qty}</dd></div><div><dt className="text-muted-foreground">Cost</dt><dd className="font-mono">{variant.buying_price !== null ? money(variant.buying_price) : "—"}</dd></div><div><dt className="text-muted-foreground">Sell</dt><dd className="font-mono">{variant.selling_price !== null ? money(variant.selling_price) : "—"}</dd></div></dl>
+          </article>
+        ))}
+      </div>
+      <div data-desktop-table="product-variants" className="hidden overflow-x-auto lg:block">
+        <table className="w-full text-[13px]"><thead><tr className="border-b border-foreground/10 font-mono text-[10px] uppercase tracking-[0.16em] text-muted-foreground"><th className="py-2 text-left font-normal">Variant</th><th className="py-2 text-left font-normal">SKU</th><th className="py-2 text-left font-normal">Axis</th><th className="py-2 text-right font-normal">Cost</th><th className="py-2 text-right font-normal">Sell</th><th className="py-2 text-right font-normal">Stock</th><th className="py-2 text-left font-normal">Status</th></tr></thead>
+          <tbody>{variants.map((variant) => <tr key={variant.id} className="border-b border-foreground/5"><td className="py-2.5">{variant.variant_name}</td><td className="py-2.5 font-mono text-[11px] text-muted-foreground">{variant.variant_sku}</td><td className="py-2.5 text-xs text-muted-foreground">{[variant.color, variant.size, variant.shade].filter(Boolean).join(" · ") || "—"}</td><td className="py-2.5 text-right font-mono">{variant.buying_price !== null ? money(variant.buying_price) : "—"}</td><td className="py-2.5 text-right font-mono">{variant.selling_price !== null ? money(variant.selling_price) : "—"}</td><td className="py-2.5 text-right font-mono">{variant.stock_qty}</td><td className={`py-2.5 font-mono text-[10px] uppercase tracking-[0.18em] ${variant.active ? "text-emerald-600" : "text-muted-foreground"}`}>{variant.active ? "Active" : "Retired"}</td></tr>)}</tbody>
+        </table>
+      </div>
     </div>
   )
 }
 
-function SubstitutesTab({ product }: { product: Product }) {
+function SubstitutesTab({ product, canEdit }: { product: Product; canEdit: boolean }) {
   const [subs, setSubs] = useState<SubstitutionWithProduct[]>([])
   const [suggestions, setSuggestions] = useState<Array<{ id: string; name: string; sku: string; selling_price: number; stock: number; generic_name: string }>>([])
   const [allProducts, setAllProducts] = useState<Product[]>([])
@@ -741,11 +739,13 @@ function SubstitutesTab({ product }: { product: Product }) {
                   </div>
                 </div>
                 <span className="font-mono tabular-nums text-[12px] text-muted-foreground">
-                  {KES(s.substitute_price)}
+                  {money(s.substitute_price)}
                 </span>
-                <Button variant="ghost" size="icon-xs" onClick={() => remove(s.substitute_product_id)} title="Remove substitute">
-                  <XIcon className="h-3 w-3 text-rose-600" />
-                </Button>
+                {canEdit && (
+                  <Button variant="ghost" size="icon-xs" onClick={() => remove(s.substitute_product_id)} title="Remove substitute" className="min-h-11 min-w-11 lg:min-h-0 lg:min-w-0">
+                    <XIcon className="h-3 w-3 text-rose-600" />
+                  </Button>
+                )}
               </li>
             ))}
           </ul>
@@ -768,11 +768,12 @@ function SubstitutesTab({ product }: { product: Product }) {
                     Generic: {s.generic_name} · Stock {s.stock}
                   </div>
                 </div>
-                <span className="font-mono tabular-nums text-[12px] text-muted-foreground">{KES(s.selling_price)}</span>
-                <Button size="sm" disabled={adding} onClick={() => add(s.id)}>
-                  <PlusCircle className="h-3.5 w-3.5" />
-                  Add
-                </Button>
+                <span className="font-mono tabular-nums text-[12px] text-muted-foreground">{money(s.selling_price)}</span>
+                {canEdit && (
+                  <Button size="sm" disabled={adding} onClick={() => add(s.id)} className="min-h-11 lg:min-h-0">
+                    <PlusCircle className="h-3.5 w-3.5" /> Add
+                  </Button>
+                )}
               </li>
             ))}
           </ul>
@@ -780,7 +781,7 @@ function SubstitutesTab({ product }: { product: Product }) {
       ) : null}
 
       {/* Manual picker — any product */}
-      <section className="flex flex-col gap-3">
+      {canEdit && <section className="flex flex-col gap-3">
         <h3 className="font-mono text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
           Add any product as substitute
         </h3>
@@ -800,12 +801,12 @@ function SubstitutesTab({ product }: { product: Product }) {
           dosage form, or a non-pharmacy alternative). Once added, the POS will offer it whenever the
           current product is dispensed or out of stock.
         </p>
-      </section>
+      </section>}
     </div>
   )
 }
 
-function ImagesTab({ product, onSaved }: { product: Product; onSaved: () => void }) {
+function ImagesTab({ product, onSaved, canEdit }: { product: Product; onSaved: () => void; canEdit: boolean }) {
   const [draftUrl, setDraftUrl] = useState(product.image_path ?? "")
   const [saving, setSaving] = useState(false)
 
@@ -879,7 +880,7 @@ function ImagesTab({ product, onSaved }: { product: Product; onSaved: () => void
           Square images (1:1) render best.
         </p>
       </div>
-      <div className="flex flex-col gap-3">
+      {canEdit ? <div className="flex flex-col gap-3 [&_button]:min-h-11 lg:[&_button]:min-h-0">
         {/* Picker row — same layout pattern as customer-display so the
             URL field below gets a full-width row of its own. */}
         <div className="flex items-center gap-2">
@@ -926,7 +927,7 @@ function ImagesTab({ product, onSaved }: { product: Product; onSaved: () => void
             </Button>
           ) : null}
         </div>
-      </div>
+      </div> : <div className="text-sm text-muted-foreground">You have view-only access to this product image.</div>}
     </div>
   )
 }
@@ -935,41 +936,13 @@ function ImagesTab({ product, onSaved }: { product: Product; onSaved: () => void
 function UnitsTab({ productId }: { productId: string }) {
   const [units, setUnits] = useState<EquipmentUnit[]>([])
   const [loading, setLoading] = useState(true)
-  useEffect(() => {
-    listUnits({ productId, limit: 500 }).then(setUnits).finally(() => setLoading(false))
-  }, [productId])
-
-  const STATUS: Record<string, string> = {
-    in_stock: "text-emerald-600", reserved: "text-amber-600", sold: "text-blue-600",
-    rented: "text-violet-600", in_service: "text-orange-600", written_off: "text-red-600",
-  }
-
+  useEffect(() => { listUnits({ productId, limit: 500 }).then(setUnits).finally(() => setLoading(false)) }, [productId])
+  const STATUS: Record<string, string> = { in_stock: "text-emerald-600", reserved: "text-amber-600", sold: "text-blue-600", rented: "text-violet-600", in_service: "text-orange-600", written_off: "text-red-600" }
+  const warranty = (unit: EquipmentUnit) => { const state = warrantyState(unit.warranty_expiry); const days = warrantyDaysRemaining(unit.warranty_expiry); return { text: state === "none" ? "—" : state === "expired" ? "Expired" : days != null ? `${days}d left` : "Active", className: state === "expired" ? "text-red-600" : state === "expiring" ? "text-amber-600" : state === "active" ? "text-emerald-600" : "text-muted-foreground" } }
   if (loading) return <p className="text-sm text-muted-foreground">Loading units…</p>
-  if (units.length === 0) return <p className="text-sm text-muted-foreground">No serialized units received yet.</p>
-  return (
-    <table className="w-full text-[13px]">
-      <thead>
-        <tr className="border-b border-foreground/10 font-mono text-[10px] uppercase tracking-[0.16em] text-muted-foreground">
-          <th className="text-left py-2 font-normal">Serial</th>
-          <th className="text-left py-2 font-normal">Status</th>
-          <th className="text-left py-2 font-normal">Warranty</th>
-        </tr>
-      </thead>
-      <tbody>
-        {units.map((u) => {
-          const ws = warrantyState(u.warranty_expiry)
-          const days = warrantyDaysRemaining(u.warranty_expiry)
-          const wtext = ws === "none" ? "—" : ws === "expired" ? "Expired" : days != null ? `${days}d left` : "Active"
-          const wcls = ws === "expired" ? "text-red-600" : ws === "expiring" ? "text-amber-600" : ws === "active" ? "text-emerald-600" : "text-muted-foreground"
-          return (
-            <tr key={u.id} className="border-b border-foreground/5">
-              <td className="py-2.5 font-mono">{u.serial_number}</td>
-              <td className={`py-2.5 capitalize ${STATUS[u.status] ?? ""}`}>{u.status.replace("_", " ")}</td>
-              <td className={`py-2.5 ${wcls}`}>{wtext}</td>
-            </tr>
-          )
-        })}
-      </tbody>
-    </table>
-  )
+  if (units.length === 0) return <p className="text-sm text-muted-foreground">Receive serialized stock to create the first unit.</p>
+  return <>
+    <div data-mobile-list="product-units" className="max-h-[60vh] space-y-2 overflow-y-auto pr-1 lg:hidden">{units.map((unit) => { const w = warranty(unit); return <article key={unit.id} className="rounded-lg border border-border p-4"><p className="font-mono font-medium">{unit.serial_number}</p><div className="mt-2 flex justify-between text-xs"><span className={`capitalize ${STATUS[unit.status] ?? ""}`}>{unit.status.replace("_", " ")}</span><span className={w.className}>{w.text}</span></div></article> })}</div>
+    <div data-desktop-table="product-units" className="hidden lg:block"><table className="w-full text-[13px]"><thead><tr className="border-b border-foreground/10 font-mono text-[10px] uppercase tracking-[0.16em] text-muted-foreground"><th className="py-2 text-left font-normal">Serial</th><th className="py-2 text-left font-normal">Status</th><th className="py-2 text-left font-normal">Warranty</th></tr></thead><tbody>{units.map((unit) => { const w = warranty(unit); return <tr key={unit.id} className="border-b border-foreground/5"><td className="py-2.5 font-mono">{unit.serial_number}</td><td className={`py-2.5 capitalize ${STATUS[unit.status] ?? ""}`}>{unit.status.replace("_", " ")}</td><td className={`py-2.5 ${w.className}`}>{w.text}</td></tr> })}</tbody></table></div>
+  </>
 }

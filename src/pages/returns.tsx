@@ -1,3 +1,4 @@
+import { MobileRouteContext } from "@/components/shared/mobile-route-context";
 import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import {
@@ -46,7 +47,7 @@ interface SaleItem {
   already_returned?: number;
 }
 
-export function ReturnsPage() {
+function ReturnsPageContent() {
   const navigate = useNavigate();
   const [totalRefunded, setTotalRefunded] = useState(0);
 
@@ -84,7 +85,7 @@ export function ReturnsPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-3 sm:gap-3">
         <StatCard label="Total Returns" value={String(list.total)} icon={RotateCcw} />
         <StatCard label="Refunded This Period" value={money(totalRefunded)} icon={RotateCcw} />
         <StatCard label="Recent Returns" value={String(returns.filter((r) => {
@@ -153,7 +154,7 @@ function StatCard({ label, value, icon: Icon }: { label: string; value: string; 
   );
 }
 
-export function NewReturnPage() {
+function NewReturnPageContent() {
   const [saleSearch, setSaleSearch] = useState("");
   const [foundSales, setFoundSales] = useState<SaleSummary[]>([]);
   const [selectedSale, setSelectedSale] = useState<SaleSummary | null>(null);
@@ -257,7 +258,7 @@ export function NewReturnPage() {
           unit_price: it.unit_price,
         })),
       });
-      toast.success(`Return processed. Refund: KES ${totalRefund.toFixed(2)}`);
+      toast.success(`Return processed. Refund: ${money(totalRefund)}`);
       navigate("/returns");
     } catch (e) {
       toast.error(String(e));
@@ -310,7 +311,7 @@ export function NewReturnPage() {
                       {s.customer_name && ` · ${s.customer_name}`}
                     </div>
                   </div>
-                  <div className="text-right font-mono text-sm">KES {s.total.toFixed(2)}</div>
+                  <div className="text-right font-mono text-sm">{money(s.total)}</div>
                 </button>
               ))}
             </div>
@@ -391,7 +392,7 @@ export function NewReturnPage() {
           </div>
 
           {itemsToReturn.length > 0 && (
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div className="space-y-3">
                 <div className="space-y-1.5">
                   <label className="text-xs font-medium text-muted-foreground">Reason *</label>
@@ -451,7 +452,7 @@ export function NewReturnPage() {
                 {submitting ? (
                   <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Processing...</>
                 ) : (
-                  <><CheckCircle2 className="h-4 w-4 mr-2" /> Process Return — KES {totalRefund.toFixed(2)}</>
+                  <><CheckCircle2 className="h-4 w-4 mr-2" /> Process Return — {money(totalRefund)}</>
                 )}
               </Button>
             </div>
@@ -459,5 +460,23 @@ export function NewReturnPage() {
         </>
       )}
     </div>
+  );
+}
+
+export function ReturnsPage() {
+  return (
+    <>
+      <MobileRouteContext />
+      <ReturnsPageContent />
+    </>
+  );
+}
+
+export function NewReturnPage() {
+  return (
+    <>
+      <MobileRouteContext />
+      <NewReturnPageContent />
+    </>
   );
 }

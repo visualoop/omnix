@@ -1,3 +1,4 @@
+import { MobileRouteContext } from "@/components/shared/mobile-route-context";
 import { useEffect, useState, useCallback } from "react";
 import { Lock, LockOpen, Calendar } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
@@ -17,7 +18,7 @@ import { confirm } from "@/components/ui/confirm-dialog";
 import { intlLocale } from "@/lib/intl";
 
 import { BackButton } from "@/components/ui/back-button";
-export function PeriodClosePage() {
+function PeriodClosePageContent() {
   const user = useAuthStore((s) => s.user);
   const [years, setYears] = useState<FinancialYear[]>([]);
   const [periods, setPeriods] = useState<Period[]>([]);
@@ -160,5 +161,14 @@ export function PeriodClosePage() {
         </section>
       )}
     </div>
+  );
+}
+
+export function PeriodClosePage() {
+  return (
+    <>
+      <MobileRouteContext />
+      <PeriodClosePageContent />
+    </>
   );
 }

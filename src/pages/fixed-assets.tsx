@@ -1,3 +1,4 @@
+import { MobileRouteContext } from "@/components/shared/mobile-route-context";
 import { useState } from "react";
 import { Buildings, Plus, MagnifyingGlass } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
@@ -15,7 +16,7 @@ function currentPeriod(): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
 }
 
-export function FixedAssetsPage() {
+function FixedAssetsPageContent() {
   const list = useListData(pageFixedAssets, { pageSize: 50 });
   const [running, setRunning] = useState(false);
 
@@ -34,7 +35,7 @@ export function FixedAssetsPage() {
 
   return (
     <div className="max-w-4xl space-y-4">
-      <header className="flex items-start justify-between">
+      <header className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
         <div>
           <BackButton fallback="/reports" />
           <h1 className="text-xl font-semibold flex items-center gap-2">
@@ -44,7 +45,7 @@ export function FixedAssetsPage() {
             Furniture, equipment, vehicles, buildings — anything you own that produces value over multiple years.
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="grid w-full gap-2 sm:grid-cols-2 lg:flex lg:w-auto">
           <Button variant="outline" onClick={handleRunDep} disabled={running}>
             {running ? "Running…" : `Run depreciation for ${currentPeriod()}`}
           </Button>
@@ -104,5 +105,14 @@ export function FixedAssetsPage() {
 
       <PaginationBar list={list} />
     </div>
+  );
+}
+
+export function FixedAssetsPage() {
+  return (
+    <>
+      <MobileRouteContext />
+      <FixedAssetsPageContent />
+    </>
   );
 }
