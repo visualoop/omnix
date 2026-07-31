@@ -1,6 +1,10 @@
 // Tauri commands for LAN multi-device server control + pairing.
 
-use crate::network::{discover_servers, random_pairing_code, start_server, DiscoveredServer, ServerHandle, ServerState};
+use crate::network::read_only_web::ReadOnlyWebState;
+use crate::network::{
+    discover_servers, random_pairing_code, start_read_only_server, start_server, DiscoveredServer,
+    ReadOnlyServerHandle, ServerHandle, ServerState,
+};
 use parking_lot::Mutex;
 use serde::{Deserialize, Serialize};
 use sqlx::sqlite::SqlitePoolOptions;
@@ -10,12 +14,14 @@ use tauri::Manager;
 
 pub struct NetworkState {
     pub server: Mutex<Option<ServerHandle>>,
+    pub read_only_server: Mutex<Option<ReadOnlyServerHandle>>,
 }
 
 impl Default for NetworkState {
     fn default() -> Self {
         Self {
             server: Mutex::new(None),
+            read_only_server: Mutex::new(None),
         }
     }
 }
@@ -24,6 +30,7 @@ impl Default for NetworkState {
 pub struct ServerStatus {
     pub running: bool,
     pub url: Option<String>,
+    pub read_only_url: Option<String>,
     pub mdns_active: bool,
 }
 
@@ -39,6 +46,7 @@ pub async fn start_lan_server(
     state: tauri::State<'_, Arc<NetworkState>>,
     port: u16,
     business_name: String,
+    read_only_port: Option<u16>,
 ) -> Result<ServerStatus, String> {
     // Already running?
     if state.server.lock().is_some() {
@@ -52,23 +60,50 @@ pub async fn start_lan_server(
         .await
         .map_err(|e| format!("Failed to open DB: {}", e))?;
 
+    let browser_port = match read_only_port {
+        Some(browser_port) if browser_port != 0 && browser_port != port => browser_port,
+        Some(_) => {
+            return Err(
+                "Read-only browser port must be non-zero and distinct from the paired-device port"
+                    .to_string(),
+            );
+        }
+        None => port.checked_add(1).ok_or_else(|| {
+            "Paired-device port leaves no port for the read-only browser listener".to_string()
+        })?,
+    };
+    let business_name_state = Arc::new(parking_lot::RwLock::new(business_name.clone()));
     let server_state = ServerState {
-        pool,
-        business_name: Arc::new(parking_lot::RwLock::new(business_name)),
+        pool: pool.clone(),
+        business_name: business_name_state,
     };
 
     let handle = start_server(server_state, port).await?;
     let local_ip = local_ip_address::local_ip()
         .map(|ip| ip.to_string())
         .unwrap_or_else(|_| "127.0.0.1".to_string());
+    let read_only_origin = format!("http://{local_ip}:{browser_port}");
+    let read_only_state = ReadOnlyWebState::new(pool, read_only_origin.clone(), business_name);
+    let read_only_handle = match start_read_only_server(read_only_state, browser_port).await {
+        Ok(read_only_handle) => read_only_handle,
+        Err(error) => {
+            if let Some(daemon) = handle.mdns_handle {
+                let _ = daemon.shutdown();
+            }
+            let _ = handle.shutdown_tx.send(());
+            return Err(error);
+        }
+    };
     let public_url = format!("http://{}:{}", local_ip, handle.addr.port());
     let mdns = handle.mdns_handle.is_some();
 
     *state.server.lock() = Some(handle);
+    *state.read_only_server.lock() = Some(read_only_handle);
 
     Ok(ServerStatus {
         running: true,
         url: Some(public_url),
+        read_only_url: Some(read_only_origin),
         mdns_active: mdns,
     })
 }
@@ -76,6 +111,10 @@ pub async fn start_lan_server(
 #[tauri::command]
 pub async fn stop_lan_server(state: tauri::State<'_, Arc<NetworkState>>) -> Result<(), String> {
     let handle = state.server.lock().take();
+    let read_only_handle = state.read_only_server.lock().take();
+    if let Some(handle) = read_only_handle {
+        let _ = handle.shutdown_tx.send(());
+    }
     if let Some(h) = handle {
         if let Some(daemon) = h.mdns_handle {
             let _ = daemon.shutdown();
@@ -93,15 +132,22 @@ pub fn lan_server_status(state: tauri::State<'_, Arc<NetworkState>>) -> ServerSt
             let local_ip = local_ip_address::local_ip()
                 .map(|ip| ip.to_string())
                 .unwrap_or_else(|_| "127.0.0.1".to_string());
+            let read_only_url = state
+                .read_only_server
+                .lock()
+                .as_ref()
+                .map(|web| format!("http://{}:{}", local_ip, web.addr.port()));
             ServerStatus {
                 running: true,
                 url: Some(format!("http://{}:{}", local_ip, h.addr.port())),
+                read_only_url,
                 mdns_active: h.mdns_handle.is_some(),
             }
         }
         None => ServerStatus {
             running: false,
             url: None,
+            read_only_url: None,
             mdns_active: false,
         },
     }
@@ -172,16 +218,18 @@ pub async fn list_paired_devices(app: tauri::AppHandle) -> Result<Vec<PairedDevi
 
     Ok(rows
         .into_iter()
-        .map(|(token, device_name, device_fingerprint, created_at, last_seen_at, revoked)| {
-            PairedDevice {
-                token: format!("{}...", &token[..8.min(token.len())]),  // Don't leak full token
-                device_name,
-                device_fingerprint,
-                created_at,
-                last_seen_at,
-                revoked,
-            }
-        })
+        .map(
+            |(token, device_name, device_fingerprint, created_at, last_seen_at, revoked)| {
+                PairedDevice {
+                    token: format!("{}...", &token[..8.min(token.len())]), // Don't leak full token
+                    device_name,
+                    device_fingerprint,
+                    created_at,
+                    last_seen_at,
+                    revoked,
+                }
+            },
+        )
         .collect())
 }
 

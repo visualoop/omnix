@@ -6,17 +6,20 @@
 //   POST /api/db/query        → run SELECT, return rows (auth required)
 //   POST /api/db/execute      → run INSERT/UPDATE/DELETE (auth required)
 //
-// All authenticated routes require `Authorization: Bearer <token>` header.
+// Legacy authenticated routes require `Authorization: Bearer <token>` and reject browser-origin requests.
 
+pub mod read_only_policy;
+pub mod read_only_web;
+
+use axum::extract::Request;
 use axum::{
     extract::State,
-    http::StatusCode,
+    http::{header, StatusCode},
     middleware::{self, Next},
     response::{IntoResponse, Response},
     routing::{get, post},
     Json, Router,
 };
-use axum::extract::Request;
 use mdns_sd::{ServiceDaemon, ServiceInfo};
 use parking_lot::RwLock;
 use serde::{Deserialize, Serialize};
@@ -25,7 +28,6 @@ use sqlx::sqlite::SqlitePool;
 use std::collections::HashMap;
 use std::net::SocketAddr;
 use std::sync::Arc;
-use tower_http::cors::{Any, CorsLayer};
 
 const SERVICE_TYPE: &str = "_omnix._tcp.local.";
 
@@ -78,24 +80,24 @@ impl IntoResponse for ApiError {
 }
 
 pub fn build_router(state: ServerState) -> Router {
-    let cors = CorsLayer::new()
-        .allow_methods(Any)
-        .allow_headers(Any)
-        .allow_origin(Any);
-
     Router::new()
         .route("/api/health", get(health))
         .route("/api/auth/pair", post(pair_device))
         .route(
             "/api/db/query",
-            post(db_query).layer(middleware::from_fn_with_state(state.clone(), require_auth)),
+            post(db_query).layer(middleware::from_fn_with_state(
+                state.clone(),
+                require_legacy_auth,
+            )),
         )
         .route(
             "/api/db/execute",
-            post(db_execute).layer(middleware::from_fn_with_state(state.clone(), require_auth)),
+            post(db_execute).layer(middleware::from_fn_with_state(
+                state.clone(),
+                require_legacy_auth,
+            )),
         )
         .with_state(state)
-        .layer(cors)
 }
 
 async fn health(State(state): State<ServerState>) -> Json<JsonValue> {
@@ -120,7 +122,9 @@ async fn pair_device(
     .bind(&req.code)
     .fetch_optional(&state.pool)
     .await
-    .map_err(|e| ApiError { error: e.to_string() })?;
+    .map_err(|e| ApiError {
+        error: e.to_string(),
+    })?;
 
     if row.is_none() {
         return Err(ApiError {
@@ -132,11 +136,9 @@ async fn pair_device(
     let token = random_token();
 
     // Insert token + mark code used (transactional)
-    let mut tx = state
-        .pool
-        .begin()
-        .await
-        .map_err(|e| ApiError { error: e.to_string() })?;
+    let mut tx = state.pool.begin().await.map_err(|e| ApiError {
+        error: e.to_string(),
+    })?;
 
     sqlx::query(
         "INSERT INTO api_tokens (token, device_name, device_fingerprint, last_seen_at)
@@ -147,7 +149,9 @@ async fn pair_device(
     .bind(&req.device_fingerprint)
     .execute(&mut *tx)
     .await
-    .map_err(|e| ApiError { error: e.to_string() })?;
+    .map_err(|e| ApiError {
+        error: e.to_string(),
+    })?;
 
     sqlx::query(
         "UPDATE pairing_codes SET used_at = datetime('now'), issued_token = ?1 WHERE code = ?2",
@@ -156,11 +160,13 @@ async fn pair_device(
     .bind(&req.code)
     .execute(&mut *tx)
     .await
-    .map_err(|e| ApiError { error: e.to_string() })?;
+    .map_err(|e| ApiError {
+        error: e.to_string(),
+    })?;
 
-    tx.commit()
-        .await
-        .map_err(|e| ApiError { error: e.to_string() })?;
+    tx.commit().await.map_err(|e| ApiError {
+        error: e.to_string(),
+    })?;
 
     Ok(Json(PairResponse {
         token,
@@ -168,11 +174,21 @@ async fn pair_device(
     }))
 }
 
-async fn require_auth(
+async fn require_legacy_auth(
     State(state): State<ServerState>,
     request: Request,
     next: Next,
 ) -> Result<Response, StatusCode> {
+    // Browser companion traffic must never reach the arbitrary-SQL compatibility surface.
+    // Native paired clients do not emit browser Origin or Fetch Metadata headers.
+    if request.headers().contains_key(header::ORIGIN)
+        || request.headers().contains_key("sec-fetch-site")
+        || request.headers().contains_key("sec-fetch-mode")
+        || request.headers().contains_key("sec-fetch-dest")
+    {
+        return Err(StatusCode::FORBIDDEN);
+    }
+
     let auth_header = request
         .headers()
         .get("authorization")
@@ -183,13 +199,12 @@ async fn require_auth(
         None => return Err(StatusCode::UNAUTHORIZED),
     };
 
-    let valid: Option<(i64,)> = sqlx::query_as(
-        "SELECT 1 FROM api_tokens WHERE token = ?1 AND revoked = 0",
-    )
-    .bind(&token)
-    .fetch_optional(&state.pool)
-    .await
-    .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+    let valid: Option<(i64,)> =
+        sqlx::query_as("SELECT 1 FROM api_tokens WHERE token = ?1 AND revoked = 0")
+            .bind(&token)
+            .fetch_optional(&state.pool)
+            .await
+            .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
     if valid.is_none() {
         return Err(StatusCode::UNAUTHORIZED);
@@ -208,18 +223,17 @@ async fn db_query(
     State(state): State<ServerState>,
     Json(q): Json<DbQuery>,
 ) -> Result<Json<DbResult>, ApiError> {
-    use sqlx::Row;
     use sqlx::Column;
+    use sqlx::Row;
 
     let mut sqlx_q = sqlx::query(&q.sql);
     for param in &q.params {
         sqlx_q = bind_json(sqlx_q, param);
     }
 
-    let rows = sqlx_q
-        .fetch_all(&state.pool)
-        .await
-        .map_err(|e| ApiError { error: e.to_string() })?;
+    let rows = sqlx_q.fetch_all(&state.pool).await.map_err(|e| ApiError {
+        error: e.to_string(),
+    })?;
 
     let mut result = Vec::with_capacity(rows.len());
     for row in rows {
@@ -230,7 +244,9 @@ async fn db_query(
             } else if let Ok(n) = row.try_get::<i64, _>(i) {
                 JsonValue::Number(n.into())
             } else if let Ok(f) = row.try_get::<f64, _>(i) {
-                serde_json::Number::from_f64(f).map(JsonValue::Number).unwrap_or(JsonValue::Null)
+                serde_json::Number::from_f64(f)
+                    .map(JsonValue::Number)
+                    .unwrap_or(JsonValue::Null)
             } else {
                 JsonValue::Null
             };
@@ -251,10 +267,9 @@ async fn db_execute(
         sqlx_q = bind_json(sqlx_q, param);
     }
 
-    let res = sqlx_q
-        .execute(&state.pool)
-        .await
-        .map_err(|e| ApiError { error: e.to_string() })?;
+    let res = sqlx_q.execute(&state.pool).await.map_err(|e| ApiError {
+        error: e.to_string(),
+    })?;
 
     Ok(Json(ExecResult {
         rows_affected: res.rows_affected(),
@@ -305,11 +320,43 @@ pub struct ServerHandle {
     pub shutdown_tx: tokio::sync::oneshot::Sender<()>,
 }
 
-pub async fn start_server(
-    state: ServerState,
+pub struct ReadOnlyServerHandle {
+    pub addr: SocketAddr,
+    pub shutdown_tx: tokio::sync::oneshot::Sender<()>,
+}
+
+pub async fn start_read_only_server(
+    state: read_only_web::ReadOnlyWebState,
     port: u16,
-) -> Result<ServerHandle, String> {
-    let addr: SocketAddr = format!("0.0.0.0:{}", port).parse().map_err(|e: std::net::AddrParseError| e.to_string())?;
+) -> Result<ReadOnlyServerHandle, String> {
+    let addr: SocketAddr = format!("0.0.0.0:{port}")
+        .parse()
+        .map_err(|error: std::net::AddrParseError| error.to_string())?;
+    let listener = tokio::net::TcpListener::bind(addr)
+        .await
+        .map_err(|error| format!("Failed to bind read-only browser listener {addr}: {error}"))?;
+    let actual_addr = listener.local_addr().map_err(|error| error.to_string())?;
+    let app = read_only_web::build_read_only_web_router(state);
+    let (shutdown_tx, shutdown_rx) = tokio::sync::oneshot::channel::<()>();
+
+    tokio::spawn(async move {
+        let _ = axum::serve(listener, app)
+            .with_graceful_shutdown(async {
+                let _ = shutdown_rx.await;
+            })
+            .await;
+    });
+
+    Ok(ReadOnlyServerHandle {
+        addr: actual_addr,
+        shutdown_tx,
+    })
+}
+
+pub async fn start_server(state: ServerState, port: u16) -> Result<ServerHandle, String> {
+    let addr: SocketAddr = format!("0.0.0.0:{}", port)
+        .parse()
+        .map_err(|e: std::net::AddrParseError| e.to_string())?;
     let listener = tokio::net::TcpListener::bind(addr)
         .await
         .map_err(|e| format!("Failed to bind {}: {}", addr, e))?;
@@ -364,9 +411,7 @@ fn start_mdns(port: u16) -> Result<ServiceDaemon, String> {
 
 pub fn discover_servers(timeout_ms: u64) -> Result<Vec<DiscoveredServer>, String> {
     let daemon = ServiceDaemon::new().map_err(|e| e.to_string())?;
-    let receiver = daemon
-        .browse(SERVICE_TYPE)
-        .map_err(|e| e.to_string())?;
+    let receiver = daemon.browse(SERVICE_TYPE).map_err(|e| e.to_string())?;
 
     let mut found = Vec::new();
     let deadline = std::time::Instant::now() + std::time::Duration::from_millis(timeout_ms);
@@ -397,4 +442,65 @@ pub fn discover_servers(timeout_ms: u64) -> Result<Vec<DiscoveredServer>, String
 pub struct DiscoveredServer {
     pub name: String,
     pub url: String,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use sqlx::sqlite::SqlitePoolOptions;
+
+    #[tokio::test]
+    async fn browser_origin_cannot_reach_legacy_sql_routes() {
+        let pool = SqlitePoolOptions::new()
+            .max_connections(1)
+            .connect("sqlite::memory:")
+            .await
+            .unwrap();
+        sqlx::raw_sql(
+            "CREATE TABLE api_tokens (token TEXT PRIMARY KEY, revoked INTEGER, last_seen_at TEXT);\
+             CREATE TABLE protected_rows (id INTEGER PRIMARY KEY);\
+             INSERT INTO api_tokens VALUES ('native-token', 0, NULL);\
+             INSERT INTO protected_rows VALUES (1);",
+        )
+        .execute(&pool)
+        .await
+        .unwrap();
+
+        let app = build_router(ServerState {
+            pool: pool.clone(),
+            business_name: Arc::new(RwLock::new("Test business".to_string())),
+        });
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let address = listener.local_addr().unwrap();
+        let task = tokio::spawn(async move {
+            axum::serve(listener, app).await.unwrap();
+        });
+
+        for path in ["/api/db/query", "/api/db/execute"] {
+            let response = reqwest::Client::new()
+                .post(format!("http://{address}{path}"))
+                .bearer_auth("native-token")
+                .header("origin", "http://127.0.0.1:39420")
+                .header("sec-fetch-site", "cross-site")
+                .json(&serde_json::json!({
+                    "sql": "DELETE FROM protected_rows",
+                    "params": []
+                }))
+                .send()
+                .await
+                .unwrap();
+            assert_eq!(response.status(), StatusCode::FORBIDDEN);
+            assert!(response
+                .headers()
+                .get("access-control-allow-origin")
+                .is_none());
+        }
+
+        let remaining: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM protected_rows")
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+        assert_eq!(remaining, 1);
+        task.abort();
+    }
 }

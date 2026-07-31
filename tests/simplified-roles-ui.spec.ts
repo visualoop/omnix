@@ -8,7 +8,7 @@ function source(path: string): string {
 
 describe("simplified staff role surface", () => {
   it("redirects the removed Settings role editor to Staff", () => {
-    const app = source("src/App.tsx");
+    const app = source("src/DesktopApp.tsx");
     expect(app).not.toContain("SettingsRolesPage");
     expect(app).toContain('<Route path="roles" element={<Navigate to="/settings/users" replace />} />');
   });

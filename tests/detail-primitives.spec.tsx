@@ -109,9 +109,7 @@ describe("FuzzySearch", () => {
     )
     const input = screen.getByPlaceholderText("Search…")
     fireEvent.change(input, { target: { value: "amx" } })
-    // Wait a beat for debounce
-    await new Promise((r) => setTimeout(r, 5))
-    expect(screen.getByText("Amoxicillin")).toBeDefined()
+    expect(await screen.findByText("Amoxicillin")).toBeDefined()
     expect(screen.queryByText("Paracetamol")).toBeNull()
   })
 
@@ -128,7 +126,7 @@ describe("FuzzySearch", () => {
     )
     const input = screen.getByPlaceholderText("Search…")
     fireEvent.change(input, { target: { value: "para" } })
-    await new Promise((r) => setTimeout(r, 5))
+    await screen.findByText("Paracetamol")
     fireEvent.keyDown(input, { key: "Enter" })
     expect(onSelect).toHaveBeenCalledWith(data[0])
   })

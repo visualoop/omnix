@@ -1,13 +1,13 @@
 // License verification module
 // Validates RSA-signed license keys issued by the Omnix licensing server.
 
-use rsa::{pkcs1v15::VerifyingKey, pkcs8::DecodePublicKey, RsaPublicKey};
-use rsa::signature::Verifier;
-use rsa::pkcs1v15::Signature;
-use sha2::Sha256;
 use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine};
+use rsa::pkcs1v15::Signature;
+use rsa::signature::Verifier;
+use rsa::{pkcs1v15::VerifyingKey, pkcs8::DecodePublicKey, RsaPublicKey};
 use serde::{Deserialize, Serialize};
 use sha2::Digest;
+use sha2::Sha256;
 
 /// Embedded public key (PEM). Replace with production key before release.
 const LICENSE_PUBLIC_KEY_PEM: &str = include_str!("../../../keys/license-public.pem");
@@ -23,20 +23,20 @@ const LICENSE_PUBLIC_KEY_PEM: &str = include_str!("../../../keys/license-public.
 /// regardless of the key's schema version.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct LicensePayload {
-    pub kid: String,                 // license key ID (human-readable, e.g., "OMNIX-2026-A1B2-C3D4")
-    pub name: String,                // customer/business name
-    pub email: String,               // customer email
-    pub issued: String,              // ISO date
-    pub maint_exp: String,           // maintenance expiry ISO date (when updates stop being free)
+    pub kid: String,    // license key ID (human-readable, e.g., "OMNIX-2026-A1B2-C3D4")
+    pub name: String,   // customer/business name
+    pub email: String,  // customer email
+    pub issued: String, // ISO date
+    pub maint_exp: String, // maintenance expiry ISO date (when updates stop being free)
     #[serde(rename = "type")]
-    pub license_type: String,        // "perpetual" | "trial" | "subscription"
+    pub license_type: String, // "perpetual" | "trial" | "subscription"
     #[serde(default)]
-    pub feat: Vec<String>,           // enabled feature flags (v1; still used for compliance toggles)
+    pub feat: Vec<String>, // enabled feature flags (v1; still used for compliance toggles)
     #[serde(default)]
-    pub modules: Vec<String>,        // paid verticals (v2): dawa | retail | hardware | hospitality
+    pub modules: Vec<String>, // paid verticals (v2): dawa | retail | hardware | hospitality
     #[serde(default)]
-    pub max_devices: u32,            // seat count (v2). 0 = treat as 1 for legacy keys.
-    pub ver: u32,                    // payload schema version
+    pub max_devices: u32, // seat count (v2). 0 = treat as 1 for legacy keys.
+    pub ver: u32,       // payload schema version
 }
 
 impl LicensePayload {
@@ -78,7 +78,7 @@ impl LicensePayload {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct VerifiedLicense {
     pub payload: LicensePayload,
-    pub raw_key: String,             // the original key string (to store)
+    pub raw_key: String, // the original key string (to store)
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -100,9 +100,7 @@ pub fn verify_license_key(key: &str) -> Result<VerifiedLicense, LicenseError> {
     // Strip ALL whitespace (not just trim) — copy-paste often inserts
     // line breaks mid-string when the email client / terminal wraps.
     let cleaned: String = key.chars().filter(|c| !c.is_whitespace()).collect();
-    let key_body = cleaned
-        .strip_prefix("OMNIX-")
-        .unwrap_or(&cleaned);
+    let key_body = cleaned.strip_prefix("OMNIX-").unwrap_or(&cleaned);
 
     let parts: Vec<&str> = key_body.split('.').collect();
     if parts.len() != 2 {
@@ -128,8 +126,8 @@ pub fn verify_license_key(key: &str) -> Result<VerifiedLicense, LicenseError> {
         .map_err(|e| LicenseError::PublicKeyError(e.to_string()))?;
 
     let verifying_key: VerifyingKey<Sha256> = VerifyingKey::new(pk);
-    let signature = Signature::try_from(sig_bytes.as_slice())
-        .map_err(|_| LicenseError::SignatureInvalid)?;
+    let signature =
+        Signature::try_from(sig_bytes.as_slice()).map_err(|_| LicenseError::SignatureInvalid)?;
 
     verifying_key
         .verify(&payload_bytes, &signature)
@@ -141,12 +139,38 @@ pub fn verify_license_key(key: &str) -> Result<VerifiedLicense, LicenseError> {
     })
 }
 
+/// Return the platform's stable machine identifier.
+#[cfg(not(target_os = "android"))]
+fn platform_machine_uuid() -> String {
+    machine_uid::get().unwrap_or_else(|_| "unknown".to_string())
+}
+
+/// `machine-uid` has no Android backend. Android exposes the hardware serial
+/// through read-only system properties, which provides equivalent stable input
+/// for the existing hashed licensing fingerprint without adding a JNI crate.
+#[cfg(target_os = "android")]
+fn platform_machine_uuid() -> String {
+    ["ro.serialno", "ro.boot.serialno"]
+        .iter()
+        .find_map(|property| {
+            std::process::Command::new("/system/bin/getprop")
+                .arg(property)
+                .output()
+                .ok()
+                .filter(|output| output.status.success())
+                .and_then(|output| String::from_utf8(output.stdout).ok())
+                .map(|value| value.trim().to_string())
+                .filter(|value| !value.is_empty() && value != "unknown")
+        })
+        .unwrap_or_else(|| "unknown".to_string())
+}
+
 /// Compute a stable machine fingerprint.
 ///
 /// Combines: machine UUID + first MAC address + CPU brand
 /// Returns hex SHA-256 truncated to 16 chars (good enough as ID).
 pub fn get_machine_fingerprint() -> String {
-    let machine_uuid = machine_uid::get().unwrap_or_else(|_| "unknown".to_string());
+    let machine_uuid = platform_machine_uuid();
 
     let mut sys = sysinfo::System::new();
     sys.refresh_cpu_all();
@@ -213,7 +237,10 @@ mod tests {
     fn accepts_v2_key_with_entitlements() {
         let verified = verify_license_key(VALID_V2_KEY).expect("v2 key must verify");
         assert_eq!(verified.payload.ver, 2);
-        assert_eq!(verified.payload.effective_modules(), vec!["hardware".to_string()]);
+        assert_eq!(
+            verified.payload.effective_modules(),
+            vec!["hardware".to_string()]
+        );
         assert_eq!(verified.payload.effective_max_devices(), 2);
     }
 
@@ -222,7 +249,10 @@ mod tests {
         // The v1 test key has feat=[pharmacy,...] and no modules/max_devices.
         let verified = verify_license_key(VALID_TEST_KEY).expect("v1 key must verify");
         assert_eq!(verified.payload.ver, 1);
-        assert_eq!(verified.payload.effective_modules(), vec!["dawa".to_string()]);
+        assert_eq!(
+            verified.payload.effective_modules(),
+            vec!["dawa".to_string()]
+        );
         assert_eq!(verified.payload.effective_max_devices(), 1);
     }
 
@@ -230,7 +260,11 @@ mod tests {
     fn rejects_tampered_modules() {
         // Take the valid v2 key and flip a char inside the payload (modules region).
         // Any payload mutation must break the signature.
-        let parts: Vec<&str> = VALID_V2_KEY.strip_prefix("OMNIX-").unwrap().split('.').collect();
+        let parts: Vec<&str> = VALID_V2_KEY
+            .strip_prefix("OMNIX-")
+            .unwrap()
+            .split('.')
+            .collect();
         let mut payload_chars: Vec<char> = parts[0].chars().collect();
         let mid = payload_chars.len() / 2;
         payload_chars[mid] = if payload_chars[mid] == 'A' { 'B' } else { 'A' };
@@ -265,6 +299,9 @@ mod tests {
 
     #[test]
     fn format_fingerprint_groups_in_4s() {
-        assert_eq!(format_fingerprint("ABCD1234EFGH5678"), "ABCD-1234-EFGH-5678");
+        assert_eq!(
+            format_fingerprint("ABCD1234EFGH5678"),
+            "ABCD-1234-EFGH-5678"
+        );
     }
 }

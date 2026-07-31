@@ -5,8 +5,9 @@ import { resolve } from "node:path";
 const read = (path: string): string => readFileSync(resolve(path), "utf8");
 
 describe("Android native overlay contract", () => {
-  it("keeps generated Android and all iOS output absent on this host", () => {
-    expect(existsSync(resolve("src-tauri/gen/android"))).toBe(false);
+  it("keeps the reviewed Android project applied and all iOS output absent", () => {
+    expect(existsSync(resolve("src-tauri/gen/android"))).toBe(true);
+    expect(existsSync(resolve("src-tauri/gen/android/app/src/main/java/co/ke/omnix/app/mobile/OmnixMobilePlugin.kt"))).toBe(true);
     expect(existsSync(resolve("src-tauri/gen/ios"))).toBe(false);
   });
 

@@ -1,0 +1,39 @@
+[[permission]]
+identifier = "secure-storage"
+description = "Account-scoped Android Keystore operations."
+commands.allow = ["secure_storage_availability", "secure_storage_get", "secure_storage_set", "secure_storage_remove"]
+
+[[permission]]
+identifier = "biometric"
+description = "Biometric availability, protected prompt, and independent permission state."
+commands.allow = ["biometric_availability", "biometric_permission", "biometric_request_permission", "biometric_authenticate"]
+
+[[permission]]
+identifier = "scanner"
+description = "Camera permission and one-shot local barcode scanner."
+commands.allow = ["scanner_availability", "scanner_permission", "scanner_request_permission", "scanner_scan", "scanner_cancel"]
+
+[[permission]]
+identifier = "sharing"
+description = "Explicit Android chooser for text and app-owned export attachments."
+commands.allow = ["share_availability", "share_permission", "share_request_permission", "share"]
+
+[[permission]]
+identifier = "notifications"
+description = "Local notification permission, posting, and cancellation."
+commands.allow = ["notification_availability", "notification_permission", "notification_request_permission", "notification_post", "notification_cancel"]
+
+[[permission]]
+identifier = "mesh"
+description = "Typed embedded WireGuard private-mesh status/start/stop operations."
+commands.allow = ["mesh_availability", "mesh_status", "mesh_start", "mesh_stop"]
+
+[[permission]]
+identifier = "lifecycle"
+description = "Android app lifecycle and predictive-back acknowledgement."
+commands.allow = ["lifecycle_current_state", "lifecycle_complete_back"]
+
+[[permission]]
+identifier = "apk-update"
+description = "Verified direct-distribution APK staging and user-consented installation."
+commands.allow = ["apk_update_availability", "apk_update_status", "apk_update_stage", "apk_update_install", "apk_update_cancel"]

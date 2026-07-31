@@ -139,15 +139,12 @@ mod windows_impl {
             .map_err(|e| format!("open db: {}", e))?;
 
         // Read config from the settings + business tables.
-        let port_row: Option<String> = sqlx::query_scalar(
-            "SELECT value FROM settings WHERE key = 'network.server_port'",
-        )
-        .fetch_optional(&pool)
-        .await
-        .map_err(|e| format!("query port: {}", e))?;
-        let port: u16 = port_row
-            .and_then(|s| s.parse::<u16>().ok())
-            .unwrap_or(8765);
+        let port_row: Option<String> =
+            sqlx::query_scalar("SELECT value FROM settings WHERE key = 'network.server_port'")
+                .fetch_optional(&pool)
+                .await
+                .map_err(|e| format!("query port: {}", e))?;
+        let port: u16 = port_row.and_then(|s| s.parse::<u16>().ok()).unwrap_or(8765);
 
         let mode: String = sqlx::query_scalar::<_, String>(
             "SELECT value FROM settings WHERE key = 'network.mode'",
@@ -157,13 +154,12 @@ mod windows_impl {
         .map_err(|e| format!("query mode: {}", e))?
         .unwrap_or_else(|| "standalone".to_string());
 
-        let business_name: String = sqlx::query_scalar::<_, String>(
-            "SELECT name FROM business LIMIT 1",
-        )
-        .fetch_optional(&pool)
-        .await
-        .map_err(|e| format!("query business: {}", e))?
-        .unwrap_or_else(|| "Omnix".to_string());
+        let business_name: String =
+            sqlx::query_scalar::<_, String>("SELECT name FROM business LIMIT 1")
+                .fetch_optional(&pool)
+                .await
+                .map_err(|e| format!("query business: {}", e))?
+                .unwrap_or_else(|| "Omnix".to_string());
         if mode != "master" {
             eprintln!(
                 "[omnix-lan-service] mode is '{}', not 'master' — idling. Change to master in the app to start serving.",
@@ -181,17 +177,30 @@ mod windows_impl {
         );
 
         let server_state = omnix_lib::network::ServerState {
-            pool,
-            business_name: std::sync::Arc::new(parking_lot::RwLock::new(business_name)),
+            pool: pool.clone(),
+            business_name: std::sync::Arc::new(parking_lot::RwLock::new(business_name.clone())),
         };
         let handle = omnix_lib::network::start_server(server_state, port)
             .await
             .map_err(|e| format!("bind server: {}", e))?;
+        let read_only_port = port
+            .checked_add(1)
+            .ok_or_else(|| "paired-device port leaves no read-only browser port".to_string())?;
+        let advertised_ip = local_ip_address::local_ip()
+            .map(|ip| ip.to_string())
+            .unwrap_or_else(|_| "127.0.0.1".to_string());
+        let origin = format!("http://{advertised_ip}:{read_only_port}");
+        let read_only_state =
+            omnix_lib::network::read_only_web::ReadOnlyWebState::new(pool, origin, business_name);
+        let read_only_handle =
+            omnix_lib::network::start_read_only_server(read_only_state, read_only_port)
+                .await
+                .map_err(|e| format!("bind read-only browser server: {e}"))?;
 
-        // Keep the server running until this task is aborted by the SCM stop path.
-        // The `handle` owns the shutdown_tx; when we drop it (via task abort +
-        // Rust drop semantics) the server's shutdown listener wakes up.
+        // Keep both listeners running until this task is aborted by the SCM stop path.
+        // Their handles own the shutdown senders; dropping them wakes each server.
         std::mem::forget(handle);
+        std::mem::forget(read_only_handle);
         loop {
             tokio::time::sleep(Duration::from_secs(60)).await;
         }

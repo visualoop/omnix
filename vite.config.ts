@@ -42,6 +42,15 @@ export default defineConfig(async ({ mode }) => {
     },
     envPrefix: ["VITE_"],
 
+    build: {
+      rollupOptions: {
+        input: {
+          desktop: path.resolve(__dirname, "index.html"),
+          web: path.resolve(__dirname, "web.html"),
+        },
+      },
+    },
+
     clearScreen: false,
     server: {
       port: 1420,

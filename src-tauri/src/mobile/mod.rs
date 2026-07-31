@@ -27,6 +27,7 @@ macro_rules! forward_command {
     ($rust_name:ident, $native_name:literal) => {
         #[tauri::command]
         fn $rust_name<R: Runtime>(
+            _app: AppHandle<R>,
             state: State<'_, AndroidMobile<R>>,
             payload: Option<Value>,
         ) -> Result<Value, String> {

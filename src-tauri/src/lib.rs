@@ -1,7 +1,12 @@
+mod command_api;
 mod commands;
 mod db;
 mod license;
+mod mesh_contracts;
+#[cfg(target_os = "android")]
+mod mobile;
 pub mod network;
+mod sync_contracts;
 // mod telemetry; // Phase 10 — activate when website/telemetry endpoint is live
 
 use tauri_plugin_sql::{Migration, MigrationKind};
@@ -694,9 +699,21 @@ fn run_inner() {
             sql: include_str!("../migrations/098_salon_commission_payouts.sql"),
             kind: MigrationKind::Up,
         },
+        Migration {
+            version: 99,
+            description: "Offline branch sync and Private Mesh metadata",
+            sql: include_str!("../migrations/099_sync_mesh.sql"),
+            kind: MigrationKind::Up,
+        },
+        Migration {
+            version: 100,
+            description: "Read-only browser companion sessions",
+            sql: include_str!("../migrations/100_read_only_web.sql"),
+            kind: MigrationKind::Up,
+        },
     ];
 
-    tauri::Builder::default()
+    let builder = tauri::Builder::default()
         .manage(std::sync::Arc::new(commands::NetworkState::default()))
         .manage(std::sync::Arc::new(commands::CloudBackupSession::default()))
         .plugin(tauri_plugin_opener::init())
@@ -710,7 +727,12 @@ fn run_inner() {
         // isn't in the static scope inside tauri.conf.json).
         .plugin(tauri_plugin_persisted_scope::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
-        .plugin(tauri_plugin_process::init())
+        .plugin(tauri_plugin_process::init());
+
+    #[cfg(target_os = "android")]
+    let builder = builder.plugin(mobile::init());
+
+    builder
         .plugin(
             tauri_plugin_sql::Builder::default()
                 .add_migrations("sqlite:omnix.db", migrations)
@@ -733,7 +755,8 @@ fn run_inner() {
                 use tauri::Manager;
 
                 let show_i = MenuItem::with_id(app, "show", "Open Omnix", true, None::<&str>)?;
-                let quit_i = MenuItem::with_id(app, "quit", "Quit (stop LAN server)", true, None::<&str>)?;
+                let quit_i =
+                    MenuItem::with_id(app, "quit", "Quit (stop LAN server)", true, None::<&str>)?;
                 let menu = Menu::with_items(app, &[&show_i, &quit_i])?;
 
                 let _tray = TrayIconBuilder::with_id("main-tray")
