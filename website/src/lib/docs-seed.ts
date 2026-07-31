@@ -4,7 +4,7 @@
  * The /docs index AND /docs/[slug] both read from DOCS_SEED, so slugs can
  * never drift out of sync (which previously caused 404s).
  *
- * 5 detailed docs (full body) + 20 scaffolds (summary + TODO sections).
+ * Detailed guides plus scaffolded topics that remain hidden until written.
  */
 
 export interface DocSeed {
@@ -191,6 +191,190 @@ Reinstalled Omnix or moved to a new laptop?
 4. Omnix downloads, verifies the SHA-256, decrypts, and stages the restore. Restart to apply.
 
 A safety snapshot of the current database is taken before any restore, so you can always roll back.`,
+  },
+
+  // ─── APPLICATION CLIENTS ──────────────────────────────────────────────
+  {
+    slug: 'windows-desktop-hub',
+    title: 'Windows desktop hub',
+    excerpt: 'Install the main Omnix application, set up the branch hub, and keep companion devices connected.',
+    category: 'Basics',
+    icon: 'DesktopTower',
+    body: `The Windows desktop hub is the main Omnix application. It holds the branch database, runs the full POS and back office, and gives Android and browser clients a branch service to connect to.
+
+## What you need
+
+- A 64-bit PC running Windows 10 or Windows 11
+- An Omnix customer account linked to the licence for this device
+- Enough Windows access to run the installer
+- Internet for the initial download, activation, updates, and any connected service that needs it
+
+Core desktop work stays available without internet after setup. Kenya's eTIMS, SHA, online payments, cloud backup, activation, and updates need a connection at the point where they contact an outside service.
+
+## Install the desktop hub
+
+Sign in through the [Omnix Downloads page](/downloads) and open the customer dashboard. Choose the Windows edition attached to your licence, download its installer, and run it on the PC that will hold the branch record.
+
+Open Omnix after installation, activate the licensed device, then finish the business and owner setup shown on screen. Don't copy an installed program folder between PCs. Install normally and move the licence through the supported device controls if the hub PC changes.
+
+## Prepare the branch service
+
+Open the desktop area for connected devices or branch networking and turn on the branch service. Omnix shows the local branch address and the controls used to enrol Android devices. Keep the hub open and connected to the branch router while companion devices need live data.
+
+Use a stable Ethernet connection for the hub where possible. Phones, tablets, and read-only browser devices can use the same router over Wi-Fi.
+
+## Use the hub each day
+
+The desktop hub is where staff manage products, stock, users, branch settings, purchasing, accounting, and the complete POS. It is also the control point for enrolled phones and browser access.
+
+Before closing Omnix or shutting down the PC, check whether mobile sales are waiting to sync. A companion can't reach live branch data while the hub or branch network is off. Android can keep approved offline work locally and send it later, but the browser companion needs a live LAN connection.
+
+## Updates and device changes
+
+Use Omnix's update prompt or the protected customer download to install a newer desktop build. Back up the branch before moving to another PC. If the old device is still registered, release or revoke it through the customer and device controls before activating its replacement.
+
+## Country-specific connections
+
+The hub supports all four Omnix markets for local records and branch work. Configured fiscal and health integrations are currently Kenya-only: KRA eTIMS and SHA. Omnix does not claim direct URA, TRA, or RRA fiscal integration.`,
+  },
+  {
+    slug: 'android-app',
+    title: 'Omnix on Android',
+    excerpt: 'Install the signed APK, enrol a phone, sell from mobile POS, switch branches, work offline, and share report PDFs.',
+    category: 'Basics',
+    icon: 'Phone',
+    body: `Omnix for Android gives approved staff a mobile POS, branch views, reports, and device controls. It installs from the Omnix website as a signed APK. Google Play distribution is not live, and there is no iOS app.
+
+## Install the signed APK
+
+Open the [Omnix Downloads page](/downloads) on the Android phone or tablet. Download the Android APK only from the Omnix website. If the download control isn't present, the signed Android release hasn't been published for your account or release yet.
+
+Android may ask you to allow your browser to install unknown apps. Allow that browser for this install, open the downloaded APK, and confirm the package installer prompt. You can turn that browser permission off again after installation.
+
+Keep the installed app when updating. A newer APK signed by Omnix installs over it and keeps app data. Don't use APK mirrors, renamed packages, or files sent through an unverified chat. The Play Store doesn't currently carry Omnix.
+
+## First-run enrolment
+
+Open Omnix on Android and choose enrolment. On the Windows desktop hub, an owner or authorised manager creates a mobile enrolment for the staff member and branch. Scan the QR code or enter the one-time code shown by the hub, then confirm the business, user, and allowed branches on the phone.
+
+The first sync loads the records the phone needs. Keep the phone close to the branch network and leave the desktop hub running until that sync finishes. Each staff member should use their own Omnix identity. Don't share one enrolled phone profile between cashiers.
+
+## Profile and device controls
+
+Open **Profile** to check the signed-in user, role, business, active branch, connection state, pending sync count, app version, and device enrolment. The same area provides the controls to lock the app, retry a sync, or sign out.
+
+Signing out removes the active user session. Revoking a device is different: an owner does that from the Windows hub when a phone is lost, replaced, or no longer allowed to connect. Revocation stops later sync. It doesn't erase a lost phone remotely, so keep Android's own screen lock enabled.
+
+## Sell from mobile POS
+
+Open **POS**, confirm the branch named at the top, then search for an item or scan its barcode when camera scanning is available on the device. Add quantities, review the cart, choose one of the payment methods enabled for that branch, and complete the sale.
+
+A sale always belongs to one branch. The app won't complete a sale while **All Branches** is selected because stock, shifts, receipt numbering, and payment records need a single source branch. Switch to the selling branch first.
+
+Online payment prompts and third-party checks still need their service connection. If a payment can't be confirmed, don't mark it paid unless your business has checked the customer's proof and your normal procedure allows a manual reference.
+
+## Switch branches and use All Branches
+
+Tap the current branch name to choose another branch assigned to your user. The next branch becomes the scope for POS, stock, and branch-specific lists.
+
+**All Branches** is an aggregate view for owners and staff whose role allows it. Use it to read combined totals and reports. It is not a physical branch, doesn't own stock, and can't be used as the source of a sale or adjustment. A total shown under All Branches can lag until every branch has synced.
+
+## Work offline
+
+After enrolment and an initial sync, the Android app keeps approved working data on the device. If the hub, branch Wi-Fi, or Private Mesh connection drops, mobile POS can record supported sales locally and mark them pending. The app sends pending work when it reconnects.
+
+Keep the app installed and don't clear its storage while pending work exists. Check the sync count in **Profile** before signing out, replacing the phone, or ending a shift. Data that depends on a fresh server check may be unavailable or delayed offline. This includes live online payments and, in Kenya, eTIMS or SHA calls. Queued records remain marked until the service accepts them.
+
+## Reports and PDF sharing
+
+Open **Reports**, choose one branch or **All Branches**, set the date range, and run the report. Mobile reports use the data that has reached the phone or hub, so check the sync state before treating a total as final.
+
+Tap **PDF** or **Share PDF** on a supported report. Android opens its share sheet, where you can send the generated file to an installed mail, messaging, storage, or print app. Review the branch and dates in the PDF before sharing it. Reports can contain customer, staff, sales, or financial data.
+
+## If the phone can't connect
+
+Confirm that the Windows hub is running, the phone is on the correct branch Wi-Fi or Omnix Private Mesh, and the device hasn't been revoked. Open **Profile** and retry the connection. If Android asks for VPN permission, read [Omnix Private Mesh](/docs/private-mesh) before accepting it.`,
+  },
+  {
+    slug: 'browser-companion',
+    title: 'Browser companion',
+    excerpt: 'Open the read-only Omnix companion from a browser connected to the same branch network.',
+    category: 'Basics',
+    icon: 'Globe',
+    body: `The browser companion is a read-only view of branch information. It is useful for an owner, supervisor, or staff member who needs to check records without installing Omnix on that device.
+
+The initial release is LAN-only. The browser device must be on the same branch Wi-Fi or wired network as the Windows desktop hub. It isn't a public cloud login and it doesn't work over mobile data or an unrelated network.
+
+## Before you connect
+
+- Start Omnix on the licensed Windows hub
+- Turn on the browser companion or branch service in the desktop network settings
+- Connect the other computer, phone, or tablet to the same branch router
+- Use a current browser with local network access
+
+The desktop hub shows the branch address to open. Use that exact address, including its port if one is shown. A saved address can stop working if the router later gives the hub a different local IP address, so return to the hub when an old bookmark fails.
+
+## Open the companion
+
+On the browser device, join the branch Wi-Fi. Type the address shown by the Windows hub into the browser address bar, then sign in with an Omnix user that the branch allows.
+
+Use the branch name in the companion header to confirm that you're reading the right site. If the page reports that the hub is unavailable, don't keep refreshing for several minutes. Check the hub and network first.
+
+## What read-only means
+
+You can view the pages exposed by the companion, subject to your role and branch access. You can't ring a sale, change stock, edit customers, approve purchasing, alter settings, or perform another write from the browser companion.
+
+For mobile selling, use the enrolled [Android app](/docs/android-app). For full setup and back-office work, use the [Windows desktop hub](/docs/windows-desktop-hub).
+
+## Keep branch access private
+
+Don't publish the local companion address on the internet or add router port forwarding for it. Use the staff permissions already set in Omnix, sign out on shared devices, and keep the branch Wi-Fi password controlled.
+
+Because the initial browser companion is LAN-only, Omnix Private Mesh doesn't turn an arbitrary remote browser into a supported companion. Private Mesh is for enrolled Omnix clients.
+
+## Fix a connection problem
+
+Confirm that both devices use the same router and that the browser hasn't switched to mobile data or guest Wi-Fi. Guest networks often block devices from seeing each other. Keep Omnix open on the hub, recheck the displayed address, then allow Omnix through the Windows firewall on private networks if Windows asks.
+
+If the branch address still doesn't open, restart the branch service from the hub and try the newly displayed address.`,
+  },
+  {
+    slug: 'private-mesh',
+    title: 'Omnix Private Mesh',
+    excerpt: 'Connect enrolled Omnix devices through the bundled WireGuard tunnel without routing ordinary internet traffic.',
+    category: 'Integrations',
+    icon: 'ShieldCheck',
+    body: `Omnix Private Mesh gives enrolled Omnix devices a private route to approved branch services when they aren't on the branch LAN. WireGuard is bundled inside Omnix. You don't need a separate WireGuard app, VPN subscription, or WireGuard account.
+
+## What the mesh routes
+
+Private Mesh routes only the private Omnix subnet used by enrolled branch devices. Ordinary web browsing, video, messaging, banking apps, and other internet traffic continue to use the phone's normal Wi-Fi or mobile connection.
+
+This is split routing, not a whole-phone consumer VPN. Omnix doesn't use the tunnel to hide your public IP address or move all phone traffic through the branch.
+
+## Android permission
+
+The first time Omnix enables Private Mesh, Android shows its system VPN permission dialog. Accept it once so Android can create the Omnix tunnel. The prompt comes from Android, even though WireGuard is already bundled in Omnix.
+
+Android can ask again after the app is reinstalled, its storage is cleared, or the VPN permission is reset. Don't install another VPN app to answer this prompt. If you deny it, the app can still work on the branch LAN, but it can't use Private Mesh until permission is granted.
+
+## Connect a phone
+
+Enrol the phone through the Windows desktop hub first. The enrolment supplies the device identity and approved branch routes. Open **Profile** on Android to check the mesh and branch connection state.
+
+When the phone leaves branch Wi-Fi, Omnix can use the private route for approved branch traffic. If the tunnel is reconnecting, wait for the connected state before expecting a fresh branch total. Pending offline work stays on the phone until a branch connection returns.
+
+## Security boundaries
+
+Each phone needs its own enrolment. Revoke a lost or retired device from the Windows hub so it can no longer join the mesh. A device still needs Omnix user and branch permission after the tunnel connects. Network reachability alone doesn't grant access to business records.
+
+Private Mesh doesn't make the browser companion a public website. The initial browser companion remains read-only and LAN-only. Read [Connect the browser companion](/docs/browser-companion) for its network requirements.
+
+## Troubleshooting
+
+If Private Mesh won't connect, check that Android granted VPN permission, another always-on VPN isn't taking the device's single VPN slot, and the phone has working internet. Then open **Profile** and retry.
+
+A connected tunnel with an unavailable branch usually means the Windows hub or its branch service is off. Check the hub before removing and repeating enrolment.`,
   },
 
   // ─── SCAFFOLDS (20) ───────────────────────────────────────────────────

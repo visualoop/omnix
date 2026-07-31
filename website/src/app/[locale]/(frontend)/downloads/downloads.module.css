@@ -13,6 +13,7 @@
   padding-inline: clamp(var(--space-4), 5vw, var(--space-12));
 }
 .hero,
+.clients,
 .editions,
 .handover,
 .assistance,
@@ -258,6 +259,121 @@
   color: var(--color-fg-muted);
   line-height: 1.7;
 }
+.clients {
+  padding-block: clamp(var(--space-16), 9vw, var(--space-24));
+  background: var(--color-surface);
+}
+.clientGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  border-block-start: 2px solid var(--color-fg);
+}
+.clientGrid > article {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  padding: clamp(var(--space-5), 3vw, var(--space-8));
+  border-block-end: 1px solid var(--color-border-strong);
+}
+.clientGrid > article + article {
+  border-inline-start: 1px solid var(--color-border-strong);
+}
+.clientHeader {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+}
+.clientHeader p {
+  margin: 0;
+  color: var(--color-fg-subtle);
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.clientHeader h3 {
+  margin-block-start: var(--space-1);
+  font-size: 1.2rem;
+  letter-spacing: -0.03em;
+}
+.clientIcon {
+  display: grid;
+  width: 2.75rem;
+  height: 2.75rem;
+  flex: none;
+  place-items: center;
+  border: 1px solid var(--color-accent-line);
+  border-radius: var(--radius-sm);
+  color: var(--color-accent);
+}
+.clientIcon svg {
+  width: 1.25rem;
+  height: 1.25rem;
+}
+.clientPurpose {
+  min-height: 6.8rem;
+  margin-block: var(--space-6) 0;
+  color: var(--color-fg-muted);
+  font-size: 0.9rem;
+  line-height: 1.65;
+}
+.clientDetails {
+  margin-block-start: var(--space-5);
+  border-block-start: 1px solid var(--color-border);
+}
+.clientDetails > div {
+  padding-block: var(--space-5);
+  border-block-end: 1px solid var(--color-border);
+}
+.clientDetails h4 {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.clientDetails ul,
+.clientDetails ol {
+  margin-block: var(--space-3) 0;
+  padding-inline-start: 1.15rem;
+  color: var(--color-fg-muted);
+  font-size: 0.8rem;
+  line-height: 1.6;
+}
+.clientDetails li + li {
+  margin-block-start: var(--space-2);
+}
+.clientGuide {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: fit-content;
+  margin-block-start: auto;
+  padding-block-start: var(--space-6);
+  color: var(--color-fg);
+  font-size: 0.82rem;
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+.clientGuide:hover {
+  color: var(--color-accent);
+}
+.clientGuide:focus-visible {
+  outline: 3px solid var(--color-accent);
+  outline-offset: 3px;
+}
+.clientGuide svg {
+  width: 0.9rem;
+  height: 0.9rem;
+}
+.platformNote {
+  margin: var(--space-6) 0 0;
+  color: var(--color-fg-subtle);
+  font-size: 0.78rem;
+  line-height: 1.65;
+}
 .editionList {
   border-block-start: 2px solid var(--color-fg);
 }
@@ -407,6 +523,15 @@
   text-underline-offset: 4px;
 }
 @media (max-width: 56rem) {
+  .clientGrid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .clientGrid > article + article {
+    border-inline-start: 0;
+  }
+  .clientPurpose {
+    min-height: 0;
+  }
   .heroGrid,
   .sectionHeading,
   .handoverGrid,

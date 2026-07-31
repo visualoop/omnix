@@ -43,6 +43,66 @@ const VARIANTS = [
   },
 ] as const
 
+const CLIENTS = [
+  {
+    id: 'windows',
+    name: 'Windows desktop hub',
+    label: 'Main application',
+    purpose:
+      'The full POS and back office. It holds the branch database and runs the service used by companion devices.',
+    requirements: [
+      'Windows 10 or 11, 64-bit',
+      'A customer account and device licence',
+      'A stable branch network for companion access',
+    ],
+    steps: [
+      'Sign in to the protected customer dashboard.',
+      'Download the Windows edition attached to your licence.',
+      'Run the installer, activate the PC, and complete setup.',
+    ],
+    docSlug: 'windows-desktop-hub',
+    icon: 'Monitor',
+  },
+  {
+    id: 'android',
+    name: 'Android app',
+    label: 'Mobile POS and reports',
+    purpose:
+      'An enrolled phone or tablet for mobile selling, branch views, offline work, and PDF report sharing.',
+    requirements: [
+      'A supported Android phone or tablet',
+      'An authorised Omnix user and enrolment',
+      'Branch Wi-Fi or Omnix Private Mesh for sync',
+    ],
+    steps: [
+      'Download the signed APK only from the Omnix website.',
+      'Allow that browser to install the APK when Android asks.',
+      'Open Omnix and enrol it from the Windows desktop hub.',
+    ],
+    docSlug: 'android-app',
+    icon: 'Phone',
+  },
+  {
+    id: 'browser',
+    name: 'Browser companion',
+    label: 'Read-only branch view',
+    purpose:
+      'A no-install view for checking approved branch information in a browser on the branch network.',
+    requirements: [
+      'The Windows hub running the branch service',
+      'A current browser on the same Wi-Fi or wired LAN',
+      'An Omnix user allowed to view that branch',
+    ],
+    steps: [
+      'Open the browser companion controls on the Windows hub.',
+      'Join the same branch network on the browser device.',
+      'Enter the local address shown by the hub and sign in.',
+    ],
+    docSlug: 'browser-companion',
+    icon: 'Globe',
+  },
+] as const
+
 const ACCESS_STEPS = [
   [
     'Purchase recorded',
@@ -70,16 +130,16 @@ export async function generateMetadata({
   const { locale } = await params
   const canonical = `${SITE_URL}/${locale}/downloads`
   return {
-    title: 'Download Omnix after purchase · Windows installer access',
+    title: 'Omnix downloads · Windows, Android and browser companion',
     description:
-      'How Omnix customers access their licensed Windows installer through the protected customer dashboard, with five editions and assisted installation available.',
+      'Install the Omnix Windows desktop hub, get the signed Android APK, or connect the read-only browser companion on your branch network.',
     alternates: { canonical, languages: buildAlternatesLanguages('/downloads') },
     ...buildSocialMetadata({
       locale,
       url: canonical,
-      title: 'Your Omnix Windows installer, issued after purchase',
+      title: 'Choose the Omnix client for the work at hand',
       description:
-        'Protected customer-dashboard access for the Omnix edition attached to your licence.',
+        'Windows hub access, signed Android APK instructions, and LAN browser companion setup.',
       type: 'website',
     }),
   }
@@ -103,13 +163,14 @@ export default async function DownloadsPage({ params }: { params: Promise<{ loca
         <div className={styles.container}>
           <div className={styles.heroGrid}>
             <div className={styles.heroCopy}>
-              <p className={styles.kicker}>Windows installer access</p>
+              <p className={styles.kicker}>Three Omnix clients</p>
               <h1>
-                Install after purchase. <span>From your own dashboard.</span>
+                Install after purchase. <span>Use the right client.</span>
               </h1>
               <p className={styles.lede}>
-                Omnix installers are not public trial downloads. After purchase, sign in to the
-                customer dashboard to access the Windows edition attached to your licence.
+                The Windows hub runs the branch, Android handles approved mobile work, and the
+                browser companion gives staff a read-only view on the branch network. Windows
+                installer access remains protected by customer sign-in.
               </p>
               <div className={styles.actions} data-acquisition-actions>
                 <Link className={styles.primaryAction} href={demoHref}>
@@ -171,6 +232,69 @@ export default async function DownloadsPage({ params }: { params: Promise<{ loca
               <span key={variant.name}>{variant.name}</span>
             ))}
           </div>
+        </div>
+      </section>
+
+      <section className={styles.clients} aria-labelledby="clients-title">
+        <div className={styles.container}>
+          <header className={styles.sectionHeading}>
+            <div>
+              <p className={styles.kicker}>Choose a client</p>
+              <h2 id="clients-title">One branch record, three ways in.</h2>
+            </div>
+            <p>
+              Start with the Windows hub. Add Android for enrolled mobile work or open the browser
+              companion when someone only needs to read branch information.
+            </p>
+          </header>
+
+          <div className={styles.clientGrid}>
+            {CLIENTS.map((client) => {
+              const ClientIcon = Icon[client.icon]
+              return (
+                <article id={client.id} key={client.id}>
+                  <header className={styles.clientHeader}>
+                    <span aria-hidden className={styles.clientIcon}>
+                      <ClientIcon weight="bold" />
+                    </span>
+                    <div>
+                      <p>{client.label}</p>
+                      <h3>{client.name}</h3>
+                    </div>
+                  </header>
+                  <p className={styles.clientPurpose}>{client.purpose}</p>
+                  <div className={styles.clientDetails}>
+                    <div>
+                      <h4>Requirements</h4>
+                      <ul>
+                        {client.requirements.map((requirement) => (
+                          <li key={requirement}>{requirement}</li>
+                        ))}
+                      </ul>
+                    </div>
+                    <div>
+                      <h4>Install or connect</h4>
+                      <ol>
+                        {client.steps.map((step) => (
+                          <li key={step}>{step}</li>
+                        ))}
+                      </ol>
+                    </div>
+                  </div>
+                  <Link className={styles.clientGuide} href={`/${locale}/docs/${client.docSlug}`}>
+                    Read the {client.name.toLowerCase()} guide
+                    <Icon.ArrowRight aria-hidden weight="bold" />
+                  </Link>
+                </article>
+              )
+            })}
+          </div>
+
+          <p className={styles.platformNote}>
+            iOS is not available. Google Play distribution is not live, so install Android only
+            from the signed APK supplied on the Omnix website. The browser companion is read-only
+            and initially works only on the branch LAN.
+          </p>
         </div>
       </section>
 
