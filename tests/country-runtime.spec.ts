@@ -81,7 +81,7 @@ describe("business country persistence", () => {
     expect(executeMock).not.toHaveBeenCalled();
   });
 
-  it("never derives currency from branch switching", () => {
+  it("never derives currency from branch switching", async () => {
     useCountry.setState({ code: "RW", currencyCode: "RWF", loaded: true });
     const branch = (id: string): Branch => ({
       id,
@@ -101,10 +101,18 @@ describe("business country persistence", () => {
       notes: null,
       created_at: "2026-01-01T00:00:00.000Z",
     });
+    const first = branch("one");
+    const second = branch("two");
 
-    useActiveBranch.getState().setActive(branch("one"));
+    useActiveBranch.setState({
+      active: first,
+      available: [first, second],
+      loaded: true,
+      scope: "branch",
+      revision: 0,
+    });
     expect(getBusinessCurrencyCode()).toBe("RWF");
-    useActiveBranch.getState().setActive(branch("two"));
+    await useActiveBranch.getState().switchTo(second);
     expect(getBusinessCurrencyCode()).toBe("RWF");
   });
 });
