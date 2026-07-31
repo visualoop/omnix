@@ -1,0 +1,25 @@
+// Merge into the generated android { } block. CI writes no keystore.properties file.
+// All four variables are required and masked; the keystore path points to a temporary runner file.
+val omnixKeystorePath = providers.environmentVariable("OMNIX_ANDROID_KEYSTORE_PATH")
+val omnixKeystorePassword = providers.environmentVariable("OMNIX_ANDROID_KEYSTORE_PASSWORD")
+val omnixKeyAlias = providers.environmentVariable("OMNIX_ANDROID_KEY_ALIAS")
+val omnixKeyPassword = providers.environmentVariable("OMNIX_ANDROID_KEY_PASSWORD")
+
+signingConfigs {
+    create("omnixRelease") {
+        storeFile = file(omnixKeystorePath.get())
+        storePassword = omnixKeystorePassword.get()
+        keyAlias = omnixKeyAlias.get()
+        keyPassword = omnixKeyPassword.get()
+        enableV1Signing = true
+        enableV2Signing = true
+        enableV3Signing = true
+        enableV4Signing = true
+    }
+}
+
+buildTypes {
+    getByName("release") {
+        signingConfig = signingConfigs.getByName("omnixRelease")
+    }
+}

@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://omnix.co.ke/schemas/android-contract.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "pluginId", "androidOnly", "kotlinPackage", "kotlinClass", "commands", "events",
+    "runtimePermissions", "installPermissions", "forbiddenPermissions", "updateHosts",
+    "wireGuardCoordinate", "generatedRoot", "sourceOverlayRoot"
+  ],
+  "properties": {
+    "$schema": { "type": "string" },
+    "pluginId": { "const": "omnix-mobile" },
+    "androidOnly": { "const": true },
+    "kotlinPackage": { "const": "co.ke.omnix.app.mobile" },
+    "kotlinClass": { "const": "OmnixMobilePlugin" },
+    "commands": { "type": "array", "minItems": 33, "uniqueItems": true, "items": { "type": "string", "pattern": "^[a-z][a-z0-9_]+$" } },
+    "events": { "type": "array", "minItems": 4, "uniqueItems": true, "items": { "type": "string", "pattern": "^[a-z][a-z0-9-]+$" } },
+    "runtimePermissions": { "type": "array", "uniqueItems": true, "items": { "type": "string", "pattern": "^android\\.permission\\." } },
+    "installPermissions": { "type": "array", "uniqueItems": true, "items": { "type": "string", "pattern": "^android\\.permission\\." } },
+    "forbiddenPermissions": { "type": "array", "minItems": 10, "uniqueItems": true, "items": { "type": "string", "pattern": "^android\\.permission\\." } },
+    "updateHosts": { "type": "array", "minItems": 2, "uniqueItems": true, "items": { "type": "string", "pattern": "^[a-z0-9.-]+$" } },
+    "wireGuardCoordinate": { "const": "com.wireguard.android:tunnel:1.0.20260102" },
+    "generatedRoot": { "const": "src-tauri/gen/android" },
+    "sourceOverlayRoot": { "const": "src-tauri/mobile/android-overlay" }
+  }
+}
