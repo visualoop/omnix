@@ -1,0 +1,66 @@
+schema_version = 1
+component = "wireguard-windows-embeddable-dll-service"
+platform = "windows"
+integration_status = "source-pinned-artifacts-not-yet-bundled"
+
+[source]
+project = "WireGuard for Windows"
+official_repository = "https://git.zx2c4.com/wireguard-windows"
+mirror_repository = "https://github.com/WireGuard/wireguard-windows"
+revision = "4e6726c23ae9c5cb58e0c9910f3b7515621d133d"
+source_subdirectory = "embeddable-dll-service"
+upstream_documentation = "https://git.zx2c4.com/wireguard-windows/about/embeddable-dll-service/README.md"
+license = "MIT"
+license_file = "LICENSE-MIT-WIREGUARD-WINDOWS.txt"
+
+[build]
+entrypoint = "embeddable-dll-service/build.bat"
+required_outputs = ["tunnel.dll", "wireguard.dll"]
+architectures = ["x86_64", "x86", "arm64"]
+network_during_release_build = "forbidden-after-source-and-toolchain-prefetch"
+
+[checksum_policy]
+algorithm = "sha256"
+mode = "deny-unlisted"
+source_revision_must_match = true
+require_authenticode_for_pe_binaries = true
+require_detached_release_manifest_signature = true
+require_hash_before_staging = true
+require_hash_recheck_before_install = true
+allow_placeholder_hashes = false
+# Artifact digests are intentionally absent until deterministic release artifacts
+# are built and reviewed. Packaging MUST fail while this list is empty.
+approved_artifacts = []
+
+[service]
+name_prefix = "OmnixPrivateMesh$"
+service_type = "SERVICE_WIN32_OWN_PROCESS"
+start_type = "SERVICE_AUTO_START"
+dependencies = ["Nsi", "TcpIp"]
+required_sid_type = "SERVICE_SID_TYPE_UNRESTRICTED"
+install_scope = "per-machine"
+requires_administrator = true
+untrusted_tunnel_names_allowed = false
+untrusted_process_arguments_allowed = false
+
+[key_custody]
+generation = "one independent WireGuard keypair per device"
+private_key_provider = "Windows CNG"
+private_key_wrapping = "DPAPI LocalMachine with service-SID-restricted ACL"
+database_value = "opaque key_custody_ref only"
+export_private_key = false
+copy_keys_between_devices = false
+allow_private_key_in_sqlite = false
+allow_private_key_in_tauri_ipc = false
+allow_private_key_in_logs = false
+allow_private_key_in_backup = false
+
+[route_policy]
+scope = "selected private Omnix mesh subnet only"
+allowed_ips_must_be_within_selected_mesh_pool = true
+forbid_ipv4_default_route = "0.0.0.0/0"
+forbid_ipv6_default_route = "::/0"
+allow_customer_internet_traffic = false
+
+[notices]
+third_party_notices = "THIRD_PARTY_NOTICES.md"
