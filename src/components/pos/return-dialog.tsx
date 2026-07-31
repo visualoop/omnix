@@ -30,6 +30,8 @@ import { useAuthStore } from "@/stores/auth";
 import { money as KES } from "@/lib/money";
 import { toast } from "sonner";
 import { intlLocale } from "@/lib/intl";
+import { cn } from "@/lib/utils";
+import type { PosFormFactor } from "@/components/pos/use-pos-form-factor";
 
 interface RecentSale {
   id: string;
@@ -54,9 +56,10 @@ interface Props {
   open: boolean;
   onClose: () => void;
   onCompleted?: () => void;
+  formFactor?: PosFormFactor;
 }
 
-export function ReturnDialog({ open, onClose, onCompleted }: Props) {
+export function ReturnDialog({ open, onClose, onCompleted, formFactor = "desktop" }: Props) {
   const userId = useAuthStore((s) => s.user?.id);
   const [search, setSearch] = useState("");
   const [recent, setRecent] = useState<RecentSale[]>([]);
@@ -171,7 +174,15 @@ export function ReturnDialog({ open, onClose, onCompleted }: Props) {
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="max-w-2xl max-h-[85vh] flex flex-col">
+      <DialogContent
+        showCloseButton={formFactor === "desktop"}
+        className={cn(
+          "flex flex-col",
+          formFactor === "desktop"
+            ? "max-h-[85vh] max-w-2xl"
+            : "!inset-0 !top-0 !left-0 !h-[100dvh] !max-h-none !w-full !max-w-none !translate-x-0 !translate-y-0 !rounded-none !bg-background !backdrop-blur-none pt-[max(1rem,env(safe-area-inset-top))] pb-[max(1rem,env(safe-area-inset-bottom))] [&_button]:min-h-11 [&_input]:min-h-11 motion-reduce:!duration-0 [&_button]:focus-visible:outline-none [&_button]:focus-visible:ring-2 [&_button]:focus-visible:ring-ring [&_input]:focus-visible:outline-none [&_input]:focus-visible:ring-2 [&_input]:focus-visible:ring-ring",
+        )}
+      >
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             {selectedSale ? (
@@ -209,6 +220,26 @@ export function ReturnDialog({ open, onClose, onCompleted }: Props) {
                 <div className="py-8 text-center text-muted-foreground text-sm">Loading…</div>
               ) : recent.length === 0 ? (
                 <div className="py-8 text-center text-muted-foreground text-sm">No sales found</div>
+              ) : formFactor !== "desktop" ? (
+                <div className="divide-y divide-border">
+                  {recent.map((sale) => (
+                    <button
+                      key={sale.id}
+                      type="button"
+                      onClick={() => selectSale(sale)}
+                      className="flex min-h-20 w-full items-center justify-between gap-3 px-3 py-3 text-left active:bg-muted"
+                    >
+                      <span className="min-w-0 flex-1">
+                        <span className="block font-mono text-sm font-semibold">Sale #{sale.sale_number}</span>
+                        <span className="mt-1 block truncate text-sm">{sale.customer_name || "Walk-in"}</span>
+                        <span className="mt-1 block text-xs text-muted-foreground">
+                          {new Date(sale.created_at).toLocaleString(intlLocale(), { dateStyle: "medium", timeStyle: "short" })} · {sale.item_count} item{sale.item_count === 1 ? "" : "s"}
+                        </span>
+                      </span>
+                      <span className="shrink-0 font-mono text-sm font-bold tabular-nums">{KES(sale.total)}</span>
+                    </button>
+                  ))}
+                </div>
               ) : (
                 <table className="w-full text-sm">
                   <thead className="bg-muted/30 border-b border-border">
@@ -245,48 +276,79 @@ export function ReturnDialog({ open, onClose, onCompleted }: Props) {
           <div className="flex flex-col flex-1 min-h-0 overflow-hidden">
             {/* Items with qty pickers */}
             <div className="flex-1 overflow-y-auto border border-border rounded-md">
-              <table className="w-full text-sm">
-                <thead className="bg-muted/30 border-b border-border">
-                  <tr>
-                    <th className="text-left px-3 py-2 text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Item</th>
-                    <th className="text-right px-3 py-2 text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Sold</th>
-                    <th className="text-right px-3 py-2 text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Unit</th>
-                    <th className="text-right px-3 py-2 text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Return qty</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {items.map((it) => (
-                    <tr key={it.id} className="border-b border-border/60">
-                      <td className="px-3 py-2">
-                        <span className="inline-flex items-center gap-1.5">
-                          <Package className="h-3.5 w-3.5 text-muted-foreground" />
-                          {it.product_name}
+              {formFactor !== "desktop" ? (
+                <div className="divide-y divide-border">
+                  {items.map((item) => (
+                    <div key={item.id} className="p-3">
+                      <div className="flex items-start justify-between gap-3">
+                        <span className="min-w-0 flex-1">
+                          <span className="flex items-center gap-2 text-sm font-semibold"><Package className="size-4 shrink-0 text-muted-foreground" /> {item.product_name}</span>
+                          <span className="mt-1 block font-mono text-xs text-muted-foreground">Sold {item.quantity} · {KES(item.unit_price)} each</span>
                         </span>
-                      </td>
-                      <td className="px-3 py-2 text-right font-mono text-muted-foreground">{it.quantity}</td>
-                      <td className="px-3 py-2 text-right font-mono">{KES(it.unit_price)}</td>
-                      <td className="px-3 py-2 text-right">
-                        <Input
-                          type="number"
-                          min={0}
-                          max={it.quantity}
-                          value={returnQty[it.id] || 0}
-                          onChange={(e) => {
-                            const raw = parseInt(e.target.value, 10);
-                            const clamped = Math.max(0, Math.min(it.quantity, isNaN(raw) ? 0 : raw));
-                            setReturnQty((prev) => ({ ...prev, [it.id]: clamped }));
-                          }}
-                          className="h-7 w-16 text-right font-mono ml-auto"
-                        />
-                      </td>
-                    </tr>
+                        <label className="shrink-0 text-right">
+                          <span className="block text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Return qty</span>
+                          <Input
+                            type="number"
+                            inputMode="numeric"
+                            min={0}
+                            max={item.quantity}
+                            value={returnQty[item.id] || 0}
+                            onChange={(event) => {
+                              const raw = Number.parseInt(event.target.value, 10);
+                              const clamped = Math.max(0, Math.min(item.quantity, Number.isNaN(raw) ? 0 : raw));
+                              setReturnQty((previous) => ({ ...previous, [item.id]: clamped }));
+                            }}
+                            className="mt-1 h-11 w-20 text-right font-mono text-base"
+                          />
+                        </label>
+                      </div>
+                    </div>
                   ))}
-                </tbody>
-              </table>
+                </div>
+              ) : (
+                <table className="w-full text-sm">
+                  <thead className="bg-muted/30 border-b border-border">
+                    <tr>
+                      <th className="text-left px-3 py-2 text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Item</th>
+                      <th className="text-right px-3 py-2 text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Sold</th>
+                      <th className="text-right px-3 py-2 text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Unit</th>
+                      <th className="text-right px-3 py-2 text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Return qty</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {items.map((it) => (
+                      <tr key={it.id} className="border-b border-border/60">
+                        <td className="px-3 py-2">
+                          <span className="inline-flex items-center gap-1.5">
+                            <Package className="h-3.5 w-3.5 text-muted-foreground" />
+                            {it.product_name}
+                          </span>
+                        </td>
+                        <td className="px-3 py-2 text-right font-mono text-muted-foreground">{it.quantity}</td>
+                        <td className="px-3 py-2 text-right font-mono">{KES(it.unit_price)}</td>
+                        <td className="px-3 py-2 text-right">
+                          <Input
+                            type="number"
+                            min={0}
+                            max={it.quantity}
+                            value={returnQty[it.id] || 0}
+                            onChange={(e) => {
+                              const raw = parseInt(e.target.value, 10);
+                              const clamped = Math.max(0, Math.min(it.quantity, isNaN(raw) ? 0 : raw));
+                              setReturnQty((prev) => ({ ...prev, [it.id]: clamped }));
+                            }}
+                            className="h-7 w-16 text-right font-mono ml-auto"
+                          />
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
             </div>
 
             {/* Options */}
-            <div className="grid grid-cols-2 gap-3 mt-3">
+            <div className={cn("grid gap-3 mt-3", formFactor === "desktop" ? "grid-cols-2" : "grid-cols-1")}>
               <div>
                 <label className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold">Reason</label>
                 <Select value={reason} onValueChange={(v) => setReason(String(v))}>
@@ -312,11 +374,11 @@ export function ReturnDialog({ open, onClose, onCompleted }: Props) {
                   </SelectContent>
                 </Select>
               </div>
-              <div className="col-span-2 flex items-center gap-2">
+              <div className={cn("flex items-center gap-2", formFactor === "desktop" && "col-span-2")}>
                 <Switch checked={restock} onCheckedChange={setRestock} />
                 <label className="text-[12px]">Return items to stock (uncheck for damaged/expired)</label>
               </div>
-              <div className="col-span-2">
+              <div className={cn(formFactor === "desktop" && "col-span-2")}>
                 <label className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold">Notes</label>
                 <Textarea
                   value={notes}
@@ -328,16 +390,16 @@ export function ReturnDialog({ open, onClose, onCompleted }: Props) {
             </div>
 
             {/* Total + submit */}
-            <div className="flex items-center justify-between pt-3 border-t border-border mt-3">
+            <div className={cn("border-t border-border mt-3 pt-3", formFactor === "desktop" ? "flex items-center justify-between" : "space-y-3 pb-[max(0.5rem,env(safe-area-inset-bottom))]")}>
               <div>
                 <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Refund amount</div>
                 <div className="text-lg font-semibold font-mono tabular-nums">{KES(total)}</div>
               </div>
-              <div className="flex gap-2">
-                <Button variant="ghost" onClick={onClose} disabled={submitting}>
+              <div className={cn("gap-2", formFactor === "desktop" ? "flex" : "grid grid-cols-2")}>
+                <Button variant="outline" className={cn(formFactor !== "desktop" && "h-12")} onClick={onClose} disabled={submitting}>
                   <X className="h-3.5 w-3.5 mr-1" /> Cancel
                 </Button>
-                <Button onClick={submit} disabled={submitting || !anySelected}>
+                <Button className={cn(formFactor !== "desktop" && "h-12")} onClick={submit} disabled={submitting || !anySelected}>
                   <CheckCircle className="h-3.5 w-3.5 mr-1" />
                   {submitting ? "Processing…" : "Process return"}
                 </Button>

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import {
   MagnifyingGlass as Search,
   User,
@@ -7,32 +7,23 @@ import {
 } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { useCartStore } from "@/stores/cart";
-import { listCustomers, getCustomer, type Customer } from "@/services/erp";
 import { QuickAddCustomerDialog } from "@/components/pos/quick-add-customer";
+import { useCustomerSelection } from "@/components/pos/use-customer-selection";
 
 export function CustomerPicker() {
-  const { customerId, setCustomer } = useCartStore();
   const [open, setOpen] = useState(false);
   const [quickAddOpen, setQuickAddOpen] = useState(false);
-  const [search, setSearch] = useState("");
-  const [results, setResults] = useState<Customer[]>([]);
-  const [activeCustomer, setActiveCustomer] = useState<Customer | null>(null);
+  const {
+    activeCustomer,
+    search,
+    results,
+    setSearch,
+    selectCustomer,
+    clearCustomer,
+  } = useCustomerSelection(open);
 
-  useEffect(() => {
-    if (customerId) {
-      getCustomer(customerId).then((c) => setActiveCustomer(c));
-    } else {
-      setActiveCustomer(null);
-    }
-  }, [customerId]);
-
-  useEffect(() => {
-    if (open) listCustomers(search).then(setResults);
-  }, [open, search]);
-
-  const select = (c: Customer) => {
-    setCustomer(c.id);
+  const select = (customer: (typeof results)[number]) => {
+    selectCustomer(customer);
     setOpen(false);
     setSearch("");
   };
@@ -54,7 +45,7 @@ export function CustomerPicker() {
             className="ml-auto -mr-1 h-5 w-5 hover:bg-accent rounded inline-flex items-center justify-center"
             onClick={(e) => {
               e.stopPropagation();
-              setCustomer(null);
+              clearCustomer();
             }}
           >
             <X className="h-3 w-3" />
@@ -141,7 +132,7 @@ export function CustomerPicker() {
       <QuickAddCustomerDialog
         open={quickAddOpen}
         onClose={() => setQuickAddOpen(false)}
-        onCreated={(c) => setCustomer(c.id)}
+        onCreated={selectCustomer}
       />
     </>
   );

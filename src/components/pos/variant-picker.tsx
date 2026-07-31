@@ -4,8 +4,11 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { listVariants, type ProductVariant } from "@/services/retail";
 import { useActiveModule } from "@/stores/active-module";
 import type { Product } from "@/services/inventory";
+import { cn } from "@/lib/utils";
+import type { PosFormFactor } from "@/components/pos/use-pos-form-factor";
 
 interface Props {
+  formFactor?: PosFormFactor;
   product: Product | null;
   onClose: () => void;
   onPick: (product: Product, variant: ProductVariant | null) => void;
@@ -20,7 +23,7 @@ interface Props {
  * fallback when no image is uploaded. Dialog body scrolls when the list
  * is long.
  */
-export function VariantPickerDialog({ product, onClose, onPick }: Props) {
+export function VariantPickerDialog({ formFactor = "desktop", product, onClose, onPick }: Props) {
   const [variants, setVariants] = useState<ProductVariant[]>([]);
   const [loading, setLoading] = useState(true);
   const activeModule = useActiveModule((s) => s.active);
@@ -57,15 +60,26 @@ export function VariantPickerDialog({ product, onClose, onPick }: Props) {
 
   return (
     <Dialog open={true} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="sm:max-w-2xl p-0 gap-0 overflow-visible max-h-none">
-        <DialogHeader className="px-5 pt-5 pb-3 border-b border-border/60">
+      <DialogContent
+        showCloseButton
+        className={cn(
+          "p-0 gap-0 overflow-visible max-h-none flex flex-col",
+          formFactor === "desktop"
+            ? "sm:max-w-2xl"
+            : "!inset-0 !top-0 !left-0 !h-[100dvh] !max-h-none !w-full !max-w-none !translate-x-0 !translate-y-0 !rounded-none !bg-background !backdrop-blur-none [&_button]:min-h-11 motion-reduce:!duration-0 [&_button]:focus-visible:outline-none [&_button]:focus-visible:ring-2 [&_button]:focus-visible:ring-ring",
+        )}
+      >
+        <DialogHeader className={cn("px-5 pb-3 border-b border-border/60", formFactor === "desktop" ? "pt-5" : "pt-[max(1rem,env(safe-area-inset-top))]")}>
           <DialogTitle>Pick variant — {product.name}</DialogTitle>
           <p className="text-[11px] text-muted-foreground mt-1">
             Tap the standard SKU to sell the parent directly, or pick a variant.
           </p>
         </DialogHeader>
 
-        <div className="px-5 py-4 max-h-[min(72vh,640px)] overflow-y-auto">
+        <div className={cn(
+          "overflow-y-auto px-5 py-4",
+          formFactor === "desktop" ? "max-h-[min(72vh,640px)]" : "min-h-0 flex-1 pb-[max(1rem,env(safe-area-inset-bottom))]",
+        )}>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
             {/* MOTHER PRODUCT — first card. Synthesises a SKU when the
                 product has none so the card reads like a real line item

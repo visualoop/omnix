@@ -153,6 +153,27 @@ function nextRevision(state: CartState): number {
   return (state.revision || 0) + 1;
 }
 
+/** Sale-critical subset restored after Android process recreation or reload. */
+export function selectPersistedCartState(state: CartState) {
+  return {
+    items: state.items,
+    customerId: state.customerId,
+    discount: state.discount,
+    discountType: state.discountType,
+    promoId: state.promoId,
+    promoLabel: state.promoLabel,
+    tip: state.tip,
+    tipEmployeeId: state.tipEmployeeId,
+    serviceChargeAmount: state.serviceChargeAmount,
+    taxMode: state.taxMode,
+    sourceType: state.sourceType,
+    sourceId: state.sourceId,
+    sourceLabel: state.sourceLabel,
+    quoteMode: state.quoteMode,
+    revision: state.revision,
+  };
+}
+
 export const useCartStore = create<CartState>()(
   persist(
     (set, get) => ({
@@ -432,19 +453,7 @@ export const useCartStore = create<CartState>()(
     }),
     {
       name: "omnix-cart",
-      partialize: (s) => ({
-        items: s.items,
-        customerId: s.customerId,
-        discount: s.discount,
-        discountType: s.discountType,
-        tip: s.tip,
-        tipEmployeeId: s.tipEmployeeId,
-        serviceChargeAmount: s.serviceChargeAmount,
-        sourceType: s.sourceType,
-        sourceId: s.sourceId,
-        sourceLabel: s.sourceLabel,
-        revision: s.revision,
-      }),
+      partialize: selectPersistedCartState,
     },
   ),
 );

@@ -1,3 +1,5 @@
+import { CheckCircle, Printer, ShareNetwork } from "@phosphor-icons/react";
+import { money } from "@/lib/money";
 import { useState, useEffect, useRef } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -11,7 +13,8 @@ import { getPaystackConfig } from "@/services/paystack";
 import { getDarajaConfig, getManualMpesaConfig, type ManualMpesaConfig } from "@/services/daraja";
 import { payByPaystackPopup } from "@/services/paystack-popup";
 import { createClaim, type InsuranceProvider, type InsuranceMember } from "@/services/insurance";
-import { buildReceiptData, printReceipt } from "@/services/receipt";
+import { buildReceiptData, printReceipt, type ReceiptData } from "@/services/receipt";
+import { shareReceipt } from "@/components/pos/receipt-share";
 import { markOrderPaidFromPos } from "@/services/hospitality";
 import { PaystackMpesaCharge } from "@/components/pos/paystack-mpesa";
 import { DarajaMpesaCharge } from "@/components/pos/daraja-mpesa";
@@ -20,10 +23,12 @@ import { paymentBrandIcon, paymentBrandTint } from "@/components/icons/payment-b
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { useTrialWriteGuard } from "@/components/trial-lifecycle";
+import type { PosFormFactor } from "@/components/pos/use-pos-form-factor";
 
 interface Props {
   open: boolean;
   onClose: () => void;
+  formFactor?: PosFormFactor;
 }
 
 interface InsuranceState {
@@ -46,7 +51,7 @@ interface PaymentSnapshot {
   promoId: string | null;
 }
 
-export function PaymentModal({ open, onClose }: Props) {
+export function PaymentModal({ open, onClose, formFactor = "desktop" }: Props) {
   const [methods, setMethods] = useState<PaymentMethod[]>([]);
   const [selectedMethod, setSelectedMethod] = useState<string>("cash");
   const [amount, setAmount] = useState("");
@@ -68,6 +73,7 @@ export function PaymentModal({ open, onClose }: Props) {
   const [snapshot, setSnapshot] = useState<PaymentSnapshot | null>(null);
   const [loyalty, setLoyalty] = useState<{ points: number; redeemRate: number; minRedeem: number } | null>(null);
   const [redeemPts, setRedeemPts] = useState(0);
+  const [completedSale, setCompletedSale] = useState<{ saleId: string; total: number; receipt: ReceiptData | null } | null>(null);
 
   const clear = useCartStore((s) => s.clear);
   const liveGrandTotal = useCartStore((s) => s.grandTotal);
@@ -80,6 +86,7 @@ export function PaymentModal({ open, onClose }: Props) {
 
   useEffect(() => {
     if (open) {
+      setCompletedSale(null);
       const cart = useCartStore.getState();
       const nextSnapshot: PaymentSnapshot = {
         items: cart.items.map((item) => ({ ...item })),
@@ -384,21 +391,31 @@ export function PaymentModal({ open, onClose }: Props) {
         }
       }
 
-      setTimeout(async () => {
+      if (formFactor === "desktop") {
+        setTimeout(async () => {
+          try {
+            const data = await buildReceiptData(saleId);
+            if (data) printReceipt(data);
+          } catch (e) {
+            console.error("Receipt print failed:", e);
+          }
+        }, 500);
+      } else {
+        let receipt: ReceiptData | null = null;
         try {
-          const data = await buildReceiptData(saleId);
-          if (data) printReceipt(data);
+          receipt = await buildReceiptData(saleId);
         } catch (e) {
-          console.error("Receipt print failed:", e);
+          console.error("Receipt build failed:", e);
         }
-      }, 500);
+        setCompletedSale({ saleId, total: saleSnapshot.total, receipt });
+      }
 
       clear();
       setPayments([]);
       setAmount("0");
       setReference("");
       setSnapshot(null);
-      onClose();
+      if (formFactor === "desktop") onClose();
     } catch (e) {
       const err = e as { code?: string; shortages?: Array<{ name: string; requested: number; available: number }>; message?: string };
       if (err?.code === "OUT_OF_STOCK" && Array.isArray(err.shortages)) {
@@ -413,24 +430,102 @@ export function PaymentModal({ open, onClose }: Props) {
     }
   };
 
+  if (completedSale && formFactor !== "desktop") {
+    const receiptNumber = completedSale.receipt?.sale.sale_number;
+    return (
+      <Dialog open={open} onOpenChange={(next) => !next && onClose()}>
+        <DialogContent
+          showCloseButton={false}
+          className="!inset-0 !top-0 !left-0 !h-[100dvh] !max-h-none !w-full !max-w-none !translate-x-0 !translate-y-0 !rounded-none !bg-background !backdrop-blur-none p-0 motion-reduce:!duration-0"
+        >
+          <div className="flex min-h-0 flex-1 flex-col px-5 pb-[max(1rem,env(safe-area-inset-bottom))] pt-[max(1rem,env(safe-area-inset-top))]">
+            <div className="flex min-h-0 flex-1 flex-col items-center justify-center text-center">
+              <span className="grid size-16 place-items-center rounded-full bg-emerald-600 text-white">
+                <CheckCircle className="size-9" weight="fill" aria-hidden />
+              </span>
+              <p className="mt-5 text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">Sale complete</p>
+              <h2 className="mt-2 text-2xl font-bold tracking-tight">
+                {receiptNumber !== undefined ? `Receipt #${receiptNumber}` : "Receipt saved"}
+              </h2>
+              <p className="mt-3 font-mono text-4xl font-bold tabular-nums">{money(completedSale.total)}</p>
+              <p className="mt-3 max-w-sm text-sm text-muted-foreground">
+                Stock and payment are recorded locally. eTIMS and branch sync continue through the existing checkout queue.
+              </p>
+              {!completedSale.receipt ? (
+                <p className="mt-4 rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-sm text-amber-800 dark:text-amber-300">
+                  The sale is saved, but receipt details could not be loaded. Reprint it from Sales history.
+                </p>
+              ) : null}
+              <p className="mt-4 font-mono text-[10px] text-muted-foreground">Sale {completedSale.saleId.slice(0, 8).toUpperCase()}</p>
+            </div>
+
+            <div className="grid shrink-0 grid-cols-2 gap-2 border-t border-border pt-4">
+              <Button
+                variant="outline"
+                className="h-14 text-sm"
+                disabled={!completedSale.receipt}
+                onClick={() => {
+                  if (!completedSale.receipt) return;
+                  printReceipt(completedSale.receipt).catch((error) => toast.error(String(error)));
+                }}
+              >
+                <Printer className="mr-2 size-5" /> Print receipt
+              </Button>
+              <Button
+                variant="outline"
+                className="h-14 text-sm"
+                disabled={!completedSale.receipt}
+                onClick={async () => {
+                  if (!completedSale.receipt) return;
+                  try {
+                    const result = await shareReceipt(completedSale.receipt);
+                    if (result === "copied") toast.success("Receipt copied — paste it into WhatsApp or SMS");
+                  } catch (error) {
+                    if ((error as Error).name !== "AbortError") toast.error(String(error));
+                  }
+                }}
+              >
+                <ShareNetwork className="mr-2 size-5" /> Share receipt
+              </Button>
+              <Button autoFocus className="col-span-2 h-14 text-base" onClick={onClose}>
+                Start new sale
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+    );
+  }
+
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
       <DialogContent
+        showCloseButton={formFactor === "desktop"}
         className={cn(
           // Wider so the 2-col payment-method grid breathes and focus rings
           // don't clip the card edges. Disable the outer scroll + max-h —
           // the payment-modal renders its own sticky-header / scrollable-
           // body / sticky-footer layout, and the outer scroll was creating
           // a second scrollbar on the same axis.
-          "sm:max-w-[560px] overflow-visible max-h-none p-0 gap-0",
+          "sm:max-w-[560px] overflow-visible max-h-none p-0 gap-0 flex flex-col",
+          formFactor !== "desktop" && "!inset-0 !top-0 !left-0 !h-[100dvh] !max-h-none !w-full !max-w-none !translate-x-0 !translate-y-0 !rounded-none !bg-background !backdrop-blur-none [&_button]:min-h-11 [&_input]:min-h-11 motion-reduce:!duration-0 [&_button]:focus-visible:outline-none [&_button]:focus-visible:ring-2 [&_button]:focus-visible:ring-ring [&_button]:focus-visible:ring-offset-2",
         )}
       >
-        <DialogHeader className="px-5 pt-5 pb-3">
+        <DialogHeader className={cn("px-5 pt-5 pb-3", formFactor !== "desktop" && "pt-[max(1rem,env(safe-area-inset-top))]")}>
           <DialogTitle>Payment</DialogTitle>
+          {formFactor !== "desktop" ? (
+            <button
+              type="button"
+              onClick={onClose}
+              className="absolute right-3 top-[max(0.5rem,env(safe-area-inset-top))] rounded-md px-3 text-sm font-medium text-muted-foreground"
+            >
+              Close
+            </button>
+          ) : null}
         </DialogHeader>
 
         {showDarajaStk ? (
-          <div className="px-5 pb-5 max-h-[min(86vh,720px)] overflow-y-auto">
+          <div className={cn("overflow-y-auto px-5 pb-5", formFactor === "desktop" ? "max-h-[min(86vh,720px)]" : "min-h-0 flex-1 pb-[max(1.25rem,env(safe-area-inset-bottom))]")}>
             <DarajaMpesaCharge
               amount={remaining}
               onSuccess={(ref) => {
@@ -447,7 +542,7 @@ export function PaymentModal({ open, onClose }: Props) {
             />
           </div>
         ) : showStkPush ? (
-          <div className="px-5 pb-5 max-h-[min(86vh,720px)] overflow-y-auto">
+          <div className={cn("overflow-y-auto px-5 pb-5", formFactor === "desktop" ? "max-h-[min(86vh,720px)]" : "min-h-0 flex-1 pb-[max(1.25rem,env(safe-area-inset-bottom))]")}>
             <PaystackMpesaCharge
               amount={remaining}
               email="customer@omnix.local"
@@ -465,7 +560,7 @@ export function PaymentModal({ open, onClose }: Props) {
             />
           </div>
         ) : showInsuranceVerify ? (
-          <div className="px-5 pb-5 max-h-[min(86vh,720px)] overflow-y-auto">
+          <div className={cn("overflow-y-auto px-5 pb-5", formFactor === "desktop" ? "max-h-[min(86vh,720px)]" : "min-h-0 flex-1 pb-[max(1.25rem,env(safe-area-inset-bottom))]")}>
             <InsuranceVerifyPanel
               grossAmount={total}
               onMemberSelected={handleInsuranceConfirmed}
@@ -473,7 +568,7 @@ export function PaymentModal({ open, onClose }: Props) {
             />
           </div>
         ) : (
-        <div className="flex flex-col max-h-[min(86vh,720px)]">
+        <div className={cn("flex min-h-0 flex-col", formFactor === "desktop" ? "max-h-[min(86vh,720px)]" : "flex-1")}>
           {/* ── Sticky header: total + remaining + progress ───────── */}
           <div className="flex-shrink-0 border-b border-border/60 px-5 pb-4">
             <div className="grid grid-cols-2 gap-3">
@@ -491,7 +586,7 @@ export function PaymentModal({ open, onClose }: Props) {
             {/* progress bar */}
             <div className="mt-3 h-1.5 w-full rounded-full bg-foreground/[0.08] overflow-hidden">
               <div
-                className="h-full rounded-full bg-emerald-500 transition-all duration-300"
+                className="h-full rounded-full bg-emerald-500 transition-[width] duration-200 motion-reduce:transition-none"
                 style={{ width: `${total > 0 ? Math.min(100, (paidSoFar / total) * 100) : 0}%` }}
               />
             </div>
@@ -501,8 +596,8 @@ export function PaymentModal({ open, onClose }: Props) {
               </p>
             )}
             {loyalty && (
-              <div className="mt-3 flex items-center gap-2 rounded-md border border-violet-500/30 bg-violet-500/[0.06] px-2.5 py-2">
-                <span className="text-[11px] text-violet-700 dark:text-violet-300 font-medium">
+              <div className="mt-3 flex items-center gap-2 rounded-md border border-primary/30 bg-primary/[0.06] px-2.5 py-2">
+                <span className="text-[11px] text-primary font-medium">
                   {loyalty.points} pts available
                 </span>
                 <input
@@ -554,7 +649,7 @@ export function PaymentModal({ open, onClose }: Props) {
                       key={m.id}
                       onClick={() => handleSelectMethod(m.id)}
                       className={cn(
-                        "flex items-center gap-2.5 px-3 py-2.5 rounded-xl border text-left transition-all cursor-pointer",
+                        "flex items-center gap-2.5 px-3 py-2.5 rounded-md border text-left transition-colors cursor-pointer",
                         selected
                           ? `${tint.bg} ring-2 ring-inset ${tint.ring} border-transparent`
                           : "border-border hover:bg-accent/40",
@@ -645,7 +740,7 @@ export function PaymentModal({ open, onClose }: Props) {
                 confirmation code. Shown when no Daraja STK is configured. */}
             {selectedMethod === "mpesa-manual" && !darajaActive &&
               (manualMpesa?.paybill_number || manualMpesa?.till_number) && (
-              <div className="rounded-xl bg-[#4FC52E]/[0.07] ring-1 ring-[#4FC52E]/30 p-4 space-y-2">
+              <div className="rounded-md bg-[#4FC52E]/[0.07] ring-1 ring-[#4FC52E]/30 p-4 space-y-2">
                 <p className="text-[10px] font-medium uppercase tracking-[0.18em] text-[#2E7D1B]">
                   Ask the customer to pay
                 </p>
@@ -709,7 +804,7 @@ export function PaymentModal({ open, onClose }: Props) {
           </div>
 
           {/* ── Sticky footer: single contextual CTA ──────────────── */}
-          <div className="flex-shrink-0 border-t border-border/60 px-5 py-4 bg-popover/95 backdrop-blur-sm">
+          <div className={cn("flex-shrink-0 border-t border-border/60 px-5 py-4 bg-popover/95 backdrop-blur-sm", formFactor !== "desktop" && "pb-[max(1rem,env(safe-area-inset-bottom))]")}>
             {(() => {
               const inputAmt = parseFloat(amount) || 0
               const wouldUnderpay = remaining - inputAmt > 0.001
