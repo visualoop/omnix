@@ -1,13 +1,14 @@
 import Link from 'next/link'
 
-import { CURRENCIES, type SupportedCurrency } from '@/lib/currency'
+import { CURRENCIES, type DisplayCurrency } from '@/lib/currency'
 import { HOMEPAGE_PRODUCTS } from '@/components/landing/homepage'
 
 import styles from './acquisition-routes.module.css'
 
 interface PricingWebsiteProps {
   locale: string
-  currency: SupportedCurrency
+  marketName?: string
+  currency: DisplayCurrency
   oneTimeFee: number
   maintenanceYearly: number
   cloudBackupMonthly: number
@@ -20,9 +21,9 @@ function localeHref(locale: string, path: string): string {
   return `/${locale}${path}`
 }
 
-function formatAmount(amount: number, currency: SupportedCurrency): string {
+function formatAmount(amount: number, currency: DisplayCurrency): string {
   const decimals = CURRENCIES[currency].decimals
-  return amount.toLocaleString('en-US', {
+  return amount.toLocaleString(CURRENCIES[currency].locale, {
     minimumFractionDigits: decimals,
     maximumFractionDigits: decimals,
   })
@@ -37,6 +38,7 @@ function whatsappDemoHref(whatsappUrl: string | null | undefined): string | null
 
 export function PricingWebsite({
   locale,
+  marketName = 'Kenya',
   currency,
   oneTimeFee,
   maintenanceYearly,
@@ -99,6 +101,9 @@ export function PricingWebsite({
                 <div><dt>Licence term</dt><dd>Perpetual</dd></div>
                 <div><dt>Product choice</dt><dd>One of five</dd></div>
               </dl>
+              <p className={styles.priceDisclosure}>
+                Prices are displayed in {currency} for {marketName}. Display currency is separate from payment settlement; Paystack availability and the currency charged are confirmed before payment.
+              </p>
             </div>
           </div>
         </div>

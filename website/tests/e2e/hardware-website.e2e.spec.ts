@@ -18,7 +18,7 @@ test.describe('Task 13 Hardware & Equipment product website', () => {
     await expect(page).toHaveURL(/\/(ke|us|gb|ng|gh|za|in|rw|tz|ug|eg|ae|en|sw|fr|pt|es|ar)\/hardware$/)
     await page.goto('/ke/hardware')
     await expect(page.getByText(/M-Pesa requests and KRA eTIMS submission require internet access/i)).toBeVisible()
-    await page.goto('/ng/hardware')
+    await page.goto('/ug/hardware')
     await expect(page.getByText(/M-Pesa requests and KRA eTIMS submission require internet access/i)).toHaveCount(0)
     await expect(page.getByText(/available only where Omnix supports the provider/i)).toBeVisible()
   })

@@ -31,15 +31,15 @@ describe('Task 9 homepage acquisition', () => {
   })
 
   it('uses locale-aware demo and product links', () => {
-    render(<Homepage locale="ng" />)
+    render(<Homepage locale="ug" />)
 
     const demoLinks = screen.getAllByRole('link', { name: 'Book a demo' })
     expect(demoLinks).toHaveLength(2)
     for (const link of demoLinks) {
-      expect(link.getAttribute('href')).toBe('/ng/contact?type=demo')
+      expect(link.getAttribute('href')).toBe('/ug/contact?type=demo')
     }
-    expect(screen.getByRole('link', { name: 'Explore Pharmacy' }).getAttribute('href')).toBe('/ng/pharmacy')
-    expect(screen.getByRole('link', { name: 'Explore Salon & Spa' }).getAttribute('href')).toBe('/ng/salon')
+    expect(screen.getByRole('link', { name: 'Explore Pharmacy' }).getAttribute('href')).toBe('/ug/pharmacy')
+    expect(screen.getByRole('link', { name: 'Explore Salon & Spa' }).getAttribute('href')).toBe('/ug/salon')
   })
 
   it('shows WhatsApp only when configured', () => {

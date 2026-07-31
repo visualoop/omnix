@@ -57,53 +57,61 @@ test.describe('Task 28 — legacy route permanent redirects', () => {
   })
 })
 
-test.describe('Task 28 — Kenya-only guides & locations canonicalise to /ke', () => {
-  // National buyer guides and local city hubs are Kenya-only content: every
-  // non-ke market permanently (308) redirects to the canonical /ke path.
-  for (const path of ['/guides', '/locations']) {
-    test(`/us${path} returns 308 → /ke${path} (no chain)`, async ({ request }) => {
-      const res = await request.get(`/us${path}`, { maxRedirects: 0 })
-      expect(res.status()).toBe(308)
-      expect(res.headers()['location']).toContain(`/ke${path}`)
-    })
+const LAUNCH_MARKETS = ['ke', 'ug', 'tz', 'rw'] as const
+const NON_KENYA_LAUNCH_MARKETS = LAUNCH_MARKETS.filter((locale) => locale !== 'ke')
+const KENYA_ONLY_PATHS = ['/etims', '/sha', '/mpesa', '/blog', '/docs', '/guides', '/locations'] as const
 
-    test(`/us${path} lands on the real /ke${path} hub (no chain)`, async ({ page }) => {
-      await page.goto(`/us${path}`)
-      expect(page.url()).toContain(`/ke${path}`)
-      // The /ke destination renders 200 content, not another redirect.
-      await expect(page.getByRole('heading', { level: 1 }).first()).toBeVisible()
-    })
-
-    test(`/us${path} self-canonicalises to /ke with Kenya-only hreflang`, async ({ page }) => {
-      await page.goto(`/us${path}`)
-      const canonical = await page.locator('link[rel="canonical"]').first().getAttribute('href')
-      expect(canonical).toContain(`/ke${path}`)
-
-      const enKE = await page.locator('link[rel="alternate"][hreflang="en-KE"]').getAttribute('href')
-      expect(enKE).toContain(`/ke${path}`)
-      const xDefault = await page.locator('link[rel="alternate"][hreflang="x-default"]').getAttribute('href')
-      expect(xDefault).toContain(`/ke${path}`)
-      // Kenya-only: no other market hreflang is declared.
-      await expect(page.locator('link[rel="alternate"][hreflang="en-US"]')).toHaveCount(0)
+test.describe('Kenya-only public routes canonicalise within the four launch markets', () => {
+  for (const locale of NON_KENYA_LAUNCH_MARKETS) {
+    test(`${locale} Kenya-only routes return 308 to /ke`, async ({ request }) => {
+      for (const path of KENYA_ONLY_PATHS) {
+        const res = await request.get(`/${locale}${path}`, { maxRedirects: 0 })
+        expect(res.status(), `${locale}${path}`).toBe(308)
+        expect(res.headers()['location']).toContain(`/ke${path}`)
+      }
     })
   }
 
-  test('preserves safe campaign query on the /ke redirect', async ({ request }) => {
-    const res = await request.get('/us/guides?utm_source=google&product=pharmacy', { maxRedirects: 0 })
+  test('/ke is the reachable canonical state with Kenya-only hreflang', async ({ page }) => {
+    await page.goto('/ke/etims')
+    await expect(page.getByRole('heading', { level: 1 }).first()).toBeVisible()
+    const canonical = await page.locator('link[rel="canonical"]').first().getAttribute('href')
+    expect(canonical).toContain('/ke/etims')
+    const enKE = await page.locator('link[rel="alternate"][hreflang="en-KE"]').getAttribute('href')
+    expect(enKE).toContain('/ke/etims')
+    const xDefault = await page.locator('link[rel="alternate"][hreflang="x-default"]').getAttribute('href')
+    expect(xDefault).toContain('/ke/etims')
+    for (const hreflang of ['en-UG', 'en-TZ', 'en-RW']) {
+      await expect(page.locator(`link[rel="alternate"][hreflang="${hreflang}"]`)).toHaveCount(0)
+    }
+  })
+
+  test('preserves safe query and drops sensitive query on a launch-market redirect', async ({ request }) => {
+    const res = await request.get(
+      '/ug/guides?utm_source=google&product=pharmacy&token=secret-value&next=/admin',
+      { maxRedirects: 0 },
+    )
     expect(res.status()).toBe(308)
     const location = res.headers()['location']
     expect(location).toContain('/ke/guides?')
     expect(location).toContain('utm_source=google')
     expect(location).toContain('product=pharmacy')
-  })
-
-  test('drops security-sensitive query on the /ke redirect', async ({ request }) => {
-    const res = await request.get('/gb/locations?token=secret-value&next=/admin', { maxRedirects: 0 })
-    expect(res.status()).toBe(308)
-    const location = res.headers()['location']
-    expect(location).toContain('/ke/locations')
     expect(location).not.toContain('token')
     expect(location).not.toContain('secret-value')
+    expect(location).not.toContain('next=')
+  })
+
+  test('bare geo redirect sanitizes query before adding a launch-market prefix', async ({ request }) => {
+    const res = await request.get(
+      '/pricing?utm_source=google&product=retail&token=secret-value&next=/admin',
+      { headers: { 'x-vercel-ip-country': 'TZ' }, maxRedirects: 0 },
+    )
+    expect(res.status()).toBe(308)
+    const location = res.headers()['location']
+    expect(location).toContain('/tz/pricing?')
+    expect(location).toContain('utm_source=google')
+    expect(location).toContain('product=retail')
+    expect(location).not.toContain('token')
     expect(location).not.toContain('next=')
   })
 })
@@ -118,8 +126,16 @@ test.describe('Task 28 — canonical + hreflang', () => {
     const enKE = await page.locator('link[rel="alternate"][hreflang="en-KE"]').getAttribute('href')
     expect(enKE).toContain('/ke/pharmacy')
 
-    const enUS = await page.locator('link[rel="alternate"][hreflang="en-US"]').getAttribute('href')
-    expect(enUS).toContain('/us/pharmacy')
+    const enUG = await page.locator('link[rel="alternate"][hreflang="en-UG"]').getAttribute('href')
+    expect(enUG).toContain('/ug/pharmacy')
+
+    const enTZ = await page.locator('link[rel="alternate"][hreflang="en-TZ"]').getAttribute('href')
+    expect(enTZ).toContain('/tz/pharmacy')
+
+    const enRW = await page.locator('link[rel="alternate"][hreflang="en-RW"]').getAttribute('href')
+    expect(enRW).toContain('/rw/pharmacy')
+
+    await expect(page.locator('link[rel="alternate"][hreflang="en-US"]')).toHaveCount(0)
 
     const xDefault = await page.locator('link[rel="alternate"][hreflang="x-default"]').getAttribute('href')
     expect(xDefault).toContain('/ke/pharmacy')
@@ -162,18 +178,21 @@ test.describe('Task 28 — sitemap.xml', () => {
     expect(res.ok()).toBeTruthy()
     const xml = await res.text()
 
-    for (const loc of ['/ke/pharmacy', '/ke/retail', '/ke/hospitality', '/ke/hardware', '/ke/salon', '/ke/modules', '/ke/pricing', '/ke/guides']) {
+    for (const loc of [
+      '/ke/pharmacy', '/ke/retail', '/ke/hospitality', '/ke/hardware', '/ke/salon',
+      '/ke/modules', '/ke/pricing', '/ke/etims', '/ke/sha', '/ke/mpesa', '/ke/blog', '/ke/docs', '/ke/guides',
+    ]) {
       expect(xml).toContain(`${loc}</loc>`)
     }
     // Legacy redirects and module slug pages never appear.
     for (const bad of ['/ke/ai</loc>', '/ke/dawa</loc>', '/ke/pro</loc>', '/ke/payroll-pack</loc>', '/ke/modules/dawa', '/ke/modules/retail']) {
       expect(xml).not.toContain(bad)
     }
-    // Kenya-only content is emitted under /ke only — never under other markets.
-    for (const cc of ['us', 'gb', 'ng', 'za', 'ae']) {
-      expect(xml, `no /${cc}/guides`).not.toContain(`/${cc}/guides</loc>`)
-      expect(xml, `no /${cc}/guides/ detail`).not.toContain(`/${cc}/guides/`)
-      expect(xml, `no /${cc}/locations`).not.toContain(`/${cc}/locations`)
+    // Kenya-only content is emitted under /ke only — never under another launch market.
+    for (const cc of NON_KENYA_LAUNCH_MARKETS) {
+      for (const family of ['etims', 'sha', 'mpesa', 'blog', 'docs', 'guides', 'locations']) {
+        expect(xml, `no /${cc}/${family}`).not.toContain(`/${cc}/${family}`)
+      }
     }
     // Private top-level families never appear. Document slugs such as
     // /<locale>/docs/onboarding remain legitimate public content.

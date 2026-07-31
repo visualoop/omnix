@@ -45,12 +45,31 @@ const LEGAL_PAGES: Array<[string, string, string]> = [
 
 afterEach(cleanup)
 
-describe('Task 16 — localized, indexable metadata', () => {
-  it('gives every content and legal route a locale canonical and hreflang alternates', () => {
-    for (const [route, source] of [...CONTENT_PAGES, ...LEGAL_PAGES]) {
+describe('Task 16 — canonical, indexable metadata', () => {
+  it('keeps market-neutral content and legal routes localized', () => {
+    for (const [route, source] of [
+      ['changelog', SOURCES.changelog],
+      ['roadmap', SOURCES.roadmap],
+      ...LEGAL_PAGES.map(([route, source]) => [route, source] as [string, string]),
+    ]) {
       expect(source, `${route} canonical`).toContain(`const canonical = \`\${SITE_URL}/\${locale}/${route}\``)
       expect(source, `${route} hreflang`).toContain(`buildAlternatesLanguages('/${route}')`)
     }
+  })
+
+  it('canonicalises Kenya-focused blog and docs content only under /ke', () => {
+    for (const [route, source] of [
+      ['blog', SOURCES.blogList],
+      ['docs', SOURCES.docsList],
+    ] as const) {
+      expect(source, `${route} Kenya canonical`).toContain(`const canonical = \`\${SITE_URL}/ke/${route}\``)
+      expect(source, `${route} Kenya hreflang`).toContain(`buildKenyaOnlyAlternatesLanguages('/${route}')`)
+      expect(source, `${route} no general hreflang`).not.toContain('buildAlternatesLanguages(')
+    }
+    expect(SOURCES.blogDetail).toContain('`${SITE_URL}/ke/blog/${post.slug}`')
+    expect(SOURCES.blogDetail).toContain('buildKenyaOnlyAlternatesLanguages(`/blog/${post.slug}`)')
+    expect(SOURCES.docsDetail).toContain('`${SITE_URL}/ke/docs/${doc.slug}`')
+    expect(SOURCES.docsDetail).toContain('buildKenyaOnlyAlternatesLanguages(`/docs/${doc.slug}`)')
   })
 })
 

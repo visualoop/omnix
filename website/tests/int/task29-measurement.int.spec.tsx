@@ -283,8 +283,10 @@ describe('Task 29 · normalizePublicPath is a closed allowlist', () => {
   it('maps the localized home and exact known routes to themselves', () => {
     expect(normalizePublicPath('/ke')).toBe('/ke')
     expect(normalizePublicPath('/ke/pharmacy')).toBe('/ke/pharmacy')
-    expect(normalizePublicPath('/us/pricing')).toBe('/us/pricing')
-    expect(normalizePublicPath('/sw/contact')).toBe('/sw/contact')
+    expect(normalizePublicPath('/ug/pricing')).toBe('/ug/pricing')
+    expect(normalizePublicPath('/tz/contact')).toBe('/tz/contact')
+    expect(normalizePublicPath('/us/pricing')).toBeNull()
+    expect(normalizePublicPath('/sw/contact')).toBeNull()
     // Index pages of the authored families are exact routes too.
     expect(normalizePublicPath('/ke/blog')).toBe('/ke/blog')
     expect(normalizePublicPath('/ke/docs')).toBe('/ke/docs')

@@ -44,7 +44,7 @@ describe('Task 12 Hospitality product website', () => {
   })
 
   it('keeps Kenya-only connected services out of unsupported locale copy', () => {
-    render(<HospitalityWebsite locale="ng" />)
+    render(<HospitalityWebsite locale="ug" />)
 
     const page = document.querySelector('[data-hospitality-website]')
     expect(page?.textContent).not.toMatch(/M-Pesa|KRA eTIMS/i)
@@ -62,12 +62,12 @@ describe('Task 12 Hospitality product website', () => {
   })
 
   it('uses a locale-aware demo primary and configured WhatsApp secondary', () => {
-    const { rerender } = render(<HospitalityWebsite locale="ng" />)
+    const { rerender } = render(<HospitalityWebsite locale="ug" />)
 
     const demoLinks = screen.getAllByRole('link', { name: 'Book a hospitality demo' })
     expect(demoLinks).toHaveLength(2)
     for (const link of demoLinks) {
-      expect(link.getAttribute('href')).toBe('/ng/contact?type=demo&product=hospitality')
+      expect(link.getAttribute('href')).toBe('/ug/contact?type=demo&product=hospitality')
     }
     expect(screen.queryByRole('link', { name: 'Ask on WhatsApp' })).toBeNull()
 

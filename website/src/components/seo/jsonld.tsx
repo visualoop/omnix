@@ -21,8 +21,8 @@
  *     "</script>" or U+2028/U+2029 in the data can never terminate the inline
  *     <script> or break the document.
  */
-import { pricing, type SupportedCurrency } from '@/config/pricing'
-import { siteBranding } from '@/lib/platform-settings'
+import { pricing } from '@/config/pricing'
+import type { DisplayCurrency } from '@/lib/currency'
 
 /**
  * Serialize a JSON-LD object for safe embedding inside an inline
@@ -54,6 +54,7 @@ interface OrgProps {
 }
 
 export async function OrgJsonLd({ brandUrl = 'https://omnix.co.ke' }: Partial<OrgProps> = {}) {
+  const { siteBranding } = await import('@/lib/platform-settings')
   const b = await siteBranding().catch(() => null)
   const same: string[] = []
   if (b?.social.twitter) same.push(b.social.twitter)
@@ -83,7 +84,7 @@ export async function OrgJsonLd({ brandUrl = 'https://omnix.co.ke' }: Partial<Or
     alternateName: 'Omnix POS',
     url: brandUrl,
     logo: `${brandUrl}/favicon.svg`,
-    description: b?.tagline ?? 'Offline-first POS + business software for Kenyan SMEs',
+    description: b?.tagline ?? 'Offline-first POS and business software for East African SMEs',
     sameAs: same.length > 0 ? same : undefined,
     contactPoint: contactPoints,
   }
@@ -108,20 +109,20 @@ const PRODUCT_NAMES: Record<ProductId, string> = {
 
 const PRODUCT_DESCRIPTIONS: Record<ProductId, string> = {
   pharmacy:
-    'Pharmacy software and pharmacy POS with dispensing, prescriptions and patient records, batch and expiry stock, controlled register, M-Pesa, KRA eTIMS, SHA and private insurance workflows. Offline-first Windows desktop app.',
+    'Pharmacy software and pharmacy POS with dispensing, prescriptions, patient records, batch and expiry stock, and controlled-register workflows. Offline-first Windows desktop app.',
   retail:
-    'Retail POS and inventory for shops, mini-marts and dukas: variants, returns, held sales, promotions, restock alerts, M-Pesa and KRA eTIMS. Offline-first Windows desktop app.',
+    'Retail POS and inventory for shops and mini-marts with variants, returns, held sales, promotions and restock alerts. Offline-first Windows desktop app.',
   hospitality:
-    'Restaurant, bar and hotel POS: kitchen orders, tables, recipe costing, rooms, bookings and guest folios, M-Pesa and KRA eTIMS. Offline-first Windows desktop app.',
+    'Restaurant, bar and hotel POS with kitchen orders, tables, recipe costing, rooms, bookings and guest folios. Offline-first Windows desktop app.',
   hardware:
-    'Hardware and equipment POS: quotations, delivery notes, contractor credit, bulk pricing and serialized units, M-Pesa and KRA eTIMS. Offline-first Windows desktop app.',
+    'Hardware and equipment POS with quotations, delivery notes, contractor credit, bulk pricing and serialized units. Offline-first Windows desktop app.',
   salon:
-    'Salon and spa software: appointment diary, service checkout, staff skills and commissions, packages and memberships, back-bar stock, M-Pesa and KRA eTIMS. Offline-first Windows desktop app.',
+    'Salon and spa software with an appointment diary, service checkout, staff skills and commissions, packages, memberships and stock. Offline-first Windows desktop app.',
 }
 
 interface SoftwareProps {
   product: ProductId
-  currency: SupportedCurrency
+  currency: DisplayCurrency
   locale: string
   brandUrl?: string
 }

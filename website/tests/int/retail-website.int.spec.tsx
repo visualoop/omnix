@@ -54,18 +54,30 @@ describe('Task 11 Retail product website', () => {
   })
 
   it('uses a locale-aware demo primary and configured WhatsApp secondary', () => {
-    const { rerender } = render(<RetailWebsite locale="ng" />)
+    const { rerender } = render(<RetailWebsite locale="ug" />)
 
     const demoLinks = screen.getAllByRole('link', { name: 'Book a retail demo' })
     expect(demoLinks).toHaveLength(2)
     for (const link of demoLinks) {
-      expect(link.getAttribute('href')).toBe('/ng/contact?type=demo&product=retail')
+      expect(link.getAttribute('href')).toBe('/ug/contact?type=demo&product=retail')
     }
     expect(screen.queryByRole('link', { name: 'Ask on WhatsApp' })).toBeNull()
 
     rerender(<RetailWebsite locale="ke" whatsappUrl="https://wa.me/254700000000" />)
     for (const link of screen.getAllByRole('link', { name: 'Ask on WhatsApp' })) {
       expect(link.getAttribute('href')).toMatch(/^https:\/\/wa\.me\/254700000000\?text=/)
+    }
+  })
+
+  it('keeps Kenya-only M-Pesa and eTIMS claims off other market pages', () => {
+    for (const locale of ['ug', 'tz', 'rw']) {
+      const { unmount } = render(<RetailWebsite locale={locale} />)
+      const text = document.querySelector('[data-retail-website]')?.textContent ?? ''
+
+      expect(text).toContain('Cash and payment records')
+      expect(text).not.toMatch(/M-Pesa|KRA eTIMS/i)
+      expect(text).toContain('available only where Omnix supports the provider')
+      unmount()
     }
   })
 

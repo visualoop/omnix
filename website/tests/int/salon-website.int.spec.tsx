@@ -29,14 +29,14 @@ describe('Salon & Spa public product website', () => {
     expect(screen.getByText(/queued for retry/i)).not.toBeNull()
     expect(screen.getByText(/Your business remains responsible/i)).not.toBeNull()
 
-    rerender(<SalonWebsite locale="ng" />)
+    rerender(<SalonWebsite locale="ug" />)
     expect(document.querySelector('[data-salon-website]')?.textContent).not.toMatch(/M-Pesa|KRA eTIMS/i)
     expect(screen.getByText(/available only where Omnix supports the provider/i)).not.toBeNull()
   })
 
   it('uses locale-aware demo links, configured WhatsApp, and a useful fail-closed docket', () => {
-    const { rerender } = render(<SalonWebsite locale="ng" />)
-    for (const link of screen.getAllByRole('link', { name: 'Book a Salon & Spa demo' })) expect(link.getAttribute('href')).toBe('/ng/contact?type=demo&product=salon')
+    const { rerender } = render(<SalonWebsite locale="ug" />)
+    for (const link of screen.getAllByRole('link', { name: 'Book a Salon & Spa demo' })) expect(link.getAttribute('href')).toBe('/ug/contact?type=demo&product=salon')
     expect(screen.queryByRole('link', { name: 'Ask on WhatsApp' })).toBeNull()
     expect(document.querySelector('[data-media-state="empty"]')).not.toBeNull()
     expect(screen.getByText('Two staff members and three sample visits')).not.toBeNull()

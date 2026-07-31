@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { Icon } from '@/components/icons'
 import { PageContainer } from '@/components/layout/layout-primitives'
 import { Button } from '@/components/ui/button'
-import { buildAlternatesLanguages } from '@/lib/hreflang'
+import { buildKenyaOnlyAlternatesLanguages } from '@/lib/hreflang'
 import { buildSocialMetadata } from '@/lib/seo-metadata'
 import { DOCS_SEED, type DocSeed } from '@/lib/docs-seed'
 import { isPublishedDoc } from '@/lib/docs-visibility'
@@ -29,14 +29,14 @@ export async function generateMetadata({
   params: Promise<{ locale: string }>
 }): Promise<Metadata> {
   const { locale } = await params
-  const canonical = `${SITE_URL}/${locale}/docs`
+  const canonical = `${SITE_URL}/ke/docs`
   return {
     title: 'Documentation — Omnix',
     description:
       'Step-by-step guides for running Omnix: installation and setup, point of sale, inventory, M-Pesa and KRA eTIMS, backups, and filings.',
     alternates: {
       canonical,
-      languages: buildAlternatesLanguages('/docs'),
+      languages: buildKenyaOnlyAlternatesLanguages('/docs'),
     },
     ...buildSocialMetadata({
       locale,

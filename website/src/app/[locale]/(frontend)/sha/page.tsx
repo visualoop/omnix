@@ -9,7 +9,7 @@ import {
   TrustProse,
   TrustSection,
 } from '@/components/marketing/trust-pages'
-import { buildAlternatesLanguages } from '@/lib/hreflang'
+import { buildKenyaOnlyAlternatesLanguages } from '@/lib/hreflang'
 import { buildSocialMetadata } from '@/lib/seo-metadata'
 import { getSiteSettings } from '@/lib/site-settings'
 
@@ -24,7 +24,7 @@ export async function generateMetadata({
   params: Promise<{ locale: string }>
 }): Promise<Metadata> {
   const { locale } = await params
-  const canonical = `${SITE_URL}/${locale}/sha`
+  const canonical = `${SITE_URL}/ke/sha`
 
   return {
     title: 'SHA insurance billing in Omnix — local records, connected claims',
@@ -32,7 +32,7 @@ export async function generateMetadata({
       'How Omnix keeps member records, copay splits, and claim drafts locally while SHA verification and claim submission cross the internet. What needs accreditation, and what SHA alone decides.',
     alternates: {
       canonical,
-      languages: buildAlternatesLanguages('/sha'),
+      languages: buildKenyaOnlyAlternatesLanguages('/sha'),
     },
     ...buildSocialMetadata({
       locale,

@@ -17,7 +17,7 @@
  * referrer, or the full URL. Unknown localized paths collapse to
  * `/<locale>/not-found`; non-localized paths send nothing at all.
  */
-import { COUNTRY_LOCALES, LANGUAGE_LOCALES } from '@/i18n/routing'
+import { COUNTRY_LOCALES } from '@/i18n/routing'
 
 type GtagFn = (...args: unknown[]) => void
 
@@ -58,7 +58,7 @@ export const CONVERSION_PRODUCTS: readonly ConversionProduct[] = [
 ]
 const CONVERSION_PRODUCT_SET = new Set<string>(CONVERSION_PRODUCTS)
 
-/** Country locale from the known routing list (ke, us, gb, …). */
+/** Country locale from the launch routing list (ke, ug, tz, rw). */
 export type ConversionLocale = (typeof COUNTRY_LOCALES)[number]
 const CONVERSION_LOCALE_SET = new Set<string>(COUNTRY_LOCALES as readonly string[])
 
@@ -190,11 +190,8 @@ const DYNAMIC_ROUTE_TEMPLATES: Readonly<Record<string, string>> = {
   modules: 'detail',
 }
 
-/** Every valid locale prefix (country + language codes). */
-const KNOWN_LOCALES = new Set<string>([
-  ...COUNTRY_LOCALES,
-  ...LANGUAGE_LOCALES,
-] as readonly string[])
+/** Every currently routable public market prefix. */
+const KNOWN_LOCALES = new Set<string>(COUNTRY_LOCALES as readonly string[])
 
 /**
  * Normalise a client pathname to a safe, closed page-view path.

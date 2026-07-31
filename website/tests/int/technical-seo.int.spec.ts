@@ -1,7 +1,15 @@
 import { existsSync, readFileSync, readdirSync } from 'node:fs'
 import { join, sep } from 'node:path'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
+import { NextRequest } from 'next/server'
 
+vi.mock('next-intl/middleware', () => ({
+  default: () => () => {
+    throw new Error('next-intl middleware is outside these request-layer redirect tests')
+  },
+}))
+
+import { middleware } from '@/middleware'
 import sitemap from '@/app/sitemap'
 import robots from '@/app/robots'
 import { buildAlternatesLanguages, buildHreflangLinks, buildKenyaOnlyAlternatesLanguages, buildKenyaOnlyHreflangLinks } from '@/lib/hreflang'
@@ -180,12 +188,49 @@ describe('Task 28 — safe query preservation on redirects', () => {
     expect(suffix).not.toContain('secret')
   })
 
+  it('sanitizes query parameters on bare geo-prefix redirects with the same allowlist', () => {
+    const request = new NextRequest(
+      'https://omnix.co.ke/pricing?utm_source=google&product=retail&token=secret&next=%2Fadmin&email=a%40b.com',
+      { headers: { 'x-vercel-ip-country': 'UG' } },
+    )
+    const response = middleware(request)
+    expect(response.status).toBe(308)
+    const location = response.headers.get('location') ?? ''
+    expect(location).toContain('/ug/pricing?')
+    expect(location).toContain('utm_source=google')
+    expect(location).toContain('product=retail')
+    expect(location).not.toContain('token')
+    expect(location).not.toContain('secret')
+    expect(location).not.toContain('next=')
+    expect(location).not.toContain('email')
+
+    const kenyaOnlyResponse = middleware(
+      new NextRequest('https://omnix.co.ke/etims?utm_source=google&token=secret', {
+        headers: { 'x-vercel-ip-country': 'RW' },
+      }),
+    )
+    expect(kenyaOnlyResponse.status).toBe(308)
+    const kenyaOnlyLocation = kenyaOnlyResponse.headers.get('location') ?? ''
+    expect(kenyaOnlyLocation).toContain('/ke/etims?utm_source=google')
+    expect(kenyaOnlyLocation).not.toContain('/rw/etims')
+    expect(kenyaOnlyLocation).not.toContain('token')
+
+    const middlewareSource = read('src/middleware.ts')
+    const geoRedirect = middlewareSource.slice(middlewareSource.indexOf('// ── (1d) Geo-prefix redirect'))
+    expect(geoRedirect).toContain('url.search = preserveSafeUrlSearchParams(request.nextUrl.searchParams)')
+  })
+
   it('resolves request-layer legacy and Kenya-only redirects without chains', () => {
     expect(canonicalPublicRedirectPath('/ke/dawa')).toBe('/ke/pharmacy')
     expect(canonicalPublicRedirectPath('/ke/pro')).toBe('/ke/modules')
     expect(canonicalPublicRedirectPath('/ke/modules/salon')).toBe('/ke/salon')
     expect(canonicalPublicRedirectPath('/ke/modules/unknown')).toBe('/ke/modules')
     expect(canonicalPublicRedirectPath('/us/guides')).toBe('/ke/guides')
+    expect(canonicalPublicRedirectPath('/ug/etims')).toBe('/ke/etims')
+    expect(canonicalPublicRedirectPath('/tz/sha')).toBe('/ke/sha')
+    expect(canonicalPublicRedirectPath('/rw/mpesa')).toBe('/ke/mpesa')
+    expect(canonicalPublicRedirectPath('/ug/blog/offline-first-architecture')).toBe('/ke/blog/offline-first-architecture')
+    expect(canonicalPublicRedirectPath('/rw/docs/getting-started')).toBe('/ke/docs/getting-started')
     expect(canonicalPublicRedirectPath('/gb/locations/nairobi')).toBe('/ke/locations/nairobi')
 
     expect(canonicalPublicRedirectPath('/ke/pharmacy')).toBeNull()
@@ -204,8 +249,8 @@ describe('Task 28 — safe query preservation on redirects', () => {
 
 const SELF_CANONICAL_ROUTES = [
   'pharmacy', 'retail', 'hospitality', 'hardware', 'salon',
-  'modules', 'pricing', 'etims', 'mpesa', 'sha',
-  'developers', 'docs', 'blog', 'about', 'contact',
+  'modules', 'pricing',
+  'developers', 'about', 'contact',
   'support', 'team', 'security', 'partners', 'changelog', 'roadmap',
   'terms', 'privacy', 'refund-policy', 'migration', 'downloads',
 ] as const
@@ -238,28 +283,29 @@ describe('Task 28 — self-canonical + hreflang on every indexable route', () =>
     }
   })
 
-  it('builds valid BCP-47 hreflang alternates keyed off a locale-free path', () => {
+  it('builds the exact launch-market BCP-47 hreflang set from a locale-free path', () => {
     const langs = buildAlternatesLanguages('/pharmacy')
-    expect(Object.keys(langs)).toContain('x-default')
-    expect(Object.keys(langs)).toContain('en-KE')
-    expect(Object.keys(langs)).toContain('en-US')
+    expect(Object.keys(langs).sort()).toEqual(['en-KE', 'en-RW', 'en-TZ', 'en-UG', 'x-default'])
     for (const key of Object.keys(langs)) {
       expect(key === 'x-default' || /^[a-z]{2}-[A-Z]{2}$/.test(key)).toBe(true)
     }
     expect(langs['en-KE'].endsWith('/ke/pharmacy')).toBe(true)
-    expect(langs['en-US'].endsWith('/us/pharmacy')).toBe(true)
-    expect(langs['x-default'].endsWith('/ke/pharmacy')).toBe(true)
+    expect(langs['en-UG'].endsWith('/ug/pharmacy')).toBe(true)
+    expect(langs['en-TZ'].endsWith('/tz/pharmacy')).toBe(true)
+    expect(langs['en-RW'].endsWith('/rw/pharmacy')).toBe(true)
+    expect(langs['x-default']).toBe(langs['en-KE'])
 
     const links = buildHreflangLinks('/pharmacy')
     expect(links[links.length - 1].hreflang).toBe('x-default')
-    // Locale-free and locale-prefixed inputs resolve to the same set.
+    // Active and legacy-prefixed inputs resolve to the same canonical set.
+    expect(buildAlternatesLanguages('/ug/pharmacy')).toEqual(langs)
     expect(buildAlternatesLanguages('/us/pharmacy')).toEqual(langs)
   })
 
   it('disables next-intl auto alternates because country routes are not language tags', () => {
     const routingSource = read('src/i18n/routing.ts')
     expect(routingSource).toContain('alternateLinks: false')
-    expect(routingSource).toContain('Page metadata supplies the valid en-KE/en-US/... alternates')
+    expect(routingSource).toContain('Page metadata supplies valid en-KE/en-UG/en-TZ/en-RW alternates')
   })
 })
 
@@ -367,6 +413,58 @@ describe('Task 28 — Kenya-only guides & locations canonicalise to /ke', () => 
   })
 })
 
+describe('Kenya-only compliance, M-Pesa, blog and docs routes', () => {
+  const indexRoutes = ['etims', 'sha', 'mpesa', 'blog', 'docs'] as const
+
+  it('pins each index canonical and hreflang set to Kenya', () => {
+    for (const route of indexRoutes) {
+      const source = read(`${FRONTEND}/${route}/page.tsx`)
+      expect(source, `${route} canonical`).toContain(`const canonical = \`\${SITE_URL}/ke/${route}\``)
+      expect(source, `${route} Kenya alternates`).toContain(
+        `buildKenyaOnlyAlternatesLanguages('/${route}')`,
+      )
+      expect(source, `${route} no four-market alternates`).not.toContain('buildAlternatesLanguages(')
+    }
+  })
+
+  it('pins blog and docs details to Kenya', () => {
+    const blog = read(`${FRONTEND}/blog/[slug]/page.tsx`)
+    const docs = read(`${FRONTEND}/docs/[slug]/page.tsx`)
+    expect(blog).toContain('`${SITE_URL}/ke/blog/${post.slug}`')
+    expect(blog).toContain('buildKenyaOnlyAlternatesLanguages(`/blog/${post.slug}`)')
+    expect(docs).toContain('`${SITE_URL}/ke/docs/${doc.slug}`')
+    expect(docs).toContain('buildKenyaOnlyAlternatesLanguages(`/docs/${doc.slug}`)')
+  })
+
+  it('redirects all three non-Kenya launch markets before those pages render', () => {
+    for (const locale of ['ug', 'tz', 'rw'] as const) {
+      for (const route of indexRoutes) {
+        expect(canonicalPublicRedirectPath(`/${locale}/${route}`)).toBe(`/ke/${route}`)
+      }
+      expect(canonicalPublicRedirectPath(`/${locale}/blog/offline-first-architecture`)).toBe(
+        '/ke/blog/offline-first-architecture',
+      )
+      expect(canonicalPublicRedirectPath(`/${locale}/docs/getting-started`)).toBe(
+        '/ke/docs/getting-started',
+      )
+    }
+  })
+
+  it('indexes those route families under /ke only', () => {
+    const entries = sitemap()
+    const paths = entries.map((entry) => new URL(entry.url).pathname)
+    for (const route of indexRoutes) {
+      expect(paths.filter((path) => path === `/ke/${route}`)).toHaveLength(1)
+      expect(paths.some((path) => /^\/(ug|tz|rw)\//.test(path) && path.includes(`/${route}`))).toBe(false)
+      const entry = entries.find((candidate) => new URL(candidate.url).pathname === `/ke/${route}`)
+      expect(Object.keys(entry?.alternates?.languages ?? {}).sort()).toEqual(['en-KE', 'x-default'])
+    }
+    expect(paths).toContain('/ke/blog/offline-first-architecture')
+    expect(paths).toContain('/ke/docs/getting-started')
+    expect(paths.some((path) => /^\/(ug|tz|rw)\/(blog|docs)(\/|$)/.test(path))).toBe(false)
+  })
+})
+
 /* ────────────────────────────────────────────────────────────────────────
  * 4. Sitemap — exact publication + exclusions + truthful stable dates.
  * ──────────────────────────────────────────────────────────────────────── */
@@ -404,9 +502,8 @@ describe('Task 28 — sitemap publication and exclusions', () => {
   it('includes the five products, catalogue, pricing and content hubs for every locale', () => {
     for (const cc of COUNTRY_LOCALES) {
       const base = `https://omnix.co.ke/${cc}`
-      // NOTE: /guides is NOT expected per-locale — it is Kenya-only content
-      // emitted once under /ke (asserted separately below).
-      for (const path of ['', '/pharmacy', '/retail', '/hospitality', '/hardware', '/salon', '/modules', '/pricing', '/blog', '/docs']) {
+      // Kenya-only families are asserted separately below.
+      for (const path of ['', '/pharmacy', '/retail', '/hospitality', '/hardware', '/salon', '/modules', '/pricing']) {
         expect(urls, `${cc}${path} present`).toContain(`${base}${path}`)
       }
     }
@@ -961,8 +1058,8 @@ describe('Task 28 — buildSocialMetadata output', () => {
 
   it('mirrors the page-specific title/description onto a summary_large_image Twitter card', () => {
     const social = buildSocialMetadata({
-      locale: 'us',
-      url: 'https://omnix.co.ke/us/retail',
+      locale: 'ug',
+      url: 'https://omnix.co.ke/ug/retail',
       title: 'Retail-specific social title',
       description: 'Retail-specific social description',
     })
@@ -974,7 +1071,7 @@ describe('Task 28 — buildSocialMetadata output', () => {
     // Twitter image mirrors the resolved Open Graph image.
     expect(tw.images?.[0]).toBe(og.images?.[0]?.url)
     // og:locale reflects the requested market, not a homepage default.
-    expect(og.locale).toBe('en_US')
+    expect(og.locale).toBe('en_UG')
   })
 
   it('uses an approved image URL verbatim when supplied, overriding the generated card', () => {

@@ -1,12 +1,17 @@
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 import createMiddleware from 'next-intl/middleware'
-import { routing, localeForGeoCountry, COUNTRY_LOCALES, LANGUAGE_LOCALES } from './i18n/routing'
+import {
+  routing,
+  localeForGeoCountry,
+  COUNTRY_LOCALES,
+  displayCurrencyForLocale,
+  isLaunchMarketLocale,
+} from './i18n/routing'
 import {
   canonicalPublicRedirectPath,
   isUnknownKenyaOnlyDetailPath,
 } from '@/lib/canonical-public-redirect'
-import { currencyForCountry, type SupportedCurrency } from '@/lib/currency'
 import { preserveSafeUrlSearchParams } from '@/lib/redirect-query'
 
 /**
@@ -21,11 +26,10 @@ import { preserveSafeUrlSearchParams } from '@/lib/redirect-query'
  *      check rejects the auth-cookie without one. Synthesize Origin
  *      for trusted hosts so dashboard pages render.
  *
- *   3. Geo + currency cookie persistence.
- *      Vercel exposes the visitor's country in `req.geo`. We map it to
- *      a Paystack-supported currency (KES / USD / NGN / GHS / ZAR) and
- *      stash it in the `omnix_currency` cookie so server components
- *      can render localized prices.
+ *   3. Market + display-currency cookie persistence.
+ *      Public routes are limited to KE/UG/TZ/RW. The route prefix is the
+ *      source of truth for KES/UGX/TZS/RWF display state; it says nothing
+ *      about the currency a payment provider will settle.
  *
  *   4. next-intl locale routing.
  *      Resolves the [locale] segment for any path that gets routed to
@@ -126,13 +130,13 @@ export function middleware(request: NextRequest) {
   //   3. defaultLocale ('ke')        — home market
   //
   // /pricing in Kenya  → /ke/pricing
-  // /pricing in USA    → /us/pricing
-  // /pricing for a returning Nigerian visitor (cookie=ng) → /ng/pricing
+  // /pricing in Uganda → /ug/pricing
+  // /pricing elsewhere → /ke/pricing
   //
-  // Auth pages, /api, /admin, /dashboard, /buy, /_next, etc. are in
-  // isNonLocalizedPath() and stay bare.
+  // Retired country/language prefixes were handled by canonical redirects
+  // above and never reach next-intl.
   const firstSeg = pathname.split('/')[1] ?? ''
-  const knownLocale = ([...COUNTRY_LOCALES, ...LANGUAGE_LOCALES] as readonly string[]).includes(firstSeg)
+  const knownLocale = (COUNTRY_LOCALES as readonly string[]).includes(firstSeg)
   if (
     !isNonLocalizedPath(pathname) &&
     !knownLocale &&
@@ -141,13 +145,20 @@ export function middleware(request: NextRequest) {
   ) {
     const stickyCookie = request.cookies.get('omnix_routed_locale')?.value
     const target =
-      stickyCookie && ([...COUNTRY_LOCALES, ...LANGUAGE_LOCALES] as readonly string[]).includes(stickyCookie)
+      stickyCookie && (COUNTRY_LOCALES as readonly string[]).includes(stickyCookie)
         ? stickyCookie
         : localeForGeoCountry(country)
     const url = request.nextUrl.clone()
-    url.pathname = `/${target}${pathname === '/' ? '' : pathname}`
+    const localizedPath = `/${target}${pathname === '/' ? '' : pathname}`
+    url.pathname = canonicalPublicRedirectPath(localizedPath) ?? localizedPath
+    url.search = preserveSafeUrlSearchParams(request.nextUrl.searchParams)
     const redirect = NextResponse.redirect(url, 308)
     redirect.cookies.set('omnix_routed_locale', target, {
+      maxAge: COOKIE_MAX_AGE,
+      sameSite: 'lax',
+      path: '/',
+    })
+    redirect.cookies.set(CURRENCY_COOKIE, displayCurrencyForLocale(target), {
       maxAge: COOKIE_MAX_AGE,
       sameSite: 'lax',
       path: '/',
@@ -185,15 +196,24 @@ export function middleware(request: NextRequest) {
     response = intlMiddleware(request)
   }
 
-  // ── (3) Currency cookie ──────────────────────────────────────
-  if (!isNonLocalizedPath(request.nextUrl.pathname) && !request.cookies.get(CURRENCY_COOKIE)) {
-    const currency: SupportedCurrency = currencyForCountry(country)
-    response.cookies.set(CURRENCY_COOKIE, currency, {
-      maxAge: COOKIE_MAX_AGE,
-      sameSite: 'lax',
-      path: '/',
-    })
-    if (country) {
+  // ── (3) Market + display-currency cookies ────────────────────
+  if (!isNonLocalizedPath(request.nextUrl.pathname) && isLaunchMarketLocale(firstSeg)) {
+    const displayCurrency = displayCurrencyForLocale(firstSeg)
+    if (request.cookies.get(CURRENCY_COOKIE)?.value !== displayCurrency) {
+      response.cookies.set(CURRENCY_COOKIE, displayCurrency, {
+        maxAge: COOKIE_MAX_AGE,
+        sameSite: 'lax',
+        path: '/',
+      })
+    }
+    if (request.cookies.get('omnix_routed_locale')?.value !== firstSeg) {
+      response.cookies.set('omnix_routed_locale', firstSeg, {
+        maxAge: COOKIE_MAX_AGE,
+        sameSite: 'lax',
+        path: '/',
+      })
+    }
+    if (country && request.cookies.get(COUNTRY_COOKIE)?.value !== country) {
       response.cookies.set(COUNTRY_COOKIE, country, {
         maxAge: COOKIE_MAX_AGE,
         sameSite: 'lax',

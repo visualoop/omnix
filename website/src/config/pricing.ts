@@ -1,35 +1,43 @@
 /**
- * Pricing — typed config. Was a Payload global; lives in code now.
+ * Pricing — typed code config.
  *
- * Currency support is restricted to what Paystack will actually charge:
- * KES, NGN, GHS, ZAR (native local) + USD (universal). A visitor from
- * Berlin, Dubai, Mumbai or Dar es Salaam sees the USD column and pays
- * in USD — Paystack settles into the merchant's bank.
- *
- * Edit to change list pricing across the site. PRs over CMS edits.
+ * Public market pages use DisplayCurrency (KES/UGX/TZS/RWF). Payment code uses
+ * SettlementCurrency and must independently verify that its configured payment
+ * provider accepts the chosen settlement currency. A displayed local price is
+ * not a claim about the currency Paystack will charge.
  */
 
-export type SupportedCurrency = 'KES' | 'USD' | 'NGN' | 'GHS' | 'ZAR'
+import type { DisplayCurrency, PricingCurrency, SettlementCurrency } from '@/lib/currency'
+
+export type { DisplayCurrency, PricingCurrency, SettlementCurrency } from '@/lib/currency'
+/** Legacy payment-side name. New code should choose DisplayCurrency or SettlementCurrency explicitly. */
+export type SupportedCurrency = SettlementCurrency
+
+export type ConfiguredPrices = Readonly<Record<PricingCurrency, number>>
 
 export interface TierPrice {
-  oneTimeFee: Record<SupportedCurrency, number>
-  maintenanceYearly: Record<SupportedCurrency, number>
+  oneTimeFee: ConfiguredPrices
+  maintenanceYearly: ConfiguredPrices
 }
 
 export interface PricingShape {
   starter: TierPrice
   business: TierPrice
-  cloudBackupMonthly: Record<SupportedCurrency, number>
-  extraBranchOneTime: Record<SupportedCurrency, number>
-  extraMachineOneTime: Record<SupportedCurrency, number>
-  majorUpgradeDiscount: number // percent
-  defaultCurrency: SupportedCurrency
+  cloudBackupMonthly: ConfiguredPrices
+  extraBranchOneTime: ConfiguredPrices
+  extraMachineOneTime: ConfiguredPrices
+  majorUpgradeDiscount: number
+  defaultDisplayCurrency: DisplayCurrency
+  defaultSettlementCurrency: SettlementCurrency
 }
 
 export const pricing: PricingShape = {
   starter: {
     oneTimeFee: {
       KES: 30_000,
+      UGX: 850_000,
+      TZS: 570_000,
+      RWF: 300_000,
       USD: 230,
       NGN: 365_000,
       GHS: 3_400,
@@ -37,6 +45,9 @@ export const pricing: PricingShape = {
     },
     maintenanceYearly: {
       KES: 12_000,
+      UGX: 340_000,
+      TZS: 230_000,
+      RWF: 120_000,
       USD: 90,
       NGN: 145_000,
       GHS: 1_400,
@@ -46,6 +57,9 @@ export const pricing: PricingShape = {
   business: {
     oneTimeFee: {
       KES: 150_000,
+      UGX: 4_250_000,
+      TZS: 2_850_000,
+      RWF: 1_500_000,
       USD: 1_150,
       NGN: 1_830_000,
       GHS: 17_300,
@@ -53,6 +67,9 @@ export const pricing: PricingShape = {
     },
     maintenanceYearly: {
       KES: 30_000,
+      UGX: 850_000,
+      TZS: 570_000,
+      RWF: 300_000,
       USD: 230,
       NGN: 365_000,
       GHS: 3_400,
@@ -61,6 +78,9 @@ export const pricing: PricingShape = {
   },
   cloudBackupMonthly: {
     KES: 500,
+    UGX: 15_000,
+    TZS: 10_000,
+    RWF: 5_000,
     USD: 4,
     NGN: 6_000,
     GHS: 55,
@@ -68,6 +88,9 @@ export const pricing: PricingShape = {
   },
   extraBranchOneTime: {
     KES: 15_000,
+    UGX: 425_000,
+    TZS: 285_000,
+    RWF: 150_000,
     USD: 115,
     NGN: 180_000,
     GHS: 1_700,
@@ -75,22 +98,40 @@ export const pricing: PricingShape = {
   },
   extraMachineOneTime: {
     KES: 5_000,
+    UGX: 140_000,
+    TZS: 95_000,
+    RWF: 50_000,
     USD: 38,
     NGN: 60_000,
     GHS: 565,
     ZAR: 700,
   },
   majorUpgradeDiscount: 50,
-  /**
-   * defaultCurrency is what we render to a visitor whose IP we couldn't
-   * geolocate. USD because Paystack accepts it universally and the
-   * largest non-KE market is global English-speaking.
-   */
-  defaultCurrency: 'USD',
+  defaultDisplayCurrency: 'KES',
+  defaultSettlementCurrency: 'KES',
 }
 
-/** Read pricing in a single currency (legacy shape used by some helpers). */
-export function pricingFor(currency: SupportedCurrency = 'USD') {
+/** Public list prices for one launch market. */
+export function displayPricingFor(currency: DisplayCurrency = pricing.defaultDisplayCurrency) {
+  return {
+    starter: {
+      oneTimeFee: pricing.starter.oneTimeFee[currency],
+      maintenanceYearly: pricing.starter.maintenanceYearly[currency],
+    },
+    business: {
+      oneTimeFee: pricing.business.oneTimeFee[currency],
+      maintenanceYearly: pricing.business.maintenanceYearly[currency],
+    },
+    cloudBackupMonthly: pricing.cloudBackupMonthly[currency],
+    extraBranchOneTime: pricing.extraBranchOneTime[currency],
+    extraMachineOneTime: pricing.extraMachineOneTime[currency],
+    majorUpgradeDiscount: pricing.majorUpgradeDiscount,
+    currency,
+  }
+}
+
+/** Payment-side prices. Callers must validate provider/country capability separately. */
+export function pricingFor(currency: SettlementCurrency = pricing.defaultSettlementCurrency) {
   return {
     starter: {
       oneTimeFee: pricing.starter.oneTimeFee[currency],

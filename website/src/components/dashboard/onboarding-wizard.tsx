@@ -19,16 +19,12 @@ interface WizardData {
   variant: string
 }
 
-const COUNTRIES = [
+export const ONBOARDING_MARKETS = [
   { value: 'KE', label: 'Kenya', currency: 'KES' },
   { value: 'UG', label: 'Uganda', currency: 'UGX' },
   { value: 'TZ', label: 'Tanzania', currency: 'TZS' },
   { value: 'RW', label: 'Rwanda', currency: 'RWF' },
-  { value: 'NG', label: 'Nigeria', currency: 'NGN' },
-  { value: 'ZA', label: 'South Africa', currency: 'ZAR' },
-  { value: 'GH', label: 'Ghana', currency: 'GHS' },
-  { value: 'OTHER', label: 'Other', currency: 'USD' },
-]
+] as const
 
 const TEAM_SIZES = [
   { value: '1', label: 'Just me' },
@@ -114,10 +110,10 @@ export function OnboardingWizard({ initial, onComplete }: Props) {
           columns={2}
           value={data.country}
           onChange={(value) => {
-            const match = COUNTRIES.find((c) => c.value === value)
+            const match = ONBOARDING_MARKETS.find((market) => market.value === value)
             setData({ ...data, country: value, currency: match?.currency ?? data.currency })
           }}
-          options={COUNTRIES.map((c) => ({ value: c.value, label: c.label }))}
+          options={ONBOARDING_MARKETS.map((market) => ({ value: market.value, label: market.label }))}
         />
       ),
     },
@@ -129,7 +125,7 @@ export function OnboardingWizard({ initial, onComplete }: Props) {
         <Field
           label="Currency"
           required
-          description="ISO 4217 code, e.g. KES, UGX, USD. Defaults from your country."
+          description="ISO 4217 code: KES, UGX, TZS, or RWF. Defaults from your market."
         >
           <Input
             type="text"

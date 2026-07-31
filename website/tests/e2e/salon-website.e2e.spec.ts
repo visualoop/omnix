@@ -19,7 +19,7 @@ test.describe('Salon & Spa public product website', () => {
     await page.goto('/ke/salon')
     await expect(page.getByText(/M-Pesa requests and KRA eTIMS submission require internet access/i)).toBeVisible()
     await expect(page.getByText(/Public internet self-booking is not included/i)).toBeVisible()
-    await page.goto('/ng/salon')
+    await page.goto('/ug/salon')
     await expect(page.getByText(/M-Pesa requests and KRA eTIMS submission require internet access/i)).toHaveCount(0)
     await expect(page.getByText(/available only where Omnix supports the provider/i)).toBeVisible()
   })

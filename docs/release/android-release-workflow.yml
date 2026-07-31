@@ -1,0 +1,393 @@
+# STAGED ONLY — copy/merge this content into a coordinator-owned workflow after
+# every gate in docs/release/RELEASE_PLAN.md is complete. Files outside
+# .github/workflows are not discovered or executed by GitHub Actions.
+name: Android Release
+
+on:
+  push:
+    tags: ["v*.*.*"]
+  workflow_dispatch:
+    inputs:
+      release_version:
+        description: "Existing release tag to build, for example v0.73.0"
+        required: true
+        type: string
+
+concurrency:
+  # Match the coordinator-owned desktop workflow's group. If activated as a
+  # separate workflow, Android and Windows release writes serialize per SHA.
+  group: ci-${{ github.sha }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  android-release:
+    # Android's Gradle tooling and tauri android init must run on x86_64.
+    # The ARM64 development host is not a supported release builder.
+    runs-on: ubuntu-24.04
+    timeout-minutes: 75
+    permissions:
+      contents: write
+    env:
+      ANDROID_API_LEVEL: "35"
+      ANDROID_BUILD_TOOLS: "35.0.0"
+      ANDROID_NDK_VERSION: "27.2.12479018"
+      ANDROID_PACKAGE_ID: "co.ke.omnix.app"
+      ANDROID_RUST_TARGETS: "aarch64-linux-android,armv7-linux-androideabi,i686-linux-android,x86_64-linux-android"
+
+    steps:
+      - name: Resolve immutable release context
+        id: release
+        shell: bash
+        env:
+          DISPATCH_TAG: ${{ inputs.release_version }}
+        run: |
+          set -euo pipefail
+          if [[ "${GITHUB_EVENT_NAME}" == "push" ]]; then
+            TAG="${GITHUB_REF#refs/tags/}"
+          else
+            TAG="$DISPATCH_TAG"
+          fi
+
+          # Android/Play versionCode is derived from stable SemVer. Pre-release
+          # allocation needs a separate policy and is intentionally rejected.
+          [[ "$TAG" =~ ^v([0-9]+)\.([0-9]+)\.([0-9]+)$ ]] || {
+            echo "Android releases require a stable vMAJOR.MINOR.PATCH tag: $TAG" >&2
+            exit 1
+          }
+          MAJOR="${BASH_REMATCH[1]}"
+          MINOR="${BASH_REMATCH[2]}"
+          PATCH="${BASH_REMATCH[3]}"
+          (( MINOR < 1000 && PATCH < 1000 )) || {
+            echo "minor and patch must each be below 1000" >&2
+            exit 1
+          }
+          VERSION_CODE=$((10#$MAJOR * 1000000 + 10#$MINOR * 1000 + 10#$PATCH))
+          (( VERSION_CODE > 0 && VERSION_CODE <= 2100000000 )) || {
+            echo "computed Android versionCode is outside Play's valid range" >&2
+            exit 1
+          }
+
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "version=${TAG#v}" >> "$GITHUB_OUTPUT"
+          echo "version_code=$VERSION_CODE" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout the tagged source
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.release.outputs.tag }}
+          fetch-depth: 0
+
+      - name: Require an x86_64 runner and matching release identity
+        shell: bash
+        env:
+          VERSION: ${{ steps.release.outputs.version }}
+        run: |
+          set -euo pipefail
+          [[ "$(uname -m)" == "x86_64" ]] || {
+            echo "tauri android init requires the x86_64 release runner; found $(uname -m)" >&2
+            exit 1
+          }
+          node <<'NODE'
+          const fs = require('node:fs')
+          const packageJson = JSON.parse(fs.readFileSync('package.json', 'utf8'))
+          const tauri = JSON.parse(fs.readFileSync('src-tauri/tauri.conf.json', 'utf8'))
+          const expectedVersion = process.env.VERSION
+          const expectedIdentifier = process.env.ANDROID_PACKAGE_ID
+          if (packageJson.version !== expectedVersion || tauri.version !== expectedVersion) {
+            throw new Error(`tag version ${expectedVersion} does not match package.json (${packageJson.version}) and tauri.conf.json (${tauri.version})`)
+          }
+          if (tauri.identifier !== expectedIdentifier) {
+            throw new Error(`Android package id must remain ${expectedIdentifier}; found ${tauri.identifier}`)
+          }
+          NODE
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          run_install: false
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Setup JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: gradle
+
+      - name: Setup Rust with every Android ABI target
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-linux-android,armv7-linux-androideabi,i686-linux-android,x86_64-linux-android
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install pinned Android SDK, build tools, and NDK
+        shell: bash
+        run: |
+          set -euo pipefail
+          yes | sdkmanager --licenses >/dev/null
+          sdkmanager \
+            "platform-tools" \
+            "platforms;android-${ANDROID_API_LEVEL}" \
+            "build-tools;${ANDROID_BUILD_TOOLS}" \
+            "ndk;${ANDROID_NDK_VERSION}"
+          echo "ANDROID_NDK_HOME=${ANDROID_SDK_ROOT}/ndk/${ANDROID_NDK_VERSION}" >> "$GITHUB_ENV"
+          echo "NDK_HOME=${ANDROID_SDK_ROOT}/ndk/${ANDROID_NDK_VERSION}" >> "$GITHUB_ENV"
+
+      - name: Install locked project dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Decode and inspect the Android release keystore
+        id: keystore
+        shell: bash
+        env:
+          KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          for name in KEYSTORE_BASE64 KEYSTORE_PASSWORD KEY_ALIAS KEY_PASSWORD; do
+            [[ -n "${!name:-}" ]] || { echo "missing Android signing secret: $name" >&2; exit 1; }
+          done
+          KEYSTORE_PATH="$RUNNER_TEMP/omnix-android-release.jks"
+          printf '%s' "$KEYSTORE_BASE64" | base64 --decode > "$KEYSTORE_PATH"
+          chmod 600 "$KEYSTORE_PATH"
+          keytool -list -keystore "$KEYSTORE_PATH" -storepass "$KEYSTORE_PASSWORD" -alias "$KEY_ALIAS" >/dev/null
+          CERT_SHA256=$(keytool -list -v -keystore "$KEYSTORE_PATH" -storepass "$KEYSTORE_PASSWORD" -alias "$KEY_ALIAS" \
+            | awk -F': ' '/SHA256:/{gsub(":", "", $2); print tolower($2); exit}')
+          [[ "$CERT_SHA256" =~ ^[0-9a-f]{64}$ ]] || { echo "could not read signing certificate SHA-256" >&2; exit 1; }
+          echo "path=$KEYSTORE_PATH" >> "$GITHUB_OUTPUT"
+          echo "cert_sha256=$CERT_SHA256" >> "$GITHUB_OUTPUT"
+          echo "ANDROID_KEYSTORE_PATH=$KEYSTORE_PATH" >> "$GITHUB_ENV"
+          echo "ANDROID_KEYSTORE_PASSWORD=$KEYSTORE_PASSWORD" >> "$GITHUB_ENV"
+          echo "ANDROID_KEY_ALIAS=$KEY_ALIAS" >> "$GITHUB_ENV"
+          echo "ANDROID_KEY_PASSWORD=$KEY_PASSWORD" >> "$GITHUB_ENV"
+
+      - name: Generate the Android project
+        # This is intentionally generated in CI. The ARM64 development host
+        # cannot run tauri android init; the generated project must later be
+        # reviewed and committed by the coordinator before activation.
+        run: pnpm tauri android init
+
+      - name: Apply release identity and Gradle signing to the generated project
+        shell: bash
+        env:
+          VERSION: ${{ steps.release.outputs.version }}
+          VERSION_CODE: ${{ steps.release.outputs.version_code }}
+        run: |
+          set -euo pipefail
+          node <<'NODE'
+          const fs = require('node:fs')
+          const file = 'src-tauri/gen/android/app/build.gradle.kts'
+          let source = fs.readFileSync(file, 'utf8')
+          const expectedId = process.env.ANDROID_PACKAGE_ID
+          if (!source.includes(`applicationId = "${expectedId}"`)) {
+            throw new Error(`generated Android applicationId is not ${expectedId}`)
+          }
+          if (!/versionCode\s*=\s*\d+/.test(source) || !/versionName\s*=\s*"[^"]+"/.test(source)) {
+            throw new Error('generated Gradle file has no recognizable versionCode/versionName')
+          }
+          source = source
+            .replace(/versionCode\s*=\s*\d+/, `versionCode = ${process.env.VERSION_CODE}`)
+            .replace(/versionName\s*=\s*"[^"]+"/, `versionName = "${process.env.VERSION}"`)
+
+          const buildTypes = /^(\s*)buildTypes\s*\{/m
+          const match = source.match(buildTypes)
+          if (!match) throw new Error('generated Gradle file has no buildTypes block')
+          const indent = match[1]
+          const signing = `${indent}signingConfigs {\n${indent}    create("release") {\n${indent}        storeFile = file(System.getenv("ANDROID_KEYSTORE_PATH"))\n${indent}        storePassword = System.getenv("ANDROID_KEYSTORE_PASSWORD")\n${indent}        keyAlias = System.getenv("ANDROID_KEY_ALIAS")\n${indent}        keyPassword = System.getenv("ANDROID_KEY_PASSWORD")\n${indent}    }\n${indent}}\n\n`
+          source = source.replace(buildTypes, `${signing}${match[0]}`)
+          const releaseBlock = /getByName\("release"\)\s*\{/
+          if (!releaseBlock.test(source)) throw new Error('generated Gradle file has no getByName("release") build type')
+          source = source.replace(releaseBlock, '$&\n' + indent + '        signingConfig = signingConfigs.getByName("release")')
+          fs.writeFileSync(file, source)
+          NODE
+
+      - name: Build signed universal APK
+        env:
+          VITE_OMNIX_VARIANT: pro
+        run: pnpm tauri android build --apk
+
+      - name: Build signed AAB for later Play distribution
+        env:
+          VITE_OMNIX_VARIANT: pro
+        run: pnpm tauri android build --aab
+
+      - name: Collect, verify, and checksum Android artifacts
+        id: artifacts
+        shell: bash
+        env:
+          VERSION: ${{ steps.release.outputs.version }}
+        run: |
+          set -euo pipefail
+          mapfile -t APKS < <(find src-tauri/gen/android/app/build/outputs/apk -type f -path '*/release/*' -name '*.apk' | sort)
+          mapfile -t AABS < <(find src-tauri/gen/android/app/build/outputs/bundle -type f -name '*.aab' | sort)
+          [[ ${#APKS[@]} -eq 1 ]] || { printf 'expected one universal release APK, found %s\n' "${#APKS[@]}" >&2; printf '%s\n' "${APKS[@]}"; exit 1; }
+          [[ ${#AABS[@]} -eq 1 ]] || { printf 'expected one release AAB, found %s\n' "${#AABS[@]}" >&2; printf '%s\n' "${AABS[@]}"; exit 1; }
+          [[ "${APKS[0]}" == *universal* ]] || { echo "APK is not the universal output: ${APKS[0]}" >&2; exit 1; }
+
+          mkdir -p release-assets
+          APK_NAME="Omnix-${VERSION}-android-universal.apk"
+          AAB_NAME="Omnix-${VERSION}-android.aab"
+          cp "${APKS[0]}" "release-assets/$APK_NAME"
+          cp "${AABS[0]}" "release-assets/$AAB_NAME"
+
+          "${ANDROID_SDK_ROOT}/build-tools/${ANDROID_BUILD_TOOLS}/apksigner" verify --verbose --print-certs "release-assets/$APK_NAME"
+          # Android app-signing certificates are normally self-signed. Verify
+          # the AAB's JAR signature without jarsigner's unrelated PKI strictness.
+          jarsigner -verify -verbose -certs "release-assets/$AAB_NAME"
+          (
+            cd release-assets
+            sha256sum "$APK_NAME" "$AAB_NAME" > SHA256SUMS
+            sha256sum -c SHA256SUMS
+          )
+          echo "apk_name=$APK_NAME" >> "$GITHUB_OUTPUT"
+          echo "aab_name=$AAB_NAME" >> "$GITHUB_OUTPUT"
+          echo "apk_sha256=$(sha256sum "release-assets/$APK_NAME" | awk '{print $1}')" >> "$GITHUB_OUTPUT"
+          echo "aab_sha256=$(sha256sum "release-assets/$AAB_NAME" | awk '{print $1}')" >> "$GITHUB_OUTPUT"
+          echo "apk_size=$(stat -c '%s' "release-assets/$APK_NAME")" >> "$GITHUB_OUTPUT"
+          echo "aab_size=$(stat -c '%s' "release-assets/$AAB_NAME")" >> "$GITHUB_OUTPUT"
+
+      - name: Create Android release metadata
+        shell: bash
+        env:
+          TAG: ${{ steps.release.outputs.tag }}
+          VERSION: ${{ steps.release.outputs.version }}
+          VERSION_CODE: ${{ steps.release.outputs.version_code }}
+          APK_NAME: ${{ steps.artifacts.outputs.apk_name }}
+          AAB_NAME: ${{ steps.artifacts.outputs.aab_name }}
+          APK_SHA256: ${{ steps.artifacts.outputs.apk_sha256 }}
+          AAB_SHA256: ${{ steps.artifacts.outputs.aab_sha256 }}
+          APK_SIZE: ${{ steps.artifacts.outputs.apk_size }}
+          AAB_SIZE: ${{ steps.artifacts.outputs.aab_size }}
+          CERT_SHA256: ${{ steps.keystore.outputs.cert_sha256 }}
+          PUBLIC_BASE: ${{ vars.S3_PUBLIC_URL || 'https://media.omnix.co.ke' }}
+        run: |
+          set -euo pipefail
+          PREFIX="releases/$TAG/android"
+          jq -n \
+            --arg version "$VERSION" \
+            --argjson versionCode "$VERSION_CODE" \
+            --arg packageId "$ANDROID_PACKAGE_ID" \
+            --arg apkUrl "$PUBLIC_BASE/$PREFIX/$APK_NAME" \
+            --arg aabUrl "$PUBLIC_BASE/$PREFIX/$AAB_NAME" \
+            --argjson apkSize "$APK_SIZE" \
+            --argjson aabSize "$AAB_SIZE" \
+            --arg apkSha256 "$APK_SHA256" \
+            --arg aabSha256 "$AAB_SHA256" \
+            --arg signingCertificateSha256 "$CERT_SHA256" \
+            --arg publishedAt "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+            '{version, versionCode, packageId, apkUrl, aabUrl, apkSize, aabSize, apkSha256, aabSha256, signingCertificateSha256, publishedAt}' \
+            > release-assets/android-release.json
+          jq -e . release-assets/android-release.json >/dev/null
+
+      - name: Attach APK, AAB, checksums, and metadata to the GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.release.outputs.tag }}
+          name: Omnix ${{ steps.release.outputs.tag }}
+          draft: false
+          prerelease: false
+          generate_release_notes: true
+          files: |
+            release-assets/*.apk
+            release-assets/*.aab
+            release-assets/SHA256SUMS
+            release-assets/android-release.json
+
+      - name: Mirror Android artifacts to R2
+        shell: bash
+        env:
+          TAG: ${{ steps.release.outputs.tag }}
+          APK_NAME: ${{ steps.artifacts.outputs.apk_name }}
+          AAB_NAME: ${{ steps.artifacts.outputs.aab_name }}
+          S3_ACCESS_KEY_ID: ${{ secrets.S3_ACCESS_KEY_ID }}
+          S3_SECRET_ACCESS_KEY: ${{ secrets.S3_SECRET_ACCESS_KEY }}
+          S3_ENDPOINT: ${{ vars.S3_ENDPOINT || secrets.S3_ENDPOINT }}
+          S3_BUCKET: ${{ vars.S3_BUCKET || 'omnix-media' }}
+          S3_REGION: ${{ vars.S3_REGION || 'auto' }}
+        run: |
+          set -euo pipefail
+          for name in S3_ACCESS_KEY_ID S3_SECRET_ACCESS_KEY S3_ENDPOINT S3_BUCKET; do
+            [[ -n "${!name:-}" ]] || { echo "missing R2 release setting: $name" >&2; exit 1; }
+          done
+          export AWS_ACCESS_KEY_ID="$S3_ACCESS_KEY_ID"
+          export AWS_SECRET_ACCESS_KEY="$S3_SECRET_ACCESS_KEY"
+          export AWS_DEFAULT_REGION="$S3_REGION"
+          PREFIX="releases/$TAG/android"
+          R2=(--endpoint-url "$S3_ENDPOINT" --no-progress --cache-control 'public,max-age=31536000,immutable')
+          aws s3 cp "release-assets/$APK_NAME" "s3://$S3_BUCKET/$PREFIX/$APK_NAME" \
+            "${R2[@]}" --content-type application/vnd.android.package-archive
+          aws s3 cp "release-assets/$AAB_NAME" "s3://$S3_BUCKET/$PREFIX/$AAB_NAME" \
+            "${R2[@]}" --content-type application/octet-stream
+          aws s3 cp release-assets/SHA256SUMS "s3://$S3_BUCKET/$PREFIX/SHA256SUMS" \
+            "${R2[@]}" --content-type 'text/plain; charset=utf-8'
+          aws s3 cp release-assets/android-release.json "s3://$S3_BUCKET/$PREFIX/android-release.json" \
+            "${R2[@]}" --content-type application/json
+
+      - name: Sync Android metadata into the existing website release API
+        shell: bash
+        env:
+          RELEASE_INGEST_TOKEN: ${{ secrets.PAYLOAD_SYSTEM_TOKEN }}
+          RELEASE_BASE_URL: ${{ vars.PAYLOAD_BASE_URL || 'https://omnix.co.ke' }}
+          TAG: ${{ steps.release.outputs.tag }}
+          VERSION: ${{ steps.release.outputs.version }}
+          VERSION_CODE: ${{ steps.release.outputs.version_code }}
+          APK_NAME: ${{ steps.artifacts.outputs.apk_name }}
+          AAB_NAME: ${{ steps.artifacts.outputs.aab_name }}
+          APK_SHA256: ${{ steps.artifacts.outputs.apk_sha256 }}
+          AAB_SHA256: ${{ steps.artifacts.outputs.aab_sha256 }}
+          APK_SIZE: ${{ steps.artifacts.outputs.apk_size }}
+          AAB_SIZE: ${{ steps.artifacts.outputs.aab_size }}
+          CERT_SHA256: ${{ steps.keystore.outputs.cert_sha256 }}
+          PUBLIC_BASE: ${{ vars.S3_PUBLIC_URL || 'https://media.omnix.co.ke' }}
+        run: |
+          set -euo pipefail
+          [[ -n "${RELEASE_INGEST_TOKEN:-}" ]] || { echo "PAYLOAD_SYSTEM_TOKEN is required" >&2; exit 1; }
+          PREFIX="releases/$TAG/android"
+          APK_URL="$PUBLIC_BASE/$PREFIX/$APK_NAME"
+          AAB_URL="$PUBLIC_BASE/$PREFIX/$AAB_NAME"
+          BODY=$(jq -n \
+            --arg version "$VERSION" \
+            --arg variant android \
+            --arg platform android \
+            --arg channel stable \
+            --arg gitTag "$TAG" \
+            --arg packageId "$ANDROID_PACKAGE_ID" \
+            --argjson versionCode "$VERSION_CODE" \
+            --arg apkUrl "$APK_URL" \
+            --arg aabUrl "$AAB_URL" \
+            --argjson apkSize "$APK_SIZE" \
+            --argjson aabSize "$AAB_SIZE" \
+            --arg apkSha256 "$APK_SHA256" \
+            --arg aabSha256 "$AAB_SHA256" \
+            --arg signingCertificateSha256 "$CERT_SHA256" \
+            --arg title "Omnix v$VERSION for Android" \
+            --arg summary "Signed universal APK for direct distribution; signed AAB retained for later Play use." \
+            '{version, variant, platform, channel, gitTag, androidPackageId: $packageId, androidVersionCode: $versionCode, androidApkUrl: $apkUrl, androidAabUrl: $aabUrl, androidApkSize: $apkSize, androidAabSize: $aabSize, sha256Apk: $apkSha256, sha256Aab: $aabSha256, androidSigningCertificateSha256: $signingCertificateSha256, title, summary, forcePublish: true}')
+
+          HTTP_CODE=$(curl --silent --show-error --output "$RUNNER_TEMP/release-sync.json" --write-out '%{http_code}' \
+            --request POST "$RELEASE_BASE_URL/api/releases-sync" \
+            --header "x-system-token: $RELEASE_INGEST_TOKEN" \
+            --header 'Content-Type: application/json' \
+            --data "$BODY")
+          cat "$RUNNER_TEMP/release-sync.json"
+          [[ "$HTTP_CODE" == "200" ]] || { echo "release metadata sync failed: HTTP $HTTP_CODE" >&2; exit 1; }
+
+          # Intentional activation guard: today's route ignores Android fields.
+          # The coordinator must extend it to persist metadata.android and return
+          # this acknowledgment before this staged workflow can ship.
+          jq -e --arg apkUrl "$APK_URL" \
+            '.ok == true and .platform == "android" and .androidApkUrl == $apkUrl' \
+            "$RUNNER_TEMP/release-sync.json" >/dev/null

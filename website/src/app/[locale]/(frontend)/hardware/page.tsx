@@ -12,7 +12,7 @@ import { getSlotImage, getSlotMedia } from '@/lib/media-slots'
 import { getPublishedModuleDemoVideo } from '@/lib/module-demo-video'
 import { getSiteSettings } from '@/lib/site-settings'
 import { SoftwareJsonLd } from '@/components/seo/jsonld'
-import { currencyForCountry } from '@/lib/currency'
+import { displayCurrencyForLocale } from '@/i18n/routing'
 import { setRequestLocale } from 'next-intl/server'
 
 // No force-dynamic: this product page has no request-specific input (locale is
@@ -73,7 +73,7 @@ export default async function HardwarePage({ params }: { params: Promise<{ local
 
   return (
     <>
-      <SoftwareJsonLd product="hardware" currency={currencyForCountry(locale)} locale={locale} />
+      <SoftwareJsonLd product="hardware" currency={displayCurrencyForLocale(locale)} locale={locale} />
       <HardwareWebsite
         locale={locale}
         heroImage={heroImage}

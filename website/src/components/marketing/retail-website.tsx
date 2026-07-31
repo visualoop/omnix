@@ -22,7 +22,7 @@ interface RetailWebsiteProps {
   whatsappUrl?: string | null
 }
 
-export const RETAIL_CAPABILITIES = [
+const RETAIL_CORE_CAPABILITIES = [
   {
     title: 'Barcode POS and product variants',
     body: 'Scan a barcode or search at the till. Keep size, colour, shade, SKU, barcode, selling price, and stock against the right product variant.',
@@ -51,11 +51,20 @@ export const RETAIL_CAPABILITIES = [
     title: 'Purchasing and goods received',
     body: 'Raise a purchase order for a supplier, receive full or partial deliveries, and bring the received quantities into stock with a goods received record.',
   },
-  {
-    title: 'Cash, M-Pesa, and eTIMS workflow',
-    body: 'Take cash or use a configured M-Pesa provider. Configured taxable sales enter the eTIMS workflow, with unsuccessful submissions kept for retry.',
-  },
 ] as const
+
+const KENYA_RETAIL_CAPABILITY = {
+  title: 'Cash, M-Pesa, and eTIMS workflow',
+  body: 'Take cash or use a configured M-Pesa provider. Configured taxable sales enter the eTIMS workflow, with unsuccessful submissions kept for retry.',
+} as const
+
+const REGIONAL_RETAIL_CAPABILITY = {
+  title: 'Cash and payment records',
+  body: 'Take cash or record another enabled payment method against the sale. Confirm any provider or fiscal connection available in your market during the demo.',
+} as const
+
+/** Kenya capability set retained for product verification and the /ke page. */
+export const RETAIL_CAPABILITIES = [...RETAIL_CORE_CAPABILITIES, KENYA_RETAIL_CAPABILITY] as const
 
 const COUNTER_FLOW = [
   {
@@ -111,6 +120,20 @@ export function RetailWebsite({
   const demoHref = `/${locale}/contact?type=demo&product=retail`
   const whatsappHref = whatsappDemoHref(whatsappUrl)
   const hasApprovedMedia = Boolean(heroVideo || heroImage)
+  const isKenya = locale === 'ke'
+  const capabilities = isKenya
+    ? RETAIL_CAPABILITIES
+    : [...RETAIL_CORE_CAPABILITIES, REGIONAL_RETAIL_CAPABILITY]
+  const counterFlow = isKenya
+    ? COUNTER_FLOW
+    : COUNTER_FLOW.map((item) =>
+        item.marker === 'At payment'
+          ? {
+              ...item,
+              body: 'Record cash or another enabled payment method against the sale before issuing it. Confirm provider availability for your market during the demo.',
+            }
+          : item,
+      )
 
   return (
     <div className={styles.page} data-retail-website>
@@ -214,7 +237,7 @@ export function RetailWebsite({
           </header>
 
           <ol className={styles.flowList}>
-            {COUNTER_FLOW.map((item) => (
+            {counterFlow.map((item) => (
               <li key={item.marker}>
                 <span>{item.marker}</span>
                 <h3>{item.title}</h3>
@@ -268,7 +291,7 @@ export function RetailWebsite({
           </header>
 
           <div className={styles.capabilityGrid}>
-            {RETAIL_CAPABILITIES.map((capability) => (
+            {capabilities.map((capability) => (
               <article key={capability.title}>
                 <h3>{capability.title}</h3>
                 <p>{capability.body}</p>
@@ -287,7 +310,11 @@ export function RetailWebsite({
             </div>
             <div className={styles.boundaryCopy}>
               <p>Core POS, cash sales, inventory, variants, price lists, purchasing, loyalty, promotions, layby, and shelf-label work use the local desktop database.</p>
-              <p>M-Pesa STK requests and KRA eTIMS submission require a working internet connection and correctly configured provider details. If an eTIMS submission cannot complete, the invoice can remain queued for retry when connectivity returns.</p>
+              {isKenya ? (
+                <p>M-Pesa STK requests and KRA eTIMS submission require a working internet connection and correctly configured provider details. If an eTIMS submission cannot complete, the invoice can remain queued for retry when connectivity returns.</p>
+              ) : (
+                <p>Online payment and tax connections are available only where Omnix supports the provider and your business has completed the required setup. Confirm the exact recording, reconciliation, and fiscal workflow for your market during the demo.</p>
+              )}
               <p>Omnix provides the software workflow and records. Your business remains responsible for product and tax setup, till procedures, connectivity, provider accounts, and its statutory obligations.</p>
             </div>
           </div>

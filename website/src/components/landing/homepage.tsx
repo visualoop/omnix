@@ -1,6 +1,8 @@
 import Link from 'next/link'
 
+import { getMarketProfile } from '@/config/market-profiles'
 import { DecorativeVideo } from '@/components/marketing/decorative-video'
+import { FAQJsonLd } from '@/components/seo/jsonld'
 import styles from './homepage.module.css'
 
 export interface HomepageMedia {
@@ -92,7 +94,8 @@ export function Homepage({
   productMedia = {},
   whatsappUrl = null,
 }: HomepageProps) {
-  const demoHref = localeHref(locale, '/contact?type=demo')
+  const profile = getMarketProfile(locale)
+  const demoHref = localeHref(profile.locale, '/contact?type=demo')
   const whatsappHref = whatsappDemoHref(whatsappUrl)
   const hasApprovedVideo = Boolean(heroVideo && heroVideoPoster)
   const hasHeroMedia = Boolean(hasApprovedVideo || heroMedia)
@@ -103,13 +106,11 @@ export function Homepage({
         <div className={styles.container}>
           <div className={styles.heroGrid}>
             <div className={styles.heroCopy}>
-              <p className={styles.overline}>POS and inventory for the way you trade</p>
+              <p className={styles.overline}>{profile.hero.overline}</p>
               <h1 id="homepage-heading" className={styles.heroTitle}>
-                Run the counter. Know what is in stock.
+                {profile.hero.title}
               </h1>
-              <p className={styles.heroLede}>
-                Omnix keeps sales, stock and the day’s records together—even when the internet is down. Choose the product shaped for your business, then see your own workflow in a guided demo.
-              </p>
+              <p className={styles.heroLede}>{profile.hero.lede}</p>
               <div className={styles.actions}>
                 <Link className={styles.primaryAction} href={demoHref}>
                   Book a demo
@@ -120,19 +121,13 @@ export function Homepage({
                   </a>
                 ) : null}
               </div>
-              <dl className={styles.counterNotes} aria-label="What stays connected">
-                <div>
-                  <dt>At the counter</dt>
-                  <dd>POS, cash and M-Pesa</dd>
-                </div>
-                <div>
-                  <dt>Behind the counter</dt>
-                  <dd>Inventory and purchasing</dd>
-                </div>
-                <div>
-                  <dt>At day end</dt>
-                  <dd>Sales and business records</dd>
-                </div>
+              <dl className={styles.counterNotes} aria-label={`${profile.country} market context`}>
+                {profile.facts.map((fact) => (
+                  <div key={fact.label}>
+                    <dt>{fact.label}</dt>
+                    <dd>{fact.value}</dd>
+                  </div>
+                ))}
               </dl>
             </div>
 
@@ -232,6 +227,68 @@ export function Homepage({
         </div>
       </section>
 
+      <section className={styles.market} aria-labelledby="market-heading" data-market-profile={profile.locale}>
+        <div className={styles.container}>
+          <div className={styles.marketGrid}>
+            <div className={styles.marketSummary}>
+              <p className={styles.overline}>{profile.country} market profile</p>
+              <h2 id="market-heading">{profile.marketHeading}</h2>
+              <p>{profile.marketIntro}</p>
+              <dl className={styles.marketIdentity}>
+                <div>
+                  <dt>Display currency</dt>
+                  <dd>{profile.currency}</dd>
+                </div>
+                <div>
+                  <dt>Business language</dt>
+                  <dd>{profile.businessTerms.join(', ')}</dd>
+                </div>
+                <div>
+                  <dt>Revenue authority</dt>
+                  <dd>{profile.taxAuthority.name} ({profile.taxAuthority.acronym})</dd>
+                </div>
+              </dl>
+            </div>
+            <div className={styles.marketBoundaries}>
+              <article>
+                <p className={styles.marketLabel}>Payment context</p>
+                <h3>{profile.paymentMethods.join(' · ')}</h3>
+                <p>{profile.paymentContext}</p>
+              </article>
+              <article>
+                <p className={styles.marketLabel}>Tax boundary</p>
+                <h3>{profile.taxAuthority.name}</h3>
+                <p>{profile.taxContext}</p>
+              </article>
+            </div>
+          </div>
+
+          <div className={styles.useCaseGrid} aria-label={`${profile.country} business examples`}>
+            {profile.useCases.map((useCase) => (
+              <article key={useCase.title}>
+                <h3>{useCase.title}</h3>
+                <p>{useCase.body}</p>
+              </article>
+            ))}
+          </div>
+
+          <div className={styles.faq}>
+            <div className={styles.faqHeading}>
+              <p className={styles.overline}>{profile.country} questions</p>
+              <h2>What to confirm before a demo.</h2>
+            </div>
+            <div className={styles.faqList}>
+              {profile.faq.map((entry) => (
+                <details key={entry.question}>
+                  <summary>{entry.question}</summary>
+                  <p>{entry.answer}</p>
+                </details>
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
+
       <section className={styles.closing} aria-labelledby="closing-heading">
         <div className={styles.container}>
           <div className={styles.closingPanel}>
@@ -246,6 +303,7 @@ export function Homepage({
           </div>
         </div>
       </section>
+      <FAQJsonLd entries={[...profile.faq]} />
     </div>
   )
 }

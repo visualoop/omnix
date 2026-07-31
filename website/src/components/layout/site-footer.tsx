@@ -1,7 +1,8 @@
 /** Global marketing footer: five-product navigation and demo-led conversion. */
 import Link from 'next/link'
 import { BrandWordmark } from '@/components/brand-logo'
-import { LanguageSwitcher } from '@/components/layout/language-switcher'
+import { MarketSwitcher } from '@/components/layout/language-switcher'
+import { publicMarketHref } from '@/i18n/routing'
 import { PageContainer } from '@/components/layout/layout-primitives'
 import { Button } from '@/components/ui/button'
 import { AnalyticsPreferences } from '@/components/analytics/analytics-preferences'
@@ -54,7 +55,7 @@ const COLUMNS = [
 ] as const
 
 export function SiteFooter({ locale, settings }: { locale: string; settings: SiteSettings }) {
-  const localePath = (href: string) => `/${locale}${href === '/' ? '' : href}`
+  const localePath = (href: string) => publicMarketHref(locale, href)
   const analyticsEnabled = resolveGaId(process.env.NEXT_PUBLIC_GA_ID) !== null
 
   return (
@@ -128,7 +129,7 @@ export function SiteFooter({ locale, settings }: { locale: string; settings: Sit
           </p>
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
             {analyticsEnabled ? <AnalyticsPreferences /> : null}
-            <LanguageSwitcher locale={locale} className="w-full sm:w-44" />
+            <MarketSwitcher locale={locale} className="w-full sm:w-44" />
           </div>
         </div>
       </PageContainer>

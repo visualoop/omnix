@@ -108,6 +108,7 @@ export default async function BuyEntryPage({
     modules: decision.modules,
     maxBranches: 5,
     maxMachines: 10,
+    currency: session!.user.currency ?? 'KES',
     trialStartedAt: now,
     trialEndsAt: trialEnd,
   })

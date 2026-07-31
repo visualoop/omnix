@@ -35,18 +35,30 @@ describe('Task 10 Pharmacy product website', () => {
   })
 
   it('uses a locale-aware demo primary and configured WhatsApp secondary', () => {
-    const { rerender } = render(<PharmacyWebsite locale="ng" />)
+    const { rerender } = render(<PharmacyWebsite locale="ug" />)
 
     const demoLinks = screen.getAllByRole('link', { name: 'Book a pharmacy demo' })
     expect(demoLinks).toHaveLength(2)
     for (const link of demoLinks) {
-      expect(link.getAttribute('href')).toBe('/ng/contact?type=demo&product=pharmacy')
+      expect(link.getAttribute('href')).toBe('/ug/contact?type=demo&product=pharmacy')
     }
     expect(screen.queryByRole('link', { name: 'Ask on WhatsApp' })).toBeNull()
 
     rerender(<PharmacyWebsite locale="ke" whatsappUrl="https://wa.me/254700000000" />)
     for (const link of screen.getAllByRole('link', { name: 'Ask on WhatsApp' })) {
       expect(link.getAttribute('href')).toMatch(/^https:\/\/wa\.me\/254700000000\?text=/)
+    }
+  })
+
+  it('keeps Kenya-only payment, KRA and SHA claims off other market pages', () => {
+    for (const locale of ['ug', 'tz', 'rw']) {
+      const { unmount } = render(<PharmacyWebsite locale={locale} />)
+      const text = document.querySelector('[data-pharmacy-website]')?.textContent ?? ''
+
+      expect(text).toContain('Pharmacy POS and payment records')
+      expect(text).not.toMatch(/M-Pesa|KRA eTIMS|SHA and private insurance/i)
+      expect(text).toContain('available only where Omnix supports the provider')
+      unmount()
     }
   })
 
