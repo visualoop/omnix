@@ -17,6 +17,8 @@ vi.mock("@/lib/db", () => ({
   transaction: (...a: unknown[]) => transaction(...a),
 }));
 
+vi.mock("@/stores/active-branch", () => ({ getActiveBranchId: () => "branch1", requireActiveBranchId: () => "branch1" }));
+
 import { createRentalAgreement, returnRental } from "@/services/operations";
 
 beforeEach(() => {
@@ -76,7 +78,9 @@ describe("createRentalAgreement — unit integration", () => {
 
 describe("returnRental — unit integration", () => {
   it("flips the unit back to its resting state and records meter_in", async () => {
-    query.mockResolvedValueOnce([{ id: "ri1", equipment_unit_id: "u1" }]); // items
+    query
+      .mockResolvedValueOnce([{ id: "agr1" }]) // active-branch agreement guard
+      .mockResolvedValueOnce([{ id: "ri1", equipment_unit_id: "u1" }]); // items
     transaction.mockResolvedValueOnce(undefined);
 
     await returnRental("agr1", { damageFee: 1500, condition: "Scratched panel", meterIn: { ri1: 1360 } });
@@ -91,7 +95,9 @@ describe("returnRental — unit integration", () => {
   });
 
   it("returns cleanly when there are no serialized units", async () => {
-    query.mockResolvedValueOnce([{ id: "ri1", equipment_unit_id: null }]);
+    query
+      .mockResolvedValueOnce([{ id: "agr1" }])
+      .mockResolvedValueOnce([{ id: "ri1", equipment_unit_id: null }]);
     transaction.mockResolvedValueOnce(undefined);
     await returnRental("agr1", {});
     const stmts = transaction.mock.calls[0][0] as { sql: string }[];

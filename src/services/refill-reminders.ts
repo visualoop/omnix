@@ -11,6 +11,7 @@
  * `queueRefillReminders()` once daily.
  */
 import { query, execute } from "@/lib/db";
+import { requireActiveBranchId } from "@/stores/active-branch";
 
 export interface RefillReminder {
   prescription_id: string;
@@ -36,8 +37,10 @@ export async function queueRefillReminders(withinDays = 3): Promise<{ queued: nu
                FROM prescription_items pi WHERE pi.prescription_id = p.id) AS duration_days
        FROM prescriptions p
       WHERE p.status = 'dispensed'
+        AND p.sale_id IN (SELECT id FROM sales WHERE branch_id = ?1)
         AND p.refills_used < p.refills_authorized
         AND p.patient_phone IS NOT NULL`,
+    [requireActiveBranchId()],
   );
 
   let queued = 0;

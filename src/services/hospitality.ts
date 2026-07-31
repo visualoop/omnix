@@ -9,9 +9,43 @@ import { query, execute } from "@/lib/db";
 import { assertModuleEntitled } from "@/services/license";
 import { requirePermission } from "@/services/rbac";
 import { completeSale, type CartItem, type PaymentEntry } from "@/services/sales";
-import { getActiveBranchId } from "@/stores/active-branch";
+import { requireActiveBranchId } from "@/stores/active-branch";
+import { requireBranchOwnedRecord } from "@/lib/branch-ownership";
 
 const uid = () => crypto.randomUUID();
+
+async function requireHospitalityOrderItem(itemId: string): Promise<{
+  order_id: string;
+  status: string;
+  menu_item_id: string | null;
+  quantity: number;
+}> {
+  const branchId = requireActiveBranchId();
+  const [item] = await query<{ order_id: string; status: string; menu_item_id: string | null; quantity: number }>(
+    `SELECT i.order_id, i.status, i.menu_item_id, i.quantity
+     FROM hospitality_order_items i
+     JOIN hospitality_orders o ON o.id = i.order_id
+     WHERE i.id = ?1 AND o.branch_id = ?2`,
+    [itemId, branchId],
+  );
+  if (!item) throw new Error("Order item not found in the active branch");
+  return item;
+}
+
+async function requireActiveFolio(folioId: string): Promise<string> {
+  const branchId = requireActiveBranchId();
+  const walkInPrefix = `W-${branchId}-`;
+  const [folio] = await query<{ id: string }>(
+    `SELECT gf.id
+     FROM guest_folios gf
+     LEFT JOIN bookings b ON b.id = gf.booking_id
+     WHERE gf.id = ?1
+       AND (b.branch_id = ?2 OR (gf.booking_id IS NULL AND instr(gf.folio_number, ?3) = 1))`,
+    [folioId, branchId, walkInPrefix],
+  );
+  if (!folio) throw new Error("Folio not found in the active branch");
+  return branchId;
+}
 
 // ─── Dining areas + tables ───────────────────────────────────────────────────
 
@@ -22,20 +56,21 @@ export interface DiningTable {
 }
 
 export async function listAreas(): Promise<DiningArea[]> {
-  return query<DiningArea>(`SELECT id, name, sort_order, active FROM dining_areas WHERE active = 1 ORDER BY sort_order, name`);
+  return query<DiningArea>(`SELECT id, name, sort_order, active FROM dining_areas WHERE active = 1 AND branch_id = ?1 ORDER BY sort_order, name`, [requireActiveBranchId()]);
 }
 
 export async function createArea(name: string): Promise<string> {
   await assertModuleEntitled("hospitality");
   await requirePermission("hospitality.tables.manage", { entityType: "dining_area", metadata: { name } });
   const id = uid();
-  await execute(`INSERT INTO dining_areas (id, branch_id, name) VALUES (?1, ?2, ?3)`, [id, getActiveBranchId(), name]);
+  await execute(`INSERT INTO dining_areas (id, branch_id, name) VALUES (?1, ?2, ?3)`, [id, requireActiveBranchId(), name]);
   return id;
 }
 
 export async function listTables(): Promise<DiningTable[]> {
   return query<DiningTable>(
-    `SELECT id, area_id, table_code, name, seats, status, active FROM dining_tables WHERE active = 1 ORDER BY table_code`,
+    `SELECT id, area_id, table_code, name, seats, status, active FROM dining_tables WHERE active = 1 AND branch_id = ?1 ORDER BY table_code`,
+    [requireActiveBranchId()],
   );
 }
 
@@ -45,12 +80,15 @@ export async function createTable(input: { areaId: string | null; code: string; 
   const id = uid();
   await execute(
     `INSERT INTO dining_tables (id, branch_id, area_id, table_code, name, seats) VALUES (?1, ?2, ?3, ?4, ?5, ?6)`,
-    [id, getActiveBranchId(), input.areaId, input.code, input.name, input.seats],
+    [id, requireActiveBranchId(), input.areaId, input.code, input.name, input.seats],
   );
   return id;
 }
 
 export async function setTableStatus(tableId: string, status: DiningTable["status"]): Promise<void> {
+  const branchId = requireActiveBranchId();
+  const [table] = await query<{ id: string }>(`SELECT id FROM dining_tables WHERE id = ?1 AND branch_id = ?2`, [tableId, branchId]);
+  if (!table) throw new Error("Table not found in the active branch");
   await requirePermission("hospitality.tables.manage", { entityType: "dining_table", entityId: tableId, metadata: { status } });
   await execute(`UPDATE dining_tables SET status = ?2 WHERE id = ?1`, [tableId, status]);
 }
@@ -60,14 +98,14 @@ export async function setTableStatus(tableId: string, status: DiningTable["statu
 export interface KitchenStation { id: string; name: string; printer_name: string | null; display_order: number; }
 
 export async function listStations(): Promise<KitchenStation[]> {
-  return query<KitchenStation>(`SELECT id, name, printer_name, display_order FROM kitchen_stations WHERE active = 1 ORDER BY display_order, name`);
+  return query<KitchenStation>(`SELECT id, name, printer_name, display_order FROM kitchen_stations WHERE active = 1 AND branch_id = ?1 ORDER BY display_order, name`, [requireActiveBranchId()]);
 }
 
 export async function createStation(name: string, printerName?: string): Promise<string> {
   await assertModuleEntitled("hospitality");
   await requirePermission("hospitality.tables.manage", { entityType: "kitchen_station", metadata: { name } });
   const id = uid();
-  await execute(`INSERT INTO kitchen_stations (id, branch_id, name, printer_name) VALUES (?1, ?2, ?3, ?4)`, [id, getActiveBranchId(), name, printerName ?? null]);
+  await execute(`INSERT INTO kitchen_stations (id, branch_id, name, printer_name) VALUES (?1, ?2, ?3, ?4)`, [id, requireActiveBranchId(), name, printerName ?? null]);
   return id;
 }
 
@@ -86,10 +124,11 @@ export async function listMenuItems(opts: { hide86?: boolean } = {}): Promise<Me
             mi.active, mi.image_path, mi.allergens
      FROM menu_items mi
      ${hide86 ? `LEFT JOIN menu_86s x ON x.menu_item_id = mi.id
-                 WHERE mi.active = 1
+                 WHERE mi.active = 1 AND mi.branch_id = ?1
                  AND (x.menu_item_id IS NULL OR (x.until IS NOT NULL AND x.until <= datetime('now')))`
-              : "WHERE mi.active = 1"}
+              : "WHERE mi.active = 1 AND mi.branch_id = ?1"}
      ORDER BY mi.category, mi.menu_name`,
+    [requireActiveBranchId()],
   );
 }
 
@@ -106,8 +145,8 @@ export async function getMenuItem(id: string): Promise<MenuItemFull | null> {
             ks.name AS station_name
      FROM menu_items mi
      LEFT JOIN kitchen_stations ks ON ks.id = mi.station_id
-     WHERE mi.id = ?1`,
-    [id],
+     WHERE mi.id = ?1 AND mi.branch_id = ?2`,
+    [id, requireActiveBranchId()],
   );
   return rows[0] ?? null;
 }
@@ -567,7 +606,7 @@ export async function createMenuItem(input: {
   await execute(
     `INSERT INTO menu_items (id, product_id, branch_id, menu_name, category, station_id, prep_minutes, dine_in_price, takeaway_price, image_path, allergens)
      VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)`,
-    [id, productId, getActiveBranchId(), input.name, input.category ?? null,
+    [id, productId, requireActiveBranchId(), input.name, input.category ?? null,
      input.stationId ?? null, input.prepMinutes ?? null, input.dineInPrice ?? null, input.takeawayPrice ?? null,
      input.imagePath ?? null, input.allergens ?? null],
   );
@@ -648,7 +687,7 @@ export async function openOrder(input: {
   await execute(
     `INSERT INTO hospitality_orders (id, order_number, branch_id, table_id, customer_id, order_type, status, waiter_id, opened_by, party_size, room_id, folio_id)
      VALUES (?1, ?2, ?3, ?4, ?5, ?6, 'open', ?7, ?8, ?9, ?10, ?11)`,
-    [id, number, getActiveBranchId(), input.tableId ?? null, input.customerId ?? null,
+    [id, number, requireActiveBranchId(), input.tableId ?? null, input.customerId ?? null,
      input.orderType, input.waiterId ?? null, input.userId ?? null,
      input.partySize ?? null, input.roomId ?? null, folioId],
   );
@@ -660,11 +699,13 @@ export async function openOrder(input: {
 export async function listActiveOrders(): Promise<HospitalityOrder[]> {
   return query<HospitalityOrder>(
     `SELECT id, order_number, table_id, customer_id, order_type, status, waiter_id, opened_at, notes
-     FROM hospitality_orders WHERE status NOT IN ('paid','voided') ORDER BY opened_at DESC`,
+     FROM hospitality_orders WHERE branch_id = ?1 AND status NOT IN ('paid','voided') ORDER BY opened_at DESC`,
+    [requireActiveBranchId()],
   );
 }
 
 export async function listOrderItems(orderId: string): Promise<HospitalityOrderItem[]> {
+  await requireBranchOwnedRecord("hospitality_orders", orderId, "Order");
   return query<HospitalityOrderItem>(
     `SELECT id, order_id, product_id, menu_item_id, station_id, name, quantity, unit_price,
             modifier_total, discount, tax_rate, line_total, status, notes
@@ -679,6 +720,7 @@ export async function addOrderItem(orderId: string, input: {
   modifiers?: Array<{ modifierName: string; optionName: string; priceDelta: number }>;
 }): Promise<string> {
   await requirePermission("hospitality.orders.take", { entityType: "hospitality_order", entityId: orderId });
+  await requireBranchOwnedRecord("hospitality_orders", orderId, "Order");
   // Require-recipe guardrail (opt-in per business setting). Only blocks
   // menu-item lines — free-form 'name' lines (rare, but allowed for
   // one-offs like a service fee) always pass through.
@@ -794,6 +836,7 @@ async function assertRecipeExists(menuItemId: string): Promise<void> {
 
 /** Send all unsent ('new') items on an order to the kitchen. */
 export async function sendToKitchen(orderId: string): Promise<void> {
+  await requireBranchOwnedRecord("hospitality_orders", orderId, "Order");
   await requirePermission("hospitality.orders.send_kitchen", { entityType: "hospitality_order", entityId: orderId });
   await execute(`UPDATE hospitality_order_items SET status = 'sent', sent_at = datetime('now') WHERE order_id = ?1 AND status = 'new'`, [orderId]);
   await execute(`UPDATE hospitality_orders SET status = 'sent' WHERE id = ?1 AND status = 'open'`, [orderId]);
@@ -810,6 +853,7 @@ export async function sendToKitchen(orderId: string): Promise<void> {
  * Called after every bump/serve/void. Idempotent.
  */
 export async function refreshOrderStatus(orderId: string): Promise<void> {
+  await requireBranchOwnedRecord("hospitality_orders", orderId, "Order");
   const rows = await query<{ status: string }>(
     `SELECT status FROM hospitality_order_items WHERE order_id = ?1 AND status != 'voided'`,
     [orderId],
@@ -834,16 +878,16 @@ export async function kitchenQueue(): Promise<Array<HospitalityOrderItem & { ord
      FROM hospitality_order_items i
      JOIN hospitality_orders o ON o.id = i.order_id
      LEFT JOIN kitchen_stations ks ON ks.id = i.station_id
-     WHERE i.status IN ('sent','preparing','ready')
+     WHERE o.branch_id = ?1 AND i.status IN ('sent','preparing','ready')
      ORDER BY i.sent_at`,
+    [requireActiveBranchId()],
   );
 }
 
 /** Advance a kitchen item: sent → preparing → ready. */
 export async function bumpItem(itemId: string): Promise<void> {
   await requirePermission("hospitality.kitchen.bump", { entityType: "hospitality_order_item", entityId: itemId });
-  const [it] = await query<{ status: string; order_id: string }>(`SELECT status, order_id FROM hospitality_order_items WHERE id = ?1`, [itemId]);
-  if (!it) return;
+  const it = await requireHospitalityOrderItem(itemId);
   const next = it.status === "sent" ? "preparing" : it.status === "preparing" ? "ready" : it.status;
   const stamp = next === "ready" ? ", ready_at = datetime('now')" : "";
   await execute(`UPDATE hospitality_order_items SET status = ?2${stamp} WHERE id = ?1`, [itemId, next]);
@@ -852,9 +896,9 @@ export async function bumpItem(itemId: string): Promise<void> {
 
 export async function markServed(itemId: string): Promise<void> {
   await requirePermission("hospitality.orders.take", { entityType: "hospitality_order_item", entityId: itemId });
-  const [it] = await query<{ order_id: string }>(`SELECT order_id FROM hospitality_order_items WHERE id = ?1`, [itemId]);
+  const it = await requireHospitalityOrderItem(itemId);
   await execute(`UPDATE hospitality_order_items SET status = 'served', served_at = datetime('now') WHERE id = ?1`, [itemId]);
-  if (it) await refreshOrderStatus(it.order_id);
+  await refreshOrderStatus(it.order_id);
 }
 
 export async function voidOrderItem(itemId: string, reason: string): Promise<void> {
@@ -864,12 +908,9 @@ export async function voidOrderItem(itemId: string, reason: string): Promise<voi
   // served), the food was physically made — its ingredients left stock in
   // the real world. Write them off as wastage so inventory + food-cost
   // stay honest. (A still-'new' line was never cooked, so nothing leaves.)
-  const [it] = await query<{ status: string; menu_item_id: string | null; quantity: number }>(
-    `SELECT status, menu_item_id, quantity FROM hospitality_order_items WHERE id = ?1`,
-    [itemId],
-  );
+  const it = await requireHospitalityOrderItem(itemId);
   const COOKED = ["sent", "preparing", "ready", "served"];
-  if (it && it.menu_item_id && COOKED.includes(it.status)) {
+  if (it.menu_item_id && COOKED.includes(it.status)) {
     try {
       // Deduct the recipe ingredients (they physically left the kitchen).
       // The planRecipeConsumption writes record 'recipe_consume' stock
@@ -911,6 +952,7 @@ export async function payOrder(
 ): Promise<string> {
   await assertModuleEntitled("hospitality");
   await requirePermission("hospitality.orders.take", { entityType: "hospitality_order", entityId: orderId });
+  await requireBranchOwnedRecord("hospitality_orders", orderId, "Order");
 
   const [order] = await query<{ table_id: string | null; customer_id: string | null; waiter_id: string | null; status: string }>(
     `SELECT table_id, customer_id, waiter_id, status FROM hospitality_orders WHERE id = ?1`, [orderId],
@@ -962,6 +1004,7 @@ export async function payOrder(
 export async function prepareOrderForPosCheckout(orderId: string): Promise<HospitalityCheckoutPayload> {
   await assertModuleEntitled("hospitality");
   await requirePermission("hospitality.orders.take", { entityType: "hospitality_order", entityId: orderId });
+  await requireBranchOwnedRecord("hospitality_orders", orderId, "Order");
 
   const [order] = await query<HospitalityOrder & { table_code: string | null }>(
     `SELECT o.id, o.order_number, o.table_id, o.customer_id, o.order_type, o.status,
@@ -1016,6 +1059,7 @@ export async function prepareOrderForPosCheckout(orderId: string): Promise<Hospi
 export async function markOrderPaidFromPos(orderId: string, saleId: string): Promise<void> {
   await assertModuleEntitled("hospitality");
   await requirePermission("hospitality.orders.take", { entityType: "hospitality_order", entityId: orderId });
+  await requireBranchOwnedRecord("hospitality_orders", orderId, "Order");
 
   const [order] = await query<{ table_id: string | null; waiter_id: string | null; status: string }>(
     `SELECT table_id, waiter_id, status FROM hospitality_orders WHERE id = ?1`,
@@ -1051,29 +1095,30 @@ export interface Booking {
 }
 
 export async function listRoomTypes(): Promise<RoomType[]> {
-  return query<RoomType>(`SELECT id, name, base_rate, max_occupancy, active FROM room_types WHERE active = 1 ORDER BY name`);
+  return query<RoomType>(`SELECT id, name, base_rate, max_occupancy, active FROM room_types WHERE active = 1 AND branch_id = ?1 ORDER BY name`, [requireActiveBranchId()]);
 }
 export async function createRoomType(input: { name: string; baseRate: number; maxOccupancy?: number }): Promise<string> {
   await assertModuleEntitled("hospitality");
   await requirePermission("hospitality.bookings.manage", { entityType: "room_type" });
   const id = uid();
   await execute(`INSERT INTO room_types (id, branch_id, name, base_rate, max_occupancy) VALUES (?1, ?2, ?3, ?4, ?5)`,
-    [id, getActiveBranchId(), input.name, input.baseRate, input.maxOccupancy ?? 2]);
+    [id, requireActiveBranchId(), input.name, input.baseRate, input.maxOccupancy ?? 2]);
   return id;
 }
 
 export async function listRooms(): Promise<Room[]> {
-  return query<Room>(`SELECT id, room_type_id, room_number, floor, status FROM rooms WHERE active = 1 ORDER BY room_number`);
+  return query<Room>(`SELECT id, room_type_id, room_number, floor, status FROM rooms WHERE active = 1 AND branch_id = ?1 ORDER BY room_number`, [requireActiveBranchId()]);
 }
 export async function createRoom(input: { roomTypeId: string; roomNumber: string; floor?: string }): Promise<string> {
   await assertModuleEntitled("hospitality");
   await requirePermission("hospitality.bookings.manage", { entityType: "room" });
   const id = uid();
   await execute(`INSERT INTO rooms (id, branch_id, room_type_id, room_number, floor) VALUES (?1, ?2, ?3, ?4, ?5)`,
-    [id, getActiveBranchId(), input.roomTypeId, input.roomNumber, input.floor ?? null]);
+    [id, requireActiveBranchId(), input.roomTypeId, input.roomNumber, input.floor ?? null]);
   return id;
 }
 export async function setRoomStatus(roomId: string, status: Room["status"]): Promise<void> {
+  await requireBranchOwnedRecord("rooms", roomId, "Room");
   await requirePermission("hospitality.housekeeping.manage", { entityType: "room", entityId: roomId, metadata: { status } });
   await execute(`UPDATE rooms SET status = ?2 WHERE id = ?1`, [roomId, status]);
 }
@@ -1083,7 +1128,8 @@ export async function listBookings(): Promise<Array<Booking & { guest_name: stri
     `SELECT b.id, b.booking_number, b.guest_id, b.room_id, b.room_type_id, b.check_in_date, b.check_out_date,
             b.status, b.rate_per_night, g.full_name AS guest_name, r.room_number
      FROM bookings b JOIN guests g ON g.id = b.guest_id LEFT JOIN rooms r ON r.id = b.room_id
-     WHERE b.status NOT IN ('checked_out','cancelled') ORDER BY b.check_in_date`,
+     WHERE b.branch_id = ?1 AND b.status NOT IN ('checked_out','cancelled') ORDER BY b.check_in_date`,
+    [requireActiveBranchId()],
   );
 }
 
@@ -1148,9 +1194,10 @@ export async function listAvailableRoomsForType(roomTypeId: string): Promise<Arr
      FROM rooms
      WHERE active = 1
        AND room_type_id = ?1
+       AND branch_id = ?2
        AND status IN ('available','dirty','cleaning')
      ORDER BY room_number`,
-    [roomTypeId],
+    [roomTypeId, requireActiveBranchId()],
   );
   return rows.map((r) => ({ ...r, needs_turnaround: r.status !== "available" }));
 }
@@ -1170,8 +1217,9 @@ export async function listRoomsForRoomService(): Promise<Array<{
      LEFT JOIN bookings b ON b.room_id = r.id AND b.status = 'checked_in'
      LEFT JOIN guest_folios gf ON gf.booking_id = b.id AND gf.status = 'open'
      LEFT JOIN guests g ON g.id = b.guest_id
-     WHERE r.active = 1 AND r.status = 'occupied'
+     WHERE r.active = 1 AND r.status = 'occupied' AND r.branch_id = ?1
      ORDER BY r.room_number`,
+    [requireActiveBranchId()],
   );
 }
 
@@ -1192,6 +1240,7 @@ export async function createWalkInFolio(input: {
 }): Promise<{ folioId: string; folioNumber: string; guestId: string }> {
   await assertModuleEntitled("hospitality");
   await requirePermission("hospitality.bookings.manage", { entityType: "walkin_folio" });
+  const branchId = requireActiveBranchId();
   // Reuse existing guest by phone or id_number.
   let guestId: string;
   const existing = await findGuestByPhoneOrId({ phone: input.phone, nationalId: input.idNumber });
@@ -1205,8 +1254,9 @@ export async function createWalkInFolio(input: {
     );
   }
   const folioId = uid();
-  const [row] = await query<{ n: number }>(`SELECT COUNT(*) AS n FROM guest_folios WHERE folio_number LIKE 'W-%'`);
-  const number = `W-${String((row?.n ?? 0) + 1).padStart(5, "0")}`;
+  const prefix = `W-${branchId}-`;
+  const [row] = await query<{ n: number }>(`SELECT COUNT(*) AS n FROM guest_folios WHERE instr(folio_number, ?1) = 1`, [prefix]);
+  const number = `${prefix}${String((row?.n ?? 0) + 1).padStart(5, "0")}`;
   await execute(
     `INSERT INTO guest_folios (id, guest_id, folio_number, status) VALUES (?1, ?2, ?3, 'open')`,
     [folioId, guestId, number],
@@ -1226,7 +1276,9 @@ export async function listOpenFolios(): Promise<Array<{ id: string; room_number:
      LEFT JOIN guests gb ON gb.id = b.guest_id
      LEFT JOIN guests g ON g.id = gf.guest_id
      WHERE gf.status = 'open'
+       AND (b.branch_id = ?1 OR (gf.booking_id IS NULL AND instr(gf.folio_number, ?2) = 1))
      ORDER BY r.room_number NULLS LAST, gf.opened_at DESC`,
+    [requireActiveBranchId(), `W-${requireActiveBranchId()}-`],
   );
 }
 
@@ -1284,7 +1336,7 @@ export async function createBooking(input: {
   await execute(
     `INSERT INTO bookings (id, booking_number, branch_id, guest_id, room_type_id, room_id, check_in_date, check_out_date, adults, rate_per_night, created_by)
      VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)`,
-    [id, number, getActiveBranchId(), guestId, input.roomTypeId, input.preferredRoomId ?? null,
+    [id, number, requireActiveBranchId(), guestId, input.roomTypeId, input.preferredRoomId ?? null,
      input.checkIn, input.checkOut, input.adults ?? 1, input.ratePerNight, input.userId ?? null],
   );
   return id;
@@ -1292,6 +1344,8 @@ export async function createBooking(input: {
 
 /** Check in: assign a room, mark booking checked_in + room occupied, open a folio. */
 export async function checkIn(bookingId: string, roomId: string): Promise<string> {
+  await requireBranchOwnedRecord("bookings", bookingId, "Booking");
+  await requireBranchOwnedRecord("rooms", roomId, "Room");
   await assertModuleEntitled("hospitality");
   await requirePermission("hospitality.checkin.manage", { entityType: "booking", entityId: bookingId });
   await execute(`UPDATE bookings SET status = 'checked_in', room_id = ?2 WHERE id = ?1`, [bookingId, roomId]);
@@ -1315,6 +1369,7 @@ export async function postFolioCharge(folioId: string, input: {
   chargeType: "room" | "restaurant" | "bar" | "laundry" | "service" | "tax" | "adjustment";
   description: string; amount: number; taxAmount?: number; sourceSaleId?: string; sourceOrderId?: string; userId?: string;
 }): Promise<void> {
+  await requireActiveFolio(folioId);
   await requirePermission("hospitality.folios.manage", { entityType: "folio", entityId: folioId, metadata: { type: input.chargeType, amount: input.amount } });
   await execute(
     `INSERT INTO folio_charges (id, folio_id, charge_type, description, amount, tax_amount, source_sale_id, source_order_id, posted_by)
@@ -1327,6 +1382,8 @@ export async function postFolioCharge(folioId: string, input: {
 export async function chargeOrderToRoom(orderId: string, folioId: string, userId?: string): Promise<void> {
   await assertModuleEntitled("hospitality");
   await requirePermission("hospitality.folios.manage", { entityType: "hospitality_order", entityId: orderId });
+  await requireBranchOwnedRecord("hospitality_orders", orderId, "Order");
+  await requireActiveFolio(folioId);
   const items = await query<{ line_total: number }>(`SELECT line_total FROM hospitality_order_items WHERE order_id = ?1 AND status != 'voided'`, [orderId]);
   const total = items.reduce((s, i) => s + i.line_total, 0);
   await postFolioCharge(folioId, { chargeType: "restaurant", description: `Order ${orderId.slice(0, 8)}`, amount: total, sourceOrderId: orderId, userId });
@@ -1336,6 +1393,7 @@ export async function chargeOrderToRoom(orderId: string, folioId: string, userId
 }
 
 export async function folioBalance(folioId: string): Promise<{ charges: number; payments: number; balance: number }> {
+  await requireActiveFolio(folioId);
   const [c] = await query<{ t: number }>(`SELECT COALESCE(SUM(amount + tax_amount),0) AS t FROM folio_charges WHERE folio_id = ?1`, [folioId]);
   const [p] = await query<{ t: number }>(`SELECT COALESCE(SUM(amount),0) AS t FROM folio_payments WHERE folio_id = ?1`, [folioId]);
   const charges = c?.t ?? 0, payments = p?.t ?? 0;
@@ -1343,12 +1401,14 @@ export async function folioBalance(folioId: string): Promise<{ charges: number; 
 }
 
 export async function postFolioPayment(folioId: string, amount: number, method: string, userId?: string): Promise<void> {
+  await requireActiveFolio(folioId);
   await requirePermission("hospitality.folios.manage", { entityType: "folio", entityId: folioId, metadata: { payment: amount } });
   await execute(`INSERT INTO folio_payments (id, folio_id, amount, method, paid_by) VALUES (?1, ?2, ?3, ?4, ?5)`, [uid(), folioId, amount, method, userId ?? null]);
 }
 
 /** Check out: requires zero balance unless managerOverride. Frees the room. */
 export async function checkOut(bookingId: string, managerOverride = false): Promise<void> {
+  await requireBranchOwnedRecord("bookings", bookingId, "Booking");
   await assertModuleEntitled("hospitality");
   await requirePermission("hospitality.checkin.manage", { entityType: "booking", entityId: bookingId });
   const [folio] = await query<{ id: string }>(`SELECT id FROM guest_folios WHERE booking_id = ?1 AND status = 'open'`, [bookingId]);
@@ -1369,6 +1429,7 @@ export async function checkOut(bookingId: string, managerOverride = false): Prom
 export interface RecipeIngredientInput { productId: string; quantity: number; unit: string; wastagePercent?: number; }
 
 export async function createRecipe(menuItemId: string, yieldQty: number, ingredients: RecipeIngredientInput[]): Promise<string> {
+  await requireBranchOwnedRecord("menu_items", menuItemId, "Menu item");
   await assertModuleEntitled("hospitality");
   await requirePermission("hospitality.recipes.manage", { entityType: "recipe", entityId: menuItemId });
   const id = uid();
@@ -1658,7 +1719,7 @@ export async function recordWastage(input: {
   await execute(
     `INSERT INTO hospitality_wastage (id, branch_id, product_id, quantity, reason, cost_value, user_id, notes)
      VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)`,
-    [uid(), getActiveBranchId(), input.productId, input.quantity, input.reason, input.costValue ?? null, input.userId ?? null, input.notes ?? null],
+    [uid(), requireActiveBranchId(), input.productId, input.quantity, input.reason, input.costValue ?? null, input.userId ?? null, input.notes ?? null],
   );
 }
 
@@ -1669,15 +1730,17 @@ export async function restaurantReport(): Promise<RestaurantReport> {
   const [o] = await query<{ orders: number; revenue: number }>(
     `SELECT COUNT(DISTINCT o.id) AS orders, COALESCE(SUM(i.line_total),0) AS revenue
      FROM hospitality_orders o JOIN hospitality_order_items i ON i.order_id = o.id
-     WHERE o.status = 'paid' AND i.status != 'voided'`,
+     WHERE o.status = 'paid' AND o.branch_id = ?1 AND i.status != 'voided'`,
+    [requireActiveBranchId()],
   );
   const cats = await query<{ category: string; total: number }>(
     `SELECT COALESCE(m.category,'Uncategorised') AS category, SUM(i.line_total) AS total
      FROM hospitality_order_items i
      JOIN hospitality_orders o ON o.id = i.order_id
      LEFT JOIN menu_items m ON m.id = i.menu_item_id
-     WHERE o.status = 'paid' AND i.status != 'voided'
+     WHERE o.status = 'paid' AND o.branch_id = ?1 AND i.status != 'voided'
      GROUP BY category ORDER BY total DESC LIMIT 8`,
+    [requireActiveBranchId()],
   );
   const orders = o?.orders ?? 0;
   return { covers: orders, orders, avgTicket: orders > 0 ? (o.revenue / orders) : 0, topCategories: cats };
@@ -1686,7 +1749,8 @@ export async function restaurantReport(): Promise<RestaurantReport> {
 export interface HotelReport { totalRooms: number; occupied: number; occupancyPct: number; adr: number; revpar: number; }
 export async function hotelReport(): Promise<HotelReport> {
   const [r] = await query<{ total: number; occupied: number }>(
-    `SELECT COUNT(*) AS total, SUM(CASE WHEN status = 'occupied' THEN 1 ELSE 0 END) AS occupied FROM rooms WHERE active = 1`,
+    `SELECT COUNT(*) AS total, SUM(CASE WHEN status = 'occupied' THEN 1 ELSE 0 END) AS occupied FROM rooms WHERE active = 1 AND branch_id = ?1`,
+    [requireActiveBranchId()],
   );
   const [rev] = await query<{ room_revenue: number; nights: number }>(
     `SELECT COALESCE(SUM(amount + tax_amount),0) AS room_revenue, COUNT(*) AS nights

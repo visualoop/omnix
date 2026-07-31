@@ -2,7 +2,8 @@
  * Recurring invoices + credit notes service.
  */
 import { query, execute } from "@/lib/db";
-import { getActiveBranchId } from "@/stores/active-branch";
+import { requireActiveBranchId } from "@/stores/active-branch";
+import { requireBranchOwnedRecord } from "@/lib/branch-ownership";
 import { createInvoice, markInvoiceSent } from "@/services/invoicing";
 
 export type RecurringFrequency = "weekly" | "biweekly" | "monthly" | "quarterly" | "annually";
@@ -49,13 +50,14 @@ export interface RecurringTemplateItem {
 // ─── CRUD ──────────────────────────────────────────────────────────────
 export async function listRecurringTemplates(activeOnly = false): Promise<RecurringTemplate[]> {
   return query<RecurringTemplate>(
-    `SELECT * FROM recurring_invoice_templates ${activeOnly ? "WHERE is_active = 1" : ""}
+    `SELECT * FROM recurring_invoice_templates WHERE branch_id = ?1${activeOnly ? " AND is_active = 1" : ""}
      ORDER BY is_active DESC, next_run_on ASC`,
+    [requireActiveBranchId()],
   );
 }
 
 export async function getRecurringTemplate(id: string): Promise<{ template: RecurringTemplate; items: RecurringTemplateItem[] } | null> {
-  const [tmpl] = await query<RecurringTemplate>(`SELECT * FROM recurring_invoice_templates WHERE id = ?1`, [id]);
+  const [tmpl] = await query<RecurringTemplate>(`SELECT * FROM recurring_invoice_templates WHERE id = ?1 AND branch_id = ?2`, [id, requireActiveBranchId()]);
   if (!tmpl) return null;
   const items = await query<RecurringTemplateItem>(
     `SELECT * FROM recurring_invoice_items WHERE template_id = ?1 ORDER BY sort_order`,
@@ -105,7 +107,7 @@ export async function createRecurringTemplate(input: {
       input.frequency, input.interval_count || 1,
       input.starts_on, input.ends_on || null, input.starts_on,
       input.payment_terms_days || 30, input.notes || null, input.terms || null,
-      input.auto_send ? 1 : 0, input.user_id, getActiveBranchId(),
+      input.auto_send ? 1 : 0, input.user_id, requireActiveBranchId(),
     ],
   );
   for (let i = 0; i < input.items.length; i++) {
@@ -121,10 +123,12 @@ export async function createRecurringTemplate(input: {
 }
 
 export async function setTemplateActive(id: string, active: boolean): Promise<void> {
+  await requireBranchOwnedRecord("recurring_invoice_templates", id, "Recurring template");
   await execute(`UPDATE recurring_invoice_templates SET is_active = ?2 WHERE id = ?1`, [id, active ? 1 : 0]);
 }
 
 export async function deleteTemplate(id: string): Promise<void> {
+  await requireBranchOwnedRecord("recurring_invoice_templates", id, "Recurring template");
   await execute(`DELETE FROM recurring_invoice_items WHERE template_id = ?1`, [id]);
   await execute(`DELETE FROM recurring_invoice_templates WHERE id = ?1`, [id]);
 }
@@ -150,8 +154,8 @@ export async function runRecurringSchedule(userId: string): Promise<{ generated:
   const today = new Date().toISOString().slice(0, 10);
   const due = await query<RecurringTemplate>(
     `SELECT * FROM recurring_invoice_templates
-     WHERE is_active = 1 AND next_run_on <= ?1 AND (ends_on IS NULL OR ends_on >= ?1)`,
-    [today],
+     WHERE branch_id = ?2 AND is_active = 1 AND next_run_on <= ?1 AND (ends_on IS NULL OR ends_on >= ?1)`,
+    [today, requireActiveBranchId()],
   );
   const errors: string[] = [];
   let generated = 0;
@@ -252,13 +256,13 @@ async function nextCreditNoteNumber(): Promise<string> {
 
 export async function listCreditNotes(invoiceId?: string): Promise<CreditNote[]> {
   return query<CreditNote>(
-    `SELECT * FROM credit_notes ${invoiceId ? "WHERE invoice_id = ?1" : ""} ORDER BY created_at DESC LIMIT 500`,
-    invoiceId ? [invoiceId] : [],
+    `SELECT * FROM credit_notes WHERE branch_id = ?1${invoiceId ? " AND invoice_id = ?2" : ""} ORDER BY created_at DESC LIMIT 500`,
+    invoiceId ? [requireActiveBranchId(), invoiceId] : [requireActiveBranchId()],
   );
 }
 
 export async function getCreditNote(id: string): Promise<{ note: CreditNote; items: CreditNoteItem[] } | null> {
-  const [note] = await query<CreditNote>(`SELECT * FROM credit_notes WHERE id = ?1`, [id]);
+  const [note] = await query<CreditNote>(`SELECT * FROM credit_notes WHERE id = ?1 AND branch_id = ?2`, [id, requireActiveBranchId()]);
   if (!note) return null;
   const items = await query<CreditNoteItem>(
     `SELECT * FROM credit_note_items WHERE credit_note_id = ?1`,
@@ -282,6 +286,7 @@ export async function createCreditNote(input: {
   }>;
 }): Promise<string> {
   if (input.items.length === 0) throw new Error("Add at least one item");
+  await requireBranchOwnedRecord("invoices", input.invoice_id, "Invoice");
 
   const id = crypto.randomUUID();
   const number = await nextCreditNoteNumber();
@@ -292,7 +297,7 @@ export async function createCreditNote(input: {
     `INSERT INTO credit_notes (id, credit_note_number, invoice_id, customer_id, customer_name, reason, notes, user_id, branch_id)
      VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)`,
     [id, number, input.invoice_id, input.customer_id || null, input.customer_name,
-      input.reason, input.notes || null, input.user_id, getActiveBranchId()],
+      input.reason, input.notes || null, input.user_id, requireActiveBranchId()],
   );
 
   for (const it of input.items) {

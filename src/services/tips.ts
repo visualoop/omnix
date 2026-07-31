@@ -2,6 +2,7 @@
  * Tips reporting service.
  */
 import { query, execute } from "@/lib/db";
+import { getActiveBranchId } from "@/stores/active-branch";
 
 export interface TipBreakdown {
   total_tips: number;
@@ -17,11 +18,14 @@ export async function getTipsSummary(opts?: {
   endDate?: string;
   branchId?: string;
 }): Promise<TipBreakdown> {
-  const conditions: string[] = ["s.status != 'voided'", "s.tip_amount > 0"];
-  const params: any[] = [];
+  const activeBranchId = getActiveBranchId();
+  if (!activeBranchId) return { total_tips: 0, tip_count: 0, avg_tip: 0, cash_tips: 0, mpesa_tips: 0, card_tips: 0 };
+  if (opts?.branchId && opts.branchId !== activeBranchId) throw new Error("Switch to that branch before viewing tips");
+  const conditions: string[] = ["s.status != 'voided'", "s.tip_amount > 0", "s.branch_id = ?1"];
+  const params: unknown[] = [activeBranchId];
   if (opts?.startDate) { conditions.push(`s.created_at >= ?${params.length + 1}`); params.push(opts.startDate); }
   if (opts?.endDate) { conditions.push(`s.created_at <= ?${params.length + 1}`); params.push(opts.endDate + " 23:59:59"); }
-  if (opts?.branchId) { conditions.push(`s.branch_id = ?${params.length + 1}`); params.push(opts.branchId); }
+  // Branch is always the selected operational branch.
   const where = `WHERE ${conditions.join(" AND ")}`;
 
   const [r] = await query<TipBreakdown & { method_breakdown: string }>(
@@ -75,11 +79,14 @@ export async function getTipsByEmployee(opts?: {
   endDate?: string;
   branchId?: string;
 }): Promise<TipByEmployee[]> {
-  const conditions: string[] = ["s.status != 'voided'", "s.tip_amount > 0"];
-  const params: any[] = [];
+  const activeBranchId = getActiveBranchId();
+  if (!activeBranchId) return [];
+  if (opts?.branchId && opts.branchId !== activeBranchId) throw new Error("Switch to that branch before viewing tips");
+  const conditions: string[] = ["s.status != 'voided'", "s.tip_amount > 0", "s.branch_id = ?1"];
+  const params: unknown[] = [activeBranchId];
   if (opts?.startDate) { conditions.push(`s.created_at >= ?${params.length + 1}`); params.push(opts.startDate); }
   if (opts?.endDate) { conditions.push(`s.created_at <= ?${params.length + 1}`); params.push(opts.endDate + " 23:59:59"); }
-  if (opts?.branchId) { conditions.push(`s.branch_id = ?${params.length + 1}`); params.push(opts.branchId); }
+  // Branch is always the selected operational branch.
   const where = `WHERE ${conditions.join(" AND ")}`;
 
   return query<TipByEmployee>(

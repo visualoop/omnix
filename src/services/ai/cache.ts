@@ -7,6 +7,7 @@
  * SQLite. Expired rows are reaped lazily on read (no scheduled job).
  */
 import { execute, query } from "@/lib/db";
+import { getBranchCacheNamespace } from "@/stores/active-branch";
 import type { ChatRequest, ChatResponse } from "./types";
 
 async function sha256(input: string): Promise<string> {
@@ -30,6 +31,7 @@ function stableStringify(value: unknown): string {
 export async function cacheKey(model: string, request: ChatRequest): Promise<string> {
   return sha256(
     stableStringify({
+      branchContext: getBranchCacheNamespace(),
       model,
       messages: request.messages,
       jsonSchema: request.jsonSchema ?? null,

@@ -12,6 +12,7 @@ import { query } from "@/lib/db";
 import { printHtml } from "./print-html";
 import { BRAND } from "@/lib/brand";
 import { intlLocale } from "@/lib/intl";
+import { getActiveBranchId } from "@/stores/active-branch";
 
 export interface ZReport {
   date_from: string;
@@ -58,6 +59,8 @@ export interface ZReport {
 }
 
 export async function getZReport(date?: string): Promise<ZReport> {
+  const branchId = getActiveBranchId();
+  if (!branchId) throw new Error("Select a branch to view the Z-report");
   const day = date || new Date().toISOString().slice(0, 10);
   const from = `${day} 00:00:00`;
   const to = `${day} 23:59:59`;
@@ -72,8 +75,8 @@ export async function getZReport(date?: string): Promise<ZReport> {
             COALESCE(SUM(discount_amount), 0) AS discount,
             COALESCE(SUM(tip_amount), 0) AS tip
      FROM sales
-     WHERE created_at BETWEEN ?1 AND ?2 AND status = 'completed'`,
-    [from, to],
+     WHERE created_at BETWEEN ?1 AND ?2 AND status = 'completed' AND branch_id = ?3`,
+    [from, to, branchId],
   );
 
   // Payment method breakdown (from payments table)
@@ -85,38 +88,38 @@ export async function getZReport(date?: string): Promise<ZReport> {
      FROM payments sp
      LEFT JOIN payment_methods pm ON pm.id = sp.method_id
      JOIN sales s ON s.id = sp.sale_id
-     WHERE s.created_at BETWEEN ?1 AND ?2 AND s.status = 'completed'
+     WHERE s.created_at BETWEEN ?1 AND ?2 AND s.status = 'completed' AND s.branch_id = ?3
      GROUP BY method
      ORDER BY total DESC`,
-    [from, to],
+    [from, to, branchId],
   );
 
   // Returns
   const [retAgg] = await query<{ count: number; total: number }>(
     `SELECT COUNT(*) AS count, COALESCE(SUM(refund_amount), 0) AS total
-     FROM sale_returns WHERE created_at BETWEEN ?1 AND ?2`,
-    [from, to],
+     FROM sale_returns WHERE created_at BETWEEN ?1 AND ?2 AND branch_id = ?3`,
+    [from, to, branchId],
   );
 
   // Cash refunds (subset of returns paid in cash)
   const [cashRefAgg] = await query<{ total: number }>(
     `SELECT COALESCE(SUM(refund_amount), 0) AS total
-     FROM sale_returns WHERE created_at BETWEEN ?1 AND ?2 AND refund_method = 'cash'`,
-    [from, to],
+     FROM sale_returns WHERE created_at BETWEEN ?1 AND ?2 AND refund_method = 'cash' AND branch_id = ?3`,
+    [from, to, branchId],
   );
 
   // Expenses today
   const [expAgg] = await query<{ total: number }>(
     `SELECT COALESCE(SUM(amount), 0) AS total
-     FROM expenses WHERE expense_date BETWEEN ?1 AND ?2`,
-    [from, to],
+     FROM expenses WHERE expense_date BETWEEN ?1 AND ?2 AND branch_id = ?3`,
+    [from, to, branchId],
   );
 
   // Cash expenses
   const [cashExpAgg] = await query<{ total: number }>(
     `SELECT COALESCE(SUM(amount), 0) AS total
-     FROM expenses WHERE expense_date BETWEEN ?1 AND ?2 AND payment_method = 'cash'`,
-    [from, to],
+     FROM expenses WHERE expense_date BETWEEN ?1 AND ?2 AND payment_method = 'cash' AND branch_id = ?3`,
+    [from, to, branchId],
   );
 
   // Customer payments (settled in)
@@ -124,8 +127,8 @@ export async function getZReport(date?: string): Promise<ZReport> {
     `SELECT
        COALESCE(SUM(amount), 0) AS total,
        COALESCE(SUM(CASE WHEN method = 'cash' THEN amount ELSE 0 END), 0) AS cash_total
-     FROM customer_payments WHERE paid_at BETWEEN ?1 AND ?2`,
-    [from, to],
+     FROM customer_payments WHERE paid_at BETWEEN ?1 AND ?2 AND branch_id = ?3`,
+    [from, to, branchId],
   );
 
   // Supplier payments (out)
@@ -133,8 +136,8 @@ export async function getZReport(date?: string): Promise<ZReport> {
     `SELECT
        COALESCE(SUM(amount), 0) AS total,
        COALESCE(SUM(CASE WHEN method = 'cash' THEN amount ELSE 0 END), 0) AS cash_total
-     FROM supplier_payments WHERE paid_at BETWEEN ?1 AND ?2`,
-    [from, to],
+     FROM supplier_payments WHERE paid_at BETWEEN ?1 AND ?2 AND branch_id = ?3`,
+    [from, to, branchId],
   );
 
   // Cash from sales
@@ -145,8 +148,9 @@ export async function getZReport(date?: string): Promise<ZReport> {
      JOIN sales s ON s.id = sp.sale_id
      WHERE s.created_at BETWEEN ?1 AND ?2
        AND s.status = 'completed'
+       AND s.branch_id = ?3
        AND (pm.type = 'cash' OR sp.method_name = 'cash' OR LOWER(COALESCE(pm.name, sp.method_name, '')) LIKE '%cash%')`,
-    [from, to],
+    [from, to, branchId],
   );
 
   // Top products
@@ -156,23 +160,25 @@ export async function getZReport(date?: string): Promise<ZReport> {
             SUM(si.unit_price * si.quantity) AS revenue
      FROM sale_items si
      JOIN sales s ON s.id = si.sale_id
-     WHERE s.created_at BETWEEN ?1 AND ?2 AND s.status = 'completed'
+     WHERE s.created_at BETWEEN ?1 AND ?2 AND s.status = 'completed' AND s.branch_id = ?3
      GROUP BY si.product_id, si.product_name
      ORDER BY qty DESC
      LIMIT 5`,
-    [from, to],
+    [from, to, branchId],
   );
 
   // Prescriptions / controlled
   const [rxAgg] = await query<{ count: number }>(
     `SELECT COUNT(*) AS count FROM prescriptions
-     WHERE created_at BETWEEN ?1 AND ?2 AND status = 'dispensed'`,
-    [from, to],
+     WHERE created_at BETWEEN ?1 AND ?2 AND status = 'dispensed'
+       AND sale_id IN (SELECT id FROM sales WHERE branch_id = ?3)`,
+    [from, to, branchId],
   );
   const [ctrlAgg] = await query<{ count: number }>(
     `SELECT COUNT(*) AS count FROM controlled_log
-     WHERE created_at BETWEEN ?1 AND ?2 AND action = 'dispensed'`,
-    [from, to],
+     WHERE created_at BETWEEN ?1 AND ?2 AND action = 'dispensed'
+       AND sale_id IN (SELECT id FROM sales WHERE branch_id = ?3)`,
+    [from, to, branchId],
   );
 
   // By user
@@ -182,10 +188,10 @@ export async function getZReport(date?: string): Promise<ZReport> {
             COALESCE(SUM(s.total), 0) AS total
      FROM sales s
      LEFT JOIN users u ON u.id = s.user_id
-     WHERE s.created_at BETWEEN ?1 AND ?2 AND s.status = 'completed'
+     WHERE s.created_at BETWEEN ?1 AND ?2 AND s.status = 'completed' AND s.branch_id = ?3
      GROUP BY u.id
      ORDER BY total DESC`,
-    [from, to],
+    [from, to, branchId],
   );
 
   // Pharmacy info

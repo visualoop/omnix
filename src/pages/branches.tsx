@@ -1,12 +1,15 @@
-import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useEffect, useMemo, useState } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { confirm } from "@/components/ui/confirm-dialog";
 import {
+  Briefcase,
   Building as Building2,
+  ChartBar,
   Check,
   CircleNotch as Loader2,
-  MapPin as MapPin,
-  Pencil as Edit3,
+  MagnifyingGlass,
+  MapPin,
+  Pencil,
   Phone,
   Plus,
   Star,
@@ -16,169 +19,314 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
 import { PageHeader } from "@/components/layout/page-header";
+import { ResponsiveActions } from "@/components/responsive/responsive-actions";
+import { ResponsivePage } from "@/components/responsive/responsive-page";
 import { Input } from "@/components/ui/input";
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter } from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetFooter, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
 import {
-  listBranches, upsertBranch, setDefaultBranch, deactivateBranch,
-  type Branch, type BranchWithStats,
+  deactivateBranch,
+  getBranch,
+  listAssignedBranchPerformance,
+  listBranches,
+  setDefaultBranch,
+  upsertBranch,
+  type Branch,
+  type BranchWithStats,
 } from "@/services/branches";
 import { Can } from "@/components/require-role";
 import { toast } from "sonner";
 import { money } from "@/lib/money";
+import { useActiveBranch } from "@/stores/active-branch";
+import { useAuthStore } from "@/stores/auth";
 
 export function BranchesPage() {
   const [branches, setBranches] = useState<BranchWithStats[]>([]);
-  const navigate = useNavigate();
   const [showAll, setShowAll] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [editing, setEditing] = useState<Branch | null>(null);
   const [creating, setCreating] = useState(false);
+  const [search, setSearch] = useState("");
+  const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
+  const active = useActiveBranch((state) => state.active);
+  const available = useActiveBranch((state) => state.available);
+  const branchContextLoaded = useActiveBranch((state) => state.loaded);
+  const switchTo = useActiveBranch((state) => state.switchTo);
+  const user = useAuthStore((state) => state.user);
 
   const load = async () => {
     setLoading(true);
-    try { setBranches(await listBranches(showAll)); }
-    finally { setLoading(false); }
+    setLoadError(false);
+    try {
+      const rows = user && user.role !== "owner"
+        ? await listAssignedBranchPerformance(user.id, showAll)
+        : await listBranches(showAll);
+      setBranches(rows);
+    } catch {
+      setLoadError(true);
+    } finally {
+      setLoading(false);
+    }
   };
-  useEffect(() => { load(); }, [showAll]);
 
-  const totalToday = branches.reduce((s, b) => s + b.sales_today, 0);
-  const totalCount = branches.reduce((s, b) => s + b.sales_today_count, 0);
+  useEffect(() => {
+    void load();
+  }, [showAll, user?.id, user?.role]);
+
+  useEffect(() => {
+    const editId = searchParams.get("edit");
+    if (!editId) return;
+    let current = true;
+    void getBranch(editId).then((branch) => {
+      if (!current) return;
+      if (branch) setEditing(branch);
+      else toast.error("Branch not found");
+    });
+    return () => {
+      current = false;
+    };
+  }, [searchParams]);
+
+  const filteredBranches = useMemo(() => {
+    const query = search.trim().toLowerCase();
+    if (!query) return branches;
+    return branches.filter((branch) =>
+      [branch.code, branch.name, branch.address, branch.phone]
+        .filter(Boolean)
+        .some((value) => value?.toLowerCase().includes(query)),
+    );
+  }, [branches, search]);
+
+  const totalToday = branches.reduce((sum, branch) => sum + branch.sales_today, 0);
+  const totalCount = branches.reduce((sum, branch) => sum + branch.sales_today_count, 0);
+
+  const closeForm = () => {
+    setCreating(false);
+    setEditing(null);
+    if (searchParams.has("edit")) {
+      const next = new URLSearchParams(searchParams);
+      next.delete("edit");
+      setSearchParams(next, { replace: true });
+    }
+  };
+
+  const workInBranch = async (branch: BranchWithStats) => {
+    const assigned = available.find((candidate) => candidate.id === branch.id);
+    if (!assigned) {
+      toast.error("This branch is not assigned to your account");
+      return;
+    }
+    try {
+      await switchTo(assigned);
+      toast.success(`Now working in ${assigned.name}`);
+      navigate("/");
+    } catch (error) {
+      toast.error(String(error));
+    }
+  };
 
   return (
-    <div className="space-y-5">
+    <ResponsivePage width="full" className="!p-0 space-y-5">
       <PageHeader
         back={{ fallback: "/" }}
         eyebrow="Configuration"
         title="Branches"
-        description="Your shop locations. Every sale, expense, and stock entry is tagged with the branch where it happened."
+        description="Choose where you work, review location performance, or update branch details. Operational context never changes from an analytics action."
         actions={
           <Can permission="settings.business">
-            <Button onClick={() => setCreating(true)}>
-              <Plus className="h-4 w-4 mr-1.5" /> New branch
+            <Button className="min-h-11 sm:min-h-0" onClick={() => setCreating(true)}>
+              <Plus /> New branch
             </Button>
           </Can>
         }
       />
 
-      {/* Today's stats */}
-      <div className="grid grid-cols-3 gap-3">
-        <Stat label="Active branches" value={String(branches.filter((b) => b.active === 1).length)} />
+      <div className="flex flex-col gap-3 border-l-2 border-primary bg-foreground/[0.025] px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="min-w-0">
+          <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">Active operational context</p>
+          <p className="mt-1 truncate text-sm font-semibold">
+            {active
+              ? `${active.code} · ${active.name}`
+              : branchContextLoaded
+                ? "No branch assigned"
+                : "Loading branch context…"}
+          </p>
+        </div>
+        <p className="text-xs text-muted-foreground">Sales, stock, and cash activity use this branch.</p>
+      </div>
+
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+        <Stat label="Active branches" value={String(branches.filter((branch) => branch.active === 1).length)} />
         <Stat label="Sales today" value={money(totalToday)} />
         <Stat label="Transactions today" value={String(totalCount)} />
       </div>
 
-      <label className="flex items-center gap-2 text-xs">
-        <Checkbox checked={showAll} onCheckedChange={(v) => setShowAll(Boolean(v))} />
-        Show inactive
-      </label>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <label className="relative block min-w-0 flex-1 sm:max-w-sm">
+          <MagnifyingGlass className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+          <span className="sr-only">Search branches</span>
+          <Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search branches…" className="pl-9" />
+        </label>
+        <label className="flex min-h-11 items-center gap-2 text-xs sm:min-h-0">
+          <Checkbox checked={showAll} onCheckedChange={(value) => setShowAll(Boolean(value))} />
+          Show inactive
+        </label>
+      </div>
 
-      {/* Grid */}
       {loading ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-          {[0,1,2].map((i) => <Card key={i} className="h-[160px] animate-pulse bg-muted/20" />)}
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3" aria-label="Loading branches">
+          {[0, 1, 2].map((item) => <Card key={item} className="h-[180px] animate-pulse bg-muted/20 motion-reduce:animate-none" />)}
         </div>
+      ) : loadError ? (
+        <EmptyState
+          icon={Building2}
+          title="Branches could not be loaded"
+          description="Check the local database connection, then try again."
+          cta={{ label: "Retry", onClick: () => void load() }}
+        />
       ) : branches.length === 0 ? (
         <EmptyState
           icon={Building2}
           title="No branches yet"
           description="Add your first branch to start tracking sales by location."
-          cta={{ label: "Add Branch", onClick: () => setCreating(true), icon: Plus }}
+          cta={{ label: "Add branch", onClick: () => setCreating(true), icon: Plus }}
+        />
+      ) : filteredBranches.length === 0 ? (
+        <EmptyState
+          icon={MagnifyingGlass}
+          title="No matching branches"
+          description="Try a branch name, code, address, or phone number."
+          cta={{ label: "Clear search", onClick: () => setSearch("") }}
         />
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-          {branches.map((b) => (
-            <Card key={b.id} className="hover:border-primary/40 transition-colors cursor-pointer" onClick={() => navigate(`/settings/branches/${b.id}`)}>
-              <CardContent className="p-4 space-y-2.5">
-                <div className="flex items-start justify-between gap-2">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-1.5">
-                      <span className="font-mono text-xs text-muted-foreground">{b.code}</span>
-                      {b.is_default === 1 && (
-                        <Badge variant="secondary" className="text-[9px]">
-                          <Star className="h-2.5 w-2.5 mr-0.5" /> Default
-                        </Badge>
-                      )}
-                      {b.active === 0 && <Badge variant="destructive" className="text-[9px]">Inactive</Badge>}
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
+          {filteredBranches.map((branch) => {
+            const isActive = active?.id === branch.id;
+            const isAssigned = available.some((candidate) => candidate.id === branch.id);
+            return (
+              <Card key={branch.id} className={isActive ? "border-primary/50" : undefined}>
+                <CardContent className="flex h-full flex-col space-y-2.5 p-3 sm:p-3">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <span className="font-mono text-xs text-muted-foreground">{branch.code}</span>
+                        {isActive ? <Badge>Active context</Badge> : null}
+                        {branch.is_default === 1 ? <Badge variant="secondary"><Star /> Default</Badge> : null}
+                        {branch.active === 0 ? <Badge variant="destructive">Inactive</Badge> : null}
+                      </div>
+                      <h2 className="mt-1 truncate text-sm font-semibold">{branch.name}</h2>
                     </div>
-                    <h3 className="text-sm font-semibold mt-0.5 truncate">{b.name}</h3>
                   </div>
-                  <Button variant="ghost" size="icon-xs" onClick={(e) => { e.stopPropagation(); setEditing(b); }}>
-                    <Edit3 className="h-3 w-3" />
-                  </Button>
-                </div>
-                {(b.address || b.phone) && (
-                  <div className="space-y-0.5 text-xs text-muted-foreground">
-                    {b.address && <div className="flex items-center gap-1"><MapPin className="h-3 w-3" /> {b.address}</div>}
-                    {b.phone && <div className="flex items-center gap-1"><Phone className="h-3 w-3" /> {b.phone}</div>}
-                  </div>
-                )}
-                <div className="flex justify-between items-end pt-2 border-t border-border">
-                  <div>
-                    <div className="text-[10px] text-muted-foreground uppercase tracking-wider">Today</div>
-                    <div className="font-semibold text-sm font-mono">KES {b.sales_today.toFixed(0)}</div>
-                  </div>
-                  <div className="text-right">
-                    <div className="text-[10px] text-muted-foreground uppercase tracking-wider">Txns</div>
-                    <div className="font-semibold text-sm font-mono">{b.sales_today_count}</div>
-                  </div>
-                  <div className="text-right">
-                    <div className="text-[10px] text-muted-foreground uppercase tracking-wider">Users</div>
-                    <div className="font-semibold text-sm font-mono">{b.user_count}</div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+
+                  {branch.address || branch.phone ? (
+                    <div className="space-y-1 text-xs text-muted-foreground">
+                      {branch.address ? <div className="flex items-start gap-1.5"><MapPin className="mt-0.5 size-3.5 shrink-0" /><span>{branch.address}</span></div> : null}
+                      {branch.phone ? <div className="flex items-center gap-1.5"><Phone className="size-3.5 shrink-0" />{branch.phone}</div> : null}
+                    </div>
+                  ) : null}
+
+                  <dl className="grid grid-cols-3 gap-2 border-t border-border pt-2">
+                    <BranchMetric label="Today" value={money(branch.sales_today)} />
+                    <BranchMetric label="Txns" value={String(branch.sales_today_count)} />
+                    <BranchMetric label="Users" value={String(branch.user_count)} />
+                  </dl>
+
+                  <ResponsiveActions className="mt-auto border-t border-border/60 pt-2 sm:grid sm:w-full sm:grid-cols-3 sm:gap-1">
+                    <Button
+                      variant={isActive ? "secondary" : "default"}
+                      size="sm"
+                      className="sm:px-2"
+                      disabled={isActive || branch.active === 0 || !isAssigned}
+                      onClick={() => void workInBranch(branch)}
+                      aria-describedby={!isAssigned ? `branch-${branch.id}-assignment-reason` : undefined}
+                    >
+                      {isActive ? <Check /> : <Briefcase />}
+                      {isActive ? "Working" : "Work"}
+                    </Button>
+                    {!isAssigned ? (
+                      <p id={`branch-${branch.id}-assignment-reason`} className="sr-only">
+                        Your account is not assigned to this branch.
+                      </p>
+                    ) : null}
+                    <Button className="sm:px-2" variant="outline" size="sm" onClick={() => navigate(`/settings/branches/${branch.id}`)}>
+                      <ChartBar /> View
+                    </Button>
+                    <Button className="sm:px-2" variant="ghost" size="sm" onClick={() => setEditing(branch)}>
+                      <Pencil /> Edit
+                    </Button>
+                  </ResponsiveActions>
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
       )}
 
       <BranchForm
-        open={creating || !!editing}
+        open={creating || Boolean(editing)}
         branch={editing}
-        onClose={() => { setCreating(false); setEditing(null); }}
-        onSaved={() => { setCreating(false); setEditing(null); load(); }}
+        onClose={closeForm}
+        onSaved={() => {
+          closeForm();
+          void load();
+        }}
       />
-    </div>
+    </ResponsivePage>
   );
 }
 
 function Stat({ label, value }: { label: string; value: string }) {
-  return (
-    <Card>
-      <CardContent className="p-3">
-        <p className="text-[10px] uppercase tracking-wider text-muted-foreground">{label}</p>
-        <p className="text-xl font-semibold font-mono mt-1">{value}</p>
-      </CardContent>
-    </Card>
-  );
+  return <Card><CardContent className="p-3"><p className="text-[10px] uppercase tracking-wider text-muted-foreground">{label}</p><p className="mt-1 font-mono text-xl font-semibold">{value}</p></CardContent></Card>;
 }
 
-function BranchForm({ open, branch, onClose, onSaved }: {
-  open: boolean; branch: Branch | null; onClose: () => void; onSaved: () => void;
-}) {
+function BranchMetric({ label, value }: { label: string; value: string }) {
+  return <div className="min-w-0"><dt className="text-[10px] uppercase tracking-wider text-muted-foreground">{label}</dt><dd className="truncate font-mono text-sm font-semibold">{value}</dd></div>;
+}
+
+function BranchForm({ open, branch, onClose, onSaved }: { open: boolean; branch: Branch | null; onClose: () => void; onSaved: () => void }) {
   const [form, setForm] = useState<Partial<Branch>>({});
   const [submitting, setSubmitting] = useState(false);
+  const activeBranchId = useActiveBranch((state) => state.active?.id);
+  const updateBranch = useActiveBranch((state) => state.updateBranch);
 
   useEffect(() => {
-    if (branch) setForm(branch);
-    else setForm({ active: 1, timezone: "Africa/Nairobi" });
+    setForm(branch ?? { active: 1, timezone: "Africa/Nairobi" });
   }, [branch, open]);
 
   const save = async () => {
-    if (!form.code || !form.name) {
-      toast.error("Code and name required");
-      return;
-    }
+    if (!form.code || !form.name) return void toast.error("Code and name required");
     setSubmitting(true);
     try {
       await upsertBranch({ ...form, code: form.code, name: form.name });
-      toast.success(branch ? "Updated" : "Created");
+      if (branch) {
+        const updatedBranch: Branch = {
+          id: branch.id,
+          code: form.code,
+          name: form.name,
+          address: form.address ?? branch.address,
+          phone: form.phone ?? branch.phone,
+          email: form.email ?? branch.email,
+          manager_id: form.manager_id ?? branch.manager_id,
+          is_default: form.is_default ?? branch.is_default,
+          active: form.active ?? branch.active,
+          timezone: form.timezone ?? branch.timezone,
+          kra_pin: form.kra_pin ?? branch.kra_pin,
+          etims_device_id: form.etims_device_id ?? branch.etims_device_id,
+          open_time: form.open_time ?? branch.open_time,
+          close_time: form.close_time ?? branch.close_time,
+          notes: form.notes ?? branch.notes,
+          created_at: branch.created_at,
+        };
+        updateBranch(updatedBranch);
+      }
+      toast.success(branch ? "Branch details updated" : "Branch created");
       onSaved();
-    } catch (e) {
-      toast.error(String(e));
+    } catch (error) {
+      toast.error(String(error));
     } finally {
       setSubmitting(false);
     }
@@ -186,91 +334,104 @@ function BranchForm({ open, branch, onClose, onSaved }: {
 
   const makeDefault = async () => {
     if (!branch) return;
-    await setDefaultBranch(branch.id);
-    toast.success(`${branch.name} is now the default`);
-    onSaved();
-  };
-
-  const deactivate = async () => {
-    if (!branch || !(await confirm({ title: `Deactivate "${branch.name}"?` }))) return;
     try {
-      await deactivateBranch(branch.id);
-      toast.success("Deactivated");
+      await setDefaultBranch(branch.id);
+      toast.success(`${branch.name} is now the default`);
       onSaved();
-    } catch (e) {
-      toast.error(String(e));
+    } catch (error) {
+      toast.error(String(error));
     }
   };
 
+  const deactivate = async () => {
+    if (!branch) return;
+    if (branch.id === activeBranchId) {
+      toast.error("Switch to another branch before deactivating this one");
+      return;
+    }
+    if (!(await confirm({ title: `Deactivate "${branch.name}"?` }))) return;
+    try {
+      await deactivateBranch(branch.id);
+      toast.success("Branch deactivated");
+      onSaved();
+    } catch (error) {
+      toast.error(String(error));
+    }
+  };
+
+  const isActiveBranch = branch?.id === activeBranchId;
+
   return (
-    <Sheet open={open} onOpenChange={(o) => !o && onClose()}>
-      <SheetContent side="right" className="w-[460px] sm:max-w-[460px]">
+    <Sheet open={open} onOpenChange={(nextOpen) => !nextOpen && onClose()}>
+      <SheetContent
+        side="right"
+        className="!inset-y-0 !top-0 w-full max-w-none rounded-none motion-reduce:transition-none sm:w-[460px] sm:max-w-[min(460px,100vw)] sm:rounded-l-lg"
+      >
         <SheetHeader>
-          <SheetTitle>{branch ? branch.name : "New Branch"}</SheetTitle>
+          <SheetTitle>{branch ? `Edit ${branch.name}` : "New branch"}</SheetTitle>
         </SheetHeader>
-        <div className="flex-1 overflow-auto space-y-3">
-          <div className="grid grid-cols-3 gap-2">
+        <div className="flex-1 space-y-4 overflow-auto py-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
             <Field label="Code *" hint="Short code on receipts">
               <Input
                 value={form.code || ""}
-                onChange={(e) => setForm({ ...form, code: e.target.value.toUpperCase() })}
+                onChange={(event) => setForm({ ...form, code: event.target.value.toUpperCase() })}
                 placeholder="MAIN"
                 className="font-mono"
               />
             </Field>
-            <Field label="Name *" className="col-span-2">
+            <Field label="Name *" className="sm:col-span-2">
               <Input
                 value={form.name || ""}
-                onChange={(e) => setForm({ ...form, name: e.target.value })}
+                onChange={(event) => setForm({ ...form, name: event.target.value })}
                 placeholder="Main Branch"
               />
             </Field>
           </div>
           <Field label="Address">
-            <Input value={form.address || ""} onChange={(e) => setForm({ ...form, address: e.target.value })} />
+            <Input value={form.address || ""} onChange={(event) => setForm({ ...form, address: event.target.value })} />
           </Field>
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <Field label="Phone">
-              <Input value={form.phone || ""} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
+              <Input value={form.phone || ""} onChange={(event) => setForm({ ...form, phone: event.target.value })} />
             </Field>
             <Field label="Email">
-              <Input type="email" value={form.email || ""} onChange={(e) => setForm({ ...form, email: e.target.value })} />
+              <Input type="email" value={form.email || ""} onChange={(event) => setForm({ ...form, email: event.target.value })} />
             </Field>
-          </div>
-          <div className="grid grid-cols-2 gap-2">
             <Field label="Open">
-              <Input type="time" value={form.open_time || ""} onChange={(e) => setForm({ ...form, open_time: e.target.value })} />
+              <Input type="time" value={form.open_time || ""} onChange={(event) => setForm({ ...form, open_time: event.target.value })} />
             </Field>
             <Field label="Close">
-              <Input type="time" value={form.close_time || ""} onChange={(e) => setForm({ ...form, close_time: e.target.value })} />
+              <Input type="time" value={form.close_time || ""} onChange={(event) => setForm({ ...form, close_time: event.target.value })} />
             </Field>
           </div>
           <Field label="KRA PIN" hint="Override main TIN if branch has its own">
-            <Input value={form.kra_pin || ""} onChange={(e) => setForm({ ...form, kra_pin: e.target.value })} />
+            <Input value={form.kra_pin || ""} onChange={(event) => setForm({ ...form, kra_pin: event.target.value })} />
           </Field>
           <Field label="Notes">
-            <Textarea
-              value={form.notes || ""}
-              onChange={(e) => setForm({ ...form, notes: e.target.value })}
-            />
+            <Textarea value={form.notes || ""} onChange={(event) => setForm({ ...form, notes: event.target.value })} />
           </Field>
-
-          {branch && branch.is_default !== 1 && branch.active === 1 && (
-            <Button variant="outline" size="sm" onClick={makeDefault} className="w-full">
-              <Star className="h-3.5 w-3.5 mr-1.5" /> Make default
+          {branch && branch.is_default !== 1 && branch.active === 1 ? (
+            <Button variant="outline" onClick={makeDefault} className="min-h-11 w-full">
+              <Star /> Make default
             </Button>
-          )}
-          {branch && branch.active === 1 && branch.is_default !== 1 && (
-            <Button variant="ghost" size="sm" onClick={deactivate} className="w-full text-red-600">
-              <X className="h-3.5 w-3.5 mr-1.5" /> Deactivate
+          ) : null}
+          {branch && branch.active === 1 && branch.is_default !== 1 ? (
+            <Button
+              variant="ghost"
+              onClick={deactivate}
+              disabled={isActiveBranch}
+              title={isActiveBranch ? "Switch to another branch before deactivating this one" : undefined}
+              className="min-h-11 w-full text-red-600"
+            >
+              <X /> {isActiveBranch ? "Working here — cannot deactivate" : "Deactivate"}
             </Button>
-          )}
+          ) : null}
         </div>
-        <SheetFooter>
-          <Button variant="outline" size="sm" onClick={onClose} disabled={submitting}>Cancel</Button>
-          <Button size="sm" onClick={save} disabled={submitting}>
-            {submitting && <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />}
-            <Check className="h-3.5 w-3.5 mr-1" /> Save
+        <SheetFooter className="-mx-5 flex-col-reverse pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:flex-row">
+          <Button variant="outline" onClick={onClose} disabled={submitting}>Cancel</Button>
+          <Button onClick={save} disabled={submitting}>
+            {submitting ? <Loader2 className="animate-spin motion-reduce:animate-none" /> : <Check />} Save details
           </Button>
         </SheetFooter>
       </SheetContent>
@@ -278,14 +439,12 @@ function BranchForm({ open, branch, onClose, onSaved }: {
   );
 }
 
-function Field({ label, hint, className, children }: {
-  label: string; hint?: string; className?: string; children: React.ReactNode;
-}) {
+function Field({ label, hint, className, children }: { label: string; hint?: string; className?: string; children: React.ReactNode }) {
   return (
-    <div className={`space-y-1 ${className || ""}`}>
-      <label className="text-[11px] font-medium text-muted-foreground">{label}</label>
+    <label className={`block space-y-1 ${className || ""}`}>
+      <span className="block text-[11px] font-medium text-muted-foreground">{label}</span>
       {children}
-      {hint && <p className="text-[10px] text-muted-foreground/80">{hint}</p>}
-    </div>
+      {hint ? <span className="block text-[10px] text-muted-foreground/80">{hint}</span> : null}
+    </label>
   );
 }

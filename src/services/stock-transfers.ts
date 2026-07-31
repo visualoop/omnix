@@ -8,6 +8,7 @@
  *     different quantity_received if shrinkage during transit)
  */
 import { query, execute } from "@/lib/db";
+import { getActiveBranchId, requireActiveBranchId } from "@/stores/active-branch";
 
 export interface StockTransfer {
   id: string;
@@ -48,12 +49,14 @@ export async function listTransfers(
   branchId?: string,
   status?: StockTransfer["status"],
 ): Promise<StockTransferWithDetails[]> {
-  const conditions: string[] = [];
-  const params: any[] = [];
-  if (branchId) {
-    conditions.push("(t.from_branch_id = ? OR t.to_branch_id = ?)");
-    params.push(branchId, branchId);
+  const activeBranchId = getActiveBranchId();
+  if (branchId && branchId !== activeBranchId) {
+    throw new Error("Switch to that branch before viewing transfers");
   }
+  const selectedBranch = activeBranchId;
+  if (!selectedBranch) return [];
+  const conditions: string[] = ["(t.from_branch_id = ? OR t.to_branch_id = ?)"];
+  const params: unknown[] = [selectedBranch, selectedBranch];
   if (status) {
     conditions.push("t.status = ?");
     params.push(status);
@@ -100,6 +103,18 @@ export async function createTransfer(input: {
   notes?: string;
   items: Array<{ product_id: string; product_name: string; batch_id?: string; quantity: number; unit_cost?: number }>;
 }): Promise<string> {
+  const activeBranchId = requireActiveBranchId();
+  if (input.from_branch_id !== activeBranchId) {
+    throw new Error("A transfer must start from the active branch");
+  }
+  const assignments = await query<{ branch_id: string }>(
+    `SELECT branch_id FROM user_branches WHERE user_id = ?1 AND branch_id IN (?2, ?3)`,
+    [input.user_id, input.from_branch_id, input.to_branch_id],
+  );
+  const assigned = new Set(assignments.map((row) => row.branch_id));
+  if (!assigned.has(input.from_branch_id) || !assigned.has(input.to_branch_id)) {
+    throw new Error("Both transfer branches must be assigned to your account");
+  }
   if (input.from_branch_id === input.to_branch_id) {
     throw new Error("Source and destination branches must differ");
   }
@@ -136,6 +151,9 @@ export async function dispatchTransfer(transferId: string): Promise<void> {
     [transferId],
   );
   if (!transfer) throw new Error("Transfer not found");
+  if (transfer.from_branch_id !== requireActiveBranchId()) {
+    throw new Error("Switch to the source branch before dispatching this transfer");
+  }
   if (transfer.status !== "draft") throw new Error("Transfer already dispatched");
 
   // Decrement stock at source branch (FIFO from oldest batches)
@@ -176,6 +194,9 @@ export async function receiveTransfer(
     [transferId],
   );
   if (!transfer) throw new Error("Transfer not found");
+  if (transfer.to_branch_id !== requireActiveBranchId()) {
+    throw new Error("Switch to the destination branch before receiving this transfer");
+  }
   if (transfer.status !== "in_transit") throw new Error("Transfer is not in transit");
 
   for (const recv of receivedItems) {
@@ -207,8 +228,11 @@ export async function receiveTransfer(
 }
 
 export async function cancelTransfer(transferId: string): Promise<void> {
-  const [t] = await query<{ status: string }>(`SELECT status FROM stock_transfers WHERE id = ?1`, [transferId]);
+  const [t] = await query<{ status: string; from_branch_id: string }>(`SELECT status, from_branch_id FROM stock_transfers WHERE id = ?1`, [transferId]);
   if (!t) return;
+  if (t.from_branch_id !== requireActiveBranchId()) {
+    throw new Error("Switch to the source branch before cancelling this transfer");
+  }
   if (t.status === "received") throw new Error("Cannot cancel a received transfer");
   if (t.status === "in_transit") {
     // Roll stock back to source — for now we just leave it as a manual fix

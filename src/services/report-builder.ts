@@ -17,6 +17,7 @@
  *     order_by?: 'measure_desc'|'dimension_asc' }
  */
 import { execute, query } from "@/lib/db";
+import { getAnalyticsBranchIds } from "@/stores/active-branch";
 
 export interface SavedReport {
   id: string;
@@ -120,6 +121,40 @@ function measureSql(m: string): string {
   return map[m] ?? `0`;
 }
 
+function appendAnalyticsBranchScope(
+  clauses: string[],
+  params: unknown[],
+  column: string,
+): void {
+  const ids = getAnalyticsBranchIds();
+  if (ids.length === 0) {
+    clauses.push("1 = 0");
+    return;
+  }
+  const placeholders = ids.map((id) => {
+    params.push(id);
+    return `?${params.length}`;
+  });
+  clauses.push(`${column} IN (${placeholders.join(", ")})`);
+}
+
+function appendFinanceBranchScope(clauses: string[], params: unknown[]): void {
+  const ids = getAnalyticsBranchIds();
+  if (ids.length === 0) {
+    clauses.push("1 = 0");
+    return;
+  }
+  const placeholders = ids.map((id) => {
+    params.push(id);
+    return `?${params.length}`;
+  }).join(", ");
+  clauses.push(`(
+    (e.source_kind = 'sale' AND EXISTS (SELECT 1 FROM sales scoped_sale WHERE scoped_sale.id = e.source_id AND scoped_sale.branch_id IN (${placeholders})))
+    OR (e.source_kind = 'expense' AND EXISTS (SELECT 1 FROM expenses scoped_expense WHERE scoped_expense.id = e.source_id AND scoped_expense.branch_id IN (${placeholders})))
+    OR (e.source_kind IN ('purchase','goods_receipt') AND EXISTS (SELECT 1 FROM purchase_orders scoped_po WHERE scoped_po.id = e.source_id AND scoped_po.branch_id IN (${placeholders})))
+  )`);
+}
+
 async function runSalesReport(q: ReportQuery): Promise<ReportRow[]> {
   const dimensions = q.dimensions.length ? q.dimensions : ["day"];
   const measures = q.measures.length ? q.measures : ["total"];
@@ -129,11 +164,10 @@ async function runSalesReport(q: ReportQuery): Promise<ReportRow[]> {
 
   const clauses: string[] = ["s.status = 'completed'"];
   const params: unknown[] = [];
-  let i = 0;
-  if (q.filters.from) { clauses.push(`s.created_at >= ?${++i}`); params.push(q.filters.from); }
-  if (q.filters.to) { clauses.push(`s.created_at <= ?${++i}`); params.push(q.filters.to); }
-  if (q.filters.branch_id) { clauses.push(`s.branch_id = ?${++i}`); params.push(q.filters.branch_id); }
-  if (q.filters.staff_id) { clauses.push(`s.user_id = ?${++i}`); params.push(q.filters.staff_id); }
+  if (q.filters.from) { params.push(q.filters.from); clauses.push(`s.created_at >= ?${params.length}`); }
+  if (q.filters.to) { params.push(q.filters.to); clauses.push(`s.created_at <= ?${params.length}`); }
+  appendAnalyticsBranchScope(clauses, params, "s.branch_id");
+  if (q.filters.staff_id) { params.push(q.filters.staff_id); clauses.push(`s.user_id = ?${params.length}`); }
 
   const where = clauses.join(" AND ");
   const groupBy = dimensions.map((_, i) => `d_${i}`).join(", ");
@@ -154,9 +188,9 @@ async function runSalesReport(q: ReportQuery): Promise<ReportRow[]> {
 async function runPurchasesReport(q: ReportQuery): Promise<ReportRow[]> {
   const clauses: string[] = ["po.status IN ('received', 'partial')"];
   const params: unknown[] = [];
-  let i = 0;
-  if (q.filters.from) { clauses.push(`po.created_at >= ?${++i}`); params.push(q.filters.from); }
-  if (q.filters.to) { clauses.push(`po.created_at <= ?${++i}`); params.push(q.filters.to); }
+  if (q.filters.from) { params.push(q.filters.from); clauses.push(`po.created_at >= ?${params.length}`); }
+  if (q.filters.to) { params.push(q.filters.to); clauses.push(`po.created_at <= ?${params.length}`); }
+  appendAnalyticsBranchScope(clauses, params, "po.branch_id");
   const where = clauses.join(" AND ");
   return query<ReportRow>(
     `SELECT
@@ -173,6 +207,9 @@ async function runPurchasesReport(q: ReportQuery): Promise<ReportRow[]> {
 }
 
 async function runInventoryReport(q: ReportQuery): Promise<ReportRow[]> {
+  const clauses = ["p.deleted_at IS NULL"];
+  const params: unknown[] = [];
+  appendAnalyticsBranchScope(clauses, params, "b.branch_id");
   return query<ReportRow>(
     `SELECT
         p.id AS product_id,
@@ -182,10 +219,11 @@ async function runInventoryReport(q: ReportQuery): Promise<ReportRow[]> {
         COALESCE(SUM(b.quantity * b.buying_price), 0) AS value_at_cost
      FROM products p
      LEFT JOIN batches b ON b.product_id = p.id
-     WHERE p.deleted_at IS NULL
+     WHERE ${clauses.join(" AND ")}
      GROUP BY p.id
      ORDER BY value_at_cost DESC
      LIMIT ${q.limit ?? 500}`,
+    params,
   ).catch(() => []);
 }
 
@@ -195,6 +233,7 @@ async function runFinanceReport(q: ReportQuery): Promise<ReportRow[]> {
   let i = 0;
   if (q.filters.from) { clauses.push(`e.entry_date >= ?${++i}`); params.push(q.filters.from); }
   if (q.filters.to) { clauses.push(`e.entry_date <= ?${++i}`); params.push(q.filters.to); }
+  appendFinanceBranchScope(clauses, params);
   return query<ReportRow>(
     `SELECT
         c.code, c.name, c.type,

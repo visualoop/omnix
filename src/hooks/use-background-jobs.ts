@@ -23,6 +23,7 @@
  * Wired from src/App.tsx alongside the other hook-based automations.
  */
 import { useEffect } from "react";
+import { useActiveBranch } from "@/stores/active-branch";
 
 const ETIMS_RETRY_INTERVAL_MS = 2 * 60 * 1000;    // 2 min
 const DEPR_CHECK_INTERVAL_MS = 12 * 60 * 60 * 1000; // 12 h — twice a day
@@ -146,7 +147,12 @@ async function tryRetailNotifications(): Promise<void> {
 }
 
 export function useBackgroundJobs(): void {
+  const revision = useActiveBranch((state) => state.revision);
+  const scope = useActiveBranch((state) => state.scope);
+  const activeBranchId = useActiveBranch((state) => state.active?.id ?? null);
+
   useEffect(() => {
+    if (scope !== "branch" || !activeBranchId) return;
     let cancelled = false;
 
     // eTIMS retry — first attempt 30s after boot, then every 2min.
@@ -212,5 +218,5 @@ export function useBackgroundJobs(): void {
       clearTimeout(rnBoot);
       clearInterval(rnInterval);
     };
-  }, []);
+  }, [activeBranchId, revision, scope]);
 }

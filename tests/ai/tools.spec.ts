@@ -11,6 +11,8 @@ vi.mock('@/lib/db', () => ({
 }))
 
 // pos-helpers is dynamically imported by getTodaySales / getInventoryAlerts
+
+vi.mock('@/stores/active-branch', () => ({ getActiveBranchId: () => 'branch1', requireActiveBranchId: () => 'branch1' }))
 vi.mock('@/services/pos-helpers', () => ({
   getTodaySalesSummary: vi.fn(),
   getLowStockProducts: vi.fn(),
@@ -135,7 +137,7 @@ describe('getRecentSales tool', () => {
     const out = await tools().getRecentSales.execute!({ limit: 5 }, { toolCallId: 't', messages: [] })
     const sql = mockedQuery.mock.calls[0][0] as string
     expect(sql).toMatch(/ORDER BY datetime\(s\.created_at\) DESC/)
-    expect(mockedQuery.mock.calls[0][1]).toEqual([5])
+    expect(mockedQuery.mock.calls[0][1]).toEqual([5, 'branch1'])
     expect(out).toMatchObject({ count: 1 })
   })
 })

@@ -14,7 +14,8 @@
  */
 import { query, execute, transaction } from "@/lib/db";
 import { requirePermission } from "@/services/rbac";
-import { getActiveBranchId } from "@/stores/active-branch";
+import { requireActiveBranchId } from "@/stores/active-branch";
+import { requireBranchOwnedRecord } from "@/lib/branch-ownership";
 
 const uid = () => crypto.randomUUID();
 const nowIso = () => new Date().toISOString();
@@ -163,8 +164,8 @@ export async function listUnits(opts?: {
   search?: string;
   limit?: number;
 }): Promise<EquipmentUnit[]> {
-  const where: string[] = [];
-  const params: unknown[] = [];
+  const where: string[] = ["u.branch_id = ?1"];
+  const params: unknown[] = [requireActiveBranchId()];
   if (opts?.productId) { params.push(opts.productId); where.push(`u.product_id = ?${params.length}`); }
   if (opts?.status) { params.push(opts.status); where.push(`u.status = ?${params.length}`); }
   if (opts?.search) {
@@ -178,21 +179,21 @@ export async function listUnits(opts?: {
 }
 
 export async function getUnit(id: string): Promise<EquipmentUnit | null> {
-  const [row] = await query<EquipmentUnit>(`${SELECT_UNIT} WHERE u.id = ?1`, [id]);
+  const [row] = await query<EquipmentUnit>(`${SELECT_UNIT} WHERE u.id = ?1 AND u.branch_id = ?2`, [id, requireActiveBranchId()]);
   return row ?? null;
 }
 
 /** Warranty lookup + resale identification by exact serial. */
 export async function findUnitBySerial(serial: string): Promise<EquipmentUnit | null> {
-  const [row] = await query<EquipmentUnit>(`${SELECT_UNIT} WHERE u.serial_number = ?1`, [serial.trim()]);
+  const [row] = await query<EquipmentUnit>(`${SELECT_UNIT} WHERE u.serial_number = ?1 AND u.branch_id = ?2`, [serial.trim(), requireActiveBranchId()]);
   return row ?? null;
 }
 
 /** In-stock units available to sell/reserve for a product. */
 export async function availableUnits(productId: string): Promise<EquipmentUnit[]> {
   return query<EquipmentUnit>(
-    `${SELECT_UNIT} WHERE u.product_id = ?1 AND u.status = 'in_stock' ORDER BY u.acquired_at ASC`,
-    [productId],
+    `${SELECT_UNIT} WHERE u.product_id = ?1 AND u.branch_id = ?2 AND u.status = 'in_stock' ORDER BY u.acquired_at ASC`,
+    [productId, requireActiveBranchId()],
   );
 }
 
@@ -209,7 +210,8 @@ export async function listRentableUnits(search?: string): Promise<EquipmentUnit[
 
 export async function countByStatus(): Promise<Record<UnitStatus, number>> {
   const rows = await query<{ status: UnitStatus; n: number }>(
-    `SELECT status, COUNT(*) AS n FROM equipment_units GROUP BY status`,
+    `SELECT status, COUNT(*) AS n FROM equipment_units WHERE branch_id = ?1 GROUP BY status`,
+    [requireActiveBranchId()],
   );
   const out = { in_stock: 0, reserved: 0, sold: 0, rented: 0, in_service: 0, written_off: 0 } as Record<UnitStatus, number>;
   for (const r of rows) out[r.status] = Number(r.n);
@@ -268,7 +270,10 @@ export async function receiveUnits(
   );
   if (existing.length) throw new Error(`Serial already exists: ${existing.map((e) => e.serial_number).join(", ")}`);
 
-  const branch = opts?.branch_id ?? getActiveBranchId() ?? null;
+  const branch = requireActiveBranchId();
+  if (opts?.branch_id && opts.branch_id !== branch) {
+    throw new Error("Switch to the receiving branch before receiving equipment");
+  }
   const ids: string[] = [];
   for (const u of units) {
     const id = uid();
@@ -303,6 +308,7 @@ export async function releaseUnit(unitId: string): Promise<void> {
 }
 
 async function setStatus(unitId: string, to: UnitStatus): Promise<void> {
+  await requireBranchOwnedRecord("equipment_units", unitId, "Unit");
   const [row] = await query<{ status: UnitStatus }>(`SELECT status FROM equipment_units WHERE id = ?1`, [unitId]);
   if (!row) throw new Error("Unit not found.");
   if (!canTransition(row.status, to)) {
@@ -326,6 +332,7 @@ export async function markUnitSold(input: {
   warrantyMonths?: number | null;    // overrides the product default
 }): Promise<{ warranty_start: string | null; warranty_expiry: string | null }> {
   await requirePermission("hardware.equipment.manage", { entityType: "equipment_unit", entityId: input.unitId });
+  await requireBranchOwnedRecord("equipment_units", input.unitId, "Unit");
 
   const [row] = await query<{ status: UnitStatus; product_id: string }>(
     `SELECT status, product_id FROM equipment_units WHERE id = ?1`,
@@ -377,6 +384,7 @@ export async function finalizeEquipmentSale(
   const when = saleDate ?? nowIso();
   for (const unitId of unitIds) {
     try {
+      await requireBranchOwnedRecord("equipment_units", unitId, "Unit");
       const [row] = await query<{ status: UnitStatus; product_id: string }>(
         `SELECT status, product_id FROM equipment_units WHERE id = ?1`,
         [unitId],
@@ -403,6 +411,7 @@ export async function finalizeEquipmentSale(
 /** Record a meter reading (hours/km) on a unit. */
 export async function updateMeter(unitId: string, value: number, unit?: MeterUnit): Promise<void> {
   await requirePermission("hardware.equipment.manage", { entityType: "equipment_unit", entityId: unitId });
+  await requireBranchOwnedRecord("equipment_units", unitId, "Unit");
   await execute(
     `UPDATE equipment_units SET meter_value = ?2, meter_unit = COALESCE(?3, meter_unit), updated_at = ?4 WHERE id = ?1`,
     [unitId, value, unit ?? null, nowIso()],
@@ -412,6 +421,7 @@ export async function updateMeter(unitId: string, value: number, unit?: MeterUni
 /** Write off a unit (terminal). */
 export async function writeOffUnit(unitId: string, reason?: string): Promise<void> {
   await requirePermission("hardware.equipment.manage", { entityType: "equipment_unit", entityId: unitId });
+  await requireBranchOwnedRecord("equipment_units", unitId, "Unit");
   await execute(
     `UPDATE equipment_units SET status = 'written_off', notes = COALESCE(?2, notes), updated_at = ?3 WHERE id = ?1`,
     [unitId, reason ?? null, nowIso()],
@@ -498,7 +508,10 @@ export async function receiveEquipmentUnits(
   );
   if (existing.length) throw new Error(`Serial already exists: ${existing.map((e) => e.serial_number).join(", ")}`);
 
-  const branch = meta.branchId ?? getActiveBranchId() ?? null;
+  const branch = requireActiveBranchId();
+  if (meta.branchId && meta.branchId !== branch) {
+    throw new Error("Switch to the receiving branch before receiving equipment");
+  }
   const ref = meta.reference || "Equipment receive";
   const note = `Equipment receive${meta.supplier ? ` · ${meta.supplier}` : ""}${meta.reference ? ` · ${meta.reference}` : ""}`;
   const ids: string[] = [];

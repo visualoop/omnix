@@ -14,6 +14,21 @@ import type { ListPage, ListQuery } from "@/lib/list-types";
 import type { Customer, StockTake } from "@/services/erp";import type { DhaEprescription } from "@/services/dha-eprescriptions";
 import type { DebitNote } from "@/services/debit-notes";
 import type { FixedAsset } from "@/services/fixed-assets";
+import { getActiveBranchId } from "@/stores/active-branch";
+
+function addActiveBranch(
+  where: string[],
+  params: unknown[],
+  column: string,
+): void {
+  const branchId = getActiveBranchId();
+  if (!branchId) {
+    where.push("1 = 0");
+    return;
+  }
+  params.push(branchId);
+  where.push(`${column} = ?${params.length}`);
+}
 
 // ─── Customers ─────────────────────────────────────────────────
 export async function pageCustomers(q: ListQuery): Promise<ListPage<Customer>> {
@@ -59,6 +74,9 @@ export async function pageDebitNotes(q: ListQuery): Promise<ListPage<DebitNote>>
 
 // ─── Stock takes ───────────────────────────────────────────────
 export async function pageStockTakes(q: ListQuery): Promise<ListPage<StockTake>> {
+  const extraWhere: string[] = [];
+  const extraParams: unknown[] = [];
+  addActiveBranch(extraWhere, extraParams, "st.branch_id");
   return pagedQuery<StockTake>(
     {
       baseSql: `SELECT st.*, u.full_name as user_name,
@@ -67,8 +85,8 @@ export async function pageStockTakes(q: ListQuery): Promise<ListPage<StockTake>>
       countSql: `SELECT COUNT(*) AS n FROM stock_takes st`,
       searchColumns: ["st.reference", "st.notes"],
       orderBy: "st.started_at DESC",
-      extraWhere: [],
-      extraParams: [],
+      extraWhere,
+      extraParams,
     },
     q,
   );
@@ -76,13 +94,16 @@ export async function pageStockTakes(q: ListQuery): Promise<ListPage<StockTake>>
 
 // ─── Fixed assets ──────────────────────────────────────────────
 export async function pageFixedAssets(q: ListQuery): Promise<ListPage<FixedAsset>> {
+  const extraWhere: string[] = [];
+  const extraParams: unknown[] = [];
+  addActiveBranch(extraWhere, extraParams, "branch_id");
   return pagedQuery<FixedAsset>(
     {
       table: "fixed_assets",
       searchColumns: ["asset_code", "name", "category"],
       orderBy: "acquired_date DESC",
-      extraWhere: [],
-      extraParams: [],
+      extraWhere,
+      extraParams,
     },
     q,
   );
@@ -114,10 +135,7 @@ export async function pageInvoices(
     extraWhere.push(`type = ?${++i}`);
     extraParams.push(q.type);
   }
-  if (q.branchId) {
-    extraWhere.push(`branch_id = ?${++i}`);
-    extraParams.push(q.branchId);
-  }
+  addActiveBranch(extraWhere, extraParams, "branch_id");
   return pagedQuery<InvoiceRow>(
     {
       table: "invoices",
@@ -177,7 +195,7 @@ export async function pageSales(q: ListQuery & { from?: string; to?: string; sta
   if (q.from) { extraWhere.push(`s.created_at >= ?${++i}`); extraParams.push(q.from); }
   if (q.to) { extraWhere.push(`s.created_at <= ?${++i}`); extraParams.push(q.to); }
   if (q.status) { extraWhere.push(`s.status = ?${++i}`); extraParams.push(q.status); }
-  if (q.branch_id) { extraWhere.push(`s.branch_id = ?${++i}`); extraParams.push(q.branch_id); }
+  addActiveBranch(extraWhere, extraParams, "s.branch_id");
   if (q.exclude_held) { extraWhere.push(`s.status != 'held'`); }
   return pagedQuery<SaleRow>(
     {
@@ -247,6 +265,7 @@ export async function pagePurchaseOrders(q: ListQuery & { status?: string; suppl
   let i = 0;
   if (q.status) { extraWhere.push(`po.status = ?${++i}`); extraParams.push(q.status); }
   if (q.supplier_id) { extraWhere.push(`po.supplier_id = ?${++i}`); extraParams.push(q.supplier_id); }
+  addActiveBranch(extraWhere, extraParams, "po.branch_id");
   return pagedQuery<PurchaseOrderRow>(
     {
       baseSql:
@@ -281,6 +300,7 @@ export async function pageExpenses(q: ListQuery & { category_id?: string; from?:
   if (q.category_id) { extraWhere.push(`category_id = ?${++i}`); extraParams.push(q.category_id); }
   if (q.from) { extraWhere.push(`expense_date >= ?${++i}`); extraParams.push(q.from); }
   if (q.to) { extraWhere.push(`expense_date <= ?${++i}`); extraParams.push(q.to); }
+  addActiveBranch(extraWhere, extraParams, "branch_id");
   return pagedQuery<ExpenseRow>(
     {
       table: "expenses",
@@ -310,6 +330,7 @@ export async function pageAttendance(q: ListQuery & { employee_id?: string; from
   if (q.employee_id) { extraWhere.push(`a.employee_id = ?${++i}`); extraParams.push(q.employee_id); }
   if (q.from) { extraWhere.push(`a.clock_in >= ?${++i}`); extraParams.push(q.from); }
   if (q.to) { extraWhere.push(`a.clock_in <= ?${++i}`); extraParams.push(q.to); }
+  addActiveBranch(extraWhere, extraParams, "a.branch_id");
   return pagedQuery<AttendanceRow>(
     {
       baseSql:
@@ -344,6 +365,7 @@ export async function pagePettyCash(q: ListQuery & { direction?: "in" | "out" })
     extraWhere.push(`direction = ?${extraParams.length + 1}`);
     extraParams.push(q.direction);
   }
+  addActiveBranch(extraWhere, extraParams, "p.branch_id");
   return pagedQuery<PettyCashRow>(
     {
       baseSql:
@@ -477,6 +499,7 @@ export async function pageLaybys(q: ListQuery & { status?: string }): Promise<Li
     extraWhere.push(`l.status = ?${extraParams.length + 1}`);
     extraParams.push(q.status);
   }
+  addActiveBranch(extraWhere, extraParams, "l.branch_id");
   return pagedQuery<LaybyRow>(
     {
       baseSql:
@@ -511,6 +534,7 @@ export async function pageSpecialOrders(q: ListQuery & { status?: string }): Pro
     extraWhere.push(`o.status = ?${extraParams.length + 1}`);
     extraParams.push(q.status);
   }
+  addActiveBranch(extraWhere, extraParams, "o.branch_id");
   return pagedQuery<SpecialOrderRow>(
     {
       baseSql:
@@ -543,6 +567,7 @@ export async function pageShrinkage(q: ListQuery & { from?: string; to?: string 
   let i = 0;
   if (q.from) { extraWhere.push(`s.recorded_at >= ?${++i}`); extraParams.push(q.from); }
   if (q.to) { extraWhere.push(`s.recorded_at <= ?${++i}`); extraParams.push(q.to); }
+  addActiveBranch(extraWhere, extraParams, "s.branch_id");
   return pagedQuery<ShrinkageRow>(
     {
       baseSql:
@@ -574,6 +599,13 @@ export async function pageStockTransfers(q: ListQuery & { status?: string }): Pr
   if (q.status) {
     extraWhere.push(`t.status = ?${extraParams.length + 1}`);
     extraParams.push(q.status);
+  }
+  const branchId = getActiveBranchId();
+  if (branchId) {
+    extraParams.push(branchId, branchId);
+    extraWhere.push(`(t.from_branch_id = ?${extraParams.length - 1} OR t.to_branch_id = ?${extraParams.length})`);
+  } else {
+    extraWhere.push("1 = 0");
   }
   return pagedQuery<StockTransferRow>(
     {
@@ -614,6 +646,7 @@ export async function pageWastage(q: ListQuery & { from?: string; to?: string; r
   if (q.from) { extraWhere.push(`w.recorded_at >= ?${++i}`); extraParams.push(q.from); }
   if (q.to) { extraWhere.push(`w.recorded_at <= ?${++i}`); extraParams.push(q.to); }
   if (q.reason) { extraWhere.push(`w.reason = ?${++i}`); extraParams.push(q.reason); }
+  addActiveBranch(extraWhere, extraParams, "w.branch_id");
   return pagedQuery<WastageRow>(
     {
       baseSql:
@@ -647,6 +680,7 @@ export async function pageReturns(q: ListQuery & { from?: string; to?: string })
   let i = 0;
   if (q.from) { extraWhere.push(`r.created_at >= ?${++i}`); extraParams.push(q.from); }
   if (q.to) { extraWhere.push(`r.created_at <= ?${++i}`); extraParams.push(q.to); }
+  addActiveBranch(extraWhere, extraParams, "r.branch_id");
   return pagedQuery<SaleReturnRow>(
     {
       baseSql:

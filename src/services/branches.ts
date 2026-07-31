@@ -29,8 +29,6 @@ export interface BranchWithStats extends Branch {
   sales_today_count: number;
 }
 
-export const DEFAULT_BRANCH_ID = "default-branch";
-
 export async function listBranches(includeInactive = false): Promise<BranchWithStats[]> {
   const where = includeInactive ? "1=1" : "b.active = 1";
   return query<BranchWithStats>(
@@ -61,11 +59,11 @@ export async function getBranch(id: string): Promise<Branch | null> {
   return rows[0] || null;
 }
 
-export async function getDefaultBranchId(): Promise<string> {
+export async function getDefaultBranchId(): Promise<string | null> {
   const rows = await query<{ id: string }>(
     `SELECT id FROM branches WHERE is_default = 1 LIMIT 1`,
   );
-  return rows[0]?.id || DEFAULT_BRANCH_ID;
+  return rows[0]?.id ?? null;
 }
 
 export async function upsertBranch(input: Partial<Branch> & { code: string; name: string }): Promise<string> {
@@ -152,6 +150,36 @@ export async function listUserBranches(userId: string): Promise<Array<{ id: stri
      JOIN branches b ON b.id = ub.branch_id
      WHERE ub.user_id = ?1
      ORDER BY ub.is_primary DESC, b.name`,
+    [userId],
+  );
+}
+
+/**
+ * Read-only branch performance visible to a manager. Owners may use
+ * listBranches(); non-owner manager views must use this assignment-scoped
+ * query so an unassigned branch cannot leak through aggregate cards.
+ */
+export async function listAssignedBranchPerformance(
+  userId: string,
+  includeInactive = false,
+): Promise<BranchWithStats[]> {
+  const activeClause = includeInactive ? "1=1" : "b.active = 1";
+  return query<BranchWithStats>(
+    `SELECT
+       b.*,
+       u.full_name AS manager_name,
+       (SELECT COUNT(*) FROM user_branches members WHERE members.branch_id = b.id) AS user_count,
+       COALESCE((SELECT SUM(total) FROM sales
+         WHERE branch_id = b.id AND date(created_at) = date('now') AND status = 'completed'), 0)
+       - COALESCE((SELECT SUM(refund_amount) FROM sale_returns
+         WHERE branch_id = b.id AND date(created_at) = date('now')), 0) AS sales_today,
+       COALESCE((SELECT COUNT(*) FROM sales
+         WHERE branch_id = b.id AND date(created_at) = date('now') AND status = 'completed'), 0) AS sales_today_count
+     FROM user_branches access
+     JOIN branches b ON b.id = access.branch_id
+     LEFT JOIN users u ON u.id = b.manager_id
+     WHERE access.user_id = ?1 AND ${activeClause}
+     ORDER BY b.is_default DESC, b.name`,
     [userId],
   );
 }

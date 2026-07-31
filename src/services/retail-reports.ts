@@ -2,6 +2,7 @@
  * Retail-flavored dashboard reports.
  */
 import { query } from "@/lib/db";
+import { getActiveBranchId } from "@/stores/active-branch";
 
 export interface BrandPerformance {
   brand_id: string;
@@ -16,11 +17,12 @@ export async function getBrandPerformance(opts?: {
   endDate?: string;
   branchId?: string;
 }): Promise<BrandPerformance[]> {
-  const conditions: string[] = ["s.status != 'voided'"];
-  const params: any[] = [];
+  const branchId = getActiveBranchId();
+  if (!branchId) return [];
+  const conditions: string[] = ["s.status != 'voided'", "s.branch_id = ?1"];
+  const params: unknown[] = [branchId];
   if (opts?.startDate) { conditions.push(`s.created_at >= ?${params.length + 1}`); params.push(opts.startDate); }
   if (opts?.endDate) { conditions.push(`s.created_at <= ?${params.length + 1}`); params.push(opts.endDate + " 23:59:59"); }
-  if (opts?.branchId) { conditions.push(`s.branch_id = ?${params.length + 1}`); params.push(opts.branchId); }
   // Sale filters live in the JOIN condition so brands with no qualifying
   // sales still evaluate cleanly; brand filter is the outer WHERE.
   const joinCond = conditions.length ? `AND ${conditions.join(" AND ")}` : "";
@@ -56,11 +58,12 @@ export async function getCategoryMix(opts?: {
   endDate?: string;
   branchId?: string;
 }): Promise<CategoryMix[]> {
-  const conditions: string[] = ["s.status != 'voided'"];
-  const params: any[] = [];
+  const branchId = getActiveBranchId();
+  if (!branchId) return [];
+  const conditions: string[] = ["s.status != 'voided'", "s.branch_id = ?1"];
+  const params: unknown[] = [branchId];
   if (opts?.startDate) { conditions.push(`s.created_at >= ?${params.length + 1}`); params.push(opts.startDate); }
   if (opts?.endDate) { conditions.push(`s.created_at <= ?${params.length + 1}`); params.push(opts.endDate + " 23:59:59"); }
-  if (opts?.branchId) { conditions.push(`s.branch_id = ?${params.length + 1}`); params.push(opts.branchId); }
   const where = `WHERE ${conditions.join(" AND ")}`;
 
   const rows = await query<{ category_id: string | null; category_name: string; units_sold: number; revenue: number }>(
@@ -102,11 +105,14 @@ export async function getRetailKpis(opts?: {
   endDate?: string;
   branchId?: string;
 }): Promise<RetailKpis> {
-  const conditions: string[] = [];
-  const params: any[] = [];
+  const branchId = getActiveBranchId();
+  if (!branchId) {
+    return { total_revenue: 0, total_orders: 0, avg_order_value: 0, total_units_sold: 0, total_shrinkage_cost: 0, active_laybys: 0, active_layby_balance: 0, pending_special_orders: 0 };
+  }
+  const conditions: string[] = ["branch_id = ?1"];
+  const params: unknown[] = [branchId];
   if (opts?.startDate) { conditions.push(`created_at >= ?${params.length + 1}`); params.push(opts.startDate); }
   if (opts?.endDate) { conditions.push(`created_at <= ?${params.length + 1}`); params.push(opts.endDate + " 23:59:59"); }
-  if (opts?.branchId) { conditions.push(`branch_id = ?${params.length + 1}`); params.push(opts.branchId); }
   const salesWhere = conditions.length ? `AND ${conditions.join(" AND ")}` : "";
 
   const [sales] = await query<{ total_revenue: number; total_orders: number; total_units: number }>(
@@ -117,19 +123,23 @@ export async function getRetailKpis(opts?: {
     params,
   );
 
+  const shrinkConditions = ["branch_id = ?1"];
+  const shrinkParams: unknown[] = [branchId];
+  if (opts?.startDate) { shrinkParams.push(opts.startDate); shrinkConditions.push(`incident_date >= ?${shrinkParams.length}`); }
+  if (opts?.endDate) { shrinkParams.push(opts.endDate); shrinkConditions.push(`incident_date <= ?${shrinkParams.length}`); }
   const [shrinkage] = await query<{ cost: number }>(
-    `SELECT COALESCE(SUM(cost_value), 0) AS cost FROM shrinkage WHERE 1=1
-       ${opts?.startDate ? "AND incident_date >= ?1" : ""}
-       ${opts?.endDate ? `AND incident_date <= ?${opts?.startDate ? 2 : 1}` : ""}`,
-    [...(opts?.startDate ? [opts.startDate] : []), ...(opts?.endDate ? [opts.endDate] : [])],
+    `SELECT COALESCE(SUM(cost_value), 0) AS cost FROM shrinkage WHERE ${shrinkConditions.join(" AND ")}`,
+    shrinkParams,
   );
 
   const [laybys] = await query<{ count: number; balance: number }>(
-    `SELECT COUNT(*) AS count, COALESCE(SUM(balance_due), 0) AS balance FROM laybys WHERE status = 'active'`,
+    `SELECT COUNT(*) AS count, COALESCE(SUM(balance_due), 0) AS balance FROM laybys WHERE status = 'active' AND branch_id = ?1`,
+    [branchId],
   );
 
   const [special] = await query<{ count: number }>(
-    `SELECT COUNT(*) AS count FROM special_orders WHERE status IN ('pending', 'ordered')`,
+    `SELECT COUNT(*) AS count FROM special_orders WHERE status IN ('pending', 'ordered') AND branch_id = ?1`,
+    [branchId],
   );
 
   return {

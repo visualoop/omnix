@@ -7,6 +7,7 @@
  * All optional — call sites gracefully no-op when AI settings are disabled.
  */
 import { query } from "@/lib/db";
+import { requireActiveBranchId } from "@/stores/active-branch";
 
 // ─── Forecasting (Task 64) ─────────────────────────────
 export interface ForecastPoint {
@@ -27,10 +28,11 @@ export async function forecastSales(daysAhead = 14): Promise<ForecastPoint[]> {
             COALESCE(SUM(total), 0) AS total,
             strftime('%w', created_at) AS dow
      FROM sales
-     WHERE status = 'completed'
+     WHERE status = 'completed' AND branch_id = ?1
        AND created_at >= datetime('now', '-90 days')
      GROUP BY date(created_at)
      ORDER BY day ASC`,
+    [requireActiveBranchId()],
   ).catch(() => []);
 
   if (rows.length < 14) return [];  // need at least 2 weeks of history

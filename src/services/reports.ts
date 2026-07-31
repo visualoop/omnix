@@ -35,6 +35,9 @@ export interface SalesByPaymentMethod {
 export async function getDashboardKPIs(): Promise<DashboardKPIs> {
   const today = new Date().toISOString().slice(0, 10);
   const branchId = getActiveBranchId();
+  if (!branchId) {
+    return { today_sales_count: 0, today_sales_total: 0, today_profit: 0, low_stock_count: 0, expiring_count: 0, total_products: 0, total_customers: 0, cash_position: 0 };
+  }
 
   const todaySales = await query<{ count: number; total: number }>(
     `SELECT
@@ -117,6 +120,8 @@ export async function getDashboardKPIs(): Promise<DashboardKPIs> {
 }
 
 export async function getSalesByDay(days: number = 7): Promise<SalesByDay[]> {
+  const branchId = getActiveBranchId();
+  if (!branchId) return [];
   return query<SalesByDay>(
     `SELECT date(s.created_at) as date,
             COALESCE(SUM(s.total), 0) -
@@ -129,17 +134,21 @@ export async function getSalesByDay(days: number = 7): Promise<SalesByDay[]> {
        AND julianday('now') - julianday(s.created_at) < ?1
      GROUP BY date(s.created_at)
      ORDER BY date ASC`,
-    [days, getActiveBranchId()]
+    [days, branchId]
   );
 }
 
 export async function getTopProducts(days: number = 30, limit: number = 10): Promise<TopProduct[]> {
+  const branchId = getActiveBranchId();
+  if (!branchId) return [];
   return query<TopProduct>(
     `SELECT si.product_id, si.product_name,
             COALESCE(SUM(si.quantity), 0) -
               COALESCE((SELECT SUM(sri.quantity) FROM sale_return_items sri
                         JOIN sale_returns sr ON sr.id = sri.return_id
                         WHERE sri.product_id = si.product_id
+                          AND sr.branch_id = ?3
+                          AND sr.branch_id = ?3
                           AND sr.return_date >= date('now', ?4 || ' days')),
                       0) as qty_sold,
             COALESCE(SUM(si.total), 0) -
@@ -154,11 +163,13 @@ export async function getTopProducts(days: number = 30, limit: number = 10): Pro
      GROUP BY si.product_id, si.product_name
      HAVING qty_sold > 0
      ORDER BY total_revenue DESC LIMIT ?2`,
-    [days, limit, getActiveBranchId(), -days],
+    [days, limit, branchId, -days],
   );
 }
 
 export async function getSalesByPaymentMethod(days: number = 30): Promise<SalesByPaymentMethod[]> {
+  const branchId = getActiveBranchId();
+  if (!branchId) return [];
   return query<SalesByPaymentMethod>(
     `SELECT p.method_name, COUNT(DISTINCT s.id) as count, SUM(p.amount) as total
      FROM payments p JOIN sales s ON s.id = p.sale_id
@@ -166,11 +177,13 @@ export async function getSalesByPaymentMethod(days: number = 30): Promise<SalesB
        AND julianday('now') - julianday(s.created_at) < ?1
        AND s.id NOT IN (SELECT sale_id FROM sale_returns WHERE date(return_date) >= date('now', ?3 || ' days'))
      GROUP BY p.method_name ORDER BY total DESC`,
-    [days, getActiveBranchId(), -days],
+    [days, branchId, -days],
   );
 }
 
 export async function getStockValuation(): Promise<{ at_cost: number; at_retail: number; total_items: number }> {
+  const branchId = getActiveBranchId();
+  if (!branchId) return { at_cost: 0, at_retail: 0, total_items: 0 };
   const rows = await query<{ at_cost: number; at_retail: number; total_items: number }>(
     `SELECT 
        COALESCE(SUM(b.quantity * b.buying_price), 0) as at_cost,
@@ -179,7 +192,8 @@ export async function getStockValuation(): Promise<{ at_cost: number; at_retail:
      FROM batches b
      JOIN products p ON p.id = b.product_id
      LEFT JOIN product_prices pp ON pp.product_id = p.id AND pp.price_list_id = 'default'
-     WHERE b.quantity > 0 AND p.active = 1`
+     WHERE b.quantity > 0 AND b.branch_id = ?1 AND p.active = 1`,
+    [branchId],
   );
   return rows[0] || { at_cost: 0, at_retail: 0, total_items: 0 };
 }
@@ -187,29 +201,35 @@ export async function getStockValuation(): Promise<{ at_cost: number; at_retail:
 export async function getReorderList(): Promise<Array<{
   id: string; name: string; current_stock: number; reorder_level: number; deficit: number;
 }>> {
+  const branchId = getActiveBranchId();
+  if (!branchId) return [];
   return query(
     `SELECT p.id, p.name, 
-            COALESCE((SELECT SUM(b.quantity) FROM batches b WHERE b.product_id = p.id), 0) as current_stock,
+            COALESCE((SELECT SUM(b.quantity) FROM batches b WHERE b.product_id = p.id AND b.branch_id = ?1), 0) as current_stock,
             p.reorder_level,
-            p.reorder_level - COALESCE((SELECT SUM(b.quantity) FROM batches b WHERE b.product_id = p.id), 0) as deficit
+            p.reorder_level - COALESCE((SELECT SUM(b.quantity) FROM batches b WHERE b.product_id = p.id AND b.branch_id = ?1), 0) as deficit
      FROM products p
      WHERE p.active = 1
-       AND COALESCE((SELECT SUM(b.quantity) FROM batches b WHERE b.product_id = p.id), 0) <= p.reorder_level
-     ORDER BY deficit DESC`
+       AND COALESCE((SELECT SUM(b.quantity) FROM batches b WHERE b.product_id = p.id AND b.branch_id = ?1), 0) <= p.reorder_level
+     ORDER BY deficit DESC`,
+    [branchId],
   );
 }
 
 export async function getDeadStock(_daysSinceLastSale: number = 60): Promise<Array<{
   id: string; name: string; current_stock: number; last_sale: string | null;
 }>> {
+  const branchId = getActiveBranchId();
+  if (!branchId) return [];
   return query(
     `SELECT p.id, p.name,
-            COALESCE((SELECT SUM(b.quantity) FROM batches b WHERE b.product_id = p.id), 0) as current_stock,
-            (SELECT MAX(s.created_at) FROM sale_items si JOIN sales s ON s.id = si.sale_id WHERE si.product_id = p.id) as last_sale
+            COALESCE((SELECT SUM(b.quantity) FROM batches b WHERE b.product_id = p.id AND b.branch_id = ?1), 0) as current_stock,
+            (SELECT MAX(s.created_at) FROM sale_items si JOIN sales s ON s.id = si.sale_id WHERE si.product_id = p.id AND s.branch_id = ?1) as last_sale
      FROM products p
      WHERE p.active = 1
-       AND COALESCE((SELECT SUM(b.quantity) FROM batches b WHERE b.product_id = p.id), 0) > 0
-     ORDER BY last_sale ASC LIMIT 50`
+       AND COALESCE((SELECT SUM(b.quantity) FROM batches b WHERE b.product_id = p.id AND b.branch_id = ?1), 0) > 0
+     ORDER BY last_sale ASC LIMIT 50`,
+    [branchId],
   );
 }
 
@@ -221,16 +241,19 @@ export interface StockMovementByDay {
 }
 
 export async function getStockMovementsByDay(days: number = 30): Promise<StockMovementByDay[]> {
+  const branchId = getActiveBranchId();
+  if (!branchId) return [];
   return query<StockMovementByDay>(
-    `SELECT date(created_at) as date,
-       COALESCE(SUM(CASE WHEN type = 'purchase' THEN quantity ELSE 0 END), 0) as purchases,
-       COALESCE(SUM(CASE WHEN type = 'sale' THEN ABS(quantity) ELSE 0 END), 0) as sales,
-       COALESCE(SUM(CASE WHEN type = 'adjustment' THEN ABS(quantity) ELSE 0 END), 0) as adjustments
-     FROM stock_movements
-     WHERE julianday('now') - julianday(created_at) < ?1
-     GROUP BY date(created_at)
+    `SELECT date(sm.created_at) as date,
+       COALESCE(SUM(CASE WHEN sm.type = 'purchase' THEN sm.quantity ELSE 0 END), 0) as purchases,
+       COALESCE(SUM(CASE WHEN sm.type = 'sale' THEN ABS(sm.quantity) ELSE 0 END), 0) as sales,
+       COALESCE(SUM(CASE WHEN sm.type = 'adjustment' THEN ABS(sm.quantity) ELSE 0 END), 0) as adjustments
+     FROM stock_movements sm
+     LEFT JOIN batches b ON b.id = sm.batch_id
+     WHERE julianday('now') - julianday(sm.created_at) < ?1 AND b.branch_id = ?2
+     GROUP BY date(sm.created_at)
      ORDER BY date ASC`,
-    [days]
+    [days, branchId]
   );
 }
 
@@ -243,18 +266,23 @@ export async function getSalesComparison(
   current: { revenue: number; transactions: number; profit: number };
   previous: { revenue: number; transactions: number; profit: number };
 }> {
+  const branchId = getActiveBranchId();
+  if (!branchId) {
+    const empty = { revenue: 0, transactions: 0, profit: 0 };
+    return { current: empty, previous: empty };
+  }
   const fetchPeriod = async (start: string, end: string) => {
     const sales = await query<{ revenue: number; transactions: number }>(
       `SELECT COALESCE(SUM(total), 0) as revenue, COUNT(*) as transactions
-       FROM sales WHERE status = 'completed' AND date(created_at) BETWEEN ?1 AND ?2`,
-      [start, end]
+       FROM sales WHERE status = 'completed' AND date(created_at) BETWEEN ?1 AND ?2 AND branch_id = ?3`,
+      [start, end, branchId]
     );
     const profit = await query<{ profit: number }>(
       `SELECT COALESCE(SUM(si.unit_price * si.quantity - ${cogsExpr("si")} * si.quantity), 0) as profit
        FROM sale_items si
        JOIN sales s ON s.id = si.sale_id
-       WHERE s.status = 'completed' AND date(s.created_at) BETWEEN ?1 AND ?2`,
-      [start, end]
+       WHERE s.status = 'completed' AND date(s.created_at) BETWEEN ?1 AND ?2 AND s.branch_id = ?3`,
+      [start, end, branchId]
     );
     return {
       revenue: sales[0]?.revenue || 0,
@@ -299,14 +327,17 @@ const SOURCE_LABELS: Record<string, string> = {
 };
 
 export async function getSalesBySource(days: number = 30): Promise<SalesBySource[]> {
+  const branchId = getActiveBranchId();
+  if (!branchId) return [];
   const rows = await query<{ source_type: string | null; revenue: number; transactions: number }>(
     `SELECT source_type, COALESCE(SUM(total), 0) as revenue, COUNT(*) as transactions
        FROM sales
       WHERE julianday('now') - julianday(created_at) < ?1
+        AND branch_id = ?2
         AND payment_status = 'paid'
       GROUP BY source_type
       ORDER BY revenue DESC`,
-    [days],
+    [days, branchId],
   );
   return rows.map((r) => ({
     source_type: r.source_type ?? "walk_in",

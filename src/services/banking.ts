@@ -9,7 +9,7 @@
  * For Kenya: M-Pesa tills/paybills are first-class (account_type='mpesa_till'/'mpesa_paybill').
  */
 import { query, execute } from "@/lib/db";
-import { getActiveBranchId } from "@/stores/active-branch";
+import { getActiveBranchId, requireActiveBranchId } from "@/stores/active-branch";
 
 export type BankAccountType = "bank" | "mpesa_till" | "mpesa_paybill" | "cash_box" | "credit_card" | "mobile_money";
 export type BankTxType = "deposit" | "withdrawal" | "transfer_in" | "transfer_out" | "fee" | "interest" | "adjustment";
@@ -66,26 +66,31 @@ export interface BankTransactionWithAccount extends BankTransaction {
 
 // ─── Account CRUD ──────────────────────────────────────────────────────
 export async function listBankAccounts(includeInactive = false): Promise<BankAccount[]> {
-  const where = includeInactive ? "" : "WHERE is_active = 1";
-  return query<BankAccount>(`SELECT * FROM bank_accounts ${where} ORDER BY is_default DESC, name`);
+  const activeWhere = includeInactive ? "1=1" : "is_active = 1";
+  const branchId = getActiveBranchId();
+  if (!branchId) return [];
+  return query<BankAccount>(`SELECT * FROM bank_accounts WHERE ${activeWhere} AND (branch_id = ?1 OR branch_id IS NULL) ORDER BY is_default DESC, name`, [branchId]);
 }
 
 export async function getBankAccount(id: string): Promise<BankAccount | null> {
-  const rows = await query<BankAccount>(`SELECT * FROM bank_accounts WHERE id = ?1`, [id]);
+  const branchId = getActiveBranchId();
+  if (!branchId) return null;
+  const rows = await query<BankAccount>(`SELECT * FROM bank_accounts WHERE id = ?1 AND (branch_id = ?2 OR branch_id IS NULL)`, [id, branchId]);
   return rows[0] || null;
 }
 
 export async function upsertBankAccount(input: Partial<BankAccount> & { name: string; account_type: BankAccountType }): Promise<string> {
+  const branchId = requireActiveBranchId();
   const id = input.id || crypto.randomUUID();
   if (input.id) {
     await execute(
       `UPDATE bank_accounts SET name=?2, account_type=?3, bank_name=?4, account_number=?5,
         branch=?6, currency=?7, opening_balance=?8, opening_date=?9, is_default=?10, is_active=?11, notes=?12
-       WHERE id=?1`,
+       WHERE id=?1 AND (branch_id = ?13 OR branch_id IS NULL)`,
       [id, input.name, input.account_type, input.bank_name || null, input.account_number || null,
         input.branch || null, input.currency || "KES", input.opening_balance || 0,
         input.opening_date || new Date().toISOString().slice(0, 10),
-        input.is_default ?? 0, input.is_active ?? 1, input.notes || null],
+        input.is_default ?? 0, input.is_active ?? 1, input.notes || null, branchId],
     );
   } else {
     await execute(
@@ -97,7 +102,7 @@ export async function upsertBankAccount(input: Partial<BankAccount> & { name: st
         input.opening_balance || 0, input.opening_date || new Date().toISOString().slice(0, 10),
         input.opening_balance || 0,
         input.is_default ?? 0, input.is_active ?? 1, input.notes || null,
-        input.branch_id || getActiveBranchId()],
+        input.branch_id || branchId],
     );
   }
   // Ensure exactly one default
@@ -108,18 +113,21 @@ export async function upsertBankAccount(input: Partial<BankAccount> & { name: st
 }
 
 export async function setDefaultAccount(id: string): Promise<void> {
-  await execute(`UPDATE bank_accounts SET is_default = 0`);
-  await execute(`UPDATE bank_accounts SET is_default = 1 WHERE id = ?1`, [id]);
+  const branchId = requireActiveBranchId();
+  await execute(`UPDATE bank_accounts SET is_default = 0 WHERE branch_id = ?1 OR branch_id IS NULL`, [branchId]);
+  await execute(`UPDATE bank_accounts SET is_default = 1 WHERE id = ?1 AND (branch_id = ?2 OR branch_id IS NULL)`, [id, branchId]);
 }
 
 export async function deactivateAccount(id: string): Promise<void> {
-  await execute(`UPDATE bank_accounts SET is_active = 0 WHERE id = ?1`, [id]);
+  const branchId = requireActiveBranchId();
+  await execute(`UPDATE bank_accounts SET is_active = 0 WHERE id = ?1 AND (branch_id = ?2 OR branch_id IS NULL)`, [id, branchId]);
 }
 
 // ─── Recompute balance after txn ───────────────────────────────────────
 async function recomputeBalance(accountId: string): Promise<void> {
+  const branchId = requireActiveBranchId();
   const [account] = await query<{ opening_balance: number }>(
-    `SELECT opening_balance FROM bank_accounts WHERE id = ?1`, [accountId],
+    `SELECT opening_balance FROM bank_accounts WHERE id = ?1 AND (branch_id = ?2 OR branch_id IS NULL)`, [accountId, branchId],
   );
   if (!account) return;
 
@@ -127,8 +135,8 @@ async function recomputeBalance(accountId: string): Promise<void> {
     `SELECT
        COALESCE(SUM(CASE WHEN transaction_type IN ('deposit','transfer_in','interest') THEN amount ELSE 0 END), 0) AS total_in,
        COALESCE(SUM(CASE WHEN transaction_type IN ('withdrawal','transfer_out','fee') THEN amount ELSE 0 END), 0) AS total_out
-     FROM bank_transactions WHERE account_id = ?1`,
-    [accountId],
+     FROM bank_transactions WHERE account_id = ?1 AND branch_id = ?2`,
+    [accountId, branchId],
   );
 
   const balance = account.opening_balance + (agg.total_in || 0) - (agg.total_out || 0);
@@ -147,13 +155,18 @@ export async function listTransactions(opts?: {
   branchId?: string;
   limit?: number;
 }): Promise<BankTransactionWithAccount[]> {
-  const conditions: string[] = [];
-  const params: any[] = [];
+  const activeBranchId = getActiveBranchId();
+  if (opts?.branchId && opts.branchId !== activeBranchId) {
+    throw new Error("Switch to that branch before viewing bank transactions");
+  }
+  const branchId = activeBranchId;
+  if (!branchId) return [];
+  const conditions: string[] = [`t.branch_id = ?1`];
+  const params: unknown[] = [branchId];
   if (opts?.accountId) { conditions.push(`t.account_id = ?${params.length + 1}`); params.push(opts.accountId); }
   if (opts?.startDate) { conditions.push(`t.transaction_date >= ?${params.length + 1}`); params.push(opts.startDate); }
   if (opts?.endDate) { conditions.push(`t.transaction_date <= ?${params.length + 1}`); params.push(opts.endDate); }
   if (opts?.reconciled !== undefined) { conditions.push(`t.reconciled = ?${params.length + 1}`); params.push(opts.reconciled ? 1 : 0); }
-  if (opts?.branchId) { conditions.push(`t.branch_id = ?${params.length + 1}`); params.push(opts.branchId); }
   const where = conditions.length ? `WHERE ${conditions.join(" AND ")}` : "";
 
   return query<BankTransactionWithAccount>(
@@ -184,6 +197,7 @@ export async function recordTransaction(input: {
   user_id: string;
   notes?: string;
 }): Promise<string> {
+  const branchId = requireActiveBranchId();
   const id = crypto.randomUUID();
   await execute(
     `INSERT INTO bank_transactions (
@@ -202,7 +216,7 @@ export async function recordTransaction(input: {
       input.related_customer_payment_id || null,
       input.related_supplier_payment_id || null,
       input.related_invoice_payment_id || null,
-      input.user_id, getActiveBranchId(), input.notes || null],
+      input.user_id, branchId, input.notes || null],
   );
   await recomputeBalance(input.account_id);
   return id;
@@ -218,6 +232,7 @@ export async function recordTransfer(input: {
   description?: string;
   user_id: string;
 }): Promise<{ outId: string; inId: string }> {
+  const branchId = requireActiveBranchId();
   const transferId = crypto.randomUUID();
   const outId = crypto.randomUUID();
   const inId = crypto.randomUUID();
@@ -230,7 +245,7 @@ export async function recordTransfer(input: {
        reference, description, payment_method, related_transfer_id,
        user_id, branch_id
      ) VALUES (?1,?2,?3,'transfer_out',?4,?5,?6,'transfer',?7,?8,?9)`,
-    [outId, input.from_account_id, date, input.amount, input.reference || null, desc, transferId, input.user_id, getActiveBranchId()],
+    [outId, input.from_account_id, date, input.amount, input.reference || null, desc, transferId, input.user_id, branchId],
   );
   await execute(
     `INSERT INTO bank_transactions (
@@ -238,7 +253,7 @@ export async function recordTransfer(input: {
        reference, description, payment_method, related_transfer_id,
        user_id, branch_id
      ) VALUES (?1,?2,?3,'transfer_in',?4,?5,?6,'transfer',?7,?8,?9)`,
-    [inId, input.to_account_id, date, input.amount, input.reference || null, desc, transferId, input.user_id, getActiveBranchId()],
+    [inId, input.to_account_id, date, input.amount, input.reference || null, desc, transferId, input.user_id, branchId],
   );
   await recomputeBalance(input.from_account_id);
   await recomputeBalance(input.to_account_id);
@@ -246,9 +261,10 @@ export async function recordTransfer(input: {
 }
 
 export async function deleteTransaction(id: string): Promise<void> {
-  const [tx] = await query<{ account_id: string }>(`SELECT account_id FROM bank_transactions WHERE id = ?1`, [id]);
+  const branchId = requireActiveBranchId();
+  const [tx] = await query<{ account_id: string }>(`SELECT account_id FROM bank_transactions WHERE id = ?1 AND branch_id = ?2`, [id, branchId]);
   if (!tx) return;
-  await execute(`DELETE FROM bank_transactions WHERE id = ?1`, [id]);
+  await execute(`DELETE FROM bank_transactions WHERE id = ?1 AND branch_id = ?2`, [id, branchId]);
   await recomputeBalance(tx.account_id);
 }
 

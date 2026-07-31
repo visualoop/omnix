@@ -4,7 +4,7 @@
  * cheque number, etc.) for reconciliation.
  */
 import { query, execute } from "@/lib/db";
-import { getActiveBranchId } from "@/stores/active-branch";
+import { requireActiveBranchId } from "@/stores/active-branch";
 
 export type PaymentMethod = "cash" | "mpesa" | "card" | "bank" | "other";
 
@@ -35,7 +35,7 @@ export async function recordCustomerPayment(
   await execute(
     `INSERT INTO customer_payments (id, customer_id, amount, method, reference, note, user_id, branch_id)
      VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)`,
-    [id, customerId, amount, method, reference || null, note || null, userId, getActiveBranchId()],
+    [id, customerId, amount, method, reference || null, note || null, userId, requireActiveBranchId()],
   );
   // Decrement balance owed
   await execute(
@@ -87,7 +87,7 @@ export async function recordSupplierPayment(
   await execute(
     `INSERT INTO supplier_payments (id, supplier_id, amount, method, reference, note, user_id, branch_id)
      VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)`,
-    [id, supplierId, amount, method, reference || null, note || null, userId, getActiveBranchId()],
+    [id, supplierId, amount, method, reference || null, note || null, userId, requireActiveBranchId()],
   );
   await execute(
     `UPDATE suppliers SET balance_owed = MAX(0, balance_owed - ?1) WHERE id = ?2`,

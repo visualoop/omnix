@@ -11,6 +11,7 @@
  */
 import { query, execute } from "@/lib/db";
 import { writeOffBatch } from "@/services/wastage";
+import { requireActiveBranchId } from "@/stores/active-branch";
 
 export interface ControlledDisposal {
   id: string;
@@ -54,6 +55,9 @@ export async function recordControlledDisposal(input: RecordDisposalInput): Prom
   }
   if (!input.method.trim()) throw new Error("Destruction method is required");
   if (input.quantity <= 0) throw new Error("Quantity must be greater than zero");
+  if (!input.batchId) throw new Error("Select a batch so the disposal can be attributed to the active branch");
+  const [batch] = await query<{ id: string }>(`SELECT id FROM batches WHERE id = ?1 AND product_id = ?2 AND branch_id = ?3`, [input.batchId, input.productId, requireActiveBranchId()]);
+  if (!batch) throw new Error("Batch not found in the active branch");
 
   const id = crypto.randomUUID();
   await execute(
@@ -83,8 +87,8 @@ export async function recordControlledDisposal(input: RecordDisposalInput): Prom
   // Post the register 'destroyed' row with a recomputed balance.
   try {
     const [bal] = await query<{ balance: number }>(
-      `SELECT COALESCE(SUM(quantity), 0) AS balance FROM batches WHERE product_id = ?1`,
-      [input.productId],
+      `SELECT COALESCE(SUM(quantity), 0) AS balance FROM batches WHERE product_id = ?1 AND branch_id = ?2`,
+      [input.productId, requireActiveBranchId()],
     );
     await execute(
       `INSERT INTO controlled_log
@@ -105,7 +109,7 @@ export async function recordControlledDisposal(input: RecordDisposalInput): Prom
 
 export async function listControlledDisposals(limit = 100): Promise<ControlledDisposal[]> {
   return query<ControlledDisposal>(
-    `SELECT * FROM controlled_disposals ORDER BY disposed_at DESC LIMIT ?1`,
-    [limit],
+    `SELECT d.* FROM controlled_disposals d JOIN batches b ON b.id = d.batch_id WHERE b.branch_id = ?1 ORDER BY d.disposed_at DESC LIMIT ?2`,
+    [requireActiveBranchId(), limit],
   );
 }

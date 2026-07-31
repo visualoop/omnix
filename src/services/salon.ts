@@ -10,7 +10,8 @@
  */
 import { query, execute, transaction } from "@/lib/db";
 import { requirePermission } from "@/services/rbac";
-import { getActiveBranchId } from "@/stores/active-branch";
+import { requireActiveBranchId } from "@/stores/active-branch";
+import { requireBranchOwnedRecord } from "@/lib/branch-ownership";
 import { completeSale, type CartItem, type PaymentEntry } from "@/services/sales";
 import { listEmployees, listLinkableUsers, upsertEmployee } from "@/services/employees";
 
@@ -267,8 +268,8 @@ const SELECT_APPT = `
   LEFT JOIN salon_resources r ON r.id = a.resource_id`;
 
 export async function listAppointments(opts: { from: string; to: string; staffId?: string }): Promise<SalonAppointment[]> {
-  const params: unknown[] = [opts.from, opts.to];
-  let clause = `WHERE a.starts_at >= ?1 AND a.starts_at < ?2 AND a.status != 'cancelled'`;
+  const params: unknown[] = [opts.from, opts.to, requireActiveBranchId()];
+  let clause = `WHERE a.starts_at >= ?1 AND a.starts_at < ?2 AND a.branch_id = ?3 AND a.status != 'cancelled'`;
   if (opts.staffId) { params.push(opts.staffId); clause += ` AND a.staff_id = ?${params.length}`; }
   return query<SalonAppointment>(`${SELECT_APPT} ${clause} ORDER BY a.starts_at ASC`, params);
 }
@@ -278,13 +279,13 @@ export async function listUpcomingAppointments(hours = 24): Promise<SalonAppoint
   const from = new Date().toISOString();
   const to = new Date(Date.now() + hours * 3_600_000).toISOString();
   return query<SalonAppointment>(
-    `${SELECT_APPT} WHERE a.starts_at >= ?1 AND a.starts_at <= ?2 AND a.status IN ('booked','confirmed') ORDER BY a.starts_at ASC LIMIT 100`,
-    [from, to],
+    `${SELECT_APPT} WHERE a.starts_at >= ?1 AND a.starts_at <= ?2 AND a.branch_id = ?3 AND a.status IN ('booked','confirmed') ORDER BY a.starts_at ASC LIMIT 100`,
+    [from, to, requireActiveBranchId()],
   );
 }
 
 export async function getAppointment(id: string): Promise<{ appointment: SalonAppointment; services: AppointmentService[] } | null> {
-  const [appointment] = await query<SalonAppointment>(`${SELECT_APPT} WHERE a.id = ?1`, [id]);
+  const [appointment] = await query<SalonAppointment>(`${SELECT_APPT} WHERE a.id = ?1 AND a.branch_id = ?2`, [id, requireActiveBranchId()]);
   if (!appointment) return null;
   const services = await query<AppointmentService>(`SELECT * FROM salon_appointment_services WHERE appointment_id = ?1`, [id]);
   return { appointment, services };
@@ -294,9 +295,9 @@ export async function getAppointment(id: string): Promise<{ appointment: SalonAp
 export async function isStaffAvailable(staffId: string, startIso: string, endIso: string, excludeApptId?: string): Promise<boolean> {
   const rows = await query<{ starts_at: string; ends_at: string }>(
     `SELECT starts_at, ends_at FROM salon_appointments
-     WHERE staff_id = ?1 AND status NOT IN ('cancelled','no_show','completed')
-       ${excludeApptId ? "AND id != ?2" : ""}`,
-    excludeApptId ? [staffId, excludeApptId] : [staffId],
+     WHERE staff_id = ?1 AND branch_id = ?2 AND status NOT IN ('cancelled','no_show','completed')
+       ${excludeApptId ? "AND id != ?3" : ""}`,
+    excludeApptId ? [staffId, requireActiveBranchId(), excludeApptId] : [staffId, requireActiveBranchId()],
   );
   return !rows.some((r) => intervalsOverlap(startIso, endIso, r.starts_at, r.ends_at));
 }
@@ -305,9 +306,9 @@ export async function isStaffAvailable(staffId: string, startIso: string, endIso
 export async function isResourceAvailable(resourceId: string, startIso: string, endIso: string, excludeApptId?: string): Promise<boolean> {
   const rows = await query<{ starts_at: string; ends_at: string }>(
     `SELECT starts_at, ends_at FROM salon_appointments
-     WHERE resource_id = ?1 AND status NOT IN ('cancelled','no_show','completed')
-       ${excludeApptId ? "AND id != ?2" : ""}`,
-    excludeApptId ? [resourceId, excludeApptId] : [resourceId],
+     WHERE resource_id = ?1 AND branch_id = ?2 AND status NOT IN ('cancelled','no_show','completed')
+       ${excludeApptId ? "AND id != ?3" : ""}`,
+    excludeApptId ? [resourceId, requireActiveBranchId(), excludeApptId] : [resourceId, requireActiveBranchId()],
   );
   return !rows.some((r) => intervalsOverlap(startIso, endIso, r.starts_at, r.ends_at));
 }
@@ -398,7 +399,7 @@ export async function bookAppointment(input: {
   const stmts: { sql: string; params: unknown[] }[] = [{
     sql: `INSERT INTO salon_appointments (id, appt_number, client_id, staff_id, resource_id, starts_at, ends_at, status, notes, total, branch_id)
           VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, 'booked', ?8, ?9, ?10)`,
-    params: [id, apptNumber, input.client_id ?? null, input.staff_id, input.resource_id ?? null, input.starts_at, endsAt, input.notes ?? null, total, getActiveBranchId() || null],
+    params: [id, apptNumber, input.client_id ?? null, input.staff_id, input.resource_id ?? null, input.starts_at, endsAt, input.notes ?? null, total, requireActiveBranchId()],
   }];
   // preserve the requested service order
   for (const sid of input.service_ids) {
@@ -417,6 +418,7 @@ export async function bookAppointment(input: {
 
 export async function updateAppointmentStatus(id: string, to: AppointmentStatus): Promise<void> {
   await requirePermission("salon.appointments.manage", { entityType: "salon_appointment", entityId: id });
+  await requireBranchOwnedRecord("salon_appointments", id, "Appointment");
   const [row] = await query<{ status: AppointmentStatus }>(`SELECT status FROM salon_appointments WHERE id = ?1`, [id]);
   if (!row) throw new Error("Appointment not found.");
   if (!canTransitionAppt(row.status, to)) throw new Error(`Cannot move a ${row.status} appointment to ${to}.`);

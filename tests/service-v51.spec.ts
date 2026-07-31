@@ -20,7 +20,8 @@ vi.mock("@/lib/db", () => ({
 }));
 vi.mock("@/services/license", () => ({ assertModuleEntitled: vi.fn().mockResolvedValue(undefined) }));
 vi.mock("@/services/rbac", () => ({ requirePermission: vi.fn().mockResolvedValue(undefined) }));
-vi.mock("@/stores/active-branch", () => ({ getActiveBranchId: () => "" }));
+vi.mock("@/stores/active-branch", () => ({ getActiveBranchId: () => "branch1", requireActiveBranchId: () => "branch1" }));
+vi.mock("@/lib/branch-ownership", () => ({ requireBranchOwnedRecord: vi.fn().mockResolvedValue("branch1") }));
 vi.mock("@/services/equipment", () => ({ warrantyState: (...a: unknown[]) => warrantyState(...a) }));
 vi.mock("@/services/invoicing", () => ({ createInvoice: (...a: unknown[]) => createInvoice(...a) }));
 

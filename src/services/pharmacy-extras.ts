@@ -9,6 +9,7 @@
  * creates a new prescription linked to the original.
  */
 import { query, execute } from "@/lib/db";
+import { requireActiveBranchId } from "@/stores/active-branch";
 
 // ─── Substitutions ─────────────────────────────────────────────────────
 export interface Substitution {
@@ -37,7 +38,7 @@ export async function getSubstitutions(productId: string): Promise<SubstitutionW
        p.name AS substitute_name,
        p.sku AS substitute_sku,
        COALESCE(pp.selling_price, 0) AS substitute_price,
-       COALESCE((SELECT SUM(b.quantity) FROM batches b WHERE b.product_id = p.id), 0) AS substitute_stock,
+       COALESCE((SELECT SUM(b.quantity) FROM batches b WHERE b.product_id = p.id AND b.branch_id = ?2), 0) AS substitute_stock,
        ph.generic_name AS substitute_generic
      FROM drug_substitutions s
      JOIN products p ON p.id = s.substitute_product_id
@@ -46,7 +47,7 @@ export async function getSubstitutions(productId: string): Promise<SubstitutionW
      WHERE s.product_id = ?1
        AND p.active = 1
      ORDER BY s.therapeutic_match DESC, s.strength_match DESC, substitute_price`,
-    [productId],
+    [productId, requireActiveBranchId()],
   );
 }
 
@@ -61,7 +62,7 @@ export async function suggestSubstitutionsFromGeneric(productId: string): Promis
      SELECT
        p.id, p.name, p.sku,
        COALESCE(pp.selling_price, 0) AS selling_price,
-       COALESCE((SELECT SUM(b.quantity) FROM batches b WHERE b.product_id = p.id), 0) AS stock,
+       COALESCE((SELECT SUM(b.quantity) FROM batches b WHERE b.product_id = p.id AND b.branch_id = ?2), 0) AS stock,
        ph.generic_name
      FROM products p
      JOIN pharmacy_products ph ON ph.product_id = p.id
@@ -72,7 +73,7 @@ export async function suggestSubstitutionsFromGeneric(productId: string): Promis
        AND ph.generic_name = (SELECT generic_name FROM origin)
      ORDER BY selling_price
      LIMIT 8`,
-    [productId],
+    [productId, requireActiveBranchId()],
   );
 }
 

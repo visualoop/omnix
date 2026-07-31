@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 // Phosphor icons — duotone-friendly and consistent with the editorial
 // design language we're rolling out across the desktop app. The
@@ -92,29 +92,33 @@ const MODULE_NAV_ENTRIES: Partial<Record<ModuleId, NavItem>> = {
   salon: { moduleId: "salon", to: "/salon", icon: Sparkle, label: "Salon & Spa", permissions: [...MODULE_ACCESS_PERMISSIONS.salon] },
 };
 
-export function Sidebar({ onCommandOpen }: { onCommandOpen: () => void }) {
+interface SidebarProps {
+  onCommandOpen: () => void;
+  mobile?: boolean;
+  onNavigate?: () => void;
+}
+
+export function Sidebar({ onCommandOpen, mobile = false, onNavigate }: SidebarProps) {
   const [collapsed, setCollapsed] = useState(false);
-  const user = useAuthStore((s) => s.user);
-  const activeModuleId = useActiveModule((s) => s.active);
-  const loadModule = useActiveModule((s) => s.load);
+  const user = useAuthStore((state) => state.user);
+  const activeModuleId = useActiveModule((state) => state.active);
+  const loadModule = useActiveModule((state) => state.load);
   const activeModule = MODULE_DEFINITIONS[activeModuleId];
-  // Subscribe so the nav recomputes once entitlements hydrate from the license.
-  useEntitlements((s) => s.modules);
+  useEntitlements((state) => state.modules);
 
-  // Lazy-load active module from DB on first mount
-  if (!useActiveModule.getState().loaded) {
-    loadModule().catch(() => {});
-  }
+  useEffect(() => {
+    if (!useActiveModule.getState().loaded) {
+      void loadModule().catch(() => undefined);
+    }
+  }, [loadModule]);
 
-  // The active module gets a single flat entry that links to its hub page.
-  // No more expand/collapse submenus; child screens live as tabs on the hub.
-  const moduleEntry =
-    activeModuleId !== "core" ? MODULE_NAV_ENTRIES[activeModuleId] : undefined;
-  const countryCode = useCountry((s) => s.code);
+  const moduleEntry = activeModuleId !== "core" ? MODULE_NAV_ENTRIES[activeModuleId] : undefined;
+  const countryCode = useCountry((state) => state.code);
   const activeModuleEntry =
     moduleEntry && activeModuleId === "dawa"
       ? { ...moduleEntry, label: pharmacyTerm(countryCode) }
       : moduleEntry;
+  const effectiveCollapsed = mobile ? false : collapsed;
 
   const itemVisible = (item: NavItem) => {
     const owner = getFeatureModule(item.to);
@@ -127,128 +131,123 @@ export function Sidebar({ onCommandOpen }: { onCommandOpen: () => void }) {
 
   const visibleCore = CORE_NAV.filter(itemVisible);
   const showModuleEntry = activeModuleEntry ? itemVisible(activeModuleEntry) : false;
-
-  // The module entry sits right under POS for muscle memory.
-  const insertIdx = visibleCore.findIndex((i) => i.to === "/pos") + 1;
-  const before = visibleCore.slice(0, insertIdx || visibleCore.length);
-  const after = visibleCore.slice(insertIdx || visibleCore.length);
+  const insertIndex = visibleCore.findIndex((item) => item.to === "/pos") + 1;
+  const before = visibleCore.slice(0, insertIndex || visibleCore.length);
+  const after = visibleCore.slice(insertIndex || visibleCore.length);
 
   return (
     <aside
       className={cn(
-        "flex flex-col glass-sidebar h-full transition-all duration-200",
-        collapsed ? "w-[52px]" : "w-[200px]",
+        "flex h-full flex-col glass-sidebar motion-reduce:transition-none",
+        mobile
+          ? "w-full pb-[env(safe-area-inset-bottom)]"
+          : "transition-[width] duration-200",
+        !mobile && (effectiveCollapsed ? "w-[52px]" : "w-[200px]"),
       )}
     >
-      {/* Logo + Active Module */}
-      <div className="flex items-center h-12 px-3 border-b border-border/60 gap-2">
+      <div className="flex min-h-12 items-center gap-2 border-b border-border/60 px-3 pt-[env(safe-area-inset-top)]">
         {activeModule && activeModule.id !== "core" ? (
           <ModuleLogo moduleId={activeModule.id} size={22} rounded />
         ) : (
           <OmnixLogo size={22} />
         )}
-        {!collapsed && (
-          <div className="flex-1 min-w-0">
+        {!effectiveCollapsed ? (
+          <div className="min-w-0 flex-1">
             <div
               style={{ fontFamily: "var(--font-display, serif)" }}
-              className="flex items-center gap-1 text-[16px] font-medium tracking-[-0.01em] leading-tight"
+              className="flex items-center gap-1 text-[16px] font-medium leading-tight tracking-[-0.01em]"
             >
               {activeModule && activeModule.id !== "core" ? activeModule.shortName : APP_NAME}
             </div>
-            {activeModule && activeModule.id !== "core" && (
-              <div className="font-mono text-[9px] uppercase tracking-[0.18em] text-muted-foreground leading-tight mt-1">
+            {activeModule && activeModule.id !== "core" ? (
+              <div className="mt-1 font-mono text-[9px] uppercase leading-tight tracking-[0.18em] text-muted-foreground">
                 {POWERED_BY}
               </div>
-            )}
+            ) : null}
           </div>
-        )}
+        ) : null}
       </div>
 
-      {/* Module switcher — shown only when more than one licence is
-          installed on this PC. Keeps the single-licence UX exactly the
-          same; ramps up to a real switcher for multi-licence users. */}
-      {!collapsed ? <ModuleSwitcher /> : null}
+      {!effectiveCollapsed ? <ModuleSwitcher /> : null}
 
-      {/* Search trigger — looks like a real input, not a nav row.
-          Hairline border, subtle inner shadow, key-cap kbd badge with the
-          system-mono. The visual rhythm: kbd badge baseline-aligned with
-          the placeholder text via leading-none on both. */}
       <button
+        type="button"
         onClick={onCommandOpen}
         data-tour="cmd-k"
         aria-label="Search (⌘K)"
         className={cn(
-          "group mx-2 mt-2 flex h-8 items-center gap-2 rounded-md border border-border/60 bg-foreground/[0.02] py-0 text-[12px] text-muted-foreground transition-colors hover:border-border hover:bg-foreground/[0.04] hover:text-foreground cursor-pointer",
-          collapsed ? "justify-center px-0" : "px-2",
+          "group mx-2 mt-2 flex items-center gap-2 rounded-md border border-border/60 bg-foreground/[0.02] py-0 text-[12px] text-muted-foreground transition-colors hover:border-border hover:bg-foreground/[0.04] hover:text-foreground focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/30 motion-reduce:transition-none",
+          mobile ? "h-11 px-3" : "h-8",
+          effectiveCollapsed ? "justify-center px-0" : "px-2",
         )}
       >
         <Search className="h-3.5 w-3.5 shrink-0" aria-hidden />
-        {!collapsed && (
+        {!effectiveCollapsed ? (
           <>
             <span className="flex-1 text-left">Search</span>
-            <kbd
-              className="inline-flex h-[18px] items-center rounded-[4px] border border-border/60 bg-background px-1.5 font-mono text-[10px] font-medium text-muted-foreground group-hover:text-foreground"
-            >
-              ⌘K
-            </kbd>
+            {!mobile ? (
+              <kbd className="inline-flex h-[18px] items-center rounded-[4px] border border-border/60 bg-background px-1.5 font-mono text-[10px] font-medium text-muted-foreground group-hover:text-foreground">
+                ⌘K
+              </kbd>
+            ) : null}
           </>
-        )}
+        ) : null}
       </button>
 
-      {/* Nav */}
-      <nav className="flex-1 mt-2 px-2 flex flex-col min-h-0">
-        <div className="space-y-0.5 overflow-auto pb-2 -mx-1 px-1">
+      <nav className="mt-2 flex min-h-0 flex-1 flex-col px-2" aria-label="Primary navigation">
+        <div className="-mx-1 space-y-0.5 overflow-auto px-1 pb-2">
           {before.map((item) => (
-            <NavRow key={item.to} item={item} collapsed={collapsed} />
+            <NavRow key={item.to} item={item} collapsed={effectiveCollapsed} mobile={mobile} onNavigate={onNavigate} />
           ))}
-
-          {/* Active-module hub entry (flat — child screens are tabs on the hub) */}
-          {activeModuleEntry && showModuleEntry && (
-            <NavRow item={activeModuleEntry} collapsed={collapsed} />
-          )}
-
+          {activeModuleEntry && showModuleEntry ? (
+            <NavRow item={activeModuleEntry} collapsed={effectiveCollapsed} mobile={mobile} onNavigate={onNavigate} />
+          ) : null}
           {after.map((item) => (
-            <NavRow key={item.to} item={item} collapsed={collapsed} />
+            <NavRow key={item.to} item={item} collapsed={effectiveCollapsed} mobile={mobile} onNavigate={onNavigate} />
           ))}
         </div>
 
-        {/* Settings — pinned to the bottom of the rail, separated by a
-            hairline rule. Settings is the boundary between every-day work
-            (above) and configuration (below). Hidden for roles without any
-            settings permission (e.g. cashiers). */}
-        {itemVisible(SETTINGS_NAV) && (
-          <div className="mt-auto pt-2 border-t border-border/40">
-            <NavRow item={SETTINGS_NAV} collapsed={collapsed} />
+        {itemVisible(SETTINGS_NAV) ? (
+          <div className="mt-auto border-t border-border/40 pt-2">
+            <NavRow item={SETTINGS_NAV} collapsed={effectiveCollapsed} mobile={mobile} onNavigate={onNavigate} />
           </div>
-        )}
+        ) : null}
       </nav>
 
-      {/* Collapse toggle */}
-      <button
-        onClick={() => setCollapsed(!collapsed)}
-        className="flex items-center justify-center h-10 border-t border-border/60 text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
-      >
-        {collapsed ? (
-          <ChevronsRight className="h-4 w-4" />
-        ) : (
-          <ChevronsLeft className="h-4 w-4" />
-        )}
-      </button>
+      {!mobile ? (
+        <button
+          type="button"
+          onClick={() => setCollapsed(!collapsed)}
+          className="flex h-10 items-center justify-center border-t border-border/60 text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring motion-reduce:transition-none"
+          aria-label={collapsed ? "Expand navigation" : "Collapse navigation"}
+        >
+          {collapsed ? <ChevronsRight className="h-4 w-4" /> : <ChevronsLeft className="h-4 w-4" />}
+        </button>
+      ) : null}
     </aside>
   );
 }
 
-function NavRow({ item, collapsed }: { item: NavItem; collapsed: boolean }) {
+interface NavRowProps {
+  item: NavItem;
+  collapsed: boolean;
+  mobile: boolean;
+  onNavigate?: () => void;
+}
+
+function NavRow({ item, collapsed, mobile, onNavigate }: NavRowProps) {
   return (
     <NavLink
       to={item.to}
       end={item.to === "/"}
       title={collapsed ? item.label : undefined}
+      onClick={onNavigate}
       className={({ isActive }) =>
         cn(
-          "group relative flex items-center gap-2 rounded-md px-2 py-1.5 text-[13px] transition-colors duration-150 cursor-pointer",
+          "group relative flex items-center gap-2 rounded-md px-2 text-[13px] transition-colors duration-150 focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/30 motion-reduce:transition-none",
+          mobile ? "min-h-11" : "py-1.5",
           isActive
-            ? "bg-foreground/[0.06] text-foreground font-medium"
+            ? "bg-foreground/[0.06] font-medium text-foreground"
             : "text-muted-foreground hover:bg-foreground/[0.03] hover:text-foreground",
           collapsed && "justify-center",
         )
@@ -256,17 +255,13 @@ function NavRow({ item, collapsed }: { item: NavItem; collapsed: boolean }) {
     >
       {({ isActive }) => (
         <>
-          {/* 2px accent strip on the active row — a single dose of color
-              against the otherwise monochrome rail. Uses --primary which
-              the active module rebinds via useModuleAccent. */}
-          {isActive && !collapsed ? (
-            <span
-              aria-hidden
-              className="absolute left-0 top-1.5 bottom-1.5 w-[2px] rounded-r-full bg-primary"
-            />
-          ) : null}
-          {item.moduleId ? <ModuleLogo moduleId={item.moduleId} size={18} rounded className="shrink-0" /> : <item.icon className="h-4 w-4 shrink-0" />}
-          {!collapsed && <span>{item.label}</span>}
+          {isActive && !collapsed ? <span aria-hidden className="absolute bottom-1.5 left-0 top-1.5 w-[2px] rounded-r-full bg-primary" /> : null}
+          {item.moduleId ? (
+            <ModuleLogo moduleId={item.moduleId} size={18} rounded className="shrink-0" />
+          ) : (
+            <item.icon className="h-4 w-4 shrink-0" />
+          )}
+          {!collapsed ? <span>{item.label}</span> : null}
         </>
       )}
     </NavLink>

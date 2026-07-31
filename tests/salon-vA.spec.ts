@@ -18,7 +18,7 @@ vi.mock("@/lib/db", () => ({
   transaction: (...a: unknown[]) => transaction(...a),
 }));
 vi.mock("@/services/rbac", () => ({ requirePermission: vi.fn().mockResolvedValue(undefined) }));
-vi.mock("@/stores/active-branch", () => ({ getActiveBranchId: () => "" }));
+vi.mock("@/stores/active-branch", () => ({ getActiveBranchId: () => "branch1", requireActiveBranchId: () => "branch1" }));
 vi.mock("@/services/sales", () => ({ completeSale: (...a: unknown[]) => completeSale(...a), getPaymentMethods: vi.fn() }));
 
 const upsertEmployee = vi.fn();

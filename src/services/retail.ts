@@ -2,7 +2,8 @@
  * Retail module — brands, variants, price lists, shrinkage, laybys, special orders.
  */
 import { query, execute } from "@/lib/db";
-import { getActiveBranchId } from "@/stores/active-branch";
+import { requireActiveBranchId } from "@/stores/active-branch";
+import { requireBranchOwnedRecord } from "@/lib/branch-ownership";
 import type { CartItem } from "@/services/sales";
 
 // ─── Brands ────────────────────────────────────────────────────────────
@@ -420,13 +421,16 @@ export async function listShrinkage(opts?: {
   reason?: ShrinkageReason;
   branchId?: string;
 }): Promise<ShrinkageWithDetails[]> {
-  const conditions: string[] = [];
-  const params: any[] = [];
+  const branchId = requireActiveBranchId();
+  if (opts?.branchId && opts.branchId !== branchId) {
+    throw new Error("Switch to that branch before viewing shrinkage");
+  }
+  const conditions: string[] = ["s.branch_id = ?1"];
+  const params: unknown[] = [branchId];
   if (opts?.startDate) { conditions.push(`s.incident_date >= ?${params.length + 1}`); params.push(opts.startDate); }
   if (opts?.endDate) { conditions.push(`s.incident_date <= ?${params.length + 1}`); params.push(opts.endDate); }
   if (opts?.reason) { conditions.push(`s.reason = ?${params.length + 1}`); params.push(opts.reason); }
-  if (opts?.branchId) { conditions.push(`s.branch_id = ?${params.length + 1}`); params.push(opts.branchId); }
-  const where = conditions.length ? `WHERE ${conditions.join(" AND ")}` : "";
+  const where = `WHERE ${conditions.join(" AND ")}`;
 
   return query<ShrinkageWithDetails>(
     `SELECT s.*, p.name AS product_name, v.variant_name, u.full_name AS user_name
@@ -456,7 +460,7 @@ export async function recordShrinkage(input: {
     `INSERT INTO shrinkage (id, product_id, variant_id, quantity, reason, cost_value, notes, user_id, branch_id, incident_date)
      VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)`,
     [id, input.product_id, input.variant_id || null, input.quantity, input.reason,
-      input.cost_value || 0, input.notes || null, input.user_id, getActiveBranchId(),
+      input.cost_value || 0, input.notes || null, input.user_id, requireActiveBranchId(),
       input.incident_date || new Date().toISOString().slice(0, 10)],
   );
 
@@ -473,9 +477,9 @@ export async function recordShrinkage(input: {
     let remaining = input.quantity;
     const batches = await query<{ id: string; quantity: number }>(
       `SELECT id, quantity FROM batches
-        WHERE product_id = ?1 AND quantity > 0
+        WHERE product_id = ?1 AND branch_id = ?2 AND quantity > 0
         ORDER BY expiry_date ASC NULLS LAST, received_at ASC, created_at ASC`,
-      [input.product_id],
+      [input.product_id, requireActiveBranchId()],
     );
     for (const b of batches) {
       if (remaining <= 0) break;
@@ -570,29 +574,34 @@ async function getNextLaybyNumber(): Promise<string> {
 /** Background job (RT-16): flag active laybys past their expiry date.
  *  Moved out of listLaybys so reads have no side effects. */
 export async function expireOverdueLaybys(): Promise<number> {
+  const branchId = requireActiveBranchId();
   const before = await query<{ n: number }>(
-    `SELECT COUNT(*) AS n FROM laybys WHERE status = 'active' AND date('now') > expires_at`,
+    `SELECT COUNT(*) AS n FROM laybys WHERE branch_id = ?1 AND status = 'active' AND date('now') > expires_at`,
+    [branchId],
   );
   await execute(
     `UPDATE layby_items SET reserved_qty = 0
-      WHERE layby_id IN (SELECT id FROM laybys WHERE status = 'active' AND date('now') > expires_at)`,
+      WHERE layby_id IN (SELECT id FROM laybys WHERE branch_id = ?1 AND status = 'active' AND date('now') > expires_at)`,
+    [branchId],
   );
   await execute(
-    `UPDATE laybys SET status = 'expired' WHERE status = 'active' AND date('now') > expires_at`,
+    `UPDATE laybys SET status = 'expired' WHERE branch_id = ?1 AND status = 'active' AND date('now') > expires_at`,
+    [branchId],
   );
   return before[0]?.n ?? 0;
 }
 
 export async function listLaybys(opts?: { status?: Layby["status"] }): Promise<Layby[]> {
-  const where = opts?.status ? `WHERE status = ?1` : "";
+  const branchId = requireActiveBranchId();
+  const where = opts?.status ? `WHERE branch_id = ?1 AND status = ?2` : "WHERE branch_id = ?1";
   return query<Layby>(
     `SELECT * FROM laybys ${where} ORDER BY created_at DESC LIMIT 500`,
-    opts?.status ? [opts.status] : [],
+    opts?.status ? [branchId, opts.status] : [branchId],
   );
 }
 
 export async function getLayby(id: string): Promise<{ layby: Layby; items: LaybyItem[]; payments: LaybyPayment[] } | null> {
-  const [layby] = await query<Layby>(`SELECT * FROM laybys WHERE id = ?1`, [id]);
+  const [layby] = await query<Layby>(`SELECT * FROM laybys WHERE id = ?1 AND branch_id = ?2`, [id, requireActiveBranchId()]);
   if (!layby) return null;
   const items = await query<LaybyItem>(`SELECT * FROM layby_items WHERE layby_id = ?1`, [id]);
   const payments = await query<LaybyPayment>(`SELECT * FROM layby_payments WHERE layby_id = ?1 ORDER BY paid_at DESC`, [id]);
@@ -602,8 +611,8 @@ export async function getLayby(id: string): Promise<{ layby: Layby; items: Layby
 /** Physical sellable stock for a product (sum of batch quantities). */
 export async function getPhysicalStock(productId: string): Promise<number> {
   const [r] = await query<{ qty: number }>(
-    `SELECT COALESCE(SUM(quantity), 0) AS qty FROM batches WHERE product_id = ?1`,
-    [productId],
+    `SELECT COALESCE(SUM(quantity), 0) AS qty FROM batches WHERE product_id = ?1 AND branch_id = ?2`,
+    [productId, requireActiveBranchId()],
   );
   return r?.qty ?? 0;
 }
@@ -613,8 +622,8 @@ export async function getReservedStock(productId: string): Promise<number> {
   const [r] = await query<{ qty: number }>(
     `SELECT COALESCE(SUM(li.reserved_qty), 0) AS qty
        FROM layby_items li JOIN laybys l ON l.id = li.layby_id
-      WHERE li.product_id = ?1 AND l.status = 'active'`,
-    [productId],
+      WHERE li.product_id = ?1 AND l.branch_id = ?2 AND l.status = 'active'`,
+    [productId, requireActiveBranchId()],
   );
   return r?.qty ?? 0;
 }
@@ -652,7 +661,7 @@ export async function createLayby(input: {
      VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13)`,
     [id, number, input.customer_id, input.customer_name, input.customer_phone || null,
       total, input.deposit_amount, input.deposit_amount, total - input.deposit_amount,
-      input.expires_at, input.notes || null, input.user_id, getActiveBranchId()],
+      input.expires_at, input.notes || null, input.user_id, requireActiveBranchId()],
   );
 
   // Availability guard (RU3) + soft reservation (RT-10): each line must have
@@ -716,7 +725,8 @@ export async function recordLaybyPayment(input: {
   reference?: string;
   user_id: string;
 }): Promise<string> {
-  const [layby] = await query<Layby>(`SELECT * FROM laybys WHERE id = ?1`, [input.layby_id]);
+  const detail = await getLayby(input.layby_id);
+  const layby = detail?.layby;
   if (!layby) throw new Error("Layby not found");
   if (layby.status !== "active") throw new Error(`Layby is ${layby.status}`);
   if (input.amount <= 0) throw new Error("Amount must be > 0");
@@ -744,6 +754,7 @@ export async function recordLaybyPayment(input: {
 }
 
 export async function cancelLayby(id: string, refundAmount?: number, userId?: string): Promise<void> {
+  await requireBranchOwnedRecord("laybys", id, "Layby");
   const round2 = (n: number) => Math.round(n * 100) / 100;
   const stmts: import("@/lib/db").TxStatement[] = [
     { sql: `UPDATE laybys SET status = 'cancelled' WHERE id = ?1`, params: [id] },
@@ -814,6 +825,7 @@ export async function prepareLaybyForPosCheckout(laybyId: string): Promise<{
 }
 
 export async function completeLaybyFromPos(laybyId: string, saleId: string): Promise<void> {
+  await requireBranchOwnedRecord("laybys", laybyId, "Layby");
   await execute(
     `UPDATE laybys SET status = 'completed', completed_at = datetime('now'), sale_id = ?2 WHERE id = ?1`,
     [laybyId, saleId],
@@ -826,8 +838,8 @@ export async function prepareSpecialOrderForPosCheckout(orderId: string): Promis
   items: CartItem[]; customerName: string; customerId: string | null
 } | null> {
   const rows = await query<{ id: string; customer_id: string | null; customer_name: string | null; items_json: string; status: string }>(
-    `SELECT id, customer_id, customer_name, items_json, status FROM special_orders WHERE id = ?1`,
-    [orderId],
+    `SELECT id, customer_id, customer_name, items_json, status FROM special_orders WHERE id = ?1 AND branch_id = ?2`,
+    [orderId, requireActiveBranchId()],
   );
   if (!rows[0]) return null;
   const so = rows[0];
@@ -865,6 +877,7 @@ export async function prepareSpecialOrderForPosCheckout(orderId: string): Promis
 }
 
 export async function completeSpecialOrderFromPos(orderId: string, saleId: string): Promise<void> {
+  await requireBranchOwnedRecord("special_orders", orderId, "Special order");
   await execute(
     `UPDATE special_orders SET status = 'fulfilled', fulfilled_at = datetime('now'), sale_id = ?2 WHERE id = ?1`,
     [orderId, saleId],
@@ -898,10 +911,11 @@ export interface SpecialOrderItem {
 }
 
 export async function listSpecialOrders(opts?: { status?: SpecialOrder["status"] }): Promise<SpecialOrder[]> {
-  const where = opts?.status ? `WHERE status = ?1` : "";
+  const branchId = requireActiveBranchId();
+  const where = opts?.status ? `WHERE branch_id = ?1 AND status = ?2` : "WHERE branch_id = ?1";
   return query<SpecialOrder>(
     `SELECT * FROM special_orders ${where} ORDER BY needed_by ASC, created_at DESC`,
-    opts?.status ? [opts.status] : [],
+    opts?.status ? [branchId, opts.status] : [branchId],
   );
 }
 
@@ -921,12 +935,13 @@ export async function createSpecialOrder(input: {
      VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)`,
     [id, input.customer_id || null, input.customer_name || null, input.customer_phone || null,
       JSON.stringify(input.items), input.estimated_value || null,
-      input.needed_by || null, input.notes || null, input.user_id, getActiveBranchId()],
+      input.needed_by || null, input.notes || null, input.user_id, requireActiveBranchId()],
   );
   return id;
 }
 
 export async function updateSpecialOrderStatus(id: string, status: SpecialOrder["status"]): Promise<void> {
+  await requireBranchOwnedRecord("special_orders", id, "Special order");
   await execute(
     `UPDATE special_orders SET status = ?2, fulfilled_at = ?3 WHERE id = ?1`,
     [id, status, status === "fulfilled" ? new Date().toISOString() : null],

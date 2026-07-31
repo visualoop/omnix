@@ -2,6 +2,8 @@
  * Cold-chain temperature monitoring service.
  */
 import { query, execute } from "@/lib/db";
+import { requireActiveBranchId } from "@/stores/active-branch";
+import { requireBranchOwnedRecord } from "@/lib/branch-ownership";
 
 export interface ColdChainUnit {
   id: string;
@@ -30,22 +32,25 @@ export interface ColdChainLog {
 
 export async function listUnits(activeOnly = true): Promise<ColdChainUnit[]> {
   return query<ColdChainUnit>(
-    `SELECT * FROM cold_chain_units ${activeOnly ? "WHERE active = 1" : ""} ORDER BY name`,
+    `SELECT * FROM cold_chain_units WHERE branch_id = ?1${activeOnly ? " AND active = 1" : ""} ORDER BY name`,
+    [requireActiveBranchId()],
   );
 }
 
 export async function upsertUnit(input: Partial<ColdChainUnit> & { name: string }): Promise<string> {
+  const branchId = requireActiveBranchId();
   const id = input.id || `cc-${crypto.randomUUID().slice(0, 8)}`;
   if (input.id) {
+    await requireBranchOwnedRecord("cold_chain_units", input.id, "Cold-chain unit");
     await execute(
       `UPDATE cold_chain_units SET name = ?2, location = ?3, target_min_c = ?4, target_max_c = ?5, active = ?6 WHERE id = ?1`,
       [id, input.name, input.location || null, input.target_min_c ?? 2, input.target_max_c ?? 8, input.active ?? 1],
     );
   } else {
     await execute(
-      `INSERT INTO cold_chain_units (id, name, location, target_min_c, target_max_c, active)
-       VALUES (?1, ?2, ?3, ?4, ?5, ?6)`,
-      [id, input.name, input.location || null, input.target_min_c ?? 2, input.target_max_c ?? 8, input.active ?? 1],
+      `INSERT INTO cold_chain_units (id, name, location, target_min_c, target_max_c, active, branch_id)
+       VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)`,
+      [id, input.name, input.location || null, input.target_min_c ?? 2, input.target_max_c ?? 8, input.active ?? 1, branchId],
     );
   }
   return id;
@@ -58,6 +63,7 @@ export async function recordTemperature(input: {
   notes?: string;
   user_id: string;
 }): Promise<string> {
+  await requireBranchOwnedRecord("cold_chain_units", input.unit_id, "Cold-chain unit");
   const [unit] = await query<ColdChainUnit>(`SELECT * FROM cold_chain_units WHERE id = ?1`, [input.unit_id]);
   if (!unit) throw new Error("Unit not found");
 
@@ -88,8 +94,8 @@ export async function recordTemperature(input: {
 }
 
 export async function listLogs(unitId?: string, opts?: { startDate?: string; endDate?: string; limit?: number }): Promise<Array<ColdChainLog & { unit_name: string; user_name: string }>> {
-  const conditions: string[] = [];
-  const params: any[] = [];
+  const conditions: string[] = ["u.branch_id = ?1"];
+  const params: unknown[] = [requireActiveBranchId()];
   if (unitId) { conditions.push(`l.unit_id = ?${params.length + 1}`); params.push(unitId); }
   if (opts?.startDate) { conditions.push(`l.reading_at >= ?${params.length + 1}`); params.push(opts.startDate); }
   if (opts?.endDate) { conditions.push(`l.reading_at <= ?${params.length + 1}`); params.push(opts.endDate + " 23:59:59"); }
@@ -109,6 +115,7 @@ export async function listLogs(unitId?: string, opts?: { startDate?: string; end
 
 /** Returns true if a unit's temperature was last recorded today. */
 export async function wasRecordedToday(unitId: string): Promise<boolean> {
+  await requireBranchOwnedRecord("cold_chain_units", unitId, "Cold-chain unit");
   const [r] = await query<{ count: number }>(
     `SELECT COUNT(*) AS count FROM cold_chain_logs WHERE unit_id = ?1 AND date(reading_at) = date('now')`,
     [unitId],

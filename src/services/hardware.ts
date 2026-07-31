@@ -12,7 +12,8 @@ import { query, execute } from "@/lib/db";
 import { assertModuleEntitled } from "@/services/license";
 import { requirePermission } from "@/services/rbac";
 import { completeSale, type CartItem, type PaymentEntry } from "@/services/sales";
-import { getActiveBranchId } from "@/stores/active-branch";
+import { requireActiveBranchId } from "@/stores/active-branch";
+import { requireBranchOwnedRecord } from "@/lib/branch-ownership";
 
 const uid = () => crypto.randomUUID();
 
@@ -95,15 +96,7 @@ export async function createQuotation(input: {
     }
   }
 
-  // branch_id has an FK to branches(id). getActiveBranchId() falls back to
-  // 'default-branch'; if that row is missing (or the active id is stale) the
-  // insert would fail with a raw FK error. Resolve to a real branch or NULL.
-  let branchId: string | null = getActiveBranchId();
-  const branchRows = await query<{ id: string }>(`SELECT id FROM branches WHERE id = ?1`, [branchId]);
-  if (!branchRows[0]) {
-    const [anyBranch] = await query<{ id: string }>(`SELECT id FROM branches WHERE active = 1 ORDER BY is_default DESC LIMIT 1`);
-    branchId = anyBranch?.id ?? null;
-  }
+  const branchId = requireActiveBranchId();
 
   try {
     await execute(
@@ -148,7 +141,8 @@ export async function listQuotations(): Promise<Quotation[]> {
   return query<Quotation>(
     `SELECT id, quotation_number, customer_id, customer_name, status, total,
             valid_until, converted_sale_id, created_at
-     FROM quotations ORDER BY created_at DESC LIMIT 200`,
+     FROM quotations WHERE branch_id = ?1 ORDER BY created_at DESC LIMIT 200`,
+    [requireActiveBranchId()],
   );
 }
 
@@ -159,6 +153,7 @@ export async function listQuotations(): Promise<Quotation[]> {
 export async function duplicateQuotation(originalId: string): Promise<string> {
   await assertModuleEntitled("hardware");
   await requirePermission("hardware.quotations.manage", { entityType: "quotation" });
+  await requireBranchOwnedRecord("quotations", originalId, "Quotation");
   const [orig] = await query<{ customer_id: string | null; salesperson_id: string | null; valid_until: string | null; notes: string | null; user_id: string; discount_amount: number; subtotal: number; tax_amount: number; total: number }>(
     `SELECT customer_id, salesperson_id, valid_until, notes, user_id, discount_amount, subtotal, tax_amount, total
      FROM quotations WHERE id = ?1`,
@@ -203,6 +198,7 @@ export async function convertQuoteToSale(
 ): Promise<string> {
   await assertModuleEntitled("hardware");
   await requirePermission("hardware.quotations.manage", { entityType: "quotation", entityId: quoteId });
+  await requireBranchOwnedRecord("quotations", quoteId, "Quotation");
 
   const [q] = await query<{ customer_id: string | null; status: string; discount_amount: number }>(
     `SELECT customer_id, status, discount_amount FROM quotations WHERE id = ?1`, [quoteId],
@@ -244,6 +240,7 @@ export interface HardwareCheckoutPayload {
 export async function prepareQuoteForPosCheckout(quoteId: string): Promise<HardwareCheckoutPayload> {
   await assertModuleEntitled("hardware");
   await requirePermission("hardware.quotations.manage", { entityType: "quotation", entityId: quoteId });
+  await requireBranchOwnedRecord("quotations", quoteId, "Quotation");
 
   const [q] = await query<{ id: string; quotation_number: string; customer_id: string | null; customer_name: string | null; status: string; discount_amount: number }>(
     `SELECT q.id, q.quotation_number, q.customer_id, q.customer_name, q.status, q.discount_amount
@@ -289,6 +286,7 @@ export async function prepareQuoteForPosCheckout(quoteId: string): Promise<Hardw
 export async function markQuotePaidFromPos(quoteId: string, saleId: string): Promise<void> {
   await assertModuleEntitled("hardware");
   await requirePermission("hardware.quotations.manage", { entityType: "quotation", entityId: quoteId });
+  await requireBranchOwnedRecord("quotations", quoteId, "Quotation");
   await execute(
     `UPDATE quotations SET status = 'converted', converted_sale_id = ?2 WHERE id = ?1`,
     [quoteId, saleId],
@@ -311,7 +309,7 @@ export async function createDeliveryNote(input: {
   await execute(
     `INSERT INTO delivery_notes (id, note_number, branch_id, customer_id, sale_id, source_quotation_id, status, delivery_address)
      VALUES (?1, ?2, ?3, ?4, ?5, ?6, 'pending', ?7)`,
-    [id, number, getActiveBranchId(), input.customerId, input.saleId ?? null, input.sourceQuotationId ?? null, input.address ?? null],
+    [id, number, requireActiveBranchId(), input.customerId, input.saleId ?? null, input.sourceQuotationId ?? null, input.address ?? null],
   );
   for (const it of input.items) {
     await execute(
@@ -338,9 +336,10 @@ export async function listDeliverableQuotations(): Promise<DeliverableQuotation[
   return query<DeliverableQuotation>(
     `SELECT id, quotation_number, customer_id, customer_name, total, created_at
        FROM quotations
-      WHERE status IN ('sent', 'accepted', 'converted')
+      WHERE branch_id = ?1 AND status IN ('sent', 'accepted', 'converted')
       ORDER BY created_at DESC
       LIMIT 100`,
+    [requireActiveBranchId()],
   );
 }
 
@@ -360,8 +359,8 @@ export async function getQuotationForDelivery(quotationId: string): Promise<Deli
   const [q] = await query<{
     quotation_number: string; customer_id: string | null; customer_name: string; customer_address: string | null;
   }>(
-    `SELECT quotation_number, customer_id, customer_name, customer_address FROM quotations WHERE id = ?1`,
-    [quotationId],
+    `SELECT quotation_number, customer_id, customer_name, customer_address FROM quotations WHERE id = ?1 AND branch_id = ?2`,
+    [quotationId, requireActiveBranchId()],
   );
   if (!q) return null;
   const items = await query<{ product_id: string | null; name: string; uom: string | null; quantity: number }>(
@@ -401,6 +400,7 @@ export async function createDeliveryNoteFromQuotation(input: {
 
 export async function markDispatched(noteId: string, vehicle?: string, driver?: string): Promise<void> {
   await requirePermission("hardware.delivery_notes.manage", { entityType: "delivery_note", entityId: noteId });
+  await requireBranchOwnedRecord("delivery_notes", noteId, "Delivery note");
   await execute(
     `UPDATE delivery_notes SET status = 'dispatched', vehicle = ?2, driver = ?3, dispatched_at = datetime('now')
      WHERE id = ?1 AND status = 'pending'`,
@@ -410,6 +410,7 @@ export async function markDispatched(noteId: string, vehicle?: string, driver?: 
 
 export async function markDelivered(noteId: string): Promise<void> {
   await requirePermission("hardware.delivery_notes.manage", { entityType: "delivery_note", entityId: noteId });
+  await requireBranchOwnedRecord("delivery_notes", noteId, "Delivery note");
   await execute(
     `UPDATE delivery_notes SET status = 'delivered', delivered_at = datetime('now') WHERE id = ?1 AND status = 'dispatched'`,
     [noteId],

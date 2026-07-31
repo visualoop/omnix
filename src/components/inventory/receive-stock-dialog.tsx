@@ -37,7 +37,7 @@ import { getProducts, type Product } from "@/services/inventory"
 import { execute } from "@/lib/db"
 import { useAuthStore } from "@/stores/auth"
 import { useIsTouch } from "@/stores/density"
-import { getActiveBranchId } from "@/stores/active-branch"
+import { requireActiveBranchId } from "@/stores/active-branch"
 import { toast } from "sonner"
 
 interface StockLine {
@@ -146,7 +146,7 @@ export function ReceiveStockDialog({
 
     setSubmitting(true)
     try {
-      const branchId = getActiveBranchId()
+      const branchId = requireActiveBranchId()
       for (const item of items) {
         const qty = parseFloat(item.quantity)
         const cost = parseFloat(item.buying_price) || 0

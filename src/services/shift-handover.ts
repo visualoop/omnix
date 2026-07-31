@@ -9,6 +9,7 @@ import { query } from "@/lib/db";
 import { printHtml } from "./print-html";
 import { BRAND } from "@/lib/brand";
 import { intlLocale } from "@/lib/intl";
+import { requireActiveBranchId } from "@/stores/active-branch";
 
 export interface ShiftHandover {
   shift_id: string;
@@ -40,8 +41,8 @@ export async function getShiftHandover(shiftId: string): Promise<ShiftHandover |
        COALESCE(u.full_name, u.username) AS cashier_name
      FROM cash_register cr
      LEFT JOIN users u ON u.id = cr.user_id
-     WHERE cr.id = ?1`,
-    [shiftId],
+     WHERE cr.id = ?1 AND cr.branch_id = ?2`,
+    [shiftId, requireActiveBranchId()],
   );
   if (!shift) return null;
 
@@ -63,32 +64,32 @@ export async function getShiftHandover(shiftId: string): Promise<ShiftHandover |
      LEFT JOIN payment_methods pm ON pm.id = p.method_id
      WHERE s.user_id = ?1
        AND s.created_at BETWEEN ?2 AND ?3
-       AND s.status = 'completed'`,
-    [shift.user_id, start, end],
+       AND s.status = 'completed' AND s.branch_id = ?4`,
+    [shift.user_id, start, end, shift.branch_id],
   );
 
   // Refunds during shift
   const [refunds] = await query<{ total: number }>(
     `SELECT COALESCE(SUM(refund_amount), 0) AS total
      FROM sale_returns
-     WHERE user_id = ?1 AND created_at BETWEEN ?2 AND ?3`,
-    [shift.user_id, start, end],
+     WHERE user_id = ?1 AND created_at BETWEEN ?2 AND ?3 AND branch_id = ?4`,
+    [shift.user_id, start, end, shift.branch_id],
   );
 
   // Customer payments collected during shift
   const [collections] = await query<{ total: number }>(
     `SELECT COALESCE(SUM(amount), 0) AS total
      FROM customer_payments
-     WHERE user_id = ?1 AND paid_at BETWEEN ?2 AND ?3`,
-    [shift.user_id, start, end],
+     WHERE user_id = ?1 AND paid_at BETWEEN ?2 AND ?3 AND branch_id = ?4`,
+    [shift.user_id, start, end, shift.branch_id],
   );
 
   // Expenses paid during shift
   const [expenses] = await query<{ total: number }>(
     `SELECT COALESCE(SUM(amount), 0) AS total
      FROM expenses
-     WHERE recorded_by = ?1 AND created_at BETWEEN ?2 AND ?3`,
-    [shift.user_id, start, end],
+     WHERE recorded_by = ?1 AND created_at BETWEEN ?2 AND ?3 AND branch_id = ?4`,
+    [shift.user_id, start, end, shift.branch_id],
   );
 
   const [bizName] = await query<{ value: string }>(`SELECT name AS value FROM business LIMIT 1`);

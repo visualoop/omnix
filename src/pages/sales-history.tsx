@@ -48,7 +48,7 @@ export function SalesHistoryPage() {
   const navigate = useNavigate();
   const [period, setPeriod] = useState<"today" | "week" | "month" | "all">("today");
   const [activeSale, setActiveSale] = useState<SaleDetail | null>(null);
-  const branchId = useActiveBranch((s) => s.active?.id || "default-branch");
+  const activeBranchId = useActiveBranch((state) => state.scope === "branch" ? state.active?.id ?? null : null);
 
   const fetcher = useCallback(
     (q: { search?: string; page?: number; pageSize?: number }) => {
@@ -56,9 +56,9 @@ export function SalesHistoryPage() {
       if (period === "today") from = new Date(Date.now() - 0).toISOString().slice(0, 10) + " 00:00:00";
       else if (period === "week") from = new Date(Date.now() - 7 * 86400000).toISOString();
       else if (period === "month") from = new Date(Date.now() - 30 * 86400000).toISOString();
-      return pageSales({ ...q, from, branch_id: branchId, exclude_held: true });
+      return pageSales({ ...q, from, exclude_held: true });
     },
-    [period, branchId],
+    [period, activeBranchId],
   );
   const list = useListData(fetcher, { pageSize: 50 });
   const sales = (list.rows as unknown as SaleRow[]).map((s) => ({
@@ -76,8 +76,8 @@ export function SalesHistoryPage() {
        FROM sales s
        LEFT JOIN users u ON u.id = s.user_id
        LEFT JOIN customers c ON c.id = s.customer_id
-       WHERE s.id = ?1`,
-      [id]
+       WHERE s.id = ?1 AND s.branch_id = ?2`,
+      [id, activeBranchId]
     ))[0];
     if (!sale) return;
     sale.items = await query("SELECT product_name, quantity, unit_price, total FROM sale_items WHERE sale_id = ?1", [id]);
