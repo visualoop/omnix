@@ -1,8 +1,9 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useMemo } from "react";
 import {
   CaretLeft as ChevronLeft,
   CaretRight as ChevronRight,
   Download,
+  MagnifyingGlass as Search,
   Printer as Printer,
   ShieldWarning as ShieldAlert,
 } from "@phosphor-icons/react";
@@ -16,6 +17,11 @@ import { renderControlledRegisterPdf } from "@/services/reports-pdf";
 import { loadBrandHeader, downloadBytes } from "@/services/pdf-brand";
 import { intlLocale } from "@/lib/intl";
 import { listControlledDisposals, type ControlledDisposal } from "@/services/controlled-disposal";
+import { useFeatureEnabled } from "@/lib/features";
+import { useAuthStore } from "@/stores/auth";
+import { hasPermission } from "@/lib/permissions";
+import { OperationalContext } from "@/components/shared/operational-context";
+import { Badge } from "@/components/ui/badge";
 
 import { BackButton } from "@/components/ui/back-button";
 interface ControlledEntry {
@@ -43,7 +49,23 @@ export function ControlledRegisterPage() {
   const [entries, setEntries] = useState<ControlledEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [disposals, setDisposals] = useState<ControlledDisposal[]>([]);
+  const [search, setSearch] = useState("");
+  const [page, setPage] = useState(1);
+  const showPpbRegister = useFeatureEnabled("ppb_register");
+  const user = useAuthStore((s) => s.user);
+  const canViewControlled = hasPermission(user, "pharmacy.controlled");
   const printRef = useRef<HTMLDivElement>(null);
+  const filteredEntries = useMemo(() => {
+    const needle = search.trim().toLowerCase();
+    if (!needle) return entries;
+    return entries.filter((entry) => [entry.product_name, entry.patient_name, entry.prescribed_by, entry.prescription_number, entry.pharmacist_name]
+      .some((value) => value?.toLowerCase().includes(needle)));
+  }, [entries, search]);
+  const pageSize = 20;
+  const pageCount = Math.max(1, Math.ceil(filteredEntries.length / pageSize));
+  const visibleEntries = filteredEntries.slice((page - 1) * pageSize, page * pageSize);
+
+  useEffect(() => { setPage(1); }, [search, date]);
 
   const load = async () => {
     setLoading(true);
@@ -63,8 +85,11 @@ export function ControlledRegisterPage() {
       setEntries(rows);
     } finally { setLoading(false); }
   };
-  useEffect(() => { load(); }, [date]);
-  useEffect(() => { listControlledDisposals(50).then(setDisposals).catch(() => setDisposals([])); }, []);
+  useEffect(() => { if (showPpbRegister && canViewControlled) load(); }, [date, showPpbRegister, canViewControlled]);
+  useEffect(() => {
+    if (!showPpbRegister || !canViewControlled) return;
+    listControlledDisposals(50).then(setDisposals).catch(() => setDisposals([]));
+  }, [showPpbRegister, canViewControlled]);
 
   const totalDispensed = entries
     .filter((e) => e.action === "dispense")
@@ -72,6 +97,26 @@ export function ControlledRegisterPage() {
   const totalReceived = entries
     .filter((e) => e.action === "receive")
     .reduce((s, e) => s + e.quantity, 0);
+
+  if (!showPpbRegister) {
+    return (
+      <div className="rounded-md border border-border p-6">
+        <BackButton fallback="/pharmacy" />
+        <h1 className="mt-3 text-lg font-semibold">Controlled register unavailable</h1>
+        <p className="mt-1 text-sm text-muted-foreground">This country uses a different medicines-control framework. Regulated register records are not available here.</p>
+      </div>
+    );
+  }
+
+  if (!canViewControlled) {
+    return (
+      <div className="rounded-md border border-border p-6">
+        <BackButton fallback="/pharmacy" />
+        <h1 className="mt-3 text-lg font-semibold">Controlled register restricted</h1>
+        <p className="mt-1 text-sm text-muted-foreground">Your role does not have permission to view regulated medicine records.</p>
+      </div>
+    );
+  }
 
   const exportPdf = async () => {
     const brand = await loadBrandHeader();
@@ -139,7 +184,7 @@ export function ControlledRegisterPage() {
 
   return (
     <div className="space-y-5" ref={printRef}>
-      <div className="flex items-start justify-between">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div>
           <BackButton fallback="/pharmacy" />
           <h1 className="text-xl font-semibold tracking-tight flex items-center gap-2">
@@ -149,12 +194,12 @@ export function ControlledRegisterPage() {
             Statutory daily log per Pharmacy and Poisons Act (Cap 244). Print or export end of day for the dispensary file.
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2 [&_button]:min-h-11 lg:[&_button]:min-h-0">
           <div className="flex items-center gap-1 border border-border rounded-md">
             <Button variant="ghost" size="icon-xs" onClick={() => setDate(addDays(date, -1))}>
               <ChevronLeft className="h-3.5 w-3.5" />
             </Button>
-            <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="h-7 w-32 border-0 bg-transparent" />
+            <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="h-11 w-36 border-0 bg-transparent lg:h-7 lg:w-32" />
             <Button variant="ghost" size="icon-xs" onClick={() => setDate(addDays(date, 1))}>
               <ChevronRight className="h-3.5 w-3.5" />
             </Button>
@@ -171,13 +216,43 @@ export function ControlledRegisterPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-3 gap-3">
+      <OperationalContext compact />
+
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-3 sm:gap-3">
         <Stat label="Entries" value={String(entries.length)} />
         <Stat label="Dispensed (units)" value={String(totalDispensed)} color="text-red-600" />
         <Stat label="Received (units)" value={String(totalReceived)} color="text-emerald-600" />
       </div>
 
-      <div className="border border-border rounded-md overflow-hidden">
+      <div className="relative w-full max-w-md">
+        <Search className="pointer-events-none absolute left-3 top-3.5 h-4 w-4 text-muted-foreground lg:top-2.5" />
+        <Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search drug, patient, prescriber, or pharmacist…" className="h-11 pl-9 lg:h-9" />
+      </div>
+
+      <div className="space-y-2 lg:hidden" aria-label="Controlled register records">
+        {loading ? (
+          <div className="py-8 text-center text-sm text-muted-foreground">Loading register…</div>
+        ) : visibleEntries.length === 0 ? (
+          <EmptyState icon={ShieldAlert} title="No matching entries" description="Dispensing of controlled medicines appears here as it happens." />
+        ) : visibleEntries.map((entry) => (
+          <article key={entry.id} className="rounded-md border border-border p-4">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <p className="font-medium truncate">{entry.product_name}</p>
+                <p className="mt-1 font-mono text-xs text-muted-foreground">{new Date(entry.created_at).toLocaleTimeString(intlLocale(), { hour: "2-digit", minute: "2-digit" })} · balance {entry.balance_after}</p>
+              </div>
+              <Badge variant={entry.action === "dispense" ? "destructive" : "secondary"} className="capitalize">{entry.action} {entry.quantity}</Badge>
+            </div>
+            <dl className="mt-3 grid grid-cols-2 gap-3 border-t border-border pt-3 text-xs">
+              <div><dt className="text-muted-foreground">Patient</dt><dd className="mt-1">{entry.patient_name || "—"}</dd></div>
+              <div><dt className="text-muted-foreground">Prescriber</dt><dd className="mt-1">{entry.prescribed_by || "—"}</dd></div>
+              <div className="col-span-2"><dt className="text-muted-foreground">Pharmacist</dt><dd className="mt-1">{entry.pharmacist_name || "—"}{entry.pharmacist_license ? ` · ${entry.pharmacist_license}` : ""}</dd></div>
+            </dl>
+          </article>
+        ))}
+      </div>
+
+      <div className="hidden border border-border rounded-md overflow-hidden lg:block">
         <table className="w-full text-sm">
           <thead className="bg-muted/30 border-b border-border">
             <tr>
@@ -195,7 +270,7 @@ export function ControlledRegisterPage() {
           <tbody>
             {loading ? (
               <TableRowSkeleton cells={9} rows={4} />
-            ) : entries.length === 0 ? (
+            ) : visibleEntries.length === 0 ? (
               <tr><td colSpan={9} className="p-0">
                 <EmptyState
                   icon={ShieldAlert}
@@ -204,7 +279,7 @@ export function ControlledRegisterPage() {
                 />
               </td></tr>
             ) : (
-              entries.map((e) => (
+              visibleEntries.map((e) => (
                 <tr key={e.id} className="border-b border-border/60">
                   <td className="px-2 py-1.5 text-xs font-mono">
                     {new Date(e.created_at).toLocaleTimeString(intlLocale(), { hour: "2-digit", minute: "2-digit" })}
@@ -236,6 +311,17 @@ export function ControlledRegisterPage() {
           </tbody>
         </table>
       </div>
+
+      {filteredEntries.length > 0 && (
+        <div className="flex items-center justify-between text-xs text-muted-foreground">
+          <span>{(page - 1) * pageSize + 1}–{Math.min(page * pageSize, filteredEntries.length)} of {filteredEntries.length}</span>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" disabled={page <= 1} onClick={() => setPage((value) => Math.max(1, value - 1))} className="h-11 lg:h-8">Previous</Button>
+            <span className="font-mono">{page} / {pageCount}</span>
+            <Button variant="outline" disabled={page >= pageCount} onClick={() => setPage((value) => Math.min(pageCount, value + 1))} className="h-11 lg:h-8">Next</Button>
+          </div>
+        </div>
+      )}
 
       {disposals.length > 0 && (
         <Card>

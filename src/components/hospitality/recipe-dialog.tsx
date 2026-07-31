@@ -91,7 +91,7 @@ export function RecipeDialog({ open, onClose, menuItemId, menuItemName }: Props)
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="w-[calc(100vw-1rem)] max-w-2xl">
         <DialogHeader>
           <DialogTitle>Recipe · {menuItemName}</DialogTitle>
         </DialogHeader>
@@ -202,7 +202,7 @@ export function RecipeDialog({ open, onClose, menuItemId, menuItemName }: Props)
           </Button>
         </div>
 
-        <DialogFooter>
+        <DialogFooter className="[&_button]:h-11 lg:[&_button]:h-9">
           <Button variant="ghost" onClick={onClose} disabled={saving}>Cancel</Button>
           <Button onClick={save} disabled={saving}>{saving ? "Saving…" : "Save recipe"}</Button>
         </DialogFooter>

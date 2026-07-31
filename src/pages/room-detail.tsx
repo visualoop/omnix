@@ -14,6 +14,7 @@ import { query, execute } from "@/lib/db";
 import { money as KES } from "@/lib/money";
 import { intlLocale } from "@/lib/intl";
 import { toast } from "sonner";
+import { OperationalContext } from "@/components/shared/operational-context";
 
 interface Room {
   id: string;
@@ -140,20 +141,21 @@ export function RoomDetailPage() {
           </Badge>
         }
       />
+      <OperationalContext compact />
 
       {/* Current booking */}
       <section>
         <h2 className="text-[13px] uppercase tracking-wider text-muted-foreground font-semibold mb-2">Current stay</h2>
         {current ? (
           <div className="rounded-lg border border-border p-4">
-            <div className="flex items-baseline justify-between mb-2">
+            <div className="mb-2 flex flex-wrap items-baseline justify-between gap-2">
               <div>
                 <div className="font-semibold text-base">{current.guest_name}</div>
                 {current.guest_phone ? <div className="text-xs text-muted-foreground">{current.guest_phone}</div> : null}
               </div>
               <Badge className="bg-amber-600">{current.status.replace(/_/g, " ")}</Badge>
             </div>
-            <div className="grid grid-cols-3 gap-3 mt-3 text-sm">
+            <div className="mt-3 grid grid-cols-1 gap-3 text-sm sm:grid-cols-3">
               <div>
                 <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Check-in</div>
                 <div className="font-mono">{new Date(current.check_in_date).toLocaleDateString(intlLocale(), { dateStyle: "medium" })}</div>
@@ -171,6 +173,7 @@ export function RoomDetailPage() {
               <Button
                 size="sm"
                 variant="outline"
+                className="h-11 lg:h-8"
                 onClick={() => navigate(`/hospitality/bookings/${current.id}`)}
               >
                 Open booking #{current.booking_number}
@@ -192,7 +195,7 @@ export function RoomDetailPage() {
             <button
               key={s.v}
               onClick={() => setStatus(s.v)}
-              className={`px-3 py-1.5 rounded-md text-[12px] font-medium transition-colors ${
+              className={`min-h-11 px-3 py-1.5 rounded-md text-[12px] font-medium transition-colors lg:min-h-0 ${
                 room.status === s.v
                   ? "bg-primary text-primary-foreground"
                   : "border border-border hover:bg-accent"
@@ -212,11 +215,11 @@ export function RoomDetailPage() {
         ) : (
           <ul className="rounded-lg border border-border divide-y divide-border/60">
             {past.map((b) => (
-              <li key={b.id} className="flex items-center gap-3 px-4 py-2 text-sm">
+              <li key={b.id} className="flex flex-col items-start gap-2 px-4 py-3 text-sm sm:flex-row sm:items-center">
                 <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
                 <Button
                   variant="link"
-                  className="p-0 h-auto text-sm"
+                  className="min-h-11 p-0 text-sm lg:min-h-0"
                   onClick={() => navigate(`/hospitality/bookings/${b.id}`)}
                 >
                   #{b.booking_number}

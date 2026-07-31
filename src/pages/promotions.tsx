@@ -24,10 +24,15 @@ import { PaginationBar } from "@/components/pagination-bar";
 import { EmptyState } from "@/components/ui/empty-state";
 import { TableRowSkeleton } from "@/components/ui/skeletons";
 import { toast } from "sonner";
+import { OperationalContext } from "@/components/shared/operational-context";
 import { intlLocale } from "@/lib/intl";
-import { money } from "@/lib/money";
+import { money, currencySymbol } from "@/lib/money";
+import { useAuthStore } from "@/stores/auth";
+import { hasPermission } from "@/lib/permissions";
 
 export function PromotionsPage() {
+  const user = useAuthStore((state) => state.user);
+  const canManage = hasPermission(user, "promotions.manage");
   const [showExpired, setShowExpired] = useState(false);
   const [editing, setEditing] = useState<Promotion | null>(null);
   const [creating, setCreating] = useState(false);
@@ -52,19 +57,21 @@ export function PromotionsPage() {
         eyebrow="Commerce"
         title="Promotions"
         description="Time-limited discounts and offers — automatic or with promo codes."
-        actions={
+        actions={canManage ? (
           <Button onClick={() => setCreating(true)}>
             <Plus className="h-4 w-4 mr-2" /> New promotion
           </Button>
-        }
+        ) : null}
       />
 
-      <div className="flex gap-2 items-center">
-        <div className="relative flex-1 max-w-sm">
+      <OperationalContext compact />
+
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+        <div className="relative w-full sm:max-w-sm sm:flex-1">
           <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
           <Input
             placeholder="Search by name or code..."
-            className="pl-9"
+            className="h-11 pl-9 lg:h-9"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
@@ -75,7 +82,28 @@ export function PromotionsPage() {
         </label>
       </div>
 
-      <div className="border border-border rounded-lg overflow-hidden">
+      <div className="space-y-2 lg:hidden" aria-label="Promotion records">
+        {loading ? (
+          <div className="py-8 text-center text-sm text-muted-foreground">Loading promotions…</div>
+        ) : filtered.length === 0 ? (
+          <EmptyState icon={Tag} title="No promotions yet" description="Create time-limited discounts to drive traffic and clear stock." cta={canManage ? { label: "Create Promotion", onClick: () => setCreating(true), icon: Plus } : undefined} />
+        ) : filtered.map((promotion) => {
+          const expired = new Date(promotion.ends_at) < new Date();
+          const upcoming = new Date(promotion.starts_at) > new Date();
+          return (
+            <article key={promotion.id} className="rounded-md border border-border p-4">
+              <button type="button" disabled={!canManage} onClick={() => setEditing(promotion)} className="min-h-11 w-full text-left disabled:cursor-default">
+                <div className="flex items-start justify-between gap-3"><div className="min-w-0"><p className="font-medium truncate">{promotion.name}</p><p className="mt-1 text-xs text-muted-foreground">{promotion.code || "Automatic offer"}</p></div>{!promotion.active ? <Badge variant="secondary">Paused</Badge> : expired ? <Badge variant="destructive">Expired</Badge> : upcoming ? <Badge variant="outline">Upcoming</Badge> : <Badge>Active</Badge>}</div>
+                <div className="mt-4 grid grid-cols-2 gap-3 border-t border-border pt-3 text-xs"><div><span className="text-muted-foreground">Offer</span><p className="mt-1 font-medium">{promotion.type === "percent_off" ? `${promotion.value}% off` : promotion.type === "amount_off" ? `${money(promotion.value)} off` : "Buy X get Y"}</p></div><div className="text-right"><span className="text-muted-foreground">Uses</span><p className="mt-1 font-mono">{promotion.uses_count}{promotion.max_uses ? ` / ${promotion.max_uses}` : ""}</p></div></div>
+                <p className="mt-3 text-xs text-muted-foreground">{new Date(promotion.starts_at).toLocaleDateString(intlLocale(), { day: "2-digit", month: "short" })} – {new Date(promotion.ends_at).toLocaleDateString(intlLocale(), { day: "2-digit", month: "short" })}</p>
+              </button>
+              {canManage && <Button variant="outline" onClick={() => togglePromotion(promotion.id, promotion.active ? 0 : 1).then(load)} className="mt-3 h-11 w-full">{promotion.active ? "Pause" : "Activate"}</Button>}
+            </article>
+          );
+        })}
+      </div>
+
+      <div className="hidden border border-border rounded-lg overflow-hidden lg:block">
         <table className="w-full text-sm">
           <thead className="bg-muted/30 border-b border-border">
             <tr className="text-xs text-muted-foreground">
@@ -97,7 +125,7 @@ export function PromotionsPage() {
                   icon={Tag}
                   title="No promotions yet"
                   description="Create time-limited discounts to drive traffic and clear stock."
-                  cta={{ label: "Create Promotion", onClick: () => setCreating(true), icon: Plus }}
+                  cta={canManage ? { label: "Create Promotion", onClick: () => setCreating(true), icon: Plus } : undefined}
                 />
               </td></tr>
             ) : (
@@ -105,7 +133,7 @@ export function PromotionsPage() {
                 const expired = new Date(p.ends_at) < new Date();
                 const upcoming = new Date(p.starts_at) > new Date();
                 return (
-                  <tr key={p.id} className="border-b border-border last:border-0 hover:bg-muted/30 cursor-pointer" onClick={() => setEditing(p)}>
+                  <tr key={p.id} className="border-b border-border last:border-0 hover:bg-muted/30 cursor-pointer" onClick={() => canManage && setEditing(p)}>
                     <td className="px-3 py-2.5">
                       <div className="font-medium">{p.name}</div>
                       {p.description && <div className="text-xs text-muted-foreground truncate max-w-[280px]">{p.description}</div>}
@@ -137,16 +165,18 @@ export function PromotionsPage() {
                        <Badge className="bg-green-600 hover:bg-green-600 text-xs">Active</Badge>}
                     </td>
                     <td className="px-3 py-2.5 text-right">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          togglePromotion(p.id, p.active ? 0 : 1).then(load);
-                        }}
-                      >
-                        {p.active ? "Pause" : "Activate"}
-                      </Button>
+                      {canManage && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            togglePromotion(p.id, p.active ? 0 : 1).then(load);
+                          }}
+                        >
+                          {p.active ? "Pause" : "Activate"}
+                        </Button>
+                      )}
                     </td>
                   </tr>
                 );
@@ -156,7 +186,7 @@ export function PromotionsPage() {
         </table>
       </div>
 
-      {(creating || editing) && (
+      {canManage && (creating || editing) && (
         <PromotionDialog
           promotion={editing}
           onClose={() => { setCreating(false); setEditing(null); }}
@@ -241,7 +271,7 @@ function PromotionDialog({ promotion, onClose, onSaved }: {
             <Input value={form.description || ""} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="Visible to customers" />
           </Field>
 
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-2">
             <Field label="Type">
               <Select value={form.type} onValueChange={(v) => setForm({ ...form, type: String(v) as PromotionType })}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>
                 <SelectItem value="percent_off">Percent off</SelectItem>
@@ -249,7 +279,7 @@ function PromotionDialog({ promotion, onClose, onSaved }: {
                 <SelectItem value="buy_x_get_y">Buy X Get Y</SelectItem>
               </SelectContent></Select>
             </Field>
-            <Field label={form.type === "percent_off" ? "Percent (%)" : "Amount (KES)"}>
+            <Field label={form.type === "percent_off" ? "Percent (%)" : `Amount (${currencySymbol()})`}>
               <Input
                 type="number"
                 value={form.value || 0}
@@ -266,7 +296,7 @@ function PromotionDialog({ promotion, onClose, onSaved }: {
             </SelectContent></Select>
           </Field>
 
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-2">
             <Field label="Starts">
               <Input
                 type="date"
@@ -283,8 +313,8 @@ function PromotionDialog({ promotion, onClose, onSaved }: {
             </Field>
           </div>
 
-          <div className="grid grid-cols-2 gap-2">
-            <Field label="Min purchase (KES)">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-2">
+            <Field label={`Min purchase (${currencySymbol()})`}>
               <Input
                 type="number"
                 value={form.min_purchase || 0}

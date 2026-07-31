@@ -11,9 +11,124 @@
  */
 import { pagedQuery } from "@/lib/paged-query";
 import type { ListPage, ListQuery } from "@/lib/list-types";
-import type { Customer, StockTake } from "@/services/erp";import type { DhaEprescription } from "@/services/dha-eprescriptions";
+import type { Customer, StockTake } from "@/services/erp";
+import type { DhaEprescription } from "@/services/dha-eprescriptions";
+import type { ExpiryItem, Prescription } from "@/services/pharmacy";
 import type { DebitNote } from "@/services/debit-notes";
 import type { FixedAsset } from "@/services/fixed-assets";
+
+// ─── Dawa operational lists ───────────────────────────────────
+export async function pagePrescriptions(
+  q: ListQuery & { status?: string; from?: string; to?: string },
+): Promise<ListPage<Prescription>> {
+  const extraWhere: string[] = [];
+  const extraParams: unknown[] = [];
+  if (q.status) { extraWhere.push(`status = ?${extraParams.length + 1}`); extraParams.push(q.status); }
+  if (q.from) { extraWhere.push(`created_at >= ?${extraParams.length + 1}`); extraParams.push(q.from); }
+  if (q.to) { extraWhere.push(`created_at <= ?${extraParams.length + 1}`); extraParams.push(`${q.to}T23:59:59`); }
+  return pagedQuery<Prescription>({
+    table: "prescriptions",
+    searchColumns: ["patient_name", "patient_phone", "CAST(rx_number AS TEXT)"],
+    orderBy: "created_at DESC",
+    extraWhere,
+    extraParams,
+  }, q);
+}
+
+export interface PatientListRow {
+  customer_id: string;
+  name: string;
+  phone: string | null;
+  email: string | null;
+  date_of_birth: string | null;
+  gender: string | null;
+  allergy_count: number;
+  prescription_count: number;
+  last_visit: string | null;
+}
+
+export async function pagePatients(q: ListQuery): Promise<ListPage<PatientListRow>> {
+  return pagedQuery<PatientListRow>({
+    baseSql: `SELECT c.id AS customer_id, c.name, c.phone, c.email,
+                    pp.date_of_birth, pp.gender,
+                    (SELECT COUNT(*) FROM patient_allergies a WHERE a.customer_id = c.id) AS allergy_count,
+                    (SELECT COUNT(*) FROM prescriptions r
+                      WHERE r.customer_id = c.id OR (r.customer_id IS NULL AND r.patient_name = c.name)) AS prescription_count,
+                    (SELECT MAX(r.created_at) FROM prescriptions r
+                      WHERE r.customer_id = c.id OR (r.customer_id IS NULL AND r.patient_name = c.name)) AS last_visit
+               FROM customers c
+               INNER JOIN patient_profiles pp ON pp.customer_id = c.id`,
+    countSql: `SELECT COUNT(DISTINCT c.id) AS n
+                 FROM customers c
+                 INNER JOIN patient_profiles pp ON pp.customer_id = c.id`,
+    searchColumns: ["c.name", "c.phone", "c.email"],
+    orderBy: "c.name ASC",
+    extraWhere: [],
+    extraParams: [],
+  }, q).then((page) => page);
+}
+
+export async function pageExpiryItems(
+  q: ListQuery & { daysWindow: number },
+): Promise<ListPage<ExpiryItem>> {
+  return pagedQuery<ExpiryItem>({
+    baseSql: `SELECT p.id AS product_id, p.name AS product_name,
+                    b.id AS batch_id, COALESCE(b.batch_number, '—') AS batch_number,
+                    b.quantity, b.expiry_date,
+                    CAST(julianday(b.expiry_date) - julianday('now') AS INTEGER) AS days_to_expiry,
+                    COALESCE(pp.is_controlled, 0) AS is_controlled
+               FROM batches b
+               JOIN products p ON p.id = b.product_id
+               LEFT JOIN pharmacy_products pp ON pp.product_id = p.id`,
+    countSql: `SELECT COUNT(*) AS n FROM batches b
+                 JOIN products p ON p.id = b.product_id
+                 LEFT JOIN pharmacy_products pp ON pp.product_id = p.id`,
+    searchColumns: ["p.name", "b.batch_number"],
+    orderBy: "b.expiry_date ASC",
+    extraWhere: ["b.expiry_date IS NOT NULL", "b.quantity > 0", "julianday(b.expiry_date) - julianday('now') <= ?1"],
+    extraParams: [q.daysWindow],
+  }, q);
+}
+
+export interface ControlledRegisterRow {
+  id: string;
+  product_id: string;
+  product_name: string;
+  action: string;
+  quantity: number;
+  patient_name: string | null;
+  patient_id_number: string | null;
+  prescribed_by: string | null;
+  prescription_number: string | null;
+  balance_after: number;
+  notes: string | null;
+  pharmacist_id: string | null;
+  pharmacist_name: string | null;
+  pharmacist_license: string | null;
+  user_id: string;
+  user_name: string;
+  created_at: string;
+}
+
+export async function pageControlledRegister(
+  q: ListQuery & { date: string },
+): Promise<ListPage<ControlledRegisterRow>> {
+  return pagedQuery<ControlledRegisterRow>({
+    baseSql: `SELECT cl.*, u.full_name AS user_name,
+                    p.full_name AS pharmacist_name,
+                    p.pharmacist_license_number AS pharmacist_license
+               FROM controlled_log cl
+               LEFT JOIN users u ON u.id = cl.user_id
+               LEFT JOIN employees p ON p.id = cl.pharmacist_id`,
+    countSql: `SELECT COUNT(*) AS n FROM controlled_log cl
+                 LEFT JOIN users u ON u.id = cl.user_id
+                 LEFT JOIN employees p ON p.id = cl.pharmacist_id`,
+    searchColumns: ["cl.product_name", "cl.patient_name", "cl.prescribed_by", "cl.prescription_number", "p.full_name"],
+    orderBy: "cl.created_at ASC",
+    extraWhere: ["date(cl.created_at) = ?1"],
+    extraParams: [q.date],
+  }, q);
+}
 
 // ─── Customers ─────────────────────────────────────────────────
 export async function pageCustomers(q: ListQuery): Promise<ListPage<Customer>> {
@@ -480,8 +595,8 @@ export async function pageLaybys(q: ListQuery & { status?: string }): Promise<Li
   return pagedQuery<LaybyRow>(
     {
       baseSql:
-        `SELECT l.id, l.layby_number, l.customer_id, c.name AS customer_name,
-                l.total_amount, l.paid_amount, l.status, l.created_at
+        `SELECT l.*, c.name AS customer_name,
+                COALESCE(l.customer_phone, c.phone) AS customer_phone
          FROM retail_laybys l LEFT JOIN customers c ON c.id = l.customer_id`,
       countSql:
         `SELECT COUNT(*) AS n FROM retail_laybys l LEFT JOIN customers c ON c.id = l.customer_id`,
@@ -537,20 +652,27 @@ export interface ShrinkageRow {
   recorded_at: string;
 }
 
-export async function pageShrinkage(q: ListQuery & { from?: string; to?: string }): Promise<ListPage<ShrinkageRow>> {
+export async function pageShrinkage(q: ListQuery & { from?: string; to?: string; reason?: string }): Promise<ListPage<ShrinkageRow>> {
   const extraWhere: string[] = [];
   const extraParams: unknown[] = [];
   let i = 0;
-  if (q.from) { extraWhere.push(`s.recorded_at >= ?${++i}`); extraParams.push(q.from); }
-  if (q.to) { extraWhere.push(`s.recorded_at <= ?${++i}`); extraParams.push(q.to); }
+  if (q.from) { extraWhere.push(`s.incident_date >= ?${++i}`); extraParams.push(q.from); }
+  if (q.to) { extraWhere.push(`s.incident_date <= ?${++i}`); extraParams.push(q.to); }
+  if (q.reason) { extraWhere.push(`s.reason = ?${++i}`); extraParams.push(q.reason); }
   return pagedQuery<ShrinkageRow>(
     {
       baseSql:
-        `SELECT s.id, p.name AS product_name, s.quantity, s.reason, s.recorded_at
-         FROM shrinkage s LEFT JOIN products p ON p.id = s.product_id`,
-      countSql: `SELECT COUNT(*) AS n FROM shrinkage s LEFT JOIN products p ON p.id = s.product_id`,
-      searchColumns: ["p.name", "s.reason"],
-      orderBy: "s.recorded_at DESC",
+        `SELECT s.*, p.name AS product_name, v.variant_name, u.full_name AS user_name
+         FROM shrinkage s
+         JOIN products p ON p.id = s.product_id
+         LEFT JOIN product_variants v ON v.id = s.variant_id
+         JOIN users u ON u.id = s.user_id`,
+      countSql: `SELECT COUNT(*) AS n FROM shrinkage s
+         JOIN products p ON p.id = s.product_id
+         LEFT JOIN product_variants v ON v.id = s.variant_id
+         JOIN users u ON u.id = s.user_id`,
+      searchColumns: ["p.name", "v.variant_name", "s.reason", "s.notes"],
+      orderBy: "s.incident_date DESC, s.created_at DESC",
       extraWhere,
       extraParams,
     },

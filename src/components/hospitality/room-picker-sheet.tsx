@@ -261,7 +261,7 @@ export function RoomPickerSheet(props: Props) {
           )}
         </div>
 
-        <SheetFooter className="border-t border-border p-3 flex-row justify-between">
+        <SheetFooter className="[&_button]:h-11 lg:[&_button]:h-9 border-t border-border p-3 flex-row justify-between">
           <Button variant="ghost" size="sm" onClick={props.onClose}>Cancel</Button>
           <Button size="sm" onClick={confirm} disabled={!picked}>
             Pick room

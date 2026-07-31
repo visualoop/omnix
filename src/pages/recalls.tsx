@@ -1,6 +1,13 @@
-import { useEffect, useState, useCallback } from "react";
-import { Warning, Plus } from "@phosphor-icons/react";
+import { useEffect, useMemo, useState, useCallback } from "react";
+import { Warning, Plus, MagnifyingGlass as Search } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import { PaginationBar } from "@/components/pagination-bar";
+import { useClientPagination } from "@/hooks/use-client-pagination";
+import { useAuthStore } from "@/stores/auth";
+import { hasPermission } from "@/lib/permissions";
+import { OperationalContext } from "@/components/shared/operational-context";
 import { listRecalls, closeRecall, type Recall } from "@/services/recalls";
 import { intlLocale } from "@/lib/intl";
 import { toast } from "sonner";
@@ -17,6 +24,11 @@ export function RecallsPage() {
   const [items, setItems] = useState<Recall[]>([]);
   const [filter, setFilter] = useState<"active" | "closed" | "all">("active");
   const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState("");
+  const user = useAuthStore((state) => state.user);
+  const canManage = hasPermission(user, "pharmacy.dispense");
+  const filtered = useMemo(() => { const needle = search.trim().toLowerCase(); return needle ? items.filter((item) => [item.recall_number, item.reason, item.batch_number, item.issued_by].some((value) => value?.toLowerCase().includes(needle))) : items; }, [items, search]);
+  const { pageRows, pagination } = useClientPagination(filtered, 12, `${filter}:${search}`);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -37,7 +49,8 @@ export function RecallsPage() {
 
   return (
     <div className="max-w-4xl space-y-4">
-      <header className="flex items-start justify-between">
+      <OperationalContext />
+      <header className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <BackButton fallback="/pharmacy" />
           <h1 className="text-xl font-semibold flex items-center gap-2">
@@ -48,17 +61,22 @@ export function RecallsPage() {
             Affected stock is quarantined automatically — POS won&rsquo;t dispense it.
           </p>
         </div>
-        <Button disabled title="Coming soon: issue-recall dialog">
+        <Button disabled={!canManage} title={canManage ? "Issue recalls from the connected hub when available; local quarantine remains authoritative." : "Your role cannot issue recalls."} className="h-11 w-full sm:w-auto">
           <Plus className="h-4 w-4 mr-1.5" /> New recall
         </Button>
       </header>
 
-      <div className="flex gap-1 border-b border-border">
+      <div className="relative max-w-md">
+        <Search className="pointer-events-none absolute left-3 top-3.5 h-4 w-4 text-muted-foreground" />
+        <Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search recall, batch, reason, or issuer…" className="h-11 pl-9" />
+      </div>
+
+      <div className="grid grid-cols-3 gap-1 border-b border-border">
         {(["active", "closed", "all"] as const).map((f) => (
           <button
             key={f}
             onClick={() => setFilter(f)}
-            className={`px-3 py-1.5 text-[13px] border-b-2 -mb-px ${
+            className={`min-h-11 px-3 py-1.5 text-[13px] border-b-2 -mb-px ${
               filter === f
                 ? "border-primary text-foreground"
                 : "border-transparent text-muted-foreground hover:text-foreground"
@@ -71,7 +89,7 @@ export function RecallsPage() {
 
       {loading ? (
         <div className="py-12 text-center text-sm text-muted-foreground">Loading…</div>
-      ) : items.length === 0 ? (
+      ) : pageRows.length === 0 ? (
         <div className="py-12 text-center">
           <Warning className="h-8 w-8 mx-auto mb-3 opacity-30" />
           <div className="text-sm text-muted-foreground">
@@ -80,9 +98,10 @@ export function RecallsPage() {
         </div>
       ) : (
         <div className="space-y-2">
-          {items.map((r) => (
-            <div key={r.id} className="rounded-md border border-border p-3 flex items-center gap-3">
-              <div className="flex-1">
+          {pageRows.map((r) => (
+            <article key={r.id} className="rounded-md border border-border p-4">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+              <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2 text-[13.5px] font-medium">
                   <span className="font-mono text-[12px]">{r.recall_number}</span>
                   <span>·</span>
@@ -94,23 +113,17 @@ export function RecallsPage() {
                   {r.issued_by && <> · by {r.issued_by}</>}
                 </div>
               </div>
-              <span className={`text-[10.5px] px-2 py-0.5 rounded-full uppercase tracking-wider ${SEVERITY_COLOR[r.severity]}`}>
-                {r.severity}
-              </span>
-              <span className={`text-[10.5px] px-2 py-0.5 rounded-full uppercase tracking-wider ${
-                r.status === "active" ? "bg-red-500/10 text-red-700" : "bg-muted text-muted-foreground"
-              }`}>
-                {r.status}
-              </span>
-              {r.status === "active" && (
-                <Button size="sm" variant="outline" onClick={() => handleClose(r)}>
-                  Close
-                </Button>
-              )}
-            </div>
+              <div className="flex flex-wrap items-center gap-2">
+                <Badge variant="outline" className={SEVERITY_COLOR[r.severity]}>{r.severity}</Badge>
+                <Badge variant={r.status === "active" ? "destructive" : "secondary"}>{r.status}</Badge>
+              </div>
+              </div>
+              {canManage && r.status === "active" && <Button className="mt-3 h-11 w-full" size="sm" variant="outline" onClick={() => handleClose(r)}>Close recall</Button>}
+            </article>
           ))}
         </div>
       )}
+      <PaginationBar list={pagination} />
     </div>
   );
 }

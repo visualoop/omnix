@@ -30,6 +30,7 @@ import { useCartStore } from "@/stores/cart";
 import { money as KES } from "@/lib/money";
 import { intlLocale } from "@/lib/intl";
 import { toast } from "sonner";
+import { OperationalContext } from "@/components/shared/operational-context";
 
 interface RefillChild {
   id: string;
@@ -134,7 +135,8 @@ export function PrescriptionDetailPage() {
 
   return (
     <div className="space-y-5">
-      <div className="flex items-start justify-between">
+      <OperationalContext />
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <BackButton fallback="/pharmacy" />
           <h1 className="text-xl font-semibold tracking-tight flex items-center gap-2">
@@ -147,7 +149,7 @@ export function PrescriptionDetailPage() {
             {prescription.patient_age !== null && <> · Age {prescription.patient_age}</>}
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2 [&_button]:h-11">
           <StatusBadge status={prescription.status} />
           <Button size="sm" variant="outline" onClick={() => setCounselOpen(true)}>
             <ChatCircleText className="h-3.5 w-3.5 mr-1.5" /> Counsel
@@ -198,7 +200,15 @@ export function PrescriptionDetailPage() {
             <h2 className="text-sm font-semibold">Prescribed items</h2>
             <span className="text-xs text-muted-foreground">Created {new Date(prescription.created_at).toLocaleString(intlLocale())}</span>
           </div>
-          <table className="w-full text-sm">
+          <div className="space-y-2 p-3 lg:hidden">
+            {items.map((item) => (
+              <article key={item.id} className="rounded-md border border-border p-3">
+                <div className="flex items-start justify-between gap-3"><div className="min-w-0"><p className="truncate text-sm font-medium">{item.product_name}</p><p className="mt-1 text-xs text-muted-foreground">{item.dosage || "Dose not recorded"} · {item.frequency || "Frequency not recorded"} · {item.duration || "Duration not recorded"}</p></div><Badge variant="outline" className="font-mono">{item.quantity_dispensed}/{item.quantity_prescribed}</Badge></div>
+                {item.instructions && <p className="mt-3 border-t border-border pt-2 text-xs text-muted-foreground">{item.instructions}</p>}
+              </article>
+            ))}
+          </div>
+          <table className="hidden w-full text-sm lg:table">
             <thead className="bg-muted/30 border-b border-border">
               <tr>
                 <th className="text-left px-3 py-2 text-[10.5px] font-semibold uppercase tracking-wider text-muted-foreground">Drug</th>
@@ -256,7 +266,7 @@ export function PrescriptionDetailPage() {
             </h2>
             <ul className="space-y-1.5">
               {refills.map((r) => (
-                <li key={r.id} className="flex items-center justify-between text-xs">
+                <li key={r.id} className="flex min-h-11 flex-col gap-2 py-2 text-xs sm:flex-row sm:items-center sm:justify-between">
                   <Link to={`/pharmacy/prescriptions/${r.id}`} className="hover:underline">
                     Rx #{r.rx_number}
                   </Link>
@@ -278,7 +288,7 @@ export function PrescriptionDetailPage() {
 
       {prescription.sale_id && (
         <Card>
-          <CardContent className="p-4 flex items-center justify-between">
+          <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <p className="text-sm font-semibold">Linked sale</p>
               <p className="text-xs text-muted-foreground">
@@ -286,7 +296,7 @@ export function PrescriptionDetailPage() {
               </p>
             </div>
             <Link to={`/sales/history/${prescription.sale_id}`}>
-              <Button variant="outline" size="sm">
+              <Button variant="outline" size="sm" className="h-11 w-full sm:w-auto">
                 <Receipt className="h-3.5 w-3.5 mr-1.5" /> View sale
               </Button>
             </Link>

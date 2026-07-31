@@ -14,7 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { money as KES } from "@/lib/money";
+import { money as KES, currencySymbol } from "@/lib/money";
 import { listCustomers, type Customer } from "@/services/erp";
 import { listRentableUnits, type EquipmentUnit } from "@/services/equipment";
 import { createRentalAgreement, returnRental, getRentalAgreement, type RentalItemRow } from "@/services/operations";
@@ -103,7 +103,7 @@ export function CreateRentalDialog({ open, onClose, onCreated }: {
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="sm:max-w-2xl w-[calc(100vw-2rem)] gap-0 p-0 overflow-visible max-h-[calc(100vh-3rem)] flex flex-col">
+      <DialogContent className="w-[calc(100vw-1rem)] sm:max-w-2xl w-[calc(100vw-2rem)] gap-0 p-0 overflow-visible max-h-[calc(100vh-3rem)] flex flex-col">
         <DialogHeader className="border-b border-border px-5 py-4 flex-shrink-0">
           <DialogTitle className="flex items-center gap-2 text-[15px]"><Truck className="size-4 text-primary" /> New rental</DialogTitle>
           <DialogDescription className="text-[12px]">Hire out machines for a period. Each unit is marked on hire until returned.</DialogDescription>
@@ -117,7 +117,7 @@ export function CreateRentalDialog({ open, onClose, onCreated }: {
                 <SelectContent>{customers.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent>
               </Select>
             </Field>
-            <Field label="Deposit (KES)"><Input type="number" value={deposit} onChange={(e) => setDeposit(e.target.value)} placeholder="0" className="text-right tabular-nums" /></Field>
+            <Field label={`Deposit (${currencySymbol()})`}><Input type="number" value={deposit} onChange={(e) => setDeposit(e.target.value)} placeholder="0" className="text-right tabular-nums" /></Field>
             <Field label="Start date"><Input type="date" value={starts} onChange={(e) => setStarts(e.target.value)} /></Field>
             <Field label="End date"><Input type="date" value={ends} onChange={(e) => setEnds(e.target.value)} /></Field>
           </div>
@@ -152,8 +152,8 @@ export function CreateRentalDialog({ open, onClose, onCreated }: {
                     </div>
                     <Button variant="ghost" size="icon-xs" onClick={() => removeLine(idx)}><Trash2 className="size-3.5" /></Button>
                   </div>
-                  <div className="grid grid-cols-2 gap-2">
-                    <Field label="Daily rate (KES)"><Input type="number" value={l.daily_rate} onChange={(e) => updateLine(idx, { daily_rate: e.target.value })} placeholder="0.00" className="text-right tabular-nums" /></Field>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <Field label={`Daily rate (${currencySymbol()})`}><Input type="number" value={l.daily_rate} onChange={(e) => updateLine(idx, { daily_rate: e.target.value })} placeholder="0.00" className="text-right tabular-nums" /></Field>
                     <Field label="Meter out"><Input type="number" value={l.meter_out} onChange={(e) => updateLine(idx, { meter_out: e.target.value })} placeholder="0" className="text-right tabular-nums" /></Field>
                   </div>
                 </div>
@@ -168,7 +168,7 @@ export function CreateRentalDialog({ open, onClose, onCreated }: {
           <Field label="Notes"><Textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} placeholder="Optional" /></Field>
         </div>
 
-        <DialogFooter className="border-t border-border px-5 py-4 flex-shrink-0">
+        <DialogFooter className="[&_button]:h-11 lg:[&_button]:h-9 border-t border-border px-5 py-4 flex-shrink-0">
           <Button variant="outline" size="sm" onClick={onClose} disabled={submitting}>Cancel</Button>
           <Button size="sm" onClick={submit} disabled={submitting || lines.length === 0 || !customerId}>
             {submitting ? <Loader2 className="size-4 animate-spin" /> : <Truck className="size-4" />} Create rental
@@ -226,7 +226,7 @@ export function ReturnRentalDialog({ agreementId, onClose, onReturned }: {
 
   return (
     <Dialog open={!!agreementId} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent className="w-[calc(100vw-1rem)] sm:max-w-lg">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-[15px]"><Truck className="size-4 text-primary" /> Return rental {agreementNumber}</DialogTitle>
           <DialogDescription className="text-[12px]">Record meter readings + condition. Each machine returns to the fleet.</DialogDescription>
@@ -240,7 +240,7 @@ export function ReturnRentalDialog({ agreementId, onClose, onReturned }: {
                 <span className="font-mono text-[11px] text-muted-foreground">SN {it.serial ?? "—"}</span>
               </div>
               {it.equipment_unit_id ? (
-                <div className="grid grid-cols-2 gap-2 items-end">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 items-end">
                   <Field label={`Meter in${it.meter_out != null ? ` (out: ${it.meter_out})` : ""}`}>
                     <Input type="number" value={meterIn[it.id] ?? ""} onChange={(e) => setMeterIn({ ...meterIn, [it.id]: e.target.value })} className="text-right tabular-nums" />
                   </Field>
@@ -249,14 +249,14 @@ export function ReturnRentalDialog({ agreementId, onClose, onReturned }: {
             </div>
           ))}
 
-          <div className="grid grid-cols-2 gap-3">
-            <Field label="Damage fee (KES)"><Input type="number" value={damageFee} onChange={(e) => setDamageFee(e.target.value)} placeholder="0" className="text-right tabular-nums" /></Field>
-            <Field label="Late fee (KES)"><Input type="number" value={lateFee} onChange={(e) => setLateFee(e.target.value)} placeholder="0" className="text-right tabular-nums" /></Field>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <Field label={`Damage fee (${currencySymbol()})`}><Input type="number" value={damageFee} onChange={(e) => setDamageFee(e.target.value)} placeholder="0" className="text-right tabular-nums" /></Field>
+            <Field label={`Late fee (${currencySymbol()})`}><Input type="number" value={lateFee} onChange={(e) => setLateFee(e.target.value)} placeholder="0" className="text-right tabular-nums" /></Field>
           </div>
           <Field label="Condition on return"><Textarea value={condition} onChange={(e) => setCondition(e.target.value)} rows={2} placeholder="Any damage or notes" /></Field>
         </div>
 
-        <DialogFooter>
+        <DialogFooter className="[&_button]:h-11 lg:[&_button]:h-9">
           <Button variant="outline" size="sm" onClick={onClose} disabled={submitting}>Cancel</Button>
           <Button size="sm" onClick={submit} disabled={submitting}>{submitting ? <Loader2 className="size-4 animate-spin" /> : <Truck className="size-4" />} Return</Button>
         </DialogFooter>

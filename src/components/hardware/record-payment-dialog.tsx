@@ -9,6 +9,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { toast } from "sonner";
 import { postPayment } from "@/services/hardware";
 import { useAuthStore } from "@/stores/auth";
+import { useActiveCountry } from "@/stores/country";
+import { currencySymbol, money } from "@/lib/money";
 
 interface Props {
   open: boolean;
@@ -19,8 +21,16 @@ interface Props {
   outstandingBalance: number;
 }
 
+const PAYMENT_LABELS: Record<string, string> = {
+  cash: "Cash", card: "Card", bank: "Bank transfer", mpesa: "M-Pesa", airtel_money: "Airtel Money",
+  mtn_momo: "MTN MoMo", tigo_pesa: "Tigo Pesa", wave: "Wave", interac: "Interac",
+  venmo: "Venmo", cash_app: "Cash App", upi: "UPI", paytm: "Paytm", stk_push: "Mobile money",
+};
+
 export function RecordPaymentDialog({ open, onClose, onSaved, customerId, customerName, outstandingBalance }: Props) {
   const userId = useAuthStore((s) => s.user?.id);
+  const { profile } = useActiveCountry();
+  const paymentMethods = profile?.paymentMethods ?? ["cash", "card", "bank"] as const;
   const [amount, setAmount] = useState("");
   const [method, setMethod] = useState("cash");
   const [reference, setReference] = useState("");
@@ -29,10 +39,10 @@ export function RecordPaymentDialog({ open, onClose, onSaved, customerId, custom
   useEffect(() => {
     if (open) {
       setAmount(outstandingBalance > 0 ? String(outstandingBalance) : "");
-      setMethod("cash");
+      setMethod(paymentMethods[0] ?? "cash");
       setReference("");
     }
-  }, [open, outstandingBalance]);
+  }, [open, outstandingBalance, profile]);
 
   const save = async () => {
     const n = Number(amount);
@@ -54,13 +64,13 @@ export function RecordPaymentDialog({ open, onClose, onSaved, customerId, custom
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="max-w-sm">
+      <DialogContent className="w-[calc(100vw-1rem)] max-w-sm">
         <DialogHeader>
           <DialogTitle>Record payment · {customerName}</DialogTitle>
         </DialogHeader>
         <div className="space-y-3 py-2">
           <label className="block space-y-1">
-            <span className="text-[11px] uppercase tracking-wide text-muted-foreground font-medium">Amount (KES)</span>
+            <span className="text-[11px] uppercase tracking-wide text-muted-foreground font-medium">Amount ({currencySymbol()})</span>
             <Input
               type="number"
               step="0.01"
@@ -70,7 +80,7 @@ export function RecordPaymentDialog({ open, onClose, onSaved, customerId, custom
               autoFocus
             />
             {outstandingBalance > 0 ? (
-              <span className="text-[10px] text-muted-foreground">Outstanding: KES {outstandingBalance.toLocaleString()}</span>
+              <span className="text-[10px] text-muted-foreground">Outstanding: {money(outstandingBalance)}</span>
             ) : null}
           </label>
           <label className="block space-y-1">
@@ -78,20 +88,16 @@ export function RecordPaymentDialog({ open, onClose, onSaved, customerId, custom
             <Select value={method} onValueChange={(v) => setMethod(String(v))}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="cash">Cash</SelectItem>
-                <SelectItem value="mpesa">M-Pesa</SelectItem>
-                <SelectItem value="bank">Bank transfer</SelectItem>
-                <SelectItem value="cheque">Cheque</SelectItem>
-                <SelectItem value="card">Card</SelectItem>
+                {paymentMethods.map((paymentMethod) => <SelectItem key={paymentMethod} value={paymentMethod}>{PAYMENT_LABELS[paymentMethod] ?? paymentMethod.replace(/_/g, " ")}</SelectItem>)}
               </SelectContent>
             </Select>
           </label>
           <label className="block space-y-1">
             <span className="text-[11px] uppercase tracking-wide text-muted-foreground font-medium">Reference (optional)</span>
-            <Input value={reference} onChange={(e) => setReference(e.target.value)} placeholder="M-Pesa code, cheque #, txn id" />
+            <Input value={reference} onChange={(e) => setReference(e.target.value)} placeholder="Receipt, transfer, or transaction ID" />
           </label>
         </div>
-        <DialogFooter>
+        <DialogFooter className="[&_button]:h-11 lg:[&_button]:h-9">
           <Button variant="ghost" onClick={onClose} disabled={saving}>Cancel</Button>
           <Button onClick={save} disabled={saving}>{saving ? "Recording…" : "Record payment"}</Button>
         </DialogFooter>

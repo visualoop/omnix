@@ -212,7 +212,7 @@ export function PrescriptionPanel({ open, onClose, onSaved }: Props) {
 
   return (
     <Sheet open={open} onOpenChange={(v) => !v && onClose()}>
-      <SheetContent className="w-[520px] sm:w-[580px] overflow-y-auto">
+      <SheetContent className="w-full max-w-full overflow-y-auto sm:w-[580px] sm:max-w-[580px]">
         <SheetHeader>
           <SheetTitle>New Prescription</SheetTitle>
         </SheetHeader>
@@ -251,7 +251,7 @@ export function PrescriptionPanel({ open, onClose, onSaved }: Props) {
               }}
               placeholder="Pick or add a patient…"
             />
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               <Input placeholder="Phone" value={patient.phone} onChange={(e) => setPatient({ ...patient, phone: e.target.value })} />
               <Input placeholder="Age" type="number" value={patient.age} onChange={(e) => setPatient({ ...patient, age: e.target.value })} />
             </div>
@@ -318,7 +318,7 @@ export function PrescriptionPanel({ open, onClose, onSaved }: Props) {
               }}
               placeholder="Pick or add a doctor…"
             />
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               <Input placeholder="License #" value={patient.doctor_license} onChange={(e) => setPatient({ ...patient, doctor_license: e.target.value })} />
               <Input placeholder="Hospital" value={patient.hospital} onChange={(e) => setPatient({ ...patient, hospital: e.target.value })} />
             </div>
@@ -382,15 +382,15 @@ export function PrescriptionPanel({ open, onClose, onSaved }: Props) {
                         </button>
                       </div>
                     </div>
-                    <div className="grid grid-cols-3 gap-2">
-                      <Input className="h-8 text-xs" placeholder="Dosage" value={item.dosage} onChange={(e) => updateItem(i, "dosage", e.target.value)} />
-                      <Input className="h-8 text-xs" placeholder="Frequency" value={item.frequency} onChange={(e) => updateItem(i, "frequency", e.target.value)} />
-                      <Input className="h-8 text-xs" placeholder="Duration" value={item.duration} onChange={(e) => updateItem(i, "duration", e.target.value)} />
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                      <Input className="h-11 lg:h-8 text-xs" placeholder="Dosage" value={item.dosage} onChange={(e) => updateItem(i, "dosage", e.target.value)} />
+                      <Input className="h-11 lg:h-8 text-xs" placeholder="Frequency" value={item.frequency} onChange={(e) => updateItem(i, "frequency", e.target.value)} />
+                      <Input className="h-11 lg:h-8 text-xs" placeholder="Duration" value={item.duration} onChange={(e) => updateItem(i, "duration", e.target.value)} />
                     </div>
                     <div className="flex items-center gap-2">
                       <label className="text-xs text-muted-foreground">Qty:</label>
                       <Input
-                        className="h-8 text-xs w-20"
+                        className="h-11 lg:h-8 text-xs w-20"
                         type="number"
                         value={item.quantity_prescribed}
                         onChange={(e) => updateItem(i, "quantity_prescribed", parseInt(e.target.value) || 0)}
@@ -448,7 +448,7 @@ export function PrescriptionPanel({ open, onClose, onSaved }: Props) {
                 max={12}
                 value={patient.refills_authorized}
                 onChange={(e) => setPatient({ ...patient, refills_authorized: Math.max(0, parseInt(e.target.value) || 0) })}
-                className="h-8 w-20 text-xs"
+                className="h-11 lg:h-8 w-20 text-xs"
               />
               <span className="text-[10px] text-muted-foreground">
                 0 = one-off. Higher values enable the Refills page.

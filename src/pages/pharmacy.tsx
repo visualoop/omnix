@@ -11,7 +11,11 @@ import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { getPrescriptions, getExpiringItems, preparePrescriptionForPosCheckout, type Prescription, type ExpiryItem } from "@/services/pharmacy";
+import { getExpiringItems, preparePrescriptionForPosCheckout, type Prescription, type ExpiryItem } from "@/services/pharmacy";
+import { pagePrescriptions } from "@/services/paged";
+import { useListData } from "@/hooks/use-list-data";
+import { PaginationBar } from "@/components/pagination-bar";
+import { useFeatureEnabled } from "@/lib/features";
 import { printDrugLabels, DrugLabelPrintError } from "@/services/drug-labels";
 import { PrescriptionPanel } from "@/components/pharmacy/prescription-panel";
 import { useCartStore } from "@/stores/cart";
@@ -23,12 +27,23 @@ import { moduleAccent, ModuleMasthead, ModuleStat, ModuleTable, ModuleTHead, Mod
 const ACCENT = moduleAccent("dawa");
 
 export function PharmacyPage() {
-  const [prescriptions, setPrescriptions] = useState<Prescription[]>([]);
   const [expiring, setExpiring] = useState<ExpiryItem[]>([]);
-  const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | "pending" | "dispensed" | "cancelled">("all");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
+  const fetcher = useCallback(
+    (q: { search?: string; page?: number; pageSize?: number }) => pagePrescriptions({
+      ...q,
+      status: statusFilter === "all" ? undefined : statusFilter,
+      from: dateFrom || undefined,
+      to: dateTo || undefined,
+    }),
+    [statusFilter, dateFrom, dateTo],
+  );
+  const list = useListData(fetcher, { pageSize: 20 });
+  const prescriptions = list.rows as Prescription[];
+  const showPpb = useFeatureEnabled("ppb_register");
+  const showSha = useFeatureEnabled("sha");
   const [panelOpen, setPanelOpen] = useState(false);
   const [doseOpen, setDoseOpen] = useState(false);
   const [dispensing, setDispensing] = useState<string | null>(null);
@@ -36,22 +51,13 @@ export function PharmacyPage() {
   const loadSnapshot = useCartStore((s) => s.loadSnapshot);
 
   const load = useCallback(async () => {
-    const [rxs, exps] = await Promise.all([
-      getPrescriptions(search || undefined),
-      getExpiringItems(90),
-    ]);
-    setPrescriptions(rxs);
-    setExpiring(exps);
-  }, [search]);
+    list.refresh();
+    setExpiring(await getExpiringItems(90));
+  }, [list.refresh]);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => { getExpiringItems(90).then(setExpiring); }, []);
 
-  const filteredPrescriptions = prescriptions.filter((rx) => {
-    if (statusFilter !== "all" && rx.status !== statusFilter) return false;
-    if (dateFrom && rx.created_at < dateFrom) return false;
-    if (dateTo && rx.created_at > dateTo + "T23:59:59") return false;
-    return true;
-  });
+  const filteredPrescriptions = prescriptions;
 
   const handleDispense = async (rx: Prescription) => {
     setDispensing(rx.id);
@@ -155,12 +161,12 @@ export function PharmacyPage() {
           quiet secondary nav so the primary action stays unambiguous. */}
       <div className="flex flex-wrap gap-2 mb-6">
         {[
-          ["Controlled register", "/pharmacy/controlled-register"],
+          ...(showPpb ? [["Controlled register", "/pharmacy/controlled-register"]] : []),
           ["Cold chain", "/pharmacy/cold-chain"],
           ["AMR report", "/pharmacy/amr"],
           ["Doctors", "/pharmacy/doctors"],
           ["Refills", "/pharmacy/refills"],
-          ["e-Prescriptions", "/pharmacy/eprescriptions"],
+          ...(showSha ? [["e-Prescriptions", "/pharmacy/eprescriptions"]] : []),
         ].map(([label, to]) => (
           <Link key={to} to={to}>
             <Button size="sm" variant="outline" className="h-8 text-xs">{label}</Button>
@@ -169,7 +175,7 @@ export function PharmacyPage() {
       </div>
 
       {/* Quick stats */}
-      <div className="grid grid-cols-3 gap-3 mb-6">
+      <div className="grid grid-cols-1 gap-2 mb-6 sm:grid-cols-3 sm:gap-3">
         <ModuleStat accent={ACCENT} label="Scripts today" value={dispensedToday} icon={FileText} />
         <ModuleStat accent={ACCENT} label="Awaiting dispense" value={awaiting} tone={awaiting > 0 ? "accent" : "default"} />
         <ModuleStat
@@ -182,17 +188,17 @@ export function PharmacyPage() {
       </div>
 
       {/* Search + filter chips */}
-      <div className="flex flex-wrap items-center gap-3 mb-4">
-        <div className="relative max-w-sm flex-1 min-w-[240px]">
-          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-          <Input placeholder="Search by patient name or phone..." className="pl-9" value={search} onChange={(e) => setSearch(e.target.value)} />
+      <div className="flex flex-col gap-3 mb-4 lg:flex-row lg:flex-wrap lg:items-center">
+        <div className="relative w-full lg:max-w-sm lg:flex-1">
+          <Search className="absolute left-3 top-3.5 h-4 w-4 text-muted-foreground lg:top-2.5" />
+          <Input placeholder="Search by Rx, patient, or phone…" className="h-11 pl-9 lg:h-9" value={list.search} onChange={(e) => list.setSearch(e.target.value)} />
         </div>
-        <div className="flex gap-1 border border-border rounded-md p-0.5">
+        <div className="grid grid-cols-4 gap-1 border border-border rounded-md p-0.5">
           {(["all", "pending", "dispensed", "cancelled"] as const).map((s) => (
             <button
               key={s}
               onClick={() => setStatusFilter(s)}
-              className={`px-2.5 py-1 text-xs rounded transition-colors capitalize ${
+              className={`min-h-11 px-2.5 py-1 text-xs rounded transition-colors capitalize lg:min-h-0 ${
                 statusFilter === s
                   ? "bg-accent text-accent-foreground"
                   : "text-muted-foreground hover:text-foreground"
@@ -202,12 +208,12 @@ export function PharmacyPage() {
             </button>
           ))}
         </div>
-        <div className="flex items-center gap-1.5">
+        <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-1.5 lg:flex">
           <Input
             type="date"
             value={dateFrom}
             onChange={(e) => setDateFrom(e.target.value)}
-            className="h-8 w-36 text-xs"
+            className="h-11 min-w-0 text-xs lg:h-8 lg:w-36"
             placeholder="From"
           />
           <span className="text-xs text-muted-foreground">→</span>
@@ -215,7 +221,7 @@ export function PharmacyPage() {
             type="date"
             value={dateTo}
             onChange={(e) => setDateTo(e.target.value)}
-            className="h-8 w-36 text-xs"
+            className="h-11 min-w-0 text-xs lg:h-8 lg:w-36"
           />
           {(dateFrom || dateTo) && (
             <button
@@ -241,7 +247,34 @@ export function PharmacyPage() {
           }
         />
       ) : (
-        <ModuleTable>
+        <>
+          <div className="space-y-2 lg:hidden" aria-label="Prescription records">
+            {filteredPrescriptions.map((rx) => (
+              <article key={rx.id} className="rounded-md border border-border bg-background p-4">
+                <button
+                  type="button"
+                  className="min-h-11 w-full text-left active:scale-[0.99]"
+                  onClick={() => navigate(`/pharmacy/prescriptions/${rx.id}`)}
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="font-medium truncate">{rx.patient_name}</p>
+                      <p className="mt-1 font-mono text-xs text-muted-foreground">RX-{String(rx.rx_number).padStart(5, "0")} · {new Date(rx.created_at).toLocaleDateString()}</p>
+                    </div>
+                    <Badge variant={rx.status === "dispensed" ? "default" : "secondary"} className="capitalize">{rx.status}</Badge>
+                  </div>
+                  <p className="mt-3 text-xs text-muted-foreground">{rx.doctor_name || "No prescriber recorded"}{rx.patient_phone ? ` · ${rx.patient_phone}` : ""}</p>
+                </button>
+                {rx.status !== "dispensed" && (
+                  <Button variant="outline" disabled={dispensing === rx.id} onClick={() => handleDispense(rx)} className="mt-3 h-11 w-full">
+                    <ShoppingCart className="mr-2 h-4 w-4" />{dispensing === rx.id ? "Loading…" : "Dispense"}
+                  </Button>
+                )}
+              </article>
+            ))}
+          </div>
+          <div className="hidden lg:block">
+            <ModuleTable>
           <ModuleTHead>
             <tr>
               <th className="text-left px-4 py-2.5">Rx #</th>
@@ -319,7 +352,10 @@ export function PharmacyPage() {
               </tr>
             ))}
           </tbody>
-        </ModuleTable>
+            </ModuleTable>
+          </div>
+          <PaginationBar list={list} />
+        </>
       )}
 
       <PrescriptionPanel open={panelOpen} onClose={() => setPanelOpen(false)} onSaved={load} />

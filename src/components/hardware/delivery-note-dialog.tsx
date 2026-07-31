@@ -89,7 +89,7 @@ export function DeliveryNoteDialog({ open, onClose, onCreated }: Props) {
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="max-w-xl">
+      <DialogContent className="w-[calc(100vw-1rem)] max-w-xl">
         <DialogHeader>
           <DialogTitle>
             {picked ? `Deliver ${quoteNumber}` : "New delivery note"}
@@ -161,7 +161,7 @@ export function DeliveryNoteDialog({ open, onClose, onCreated }: Props) {
           </div>
         )}
 
-        <DialogFooter>
+        <DialogFooter className="[&_button]:h-11 lg:[&_button]:h-9">
           <Button variant="ghost" onClick={onClose} disabled={saving}>Cancel</Button>
           {picked ? (
             <Button onClick={save} disabled={saving}>{saving ? "Creating…" : "Create delivery note"}</Button>

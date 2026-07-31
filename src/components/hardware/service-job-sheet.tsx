@@ -264,7 +264,7 @@ function PartAdder({ jobId, onAdded }: { jobId: string; onAdded: () => void }) {
   return (
     <div className="relative mt-1.5">
       <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
-      <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Add a part — search inventory…" className="h-8 text-xs pl-8" disabled={adding} />
+      <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Add a part — search inventory…" className="h-11 lg:h-8 text-xs pl-8" disabled={adding} />
       {results.length > 0 && (
         <div className="absolute z-20 left-0 right-0 mt-1 max-h-52 overflow-auto rounded-md border border-border bg-popover shadow-md">
           {results.map((p) => (
@@ -297,9 +297,9 @@ function LabourAdder({ jobId, onAdded }: { jobId: string; onAdded: () => void })
 
   return (
     <div className="flex items-end gap-2 mt-1.5">
-      <Input value={desc} onChange={(e) => setDesc(e.target.value)} placeholder="Labour description" className="h-8 text-xs flex-1" />
-      <Input type="number" value={hours} onChange={(e) => setHours(e.target.value)} placeholder="Hrs" className="h-8 text-xs w-14 text-right tabular-nums" />
-      <Input type="number" value={rate} onChange={(e) => setRate(e.target.value)} placeholder="Rate" className="h-8 text-xs w-20 text-right tabular-nums" />
+      <Input value={desc} onChange={(e) => setDesc(e.target.value)} placeholder="Labour description" className="h-11 lg:h-8 text-xs flex-1" />
+      <Input type="number" value={hours} onChange={(e) => setHours(e.target.value)} placeholder="Hrs" className="h-11 lg:h-8 text-xs w-14 text-right tabular-nums" />
+      <Input type="number" value={rate} onChange={(e) => setRate(e.target.value)} placeholder="Rate" className="h-11 lg:h-8 text-xs w-20 text-right tabular-nums" />
       <Button variant="outline" size="sm" className="h-8" onClick={add} disabled={adding}><Plus className="size-3.5" /></Button>
     </div>
   );

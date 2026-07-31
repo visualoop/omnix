@@ -32,9 +32,13 @@ import {
   type Customer, type PatientProfile, type PatientAllergy,
 } from "@/services/erp";
 import { toast } from "sonner";
+import { OperationalContext } from "@/components/shared/operational-context";
 
 import { BackButton } from "@/components/ui/back-button";
+import { useActiveCountry } from "@/stores/country";
+import { phonePlaceholder } from "@/lib/locale";
 export function PatientProfilePage() {
+  const { code } = useActiveCountry();
   const { id } = useParams<{ id: string }>();
   const [customer, setCustomer] = useState<Customer | null>(null);
   const [profile, setProfile] = useState<PatientProfile>({
@@ -101,9 +105,9 @@ export function PatientProfilePage() {
 
   return (
     <div className="space-y-5 max-w-5xl">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-3">
-          <Button variant="ghost" size="sm" onClick={() => navigate("/customers")}>
+          <Button variant="ghost" size="sm" className="h-11 lg:h-8" onClick={() => navigate("/customers")}>
             <ArrowLeft className="h-4 w-4" />
           </Button>
           <div>
@@ -115,11 +119,12 @@ export function PatientProfilePage() {
             </p>
           </div>
         </div>
-        <Button onClick={handleSave} disabled={saving}>
+        <Button onClick={handleSave} disabled={saving} className="h-11 w-full sm:w-auto">
           {saving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
           Save
         </Button>
       </div>
+      <OperationalContext compact />
 
       {/* Critical alerts */}
       {(allergies.some((a) => a.severity === "life-threatening" || a.severity === "severe") || profile.pregnant === 1) && (
@@ -128,22 +133,22 @@ export function PatientProfilePage() {
             <AlertTriangle className="h-4 w-4 text-red-600" />
             <p className="text-sm font-bold text-red-700">CLINICAL ALERTS</p>
           </div>
-          {profile.pregnant === 1 && <p className="text-xs">⚠️ Patient is pregnant — review all prescriptions carefully</p>}
+          {profile.pregnant === 1 && <p className="text-xs">Patient is pregnant — review all prescriptions carefully</p>}
           {allergies.filter((a) => a.severity === "life-threatening").map((a) => (
             <p key={a.id} className="text-xs text-red-700">
-              ⚠️ <strong>Life-threatening allergy:</strong> {a.allergen}{a.reaction && ` — ${a.reaction}`}
+              <strong>Life-threatening allergy:</strong> {a.allergen}{a.reaction && ` — ${a.reaction}`}
             </p>
           ))}
           {allergies.filter((a) => a.severity === "severe").map((a) => (
             <p key={a.id} className="text-xs text-red-700">
-              ⚠️ <strong>Severe allergy:</strong> {a.allergen}
+              <strong>Severe allergy:</strong> {a.allergen}
             </p>
           ))}
         </div>
       )}
 
       {/* Vitals */}
-      <div className="grid grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 sm:gap-3">
         <VitalCard icon={Calendar} label="Age" value={calcAge(profile.date_of_birth)} />
         <VitalCard icon={Activity} label="Blood Type" value={profile.blood_type || "—"} />
         <VitalCard icon={Weight} label="Weight" value={profile.weight_kg ? `${profile.weight_kg} kg` : "—"} />
@@ -152,7 +157,7 @@ export function PatientProfilePage() {
 
       {/* Demographics */}
       <Section title="Demographics">
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3 sm:gap-3">
           <Field label="Date of Birth">
             <Input
               type="date"
@@ -191,7 +196,7 @@ export function PatientProfilePage() {
 
       {/* Body metrics */}
       <Section title="Body Metrics">
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-3">
           <Field label="Weight (kg)">
             <Input
               type="number"
@@ -267,7 +272,7 @@ export function PatientProfilePage() {
 
       {/* Conditions & medications */}
       <Section title="Medical History">
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-3">
           <Field label="Chronic Conditions">
             <Textarea
               value={profile.chronic_conditions || ""}
@@ -287,7 +292,7 @@ export function PatientProfilePage() {
 
       {/* Emergency contact */}
       <Section title="Emergency Contact">
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-3">
           <Field label="Contact Name">
             <Input
               value={profile.emergency_contact || ""}
@@ -298,6 +303,8 @@ export function PatientProfilePage() {
             <Input
               value={profile.emergency_phone || ""}
               onChange={(e) => setProfile({ ...profile, emergency_phone: e.target.value || null })}
+              placeholder={phonePlaceholder(code)}
+              type="tel"
             />
           </Field>
         </div>

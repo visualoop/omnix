@@ -20,6 +20,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { query } from "@/lib/db";
 import { money as KES } from "@/lib/money";
 import { intlLocale } from "@/lib/intl";
+import { OperationalContext } from "@/components/shared/operational-context";
 
 interface Table {
   id: string;
@@ -150,6 +151,7 @@ export function TableDetailPage() {
           </Badge>
         }
       />
+      <OperationalContext compact />
 
       {/* Active order */}
       {order ? (
@@ -158,14 +160,23 @@ export function TableDetailPage() {
             Active order · #{order.order_number}
           </h2>
           <div className="rounded-lg border border-border overflow-hidden">
-            <div className="flex items-center justify-between px-4 py-2 bg-muted/40 text-xs">
+            <div className="flex flex-wrap items-center justify-between gap-2 bg-muted/40 px-4 py-2 text-xs">
               <span className="inline-flex items-center gap-1.5 text-muted-foreground">
                 <Clock className="h-3.5 w-3.5" /> Opened {new Date(order.opened_at.replace(" ", "T") + "Z").toLocaleTimeString(intlLocale(), { hour: "2-digit", minute: "2-digit" })}
                 {order.waiter_name ? ` · ${order.waiter_name}` : ""}
               </span>
               <Badge variant="outline" className="text-[10px] capitalize">{order.status}</Badge>
             </div>
-            <table className="w-full text-sm">
+            <div className="space-y-2 p-3 lg:hidden">
+              {order.items.map((item) => (
+                <article key={item.id} className="rounded-md border border-border p-3">
+                  <div className="flex items-start justify-between gap-3"><p className="font-medium">{item.name}</p><span className="font-mono font-semibold">{KES(item.line_total)}</span></div>
+                  <p className="mt-1 text-xs text-muted-foreground">{item.quantity} × {KES(item.unit_price)} · {item.status}</p>
+                </article>
+              ))}
+              <div className="flex justify-between border-t border-border pt-3 font-semibold"><span>Total</span><span className="font-mono">{KES(order.total)}</span></div>
+            </div>
+            <table className="hidden w-full text-sm lg:table">
               <thead className="bg-muted/20 border-b border-border/60">
                 <tr>
                   <th className="text-left px-4 py-2 text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Item</th>
@@ -216,7 +227,7 @@ export function TableDetailPage() {
         ) : (
           <ul className="rounded-lg border border-border divide-y divide-border/60">
             {reservations.map((r) => (
-              <li key={r.id} className="flex items-center gap-3 px-4 py-2 text-sm">
+              <li key={r.id} className="flex flex-col items-start gap-2 px-4 py-3 text-sm sm:flex-row sm:items-center">
                 <Users className="h-3.5 w-3.5 text-muted-foreground" />
                 <span className="flex-1">
                   {r.guest_name}
@@ -242,11 +253,11 @@ export function TableDetailPage() {
         ) : (
           <ul className="rounded-lg border border-border divide-y divide-border/60">
             {pastSales.map((s) => (
-              <li key={s.id} className="flex items-center gap-3 px-4 py-2 text-sm">
+              <li key={s.id} className="flex flex-col items-start gap-2 px-4 py-3 text-sm sm:flex-row sm:items-center">
                 <Receipt className="h-3.5 w-3.5 text-muted-foreground" />
                 <Button
                   variant="link"
-                  className="p-0 h-auto text-sm"
+                  className="min-h-11 p-0 text-sm lg:min-h-0"
                   onClick={() => navigate(`/sales/${s.id}`)}
                 >
                   #{s.sale_number}

@@ -13,7 +13,7 @@ export function PaginationBar<T>({ list }: { list: UseListDataResult<T> }) {
   const startRow = (list.page - 1) * list.pageSize + 1;
   const endRow = Math.min(list.page * list.pageSize, list.total);
   return (
-    <div className="flex items-center justify-between text-[12px] text-muted-foreground pt-3">
+    <div className="flex flex-wrap items-center justify-between gap-2 pt-3 text-[12px] text-muted-foreground">
       <div>
         {list.total === 1
           ? "1 record"
@@ -26,7 +26,7 @@ export function PaginationBar<T>({ list }: { list: UseListDataResult<T> }) {
           size="sm"
           disabled={list.page <= 1 || list.loading}
           onClick={() => list.setPage(list.page - 1)}
-          className="h-7"
+          className="h-11 lg:h-7"
         >
           <CaretLeft className="h-3.5 w-3.5" />
           Prev
@@ -39,7 +39,7 @@ export function PaginationBar<T>({ list }: { list: UseListDataResult<T> }) {
           size="sm"
           disabled={list.page >= list.pageCount || list.loading}
           onClick={() => list.setPage(list.page + 1)}
-          className="h-7"
+          className="h-11 lg:h-7"
         >
           Next
           <CaretRight className="h-3.5 w-3.5" />

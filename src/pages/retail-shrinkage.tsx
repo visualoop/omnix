@@ -26,7 +26,8 @@ import { PaginationBar } from "@/components/pagination-bar";
 import { getProducts, type Product } from "@/services/inventory";
 import { useAuthStore } from "@/stores/auth";
 import { toast } from "sonner";
-import { money as KES } from "@/lib/money";
+import { OperationalContext } from "@/components/shared/operational-context";
+import { money as KES, currencySymbol } from "@/lib/money";
 import { intlLocale } from "@/lib/intl";
 
 
@@ -47,7 +48,7 @@ const REASON_COLORS: Record<ShrinkageReason, string> = {
   theft: "bg-red-600",
   spillage: "bg-blue-500",
   count_correction: "bg-gray-500",
-  sample: "bg-purple-500",
+  sample: "bg-slate-700",
   other: "bg-slate-500",
 };
 
@@ -63,8 +64,8 @@ export function ShrinkagePage() {
 
   const fetcher = useCallback(
     (q: { search?: string; page?: number; pageSize?: number }) =>
-      pageShrinkage({ ...q, from: period.start, to: period.end }),
-    [period],
+      pageShrinkage({ ...q, from: period.start, to: period.end, reason: reasonFilter || undefined }),
+    [period, reasonFilter],
   );
   const list = useListData(fetcher, { pageSize: 50 });
   const records = list.rows as unknown as ShrinkageWithDetails[];
@@ -86,7 +87,7 @@ export function ShrinkagePage() {
 
   return (
     <div className="space-y-5">
-      <div className="flex items-start justify-between">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <BackButton fallback="/retail" />
           <h1 className="text-xl font-semibold tracking-tight flex items-center gap-2">
@@ -96,12 +97,14 @@ export function ShrinkagePage() {
             Track damaged, expired, stolen, or spilled stock. Analyse cost impact by reason over time.
           </p>
         </div>
-        <Button onClick={() => setRecording(true)}>
+        <Button className="h-11 w-full sm:w-auto lg:h-9" onClick={() => setRecording(true)}>
           <Plus className="h-4 w-4 mr-1.5" /> Record Shrinkage
         </Button>
       </div>
 
-      <div className="grid grid-cols-3 gap-3">
+      <OperationalContext compact />
+
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-3 sm:gap-3">
         <Stat label="Total Lost (qty)" value={totalQty.toFixed(0)} />
         <Stat label="Cost Impact" value={KES(totalCost)} color="text-red-600" />
         <Stat label="Incidents" value={String(totalIncidents)} />
@@ -122,7 +125,7 @@ export function ShrinkagePage() {
             value={list.search}
             onChange={(e) => list.setSearch(e.target.value)}
             placeholder="Search product or reason..."
-            className="pl-9"
+            className="h-11 pl-9 lg:h-9"
           />
         </div>
       </div>
@@ -134,7 +137,21 @@ export function ShrinkagePage() {
         </TabsList>
 
         <TabsPanel value="records" className="mt-3">
-          <div className="border border-border rounded-md overflow-hidden">
+          <>
+            <div className="space-y-2 lg:hidden" aria-label="Shrinkage records">
+              {loading ? (
+                <div className="py-8 text-center text-sm text-muted-foreground">Loading shrinkage…</div>
+              ) : records.length === 0 ? (
+                <EmptyState icon={AlertTriangle} title="No shrinkage records" description="Record damaged, expired, or lost stock to track inventory loss." cta={{ label: "Record Shrinkage", onClick: () => setRecording(true), icon: Plus }} />
+              ) : records.map((record) => (
+                <article key={record.id} className="rounded-md border border-border p-4">
+                  <div className="flex items-start justify-between gap-3"><div className="min-w-0"><p className="font-medium truncate">{record.product_name}</p>{record.variant_name && <p className="mt-1 text-xs text-muted-foreground">{record.variant_name}</p>}</div><Badge className={`${REASON_COLORS[record.reason]} text-white`}>{REASON_LABELS[record.reason]}</Badge></div>
+                  <div className="mt-4 grid grid-cols-3 gap-3 border-t border-border pt-3 text-xs"><div><span className="text-muted-foreground">Quantity</span><p className="mt-1 font-mono">{record.quantity}</p></div><div><span className="text-muted-foreground">Cost</span><p className="mt-1 font-mono text-red-600">{record.cost_value > 0 ? KES(record.cost_value) : "—"}</p></div><div className="text-right"><span className="text-muted-foreground">Date</span><p className="mt-1">{new Date(record.incident_date).toLocaleDateString(intlLocale(), { day: "2-digit", month: "short" })}</p></div></div>
+                  {record.notes && <p className="mt-3 text-xs text-muted-foreground">{record.notes}</p>}
+                </article>
+              ))}
+            </div>
+            <div className="hidden border border-border rounded-md overflow-hidden lg:block">
             <table className="w-full text-sm">
               <thead className="bg-muted/30 border-b border-border">
                 <tr>
@@ -185,7 +202,8 @@ export function ShrinkagePage() {
                 )}
               </tbody>
             </table>
-          </div>
+            </div>
+          </>
         </TabsPanel>
 
         <TabsPanel value="summary" className="mt-3">
@@ -198,7 +216,16 @@ export function ShrinkagePage() {
                   description="Try a wider date range."
                 />
               ) : (
-                <table className="w-full text-sm">
+                <>
+                  <div className="space-y-2 lg:hidden">
+                    {summary.map((row) => (
+                      <div key={row.reason} className="rounded-md border border-border p-3">
+                        <div className="flex items-center justify-between"><Badge className={`${REASON_COLORS[row.reason]} text-white`}>{REASON_LABELS[row.reason]}</Badge><span className="font-mono text-sm text-red-600">{KES(row.total_cost)}</span></div>
+                        <p className="mt-3 text-xs text-muted-foreground">{row.incident_count} incidents · {row.total_qty} units · {totalCost > 0 ? `${((row.total_cost / totalCost) * 100).toFixed(1)}% of cost` : "No cost recorded"}</p>
+                      </div>
+                    ))}
+                  </div>
+                  <table className="hidden w-full text-sm lg:table">
                   <thead className="border-b border-border">
                     <tr>
                       <th className="text-left px-2 py-2 text-[10.5px] font-semibold uppercase tracking-wider text-muted-foreground">Reason</th>
@@ -232,7 +259,8 @@ export function ShrinkagePage() {
                       <td></td>
                     </tr>
                   </tbody>
-                </table>
+                  </table>
+                </>
               )}
             </CardContent>
           </Card>
@@ -325,7 +353,7 @@ function RecordShrinkageDialog({ open, onClose, onSaved }: {
 
   return (
     <Sheet open={open} onOpenChange={(o) => !o && onClose()}>
-      <SheetContent side="right" className="w-[440px] sm:max-w-[440px]">
+      <SheetContent side="right" className="w-full max-w-full sm:w-[440px] sm:max-w-[440px]">
         <SheetHeader>
           <SheetTitle>Record Shrinkage</SheetTitle>
         </SheetHeader>
@@ -373,7 +401,7 @@ function RecordShrinkageDialog({ open, onClose, onSaved }: {
             )}
           </div>
 
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-2">
             <div className="space-y-1">
               <label className="text-[11px] font-medium text-muted-foreground">Quantity</label>
               <Input
@@ -396,7 +424,7 @@ function RecordShrinkageDialog({ open, onClose, onSaved }: {
           </div>
 
           <div className="space-y-1">
-            <label className="text-[11px] font-medium text-muted-foreground">Unit cost (KES)</label>
+            <label className="text-[11px] font-medium text-muted-foreground">Unit cost ({currencySymbol()})</label>
             <Input
               type="number"
               value={form.cost_value}

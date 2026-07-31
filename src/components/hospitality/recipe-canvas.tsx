@@ -538,7 +538,7 @@ export function RecipeCanvas({ menuItemId, menuItemName, menuItemImage, sellingP
         {lines.length === 0 ? (
           <div className="absolute inset-0 grid place-items-center pointer-events-none">
             <div className="text-center text-muted-foreground">
-              <ForkKnife className="h-8 w-8 mx-auto mb-2 opacity-40" />
+              <ForkKnife className="h-11 lg:h-8 w-8 mx-auto mb-2 opacity-40" />
               <p className="text-sm font-medium">Build the recipe</p>
               <p className="text-xs mt-0.5">Add ingredients — each links to the dish with a labelled arrow.</p>
             </div>
@@ -577,7 +577,7 @@ export function RecipeCanvas({ menuItemId, menuItemName, menuItemImage, sellingP
       {/* Costing & ingredients — the numbers + inline editor live in a
           slide-over so the board keeps the full width. */}
       <Sheet open={detailsOpen} onOpenChange={setDetailsOpen}>
-        <SheetContent side="right" className="w-[440px] sm:w-[560px] overflow-y-auto">
+        <SheetContent side="right" className="w-full max-w-full overflow-y-auto sm:w-[560px] sm:max-w-[560px]">
           <SheetHeader>
             <SheetTitle>Costing &amp; ingredients</SheetTitle>
           </SheetHeader>
@@ -645,7 +645,7 @@ export function RecipeCanvas({ menuItemId, menuItemName, menuItemImage, sellingP
                           <X className="h-3.5 w-3.5" />
                         </button>
                       </div>
-                      <div className="grid grid-cols-2 gap-2">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                         <div>
                           <label className="text-[10px] text-muted-foreground">Quantity</label>
                           <input

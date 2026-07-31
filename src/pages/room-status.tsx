@@ -10,6 +10,12 @@ import { Bed, Broom, CheckCircle, Warning, User } from "@phosphor-icons/react";
 import { execute, query } from "@/lib/db";
 import { toast } from "sonner";
 import { useAuthStore } from "@/stores/auth";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { OperationalContext } from "@/components/shared/operational-context";
+import { useClientPagination } from "@/hooks/use-client-pagination";
+import { PaginationBar } from "@/components/pagination-bar";
+import { useNavigate } from "react-router-dom";
 
 import { BackButton } from "@/components/ui/back-button";
 type RoomStatus = "clean" | "dirty" | "inspected" | "out_of_order" | "occupied";
@@ -39,7 +45,9 @@ const NEXT_STATUS: Record<RoomStatus, RoomStatus> = {
 
 export function RoomStatusPage() {
   const user = useAuthStore((s) => s.user);
+  const navigate = useNavigate();
   const [rooms, setRooms] = useState<Room[]>([]);
+  const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
@@ -85,6 +93,9 @@ export function RoomStatusPage() {
     acc[r.current_status] = (acc[r.current_status] ?? 0) + 1;
     return acc;
   }, { clean: 0, dirty: 0, inspected: 0, out_of_order: 0, occupied: 0 });
+  const needle = search.trim().toLowerCase();
+  const filteredRooms = rooms.filter((room) => !needle || [room.room_number, room.room_type_name, STATUS_CONFIG[room.current_status].label].some((value) => value?.toLowerCase().includes(needle)));
+  const { pageRows: roomRows, pagination: roomPagination } = useClientPagination(filteredRooms, 24, search);
 
   return (
     <div className="max-w-5xl space-y-4">
@@ -97,8 +108,9 @@ export function RoomStatusPage() {
           Live housekeeping board. Click a room to advance its status through the cycle: clean → occupied → dirty → inspected → clean.
         </p>
       </header>
+      <OperationalContext compact />
 
-      <div className="grid grid-cols-5 gap-2">
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
         {(Object.keys(STATUS_CONFIG) as RoomStatus[]).map((s) => {
           const cfg = STATUS_CONFIG[s];
           const Icon = cfg.icon;
@@ -112,25 +124,29 @@ export function RoomStatusPage() {
         })}
       </div>
 
+      <Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search room, type, or status…" className="h-11 w-full sm:max-w-sm lg:h-8" />
+
       {loading ? (
         <div className="py-12 text-center text-sm text-muted-foreground">Loading…</div>
       ) : rooms.length === 0 ? (
         <div className="py-12 text-center">
           <Bed className="h-8 w-8 mx-auto mb-3 opacity-30" />
-          <div className="text-sm text-muted-foreground">
-            No rooms configured yet. Go to Settings → Hospitality to add rooms.
-          </div>
+          <div className="text-sm text-muted-foreground">No rooms configured yet.</div>
+          <Button variant="outline" className="mt-4 h-11" onClick={() => navigate("/settings/hospitality")}>Configure rooms</Button>
         </div>
+      ) : filteredRooms.length === 0 ? (
+        <div className="py-12 text-center text-sm text-muted-foreground">No rooms match this search.</div>
       ) : (
-        <div className="grid grid-cols-6 gap-2">
-          {rooms.map((r) => {
+        <>
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
+          {roomRows.map((r) => {
             const cfg = STATUS_CONFIG[r.current_status];
             const Icon = cfg.icon;
             return (
               <button
                 key={r.id}
                 onClick={() => cycleStatus(r)}
-                className={`rounded-md border p-3 text-left transition hover:opacity-80 ${cfg.color}`}
+                className={`min-h-11 rounded-md border p-3 text-left transition hover:opacity-80 ${cfg.color}`}
               >
                 <div className="flex items-center justify-between">
                   <div className="text-lg font-mono font-semibold">{r.room_number}</div>
@@ -144,6 +160,8 @@ export function RoomStatusPage() {
             );
           })}
         </div>
+        <PaginationBar list={roomPagination} />
+        </>
       )}
     </div>
   );

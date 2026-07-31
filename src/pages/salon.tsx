@@ -10,6 +10,7 @@ import {
 import { useNavigate, useParams } from "react-router-dom";
 import { confirm } from "@/components/ui/confirm-dialog";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
@@ -18,9 +19,12 @@ import { Combobox } from "@/components/ui/combobox";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
-import { money as KES } from "@/lib/money";
+import { money as KES, currencySymbol } from "@/lib/money";
 import { toast } from "sonner";
 import { useAuthStore } from "@/stores/auth";
+import { hasPermission } from "@/lib/permissions";
+import { useClientPagination } from "@/hooks/use-client-pagination";
+import { PaginationBar } from "@/components/pagination-bar";
 import { useCartStore } from "@/stores/cart";
 import { listCustomers, type Customer } from "@/services/erp";
 import {
@@ -78,6 +82,7 @@ export function SalonCalendarPage() {
   const [loading, setLoading] = useState(true);
   const [booking, setBooking] = useState<{ staffId?: string; startIso?: string } | null>(null);
   const [openApptId, setOpenApptId] = useState<string | null>(null);
+  const [search, setSearch] = useState("");
 
   const weekDays = useMemo(() => {
     const start = new Date(date); start.setDate(start.getDate() - start.getDay()); // Sunday
@@ -98,6 +103,8 @@ export function SalonCalendarPage() {
   const hours = useMemo(() => { const out: number[] = []; for (let m = DAY_START_MIN; m <= DAY_END_MIN; m += 60) out.push(m); return out; }, []);
   const shiftDay = (n: number) => { const d = new Date(date); d.setDate(d.getDate() + (view === "week" ? n * 7 : n)); setDate(d); };
   const isToday = date.toDateString() === new Date().toDateString();
+  const filteredAppts = useMemo(() => appts.filter((appointment) => !search || [appointment.client_name, appointment.staff_name, appointment.status, appointment.appt_number].some((value) => value?.toLowerCase().includes(search.toLowerCase()))), [appts, search]);
+  const { pageRows: agendaRows, pagination: agendaPagination } = useClientPagination(filteredAppts, 12, `${view}:${date.toISOString()}:${search}`);
 
   return (
     <div>
@@ -117,18 +124,23 @@ export function SalonCalendarPage() {
         <Button variant="outline" size="icon-sm" onClick={() => shiftDay(-1)}><CaretLeft className="h-4 w-4" /></Button>
         <Button variant={isToday && view === "day" ? "default" : "outline"} size="sm" onClick={() => { const d = new Date(); d.setHours(0,0,0,0); setDate(d); }}>Today</Button>
         <Button variant="outline" size="icon-sm" onClick={() => shiftDay(1)}><CaretRight className="h-4 w-4" /></Button>
-        <Input type="date" value={date.toISOString().slice(0, 10)} onChange={(e) => e.target.value && setDate(new Date(e.target.value + "T00:00:00"))} className="h-8 text-xs w-[150px]" />
-        <div className="ml-auto flex items-center gap-1 rounded-md border border-border p-0.5">
-          <Button variant={view === "day" ? "default" : "ghost"} size="sm" className="h-7" onClick={() => setView("day")}>Day</Button>
-          <Button variant={view === "week" ? "default" : "ghost"} size="sm" className="h-7" onClick={() => setView("week")}>Week</Button>
+        <Input type="date" value={date.toISOString().slice(0, 10)} onChange={(e) => e.target.value && setDate(new Date(e.target.value + "T00:00:00"))} className="h-11 w-[150px] text-xs lg:h-8" />
+        <div className="flex items-center gap-1 rounded-md border border-border p-0.5 sm:ml-auto">
+          <Button variant={view === "day" ? "default" : "ghost"} size="sm" className="h-11 lg:h-7" onClick={() => setView("day")}>Day</Button>
+          <Button variant={view === "week" ? "default" : "ghost"} size="sm" className="h-11 lg:h-7" onClick={() => setView("week")}>Week</Button>
         </div>
       </div>
+      <Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search client, staff, or status…" className="mb-3 h-11 w-full sm:max-w-sm lg:h-8" />
 
-      {loading ? <ModuleSpinner /> : view === "week" ? (
+      {loading ? <ModuleSpinner /> : (<>
+        <div className="space-y-2 lg:hidden" aria-label="Appointment agenda">
+          {agendaRows.length === 0 ? <ModuleEmpty icon={Scissors} title="No appointments" hint={search ? "Try a different search." : "Tap New appointment to book this day."} /> : agendaRows.map((appointment) => <button key={appointment.id} type="button" onClick={() => setOpenApptId(appointment.id)} className="min-h-11 w-full rounded-md border border-border p-4 text-left"><div className="flex items-start justify-between gap-3"><div><p className="font-medium">{appointment.client_name ?? "Walk-in"}</p><p className="mt-1 text-xs text-muted-foreground">{fmtTime(appointment.starts_at)}–{fmtTime(appointment.ends_at)} · {appointment.staff_name}</p></div><Badge variant="outline" className={cn("capitalize", STATUS_STYLE[appointment.status])}>{appointment.status.replace("_", " ")}</Badge></div><p className="mt-3 font-mono text-xs text-muted-foreground">{KES(appointment.total)}</p></button>)}
+        </div>
+        <div className="hidden lg:block">{view === "week" ? (
         <div className="rounded-lg border border-border overflow-auto">
           <div className="grid grid-cols-7 min-w-[840px]">
             {weekDays.map((d) => {
-              const dayAppts = appts.filter((a) => new Date(a.starts_at).toDateString() === d.toDateString());
+              const dayAppts = agendaRows.filter((a) => new Date(a.starts_at).toDateString() === d.toDateString());
               const dToday = d.toDateString() === new Date().toDateString();
               return (
                 <div key={d.toISOString()} className="border-r border-border last:border-r-0 min-h-[220px]">
@@ -163,7 +175,7 @@ export function SalonCalendarPage() {
               </div>
             </div>
             {staff.map((st) => {
-              const col = appts.filter((a) => a.staff_id === st.id);
+              const col = agendaRows.filter((a) => a.staff_id === st.id);
               return (
                 <div key={st.id} className="flex-1 min-w-[140px] border-r border-border last:border-r-0">
                   <div className="h-9 border-b border-border flex items-center justify-center text-[12px] font-medium truncate px-2">{st.display_name}</div>
@@ -193,7 +205,7 @@ export function SalonCalendarPage() {
             })}
           </div>
         </div>
-      )}
+      )}</div><PaginationBar list={agendaPagination} /></>)}
 
       <BookingDialog open={!!booking} preset={booking ?? {}} onClose={() => setBooking(null)} onBooked={() => { setBooking(null); load(); }} />
       <AppointmentSheet apptId={openApptId} onClose={() => setOpenApptId(null)} onChanged={load} />
@@ -282,7 +294,7 @@ function BookingDialog({ open, preset, onClose, onBooked }: {
           <DialogDescription className="text-[12px]">Book a client with a staff member. End time is set from the services' duration.</DialogDescription>
         </DialogHeader>
         <div className="space-y-3">
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-3">
             <Field label="Client">
               <Combobox
                 value={clientId}
@@ -455,7 +467,7 @@ function AppointmentSheet({ apptId, onClose, onChanged }: { apptId: string | nul
 
             {/* Status flow */}
             {!appt.sale_id && (
-              <div className="flex flex-wrap gap-2">
+              <div className="flex flex-wrap gap-2 [&_button]:min-h-11 lg:[&_button]:min-h-0">
                 {appt.status === "booked" && <Button variant="outline" size="sm" disabled={busy} onClick={() => setStatus("confirmed")}>Confirm</Button>}
                 {["booked", "confirmed"].includes(appt.status) && <Button variant="outline" size="sm" disabled={busy} onClick={() => setStatus("checked_in")}>Check in</Button>}
                 {appt.status === "checked_in" && <Button variant="outline" size="sm" disabled={busy} onClick={() => setStatus("in_service")}>Start service</Button>}
@@ -468,8 +480,8 @@ function AppointmentSheet({ apptId, onClose, onChanged }: { apptId: string | nul
             {!appt.sale_id && ["checked_in", "in_service", "confirmed", "booked"].includes(appt.status) && (
               <div className="rounded-md border border-border p-3 space-y-2">
                 <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Checkout</div>
-                <p className="text-[12px] text-muted-foreground">Complete this appointment in POS — add any retail products, then take payment (cash, M-Pesa, split).</p>
-                <Button size="sm" className={cn("w-full", BRAND_BTN)} disabled={busy} onClick={sendToPos}>
+                <p className="text-[12px] text-muted-foreground">Complete this appointment in POS — add any retail products, then take payment using an enabled method or split tender.</p>
+                <Button size="sm" className={cn("h-11 w-full", BRAND_BTN)} disabled={busy} onClick={sendToPos}>
                   <Receipt className="size-4 mr-1.5" /> Complete in POS · {KES(total)}
                 </Button>
               </div>
@@ -488,22 +500,28 @@ export function SalonServicesPage() {
   const [services, setServices] = useState<SalonService[]>([]);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState<SalonService | "new" | null>(null);
+  const [search, setSearch] = useState("");
   const user = useAuthStore((s) => s.user);
   const load = () => { setLoading(true); listServices(true).then(setServices).finally(() => setLoading(false)); };
   useEffect(() => { load(); }, []);
   void user;
+  const filteredServices = useMemo(() => services.filter((service) => !search || [service.name, service.category].some((value) => value?.toLowerCase().includes(search.toLowerCase()))), [services, search]);
+  const { pageRows: serviceRows, pagination: servicePagination } = useClientPagination(filteredServices, 12, search);
   return (
     <div>
       <ModuleMasthead accent={ACCENT} eyebrow="Salon & Spa · Menu" title="Services" subtitle="Your treatment menu — duration, price and commission."
         actions={<Button size="sm" className={cn("cursor-pointer", BRAND_BTN)} onClick={() => setEditing("new")}><Plus className="h-3.5 w-3.5 mr-1.5" /> New service</Button>} />
+      <Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search service or category…" className="mb-3 h-11 w-full sm:max-w-sm lg:h-8" />
       <ServiceDialog target={editing} onClose={() => setEditing(null)} onSaved={() => { setEditing(null); load(); }} />
       {loading ? <ModuleSpinner /> : services.length === 0 ? (
         <ModuleEmpty icon={Scissors} title="No services yet" hint="Add your first treatment to start booking." />
       ) : (
-        <ModuleTable>
+        <>
+        <div className="space-y-2 lg:hidden" aria-label="Salon services">{serviceRows.map((service) => <button key={service.id} type="button" onClick={() => setEditing(service)} className="min-h-11 w-full rounded-md border border-border p-4 text-left"><div className="flex items-start justify-between gap-3"><div><p className="font-medium">{service.name}</p><p className="mt-1 text-xs text-muted-foreground">{service.category ?? "Uncategorised"} · {service.duration_min} min</p></div><span className="font-mono font-semibold">{KES(service.price)}</span></div><p className="mt-3 border-t border-border pt-3 text-xs text-muted-foreground">Commission {service.commission_pct != null ? `${service.commission_pct}%` : "staff default"}{service.active ? "" : " · Inactive"}</p></button>)}</div>
+        <ModuleTable className="hidden lg:block">
           <ModuleTHead><tr><th className="text-left px-3 py-2">Service</th><th className="text-left px-3 py-2">Category</th><th className="text-right px-3 py-2">Duration</th><th className="text-right px-3 py-2">Price</th><th className="text-right px-3 py-2">Commission</th></tr></ModuleTHead>
           <tbody>
-            {services.map((s) => (
+            {serviceRows.map((s) => (
               <tr key={s.id} onClick={() => setEditing(s)} className="border-t border-border hover:bg-accent/30 cursor-pointer">
                 <td className="px-3 py-2">{s.name}{s.active ? "" : <span className="text-muted-foreground text-[11px]"> · inactive</span>}</td>
                 <td className="px-3 py-2 text-muted-foreground capitalize">{s.category ?? "—"}</td>
@@ -514,6 +532,8 @@ export function SalonServicesPage() {
             ))}
           </tbody>
         </ModuleTable>
+        <PaginationBar list={servicePagination} />
+        </>
       )}
     </div>
   );
@@ -545,10 +565,10 @@ function ServiceDialog({ target, onClose, onSaved }: { target: SalonService | "n
         <DialogHeader><DialogTitle className="text-[15px]">{svc ? "Edit service" : "New service"}</DialogTitle></DialogHeader>
         <div className="space-y-3">
           <Field label="Name *"><Input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Ladies' cut & blow-dry" autoFocus /></Field>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-3">
             <Field label="Category"><Input value={category} onChange={(e) => setCategory(e.target.value)} placeholder="hair / nails / spa" /></Field>
             <Field label="Duration (min)"><Input type="number" value={duration} onChange={(e) => setDuration(e.target.value)} /></Field>
-            <Field label="Price (KES)"><Input type="number" value={price} onChange={(e) => setPrice(e.target.value)} className="text-right tabular-nums" /></Field>
+            <Field label={`Price (${currencySymbol()})`}><Input type="number" value={price} onChange={(e) => setPrice(e.target.value)} className="text-right tabular-nums" /></Field>
             <Field label="Commission % (blank = staff default)"><Input type="number" value={commission} onChange={(e) => setCommission(e.target.value)} className="text-right tabular-nums" /></Field>
           </div>
           {svc && <BackBarEditor serviceId={svc.id} />}
@@ -573,6 +593,7 @@ export function SalonStaffPage() {
   const [employees, setEmployees] = useState<Array<{ id: string; full_name: string; job_title: string; phone: string | null }>>([]);
   const [enrollable, setEnrollable] = useState<EnrollablePerson[]>([]);
   const [detailStaff, setDetailStaff] = useState<SalonStaff | null>(null);
+  const [search, setSearch] = useState("");
   const navigate = useNavigate();
   const load = () => {
     setLoading(true);
@@ -588,6 +609,8 @@ export function SalonStaffPage() {
   // user without an employee record (they materialize one on enrol).
   const enrolledEmpIds = new Set(staff.map((s) => s.employee_id).filter(Boolean));
   const available = enrollable.filter((p) => (p.kind === "user" ? true : !enrolledEmpIds.has(p.id)));
+  const filteredStaff = useMemo(() => staff.filter((person) => !search || person.display_name.toLowerCase().includes(search.toLowerCase())), [staff, search]);
+  const { pageRows: staffRows, pagination: staffPagination } = useClientPagination(filteredStaff, 12, search);
   const add = async () => {
     const person = available.find((p) => `${p.kind}:${p.id}` === pickedKey);
     if (!person) { toast.error("Pick a team member."); return; }
@@ -600,6 +623,7 @@ export function SalonStaffPage() {
         subtitle="Your stylists & therapists are Staff (HR) records — enrol them here to set skills & commission."
         actions={<Button size="sm" className={cn("cursor-pointer", BRAND_BTN)} onClick={() => setAdding(true)}><Plus className="h-3.5 w-3.5 mr-1.5" /> Enrol staff</Button>} />
 
+      <Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search staff…" className="h-11 w-full sm:max-w-sm lg:h-8" />
       {/* ── Team ─────────────────────────────────────────────── */}
       <section className="space-y-3">
         <div className="flex items-end justify-between gap-4">
@@ -621,7 +645,9 @@ export function SalonStaffPage() {
         {loading ? <ModuleSpinner /> : staff.length === 0 ? (
           <ModuleEmpty icon={Scissors} title="No staff enrolled" hint="Click “Enrol staff” to add a stylist or therapist from your Staff (HR) list." />
         ) : (
-          <ModuleTable>
+          <>
+          <div className="space-y-2 lg:hidden" aria-label="Salon staff">{staffRows.map((person) => { const emp = employees.find((employee) => employee.id === person.employee_id); return <button key={person.id} type="button" onClick={() => setDetailStaff(person)} className="min-h-11 w-full rounded-md border border-border p-4 text-left"><div className="flex items-start justify-between gap-3"><div><p className="font-medium">{person.display_name}</p><p className="mt-1 text-xs text-muted-foreground">{emp?.job_title || "Role not set"} · {emp?.phone || "No phone"}</p></div><Badge variant="outline">{person.active ? "Active" : "Inactive"}</Badge></div><p className="mt-3 border-t border-border pt-3 text-xs text-muted-foreground">Default commission <span className="font-mono text-foreground">{person.commission_default_pct}%</span></p></button>; })}</div>
+          <ModuleTable className="hidden lg:block">
             <ModuleTHead><tr>
               <th className="text-left px-3 py-2">Name</th>
               <th className="text-left px-3 py-2">Role</th>
@@ -631,7 +657,7 @@ export function SalonStaffPage() {
               <th className="text-right px-3 py-2 w-8"></th>
             </tr></ModuleTHead>
             <tbody>
-              {staff.map((s) => {
+              {staffRows.map((s) => {
                 const emp = employees.find((e) => e.id === s.employee_id);
                 return (
                   <tr key={s.id} onClick={() => setDetailStaff(s)} className="border-t border-border hover:bg-accent/30 cursor-pointer">
@@ -650,6 +676,8 @@ export function SalonStaffPage() {
               })}
             </tbody>
           </ModuleTable>
+          <PaginationBar list={staffPagination} />
+          </>
         )}
       </section>
 
@@ -732,6 +760,7 @@ function ResourcesManager() {
   const [target, setTarget] = useState<SalonResource | "new" | null>(null);
   const load = () => listResources(true).then(setResources);
   useEffect(() => { load(); }, []);
+  const { pageRows: resourceRows, pagination: resourcePagination } = useClientPagination(resources, 12, "resources");
   return (
     <div className="space-y-3">
       <div className="flex justify-end">
@@ -743,7 +772,9 @@ function ResourcesManager() {
           <p className="text-[12px] text-muted-foreground">No rooms or resources yet — add your first bookable space.</p>
         </div>
       ) : (
-        <ModuleTable>
+        <>
+        <div className="space-y-2 lg:hidden">{resourceRows.map((resource) => <button key={resource.id} type="button" onClick={() => setTarget(resource)} className="min-h-11 w-full rounded-md border border-border p-4 text-left"><div className="flex items-start justify-between gap-3"><div><p className="font-medium">{resource.name}</p><p className="mt-1 text-xs capitalize text-muted-foreground">{resource.type}</p></div><Badge variant="outline">{resource.active ? "Active" : "Inactive"}</Badge></div></button>)}</div>
+        <ModuleTable className="hidden lg:block">
           <ModuleTHead><tr>
             <th className="text-left px-3 py-2">Name</th>
             <th className="text-left px-3 py-2">Type</th>
@@ -751,7 +782,7 @@ function ResourcesManager() {
             <th className="text-right px-3 py-2 w-8"></th>
           </tr></ModuleTHead>
           <tbody>
-            {resources.map((r) => (
+            {resourceRows.map((r) => (
               <tr key={r.id} onClick={() => setTarget(r)} className="border-t border-border hover:bg-accent/30 cursor-pointer">
                 <td className="px-3 py-2 font-medium">{r.name}</td>
                 <td className="px-3 py-2 text-muted-foreground capitalize">{r.type}</td>
@@ -765,6 +796,8 @@ function ResourcesManager() {
             ))}
           </tbody>
         </ModuleTable>
+        <PaginationBar list={resourcePagination} />
+        </>
       )}
       <ResourceDialog target={target} onClose={() => setTarget(null)} onSaved={() => { setTarget(null); load(); }} />
     </div>
@@ -806,7 +839,7 @@ function ResourceDialog({ target, onClose, onSaved }: { target: SalonResource | 
           </Field>
           {res && (
             <label className="flex items-center gap-2 text-[13px] cursor-pointer">
-              <input type="checkbox" checked={active} onChange={(e) => setActive(e.target.checked)} className="accent-primary" /> Active (bookable)
+              <Checkbox checked={active} onCheckedChange={(checked) => setActive(Boolean(checked))} /> Active (bookable)
             </label>
           )}
         </div>
@@ -870,7 +903,7 @@ function StaffDetailSheet({ staff, services, emp, onClose, onChanged, onOpenHr, 
           <Field label="Display name"><Input value={name} onChange={(e) => setName(e.target.value)} /></Field>
           <Field label="Default commission %"><Input type="number" value={comm} onChange={(e) => setComm(e.target.value)} className="text-right tabular-nums" /></Field>
           <label className="flex items-center gap-2 text-[13px] cursor-pointer">
-            <input type="checkbox" checked={active} onChange={(e) => setActive(e.target.checked)} className="accent-primary" /> Active (bookable)
+            <Checkbox checked={active} onCheckedChange={(checked) => setActive(Boolean(checked))} /> Active (bookable)
           </label>
 
           <div className="space-y-2">
@@ -908,6 +941,7 @@ export function SalonReportsPage() {
   const [paying, setPaying] = useState<string | null>(null);
   const navigate = useNavigate();
   const user = useAuthStore((s) => s.user);
+  const canPayCommissions = hasPermission(user, "salon.staff.manage");
 
   const bounds = () => {
     const to = new Date(); to.setHours(23, 59, 59, 999);
@@ -945,6 +979,8 @@ export function SalonReportsPage() {
   };
 
   const rangeLabel = range === "today" ? "Today" : range === "week" ? "Last 7 days" : range === "month" ? "Last 30 days" : "Custom range";
+  const { pageRows: commissionRows, pagination: commissionPagination } = useClientPagination(rows, 12, range);
+  const { pageRows: popularityRows, pagination: popularityPagination } = useClientPagination(pop, 12, range);
 
   return (
     <div className="space-y-6">
@@ -960,10 +996,10 @@ export function SalonReportsPage() {
           ))}
         </div>
         {range === "custom" && (
-          <div className="flex items-center gap-1.5">
-            <Input type="date" value={customFrom} onChange={(e) => setCustomFrom(e.target.value)} className="h-8 w-[150px] text-xs" />
+          <div className="grid w-full grid-cols-[1fr_auto_1fr] items-center gap-1.5 sm:w-auto">
+            <Input type="date" value={customFrom} onChange={(e) => setCustomFrom(e.target.value)} className="h-11 min-w-0 text-xs lg:h-8 lg:w-[150px]" />
             <span className="text-muted-foreground text-xs">→</span>
-            <Input type="date" value={customTo} onChange={(e) => setCustomTo(e.target.value)} className="h-8 w-[150px] text-xs" />
+            <Input type="date" value={customTo} onChange={(e) => setCustomTo(e.target.value)} className="h-11 min-w-0 text-xs lg:h-8 lg:w-[150px]" />
           </div>
         )}
         <span className="text-[11px] text-muted-foreground ml-auto">{rangeLabel}</span>
@@ -993,7 +1029,9 @@ export function SalonReportsPage() {
           <div>
             <div className="text-[11px] uppercase tracking-wider text-muted-foreground mb-2">Staff commissions & payouts</div>
             {rows.length === 0 ? <p className="text-[13px] text-muted-foreground">No commissions in this range. Complete a sale through POS to accrue commissions.</p> : (
-              <ModuleTable>
+              <>
+              <div className="space-y-2 lg:hidden">{commissionRows.map((r) => <article key={r.staff_id} className="rounded-md border border-border p-4"><button type="button" onClick={() => r.employee_id ? navigate(`/hr/employees/${r.employee_id}`) : navigate(`/salon/staff/${r.staff_id}/earnings`)} className="min-h-11 w-full text-left"><div className="flex items-start justify-between gap-3"><div><p className="font-medium">{r.display_name}</p><p className="mt-1 text-xs text-muted-foreground">{r.jobs} jobs · {KES(r.total)} earned</p></div><span className="font-mono font-semibold text-amber-600">{r.outstanding > 0 ? KES(r.outstanding) : "Settled"}</span></div></button>{canPayCommissions && r.outstanding > 0 && <Button className={cn("mt-3 h-11 w-full", BRAND_BTN)} disabled={paying === r.staff_id} onClick={() => payStaff(r.staff_id, r.display_name)}>{paying === r.staff_id ? "Paying…" : `Pay ${KES(r.outstanding)}`}</Button>}</article>)}</div>
+              <ModuleTable className="hidden lg:block">
                 <ModuleTHead><tr>
                   <th className="text-left px-3 py-2">Staff</th>
                   <th className="text-right px-3 py-2">Jobs</th>
@@ -1003,7 +1041,7 @@ export function SalonReportsPage() {
                   <th className="text-right px-3 py-2">Action</th>
                 </tr></ModuleTHead>
                 <tbody>
-                  {rows.map((r) => (
+                  {commissionRows.map((r) => (
                     <tr key={r.staff_id} className="border-t border-border hover:bg-accent/30 cursor-pointer" onClick={() => r.employee_id ? navigate(`/hr/employees/${r.employee_id}`) : navigate(`/salon/staff/${r.staff_id}/earnings`)}>
                       <td className="px-3 py-2 font-medium">{r.display_name}</td>
                       <td className="px-3 py-2 text-right tabular-nums">{r.jobs}</td>
@@ -1011,7 +1049,7 @@ export function SalonReportsPage() {
                       <td className="px-3 py-2 text-right font-mono tabular-nums text-muted-foreground">{KES(r.paid)}</td>
                       <td className="px-3 py-2 text-right font-mono tabular-nums font-medium">{r.outstanding > 0 ? <span className="text-amber-600 dark:text-amber-400">{KES(r.outstanding)}</span> : <span className="text-muted-foreground">—</span>}</td>
                       <td className="px-3 py-2 text-right" onClick={(e) => e.stopPropagation()}>
-                        {r.outstanding > 0
+                        {canPayCommissions && r.outstanding > 0
                           ? <Button size="sm" className={cn("h-7", BRAND_BTN)} disabled={paying === r.staff_id} onClick={() => payStaff(r.staff_id, r.display_name)}>{paying === r.staff_id ? "…" : `Pay ${KES(r.outstanding)}`}</Button>
                           : <span className="text-[11px] text-emerald-600 dark:text-emerald-400">Settled</span>}
                       </td>
@@ -1019,6 +1057,8 @@ export function SalonReportsPage() {
                   ))}
                 </tbody>
               </ModuleTable>
+              <PaginationBar list={commissionPagination} />
+              </>
             )}
             <p className="text-[11px] text-muted-foreground mt-1.5">Tap a staff member to open their full profile — earnings, pay & documents.</p>
           </div>
@@ -1027,14 +1067,18 @@ export function SalonReportsPage() {
           <div>
             <div className="text-[11px] uppercase tracking-wider text-muted-foreground mb-2">Most popular services</div>
             {pop.length === 0 ? <p className="text-[13px] text-muted-foreground">No completed services yet.</p> : (
-              <ModuleTable>
+              <>
+              <div className="space-y-2 lg:hidden">{popularityRows.map((r) => <article key={r.service_id} className="rounded-md border border-border p-4"><div className="flex items-start justify-between gap-3"><div><p className="font-medium">{r.name}</p><p className="mt-1 text-xs text-muted-foreground">{r.count} bookings</p></div><span className="font-mono font-semibold">{KES(r.revenue)}</span></div></article>)}</div>
+              <ModuleTable className="hidden lg:block">
                 <ModuleTHead><tr><th className="text-left px-3 py-2">Service</th><th className="text-right px-3 py-2">Booked</th><th className="text-right px-3 py-2">Revenue</th></tr></ModuleTHead>
                 <tbody>
-                  {pop.map((r) => (
+                  {popularityRows.map((r) => (
                     <tr key={r.service_id} className="border-t border-border"><td className="px-3 py-2">{r.name}</td><td className="px-3 py-2 text-right tabular-nums">{r.count}</td><td className="px-3 py-2 text-right font-mono tabular-nums">{KES(r.revenue)}</td></tr>
                   ))}
                 </tbody>
               </ModuleTable>
+              <PaginationBar list={popularityPagination} />
+              </>
             )}
           </div>
         </div>
@@ -1078,6 +1122,8 @@ export function SalonStaffEarningsPage() {
 
   const totalEarned = days.reduce((s, d) => s + d.earned, 0);
   const totalPaid = days.reduce((s, d) => s + d.paid, 0);
+  const { pageRows: dayRows, pagination: dayPagination } = useClientPagination(days, 12, id);
+  const { pageRows: lineRows, pagination: linePagination } = useClientPagination(lines, 12, id);
 
   return (
     <div className="space-y-5">
@@ -1087,7 +1133,7 @@ export function SalonStaffEarningsPage() {
       </div>
       {loading ? <ModuleSpinner /> : (
         <div className="space-y-6">
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-3 sm:gap-3">
             <SummaryStat label="Earned (30d)" value={KES(totalEarned)} />
             <SummaryStat label="Paid" value={KES(totalPaid)} />
             <SummaryStat label="Outstanding" value={KES(Math.max(0, totalEarned - totalPaid))} tone="warning" />
@@ -1096,10 +1142,12 @@ export function SalonStaffEarningsPage() {
           <div>
             <div className="text-[11px] uppercase tracking-wider text-muted-foreground mb-2">Daily earnings</div>
             {days.length === 0 ? <p className="text-[13px] text-muted-foreground">No earnings in the last 30 days.</p> : (
-              <ModuleTable>
+              <>
+              <div className="space-y-2 lg:hidden">{dayRows.map((d) => <article key={d.day} className="rounded-md border border-border p-4"><div className="flex items-start justify-between gap-3"><div><p className="font-medium">{new Date(d.day).toLocaleDateString([], { weekday: "short", day: "numeric", month: "short" })}</p><p className="mt-1 text-xs text-muted-foreground">{d.jobs} jobs · {KES(d.paid)} paid</p></div><span className="font-mono font-semibold">{KES(d.earned)}</span></div></article>)}</div>
+              <ModuleTable className="hidden lg:block">
                 <ModuleTHead><tr><th className="text-left px-3 py-2">Day</th><th className="text-right px-3 py-2">Jobs</th><th className="text-right px-3 py-2">Earned</th><th className="text-right px-3 py-2">Paid</th><th className="text-right px-3 py-2">Status</th></tr></ModuleTHead>
                 <tbody>
-                  {days.map((d) => (
+                  {dayRows.map((d) => (
                     <tr key={d.day} className="border-t border-border">
                       <td className="px-3 py-2">{new Date(d.day).toLocaleDateString([], { weekday: "short", day: "numeric", month: "short" })}</td>
                       <td className="px-3 py-2 text-right tabular-nums">{d.jobs}</td>
@@ -1110,16 +1158,20 @@ export function SalonStaffEarningsPage() {
                   ))}
                 </tbody>
               </ModuleTable>
+              <PaginationBar list={dayPagination} />
+              </>
             )}
           </div>
 
           <div>
             <div className="text-[11px] uppercase tracking-wider text-muted-foreground mb-2">Commission lines</div>
             {lines.length === 0 ? <p className="text-[13px] text-muted-foreground">No commission lines.</p> : (
-              <ModuleTable>
+              <>
+              <div className="space-y-2 lg:hidden">{lineRows.map((line) => <article key={line.id} className="rounded-md border border-border p-4"><div className="flex items-start justify-between gap-3"><div><p className="font-medium">{line.service_name ?? (line.kind === "retail" ? "Retail" : "Commission")}</p><p className="mt-1 text-xs text-muted-foreground">{line.client_name ?? "Walk-in"} · {line.pct}% of {KES(line.base_amount)}</p></div><span className="font-mono font-semibold">{KES(line.amount)}</span></div></article>)}</div>
+              <ModuleTable className="hidden lg:block">
                 <ModuleTHead><tr><th className="text-left px-3 py-2">Date</th><th className="text-left px-3 py-2">Service</th><th className="text-left px-3 py-2">Client</th><th className="text-right px-3 py-2">Base</th><th className="text-right px-3 py-2">%</th><th className="text-right px-3 py-2">Earned</th></tr></ModuleTHead>
                 <tbody>
-                  {lines.map((l) => (
+                  {lineRows.map((l) => (
                     <tr key={l.id} className="border-t border-border">
                       <td className="px-3 py-2 text-[12px]">{new Date(l.created_at).toLocaleDateString([], { day: "numeric", month: "short" })}</td>
                       <td className="px-3 py-2">{l.service_name ?? (l.kind === "retail" ? "Retail" : "—")}</td>
@@ -1131,6 +1183,8 @@ export function SalonStaffEarningsPage() {
                   ))}
                 </tbody>
               </ModuleTable>
+              <PaginationBar list={linePagination} />
+              </>
             )}
           </div>
         </div>
@@ -1150,20 +1204,26 @@ export function SalonPackagesPage() {
   const [services, setServices] = useState<SalonService[]>([]);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState<SalonPackage | "new" | null>(null);
+  const [search, setSearch] = useState("");
   const load = () => { setLoading(true); Promise.all([listPackages(true), listServices()]).then(([p, s]) => { setPackages(p); setServices(s); }).finally(() => setLoading(false)); };
   useEffect(() => { load(); }, []);
+  const filteredPackages = useMemo(() => packages.filter((pkg) => !search || [pkg.name, pkg.service_name].some((value) => value?.toLowerCase().includes(search.toLowerCase()))), [packages, search]);
+  const { pageRows: packageRows, pagination: packagePagination } = useClientPagination(filteredPackages, 12, search);
   return (
     <div>
       <ModuleMasthead accent={ACCENT} eyebrow="Salon & Spa · Memberships" title="Packages" subtitle="Prepaid session bundles — sold to clients, redeemed at checkout."
         actions={<Button size="sm" className={cn("cursor-pointer", BRAND_BTN)} onClick={() => setEditing("new")}><Plus className="h-3.5 w-3.5 mr-1.5" /> New package</Button>} />
+      <Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search package or service…" className="mb-3 h-11 w-full sm:max-w-sm lg:h-8" />
       <PackageDialog target={editing} services={services} onClose={() => setEditing(null)} onSaved={() => { setEditing(null); load(); }} />
       {loading ? <ModuleSpinner /> : packages.length === 0 ? (
         <ModuleEmpty icon={Scissors} title="No packages yet" hint="Create a prepaid bundle (e.g. 10 sessions) to sell to clients." />
       ) : (
-        <ModuleTable>
+        <>
+        <div className="space-y-2 lg:hidden">{packageRows.map((pkg) => <button key={pkg.id} type="button" onClick={() => setEditing(pkg)} className="min-h-11 w-full rounded-md border border-border p-4 text-left"><div className="flex items-start justify-between gap-3"><div><p className="font-medium">{pkg.name}</p><p className="mt-1 text-xs text-muted-foreground">{pkg.service_name ?? "No service"} · {pkg.sessions} sessions</p></div><span className="font-mono font-semibold">{KES(pkg.price)}</span></div><p className="mt-3 border-t border-border pt-3 text-xs text-muted-foreground">{pkg.validity_days ? `${pkg.validity_days} days` : "No expiry"}{pkg.active ? "" : " · Inactive"}</p></button>)}</div>
+        <ModuleTable className="hidden lg:block">
           <ModuleTHead><tr><th className="text-left px-3 py-2">Package</th><th className="text-left px-3 py-2">Service</th><th className="text-right px-3 py-2">Sessions</th><th className="text-right px-3 py-2">Price</th><th className="text-right px-3 py-2">Validity</th></tr></ModuleTHead>
           <tbody>
-            {packages.map((p) => (
+            {packageRows.map((p) => (
               <tr key={p.id} onClick={() => setEditing(p)} className="border-t border-border hover:bg-accent/30 cursor-pointer">
                 <td className="px-3 py-2">{p.name}{p.active ? "" : <span className="text-muted-foreground text-[11px]"> · inactive</span>}</td>
                 <td className="px-3 py-2 text-muted-foreground">{p.service_name ?? "—"}</td>
@@ -1173,6 +1233,8 @@ export function SalonPackagesPage() {
             ))}
           </tbody>
         </ModuleTable>
+        <PaginationBar list={packagePagination} />
+        </>
       )}
     </div>
   );
@@ -1208,14 +1270,14 @@ function PackageDialog({ target, services, onClose, onSaved }: { target: SalonPa
         <div className="space-y-3 py-1">
           <Field label="Name *"><Input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. 10 massages" autoFocus /></Field>
           <Field label="Service *"><Combobox value={serviceId} onChange={setServiceId} options={services.map((s) => ({ value: s.id, label: s.name }))} placeholder="Choose a service…" searchPlaceholder="Search services…" /></Field>
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3 sm:gap-3">
             <Field label="Sessions"><Input type="number" value={sessions} onChange={(e) => setSessions(e.target.value)} className="text-right tabular-nums" /></Field>
-            <Field label="Price (KES)"><Input type="number" value={price} onChange={(e) => setPrice(e.target.value)} className="text-right tabular-nums" /></Field>
+            <Field label={`Price (${currencySymbol()})`}><Input type="number" value={price} onChange={(e) => setPrice(e.target.value)} className="text-right tabular-nums" /></Field>
             <Field label="Valid (days)"><Input type="number" value={validity} onChange={(e) => setValidity(e.target.value)} className="text-right tabular-nums" placeholder="∞" /></Field>
           </div>
           {pkg && (
             <label className="flex items-center gap-2 text-[13px] cursor-pointer">
-              <input type="checkbox" checked={active} onChange={(e) => setActive(e.target.checked)} className="accent-primary" />
+              <Checkbox checked={active} onCheckedChange={(checked) => setActive(Boolean(checked))} />
               Active (available to sell)
             </label>
           )}
@@ -1284,24 +1346,29 @@ export function SalonClientsPage() {
   const [openClient, setOpenClient] = useState<Customer | null>(null);
   const load = () => { setLoading(true); listCustomers(search.trim() || undefined).then(setClients).finally(() => setLoading(false)); };
   useEffect(() => { const t = setTimeout(load, search ? 200 : 0); return () => clearTimeout(t); /* eslint-disable-next-line */ }, [search]);
+  const { pageRows: clientRows, pagination: clientPagination } = useClientPagination(clients, 12, search);
   return (
     <div>
       <ModuleMasthead accent={ACCENT} eyebrow="Salon & Spa · Clients" title="Clients" subtitle="Client profiles, preferences and visit history." />
-      <div className="mb-3 max-w-[280px]"><Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search clients…" className="h-8 text-xs" /></div>
+      <div className="mb-3 w-full sm:max-w-[280px]"><Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search clients…" className="h-11 text-xs lg:h-8" /></div>
       <ClientSheet client={openClient} onClose={() => setOpenClient(null)} />
       {loading ? <ModuleSpinner /> : clients.length === 0 ? (
         <ModuleEmpty icon={Scissors} title="No clients" hint="Clients are your Core customers — add them from the customer list or at booking." />
       ) : (
-        <ModuleTable>
+        <>
+        <div className="space-y-2 lg:hidden">{clientRows.map((client) => <button key={client.id} type="button" onClick={() => setOpenClient(client)} className="min-h-11 w-full rounded-md border border-border p-4 text-left"><p className="font-medium">{client.name}</p><p className="mt-1 font-mono text-xs text-muted-foreground">{client.phone ?? "No phone"}</p></button>)}</div>
+        <ModuleTable className="hidden lg:block">
           <ModuleTHead><tr><th className="text-left px-3 py-2">Name</th><th className="text-left px-3 py-2">Phone</th></tr></ModuleTHead>
           <tbody>
-            {clients.map((c) => (
+            {clientRows.map((c) => (
               <tr key={c.id} onClick={() => setOpenClient(c)} className="border-t border-border hover:bg-accent/30 cursor-pointer">
                 <td className="px-3 py-2">{c.name}</td><td className="px-3 py-2 text-muted-foreground">{c.phone ?? "—"}</td>
               </tr>
             ))}
           </tbody>
         </ModuleTable>
+        <PaginationBar list={clientPagination} />
+        </>
       )}
     </div>
   );
@@ -1350,7 +1417,7 @@ function ClientSheet({ client, onClose }: { client: Customer | null; onClose: ()
           <Field label="Preferences"><Textarea value={prefs} onChange={(e) => setPrefs(e.target.value)} rows={2} /></Field>
           <Field label="Allergies / sensitivities"><Textarea value={allergies} onChange={(e) => setAllergies(e.target.value)} rows={2} /></Field>
           <Field label="Formulas (colour, etc.)"><Textarea value={formulas} onChange={(e) => setFormulas(e.target.value)} rows={2} /></Field>
-          <Button size="sm" onClick={save} disabled={busy}>Save profile</Button>
+          <Button size="sm" className="h-11 w-full sm:w-auto" onClick={save} disabled={busy}>Save profile</Button>
 
           {/* Packages */}
           <div>
@@ -1371,7 +1438,7 @@ function ClientSheet({ client, onClose }: { client: Customer | null; onClose: ()
                 <Field label="Package">
                   <Combobox value={sellPkgId} onChange={setSellPkgId} options={allPkgs.map((p) => ({ value: p.id, label: `${p.name} · ${KES(p.price)}` }))} placeholder="Choose package…" searchPlaceholder="Search packages…" className="w-full" />
                 </Field>
-                <Button size="sm" className={cn("w-full", BRAND_BTN)} onClick={sellViaPos} disabled={busy || !sellPkgId}>
+                <Button size="sm" className={cn("h-11 w-full", BRAND_BTN)} onClick={sellViaPos} disabled={busy || !sellPkgId}>
                   <Receipt className="h-3.5 w-3.5 mr-1.5" /> Sell in POS
                 </Button>
               </div>

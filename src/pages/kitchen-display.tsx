@@ -37,6 +37,8 @@ import {
   type KdsColumnMode,
 } from "@/hooks/use-kds-prefs";
 import { cn } from "@/lib/utils";
+import { OperationalContext } from "@/components/shared/operational-context";
+import { BackButton } from "@/components/ui/back-button";
 
 const REFRESH_MS = 5_000;
 
@@ -242,15 +244,26 @@ export function KitchenDisplayPage() {
     return Array.from(stations.entries()).filter(([k]) => k === prefs.stationFilter);
   }, [stations, prefs.stationFilter]);
 
-  const gridCols = prefs.columns === "auto"
-    ? Math.min(filteredStations.length || 1, 4)
-    : parseInt(prefs.columns, 10);
+  const gridClass = prefs.columns === "4"
+    ? "sm:grid-cols-2 lg:grid-cols-4"
+    : prefs.columns === "3"
+      ? "sm:grid-cols-2 lg:grid-cols-3"
+      : prefs.columns === "2"
+        ? "sm:grid-cols-2"
+        : filteredStations.length >= 4
+          ? "sm:grid-cols-2 lg:grid-cols-4"
+          : filteredStations.length === 3
+            ? "sm:grid-cols-2 lg:grid-cols-3"
+            : filteredStations.length === 2
+              ? "sm:grid-cols-2"
+              : "grid-cols-1";
 
   return (
     <div className={cn("min-h-[100dvh] bg-background p-4 space-y-3", prefs.forceDark && "dark")}>
       <div className={cn(prefs.forceDark && "bg-background text-foreground -m-4 p-4 min-h-[100dvh]")}>
-      <header className="flex items-center justify-between pb-2 border-b border-border/60">
+      <header className="flex flex-wrap items-center justify-between gap-3 pb-2 border-b border-border/60">
         <div className="flex items-center gap-3">
+          <BackButton fallback="/hospitality" className="min-h-11 lg:min-h-0" />
           <div className="flex items-center justify-center h-8 w-8 rounded-lg bg-primary/10">
             <CookingPot className="h-4 w-4 text-primary" />
           </div>
@@ -261,7 +274,7 @@ export function KitchenDisplayPage() {
             </span>
           </div>
         </div>
-        <div className="flex items-center gap-1.5">
+        <div className="flex flex-wrap items-center gap-1.5">
           <ServicePeriodBadge />
           <button
             onClick={async () => {
@@ -273,7 +286,7 @@ export function KitchenDisplayPage() {
               }
             }}
             title="Open the guest-facing order board (PREPARING / READY) in a separate window"
-            className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-border hover:bg-accent text-[12px] font-medium"
+            className="inline-flex min-h-11 items-center gap-1.5 rounded-md border border-border px-2.5 py-1.5 text-[12px] font-medium hover:bg-accent lg:min-h-0"
           >
             <Monitor className="h-3.5 w-3.5" /> Order board
           </button>
@@ -281,13 +294,13 @@ export function KitchenDisplayPage() {
           <button
             onClick={() => setPrefs({ audioCue: !prefs.audioCue })}
             title={prefs.audioCue ? "Mute new-ticket beep" : "Unmute new-ticket beep"}
-            className="p-2 rounded-md hover:bg-accent"
+            className="min-h-11 min-w-11 p-2 rounded-md hover:bg-accent lg:min-h-0 lg:min-w-0"
           >
             {prefs.audioCue ? <SpeakerHigh className="h-4 w-4" /> : <SpeakerX className="h-4 w-4 text-muted-foreground" />}
           </button>
           <button
             onClick={() => setSettingsOpen(!settingsOpen)}
-            className="p-2 rounded-md hover:bg-accent"
+            className="min-h-11 min-w-11 p-2 rounded-md hover:bg-accent lg:min-h-0 lg:min-w-0"
             title="Customize display"
           >
             <Settings className="h-4 w-4" />
@@ -297,6 +310,7 @@ export function KitchenDisplayPage() {
           </span>
         </div>
       </header>
+      <OperationalContext compact />
 
       {/* Settings panel — inline, collapsible. */}
       {settingsOpen && (
@@ -393,7 +407,7 @@ export function KitchenDisplayPage() {
           </div>
         </div>
       ) : (
-        <div className="grid gap-4" style={{ gridTemplateColumns: `repeat(${gridCols}, minmax(280px, 1fr))` }}>
+        <div className={cn("grid grid-cols-1 gap-4", gridClass)}>
           {filteredStations.map(([stationKey, tickets]) => (
             <div key={stationKey} className="rounded-lg border border-border bg-card">
               <div className="px-3 py-2 border-b border-border flex items-center justify-between bg-muted/50">
@@ -449,7 +463,7 @@ export function KitchenDisplayPage() {
                       <button
                         onClick={() => handleBump(t)}
                         className={cn(
-                          "mt-2 w-full inline-flex items-center justify-center gap-1.5 py-1.5 rounded bg-background font-medium hover:bg-accent",
+                          "mt-2 min-h-11 w-full inline-flex items-center justify-center gap-1.5 py-1.5 rounded bg-background font-medium hover:bg-accent",
                           fontCls.ticketHeader,
                         )}
                       >

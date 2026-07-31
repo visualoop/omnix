@@ -3,7 +3,7 @@
  * Order lifecycle / kitchen / rooms / folios pages arrive in Tasks 23-26.
  * Flat, theme-token UI per the Omnix design system.
  */
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   ArrowLeft,
   Bed as BedDouble,
@@ -57,7 +57,11 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { CompactFormDialog } from "@/components/hospitality/compact-form-dialog";
 import { BookingDialog } from "@/components/hospitality/booking-dialog";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { money as KES } from "@/lib/money";
+import { money as KES, currencySymbol } from "@/lib/money";
+import { useClientPagination } from "@/hooks/use-client-pagination";
+import { PaginationBar } from "@/components/pagination-bar";
+import { useActiveCountry } from "@/stores/country";
+import { phonePlaceholder } from "@/lib/locale";
 import {
   moduleAccent, ModuleMasthead, ModuleStat, ModuleSpinner,
 } from "@/components/shared/module-kit";
@@ -122,6 +126,7 @@ export function HospitalityTablesPage() {
   const [loading, setLoading] = useState(true);
   const [areaDialog, setAreaDialog] = useState(false);
   const [tableDialog, setTableDialog] = useState(false);
+  const [search, setSearch] = useState("");
   const navigate = useNavigate();
 
   const load = () => {
@@ -135,6 +140,9 @@ export function HospitalityTablesPage() {
     const next = order[(order.indexOf(t.status) + 1) % order.length];
     try { await setTableStatus(t.id, next); load(); } catch (e) { toast.error(String(e)); }
   };
+
+  const filteredTables = useMemo(() => tables.filter((table) => !search || [table.table_code, table.name, table.status].some((value) => value?.toLowerCase().includes(search.toLowerCase()))), [tables, search]);
+  const { pageRows: tableRows, pagination: tablePagination } = useClientPagination(filteredTables, 18, search);
 
   if (loading) return <CenterSpin />;
 
@@ -151,12 +159,13 @@ export function HospitalityTablesPage() {
           </div>
         }
       />
+      <Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search table or status…" className="mb-3 h-11 w-full sm:max-w-xs lg:h-8" />
       {tables.length === 0 && areas.length === 0 ? (
         <EmptyHint text="No tables yet. Add a dining area, then tables." />
       ) : (
         <div className="space-y-5">
           {(areas.length ? areas : [{ id: null, name: "Tables" } as unknown as DiningArea]).map((area) => {
-            const areaTables = tables.filter((t) => t.area_id === (area.id ?? null) || (!area.id && !t.area_id));
+            const areaTables = tableRows.filter((t) => t.area_id === (area.id ?? null) || (!area.id && !t.area_id));
             return (
               <div key={area.id ?? "none"}>
                 {area.id ? (
@@ -179,7 +188,7 @@ export function HospitalityTablesPage() {
                       <button
                         key={t.id}
                         onClick={() => cycleStatus(t)}
-                        className={cn("rounded-lg border p-3 text-left transition-colors cursor-pointer hover:opacity-80", TABLE_STATUS[t.status])}
+                        className={cn("min-h-11 rounded-md border p-3 text-left transition-colors cursor-pointer hover:opacity-80", TABLE_STATUS[t.status])}
                       >
                         <div className="text-sm font-semibold">{t.table_code}</div>
                         <div className="text-[10px] mt-1 capitalize">{t.status}</div>
@@ -193,6 +202,8 @@ export function HospitalityTablesPage() {
           })}
         </div>
       )}
+
+      <PaginationBar list={tablePagination} />
 
       <CompactFormDialog
         open={areaDialog}
@@ -272,8 +283,6 @@ export function HospitalityMenuPage() {
     try { await setMenuItemActive(m.id, !m.active); load(); } catch (e) { toast.error(String(e)); }
   };
 
-  if (loading) return <CenterSpin />;
-
   const categories = Array.from(new Set(items.map((i) => i.category).filter(Boolean))) as string[];
   const filtered = items.filter((i) => {
     if (search && !i.menu_name.toLowerCase().includes(search.toLowerCase()) && !(i.category ?? "").toLowerCase().includes(search.toLowerCase())) return false;
@@ -281,6 +290,8 @@ export function HospitalityMenuPage() {
     return true;
   });
   const eightySixedIds = new Set(eightySixed.map((x) => x.menu_item_id));
+  const { pageRows: menuRows, pagination: menuPagination } = useClientPagination(filtered, 12, `${categoryFilter ?? "all"}:${search}`);
+  if (loading) return <CenterSpin />;
 
   return (
     <div>
@@ -297,7 +308,7 @@ export function HospitalityMenuPage() {
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Search menu items…"
-          className="h-8 text-xs max-w-[240px]"
+          className="h-11 w-full text-xs sm:max-w-[240px] lg:h-8"
         />
         {categories.length > 0 ? (
           <div className="flex flex-wrap items-center gap-1">
@@ -338,7 +349,9 @@ export function HospitalityMenuPage() {
       {filtered.length === 0 ? (
         <EmptyHint text={search || categoryFilter ? "No items match this filter." : "No menu items yet."} />
       ) : (
-        <div className="border border-border rounded-lg overflow-hidden">
+        <>
+        <div className="space-y-2 lg:hidden" aria-label="Menu items">{menuRows.map((m) => <article key={m.id} className="rounded-md border border-border p-4"><button type="button" onClick={() => navigate(`/hospitality/menu/${m.id}`)} className="min-h-11 w-full text-left"><div className="flex items-start justify-between gap-3"><div><p className="font-medium">{m.menu_name}</p><p className="mt-1 text-xs text-muted-foreground">{m.category ?? "Uncategorised"}</p></div><span className="font-mono font-semibold">{m.dine_in_price != null ? KES(m.dine_in_price) : "—"}</span></div><div className="mt-3 flex flex-wrap gap-2 border-t border-border pt-3">{eightySixedIds.has(m.id) && <Badge variant="destructive">86</Badge>}{!withRecipe.has(m.id) && <Badge variant="outline">No recipe</Badge>}<Badge variant="outline">{m.active ? "Active" : "Hidden"}</Badge></div></button></article>)}</div>
+        <div className="hidden overflow-hidden rounded-lg border border-border lg:block">
           <table className="w-full text-[13px]">
             <thead className="bg-muted/30 text-[11px] uppercase tracking-wide text-muted-foreground">
               <tr>
@@ -349,7 +362,7 @@ export function HospitalityMenuPage() {
               </tr>
             </thead>
             <tbody>
-              {filtered.map((m) => (
+              {menuRows.map((m) => (
                 <tr
                   key={m.id}
                   className={cn(
@@ -390,6 +403,8 @@ export function HospitalityMenuPage() {
             </tbody>
           </table>
         </div>
+        <PaginationBar list={menuPagination} />
+        </>
       )}
     </div>
   );
@@ -415,6 +430,7 @@ export function HospitalityOrdersPage() {
   const [items, setItems] = useState<HospitalityOrderItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [checkingOut, setCheckingOut] = useState(false);
+  const [search, setSearch] = useState("");
   const [scPct, setScPct] = useState(0);
   const [tip, setTip] = useState(0);
   const [orderType, setOrderType] = useState<"dine_in" | "room_service">("dine_in");
@@ -541,6 +557,9 @@ export function HospitalityOrdersPage() {
     } catch (e) { toast.error(String(e)); } finally { setCheckingOut(false); }
   };
 
+  const filteredOrders = useMemo(() => orders.filter((order) => !search || [order.order_number, order.order_type, order.status].some((value) => value?.toLowerCase().includes(search.toLowerCase()))), [orders, search]);
+  const { pageRows: orderRows, pagination: orderPagination } = useClientPagination(filteredOrders, 12, search);
+
   if (loading) return <CenterSpin />;
 
   if (selected) {
@@ -634,7 +653,7 @@ export function HospitalityOrdersPage() {
                     onClick={async () => { await addItem(m); loadAvailability(); }}
                     disabled={disabled}
                     className={cn(
-                      "rounded-lg border border-border p-2 text-left transition-colors flex gap-2",
+                      "min-h-11 rounded-md border border-border p-2 text-left transition-colors flex gap-2",
                       disabled
                         ? "opacity-50 cursor-not-allowed bg-muted/30"
                         : "hover:bg-accent/30 cursor-pointer",
@@ -693,10 +712,11 @@ export function HospitalityOrdersPage() {
   </SelectContent>
 </Select><Button size="sm" className={cn("cursor-pointer", BRAND_BTN)} onClick={newOrder}><Plus className="h-3.5 w-3.5 mr-1" /> New order</Button></div>}
       />
+      <Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search order, table, or status…" className="mb-3 h-11 w-full sm:max-w-xs lg:h-8" />
       {orders.length === 0 ? <EmptyHint text="No active orders. Open one to start." /> : (
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2.5">
-          {orders.map((o) => (
-            <button key={o.id} onClick={() => setSelected(o.id)} className="rounded-lg border border-border p-3 text-left hover:bg-accent/30 transition-colors cursor-pointer">
+          {orderRows.map((o) => (
+            <button key={o.id} onClick={() => setSelected(o.id)} className="min-h-11 rounded-md border border-border p-3 text-left hover:bg-accent/30 transition-colors cursor-pointer">
               <div className="flex items-center justify-between">
                 <span className="text-sm font-semibold">{o.order_number}</span>
                 <ChevronRight className="h-4 w-4 text-muted-foreground" />
@@ -707,6 +727,7 @@ export function HospitalityOrdersPage() {
           ))}
         </div>
       )}
+      <PaginationBar list={orderPagination} />
 
       {/* Room service — open the picker so the operator picks WHICH
        *  room the order is for. The picker also fetches the guest's
@@ -752,6 +773,7 @@ export function HospitalityOrdersPage() {
 export function HospitalityKitchenPage() {
   const [queue, setQueue] = useState<Array<HospitalityOrderItem & { order_number: string; station_name: string | null }>>([]);
   const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState("");
 
   const load = () => kitchenQueue().then(setQueue).finally(() => setLoading(false));
   useEffect(() => {
@@ -763,20 +785,23 @@ export function HospitalityKitchenPage() {
   const bump = async (id: string) => { try { await bumpItem(id); load(); } catch (e) { toast.error(String(e)); } };
   const serve = async (id: string) => { try { await markServed(id); load(); } catch (e) { toast.error(String(e)); } };
 
+  const filteredQueue = useMemo(() => queue.filter((item) => !search || [item.name, item.order_number, item.station_name, item.status].some((value) => value?.toLowerCase().includes(search.toLowerCase()))), [queue, search]);
+  const { pageRows: kitchenRows, pagination: kitchenPagination } = useClientPagination(filteredQueue, 18, search);
   if (loading) return <CenterSpin />;
 
-  const stations = [...new Set(queue.map((q) => q.station_name ?? "Kitchen"))];
+  const stations = [...new Set(kitchenRows.map((q) => q.station_name ?? "Kitchen"))];
 
   return (
     <div>
       <PageHead icon={ChefHat} title="Kitchen Display" subtitle="Live tickets by station. Bump items as they progress." />
+      <Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search ticket, dish, or station…" className="mb-3 h-11 w-full sm:max-w-xs lg:h-8" />
       {queue.length === 0 ? <EmptyHint text="No tickets in the kitchen." /> : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
           {stations.map((station) => (
             <div key={station}>
               <div className="text-[11px] uppercase tracking-wide text-muted-foreground mb-2">{station}</div>
               <div className="space-y-2">
-                {queue.filter((q) => (q.station_name ?? "Kitchen") === station).map((q) => (
+                {kitchenRows.filter((q) => (q.station_name ?? "Kitchen") === station).map((q) => (
                   <Card key={q.id}><CardContent className="p-3">
                     <div className="flex items-center justify-between">
                       <span className="text-sm font-medium">{q.quantity}× {q.name}</span>
@@ -785,8 +810,8 @@ export function HospitalityKitchenPage() {
                     <div className="text-[11px] text-muted-foreground mt-0.5">{q.order_number}</div>
                     {q.notes && <div className="text-[11px] text-amber-600 mt-1">Note: {q.notes}</div>}
                     <div className="flex gap-1.5 mt-2">
-                      {q.status !== "ready" && <Button size="sm" variant="outline" className="cursor-pointer flex-1" onClick={() => bump(q.id)}>Bump →</Button>}
-                      {q.status === "ready" && <Button size="sm" className="cursor-pointer flex-1" onClick={() => serve(q.id)}>Served</Button>}
+                      {q.status !== "ready" && <Button size="sm" variant="outline" className="h-11 cursor-pointer flex-1 lg:h-8" onClick={() => bump(q.id)}>Bump →</Button>}
+                      {q.status === "ready" && <Button size="sm" className="h-11 cursor-pointer flex-1 lg:h-8" onClick={() => serve(q.id)}>Served</Button>}
                     </div>
                   </CardContent></Card>
                 ))}
@@ -795,6 +820,7 @@ export function HospitalityKitchenPage() {
           ))}
         </div>
       )}
+      <PaginationBar list={kitchenPagination} />
     </div>
   );
 }
@@ -829,12 +855,13 @@ export function HospitalityRoomsPage() {
     try { await setRoomStatus(r.id, next); load(); } catch (e) { toast.error(String(e)); }
   };
 
-  if (loading) return <CenterSpin />;
   const filteredRooms = rooms.filter((r) => {
     if (roomSearch && !r.room_number.toLowerCase().includes(roomSearch.toLowerCase())) return false;
     if (roomStatusFilter && r.status !== roomStatusFilter) return false;
     return true;
   });
+  const { pageRows: roomRows, pagination: roomPagination } = useClientPagination(filteredRooms, 15, `${roomStatusFilter ?? "all"}:${roomSearch}`);
+  if (loading) return <CenterSpin />;
   return (
     <div>
       <PageHead icon={BedDouble} title="Rooms" subtitle="Room status board." action={
@@ -853,7 +880,7 @@ export function HospitalityRoomsPage() {
         description="Group rooms with the same base rate (e.g. Standard, Deluxe, Suite)."
         fields={[
           { name: "name", label: "Type name", placeholder: "Standard", required: true },
-          { name: "rate", label: "Base rate (KES per night)", type: "number", defaultValue: "0", min: 0, step: "0.01", required: true },
+          { name: "rate", label: `Base rate (${currencySymbol()} per night)`, type: "number", defaultValue: "0", min: 0, step: "0.01", required: true },
         ]}
         submitLabel="Add type"
         onSubmit={async (v) => {
@@ -916,7 +943,7 @@ export function HospitalityRoomsPage() {
               value={roomSearch}
               onChange={(e) => setRoomSearch(e.target.value)}
               placeholder="Search rooms…"
-              className="h-8 text-xs max-w-[200px]"
+              className="h-11 w-full text-xs sm:max-w-[200px] lg:h-8"
             />
             <div className="flex flex-wrap items-center gap-1">
               <button
@@ -950,8 +977,9 @@ export function HospitalityRoomsPage() {
             </div>
           </div>
 
+          <div className="space-y-2 lg:hidden" aria-label="Rooms">{roomRows.map((r) => { const t = types.find((type) => type.id === r.room_type_id); return <article key={r.id} className="rounded-md border border-border p-4"><button type="button" onClick={() => navigate(`/hospitality/rooms/${r.id}`)} className="min-h-11 w-full text-left"><div className="flex items-start justify-between gap-3"><div><p className="font-medium">Room {r.room_number}</p><p className="mt-1 text-xs text-muted-foreground">{t?.name ?? "No room type"}</p></div><Badge variant="outline" className={cn("capitalize", ROOM_STATUS[r.status])}>{r.status.replace("_", " ")}</Badge></div></button><Button variant="outline" className="mt-3 h-11 w-full" onClick={() => cycle(r)}>Update room status</Button></article>; })}</div>
           {/* Compact table — click row to drill in */}
-          <div className="border border-border rounded-lg overflow-hidden">
+          <div className="hidden overflow-hidden rounded-lg border border-border lg:block">
             <table className="w-full text-[13px]">
               <thead className="bg-muted/30 text-[11px] uppercase tracking-wide text-muted-foreground">
                 <tr>
@@ -962,7 +990,7 @@ export function HospitalityRoomsPage() {
                 </tr>
               </thead>
               <tbody>
-                {filteredRooms.map((r) => {
+                {roomRows.map((r) => {
                   const t = types.find((tt) => tt.id === r.room_type_id);
                   return (
                     <tr
@@ -1007,6 +1035,7 @@ export function HospitalityRoomsPage() {
               </tbody>
             </table>
           </div>
+          <PaginationBar list={roomPagination} />
         </>
       )}
     </div>
@@ -1044,6 +1073,8 @@ export function HospitalityBookingsPage() {
     }
   };
 
+  const filteredBookings = useMemo(() => { const today = new Date().toISOString().slice(0,10); return bookings.filter((booking) => { if (bookingSearch) { const q = bookingSearch.toLowerCase(); if (!booking.guest_name.toLowerCase().includes(q) && !booking.booking_number.toLowerCase().includes(q)) return false; } if (bookingFilter === "arriving") return booking.status === "reserved" && booking.check_in_date === today; if (bookingFilter === "in_house") return booking.status === "checked_in"; if (bookingFilter === "departing") return booking.status === "checked_in" && booking.check_out_date === today; return true; }); }, [bookings, bookingSearch, bookingFilter]);
+  const { pageRows: bookingRows, pagination: bookingPagination } = useClientPagination(filteredBookings, 12, `${bookingFilter}:${bookingSearch}`);
   if (loading) return <CenterSpin />;
   return (
     <div>
@@ -1067,7 +1098,7 @@ export function HospitalityBookingsPage() {
           value={bookingSearch}
           onChange={(e) => setBookingSearch(e.target.value)}
           placeholder="Search bookings by guest or number…"
-          className="h-8 text-xs max-w-[260px]"
+          className="h-11 w-full text-xs sm:max-w-[260px] lg:h-8"
         />
         <div className="flex flex-wrap items-center gap-1">
           {(["all", "arriving", "in_house", "departing"] as const).map((f) => (
@@ -1091,33 +1122,25 @@ export function HospitalityBookingsPage() {
             <button onClick={() => setBookingView("calendar")} className={cn("text-[11px] px-2 py-0.5 rounded transition-colors", bookingView === "calendar" ? "bg-accent text-foreground font-medium" : "text-muted-foreground hover:text-foreground")}>Calendar</button>
           </div>
           <span className="text-[11px] text-muted-foreground font-mono tabular-nums">
-          {(() => {
-            const todayStr = new Date().toISOString().slice(0, 10);
-            return bookings.filter((b) => {
-              if (bookingSearch) {
-                const q = bookingSearch.toLowerCase();
-                if (!b.guest_name.toLowerCase().includes(q) && !b.booking_number.toLowerCase().includes(q)) return false;
-              }
-              if (bookingFilter === "arriving") return b.status === "reserved" && b.check_in_date === todayStr;
-              if (bookingFilter === "in_house") return b.status === "checked_in";
-              if (bookingFilter === "departing") return b.status === "checked_in" && b.check_out_date === todayStr;
-              return true;
-            }).length;
-          })()} of {bookings.length}
+          {filteredBookings.length} of {bookings.length}
           </span>
         </div>
       </div>
       {bookingView === "calendar" ? (
-        <BookingsCalendar
+        <>
+        <div className="space-y-2 lg:hidden">{bookingRows.map((b) => <button key={b.id} type="button" onClick={() => setCalBooking(b)} className="min-h-11 w-full rounded-md border border-border p-4 text-left"><div className="flex items-start justify-between gap-3"><div><p className="font-medium">{b.guest_name}</p><p className="mt-1 font-mono text-xs text-muted-foreground">{b.booking_number}</p></div><Badge variant="outline" className="capitalize">{b.status.replace("_", " ")}</Badge></div><p className="mt-3 text-xs text-muted-foreground">{b.check_in_date} → {b.check_out_date} · {b.room_number || "Room unassigned"}</p></button>)}</div>
+        <div className="hidden lg:block"><BookingsCalendar
           bookings={bookings} rooms={rooms} types={types} start={calStart} days={calDays}
           onShift={(n) => { const d = new Date(calStart); d.setDate(d.getDate() + n); setCalStart(d); }}
           onToday={() => { const d = new Date(); d.setHours(0,0,0,0); setCalStart(d); }}
           onDays={setCalDays}
           onBar={(b) => setCalBooking(b)}
           onCell={(room, ds) => { setBookingPreset({ roomId: room.id, roomTypeId: room.room_type_id, roomNumber: room.room_number, checkIn: ds }); setBookingDialog(true); }}
-        />
+        /></div><PaginationBar list={bookingPagination} /></>
       ) : bookings.length === 0 ? <EmptyHint text="No active bookings." /> : (
-        <div className="border border-border rounded-lg overflow-hidden">
+        <>
+        <div className="space-y-2 lg:hidden">{bookingRows.map((b) => <article key={b.id} className="rounded-md border border-border p-4"><div className="flex items-start justify-between gap-3"><div><p className="font-medium">{b.guest_name}</p><p className="mt-1 font-mono text-xs text-muted-foreground">{b.booking_number}</p></div><Badge variant="outline" className="capitalize">{b.status.replace("_", " ")}</Badge></div><p className="mt-3 text-xs text-muted-foreground">{b.check_in_date} → {b.check_out_date} · {b.room_number || "Room unassigned"}</p>{b.status === "reserved" && <Button variant="outline" className="mt-3 h-11 w-full" onClick={() => doCheckIn(b)}>Check in</Button>}{b.status === "checked_in" && <Button className="mt-3 h-11 w-full" onClick={() => doCheckOut(b)}>Check out</Button>}</article>)}</div>
+        <div className="hidden overflow-hidden rounded-lg border border-border lg:block">
           <table className="w-full text-[13px]">
             <thead className="bg-muted/30 text-[11px] uppercase tracking-wide text-muted-foreground">
               <tr>
@@ -1129,19 +1152,7 @@ export function HospitalityBookingsPage() {
               </tr>
             </thead>
             <tbody>
-              {(() => {
-                const todayStr = new Date().toISOString().slice(0, 10);
-                return bookings.filter((b) => {
-                  if (bookingSearch) {
-                    const q = bookingSearch.toLowerCase();
-                    if (!b.guest_name.toLowerCase().includes(q) && !b.booking_number.toLowerCase().includes(q)) return false;
-                  }
-                  if (bookingFilter === "arriving") return b.status === "reserved" && b.check_in_date === todayStr;
-                  if (bookingFilter === "in_house") return b.status === "checked_in";
-                  if (bookingFilter === "departing") return b.status === "checked_in" && b.check_out_date === todayStr;
-                  return true;
-                });
-              })().map((b) => (
+              {bookingRows.map((b) => (
                 <tr key={b.id} className="border-t border-border hover:bg-accent/30 transition-colors">
                   <td className="px-3 py-2 font-mono">{b.booking_number}</td>
                   <td className="px-3 py-2 font-medium">{b.guest_name}</td>
@@ -1156,6 +1167,8 @@ export function HospitalityBookingsPage() {
             </tbody>
           </table>
         </div>
+        <PaginationBar list={bookingPagination} />
+        </>
       )}
 
       {/* Calendar bar click → booking detail + check-in/out */}
@@ -1298,28 +1311,32 @@ function BookingsCalendar({ bookings, rooms, types, start, days: DAYS, onShift, 
 export function HospitalityHousekeepingPage() {
   const [rooms, setRooms] = useState<Room[]>([]);
   const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState("");
   const load = () => listRooms().then(setRooms).finally(() => setLoading(false));
   useEffect(() => { load(); }, []);
   const clean = async (r: Room) => { try { await setRoomStatus(r.id, "available"); load(); toast.success(`Room ${r.room_number} ready`); } catch (e) { toast.error(String(e)); } };
 
   if (loading) return <CenterSpin />;
-  const dirty = rooms.filter((r) => r.status === "dirty" || r.status === "maintenance");
+  const dirty = rooms.filter((r) => (r.status === "dirty" || r.status === "maintenance") && (!search || r.room_number.toLowerCase().includes(search.toLowerCase())));
+  const { pageRows: housekeepingRows, pagination: housekeepingPagination } = useClientPagination(dirty, 16, search);
   return (
     <div>
       <PageHead icon={Sparkles} title="Housekeeping" subtitle="Rooms needing attention." />
+      <Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search room…" className="mb-3 h-11 w-full sm:max-w-xs lg:h-8" />
       {dirty.length === 0 ? <EmptyHint text="All rooms are clean." /> : (
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2.5">
-          {dirty.map((r) => (
+          {housekeepingRows.map((r) => (
             <Card key={r.id}><CardContent className="p-3">
               <div className="flex items-center justify-between">
                 <span className="text-sm font-semibold">{r.room_number}</span>
                 <Badge variant="outline" className={cn("text-[9px]", ROOM_STATUS[r.status])}>{r.status}</Badge>
               </div>
-              <Button size="sm" variant="outline" className="w-full mt-2 cursor-pointer" onClick={() => clean(r)}>Mark ready</Button>
+              <Button size="sm" variant="outline" className="mt-2 h-11 w-full cursor-pointer lg:h-8" onClick={() => clean(r)}>Mark ready</Button>
             </CardContent></Card>
           ))}
         </div>
       )}
+      <PaginationBar list={housekeepingPagination} />
     </div>
   );
 }
@@ -1334,6 +1351,13 @@ export function HospitalityFoliosPage() {
   const [balances, setBalances] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
   const [walkInOpen, setWalkInOpen] = useState(false);
+  const [search, setSearch] = useState("");
+  const { profile } = useActiveCountry();
+  const [paymentMethod, setPaymentMethod] = useState(() => profile?.paymentMethods[0] ?? "cash");
+  useEffect(() => {
+    const methods = profile?.paymentMethods;
+    if (methods?.length && !methods.includes(paymentMethod as (typeof methods)[number])) setPaymentMethod(methods[0]);
+  }, [profile, paymentMethod]);
 
   const load = async () => {
     setLoading(true);
@@ -1359,9 +1383,11 @@ export function HospitalityFoliosPage() {
   const settle = async (f: FolioRow) => {
     const bal = balances[f.id] ?? 0;
     if (bal <= 0) { toast.info("Nothing to settle"); return; }
-    try { await postFolioPayment(f.id, bal, "cash", userId); load(); toast.success("Folio settled"); } catch (e) { toast.error(String(e)); }
+    try { await postFolioPayment(f.id, bal, paymentMethod, userId); load(); toast.success("Folio settled"); } catch (e) { toast.error(String(e)); }
   };
 
+  const filteredFolios = useMemo(() => folios.filter((folio) => !search || [folio.folio_number, folio.guest_name].some((value) => value.toLowerCase().includes(search.toLowerCase()))), [folios, search]);
+  const { pageRows: folioRows, pagination: folioPagination } = useClientPagination(filteredFolios, 12, search);
   if (loading) return <CenterSpin />;
   return (
     <div>
@@ -1370,8 +1396,11 @@ export function HospitalityFoliosPage() {
           <Plus className="h-3.5 w-3.5 mr-1" /> Walk-in folio
         </Button>
       } />
+      <div className="mb-3 grid grid-cols-1 gap-2 sm:grid-cols-[1fr_180px]"><Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search folio or guest…" className="h-11 lg:h-8" /><Select value={paymentMethod} onValueChange={(value) => setPaymentMethod(value as typeof paymentMethod)}><SelectTrigger className="h-11 lg:h-8"><SelectValue /></SelectTrigger><SelectContent>{(profile?.paymentMethods ?? ["cash", "card", "bank"]).map((method) => <SelectItem key={method} value={method}>{method.replace(/_/g, " ")}</SelectItem>)}</SelectContent></Select></div>
       {folios.length === 0 ? <EmptyHint text="No open folios." /> : (
-        <div className="border border-border rounded-lg overflow-hidden">
+        <>
+        <div className="space-y-2 lg:hidden">{folioRows.map((f) => <article key={f.id} className="rounded-md border border-border p-4"><div className="flex items-start justify-between gap-3"><div><p className="font-mono font-medium">{f.folio_number}</p><p className="mt-1 text-xs text-muted-foreground">{f.guest_name}</p></div><span className="font-mono font-semibold">{KES(balances[f.id] ?? 0)}</span></div>{(balances[f.id] ?? 0) > 0 && <Button variant="outline" className="mt-3 h-11 w-full" onClick={() => settle(f)}>Settle with {paymentMethod.replace(/_/g, " ")}</Button>}</article>)}</div>
+        <div className="hidden overflow-hidden rounded-lg border border-border lg:block">
           <table className="w-full text-[13px]">
             <thead className="bg-muted/30 text-[11px] uppercase tracking-wide text-muted-foreground">
               <tr>
@@ -1382,7 +1411,7 @@ export function HospitalityFoliosPage() {
               </tr>
             </thead>
             <tbody>
-              {folios.map((f) => (
+              {folioRows.map((f) => (
                 <tr key={f.id} className="border-t border-border hover:bg-accent/30 transition-colors">
                   <td className="px-3 py-2 font-mono">{f.folio_number}</td>
                   <td className="px-3 py-2 font-medium">{f.guest_name}</td>
@@ -1395,6 +1424,8 @@ export function HospitalityFoliosPage() {
             </tbody>
           </table>
         </div>
+        <PaginationBar list={folioPagination} />
+        </>
       )}
 
       <WalkInFolioDialog
@@ -1413,6 +1444,7 @@ function WalkInFolioDialog({
   const [phone, setPhone] = useState("");
   const [notes, setNotes] = useState("");
   const [saving, setSaving] = useState(false);
+  const { code } = useActiveCountry();
 
   useEffect(() => { if (open) { setName(""); setPhone(""); setNotes(""); } }, [open]);
 
@@ -1448,7 +1480,7 @@ function WalkInFolioDialog({
           </label>
           <label className="block space-y-1">
             <span className="text-[11px] uppercase tracking-wide text-muted-foreground font-medium">Phone (optional)</span>
-            <Input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+254 700 000 000" />
+            <Input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder={phonePlaceholder(code)} />
           </label>
           <label className="block space-y-1">
             <span className="text-[11px] uppercase tracking-wide text-muted-foreground font-medium">Notes</span>
@@ -1474,6 +1506,7 @@ export function HospitalityRecipesPage() {
   const [loading, setLoading] = useState(true);
   const [sortBy, setSortBy] = useState<SortKey>("fcp");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
+  const [search, setSearch] = useState("");
 
   useEffect(() => {
     listRecipes().then(async (rows) => {
@@ -1483,8 +1516,6 @@ export function HospitalityRecipesPage() {
       setCosts(c);
     }).finally(() => setLoading(false));
   }, []);
-
-  if (loading) return <CenterSpin />;
 
   const enriched = recipes.map((r) => {
     const cost = costs[r.id] ?? 0;
@@ -1501,6 +1532,9 @@ export function HospitalityRecipesPage() {
     if (key === "margin") return (a.margin - b.margin) * dir;
     return (a.fcp - b.fcp) * dir;
   });
+  const filteredRecipes = sorted.filter((recipe) => !search || recipe.menu_name.toLowerCase().includes(search.toLowerCase()));
+  const { pageRows: recipeRows, pagination: recipePagination } = useClientPagination(filteredRecipes, 12, `${sortBy}:${sortDir}:${search}`);
+  if (loading) return <CenterSpin />;
   const total = enriched.length;
   const avgFcp = total ? enriched.reduce((s, r) => s + r.fcp, 0) / total : 0;
   const highFcp = enriched.filter((r) => r.fcp > 40).length;
@@ -1508,6 +1542,7 @@ export function HospitalityRecipesPage() {
     <div>
       <PageHead icon={ClipboardList} title="Food Cost Report" subtitle="Ingredient cost vs price for every menu item. Sortable by margin, food-cost %, or cost." />
 
+      <Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search recipe…" className="mb-3 h-11 w-full sm:max-w-xs lg:h-8" />
       {recipes.length === 0 ? <EmptyHint text="No recipes yet. Add recipes to track food cost." /> : (
         <>
           <div className="grid grid-cols-3 gap-2 mb-4">
@@ -1515,7 +1550,8 @@ export function HospitalityRecipesPage() {
             <Kpi label="Avg food cost %" value={`${avgFcp.toFixed(1)}%`} />
             <Kpi label="Above 40% (concerning)" value={String(highFcp)} />
           </div>
-        <div className="border border-border rounded-lg overflow-hidden">
+        <div className="space-y-2 lg:hidden">{recipeRows.map((r) => <article key={r.id} className="rounded-md border border-border p-4"><div className="flex items-start justify-between gap-3"><p className="font-medium">{r.menu_name}</p><Badge variant="outline" className={cn(r.fcp > 40 ? "text-red-600" : r.fcp > 30 ? "text-amber-600" : "text-emerald-600")}>{Math.round(r.fcp)}%</Badge></div><div className="mt-3 grid grid-cols-3 gap-2 border-t border-border pt-3 text-xs"><div><span className="text-muted-foreground">Cost</span><p className="mt-1 font-mono">{KES(r.cost)}</p></div><div><span className="text-muted-foreground">Price</span><p className="mt-1 font-mono">{KES(r.price)}</p></div><div className="text-right"><span className="text-muted-foreground">Margin</span><p className="mt-1 font-mono">{KES(r.margin)}</p></div></div></article>)}</div>
+        <div className="hidden overflow-hidden rounded-lg border border-border lg:block">
           <table className="w-full text-[13px]">
             <thead className="bg-muted/30 text-[11px] uppercase tracking-wide text-muted-foreground">
               <tr>
@@ -1527,7 +1563,7 @@ export function HospitalityRecipesPage() {
               </tr>
             </thead>
             <tbody>
-              {sorted.map((r) => {
+              {recipeRows.map((r) => {
                 const pct = Math.round(r.fcp);
                 return (
                   <tr key={r.id} className="border-t border-border hover:bg-accent/30 transition-colors">
@@ -1548,6 +1584,7 @@ export function HospitalityRecipesPage() {
             </tbody>
           </table>
         </div>
+        <PaginationBar list={recipePagination} />
         </>
       )}
     </div>
@@ -1609,11 +1646,11 @@ export function HospitalityReportsPage() {
 function RoomPickerDialog({ folios, onSelect, onClose }: { folios: Array<{ id: string; room: string; guest: string; balance: number }>; onSelect: (id: string) => void; onClose: () => void }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={onClose}>
-      <div className="bg-background border border-border rounded-lg shadow-lg w-80 p-4" onClick={(e) => e.stopPropagation()}>
+      <div className="w-[calc(100vw-2rem)] max-w-80 rounded-md border border-border bg-background p-4" onClick={(e) => e.stopPropagation()}>
         <div className="text-sm font-medium mb-3">Charge to room</div>
         <div className="space-y-1.5 max-h-60 overflow-auto">
           {folios.map((f) => (
-            <button key={f.id} onClick={() => onSelect(f.id)} className="w-full text-left rounded-md border border-border p-2.5 hover:bg-accent/30 transition-colors cursor-pointer">
+            <button key={f.id} onClick={() => onSelect(f.id)} className="min-h-11 w-full text-left rounded-md border border-border p-2.5 hover:bg-accent/30 transition-colors cursor-pointer">
               <div className="text-sm font-medium">Room {f.room}</div>
               <div className="text-xs text-muted-foreground">{f.guest}</div>
             </button>

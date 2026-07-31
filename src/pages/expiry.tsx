@@ -1,10 +1,16 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   Calendar,
   Warning as AlertTriangle,
   Trash as Trash2,
 } from "@phosphor-icons/react";
 import { getExpiringItems, type ExpiryItem } from "@/services/pharmacy";
+import { pageExpiryItems } from "@/services/paged";
+import { useListData } from "@/hooks/use-list-data";
+import { PaginationBar } from "@/components/pagination-bar";
+import { useFeatureEnabled } from "@/lib/features";
+import { hasPermission } from "@/lib/permissions";
+import { MagnifyingGlass as Search } from "@phosphor-icons/react";
 import { writeOffBatch, writeOffExpiredBatches, type WriteOffReason } from "@/services/wastage";
 import { confirm } from "@/components/ui/confirm-dialog";
 import { ControlledDisposalDialog } from "@/components/pharmacy/controlled-disposal-dialog";
@@ -15,25 +21,38 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Input } from "@/components/ui/input";
 import { useAuthStore } from "@/stores/auth";
 import { toast } from "sonner";
+import { OperationalContext } from "@/components/shared/operational-context";
 
 import { BackButton } from "@/components/ui/back-button";
 export function ExpiryPage() {
-  const [items, setItems] = useState<ExpiryItem[]>([]);
+  const [summaryItems, setSummaryItems] = useState<ExpiryItem[]>([]);
   const [window, setWindow] = useState(90);
+  const fetcher = useCallback(
+    (q: { search?: string; page?: number; pageSize?: number }) => pageExpiryItems({ ...q, daysWindow: window }),
+    [window],
+  );
+  const list = useListData(fetcher, { pageSize: 20 });
+  const items = list.rows as ExpiryItem[];
   const [target, setTarget] = useState<ExpiryItem | null>(null);
   const [disposeTarget, setDisposeTarget] = useState<ExpiryItem | null>(null);
-  const userId = useAuthStore((s) => s.user?.id ?? null);
+  const user = useAuthStore((s) => s.user);
+  const userId = user?.id ?? null;
+  const canWriteOff = hasPermission(user, "inventory.edit");
+  const showPpbDisposal = useFeatureEnabled("ppb_register");
 
-  const load = () => getExpiringItems(window).then(setItems);
-  useEffect(() => { load(); }, [window]);
+  const load = useCallback(() => {
+    list.refresh();
+    getExpiringItems(window).then(setSummaryItems);
+  }, [list.refresh, window]);
+  useEffect(() => { getExpiringItems(window).then(setSummaryItems); }, [window]);
 
-  const expired = items.filter((i) => i.days_to_expiry < 0);
-  const critical = items.filter((i) => i.days_to_expiry >= 0 && i.days_to_expiry <= 30);
-  const warning = items.filter((i) => i.days_to_expiry > 30 && i.days_to_expiry <= 90);
+  const expired = summaryItems.filter((i) => i.days_to_expiry < 0);
+  const critical = summaryItems.filter((i) => i.days_to_expiry >= 0 && i.days_to_expiry <= 30);
+  const warning = summaryItems.filter((i) => i.days_to_expiry > 30 && i.days_to_expiry <= 90);
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
         <div>
           <BackButton fallback="/inventory" />
           <h1 className="text-xl font-semibold tracking-tight">Expiry Alerts</h1>
@@ -42,8 +61,8 @@ export function ExpiryPage() {
             to zero the stock and record the loss in the Wastage report.
           </p>
         </div>
-        <div className="flex items-center gap-2">
-        {expired.length > 0 && (
+        <div className="flex flex-wrap items-center gap-2">
+        {canWriteOff && expired.length > 0 && (
           <Button
             size="sm"
             variant="outline"
@@ -77,7 +96,7 @@ export function ExpiryPage() {
             <button
               key={d}
               onClick={() => setWindow(d)}
-              className={`px-3 py-1 text-xs rounded transition-colors ${
+              className={`min-h-11 px-3 py-1 text-xs rounded transition-colors lg:min-h-0 ${
                 window === d ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:text-foreground"
               }`}
             >
@@ -88,10 +107,17 @@ export function ExpiryPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-3 gap-3">
+      <OperationalContext compact />
+
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-3 sm:gap-3">
         <Stat label="Expired" value={expired.length} variant="destructive" />
         <Stat label="< 30 days" value={critical.length} variant="warning" />
         <Stat label="30-90 days" value={warning.length} variant="default" />
+      </div>
+
+      <div className="relative w-full max-w-md">
+        <Search className="pointer-events-none absolute left-3 top-3.5 h-4 w-4 text-muted-foreground lg:top-2.5" />
+        <Input value={list.search} onChange={(e) => list.setSearch(e.target.value)} placeholder="Search product or batch…" className="h-11 pl-9 lg:h-9" />
       </div>
 
       {items.length === 0 ? (
@@ -100,7 +126,35 @@ export function ExpiryPage() {
           <p className="text-sm text-muted-foreground">No items expiring within {window} days</p>
         </div>
       ) : (
-        <div className="border border-border rounded-lg overflow-hidden">
+        <>
+          <div className="space-y-2 lg:hidden" aria-label="Expiry records">
+            {items.map((item) => (
+              <article key={item.batch_id} className="rounded-md border border-border p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="font-medium truncate">{item.product_name}</p>
+                    <p className="mt-1 font-mono text-xs text-muted-foreground">Batch {item.batch_number} · {item.quantity} units</p>
+                  </div>
+                  <Badge variant={item.days_to_expiry <= 30 ? "destructive" : "secondary"}>
+                    {item.days_to_expiry < 0 ? `${Math.abs(item.days_to_expiry)}d overdue` : `${item.days_to_expiry}d`}
+                  </Badge>
+                </div>
+                <p className="mt-3 text-xs text-muted-foreground">Expires {item.expiry_date}</p>
+                {canWriteOff && (
+                  item.is_controlled && showPpbDisposal ? (
+                    <Button variant="outline" onClick={() => setDisposeTarget(item)} className="mt-3 h-11 w-full text-amber-700">
+                      <ShieldWarning className="mr-2 h-4 w-4" /> Witnessed disposal
+                    </Button>
+                  ) : !item.is_controlled ? (
+                    <Button variant="outline" onClick={() => setTarget(item)} className="mt-3 h-11 w-full">
+                      <Trash2 className="mr-2 h-4 w-4" /> Write off batch
+                    </Button>
+                  ) : null
+                )}
+              </article>
+            ))}
+          </div>
+          <div className="hidden overflow-hidden rounded-lg border border-border lg:block">
           <table className="w-full text-sm">
             <thead className="bg-muted/50">
               <tr className="border-b border-border">
@@ -129,32 +183,38 @@ export function ExpiryPage() {
                     )}
                   </td>
                   <td className="px-4 py-2.5 text-right">
-                    {item.is_controlled ? (
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        className="h-7 text-[11px] text-amber-700 hover:text-amber-800"
-                        onClick={() => setDisposeTarget(item)}
-                        title="Controlled substance — requires witnessed destruction"
-                      >
-                        <ShieldWarning className="h-3 w-3 mr-1" /> Dispose (witnessed)
-                      </Button>
-                    ) : (
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        className="h-7 text-[11px] text-muted-foreground hover:text-destructive"
-                        onClick={() => setTarget(item)}
-                      >
-                        <Trash2 className="h-3 w-3 mr-1" /> Write off
-                      </Button>
+                    {canWriteOff && (
+                      item.is_controlled ? (
+                        showPpbDisposal ? (
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-7 text-[11px] text-amber-700 hover:text-amber-800"
+                            onClick={() => setDisposeTarget(item)}
+                            title="Controlled substance — requires witnessed destruction"
+                          >
+                            <ShieldWarning className="h-3 w-3 mr-1" /> Dispose (witnessed)
+                          </Button>
+                        ) : null
+                      ) : (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-7 text-[11px] text-muted-foreground hover:text-destructive"
+                          onClick={() => setTarget(item)}
+                        >
+                          <Trash2 className="h-3 w-3 mr-1" /> Write off
+                        </Button>
+                      )
                     )}
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
-        </div>
+          </div>
+          <PaginationBar list={list} />
+        </>
       )}
 
       <WriteOffDialog
@@ -163,11 +223,13 @@ export function ExpiryPage() {
         onSaved={() => { setTarget(null); load(); }}
         userId={userId}
       />
-      <ControlledDisposalDialog
-        item={disposeTarget}
-        onClose={() => setDisposeTarget(null)}
-        onSaved={() => { setDisposeTarget(null); load(); }}
-      />
+      {showPpbDisposal && (
+        <ControlledDisposalDialog
+          item={disposeTarget}
+          onClose={() => setDisposeTarget(null)}
+          onSaved={() => { setDisposeTarget(null); load(); }}
+        />
+      )}
     </div>
   );
 }

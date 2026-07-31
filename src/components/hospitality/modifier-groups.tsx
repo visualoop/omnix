@@ -236,7 +236,7 @@ function GroupCard({ group, onChange }: { group: MenuModifierGroupFull; onChange
             value={newOptName}
             onChange={(e) => setNewOptName(e.target.value)}
             placeholder="Option name (e.g. Chilli)"
-            className="h-8 text-sm flex-1"
+            className="h-11 lg:h-8 text-sm flex-1"
             onKeyDown={(e) => { if (e.key === "Enter") saveOption(); }}
           />
           <Input
@@ -245,7 +245,7 @@ function GroupCard({ group, onChange }: { group: MenuModifierGroupFull; onChange
             value={newOptPrice}
             onChange={(e) => setNewOptPrice(e.target.value)}
             placeholder="Price +"
-            className="h-8 text-sm w-24 font-mono"
+            className="h-11 lg:h-8 text-sm w-24 font-mono"
           />
           <Button size="sm" onClick={saveOption}>
             <Check className="h-3.5 w-3.5" />
@@ -343,7 +343,7 @@ function AddGroupForm({ menuItemId, onCancel, onDone }: { menuItemId: string; on
               value={o.name}
               onChange={(e) => patchOpt(i, { name: e.target.value })}
               placeholder={`Option ${i + 1}`}
-              className="h-8 text-sm flex-1"
+              className="h-11 lg:h-8 text-sm flex-1"
             />
             <Input
               type="number"
@@ -351,7 +351,7 @@ function AddGroupForm({ menuItemId, onCancel, onDone }: { menuItemId: string; on
               value={o.price}
               onChange={(e) => patchOpt(i, { price: e.target.value })}
               placeholder="+"
-              className="h-8 text-sm w-24 font-mono"
+              className="h-11 lg:h-8 text-sm w-24 font-mono"
             />
             <button
               onClick={() => setOptions((prev) => prev.filter((_, j) => j !== i))}

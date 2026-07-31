@@ -73,7 +73,7 @@ export function ContractorAccountDialog({ open, onClose, onSaved, customerId }: 
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="max-w-sm">
+      <DialogContent className="w-[calc(100vw-1rem)] max-w-sm">
         <DialogHeader>
           <DialogTitle>{customerId ? "Edit account" : "New contractor account"}</DialogTitle>
           <DialogDescription>
@@ -91,7 +91,7 @@ export function ContractorAccountDialog({ open, onClose, onSaved, customerId }: 
               />
             </Field>
           ) : null}
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
             <Field label="Credit limit (KES)">
               <Input
                 type="number"
@@ -118,7 +118,7 @@ export function ContractorAccountDialog({ open, onClose, onSaved, customerId }: 
             <span>Put account on hold (block new charges)</span>
           </label>
         </div>
-        <DialogFooter>
+        <DialogFooter className="[&_button]:h-11 lg:[&_button]:h-9">
           <Button variant="ghost" onClick={onClose} disabled={saving}>Cancel</Button>
           <Button onClick={save} disabled={saving}>{saving ? "Saving…" : "Save"}</Button>
         </DialogFooter>

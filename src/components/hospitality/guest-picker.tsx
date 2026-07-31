@@ -14,6 +14,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { searchGuests, findGuestByPhoneOrId, type Guest } from "@/services/hospitality";
 import { execute } from "@/lib/db";
+import { useActiveCountry } from "@/stores/country";
+import { phonePlaceholder } from "@/lib/locale";
 
 const uid = () => crypto.randomUUID();
 
@@ -86,6 +88,7 @@ export function GuestFormDialog({ open, initialName, onClose, onCreated }: Guest
   const [nationality, setNationality] = useState("");
   const [notes, setNotes] = useState("");
   const [saving, setSaving] = useState(false);
+  const { code, profile } = useActiveCountry();
 
   useEffect(() => {
     if (!open) return;
@@ -137,27 +140,26 @@ export function GuestFormDialog({ open, initialName, onClose, onCreated }: Guest
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="w-[calc(100vw-1rem)] max-w-md">
         <DialogHeader>
           <DialogTitle>New guest</DialogTitle>
           <DialogDescription>
-            National ID is required by Kenya AHRA for hotel guests.
-            Phone number lets the guest receive SMS receipts + booking
-            confirmations.
+            Record the identity document required by local lodging rules.
+            A phone number can be used for receipts and booking confirmations.
           </DialogDescription>
         </DialogHeader>
-        <div className="grid grid-cols-2 gap-3 py-2">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 py-2">
           <Field label="Full name" required>
-            <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Jane Mwangi" autoFocus />
+            <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Guest name" autoFocus />
           </Field>
           <Field label="Phone">
-            <Input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+254 700 000 000" />
+            <Input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder={phonePlaceholder(code)} />
           </Field>
           <Field label="National ID / passport">
             <Input value={nationalId} onChange={(e) => setNationalId(e.target.value)} placeholder="12345678" />
           </Field>
           <Field label="Nationality">
-            <Input value={nationality} onChange={(e) => setNationality(e.target.value)} placeholder="Kenyan" />
+            <Input value={nationality} onChange={(e) => setNationality(e.target.value)} placeholder={profile?.name ?? "Country"} />
           </Field>
           <Field label="Email" className="col-span-2">
             <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="jane@example.com" />
@@ -166,7 +168,7 @@ export function GuestFormDialog({ open, initialName, onClose, onCreated }: Guest
             <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} placeholder="Preferences, allergies, VIP flags…" />
           </Field>
         </div>
-        <DialogFooter>
+        <DialogFooter className="[&_button]:h-11 lg:[&_button]:h-9">
           <Button variant="ghost" onClick={onClose} disabled={saving}>Cancel</Button>
           <Button onClick={save} disabled={saving}>{saving ? "Saving…" : "Add guest"}</Button>
         </DialogFooter>
