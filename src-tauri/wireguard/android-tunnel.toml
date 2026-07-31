@@ -1,0 +1,47 @@
+schema_version = 1
+component = "wireguard-android-tunnel"
+platform = "android"
+integration_status = "dependency-pinned-not-yet-wired"
+
+[dependency]
+group = "com.wireguard.android"
+artifact = "tunnel"
+version = "1.0.20260102"
+packaging = "aar"
+coordinate = "com.wireguard.android:tunnel:1.0.20260102"
+repository = "https://repo1.maven.org/maven2"
+artifact_url = "https://repo1.maven.org/maven2/com/wireguard/android/tunnel/1.0.20260102/tunnel-1.0.20260102.aar"
+license = "Apache-2.0"
+license_file = "LICENSE-APACHE-2.0.txt"
+
+[checksum_policy]
+algorithm = "sha256"
+expected = "2b9c16db026496123e4db695d26d03d1958a201096c7c4c89b21077dc70f3119"
+published_checksum_url = "https://repo1.maven.org/maven2/com/wireguard/android/tunnel/1.0.20260102/tunnel-1.0.20260102.aar.sha256"
+mode = "deny-on-mismatch"
+require_dependency_lock = true
+require_hash_recheck_after_resolution = true
+allow_dynamic_versions = false
+allow_repository_fallback = false
+
+[key_custody]
+generation = "one independent WireGuard keypair per Android device"
+private_key_provider = "Android Keystore hardware-backed when available"
+private_key_wrapping = "non-exportable Keystore key encrypts device-local WireGuard private-key blob"
+database_value = "opaque key_custody_ref only"
+export_private_key = false
+copy_keys_between_devices = false
+allow_private_key_in_sqlite = false
+allow_private_key_in_tauri_ipc = false
+allow_private_key_in_logs = false
+allow_private_key_in_backup = false
+
+[notices]
+third_party_notices = "THIRD_PARTY_NOTICES.md"
+
+[route_policy]
+scope = "selected private Omnix mesh subnet only"
+allowed_ips_must_be_within_selected_mesh_pool = true
+forbid_ipv4_default_route = "0.0.0.0/0"
+forbid_ipv6_default_route = "::/0"
+allow_customer_internet_traffic = false
