@@ -1447,7 +1447,7 @@ export async function createRecipe(menuItemId: string, yieldQty: number, ingredi
 export async function recipeCost(recipeId: string): Promise<number> {
   const rows = await query<{ quantity: number; wastage_percent: number; buying_price: number }>(
     `SELECT ri.quantity, ri.wastage_percent, COALESCE(p.buying_price, 0) AS buying_price
-     FROM recipe_ingredients ri JOIN products p ON p.id = ri.product_id WHERE ri.recipe_id = ?1`,
+     FROM recipe_ingredients ri JOIN stockable_products p ON p.id = ri.product_id WHERE ri.recipe_id = ?1`,
     [recipeId],
   );
   return rows.reduce((s, r) => s + r.quantity * r.buying_price * (1 + r.wastage_percent / 100), 0);
@@ -1502,7 +1502,7 @@ export async function planRecipeConsumption(
             ri.unit AS recipe_unit,
             COALESCE(p.unit, ri.unit) AS product_unit
      FROM recipe_ingredients ri
-     JOIN products p ON p.id = ri.product_id
+     JOIN stockable_products p ON p.id = ri.product_id
      WHERE ri.recipe_id = ?1`,
     [recipeId],
   );
@@ -1646,7 +1646,7 @@ export async function menuAvailability(): Promise<Map<string, MenuAvailability>>
        FROM menu_items m
   LEFT JOIN recipes r ON r.menu_item_id = m.id AND r.active = 1
   LEFT JOIN recipe_ingredients ri ON ri.recipe_id = r.id
-  LEFT JOIN products p ON p.id = ri.product_id
+  LEFT JOIN stockable_products p ON p.id = ri.product_id
       WHERE m.active = 1`,
   );
 
@@ -1689,7 +1689,7 @@ export async function getRecipeForMenuItem(menuItemId: string): Promise<{ id: st
   const ings = await query<RecipeIngredientRow>(
     `SELECT ri.id, ri.product_id, p.name AS product_name, ri.quantity, ri.unit, ri.wastage_percent,
             COALESCE((SELECT AVG(buying_price) FROM batches WHERE product_id = ri.product_id AND quantity > 0), 0) AS buying_price
-     FROM recipe_ingredients ri JOIN products p ON p.id = ri.product_id
+     FROM recipe_ingredients ri JOIN stockable_products p ON p.id = ri.product_id
      WHERE ri.recipe_id = ?1 ORDER BY p.name`, [r.id]);
   return { id: r.id, yield_quantity: r.yield_quantity, ingredients: ings, canvas_layout: r.canvas_layout };
 }

@@ -21,7 +21,7 @@ async function scanExpiring(): Promise<void> {
     `SELECT b.id AS batch_id, p.sku, p.name AS product_name, b.expiry_date,
             CAST(julianday(b.expiry_date) - julianday('now') AS INTEGER) AS days_left
      FROM batches b
-     JOIN products p ON p.id = b.product_id
+     JOIN stockable_products p ON p.id = b.product_id
      WHERE b.expiry_date IS NOT NULL
        AND b.quantity > 0
        AND b.branch_id = ?2
@@ -49,11 +49,9 @@ async function scanLowStock(): Promise<void> {
   const rows = await query<LowStockRow>(
     `SELECT p.id AS product_id, p.sku, p.name, COALESCE(p.reorder_level, 0) AS reorder_level,
             COALESCE(SUM(b.quantity), 0) AS qty
-     FROM products p
+     FROM stockable_products p
      LEFT JOIN batches b ON b.product_id = p.id AND b.branch_id = ?2
-     WHERE p.deleted_at IS NULL
-       AND COALESCE(p.is_service, 0) = 0
-       AND COALESCE(p.active, 1) = 1
+     WHERE COALESCE(p.active, 1) = 1
      GROUP BY p.id
      HAVING qty <= 0
         OR (p.reorder_level IS NOT NULL AND p.reorder_level > 0 AND qty <= p.reorder_level * ?1)

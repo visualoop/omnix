@@ -743,6 +743,12 @@ fn run_inner() {
             sql: include_str!("../migrations/104_sync_activation.sql"),
             kind: MigrationKind::Up,
         },
+        Migration {
+            version: 105,
+            description: "Canonical stockable products boundary",
+            sql: include_str!("../migrations/105_stockable_products.sql"),
+            kind: MigrationKind::Up,
+        },
     ];
 
     let builder = tauri::Builder::default()

@@ -61,8 +61,8 @@ export async function reorderSuggestions(opts: { windowDays?: number; leadDays?:
             (SELECT sup.name FROM batches b2 JOIN suppliers sup ON sup.id = b2.supplier_id
               WHERE b2.product_id = p.id AND b2.branch_id = ?2 AND b2.supplier_id IS NOT NULL
               ORDER BY b2.received_at DESC LIMIT 1) AS preferred_supplier
-       FROM products p
-      WHERE p.active = 1 AND COALESCE(p.kind, 'physical') = 'physical'`,
+       FROM stockable_products p
+      WHERE p.active = 1`,
     [windowDays, branchId],
   );
 
@@ -119,7 +119,7 @@ export async function deadStock(opts: { idleDays?: number; limit?: number } = {}
               WHERE si.product_id = p.id AND s.status = 'completed' AND s.branch_id = ?1) AS last_sale,
             p.created_at AS product_created_at
        FROM batches b
-       JOIN products p ON p.id = b.product_id
+       JOIN stockable_products p ON p.id = b.product_id
       WHERE p.active = 1 AND b.branch_id = ?1 AND b.quantity > 0
       GROUP BY p.id, p.name, p.created_at
      HAVING stock_qty > 0`,
@@ -176,9 +176,9 @@ export async function marginIssues(opts: { thinPct?: number; limit?: number } = 
     `SELECT p.id AS product_id, p.name,
             COALESCE(pp.buying_price, 0) AS buying_price,
             COALESCE(pp.selling_price, 0) AS selling_price
-       FROM products p
+       FROM stockable_products p
        LEFT JOIN product_prices pp ON pp.product_id = p.id AND pp.price_list_id = 'default'
-      WHERE p.active = 1 AND COALESCE(p.kind, 'physical') = 'physical'`,
+      WHERE p.active = 1`,
   );
   const out: MarginIssue[] = [];
   for (const r of rows) {
@@ -480,7 +480,7 @@ export async function duplicateProducts(opts: { limit?: number } = {}): Promise<
   const rows = await query<{ id: string; name: string; sku: string | null; barcode: string | null; stock_qty: number }>(
     `SELECT p.id, p.name, p.sku, p.barcode,
             COALESCE((SELECT SUM(b.quantity) FROM batches b WHERE b.product_id = p.id AND b.branch_id = ?1), 0) AS stock_qty
-       FROM products p WHERE p.active = 1`,
+       FROM stockable_products p WHERE p.active = 1`,
     [branchId],
   );
   const byBarcode = new Map<string, typeof rows>();
@@ -529,7 +529,7 @@ export async function expiryRisk(opts: { withinDays?: number; limit?: number } =
     product_id: string; name: string; batch_number: string | null; quantity: number; expiry_date: string; buying_price: number;
   }>(
     `SELECT b.product_id, p.name, b.batch_number, b.quantity, b.expiry_date, b.buying_price
-       FROM batches b JOIN products p ON p.id = b.product_id
+       FROM batches b JOIN stockable_products p ON p.id = b.product_id
       WHERE b.quantity > 0 AND b.expiry_date IS NOT NULL
         AND b.branch_id = ?2
         AND julianday(b.expiry_date) - julianday('now') <= ?1

@@ -46,26 +46,29 @@ async function loadKpis(): Promise<Kpis> {
   // One SQL trip per KPI keeps it readable. Errors on any query short-circuit
   // to zero for that field so the header never fails to render.
   const [productsRow] = await query<{ n: number }>(
-    `SELECT COUNT(*) AS n FROM products WHERE active = 1 AND COALESCE(kind, 'physical') = 'physical' AND COALESCE(is_service, 0) = 0`,
+    `SELECT COUNT(*) AS n FROM stockable_products WHERE active = 1`,
   ).catch(() => [{ n: 0 }]);
   const [unitsRow] = await query<{ n: number; v: number }>(
-    `SELECT COALESCE(SUM(quantity), 0) AS n, COALESCE(SUM(quantity * buying_price), 0) AS v FROM batches WHERE quantity > 0`,
+    `SELECT COALESCE(SUM(b.quantity), 0) AS n, COALESCE(SUM(b.quantity * b.buying_price), 0) AS v
+       FROM batches b
+       JOIN stockable_products p ON p.id = b.product_id
+      WHERE b.quantity > 0`,
   ).catch(() => [{ n: 0, v: 0 }]);
   const [lowRow] = await query<{ n: number }>(
-    `SELECT COUNT(*) AS n FROM products p
-       WHERE p.active = 1 AND COALESCE(p.kind, 'physical') = 'physical'
-         AND COALESCE(p.is_service, 0) = 0
+    `SELECT COUNT(*) AS n FROM stockable_products p
+       WHERE p.active = 1
          AND (
            SELECT COALESCE(SUM(quantity), 0) FROM batches WHERE product_id = p.id
          ) <= COALESCE(p.reorder_level, 0)
          AND COALESCE(p.reorder_level, 0) > 0`,
   ).catch(() => [{ n: 0 }]);
   const [expiringRow] = await query<{ n: number }>(
-    `SELECT COUNT(*) AS n FROM batches
-       WHERE quantity > 0
-         AND expiry_date IS NOT NULL
-         AND expiry_date <= date('now', '+90 days')
-         AND expiry_date > date('now')`,
+    `SELECT COUNT(*) AS n FROM batches b
+       JOIN stockable_products p ON p.id = b.product_id
+       WHERE b.quantity > 0
+         AND b.expiry_date IS NOT NULL
+         AND b.expiry_date <= date('now', '+90 days')
+         AND b.expiry_date > date('now')`,
   ).catch(() => [{ n: 0 }]);
   return {
     products: productsRow?.n ?? 0,

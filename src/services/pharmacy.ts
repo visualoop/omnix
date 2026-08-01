@@ -238,7 +238,7 @@ export async function preparePrescriptionForPosCheckout(
             CAST(julianday(b.expiry_date) - julianday('now') AS INTEGER) AS days_to_expiry,
             b.batch_number
        FROM batches b
-       JOIN products p ON p.id = b.product_id
+       JOIN stockable_products p ON p.id = b.product_id
       WHERE b.product_id IN (${placeholders})
         AND b.quantity > 0
         AND b.branch_id = ?${productIds.length + 1}
@@ -393,7 +393,7 @@ export async function getExpiringItems(daysWindow: number = 90): Promise<ExpiryI
        CAST(julianday(b.expiry_date) - julianday('now') AS INTEGER) as days_to_expiry,
        COALESCE(pp.is_controlled, 0) as is_controlled
      FROM batches b
-     JOIN products p ON p.id = b.product_id
+     JOIN stockable_products p ON p.id = b.product_id
      LEFT JOIN pharmacy_products pp ON pp.product_id = p.id
      WHERE b.expiry_date IS NOT NULL 
        AND b.quantity > 0

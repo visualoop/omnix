@@ -79,7 +79,7 @@ export async function getDashboardKPIs(): Promise<DashboardKPIs> {
   );
 
   const lowStock = await query<{ count: number }>(
-    `SELECT COUNT(*) as count FROM products p
+    `SELECT COUNT(*) as count FROM stockable_products p
      WHERE p.active = 1 
        AND COALESCE((SELECT SUM(b.quantity) FROM batches b WHERE b.product_id = p.id AND b.branch_id = ?1), 0) <= p.reorder_level`,
     [branchId]
@@ -87,13 +87,14 @@ export async function getDashboardKPIs(): Promise<DashboardKPIs> {
 
   const expiring = await query<{ count: number }>(
     `SELECT COUNT(*) as count FROM batches b
+     JOIN stockable_products p ON p.id = b.product_id
      WHERE b.expiry_date IS NOT NULL AND b.quantity > 0 AND b.branch_id = ?1
        AND julianday(b.expiry_date) - julianday('now') <= 90`,
     [branchId]
   );
 
   const products = await query<{ count: number }>(
-    `SELECT COUNT(*) as count FROM products WHERE active = 1`
+    `SELECT COUNT(*) as count FROM stockable_products WHERE active = 1`
   );
 
   const customers = await query<{ count: number }>(
@@ -190,7 +191,7 @@ export async function getStockValuation(): Promise<{ at_cost: number; at_retail:
        COALESCE(SUM(b.quantity * pp.selling_price), 0) as at_retail,
        COALESCE(SUM(b.quantity), 0) as total_items
      FROM batches b
-     JOIN products p ON p.id = b.product_id
+     JOIN stockable_products p ON p.id = b.product_id
      LEFT JOIN product_prices pp ON pp.product_id = p.id AND pp.price_list_id = 'default'
      WHERE b.quantity > 0 AND b.branch_id = ?1 AND p.active = 1`,
     [branchId],
@@ -208,7 +209,7 @@ export async function getReorderList(): Promise<Array<{
             COALESCE((SELECT SUM(b.quantity) FROM batches b WHERE b.product_id = p.id AND b.branch_id = ?1), 0) as current_stock,
             p.reorder_level,
             p.reorder_level - COALESCE((SELECT SUM(b.quantity) FROM batches b WHERE b.product_id = p.id AND b.branch_id = ?1), 0) as deficit
-     FROM products p
+     FROM stockable_products p
      WHERE p.active = 1
        AND COALESCE((SELECT SUM(b.quantity) FROM batches b WHERE b.product_id = p.id AND b.branch_id = ?1), 0) <= p.reorder_level
      ORDER BY deficit DESC`,
@@ -225,7 +226,7 @@ export async function getDeadStock(_daysSinceLastSale: number = 60): Promise<Arr
     `SELECT p.id, p.name,
             COALESCE((SELECT SUM(b.quantity) FROM batches b WHERE b.product_id = p.id AND b.branch_id = ?1), 0) as current_stock,
             (SELECT MAX(s.created_at) FROM sale_items si JOIN sales s ON s.id = si.sale_id WHERE si.product_id = p.id AND s.branch_id = ?1) as last_sale
-     FROM products p
+     FROM stockable_products p
      WHERE p.active = 1
        AND COALESCE((SELECT SUM(b.quantity) FROM batches b WHERE b.product_id = p.id AND b.branch_id = ?1), 0) > 0
      ORDER BY last_sale ASC LIMIT 50`,

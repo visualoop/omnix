@@ -231,7 +231,7 @@ export async function listBOMs(): Promise<BOM[]> {
     `SELECT ab.id, ab.output_product_id, p.name AS output_product_name,
             ab.yield_quantity, ab.labour_cost, ab.overhead_cost, ab.active
      FROM assembly_bom ab
-     JOIN products p ON p.id = ab.output_product_id
+     JOIN stockable_products p ON p.id = ab.output_product_id
      WHERE ab.active = 1
      ORDER BY p.name`,
   );
@@ -243,7 +243,7 @@ export async function listBOMIngredients(bomId: string): Promise<BOMIngredient[]
             ing.quantity, ing.unit_of_measure,
             COALESCE((SELECT AVG(buying_price) FROM batches WHERE product_id = p.id AND quantity > 0), 0) AS unit_cost
      FROM assembly_bom_ingredients ing
-     JOIN products p ON p.id = ing.ingredient_product_id
+     JOIN stockable_products p ON p.id = ing.ingredient_product_id
      WHERE ing.bom_id = ?1
      ORDER BY p.name`,
     [bomId],
@@ -268,7 +268,7 @@ export async function runProduction(bomId: string, outputQuantity: number, produ
   const [bom] = await query<BOM>(
     `SELECT ab.id, ab.output_product_id, p.name AS output_product_name,
             ab.yield_quantity, ab.labour_cost, ab.overhead_cost, ab.active
-     FROM assembly_bom ab JOIN products p ON p.id = ab.output_product_id
+     FROM assembly_bom ab JOIN stockable_products p ON p.id = ab.output_product_id
      WHERE ab.id = ?1`,
     [bomId],
   );

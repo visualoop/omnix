@@ -89,7 +89,7 @@ export async function findBySerial(serial: string): Promise<ProductSerial | null
         s.sale_number,
         ps.received_at, ps.sold_at, ps.warranty_until, ps.notes
      FROM product_serials ps
-     JOIN products p ON p.id = ps.product_id
+     JOIN stockable_products p ON p.id = ps.product_id
      LEFT JOIN sales s ON s.id = ps.sale_id
      WHERE ps.serial = ?1
      LIMIT 1`,
@@ -104,7 +104,7 @@ export async function listByProduct(productId: string, status?: SerialStatus): P
       `SELECT ps.id, ps.product_id, p.name AS product_name, ps.batch_id, ps.serial, ps.status,
               ps.sale_id, s.sale_number, ps.received_at, ps.sold_at, ps.warranty_until, ps.notes
        FROM product_serials ps
-       JOIN products p ON p.id = ps.product_id
+       JOIN stockable_products p ON p.id = ps.product_id
        LEFT JOIN sales s ON s.id = ps.sale_id
        WHERE ps.product_id = ?1 AND ps.status = ?2
        ORDER BY ps.received_at DESC
@@ -116,7 +116,7 @@ export async function listByProduct(productId: string, status?: SerialStatus): P
     `SELECT ps.id, ps.product_id, p.name AS product_name, ps.batch_id, ps.serial, ps.status,
             ps.sale_id, s.sale_number, ps.received_at, ps.sold_at, ps.warranty_until, ps.notes
      FROM product_serials ps
-     JOIN products p ON p.id = ps.product_id
+     JOIN stockable_products p ON p.id = ps.product_id
      LEFT JOIN sales s ON s.id = ps.sale_id
      WHERE ps.product_id = ?1
      ORDER BY ps.received_at DESC

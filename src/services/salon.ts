@@ -845,7 +845,7 @@ export interface BackBarProduct { id: string; service_id: string; product_id: st
 export async function getServiceProducts(serviceId: string): Promise<BackBarProduct[]> {
   return query<BackBarProduct>(
     `SELECT sp.*, p.name AS product_name FROM salon_service_products sp
-     JOIN products p ON p.id = sp.product_id WHERE sp.service_id = ?1`,
+     JOIN stockable_products p ON p.id = sp.product_id WHERE sp.service_id = ?1`,
     [serviceId],
   );
 }

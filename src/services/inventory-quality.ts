@@ -52,8 +52,8 @@ export async function startCycleCount(input: {
   );
   // Populate items — either all in a category, or top-N by sales velocity.
   let productsSql = `SELECT p.id AS product_id, COALESCE(SUM(b.quantity), 0) AS system_qty
-     FROM products p LEFT JOIN batches b ON b.product_id = p.id
-     WHERE p.deleted_at IS NULL AND p.active = 1`;
+     FROM stockable_products p LEFT JOIN batches b ON b.product_id = p.id
+     WHERE p.active = 1`;
   const params: unknown[] = [];
   let i = 0;
   if (input.category_id) {
@@ -114,7 +114,7 @@ export async function listCycleCountItems(cycleCountId: string): Promise<CycleCo
         p.name AS product_name, p.sku AS product_sku,
         ci.system_qty, ci.counted_qty, ci.variance, ci.reason
      FROM cycle_count_items ci
-     JOIN products p ON p.id = ci.product_id
+     JOIN stockable_products p ON p.id = ci.product_id
      WHERE ci.cycle_count_id = ?1
      ORDER BY p.name ASC`,
     [cycleCountId],
@@ -162,7 +162,7 @@ export async function listDamages(sinceDays = 90): Promise<DamageEntry[]> {
     `SELECT d.id, d.product_id, p.name AS product_name, d.quantity, d.occurred_at,
             d.discovered_at_stage, d.reason, d.reported_by
      FROM damages d
-     JOIN products p ON p.id = d.product_id
+     JOIN stockable_products p ON p.id = d.product_id
      WHERE d.occurred_at >= datetime('now', ?1)
      ORDER BY d.occurred_at DESC LIMIT 500`,
     [`-${sinceDays} days`],
@@ -189,7 +189,7 @@ export async function stockAging(): Promise<AgingBatch[]> {
         CAST(julianday('now') - julianday(b.received_at) AS INTEGER) AS age_days,
         b.quantity * COALESCE(b.buying_price, 0) AS cost_value
      FROM batches b
-     JOIN products p ON p.id = b.product_id
+     JOIN stockable_products p ON p.id = b.product_id
      WHERE b.quantity > 0 AND b.received_at IS NOT NULL
      ORDER BY age_days DESC
      LIMIT 500`,
@@ -218,9 +218,9 @@ export async function deadStock(daysThreshold = 60): Promise<DeadStockItem[]> {
         (SELECT CAST(julianday('now') - julianday(MAX(s.created_at)) AS INTEGER)
          FROM sale_items si JOIN sales s ON s.id = si.sale_id
          WHERE si.product_id = p.id AND s.status = 'completed') AS days_since_sold
-     FROM products p
+     FROM stockable_products p
      LEFT JOIN batches b ON b.product_id = p.id
-     WHERE p.deleted_at IS NULL AND p.active = 1
+     WHERE p.active = 1
      GROUP BY p.id
      HAVING qty_on_hand > 0
         AND (last_sold_at IS NULL OR julianday('now') - julianday(last_sold_at) > ?1)

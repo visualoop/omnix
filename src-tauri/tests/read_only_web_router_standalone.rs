@@ -45,6 +45,7 @@ async fn fixture() -> (SqlitePool, ReadOnlyWebState) {
          CREATE TABLE web_read_session_grants (id TEXT, code_hash TEXT, user_id TEXT, authorized_by_user_id TEXT, role TEXT, assigned_branch_ids_json TEXT, permissions_json TEXT, device_label TEXT, issued_at_unix_seconds INTEGER, session_expires_at_unix_seconds INTEGER, grant_expires_at_unix_seconds INTEGER, redeemed_at TEXT, revoked_at TEXT, created_at TEXT DEFAULT CURRENT_TIMESTAMP);\
          CREATE TABLE sales (id TEXT, sale_number INTEGER, total REAL, tax_amount REAL, payment_status TEXT, status TEXT, created_at TEXT, branch_id TEXT);\
          CREATE TABLE products (id TEXT, name TEXT, sku TEXT, active INTEGER, reorder_level INTEGER, updated_at TEXT);\
+         CREATE VIEW stockable_products AS SELECT * FROM products;\
          CREATE TABLE batches (id TEXT, product_id TEXT, branch_id TEXT, quantity REAL);\
          CREATE TABLE notifications (id TEXT, severity TEXT, title TEXT, body TEXT, metadata TEXT, read_at TEXT, snoozed_until TEXT, created_at TEXT);\
          CREATE TABLE sync_outbox (event_id TEXT, branch_id TEXT, state TEXT, updated_at TEXT);\

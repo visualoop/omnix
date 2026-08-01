@@ -105,7 +105,7 @@ describe('searchProducts tool', () => {
     const out = await tools().searchProducts.execute!({ q: 'panadol' }, { toolCallId: 't', messages: [] })
     const sql = mockedQuery.mock.calls[0][0] as string
     expect(sql).toMatch(/active = 1/)
-    expect(sql).toMatch(/kind/)
+    expect(sql).toMatch(/stockable_products/)
     expect(sql).toMatch(/LIMIT 10/)
     expect(mockedQuery.mock.calls[0][1]).toEqual(['%panadol%'])
     expect(out).toMatchObject({ count: 1 })

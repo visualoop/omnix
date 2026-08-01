@@ -44,7 +44,7 @@ export async function getBundleComponents(bundleProductId: string): Promise<Bund
           0
         ) AS unit_price
      FROM bundle_components bc
-     JOIN products p ON p.id = bc.component_product_id
+     JOIN stockable_products p ON p.id = bc.component_product_id
      WHERE bc.bundle_product_id = ?1
      ORDER BY p.name ASC`,
     [bundleProductId],

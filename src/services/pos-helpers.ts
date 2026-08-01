@@ -71,10 +71,10 @@ export async function getPopularProducts(limit = 24): Promise<PopularProduct[]> 
          JOIN sales sale ON sale.id = si.sale_id
          WHERE si.product_id = p.id AND sale.branch_id = ?1
            AND sale.created_at >= datetime('now', '-30 days') AND sale.status != 'voided'), 0) AS units_sold
-     FROM products p
+     FROM stockable_products p
      LEFT JOIN product_prices pp ON pp.product_id = p.id AND pp.price_list_id = 'default'
      LEFT JOIN categories c ON c.id = p.category_id
-     WHERE p.active = 1 AND COALESCE(p.kind, 'retail') != 'menu_item' AND COALESCE(p.is_service, 0) = 0
+     WHERE p.active = 1
      ORDER BY units_sold DESC, p.name LIMIT ?2`,
     [branchId, limit],
   );
@@ -86,8 +86,8 @@ export async function getLowStockProducts(limit = 10): Promise<Array<{ id: strin
   return query(
     `SELECT p.id, p.name, p.reorder_level,
        COALESCE((SELECT SUM(b.quantity) FROM batches b WHERE b.product_id = p.id AND b.branch_id = ?1), 0) AS stock_qty
-     FROM products p
-     WHERE p.active = 1 AND COALESCE(p.kind, 'retail') != 'menu_item' AND COALESCE(p.is_service, 0) = 0
+     FROM stockable_products p
+     WHERE p.active = 1
        AND COALESCE((SELECT SUM(b.quantity) FROM batches b WHERE b.product_id = p.id AND b.branch_id = ?1), 0) <= p.reorder_level
        AND p.reorder_level > 0
      ORDER BY (stock_qty * 1.0 / NULLIF(p.reorder_level, 0)) ASC LIMIT ?2`,
@@ -110,11 +110,10 @@ export async function getProductsForCategory(categoryId: string | null, limit = 
        COALESCE(pp.selling_price, 0) AS selling_price,
        COALESCE((SELECT SUM(b.quantity) FROM batches b WHERE b.product_id = p.id AND b.branch_id = ?1), 0) AS stock_qty,
        c.name AS category_name, 0 AS units_sold
-     FROM products p
+     FROM stockable_products p
      LEFT JOIN product_prices pp ON pp.product_id = p.id AND pp.price_list_id = 'default'
      LEFT JOIN categories c ON c.id = p.category_id
-     WHERE p.active = 1 AND COALESCE(p.kind, 'retail') != 'menu_item'
-       AND COALESCE(p.is_service, 0) = 0 AND ${categoryWhere}
+     WHERE p.active = 1 AND ${categoryWhere}
      ORDER BY p.name LIMIT ?${categoryId ? 3 : 2}`,
     categoryId ? [branchId, categoryId, limit] : [branchId, limit],
   );

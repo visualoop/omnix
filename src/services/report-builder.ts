@@ -207,7 +207,7 @@ async function runPurchasesReport(q: ReportQuery): Promise<ReportRow[]> {
 }
 
 async function runInventoryReport(q: ReportQuery): Promise<ReportRow[]> {
-  const clauses = ["p.deleted_at IS NULL"];
+  const clauses = ["p.active = 1"];
   const params: unknown[] = [];
   appendAnalyticsBranchScope(clauses, params, "b.branch_id");
   return query<ReportRow>(
@@ -217,7 +217,7 @@ async function runInventoryReport(q: ReportQuery): Promise<ReportRow[]> {
         p.sku,
         COALESCE(SUM(b.quantity), 0) AS on_hand,
         COALESCE(SUM(b.quantity * b.buying_price), 0) AS value_at_cost
-     FROM products p
+     FROM stockable_products p
      LEFT JOIN batches b ON b.product_id = p.id
      WHERE ${clauses.join(" AND ")}
      GROUP BY p.id

@@ -10,10 +10,11 @@ export async function getStockMap(productIds: string[]): Promise<Map<string, num
   if (!branchId) return new Map(productIds.map((id) => [id, 0]));
   const placeholders = productIds.map((_, i) => `?${i + 1}`).join(",");
   const rows = await query<{ product_id: string; stock_qty: number }>(
-    `SELECT product_id, COALESCE(SUM(quantity), 0) AS stock_qty
-     FROM batches
-     WHERE product_id IN (${placeholders}) AND branch_id = ?${productIds.length + 1}
-     GROUP BY product_id`,
+    `SELECT b.product_id, COALESCE(SUM(b.quantity), 0) AS stock_qty
+     FROM batches b
+     JOIN stockable_products p ON p.id = b.product_id
+     WHERE b.product_id IN (${placeholders}) AND b.branch_id = ?${productIds.length + 1}
+     GROUP BY b.product_id`,
     [...productIds, branchId],
   );
   const map = new Map<string, number>();

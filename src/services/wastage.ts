@@ -139,7 +139,7 @@ export async function getWastageReport(opts?: {
        m.created_at,
        u.full_name AS user_name
      FROM stock_movements m
-     JOIN products p ON p.id = m.product_id
+     JOIN stockable_products p ON p.id = m.product_id
      LEFT JOIN batches b ON b.id = m.batch_id
      LEFT JOIN users u ON u.id = m.user_id
      ${where}
