@@ -49,7 +49,12 @@ pub struct BranchLocalLoginResultV1 {
     pub session_id: String,
     pub access_token: String,
     pub user_id: String,
+    pub full_name: String,
+    pub role: String,
     pub branch_id: String,
+    pub assigned_branch_ids: Vec<String>,
+    pub permissions: Vec<String>,
+    pub enabled_modules: Vec<String>,
     pub node_id: String,
     pub issued_at: DateTime<Utc>,
     pub expires_at: DateTime<Utc>,
@@ -62,6 +67,8 @@ pub struct BranchLocalLoginResultV1 {
 pub struct LocalCredentialRecord {
     pub user_id: String,
     pub username: String,
+    pub full_name: String,
+    pub role: String,
     pub password_hash: String,
     pub branch_id: String,
     pub node_id: String,
@@ -175,12 +182,36 @@ where
     let issued = store.issue_local_session(&credential, access, now, expires_at)?;
     validate_issued_session(&issued, &credential, access, now, expires_at)?;
 
+    let assigned_branch_ids = issued
+        .session
+        .principal
+        .assigned_branches
+        .iter()
+        .cloned()
+        .collect();
+    let permissions = super::authorization::effective_permission_keys(
+        &issued.session.principal,
+        &request.branch_id,
+    );
+    let enabled_modules = issued
+        .session
+        .principal
+        .enabled_modules
+        .iter()
+        .cloned()
+        .collect();
+
     Ok(BranchLocalLoginResultV1 {
         schema_version: API_SCHEMA_V1,
         session_id: issued.session.session_id,
         access_token: issued.access_token,
         user_id: issued.session.principal.user_id,
+        full_name: credential.full_name,
+        role: credential.role,
         branch_id: request.branch_id.clone(),
+        assigned_branch_ids,
+        permissions,
+        enabled_modules,
         node_id: issued.session.node_id,
         issued_at: issued.session.issued_at,
         expires_at: issued.session.expires_at,

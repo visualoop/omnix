@@ -82,6 +82,12 @@ describe('application downloads and customer guides', () => {
     expect(mesh).toContain("don't need a separate WireGuard app")
     expect(mesh).toContain('routes only the private Omnix subnet')
     expect(mesh).toContain('Android shows its system VPN permission dialog')
+    expect(mesh).toContain('Accept it once')
+    expect(mesh).toContain('persistent **Omnix Private Mesh** notification')
+
+    const android = docBySlug('android-app')!.body
+    expect(android).toContain('system VPN permission prompt once')
+    expect(android).toContain('persistent **Omnix Private Mesh** notification')
 
     const browser = docBySlug('browser-companion')!.body
     expect(browser).toContain('read-only')

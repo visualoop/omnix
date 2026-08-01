@@ -1,7 +1,7 @@
 schema_version = 1
 component = "wireguard-android-tunnel"
 platform = "android"
-integration_status = "dependency-pinned-not-yet-wired"
+integration_status = "wired-foreground-vpn-service"
 
 [dependency]
 group = "com.wireguard.android"
@@ -27,7 +27,7 @@ allow_repository_fallback = false
 [key_custody]
 generation = "one independent WireGuard keypair per Android device"
 private_key_provider = "Android Keystore hardware-backed when available"
-private_key_wrapping = "non-exportable Keystore key encrypts device-local WireGuard private-key blob"
+private_key_wrapping = "non-exportable per-account/key-id Keystore HMAC key derives the transient WireGuard private key; no private-key blob is persisted"
 database_value = "opaque key_custody_ref only"
 export_private_key = false
 copy_keys_between_devices = false

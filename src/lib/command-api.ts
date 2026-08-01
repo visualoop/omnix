@@ -1,5 +1,9 @@
 import { fetch } from "@tauri-apps/plugin-http";
 import {
+  getActiveAndroidHubTransport,
+  requestActiveAndroidHub,
+} from "@/mobile/android-hub";
+import {
   getPairedClientIdentity,
   getTypedClientTransport,
   saveTypedClientSession,
@@ -49,7 +53,9 @@ export async function establishTypedLanSession(input: {
 }
 
 async function typedPost<T>(path: string, body: object): Promise<T> {
-  const transport = getTypedClientTransport();
+  const androidTransport = getActiveAndroidHubTransport();
+  if (androidTransport) return requestActiveAndroidHub<T>(path, body);
+  const transport = getActiveAndroidHubTransport() ?? getTypedClientTransport();
   if (!transport) throw new Error("An authenticated typed LAN session is required");
   const response = await fetch(`${transport.url}${path}`, {
     method: "POST",
@@ -68,7 +74,7 @@ function commandEnvelope<T>(input: {
   expectedRevision: number;
   payload: T;
 }) {
-  const transport = getTypedClientTransport();
+  const transport = getActiveAndroidHubTransport() ?? getTypedClientTransport();
   if (!transport) throw new Error("An authenticated typed LAN session is required");
   return {
     schemaVersion: 1,

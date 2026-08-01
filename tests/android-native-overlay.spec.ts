@@ -110,6 +110,7 @@ describe("Android native scanner and direct APK services", () => {
       ["src-tauri/mobile/android-overlay/OmnixMobilePlugin.kt", "src-tauri/gen/android/app/src/main/java/co/ke/omnix/app/mobile/OmnixMobilePlugin.kt"],
       ["src-tauri/mobile/android-overlay/BarcodeCaptureSession.kt", "src-tauri/gen/android/app/src/main/java/co/ke/omnix/app/mobile/BarcodeCaptureSession.kt"],
       ["src-tauri/mobile/android-overlay/DirectApkUpdater.kt", "src-tauri/gen/android/app/src/main/java/co/ke/omnix/app/mobile/DirectApkUpdater.kt"],
+      ["src-tauri/mobile/android-overlay/OmnixMeshService.kt", "src-tauri/gen/android/app/src/main/java/co/ke/omnix/app/mobile/OmnixMeshService.kt"],
       ["src-tauri/mobile/android-overlay/MainActivity.kt", "src-tauri/gen/android/app/src/main/java/co/ke/omnix/app/MainActivity.kt"],
     ]) {
       expect(read(generated)).toBe(read(source));
@@ -139,5 +140,41 @@ describe("Android native scanner and direct APK services", () => {
     expect(updater).toContain("installer.component = ComponentName");
     expect(plugin).not.toContain('fun apkUpdateStage(invoke: Invoke) = invoke.reject');
     expect(plugin).not.toContain('fun apkUpdateInstall(invoke: Invoke) = invoke.reject');
+  });
+});
+
+
+describe("Android WireGuard private mesh", () => {
+  it("uses VPN consent and a persistent foreground service instead of disabled stubs", () => {
+    const plugin = read("src-tauri/mobile/android-overlay/OmnixMobilePlugin.kt");
+    const service = read("src-tauri/mobile/android-overlay/OmnixMeshService.kt");
+    const activity = read("src-tauri/mobile/android-overlay/MainActivity.kt");
+    expect(plugin).toContain("VpnService.prepare(activity)");
+    expect(plugin).toContain("OmnixMeshRuntime.start");
+    expect(plugin).not.toContain("Private Mesh enrollment is unavailable");
+    expect(activity).toContain("ActivityResultContracts.StartActivityForResult()");
+    expect(service).toContain("class OmnixMeshService : Service()");
+    expect(service).toContain("startForeground(MESH_NOTIFICATION_ID, notification())");
+    expect(service).toContain("setOngoing(true)");
+  });
+
+  it("keeps device credentials in Android Keystore and rejects broad routes", () => {
+    const service = read("src-tauri/mobile/android-overlay/OmnixMeshService.kt");
+    expect(service).toContain('KeyGenerator.getInstance(KeyProperties.KEY_ALGORITHM_HMAC_SHA256, KEYSTORE)');
+    expect(service).toContain('"0.0.0.0/0"');
+    expect(service).toContain('"::/0"');
+    expect(service).toContain("pool.contains(route)");
+    expect(service).not.toContain("putString(\"privateKey\"");
+    expect(service).not.toContain("getString(\"privateKey\"");
+  });
+
+  it("handles reboot, Doze, network handoff, rotation and terminal revocation", () => {
+    const service = read("src-tauri/mobile/android-overlay/OmnixMeshService.kt");
+    expect(service).toContain("class OmnixMeshBootReceiver");
+    expect(service).toContain("registerDefaultNetworkCallback");
+    expect(service).toContain("PowerManager.ACTION_DEVICE_IDLE_MODE_CHANGED");
+    expect(service).toContain('lifecycle == "rotation_pending"');
+    expect(service).toContain('lifecycle == "revoked"');
+    expect(service).toContain("MeshKeyCustody.revoke");
   });
 });

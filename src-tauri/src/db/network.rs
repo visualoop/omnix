@@ -150,3 +150,48 @@ pub async fn audit_legacy_use(
         .await?;
     Ok(())
 }
+
+#[derive(Debug, Clone, serde::Serialize, sqlx::FromRow)]
+pub struct PairingBranch {
+    pub id: String,
+    pub code: String,
+    pub name: String,
+}
+
+const LOAD_PAIRING_BRANCHES: &str = r#"
+SELECT id, code, name
+FROM branches
+WHERE active = 1
+ORDER BY is_default DESC, name
+LIMIT 100
+"#;
+
+pub async fn load_pairing_branches(
+    pool: &SqlitePool,
+) -> Result<Vec<PairingBranch>, NetworkDbError> {
+    Ok(sqlx::query_as::<_, PairingBranch>(LOAD_PAIRING_BRANCHES)
+        .fetch_all(pool)
+        .await?)
+}
+
+#[derive(Debug, Clone, sqlx::FromRow)]
+pub struct PairingBusinessContext {
+    pub country_code: String,
+    pub active_module: String,
+}
+
+const LOAD_PAIRING_CONTEXT: &str = r#"
+SELECT
+  COALESCE((SELECT value FROM settings WHERE key = 'country_code' LIMIT 1), 'KE') AS country_code,
+  COALESCE((SELECT value FROM settings WHERE key = 'app.active_module' LIMIT 1), 'dawa') AS active_module
+"#;
+
+pub async fn load_pairing_context(
+    pool: &SqlitePool,
+) -> Result<PairingBusinessContext, NetworkDbError> {
+    Ok(
+        sqlx::query_as::<_, PairingBusinessContext>(LOAD_PAIRING_CONTEXT)
+            .fetch_one(pool)
+            .await?,
+    )
+}

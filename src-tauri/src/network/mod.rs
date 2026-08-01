@@ -52,6 +52,9 @@ pub struct PairResponse {
     pub token: String,
     pub node_id: String,
     pub business_name: String,
+    pub branches: Vec<crate::db::network::PairingBranch>,
+    pub country_code: String,
+    pub active_module: String,
 }
 
 #[derive(Debug, Deserialize)]
@@ -216,10 +219,21 @@ async fn pair_device(
         },
     })?;
 
+    let (branches, context) = tokio::try_join!(
+        crate::db::network::load_pairing_branches(&state.pool),
+        crate::db::network::load_pairing_context(&state.pool),
+    )
+    .map_err(|_| ApiError {
+        error: "Pairing succeeded, but branch choices are temporarily unavailable".to_string(),
+    })?;
+
     Ok(Json(PairResponse {
         token,
         node_id,
         business_name: state.business_name.read().clone(),
+        branches,
+        country_code: context.country_code,
+        active_module: context.active_module,
     }))
 }
 

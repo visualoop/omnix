@@ -265,6 +265,8 @@ Open Omnix on Android and choose enrolment. On the Windows desktop hub, an owner
 
 The first sync loads the records the phone needs. Keep the phone close to the branch network and leave the desktop hub running until that sync finishes. Each staff member should use their own Omnix identity. Don't share one enrolled phone profile between cashiers.
 
+When the approved enrolment first enables Private Mesh, Android shows its system VPN permission prompt once. Accept it to let Omnix create the private branch tunnel. While connected, Android keeps a persistent **Omnix Private Mesh** notification; tap it to return to Omnix. Android can ask for VPN permission again if you deny or later revoke it, clear app storage, reinstall the app, or let another VPN take over the device's VPN slot. Ordinary browsing still uses the phone's normal connection because Omnix routes only the approved private subnet.
+
 ## Profile and device controls
 
 Open **Profile** to check the signed-in user, role, business, active branch, connection state, pending sync count, app version, and device enrolment. The same area provides the controls to lock the app, retry a sync, or sign out.
@@ -360,15 +362,17 @@ This is split routing, not a whole-phone consumer VPN. Omnix doesn't use the tun
 
 ## Android permission
 
-The first time Omnix enables Private Mesh, Android shows its system VPN permission dialog. Accept it once so Android can create the Omnix tunnel. The prompt comes from Android, even though WireGuard is already bundled in Omnix.
+The first time Omnix enables Private Mesh, Android shows its system VPN permission dialog. Accept it once so Android can create the Omnix tunnel. The prompt comes from Android, even though WireGuard is already bundled in Omnix. While the tunnel is connected, Android keeps a persistent **Omnix Private Mesh** notification. That notification is required for the foreground VPN service and cannot be dismissed until the tunnel stops.
 
-Android can ask again after the app is reinstalled, its storage is cleared, or the VPN permission is reset. Don't install another VPN app to answer this prompt. If you deny it, the app can still work on the branch LAN, but it can't use Private Mesh until permission is granted.
+Android can ask again after the app is reinstalled, its storage is cleared, the VPN permission is reset or revoked, or another VPN takes over Android's single VPN slot. Don't install another VPN app to answer this prompt. If you deny it, the app can still work on the branch LAN, but it can't use Private Mesh until permission is granted.
 
 ## Connect a phone
 
 Enrol the phone through the Windows desktop hub first. The enrolment supplies the device identity and approved branch routes. Open **Profile** on Android to check the mesh and branch connection state.
 
-When the phone leaves branch Wi-Fi, Omnix can use the private route for approved branch traffic. If the tunnel is reconnecting, wait for the connected state before expecting a fresh branch total. Pending offline work stays on the phone until a branch connection returns.
+When the phone leaves branch Wi-Fi, Omnix can use the private route for approved branch traffic. The foreground tunnel follows normal handoffs between Wi-Fi and mobile data, rechecks the connection after Doze, and restores a tunnel you left enabled after the phone restarts. If the tunnel is reconnecting, wait for the connected state before expecting a fresh branch total. Pending offline work stays on the phone until a branch connection returns.
+
+The desktop hub approves each device key. Omnix rotates that key through a bounded overlap period, then blocks the retired key. Revoking the device is terminal: Android stops the tunnel and removes its Keystore credential when the signed enrolment state reaches the phone.
 
 ## Security boundaries
 

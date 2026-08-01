@@ -255,3 +255,42 @@ fn module_matches(grant_module: Option<&str>, requested_module: &str) -> bool {
 fn is_uuid_v4(value: &str) -> bool {
     Uuid::parse_str(value).is_ok_and(|parsed| parsed.get_version() == Some(Version::Random))
 }
+
+/// Permission keys suitable for client navigation at one assigned branch.
+/// Denies win exactly as they do at command boundaries; the server still
+/// authorizes every concrete typed request independently.
+pub fn effective_permission_keys(
+    principal: &AuthenticatedPrincipal,
+    branch_id: &str,
+) -> Vec<String> {
+    let mut candidates = principal
+        .permissions
+        .iter()
+        .filter(|grant| {
+            scope_matches(grant.branch_id.as_deref(), branch_id)
+                && grant
+                    .module_id
+                    .as_ref()
+                    .is_none_or(|module| principal.enabled_modules.contains(module))
+        })
+        .map(|grant| grant.permission.clone())
+        .collect::<BTreeSet<_>>();
+    candidates.retain(|permission| {
+        let applicable = principal.permissions.iter().filter(|grant| {
+            grant.permission == *permission
+                && scope_matches(grant.branch_id.as_deref(), branch_id)
+                && grant
+                    .module_id
+                    .as_ref()
+                    .is_none_or(|module| principal.enabled_modules.contains(module))
+        });
+        let grants = applicable.collect::<Vec<_>>();
+        grants
+            .iter()
+            .any(|grant| grant.effect == PermissionEffect::Allow)
+            && !grants
+                .iter()
+                .any(|grant| grant.effect == PermissionEffect::Deny)
+    });
+    candidates.into_iter().collect()
+}

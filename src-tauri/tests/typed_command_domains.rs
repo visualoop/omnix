@@ -587,6 +587,8 @@ fn local_credentials_issue_branch_bound_sessions_without_wan_dependency() {
     let credential = LocalCredentialRecord {
         user_id: ids.user.clone(),
         username: "cashier".to_string(),
+        full_name: "Amina Cashier".to_string(),
+        role: "cashier".to_string(),
         password_hash: "argon2-hash".to_string(),
         branch_id: ids.branch.clone(),
         node_id: ids.node.clone(),
@@ -621,7 +623,10 @@ fn local_credentials_issue_branch_bound_sessions_without_wan_dependency() {
     .unwrap();
     assert!(result.branch_local);
     assert_eq!(result.user_id, ids.user);
+    assert_eq!(result.full_name, "Amina Cashier");
+    assert_eq!(result.role, "cashier");
     assert_eq!(result.branch_id, ids.branch);
+    assert_eq!(result.assigned_branch_ids, vec![ids.branch.clone()]);
     assert_eq!(store.issued, 1);
     assert_eq!(store.failed_attempts, 0);
 

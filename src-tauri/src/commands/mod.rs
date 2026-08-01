@@ -1,3 +1,4 @@
+pub mod android_hub;
 pub mod auth;
 pub mod backup;
 pub mod cloud_backup;
@@ -6,6 +7,7 @@ pub mod network;
 pub mod peripherals;
 pub mod service;
 
+pub use android_hub::*;
 pub use auth::*;
 pub use backup::*;
 pub use cloud_backup::*;

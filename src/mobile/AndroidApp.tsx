@@ -2,9 +2,19 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { BrowserRouter, Navigate, Route, Routes, useLocation, useNavigate } from "react-router-dom";
 import { Toaster, toast } from "sonner";
 import { ConfirmDialogHost } from "@/components/ui/confirm-dialog";
-import { LoginPage } from "@/pages/login";
-import { SetupWizard } from "@/pages/setup";
 import { POSSalePage } from "@/pages/pos-sale";
+import { AndroidFirstRun, AndroidHubLogin } from "@/mobile/AndroidFirstRun";
+import {
+  clearAndroidHubSession,
+  diagnosticFor,
+  forgetAndroidHub,
+  loadAndroidHub,
+  selectAndroidHubBranch,
+  setActiveAndroidHub,
+  toBranch,
+  type AndroidFirstRunDiagnostic,
+  type AndroidHubConfig,
+} from "@/mobile/android-hub";
 import { MobileHome } from "@/components/mobile/MobileHome";
 import { MobileProfile } from "@/components/mobile/MobileProfile";
 import { MobileShell } from "@/components/mobile/MobileShell";
@@ -18,6 +28,7 @@ import { createAndroidPlatformAdapters } from "@/platform/android-adapters";
 import { createOperationalContext, type LaunchCountry } from "@/platform/operational-context";
 import type { RuntimeCapabilities } from "@/platform/runtime";
 import { getPermissionsForRole } from "@/lib/permissions";
+import { getCountry } from "@/lib/countries";
 import { useAuthStore } from "@/stores/auth";
 import { useActiveBranch } from "@/stores/active-branch";
 import { useActiveModule } from "@/stores/active-module";
@@ -41,12 +52,21 @@ function LoadingState({ label = "Opening local workspace…" }: { readonly label
   );
 }
 
-function ErrorState({ message }: { readonly message: string }) {
+function ErrorState({ message, actionLabel, onAction }: {
+  readonly message: string;
+  readonly actionLabel?: string;
+  readonly onAction?: () => void;
+}) {
   return (
     <main className="grid min-h-dvh place-items-center bg-background px-4 text-foreground">
       <section className="max-w-md border-y border-border py-10 text-center">
-        <h1 className="text-lg font-semibold">Local workspace unavailable</h1>
+        <h1 className="text-lg font-semibold">Branch access unavailable</h1>
         <p className="mt-2 text-sm leading-6 text-muted-foreground">{message}</p>
+        {actionLabel && onAction ? (
+          <button type="button" onClick={onAction} className="mt-5 text-sm font-medium text-primary underline-offset-4 hover:underline">
+            {actionLabel}
+          </button>
+        ) : null}
       </section>
     </main>
   );
@@ -64,74 +84,134 @@ export function AndroidApp({ runtime }: AndroidAppProps) {
   );
 }
 
+function hydrateAndroidContext(config: AndroidHubConfig): void {
+  const session = config.session;
+  if (!session) return;
+  const assigned = config.branches
+    .filter((branch) => session.assignedBranchIds.includes(branch.id))
+    .map(toBranch);
+  const active = assigned.find((branch) => branch.id === session.activeBranchId) ?? assigned[0] ?? null;
+  const countryProfile = getCountry(config.countryCode) ?? getCountry("KE");
+  if (!countryProfile) throw new Error("Android country profile is unavailable");
+  const entitledModule = session.enabledModules.includes(config.activeModule)
+    ? config.activeModule
+    : session.enabledModules.find((module) => module !== "core") as typeof config.activeModule | undefined;
+
+  setActiveAndroidHub(config);
+  useAuthStore.setState({
+    user: session.user,
+    permissions: [...session.permissions],
+    isSetupComplete: true,
+    setupChecked: true,
+    loading: false,
+  });
+  useActiveBranch.setState((state) => ({
+    ...state,
+    active,
+    available: assigned,
+    loaded: true,
+    scope: "branch",
+    revision: state.revision + 1,
+  }));
+  useCountry.setState({
+    code: countryProfile.code,
+    currencyCode: countryProfile.currencyCode,
+    loaded: true,
+  });
+  useActiveModule.setState({
+    active: entitledModule ?? config.activeModule,
+    loaded: true,
+  });
+}
+
+function clearAndroidContext(): void {
+  setActiveAndroidHub(null);
+  useAuthStore.setState({ user: null, permissions: null, isSetupComplete: true, setupChecked: true, loading: false });
+  useActiveBranch.getState().clear();
+}
+
 function AndroidBoot({ runtime }: AndroidAppProps) {
-  const { user, isSetupComplete, setupChecked, refreshSetupState } = useAuthStore();
-  const loadBranches = useActiveBranch((state) => state.loadForUser);
-  const [bootError, setBootError] = useState<string | null>(null);
+  const [config, setConfig] = useState<AndroidHubConfig | null | undefined>(undefined);
+  const [bootDiagnostic, setBootDiagnostic] = useState<AndroidFirstRunDiagnostic | null>(null);
 
   useEffect(() => {
     let cancelled = false;
-    import("@/lib/db")
-      .then(({ initDb }) => initDb())
-      .then(async () => {
-        await refreshSetupState();
-        await Promise.all([
-          useCountry.getState().load(),
-          useActiveModule.getState().load(),
-        ]);
-        const currentUser = useAuthStore.getState().user;
-        if (currentUser) await loadBranches(currentUser.id);
+    loadAndroidHub()
+      .then((saved) => {
+        if (cancelled) return;
+        if (saved?.session) hydrateAndroidContext(saved);
+        setConfig(saved);
       })
       .catch((error: unknown) => {
-        if (!cancelled) {
-          setBootError(error instanceof Error ? error.message : "The local database could not be opened.");
-        }
+        if (cancelled) return;
+        clearAndroidContext();
+        setBootDiagnostic(diagnosticFor(error));
+        setConfig(null);
       });
     return () => { cancelled = true; };
-  }, [loadBranches, refreshSetupState]);
+  }, []);
 
-  if (bootError) return <ErrorState message={bootError} />;
-  if (!setupChecked) return <LoadingState />;
+  if (config === undefined) return <LoadingState label="Checking branch hub enrollment…" />;
 
-  if (!isSetupComplete) {
+  if (!config) {
     return (
-      <>
-        <SetupWizard />
-        <Toaster position="bottom-center" />
-        <ConfirmDialogHost />
-      </>
+      <AndroidFirstRun
+        initialDiagnostic={bootDiagnostic}
+        onPaired={(paired) => {
+          setBootDiagnostic(null);
+          setConfig(paired);
+        }}
+      />
     );
   }
 
-  if (!user) {
+  if (!config.session) {
     return (
-      <>
-        <LoginPage />
-        <Toaster position="bottom-center" />
-      </>
+      <AndroidHubLogin
+        config={config}
+        onAuthenticated={(authenticated) => {
+          hydrateAndroidContext(authenticated);
+          setConfig(authenticated);
+        }}
+        onChangeHub={() => {
+          void forgetAndroidHub()
+            .catch((error: unknown) => setBootDiagnostic(diagnosticFor(error)))
+            .finally(() => {
+              clearAndroidContext();
+              setConfig(null);
+            });
+        }}
+      />
     );
   }
 
   return (
     <>
-      <AndroidAuthenticatedApp runtime={runtime} />
+      <AndroidAuthenticatedApp
+        runtime={runtime}
+        hubConfig={config}
+        onHubConfigChange={setConfig}
+      />
       <Toaster position="bottom-center" />
       <ConfirmDialogHost />
     </>
   );
 }
 
-function AndroidAuthenticatedApp({ runtime }: AndroidAppProps) {
+interface AndroidAuthenticatedAppProps extends AndroidAppProps {
+  readonly hubConfig: AndroidHubConfig;
+  readonly onHubConfigChange: (config: AndroidHubConfig) => void;
+}
+
+function AndroidAuthenticatedApp({ runtime, hubConfig, onHubConfigChange }: AndroidAuthenticatedAppProps) {
   const navigate = useNavigate();
   const location = useLocation();
   const user = useAuthStore((state) => state.user);
   const storedPermissions = useAuthStore((state) => state.permissions);
-  const signOut = useAuthStore((state) => state.signOut);
   const activeBranch = useActiveBranch((state) => state.active);
   const availableBranches = useActiveBranch((state) => state.available);
   const branchesLoaded = useActiveBranch((state) => state.loaded);
   const branchScope = useActiveBranch((state) => state.scope);
-  const switchBranch = useActiveBranch((state) => state.switchTo);
   const activeModule = useActiveModule((state) => state.active);
   const countryCode = useCountry((state) => state.code);
   const adapters = useMemo(() => createAndroidPlatformAdapters(), []);
@@ -277,10 +357,31 @@ function AndroidAuthenticatedApp({ runtime }: AndroidAppProps) {
     return () => { cancelled = true; };
   }, [activeBranch?.id, context]);
 
+  const handleSignOut = async () => {
+    await Promise.allSettled([
+      adapters.mesh.stop(),
+      adapters.scanner.cancel(),
+    ]);
+    try {
+      const paired = await clearAndroidHubSession(hubConfig);
+      clearAndroidContext();
+      onHubConfigChange(paired);
+      navigate("/mobile", { replace: true });
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "The session could not be cleared securely");
+    }
+  };
+
   if (!branchesLoaded) return <LoadingState label="Loading assigned branches…" />;
   if (!user) return null;
   if (!context) {
-    return <ErrorState message="No branch is assigned to this account. Ask a desktop administrator to assign one, then sign in again." />;
+    return (
+      <ErrorState
+        message="No active branch from this hub is assigned to your account. Ask a desktop administrator to update your branch access, then sign in again."
+        actionLabel="Return to sign in"
+        onAction={() => { void handleSignOut(); }}
+      />
+    );
   }
 
   const shellModel = createMobileShellModel({
@@ -329,16 +430,6 @@ function AndroidAuthenticatedApp({ runtime }: AndroidAppProps) {
     toast.info("Complete this protected account action from the desktop administrator console.");
   };
 
-  const handleSignOut = async () => {
-    await Promise.allSettled([
-      adapters.mesh.stop(),
-      adapters.scanner.cancel(),
-      adapters.secureStorage.remove({ namespace: "session", accountId: user.id, name: "auth-session" }),
-    ]);
-    signOut();
-    navigate("/mobile", { replace: true });
-  };
-
   if (location.pathname === "/pos/sale") {
     if (!posEnabled) return <Navigate to="/mobile" replace />;
     return <POSSalePage formFactor={runtime.formFactor === "desktop" ? "tablet" : runtime.formFactor} />;
@@ -357,8 +448,12 @@ function AndroidAuthenticatedApp({ runtime }: AndroidAppProps) {
           <MobileProfile
             model={profileModel}
             onSelectBranch={(branchId) => {
-              const branch = availableBranches.find((candidate) => candidate.id === branchId);
-              if (branch) void switchBranch(branch);
+              void selectAndroidHubBranch(hubConfig, branchId)
+                .then((next) => {
+                  hydrateAndroidContext(next);
+                  onHubConfigChange(next);
+                })
+                .catch((error: unknown) => toast.error(error instanceof Error ? error.message : "Branch could not be changed"));
             }}
             onAction={(action) => { void handleProfileAction(action); }}
             onSignOut={() => { void handleSignOut(); }}

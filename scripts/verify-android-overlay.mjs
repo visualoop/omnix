@@ -35,6 +35,7 @@ const required = [
   "src-tauri/mobile/android-overlay/OmnixMobilePlugin.kt",
   "src-tauri/mobile/android-overlay/BarcodeCaptureSession.kt",
   "src-tauri/mobile/android-overlay/DirectApkUpdater.kt",
+  "src-tauri/mobile/android-overlay/OmnixMeshService.kt",
   "src-tauri/mobile/android-overlay/MainActivity.kt",
   "src-tauri/src/mobile/mod.rs",
   "src/platform/android-contract.ts",
@@ -105,6 +106,7 @@ if (generatedMode) {
     "src-tauri/gen/android/app/src/main/java/co/ke/omnix/app/mobile/OmnixMobilePlugin.kt",
     "src-tauri/gen/android/app/src/main/java/co/ke/omnix/app/mobile/BarcodeCaptureSession.kt",
     "src-tauri/gen/android/app/src/main/java/co/ke/omnix/app/mobile/DirectApkUpdater.kt",
+    "src-tauri/gen/android/app/src/main/java/co/ke/omnix/app/mobile/OmnixMeshService.kt",
   ];
   generatedRequired.forEach(requireFile);
   const mirrors = [
@@ -112,6 +114,7 @@ if (generatedMode) {
     ["src-tauri/mobile/android-overlay/OmnixMobilePlugin.kt", "src-tauri/gen/android/app/src/main/java/co/ke/omnix/app/mobile/OmnixMobilePlugin.kt"],
     ["src-tauri/mobile/android-overlay/BarcodeCaptureSession.kt", "src-tauri/gen/android/app/src/main/java/co/ke/omnix/app/mobile/BarcodeCaptureSession.kt"],
     ["src-tauri/mobile/android-overlay/DirectApkUpdater.kt", "src-tauri/gen/android/app/src/main/java/co/ke/omnix/app/mobile/DirectApkUpdater.kt"],
+    ["src-tauri/mobile/android-overlay/OmnixMeshService.kt", "src-tauri/gen/android/app/src/main/java/co/ke/omnix/app/mobile/OmnixMeshService.kt"],
   ];
   for (const [source, output] of mirrors) {
     if (existsSync(resolve(root, output)) && read(source) !== read(output)) fail(`generated native source drifted: ${output}`);

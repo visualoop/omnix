@@ -7,20 +7,29 @@ use tauri::{
     AppHandle, Manager, Runtime, State,
 };
 
-struct AndroidMobile<R: Runtime>(PluginHandle<R>);
+pub(crate) struct AndroidMobile<R: Runtime>(PluginHandle<R>);
+
+pub(crate) fn run_mobile<R: Runtime>(
+    state: State<'_, AndroidMobile<R>>,
+    native_command: &'static str,
+    payload: Value,
+) -> Result<Value, String> {
+    state
+        .0
+        .run_mobile_plugin(native_command, payload)
+        .map_err(|error| error.to_string())
+}
 
 fn run<R: Runtime>(
     state: State<'_, AndroidMobile<R>>,
     native_command: &'static str,
     payload: Option<Value>,
 ) -> Result<Value, String> {
-    state
-        .0
-        .run_mobile_plugin(
-            native_command,
-            payload.unwrap_or_else(|| Value::Object(Default::default())),
-        )
-        .map_err(|error| error.to_string())
+    run_mobile(
+        state,
+        native_command,
+        payload.unwrap_or_else(|| Value::Object(Default::default())),
+    )
 }
 
 macro_rules! forward_command {

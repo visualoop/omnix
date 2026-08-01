@@ -264,6 +264,8 @@ async fn resolve_principal(
 struct CredentialRow {
     id: String,
     username: String,
+    full_name: String,
+    role: String,
     password_hash: String,
     branch_id: String,
     node_id: String,
@@ -292,6 +294,8 @@ pub async fn find_local_credential(
     Ok(Some(LocalCredentialRecord {
         user_id: row.id,
         username: row.username,
+        full_name: row.full_name,
+        role: row.role,
         password_hash: row.password_hash,
         branch_id: row.branch_id,
         node_id: row.node_id,

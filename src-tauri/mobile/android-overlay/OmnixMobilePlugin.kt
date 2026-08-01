@@ -8,6 +8,7 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.net.VpnService
 import android.os.Build
 import android.provider.Settings
 import android.security.keystore.KeyGenParameterSpec
@@ -383,23 +384,69 @@ class OmnixMobilePlugin(private val activity: Activity) : Plugin(activity) {
 
     @Command
     fun meshAvailability(invoke: Invoke) {
-        invoke.resolve(availability("unavailable", "Private Mesh enrollment is not configured on this device"))
+        val (granted, permission) = OmnixMeshRuntime.availability(activity)
+        invoke.resolve(if (granted) {
+            availability("available")
+        } else {
+            availability("permission-required", permission = permission ?: "vpn")
+        })
     }
 
-    private fun disabledMesh() = JSObject()
-        .put("state", "disabled")
-        .put("nodeId", JSONObject.NULL)
-        .put("hubName", JSONObject.NULL)
-        .put("lastHandshakeAt", JSONObject.NULL)
+    @Command
+    fun meshStatus(invoke: Invoke) {
+        OmnixMeshRuntime.enforceLifecycle(activity)
+        invoke.resolve(OmnixMeshRuntime.status(activity).json())
+    }
 
     @Command
-    fun meshStatus(invoke: Invoke) = invoke.resolve(disabledMesh())
+    fun meshStart(invoke: Invoke) {
+        val request = invoke.getArgs().getJSObject("request")
+        if (request == null) {
+            invoke.reject("Private Mesh request is required")
+            return
+        }
+        val accountId = runCatching { request.getString("accountId") }.getOrNull()
+        val branchId = runCatching { request.getString("branchId") }.getOrNull()
+        val enrollmentId = runCatching { request.getString("enrollmentId") }.getOrNull()
+        if (accountId == null || branchId == null || enrollmentId == null ||
+            !SAFE_KEY_PART.matches(accountId) || !SAFE_KEY_PART.matches(branchId) || !SAFE_KEY_PART.matches(enrollmentId)) {
+            invoke.reject("Private Mesh request identifiers are invalid")
+            return
+        }
+
+        val begin = {
+            OmnixMeshService.ensureForeground(activity)
+            OmnixMeshRuntime.start(activity, accountId, branchId, enrollmentId) { result ->
+                result.onSuccess { invoke.resolve(it.json()) }
+                    .onFailure { invoke.reject(it.message ?: "Private Mesh could not connect") }
+            }
+        }
+        val consent = VpnService.prepare(activity)
+        if (consent == null) {
+            begin()
+            return
+        }
+        val host = activity as? MainActivity
+        if (host == null) {
+            invoke.reject("Android VPN permission cannot be requested by this activity")
+            return
+        }
+        host.requestVpnPermission(consent) { granted ->
+            if (granted && VpnService.prepare(activity) == null) {
+                begin()
+            } else {
+                invoke.resolve(PublicMeshState("disabled").json())
+            }
+        }
+    }
 
     @Command
-    fun meshStart(invoke: Invoke) = invoke.reject("Private Mesh enrollment is unavailable")
-
-    @Command
-    fun meshStop(invoke: Invoke) = invoke.resolve(empty())
+    fun meshStop(invoke: Invoke) {
+        OmnixMeshRuntime.stop(activity) { result ->
+            result.onSuccess { invoke.resolve(empty()) }
+                .onFailure { invoke.reject(it.message ?: "Private Mesh could not stop") }
+        }
+    }
 
     @Command
     fun lifecycleCurrentState(invoke: Invoke) = invoke.resolveObject(lifecycleState)
