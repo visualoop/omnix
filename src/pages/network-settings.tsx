@@ -18,6 +18,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
 import {
   getMode,
   setMode,
@@ -36,6 +37,8 @@ import {
   getMasterConfig,
   clearMasterConfig,
   pingMaster,
+  getLegacyTrustedLanEnabled,
+  setLegacyTrustedLanEnabled,
   type NetworkMode,
   type ServerStatus,
   type PairedDevice,
@@ -165,11 +168,13 @@ function MasterPanel({ businessName }: { businessName: string }) {
   const [pairingCode, setPairingCode] = useState<PairingCodeInfo | null>(null);
   const [busy, setBusy] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [legacyTrustedLan, setLegacyTrustedLan] = useState(false);
 
   const load = async () => {
     setStatus(await getServerStatus());
     setPort(await getServerPort());
     setDevices(await listPairedDevices());
+    setLegacyTrustedLan(await getLegacyTrustedLanEnabled());
   };
 
   useEffect(() => { load(); }, []);
@@ -224,6 +229,12 @@ function MasterPanel({ businessName }: { businessName: string }) {
     await revokePairedDevice(token);
     toast.success("Device revoked");
     load();
+  };
+
+  const handleLegacyCompatibility = async (enabled: boolean) => {
+    await setLegacyTrustedLanEnabled(enabled);
+    setLegacyTrustedLan(enabled);
+    toast.success(enabled ? "Legacy paired till compatibility enabled" : "Legacy paired till compatibility disabled");
   };
 
   return (
@@ -284,6 +295,26 @@ function MasterPanel({ businessName }: { businessName: string }) {
             <Radio className="h-3 w-3" /> Discoverable on this network via mDNS
           </p>
         )}
+      </div>
+
+      <div className="border-y border-amber-500/30 py-4">
+        <div className="flex items-start justify-between gap-6">
+          <div className="max-w-xl">
+            <div className="flex items-center gap-2">
+              <AlertCircle className="h-4 w-4 text-amber-600" />
+              <h3 className="text-sm font-medium">Legacy paired till compatibility</h3>
+            </div>
+            <p className="mt-1.5 text-xs leading-5 text-muted-foreground">
+              Enable only for older desktop tills that have not moved to the protected command API.
+              Android and browser devices never use this mode. Turn it off after every till is updated.
+            </p>
+          </div>
+          <Switch
+            checked={legacyTrustedLan}
+            onCheckedChange={(checked) => { void handleLegacyCompatibility(checked); }}
+            aria-label="Legacy paired till compatibility"
+          />
+        </div>
       </div>
 
       {/* Pairing */}

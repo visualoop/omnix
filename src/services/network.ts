@@ -36,8 +36,12 @@ import { APP_NAME } from "@/lib/brand";
 const MODE_KEY = "network.mode";
 const MASTER_URL_KEY = "network.master_url";
 const MASTER_TOKEN_KEY = "network.master_token";
+const MASTER_NODE_ID_KEY = "network.master_node_id";
+const MASTER_SESSION_TOKEN_KEY = "network.master_session_token";
+const MASTER_SESSION_USER_KEY = "network.master_session_user_id";
 const SERVER_PORT_KEY = "network.server_port";
 const DEVICE_NAME_KEY = "network.device_name";
+const LEGACY_TRUSTED_LAN_KEY = "network.legacy_trusted_lan";
 
 export async function getMode(): Promise<NetworkMode> {
   const rows = await query<{ value: string }>("SELECT value FROM settings WHERE key = ?1", [MODE_KEY]);
@@ -81,7 +85,23 @@ export async function getMasterConfig(): Promise<{ url: string | null; token: st
 }
 
 export async function clearMasterConfig(): Promise<void> {
-  await execute("DELETE FROM settings WHERE key IN (?1, ?2)", [MASTER_URL_KEY, MASTER_TOKEN_KEY]);
+  await execute("DELETE FROM settings WHERE key IN (?1, ?2, ?3, ?4, ?5)", [
+    MASTER_URL_KEY,
+    MASTER_TOKEN_KEY,
+    MASTER_NODE_ID_KEY,
+    MASTER_SESSION_TOKEN_KEY,
+    MASTER_SESSION_USER_KEY,
+  ]);
+}
+
+export async function getLegacyTrustedLanEnabled(): Promise<boolean> {
+  const rows = await query<{ value: string }>("SELECT value FROM settings WHERE key = ?1", [LEGACY_TRUSTED_LAN_KEY]);
+  return rows[0]?.value === "1";
+}
+
+export async function setLegacyTrustedLanEnabled(enabled: boolean): Promise<void> {
+  await setSetting(LEGACY_TRUSTED_LAN_KEY, enabled ? "1" : "0");
+  await execute("UPDATE api_tokens SET legacy_enabled = ?1 WHERE revoked = 0", [enabled ? 1 : 0]);
 }
 
 async function setSetting(key: string, value: string): Promise<void> {
@@ -126,6 +146,7 @@ export async function discoverServers(timeoutMs = 2000): Promise<DiscoveredServe
 
 export interface PairResponse {
   token: string;
+  node_id: string;
   business_name: string;
 }
 
@@ -153,6 +174,7 @@ export async function pairWithMaster(
   // Persist credentials
   await setSetting(MASTER_URL_KEY, url);
   await setSetting(MASTER_TOKEN_KEY, data.token);
+  await setSetting(MASTER_NODE_ID_KEY, data.node_id);
   await setMode("client");
   return data;
 }

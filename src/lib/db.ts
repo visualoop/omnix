@@ -81,7 +81,15 @@ async function loadTuned(): Promise<Database> {
 }
 
 // Cached client-mode credentials (read once on startup)
-let clientMode: { url: string; token: string } | null = null;
+interface ClientMode {
+  url: string;
+  token: string;
+  nodeId: string | null;
+  typedToken: string | null;
+  typedUserId: string | null;
+}
+
+let clientMode: ClientMode | null = null;
 let modeChecked = false;
 
 /**
@@ -102,16 +110,25 @@ export async function initDb(): Promise<"local" | "remote"> {
 
   if (mode === "client") {
     const configRows = await db.select<Array<{ key: string; value: string }>>(
-      "SELECT key, value FROM settings WHERE key IN ('network.master_url', 'network.master_token')"
+      `SELECT key, value FROM settings WHERE key IN (
+        'network.master_url', 'network.master_token', 'network.master_node_id',
+        'network.master_session_token', 'network.master_session_user_id'
+      )`
     );
     let url = "";
     let token = "";
+    let nodeId: string | null = null;
+    let typedToken: string | null = null;
+    let typedUserId: string | null = null;
     for (const r of configRows) {
       if (r.key === "network.master_url") url = r.value;
       if (r.key === "network.master_token") token = r.value;
+      if (r.key === "network.master_node_id") nodeId = r.value || null;
+      if (r.key === "network.master_session_token") typedToken = r.value || null;
+      if (r.key === "network.master_session_user_id") typedUserId = r.value || null;
     }
     if (url && token) {
-      clientMode = { url: url.replace(/\/$/, ""), token };
+      clientMode = { url: url.replace(/\/$/, ""), token, nodeId, typedToken, typedUserId };
       modeChecked = true;
       return "remote";
     }
@@ -223,6 +240,54 @@ export async function execute(sql: string, bindValues?: unknown[]) {
 
 export function isClientMode(): boolean {
   return clientMode !== null;
+}
+
+export interface TypedClientTransport {
+  url: string;
+  nodeId: string;
+  accessToken: string;
+  userId: string;
+}
+
+export function getTypedClientTransport(): TypedClientTransport | null {
+  if (!clientMode?.nodeId || !clientMode.typedToken || !clientMode.typedUserId) return null;
+  return {
+    url: clientMode.url,
+    nodeId: clientMode.nodeId,
+    accessToken: clientMode.typedToken,
+    userId: clientMode.typedUserId,
+  };
+}
+
+export function getPairedClientIdentity(): { url: string; nodeId: string } | null {
+  if (!clientMode?.nodeId) return null;
+  return { url: clientMode.url, nodeId: clientMode.nodeId };
+}
+
+export async function saveTypedClientSession(accessToken: string, userId: string): Promise<void> {
+  if (!clientMode || accessToken.length < 32 || !userId) throw new Error("Typed LAN session is invalid");
+  const database = await getDb();
+  await database.execute(
+    `INSERT INTO settings(key, value, category) VALUES
+       ('network.master_session_token', ?1, 'network'),
+       ('network.master_session_user_id', ?2, 'network')
+     ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = datetime('now')`,
+    [accessToken, userId],
+  );
+  clientMode.typedToken = accessToken;
+  clientMode.typedUserId = userId;
+}
+
+export async function clearTypedClientSession(): Promise<void> {
+  if (db) {
+    await db.execute(
+      "DELETE FROM settings WHERE key IN ('network.master_session_token','network.master_session_user_id')",
+    );
+  }
+  if (clientMode) {
+    clientMode.typedToken = null;
+    clientMode.typedUserId = null;
+  }
 }
 
 /** A single statement in a transaction batch. */

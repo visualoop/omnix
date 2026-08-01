@@ -23,6 +23,7 @@ import { useActiveBranch } from "@/stores/active-branch";
 import { useActiveModule } from "@/stores/active-module";
 import { useCountry } from "@/stores/country";
 
+import { readAndroidInventory, type AndroidInventoryItem } from "@/lib/command-api";
 const ANDROID_ROOT_ROUTE_IDS = new Set(["home", "pos", "profile"]);
 const ANDROID_ROOT_ROUTES = ANDROID_MOBILE_ROUTES.filter((route) =>
   ANDROID_ROOT_ROUTE_IDS.has(route.id),
@@ -135,6 +136,7 @@ function AndroidAuthenticatedApp({ runtime }: AndroidAppProps) {
   const countryCode = useCountry((state) => state.code);
   const adapters = useMemo(() => createAndroidPlatformAdapters(), []);
   const [accountDevice, setAccountDevice] = useState<AccountDeviceModel | null>(null);
+  const [typedInventory, setTypedInventory] = useState<AndroidInventoryItem[]>([]);
   const [nativeError, setNativeError] = useState<string | null>(null);
   const historyIndex = useRef(0);
   historyIndex.current = typeof window.history.state?.idx === "number"
@@ -263,6 +265,18 @@ function AndroidAuthenticatedApp({ runtime }: AndroidAppProps) {
     return () => { cancelled = true; };
   }, [activeBranch?.name, adapters, context, user]);
 
+  useEffect(() => {
+    if (!activeBranch?.id || !context) {
+      setTypedInventory([]);
+      return;
+    }
+    let cancelled = false;
+    readAndroidInventory(activeBranch.id)
+      .then((items) => { if (!cancelled) setTypedInventory(items); })
+      .catch(() => { if (!cancelled) setTypedInventory([]); });
+    return () => { cancelled = true; };
+  }, [activeBranch?.id, context]);
+
   if (!branchesLoaded) return <LoadingState label="Loading assigned branches…" />;
   if (!user) return null;
   if (!context) {
@@ -275,7 +289,19 @@ function AndroidAuthenticatedApp({ runtime }: AndroidAppProps) {
     context,
     routes,
   });
-  const homeModel = accountDevice ? createMobileHomeModel({ context, accountDevice, routes }) : null;
+  const homeModel = accountDevice ? createMobileHomeModel({
+    context,
+    accountDevice,
+    routes,
+    kpis: activeBranch ? [{
+      id: "typed-inventory",
+      label: "Branch items",
+      value: String(typedInventory.length),
+      detail: "Available in the current branch",
+      branchId: activeBranch.id,
+      requiredPermissions: ["inventory.view"],
+    }] : [],
+  }) : null;
   const profileModel = accountDevice ? createMobileProfileModel({
     context,
     accountDevice,

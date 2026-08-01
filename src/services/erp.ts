@@ -1,4 +1,4 @@
-import { query, execute } from "@/lib/db";
+import { query, execute, getTypedClientTransport } from "@/lib/db";
 import { getActiveBranchId, requireActiveBranchId } from "@/stores/active-branch";
 import { pagedQuery } from "@/lib/paged-query";
 import type { ListPage, ListQuery } from "@/lib/list-types";
@@ -112,6 +112,18 @@ export async function getCustomer(id: string): Promise<Customer | null> {
 
 export async function upsertCustomer(input: Partial<Customer> & { name: string }): Promise<string> {
   const id = input.id || crypto.randomUUID();
+  if (!input.id && getTypedClientTransport() && !input.address && !input.notes) {
+    const { createBranchCustomer } = await import("@/lib/command-api");
+    return createBranchCustomer({
+      branchId: requireActiveBranchId(),
+      customerId: id,
+      name: input.name,
+      phone: input.phone || null,
+      email: input.email || null,
+      creditLimitMinor: Math.round((input.credit_limit ?? 0) * 100),
+      active: input.active !== 0,
+    });
+  }
   if (input.id) {
     await execute(
       `UPDATE customers SET name=?1, phone=?2, email=?3, address=?4, credit_limit=?5, notes=?6,
@@ -260,6 +272,23 @@ async function nextPONumber(): Promise<string> {
 export async function createPurchaseOrder(input: CreatePOInput): Promise<string> {
   const branchId = requireActiveBranchId();
   const poId = crypto.randomUUID();
+  if (getTypedClientTransport()) {
+    const { createTypedPurchaseOrder } = await import("@/lib/command-api");
+    return createTypedPurchaseOrder({
+      branchId,
+      purchaseOrderId: poId,
+      supplierId: input.supplier_id,
+      expectedDate: input.expected_date || null,
+      currency: "KES",
+      notes: input.notes || null,
+      lines: input.items.map((item) => ({
+        lineId: crypto.randomUUID(),
+        productId: item.product_id,
+        quantityMilli: Math.round(item.quantity * 1000),
+        unitCostMinor: Math.round(item.unit_cost * 100),
+      })),
+    });
+  }
   const poNumber = await nextPONumber();
   const subtotal = input.items.reduce((s, i) => s + i.unit_cost * i.quantity, 0);
   const total = subtotal; // tax can be added later

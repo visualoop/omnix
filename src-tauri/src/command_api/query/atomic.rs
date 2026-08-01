@@ -8,7 +8,7 @@ ON CONFLICT(command_id) DO NOTHING
 "#;
 
 pub const LOAD_COMMAND_CLAIM: &str = r#"
-SELECT fingerprint, state, response_json, resulting_revision, user_id, node_id, branch_id
+SELECT fingerprint, state, response_json, resulting_revision, user_id, node_id, branch_id, session_id
 FROM command_ledger
 WHERE command_id = ?1
 "#;
@@ -32,4 +32,10 @@ UPDATE command_ledger
 SET state = 'completed', response_json = ?2, resulting_revision = ?3, completed_at = ?4
 WHERE command_id = ?1 AND state = 'processing'
   AND user_id = ?5 AND node_id = ?6 AND branch_id = ?7
+"#;
+
+pub const VERIFY_SESSION_IDENTITY: &str = r#"
+SELECT 1 FROM authenticated_sessions
+WHERE id = ?1 AND user_id = ?2 AND node_id = ?3
+  AND revoked_at IS NULL AND expires_at > ?4
 "#;

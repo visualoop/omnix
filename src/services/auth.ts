@@ -1,5 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
-import { query, execute } from "@/lib/db";
+import { query, execute, isClientMode } from "@/lib/db";
 import { getOrRepairUserBranches } from "@/services/branches";
 import {
   BUILT_IN_ROLE_IDS,
@@ -132,6 +132,25 @@ export async function login(username: string, password: string): Promise<User> {
   const ok = await verifyPassword(password, user.password_hash);
   if (!ok) {
     throw new Error("Invalid username or password");
+  }
+
+  if (isClientMode()) {
+    const assignments = await query<{ branch_id: string }>(
+      `SELECT branch_id FROM user_branches WHERE user_id = ?1 ORDER BY is_primary DESC, granted_at LIMIT 1`,
+      [user.id],
+    );
+    const branchId = assignments[0]?.branch_id;
+    if (branchId) {
+      try {
+        const { establishTypedLanSession } = await import("@/lib/command-api");
+        await establishTypedLanSession({ username, password, userId: user.id, branchId });
+      } catch (error) {
+        // Compatibility window: old installs can have the pre-UUID default branch.
+        // Their generic SQL path remains available only when the master explicitly
+        // enables network.legacy_trusted_lan.
+        console.warn("Typed LAN session unavailable; using explicit legacy compatibility mode", error);
+      }
+    }
   }
 
   // Strip password hash before returning and hydrate the maintained job role.

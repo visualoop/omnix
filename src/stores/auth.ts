@@ -120,6 +120,7 @@ export const useAuthStore = create<AuthState>()(
       signOut: () => {
         permissionLoadVersion += 1;
         set({ user: null, permissions: null });
+        import("@/lib/db").then(({ clearTypedClientSession }) => clearTypedClientSession().catch(() => {}));
         import("@/lib/permissions").then((m) => m.setCachedPermissions(null));
         import("./active-branch").then((m) => m.useActiveBranch.getState().clear());
         // Clear the in-memory cloud-backup key so a different user logging

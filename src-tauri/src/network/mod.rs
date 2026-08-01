@@ -3,17 +3,19 @@
 // Exposes:
 //   GET  /api/health          → { ok: true, version, business_name }
 //   POST /api/auth/pair       → exchange pairing_code for bearer token
-//   POST /api/db/query        → run SELECT, return rows (auth required)
-//   POST /api/db/execute      → run INSERT/UPDATE/DELETE (auth required)
+//   POST /api/db/query        → legacy paired-till SELECT compatibility (explicit opt-in)
+//   POST /api/db/execute      → legacy paired-till mutation compatibility (explicit opt-in)
 //
-// Legacy authenticated routes require `Authorization: Bearer <token>` and reject browser-origin requests.
+// Production clients use authenticated /api/v1/commands/* and bounded /api/v1/reads/* routes.
+// Legacy routes require the documented trusted-LAN flag and hashed legacy token scope.
 
 pub mod read_only_policy;
 pub mod read_only_web;
+mod typed;
 
 use axum::extract::Request;
 use axum::{
-    extract::State,
+    extract::{ConnectInfo, DefaultBodyLimit, State},
     http::{header, StatusCode},
     middleware::{self, Next},
     response::{IntoResponse, Response},
@@ -47,6 +49,7 @@ pub struct PairRequest {
 #[derive(Debug, Serialize)]
 pub struct PairResponse {
     pub token: String,
+    pub node_id: String,
     pub business_name: String,
 }
 
@@ -82,20 +85,29 @@ impl IntoResponse for ApiError {
 pub fn build_router(state: ServerState) -> Router {
     Router::new()
         .route("/api/health", get(health))
-        .route("/api/auth/pair", post(pair_device))
+        .route(
+            "/api/auth/pair",
+            post(pair_device).layer(DefaultBodyLimit::max(4 * 1024)),
+        )
+        .merge(typed::desktop_and_android_router())
+        .merge(typed::browser_read_router())
         .route(
             "/api/db/query",
-            post(db_query).layer(middleware::from_fn_with_state(
-                state.clone(),
-                require_legacy_auth,
-            )),
+            post(db_query)
+                .layer(DefaultBodyLimit::max(64 * 1024))
+                .layer(middleware::from_fn_with_state(
+                    state.clone(),
+                    legacy_trusted_lan_guard,
+                )),
         )
         .route(
             "/api/db/execute",
-            post(db_execute).layer(middleware::from_fn_with_state(
-                state.clone(),
-                require_legacy_auth,
-            )),
+            post(db_execute)
+                .layer(DefaultBodyLimit::max(256 * 1024))
+                .layer(middleware::from_fn_with_state(
+                    state.clone(),
+                    legacy_trusted_lan_guard,
+                )),
         )
         .with_state(state)
 }
@@ -113,74 +125,86 @@ async fn pair_device(
     State(state): State<ServerState>,
     Json(req): Json<PairRequest>,
 ) -> Result<Json<PairResponse>, ApiError> {
-    // Validate code is 6 digits and exists, not used, not expired
-    let row: Option<(String,)> = sqlx::query_as(
-        "SELECT code FROM pairing_codes
-         WHERE code = ?1 AND used_at IS NULL
-           AND datetime(expires_at) > datetime('now')",
-    )
-    .bind(&req.code)
-    .fetch_optional(&state.pool)
-    .await
-    .map_err(|e| ApiError {
-        error: e.to_string(),
-    })?;
-
-    if row.is_none() {
+    if req.code.len() != 6
+        || !req.code.bytes().all(|byte| byte.is_ascii_digit())
+        || req.device_name.trim().is_empty()
+        || req.device_name.len() > 120
+        || req
+            .device_fingerprint
+            .as_deref()
+            .is_some_and(|value| value.is_empty() || value.len() > 256)
+    {
         return Err(ApiError {
-            error: "Invalid or expired pairing code".to_string(),
+            error: "Invalid pairing request".to_string(),
         });
     }
-
-    // Generate token
     let token = random_token();
-
-    // Insert token + mark code used (transactional)
-    let mut tx = state.pool.begin().await.map_err(|e| ApiError {
-        error: e.to_string(),
-    })?;
-
-    sqlx::query(
-        "INSERT INTO api_tokens (token, device_name, device_fingerprint, last_seen_at)
-         VALUES (?1, ?2, ?3, datetime('now'))",
+    let proposed_node_id = uuid::Uuid::new_v4().to_string();
+    let fingerprint = req
+        .device_fingerprint
+        .unwrap_or_else(|| format!("paired-{proposed_node_id}"));
+    let node_id = crate::db::network::claim_pairing_and_issue(
+        &state.pool,
+        &req.code,
+        &token,
+        req.device_name.trim(),
+        &fingerprint,
+        &proposed_node_id,
     )
-    .bind(&token)
-    .bind(&req.device_name)
-    .bind(&req.device_fingerprint)
-    .execute(&mut *tx)
     .await
-    .map_err(|e| ApiError {
-        error: e.to_string(),
-    })?;
-
-    sqlx::query(
-        "UPDATE pairing_codes SET used_at = datetime('now'), issued_token = ?1 WHERE code = ?2",
-    )
-    .bind(&token)
-    .bind(&req.code)
-    .execute(&mut *tx)
-    .await
-    .map_err(|e| ApiError {
-        error: e.to_string(),
-    })?;
-
-    tx.commit().await.map_err(|e| ApiError {
-        error: e.to_string(),
+    .map_err(|error| ApiError {
+        error: match error {
+            crate::db::network::NetworkDbError::InvalidPairingCode => {
+                "Invalid or expired pairing code".to_string()
+            }
+            crate::db::network::NetworkDbError::Storage(_) => {
+                "Pairing is temporarily unavailable".to_string()
+            }
+        },
     })?;
 
     Ok(Json(PairResponse {
         token,
+        node_id,
         business_name: state.business_name.read().clone(),
     }))
 }
 
-async fn require_legacy_auth(
+static LEGACY_RATE_LIMIT: once_cell::sync::Lazy<
+    parking_lot::Mutex<HashMap<std::net::IpAddr, (std::time::Instant, u32)>>,
+> = once_cell::sync::Lazy::new(|| parking_lot::Mutex::new(HashMap::new()));
+
+fn is_private_source(address: SocketAddr) -> bool {
+    match address.ip() {
+        std::net::IpAddr::V4(ip) => ip.is_private() || ip.is_loopback() || ip.is_link_local(),
+        std::net::IpAddr::V6(ip) => {
+            ip.is_loopback() || ip.is_unique_local() || ip.is_unicast_link_local()
+        }
+    }
+}
+
+fn within_legacy_rate_limit(address: SocketAddr) -> bool {
+    const WINDOW: std::time::Duration = std::time::Duration::from_secs(60);
+    const MAX_REQUESTS: u32 = 120;
+    let now = std::time::Instant::now();
+    let mut rates = LEGACY_RATE_LIMIT.lock();
+    let entry = rates.entry(address.ip()).or_insert((now, 0));
+    if now.duration_since(entry.0) >= WINDOW {
+        *entry = (now, 0);
+    }
+    if entry.1 >= MAX_REQUESTS {
+        return false;
+    }
+    entry.1 += 1;
+    true
+}
+
+async fn legacy_trusted_lan_guard(
     State(state): State<ServerState>,
     request: Request,
     next: Next,
 ) -> Result<Response, StatusCode> {
-    // Browser companion traffic must never reach the arbitrary-SQL compatibility surface.
-    // Native paired clients do not emit browser Origin or Fetch Metadata headers.
+    // Browser traffic never reaches the arbitrary-SQL compatibility surface.
     if request.headers().contains_key(header::ORIGIN)
         || request.headers().contains_key("sec-fetch-site")
         || request.headers().contains_key("sec-fetch-mode")
@@ -188,35 +212,42 @@ async fn require_legacy_auth(
     {
         return Err(StatusCode::FORBIDDEN);
     }
-
-    let auth_header = request
-        .headers()
-        .get("authorization")
-        .and_then(|h| h.to_str().ok());
-
-    let token = match auth_header.and_then(|h| h.strip_prefix("Bearer ")) {
-        Some(t) => t.to_string(),
-        None => return Err(StatusCode::UNAUTHORIZED),
-    };
-
-    let valid: Option<(i64,)> =
-        sqlx::query_as("SELECT 1 FROM api_tokens WHERE token = ?1 AND revoked = 0")
-            .bind(&token)
-            .fetch_optional(&state.pool)
-            .await
-            .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
-
-    if valid.is_none() {
-        return Err(StatusCode::UNAUTHORIZED);
+    let address = request
+        .extensions()
+        .get::<ConnectInfo<SocketAddr>>()
+        .map(|connect| connect.0)
+        .ok_or(StatusCode::FORBIDDEN)?;
+    if !is_private_source(address) || !within_legacy_rate_limit(address) {
+        return Err(StatusCode::TOO_MANY_REQUESTS);
     }
-
-    // Update last_seen
-    let _ = sqlx::query("UPDATE api_tokens SET last_seen_at = datetime('now') WHERE token = ?1")
-        .bind(&token)
-        .execute(&state.pool)
-        .await;
-
-    Ok(next.run(request).await)
+    let token = request
+        .headers()
+        .get(header::AUTHORIZATION)
+        .and_then(|value| value.to_str().ok())
+        .and_then(|value| value.strip_prefix("Bearer "))
+        .ok_or(StatusCode::UNAUTHORIZED)?;
+    let valid = crate::db::network::authenticate_legacy_token(&state.pool, token)
+        .await
+        .map_err(|_| StatusCode::SERVICE_UNAVAILABLE)?;
+    if !valid {
+        return Err(StatusCode::FORBIDDEN);
+    }
+    let action = if request.uri().path().ends_with("/query") {
+        "legacy.db.query"
+    } else {
+        "legacy.db.execute"
+    };
+    crate::db::network::audit_legacy_use(
+        &state.pool,
+        action,
+        &address.ip().to_string(),
+        &chrono::Utc::now().to_rfc3339(),
+    )
+    .await
+    .map_err(|_| StatusCode::SERVICE_UNAVAILABLE)?;
+    tokio::time::timeout(std::time::Duration::from_secs(5), next.run(request))
+        .await
+        .map_err(|_| StatusCode::REQUEST_TIMEOUT)
 }
 
 async fn db_query(
@@ -231,8 +262,8 @@ async fn db_query(
         sqlx_q = bind_json(sqlx_q, param);
     }
 
-    let rows = sqlx_q.fetch_all(&state.pool).await.map_err(|e| ApiError {
-        error: e.to_string(),
+    let rows = sqlx_q.fetch_all(&state.pool).await.map_err(|_| ApiError {
+        error: "Legacy query failed".to_string(),
     })?;
 
     let mut result = Vec::with_capacity(rows.len());
@@ -267,8 +298,8 @@ async fn db_execute(
         sqlx_q = bind_json(sqlx_q, param);
     }
 
-    let res = sqlx_q.execute(&state.pool).await.map_err(|e| ApiError {
-        error: e.to_string(),
+    let res = sqlx_q.execute(&state.pool).await.map_err(|_| ApiError {
+        error: "Legacy execution failed".to_string(),
     })?;
 
     Ok(Json(ExecResult {
@@ -362,16 +393,22 @@ pub async fn start_server(state: ServerState, port: u16) -> Result<ServerHandle,
         .map_err(|e| format!("Failed to bind {}: {}", addr, e))?;
     let actual_addr = listener.local_addr().map_err(|e| e.to_string())?;
 
+    crate::db::network::prepare_legacy_token_hashes(&state.pool)
+        .await
+        .map_err(|_| "Failed to prepare LAN authentication".to_string())?;
     let app = build_router(state);
 
     let (tx, rx) = tokio::sync::oneshot::channel::<()>();
 
     tokio::spawn(async move {
-        let _ = axum::serve(listener, app)
-            .with_graceful_shutdown(async {
-                let _ = rx.await;
-            })
-            .await;
+        let _ = axum::serve(
+            listener,
+            app.into_make_service_with_connect_info::<SocketAddr>(),
+        )
+        .with_graceful_shutdown(async {
+            let _ = rx.await;
+        })
+        .await;
     });
 
     // Start mDNS broadcast (best-effort; if it fails, server still works on direct IP)

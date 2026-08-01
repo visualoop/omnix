@@ -1,6 +1,8 @@
 # Task 19: typed command API and legacy LAN containment
 
-## Current legacy exposure (unchanged by this worktree)
+## Pre-implementation legacy exposure (task baseline)
+
+The findings below describe the interface before production registration. The implemented compatibility boundary and operator flag are documented in `docs/security/legacy-trusted-lan.md`.
 
 The running router in `src-tauri/src/network/mod.rs` still mounts these routes in `build_router`:
 

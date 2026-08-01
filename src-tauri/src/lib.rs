@@ -717,6 +717,12 @@ fn run_inner() {
             sql: include_str!("../migrations/101_branch_assignment_backfill.sql"),
             kind: MigrationKind::Up,
         },
+        Migration {
+            version: 102,
+            description: "Typed command API runtime persistence and legacy LAN containment",
+            sql: include_str!("../migrations/102_command_api_runtime.sql"),
+            kind: MigrationKind::Up,
+        },
     ];
 
     let builder = tauri::Builder::default()

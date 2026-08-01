@@ -29,3 +29,11 @@ WHERE (bc.revision > ?2 OR (bc.revision = ?2 AND bc.customer_id > ?3))
 ORDER BY bc.revision, bc.customer_id
 LIMIT ?4
 "#;
+
+pub const UPSERT_CUSTOMER_CATALOG: &str = r#"
+INSERT INTO customers(id, name, phone, email, credit_limit, active, created_at)
+VALUES (?1, ?2, ?3, ?4, CAST(?5 AS REAL) / 100.0, ?6, ?7)
+ON CONFLICT(id) DO UPDATE SET
+ name = excluded.name, phone = excluded.phone, email = excluded.email,
+ credit_limit = excluded.credit_limit, active = excluded.active
+"#;

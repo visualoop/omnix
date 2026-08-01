@@ -29,3 +29,30 @@ FROM sales s
 JOIN authorized_branches ab ON ab.branch_id = s.branch_id
 WHERE s.branch_id = ?2 AND s.id = ?3
 "#;
+
+pub const NEXT_SALE_NUMBER: &str = r#"
+UPDATE sequences SET value = value + 1 WHERE name = 'sale_number' RETURNING value
+"#;
+
+pub const INSERT_SALE_ITEM: &str = r#"
+INSERT INTO sale_items (
+ id, sale_id, product_id, batch_id, product_name, quantity, unit_price, discount, tax_rate, total
+) SELECT ?1, ?2, bi.product_id, ?4, bi.name,
+         CAST(?5 AS REAL) / 1000.0, CAST(?6 AS REAL) / 100.0,
+         CAST(?7 AS REAL) / 100.0, CAST(?8 AS REAL) / 100.0, CAST(?9 AS REAL) / 100.0
+FROM branch_inventory_items bi
+WHERE bi.branch_id = ?10 AND bi.product_id = ?3
+"#;
+
+pub const INSERT_PAYMENT: &str = r#"
+INSERT INTO payments (id, sale_id, method_id, method_name, amount, reference, created_at)
+SELECT ?1, ?2, pm.id, pm.name, CAST(?4 AS REAL) / 100.0, ?5, ?6
+FROM payment_methods pm WHERE pm.id = ?3 AND pm.active = 1
+"#;
+
+pub const DECREMENT_BRANCH_STOCK: &str = r#"
+UPDATE branch_stock
+SET quantity_milli = quantity_milli - ?3, revision = revision + 1, updated_at = ?4
+WHERE branch_id = ?1 AND product_id = ?2 AND quantity_milli >= ?3
+RETURNING quantity_milli, revision
+"#;
