@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { WebCompanionView } from "@/pages/web-companion";
+import { WebLoginPage } from "@/pages/WebLoginPage";
 import { createReadonlyWebApi, WebApiError, type ReadonlyWebApi } from "@/web/api";
 import type {
   AlertProjection,
@@ -120,7 +121,9 @@ export function WebCompanionApp({ api = createReadonlyWebApi(), initialRoute }: 
     }
   }, [api, data.profile.connectedHubName, route, scope]);
 
-  useEffect(() => { void loadBootstrap(); }, []); // bootstrap exactly once; retries are explicit
+  useEffect(() => {
+    if (route?.id !== "login") void loadBootstrap();
+  }, []); // bootstrap exactly once; retries are explicit
 
   const effectiveScope = useMemo(() => {
     if (!session || !route) return null;
@@ -176,6 +179,10 @@ export function WebCompanionApp({ api = createReadonlyWebApi(), initialRoute }: 
     };
   }, [loadBootstrap]);
 
+  if (route?.id === "login") {
+    return <WebLoginPage />;
+  }
+
   if (!route) {
     return <main className="grid min-h-dvh place-items-center bg-background px-4 text-foreground"><section className="max-w-md border-y border-border py-10 text-center"><h1 className="text-xl font-semibold">Page not available</h1><p className="mt-2 text-sm text-muted-foreground">This browser companion exposes reporting routes only.</p><a className="mt-5 inline-flex min-h-11 items-center text-sm font-semibold text-blue-700 underline-offset-4 hover:underline dark:text-blue-400" href="/web">Open reporting home</a></section></main>;
   }
@@ -193,6 +200,9 @@ export function WebCompanionApp({ api = createReadonlyWebApi(), initialRoute }: 
               <p className="mt-3 text-sm font-medium">
                 Ask a desktop administrator to issue a new read-only browser session.
               </p>
+              <a className="mt-5 inline-flex min-h-11 items-center text-sm font-semibold text-blue-700 underline-offset-4 hover:underline dark:text-blue-400" href="/web/login">
+                Enter a new authorization code
+              </a>
             </section>
           </main>
         </div>

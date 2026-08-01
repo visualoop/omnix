@@ -49,6 +49,7 @@ import { APP_NAME } from "@/lib/brand";
 import { intlLocale } from "@/lib/intl";
 
 import { BackButton } from "@/components/ui/back-button";
+import { BrowserViewerPanel } from "@/components/network/BrowserViewerPanel";
 export function NetworkSettingsPage() {
   const [mode, setModeState] = useState<NetworkMode>("standalone");
   const [businessName, setBusinessName] = useState("");
@@ -159,7 +160,7 @@ function ModeCard({
 }
 
 function MasterPanel({ businessName }: { businessName: string }) {
-  const [status, setStatus] = useState<ServerStatus>({ running: false, url: null, mdns_active: false });
+  const [status, setStatus] = useState<ServerStatus>({ running: false, url: null, read_only_url: null, mdns_active: false });
   const [port, setPort] = useState(8765);
   const [devices, setDevices] = useState<PairedDevice[]>([]);
   const [pairingCode, setPairingCode] = useState<PairingCodeInfo | null>(null);
@@ -192,7 +193,7 @@ function MasterPanel({ businessName }: { businessName: string }) {
     setBusy(true);
     try {
       await stopServer();
-      setStatus({ running: false, url: null, mdns_active: false });
+      setStatus({ running: false, url: null, read_only_url: null, mdns_active: false });
       toast.success("Server stopped");
     } catch (e) {
       toast.error("Failed to stop: " + e);
@@ -242,7 +243,10 @@ function MasterPanel({ businessName }: { businessName: string }) {
                 {status.running ? "Running" : "Stopped"}
               </p>
               {status.url && (
-                <p className="text-xs text-muted-foreground font-mono mt-0.5">{status.url}</p>
+                <p className="text-xs text-muted-foreground font-mono mt-0.5">Devices: {status.url}</p>
+              )}
+              {status.read_only_url && (
+                <p className="text-xs text-muted-foreground font-mono mt-0.5">Reports: {status.read_only_url}/web</p>
               )}
             </div>
           </div>
@@ -307,6 +311,10 @@ function MasterPanel({ businessName }: { businessName: string }) {
             </div>
           )}
         </div>
+      )}
+
+      {status.running && status.read_only_url && (
+        <BrowserViewerPanel readOnlyUrl={status.read_only_url} />
       )}
 
       {/* Paired devices */}

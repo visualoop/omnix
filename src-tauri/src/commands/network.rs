@@ -83,7 +83,13 @@ pub async fn start_lan_server(
         .map(|ip| ip.to_string())
         .unwrap_or_else(|_| "127.0.0.1".to_string());
     let read_only_origin = format!("http://{local_ip}:{browser_port}");
-    let read_only_state = ReadOnlyWebState::new(pool, read_only_origin.clone(), business_name);
+    let mut read_only_state = ReadOnlyWebState::new(pool, read_only_origin.clone(), business_name);
+    if let Ok(resource_dir) = app.path().resource_dir() {
+        let packaged_assets = resource_dir.join("web-dist");
+        if packaged_assets.join("web.html").is_file() {
+            read_only_state = read_only_state.with_asset_root(packaged_assets);
+        }
+    }
     let read_only_handle = match start_read_only_server(read_only_state, browser_port).await {
         Ok(read_only_handle) => read_only_handle,
         Err(error) => {
@@ -258,4 +264,80 @@ pub async fn revoke_paired_device(
 #[tauri::command]
 pub fn discover_lan_servers(timeout_ms: Option<u64>) -> Result<Vec<DiscoveredServer>, String> {
     discover_servers(timeout_ms.unwrap_or(2000))
+}
+
+/// Create a one-time browser authorization after evaluating the selected user's
+/// current branch assignments and effective report permissions. The raw code is
+/// returned once to the authenticated desktop UI and is never stored.
+#[tauri::command]
+pub async fn issue_read_only_web_authorization(
+    app: tauri::AppHandle,
+    administrator_user_id: String,
+    user_id: String,
+    device_label: String,
+    ttl_seconds: i64,
+) -> Result<crate::db::read_only_web::IssuedBrowserAuthorization, String> {
+    let url = db_url(&app)?;
+    let pool = SqlitePoolOptions::new()
+        .max_connections(1)
+        .connect(&url)
+        .await
+        .map_err(|error| error.to_string())?;
+    let result = crate::db::read_only_web::issue_authorization(
+        &pool,
+        &administrator_user_id,
+        &user_id,
+        &device_label,
+        ttl_seconds,
+        chrono::Utc::now().timestamp(),
+    )
+    .await
+    .map_err(|error| error.to_string());
+    pool.close().await;
+    result
+}
+
+#[tauri::command]
+pub async fn list_read_only_web_authorizations(
+    app: tauri::AppHandle,
+    administrator_user_id: String,
+) -> Result<Vec<crate::db::read_only_web::BrowserSessionAdminRow>, String> {
+    let url = db_url(&app)?;
+    let pool = SqlitePoolOptions::new()
+        .max_connections(1)
+        .connect(&url)
+        .await
+        .map_err(|error| error.to_string())?;
+    let result = crate::db::read_only_web::list_authorizations(
+        &pool,
+        &administrator_user_id,
+        chrono::Utc::now().timestamp(),
+    )
+    .await
+    .map_err(|error| error.to_string());
+    pool.close().await;
+    result
+}
+
+#[tauri::command]
+pub async fn revoke_read_only_web_authorization(
+    app: tauri::AppHandle,
+    administrator_user_id: String,
+    authorization_id: String,
+) -> Result<(), String> {
+    let url = db_url(&app)?;
+    let pool = SqlitePoolOptions::new()
+        .max_connections(1)
+        .connect(&url)
+        .await
+        .map_err(|error| error.to_string())?;
+    let result = crate::db::read_only_web::revoke_authorization(
+        &pool,
+        &administrator_user_id,
+        &authorization_id,
+    )
+    .await
+    .map_err(|error| error.to_string());
+    pool.close().await;
+    result
 }

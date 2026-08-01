@@ -194,3 +194,17 @@ describe("read-only web companion UI", () => {
     expect(results.violations).toEqual([]);
   });
 });
+
+
+describe("browser viewer login UI", () => {
+  it("asks only for a one-time code and explains the read-only boundary", async () => {
+    const { WebLoginPage } = await import("@/pages/WebLoginPage");
+    const { container } = render(<WebLoginPage onAuthorized={noop} />);
+    expect(screen.getByRole("heading", { name: "Open the reporting window." })).toBeDefined();
+    expect(screen.getByLabelText("One-time authorization code")).toHaveProperty("autocomplete", "one-time-code");
+    expect(screen.getByText(/cannot create or widen access/i)).toBeDefined();
+    expect(screen.queryByRole("link", { name: /sign up|register/i })).toBeNull();
+    const results = await axe(container);
+    expect(results.violations).toEqual([]);
+  });
+});

@@ -61,6 +61,9 @@
   },
   "bundle": {
     "active": true,
+    "resources": {
+      "../dist/": "web-dist/"
+    },
     "createUpdaterArtifacts": true,
     "targets": ["deb", "rpm", "appimage", "nsis", "msi", "dmg"],
     "category": "Business",
