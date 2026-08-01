@@ -1,5 +1,6 @@
 import { and, eq, desc, isNotNull } from 'drizzle-orm'
 import { db, releases } from '@/db'
+import { isDesktopVariant, resolveDesktopUpdate } from '@/lib/desktop-updater'
 
 const PINNED_ANDROID_RELEASE_CERTIFICATE =
   'c7f91eb28f7b6c6b23781382dc30b8c360cb2780d8c6b74db9ff07013fcd08bb'
@@ -62,28 +63,49 @@ export async function GET(req: Request) {
     )
   }
 
+  const variant = url.searchParams.get('variant')?.toLowerCase()
+  if (!variant || !isDesktopVariant(variant)) {
+    return Response.json(
+      { error: 'a valid desktop `variant` query parameter is required' },
+      { status: 400, headers: { 'Cache-Control': 'no-store' } },
+    )
+  }
+
   const rows = await db
     .select()
     .from(releases)
     .where(eq(releases.channel, channel))
     .orderBy(desc(releases.publishedAt))
     .limit(1)
-  const r = rows[0]
+  const release = rows[0]
 
-  if (!r) {
+  if (!release) {
     return Response.json({ error: 'no release published' }, { status: 404 })
   }
 
-  // Tauri-updater compatible shape.
-  return Response.json({
-    version: r.version,
-    notes: r.notes ?? '',
-    pub_date: r.publishedAt.toISOString(),
-    platforms: {
-      'windows-x86_64': r.msiUrl ? { signature: r.signature ?? '', url: r.msiUrl } : undefined,
-      'darwin-x86_64': r.dmgUrl ? { signature: r.signature ?? '', url: r.dmgUrl } : undefined,
-      'darwin-aarch64': r.dmgUrl ? { signature: r.signature ?? '', url: r.dmgUrl } : undefined,
-      'linux-x86_64': r.appImageUrl ? { signature: r.signature ?? '', url: r.appImageUrl } : undefined,
-    },
+  const resolution = resolveDesktopUpdate(release, variant, '')
+  if (resolution.status === 'missing-assets') {
+    console.error('[releases/latest] incomplete desktop variant metadata', {
+      releaseId: release.id,
+      version: release.version,
+      variant,
+      missing: resolution.missing,
+    })
+    return Response.json(
+      {
+        error: `release metadata is incomplete for variant ${variant}`,
+        version: release.version,
+        missing: resolution.missing,
+      },
+      { status: 503, headers: { 'Cache-Control': 'no-store' } },
+    )
+  }
+
+  // An empty current version can never resolve as up-to-date.
+  if (resolution.status !== 'update') {
+    return new Response(null, { status: 204 })
+  }
+  return Response.json(resolution.manifest, {
+    headers: { 'Cache-Control': 'no-store' },
   })
 }
