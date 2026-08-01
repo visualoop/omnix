@@ -4,8 +4,10 @@ import { db, releases, licenses } from '@/db'
 import { desc, eq } from 'drizzle-orm'
 import { auth } from '@/lib/auth'
 import { PageHeader } from '@/components/layout/page-header'
+import { AndroidDownloadSection } from '@/components/dashboard/AndroidDownloadSection'
 import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/dashboard/status-utils'
+import { getLatestAndroidRelease } from '@/lib/android-release'
 import {
   StartTrialPanel,
   type DashboardTrialVariant,
@@ -43,7 +45,7 @@ export default async function DashboardDownloadsPage() {
 
   const userId = session.user.id
 
-  const [latestRow, customerLicences] = await Promise.all([
+  const [latestRow, customerLicences, androidRelease] = await Promise.all([
     db
       .select()
       .from(releases)
@@ -56,6 +58,7 @@ export default async function DashboardDownloadsPage() {
       .from(licenses)
       .where(eq(licenses.userId, userId))
       .orderBy(desc(licenses.createdAt)),
+    getLatestAndroidRelease(),
   ])
 
   const ownedSet = new Set(
@@ -143,6 +146,8 @@ export default async function DashboardDownloadsPage() {
           downloadHref="#latest-downloads"
         />
       ) : null}
+
+      <AndroidDownloadSection release={androidRelease} />
 
       {!latestRow ? (
         <EmptyState

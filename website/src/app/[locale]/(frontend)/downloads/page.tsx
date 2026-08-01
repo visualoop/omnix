@@ -1,9 +1,8 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
-import { and, desc, eq, isNotNull } from 'drizzle-orm'
 
 import { Icon } from '@/components/icons'
-import { db, releases } from '@/db'
+import { getLatestAndroidRelease } from '@/lib/android-release'
 import { buildAlternatesLanguages } from '@/lib/hreflang'
 import { buildSocialMetadata } from '@/lib/seo-metadata'
 import { getSiteSettings } from '@/lib/site-settings'
@@ -155,32 +154,6 @@ function whatsappHref(base: string | null): string | null {
 
 function formatMegabytes(bytes: number): string {
   return `${(bytes / 1024 / 1024).toFixed(1)} MB`
-}
-
-async function getLatestAndroidRelease() {
-  try {
-    return (
-      await db
-        .select({
-          version: releases.version,
-          apkUrl: releases.androidApkUrl,
-          apkSize: releases.androidApkSize,
-          sha256: releases.sha256Apk,
-        })
-        .from(releases)
-        .where(
-          and(
-            eq(releases.channel, 'stable'),
-            isNotNull(releases.androidApkUrl),
-          ),
-        )
-        .orderBy(desc(releases.publishedAt))
-        .limit(1)
-    )[0]
-  } catch (error) {
-    console.error('[downloads] Android release lookup failed:', error)
-    return undefined
-  }
 }
 
 export default async function DownloadsPage({ params }: { params: Promise<{ locale: string }> }) {

@@ -5,6 +5,7 @@ import { describe, expect, it } from 'vitest'
 const ROOT = process.cwd()
 const read = (path: string) => readFileSync(join(ROOT, path), 'utf8')
 const downloadsSource = read('src/app/[locale]/(frontend)/downloads/page.tsx')
+const androidReleaseSource = read('src/lib/android-release.ts')
 const migrationSource = read('src/app/[locale]/(frontend)/migration/page.tsx')
 const downloadsCss = read('src/app/[locale]/(frontend)/downloads/downloads.module.css')
 const migrationCss = read('src/app/[locale]/(frontend)/migration/migration.module.css')
@@ -38,9 +39,12 @@ describe('Task 14 downloads acquisition route', () => {
   })
 
   it('reads the current Android artifact and publishes its APK checksum from the release record', () => {
-    expect(downloadsSource).toContain("import { db, releases } from '@/db'")
-    expect(downloadsSource).toContain('releases.androidApkUrl')
-    expect(downloadsSource).toContain('releases.sha256Apk')
+    expect(downloadsSource).toContain("import { getLatestAndroidRelease } from '@/lib/android-release'")
+    expect(downloadsSource).toContain('getLatestAndroidRelease()')
+    expect(androidReleaseSource).toContain("import { db, releases } from '@/db'")
+    expect(androidReleaseSource).toContain('releases.androidApkUrl')
+    expect(androidReleaseSource).toContain('releases.androidApkSize')
+    expect(androidReleaseSource).toContain('releases.sha256Apk')
     expect(downloadsSource).toContain('href={androidRelease.apkUrl}')
     expect(downloadsSource).toContain('Download Android APK')
     expect(downloadsSource).toContain('<code>{androidRelease.sha256}</code>')
