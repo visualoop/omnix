@@ -97,10 +97,9 @@ export function buildAssistantTools(ctx: ToolContext) {
           `SELECT p.id, p.name, p.sku, p.barcode, p.unit,
                   COALESCE((SELECT SUM(b.quantity) FROM batches b WHERE b.product_id = p.id), 0) AS stock_qty,
                   COALESCE(pp.selling_price, 0) AS selling_price
-             FROM products p
+             FROM stockable_products p
              LEFT JOIN product_prices pp ON pp.product_id = p.id AND pp.price_list_id = 'default'
             WHERE p.active = 1
-              AND COALESCE(p.kind, 'physical') = 'physical'
               AND (p.name LIKE ?1 OR p.sku LIKE ?1 OR p.barcode LIKE ?1)
             ORDER BY p.name ASC
             LIMIT 10`,

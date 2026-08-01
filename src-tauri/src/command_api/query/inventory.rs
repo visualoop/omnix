@@ -5,6 +5,7 @@ WITH authorized_branches(branch_id) AS (SELECT value FROM json_each(?1))
 SELECT bi.branch_id, bi.product_id, bi.sku, bi.name, bi.quantity_milli,
        bi.selling_price_minor, bi.active, bi.revision
 FROM branch_inventory_items bi
+JOIN stockable_products p ON p.id = bi.product_id
 JOIN authorized_branches ab ON ab.branch_id = bi.branch_id
 WHERE (bi.revision > ?2 OR (bi.revision = ?2 AND bi.product_id > ?3))
   AND (?4 = '' OR bi.sku LIKE ?4 ESCAPE '\\' OR bi.name LIKE ?4 ESCAPE '\\')
@@ -17,6 +18,7 @@ pub const LOAD_BRANCH_ITEM_REVISION: &str = r#"
 WITH authorized_branches(branch_id) AS (SELECT value FROM json_each(?1))
 SELECT bi.revision
 FROM branch_inventory_items bi
+JOIN stockable_products p ON p.id = bi.product_id
 JOIN authorized_branches ab ON ab.branch_id = bi.branch_id
 WHERE bi.branch_id = ?2 AND bi.product_id = ?3
 "#;
@@ -56,6 +58,7 @@ SELECT bi.product_id, bi.sku, bi.name, bi.branch_id,
        CAST(bi.reorder_level_milli / 1000 AS INTEGER) AS reorder_level,
        bi.revision
 FROM branch_inventory_items bi
+JOIN stockable_products p ON p.id = bi.product_id
 JOIN authorized_branches ab ON ab.branch_id = bi.branch_id
 WHERE bi.active = 1 AND bi.quantity_milli <= bi.reorder_level_milli
   AND (?2 = 1 OR bi.quantity_milli > 0)

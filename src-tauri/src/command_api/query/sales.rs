@@ -41,6 +41,7 @@ INSERT INTO sale_items (
          CAST(?5 AS REAL) / 1000.0, CAST(?6 AS REAL) / 100.0,
          CAST(?7 AS REAL) / 100.0, CAST(?8 AS REAL) / 100.0, CAST(?9 AS REAL) / 100.0
 FROM branch_inventory_items bi
+JOIN stockable_products p ON p.id = bi.product_id
 WHERE bi.branch_id = ?10 AND bi.product_id = ?3
 "#;
 

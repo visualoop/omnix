@@ -70,8 +70,8 @@ export async function regenerateSuggestions(opts: RunOptions = {}): Promise<numb
             AND s.status = 'completed'
             AND s.created_at >= datetime('now', '-30 days')
         ), 0) AS sold_30d
-     FROM products p
-     WHERE p.deleted_at IS NULL AND p.active = 1`,
+     FROM stockable_products p
+     WHERE p.active = 1`,
   ).catch(() => []);
 
   let generated = 0;
@@ -133,7 +133,7 @@ export async function listSuggestions(status: "pending" | "ordered" | "dismissed
         rs.status,
         rs.generated_at
      FROM reorder_suggestions rs
-     JOIN products p ON p.id = rs.product_id
+     JOIN stockable_products p ON p.id = rs.product_id
      WHERE rs.status = ?1
      ORDER BY
        CASE rs.reason

@@ -655,11 +655,9 @@ export async function createStockTake(userId: string, notes?: string): Promise<s
     `SELECT p.id,
        COALESCE((SELECT SUM(b.quantity) FROM batches b WHERE b.product_id = p.id AND b.branch_id = ?1), 0) as current_stock,
        COALESCE(pp.buying_price, 0) as buying_price
-     FROM products p
+     FROM stockable_products p
      LEFT JOIN product_prices pp ON pp.product_id = p.id
-     WHERE p.active = 1
-       AND COALESCE(p.kind, 'physical') = 'physical'
-       AND COALESCE(p.is_service, 0) = 0`,
+     WHERE p.active = 1`,
     [branchId],
   );
 
@@ -695,7 +693,7 @@ export async function getStockTakeItems(stockTakeId: string, search?: string): P
   return query<StockTakeItem>(
     `SELECT sti.*, p.name as product_name, p.sku as product_sku
      FROM stock_take_items sti
-     JOIN products p ON p.id = sti.product_id
+     JOIN stockable_products p ON p.id = sti.product_id
      WHERE sti.stock_take_id = ?1 ${searchFilter}
      ORDER BY p.name LIMIT 500`,
     params

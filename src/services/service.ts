@@ -103,7 +103,7 @@ const SELECT_JOB = `
          c.name AS customer_name, us.full_name AS technician_name
   FROM service_jobs j
   JOIN equipment_units u ON u.id = j.unit_id
-  JOIN products p ON p.id = u.product_id
+  JOIN stockable_products p ON p.id = u.product_id
   LEFT JOIN customers c ON c.id = j.customer_id
   LEFT JOIN users us ON us.id = j.technician_id`;
 
@@ -291,7 +291,7 @@ export async function addPart(jobId: string, input: {
 
   const [prod] = await query<{ name: string; selling_price: number }>(
     `SELECT p.name, COALESCE(pp.selling_price, 0) AS selling_price
-     FROM products p
+     FROM stockable_products p
      LEFT JOIN product_prices pp ON pp.product_id = p.id AND pp.price_list_id = 'default'
      WHERE p.id = ?1`,
     [input.product_id],

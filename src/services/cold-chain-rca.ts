@@ -253,7 +253,7 @@ export async function analyzeExcursion(triggerLogId: string): Promise<string | n
   // and have stock on hand (heuristic — all cold-chain SKUs share the fridge).
   const affected = await query<{ name: string }>(
     `SELECT DISTINCT p.name FROM pharmacy_products pp
-       JOIN products p ON p.id = pp.product_id
+       JOIN stockable_products p ON p.id = pp.product_id
       WHERE pp.cold_chain = 1
       LIMIT 20`,
   ).catch(() => []);

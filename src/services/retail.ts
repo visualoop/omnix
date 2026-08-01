@@ -25,7 +25,7 @@ export async function listBrands(includeInactive = false): Promise<BrandWithStat
   return query<BrandWithStats>(
     `SELECT b.*, COUNT(p.id) AS product_count
      FROM brands b
-     LEFT JOIN products p ON p.brand_id = b.id AND p.active = 1
+     LEFT JOIN stockable_products p ON p.brand_id = b.id AND p.active = 1
      ${includeInactive ? "" : "WHERE b.active = 1"}
      GROUP BY b.id
      ORDER BY b.name`,
@@ -435,7 +435,7 @@ export async function listShrinkage(opts?: {
   return query<ShrinkageWithDetails>(
     `SELECT s.*, p.name AS product_name, v.variant_name, u.full_name AS user_name
      FROM shrinkage s
-     JOIN products p ON p.id = s.product_id
+     JOIN stockable_products p ON p.id = s.product_id
      LEFT JOIN product_variants v ON v.id = s.variant_id
      JOIN users u ON u.id = s.user_id
      ${where}
@@ -1021,7 +1021,7 @@ export async function getUomByBarcode(barcode: string): Promise<{
        COALESCE(pp.selling_price, 0) AS base_selling_price,
        COALESCE((SELECT SUM(b.quantity) FROM batches b WHERE b.product_id = p.id), 0) AS product_stock_qty
      FROM product_uoms u
-     JOIN products p ON p.id = u.product_id
+     JOIN stockable_products p ON p.id = u.product_id
      LEFT JOIN product_prices pp ON pp.product_id = p.id AND pp.price_list_id = 'default'
      WHERE u.barcode = ?1
      LIMIT 1`,

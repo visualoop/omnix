@@ -93,10 +93,10 @@ export async function pageExpiryItems(
                     CAST(julianday(b.expiry_date) - julianday('now') AS INTEGER) AS days_to_expiry,
                     COALESCE(pp.is_controlled, 0) AS is_controlled
                FROM batches b
-               JOIN products p ON p.id = b.product_id
+               JOIN stockable_products p ON p.id = b.product_id
                LEFT JOIN pharmacy_products pp ON pp.product_id = p.id`,
     countSql: `SELECT COUNT(*) AS n FROM batches b
-                 JOIN products p ON p.id = b.product_id
+                 JOIN stockable_products p ON p.id = b.product_id
                  LEFT JOIN pharmacy_products pp ON pp.product_id = p.id`,
     searchColumns: ["p.name", "b.batch_number"],
     orderBy: "b.expiry_date ASC",
@@ -689,11 +689,11 @@ export async function pageShrinkage(q: ListQuery & { from?: string; to?: string;
       baseSql:
         `SELECT s.*, p.name AS product_name, v.variant_name, u.full_name AS user_name
          FROM shrinkage s
-         JOIN products p ON p.id = s.product_id
+         JOIN stockable_products p ON p.id = s.product_id
          LEFT JOIN product_variants v ON v.id = s.variant_id
          JOIN users u ON u.id = s.user_id`,
       countSql: `SELECT COUNT(*) AS n FROM shrinkage s
-         JOIN products p ON p.id = s.product_id
+         JOIN stockable_products p ON p.id = s.product_id
          LEFT JOIN product_variants v ON v.id = s.variant_id
          JOIN users u ON u.id = s.user_id`,
       searchColumns: ["p.name", "v.variant_name", "s.reason", "s.notes"],
@@ -774,8 +774,8 @@ export async function pageWastage(q: ListQuery & { from?: string; to?: string; r
       baseSql:
         `SELECT w.id, w.product_id, p.name AS product_name, w.quantity,
                 w.reason, w.cost_value, w.recorded_at
-         FROM hospitality_wastage w LEFT JOIN products p ON p.id = w.product_id`,
-      countSql: `SELECT COUNT(*) AS n FROM hospitality_wastage w LEFT JOIN products p ON p.id = w.product_id`,
+         FROM hospitality_wastage w LEFT JOIN stockable_products p ON p.id = w.product_id`,
+      countSql: `SELECT COUNT(*) AS n FROM hospitality_wastage w LEFT JOIN stockable_products p ON p.id = w.product_id`,
       searchColumns: ["p.name", "w.reason"],
       orderBy: "w.recorded_at DESC",
       extraWhere,

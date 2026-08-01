@@ -64,7 +64,7 @@ export function SupplierDetailPage() {
                 COALESCE(SUM(b.quantity * b.buying_price), 0) as total_cost,
                 MAX(b.received_at) as last_received
          FROM batches b
-         JOIN products p ON p.id = b.product_id
+         JOIN stockable_products p ON p.id = b.product_id
          WHERE b.supplier_id = ?1
          GROUP BY p.id, p.name, p.sku
          ORDER BY total_cost DESC

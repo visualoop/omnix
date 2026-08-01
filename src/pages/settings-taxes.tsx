@@ -43,7 +43,7 @@ export function TaxSettingsPage() {
       query<{ key: string; value: string }>(
         `SELECT key, value FROM settings WHERE key IN ('tax.mode', 'tax.default_rate', 'tax.label')`,
       ),
-      query<{ n: number }>(`SELECT COUNT(*) as n FROM products WHERE active = 1 AND COALESCE(kind,'physical') = 'physical'`),
+      query<{ n: number }>(`SELECT COUNT(*) as n FROM stockable_products WHERE active = 1`),
     ]);
     const map = new Map(settingsRows.map((r) => [r.key, r.value]));
     const m = map.get("tax.mode");
@@ -106,7 +106,8 @@ export function TaxSettingsPage() {
     setBusy(true);
     try {
       await execute(
-        `UPDATE products SET tax_rate = ?1 WHERE active = 1 AND COALESCE(kind,'physical') = 'physical'`,
+        `UPDATE products SET tax_rate = ?1
+         WHERE active = 1 AND id IN (SELECT id FROM stockable_products)`,
         [rate],
       );
       toast.success(`Updated ${productCount} products to ${rate}% ${label}`);

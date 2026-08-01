@@ -50,7 +50,7 @@ export async function listBarCounts(days = 30): Promise<BarCount[]> {
             bc.opening_ml, bc.received_ml, bc.sold_theoretical_ml, bc.closing_ml,
             bc.variance_ml, bc.variance_pct
      FROM bar_inventory_counts bc
-     JOIN products p ON p.id = bc.bottle_product_id
+     JOIN stockable_products p ON p.id = bc.bottle_product_id
      WHERE bc.count_date >= date('now', ?1)
      ORDER BY bc.count_date DESC LIMIT 200`,
     [`-${days} days`],
@@ -402,7 +402,7 @@ export async function getRentalAgreement(id: string): Promise<{ agreement: Renta
   if (!agreement) return null;
   const items = await query<RentalItemRow>(
     `SELECT ri.*, p.name AS product_name
-     FROM rental_items ri JOIN products p ON p.id = ri.product_id
+     FROM rental_items ri JOIN stockable_products p ON p.id = ri.product_id
      WHERE ri.agreement_id = ?1`,
     [id],
   );

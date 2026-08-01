@@ -801,7 +801,7 @@ async fn home_projection(
     .await
     .map_err(ReadOnlyWebDbError::database)?;
     let low_stock: i64 = sqlx::query_scalar(
-        "SELECT COUNT(*) FROM products p WHERE p.active = 1 AND COALESCE(( \
+        "SELECT COUNT(*) FROM stockable_products p WHERE p.active = 1 AND COALESCE(( \
            SELECT SUM(b.quantity) FROM batches b \
            WHERE b.product_id = p.id AND b.branch_id IN (SELECT value FROM json_each(?1)) \
              AND (?2 IS NULL OR b.branch_id = ?2)), 0) <= p.reorder_level",
@@ -986,7 +986,7 @@ async fn report_rows(
         Report::InventoryPosition => sqlx::query(
             "SELECT p.id, p.name AS label, COALESCE(p.sku, 'No SKU') AS secondary, \
                     COALESCE(SUM(b.quantity), 0.0) AS amount, MAX(p.updated_at) AS occurred_at \
-             FROM products p LEFT JOIN batches b ON b.product_id = p.id \
+             FROM stockable_products p LEFT JOIN batches b ON b.product_id = p.id \
                AND b.branch_id IN (SELECT value FROM json_each(?1)) \
                AND (?2 IS NULL OR b.branch_id = ?2) \
              WHERE p.active = 1 AND (?3 = '' OR p.name LIKE '%' || ?3 || '%' OR p.sku LIKE '%' || ?3 || '%') \
@@ -1144,7 +1144,7 @@ async fn drilldown_projection(
     let row = match report {
         Report::InventoryPosition => sqlx::query(
             "SELECT p.id, p.name AS label, COALESCE(p.sku, 'No SKU') AS secondary, COALESCE(SUM(b.quantity), 0.0) AS amount, NULL AS occurred_at, COALESCE(MAX(br.name), 'Assigned branches') AS branch_name \
-             FROM products p LEFT JOIN batches b ON b.product_id = p.id LEFT JOIN branches br ON br.id = b.branch_id \
+             FROM stockable_products p LEFT JOIN batches b ON b.product_id = p.id LEFT JOIN branches br ON br.id = b.branch_id \
              WHERE p.id = ?3 AND b.branch_id IN (SELECT value FROM json_each(?1)) AND (?2 IS NULL OR b.branch_id = ?2) GROUP BY p.id, p.name, p.sku",
         ).bind(branch_ids_json(authorized)?).bind(branch_id).bind(record_id).fetch_optional(pool).await.map_err(ReadOnlyWebDbError::database)?,
         Report::PayrollSummary => sqlx::query(

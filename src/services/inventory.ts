@@ -72,13 +72,13 @@ export async function getProducts(search?: string): Promise<Product[]> {
  */
 export async function getProductsPage(search?: string, limit: number = PRODUCTS_PAGE_SIZE): Promise<ProductsPage> {
   const branchId = getActiveBranchId();
-  const where = `WHERE p.active = 1 AND p.kind = 'physical' AND COALESCE(p.is_service, 0) = 0${
+  const where = `WHERE p.active = 1${
     search ? " AND (p.name LIKE ?1 OR p.barcode LIKE ?1 OR p.sku LIKE ?1)" : ""
   }`;
   const params: unknown[] = search ? [`%${search}%`] : [];
 
   const [totalRow] = await query<{ count: number }>(
-    `SELECT COUNT(*) AS count FROM products p ${where}`,
+    `SELECT COUNT(*) AS count FROM stockable_products p ${where}`,
     params,
   );
   const total = totalRow?.count ?? 0;
@@ -91,7 +91,7 @@ export async function getProductsPage(search?: string, limit: number = PRODUCTS_
       COALESCE(pp.selling_price, 0) as selling_price,
       COALESCE((SELECT SUM(b.quantity) FROM batches b WHERE b.product_id = p.id AND b.branch_id = ${branchParam}), 0) as stock_qty,
       c.name as category_name
-    FROM products p
+    FROM stockable_products p
     LEFT JOIN product_prices pp ON pp.product_id = p.id AND pp.price_list_id = 'default'
     LEFT JOIN categories c ON c.id = p.category_id
     ${where}
@@ -109,7 +109,7 @@ export async function getProduct(id: string): Promise<Product | null> {
       COALESCE(pp.buying_price, 0) as buying_price,
       COALESCE(pp.selling_price, 0) as selling_price,
       COALESCE((SELECT SUM(b.quantity) FROM batches b WHERE b.product_id = p.id AND b.branch_id = ?2), 0) as stock_qty
-    FROM products p
+    FROM stockable_products p
     LEFT JOIN categories c ON c.id = p.category_id
     LEFT JOIN product_prices pp ON pp.product_id = p.id AND pp.price_list_id = 'default'
     WHERE p.id = ?1`,
@@ -191,7 +191,7 @@ export async function deleteProduct(id: string): Promise<void> {
 
 export async function getCategories(): Promise<Category[]> {
   return query<Category>(
-    `SELECT c.*, (SELECT COUNT(*) FROM products p WHERE p.category_id = c.id AND p.active = 1) as product_count
+    `SELECT c.*, (SELECT COUNT(*) FROM stockable_products p WHERE p.category_id = c.id AND p.active = 1) as product_count
      FROM categories c ORDER BY c.sort_order, c.name`
   );
 }
@@ -243,7 +243,7 @@ export async function getStockMovements(productId?: string): Promise<Array<{
   const sql = `
     SELECT sm.id, p.name as product_name, sm.type, sm.quantity, sm.notes, sm.created_at
     FROM stock_movements sm
-    JOIN products p ON p.id = sm.product_id
+    JOIN stockable_products p ON p.id = sm.product_id
     LEFT JOIN batches b ON b.id = sm.batch_id
     WHERE (b.branch_id = ?1 OR (sm.batch_id IS NULL AND EXISTS (
       SELECT 1 FROM batches scoped WHERE scoped.product_id = sm.product_id AND scoped.branch_id = ?1

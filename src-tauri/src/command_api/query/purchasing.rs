@@ -43,5 +43,6 @@ INSERT INTO purchase_order_items (
 ) SELECT ?1, ?2, bi.product_id, bi.name, CAST(?4 AS REAL) / 1000.0, 0,
          CAST(?5 AS REAL) / 100.0, CAST(?6 AS REAL) / 100.0, ?7
 FROM branch_inventory_items bi
+JOIN stockable_products p ON p.id = bi.product_id
 WHERE bi.branch_id = ?8 AND bi.product_id = ?3
 "#;

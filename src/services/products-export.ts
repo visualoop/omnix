@@ -69,10 +69,10 @@ export async function exportProductsCsv(): Promise<{ rowCount: number }> {
        COALESCE(p.reorder_level, 0) AS reorder_level,
        COALESCE((SELECT SUM(b.quantity) FROM batches b WHERE b.product_id = p.id), 0) AS stock_qty,
        p.active
-     FROM products p
+     FROM stockable_products p
      LEFT JOIN categories c ON c.id = p.category_id
      LEFT JOIN product_prices pp ON pp.product_id = p.id AND pp.price_list_id = 'default'
-     WHERE p.active = 1 AND COALESCE(p.kind, 'physical') = 'physical'
+     WHERE p.active = 1
      ORDER BY p.name`,
   );
   const csv = rowsToCsv(rows);

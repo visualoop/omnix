@@ -33,7 +33,7 @@ export function BrandDetailPage() {
     setLoading(true);
     Promise.all([
       query<Brand>("SELECT id, name, slug, created_at FROM brands WHERE id = ?1", [id]),
-      query<Product>("SELECT p.id, p.name, p.sku, p.reorder_level, p.active, COALESCE((SELECT SUM(quantity) FROM batches WHERE product_id = p.id), 0) AS stock_qty FROM products p WHERE p.brand_id = ?1 AND p.active = 1 ORDER BY p.name LIMIT 500", [id]),
+      query<Product>("SELECT p.id, p.name, p.sku, p.reorder_level, p.active, COALESCE((SELECT SUM(quantity) FROM batches WHERE product_id = p.id), 0) AS stock_qty FROM stockable_products p WHERE p.brand_id = ?1 AND p.active = 1 ORDER BY p.name LIMIT 500", [id]),
       query<TopSeller>("SELECT si.product_id, p.name AS product_name, SUM(si.quantity) AS units, SUM(si.line_total) AS revenue FROM sale_items si JOIN products p ON p.id = si.product_id JOIN sales s ON s.id = si.sale_id WHERE p.brand_id = ?1 AND s.status != 'voided' AND s.created_at >= datetime('now', '-30 days') GROUP BY si.product_id ORDER BY revenue DESC LIMIT 5", [id]),
       query<{ v: number }>("SELECT COALESCE(SUM(si.line_total), 0) AS v FROM sale_items si JOIN products p ON p.id = si.product_id JOIN sales s ON s.id = si.sale_id WHERE p.brand_id = ?1 AND s.status != 'voided' AND s.created_at >= datetime('now', '-30 days')", [id]),
     ]).then(([brands, productRows, sellers, revenue]) => { setBrand(brands[0] ?? null); setProducts(productRows); setTopSellers(sellers); setRevenue30d(revenue[0]?.v ?? 0); }).finally(() => setLoading(false));

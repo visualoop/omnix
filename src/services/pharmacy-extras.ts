@@ -41,7 +41,7 @@ export async function getSubstitutions(productId: string): Promise<SubstitutionW
        COALESCE((SELECT SUM(b.quantity) FROM batches b WHERE b.product_id = p.id AND b.branch_id = ?2), 0) AS substitute_stock,
        ph.generic_name AS substitute_generic
      FROM drug_substitutions s
-     JOIN products p ON p.id = s.substitute_product_id
+     JOIN stockable_products p ON p.id = s.substitute_product_id
      LEFT JOIN pharmacy_products ph ON ph.product_id = p.id
      LEFT JOIN product_prices pp ON pp.product_id = p.id AND pp.price_list_id = 'default'
      WHERE s.product_id = ?1
@@ -64,7 +64,7 @@ export async function suggestSubstitutionsFromGeneric(productId: string): Promis
        COALESCE(pp.selling_price, 0) AS selling_price,
        COALESCE((SELECT SUM(b.quantity) FROM batches b WHERE b.product_id = p.id AND b.branch_id = ?2), 0) AS stock,
        ph.generic_name
-     FROM products p
+     FROM stockable_products p
      JOIN pharmacy_products ph ON ph.product_id = p.id
      LEFT JOIN product_prices pp ON pp.product_id = p.id AND pp.price_list_id = 'default'
      WHERE p.active = 1

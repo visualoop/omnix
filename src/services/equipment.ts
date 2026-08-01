@@ -155,7 +155,7 @@ export function canTransition(from: UnitStatus, to: UnitStatus): boolean {
 const SELECT_UNIT = `
   SELECT u.*, p.name AS product_name, c.name AS customer_name
   FROM equipment_units u
-  JOIN products p ON p.id = u.product_id
+  JOIN stockable_products p ON p.id = u.product_id
   LEFT JOIN customers c ON c.id = u.customer_id`;
 
 export async function listUnits(opts?: {

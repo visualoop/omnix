@@ -120,7 +120,7 @@ const setReorder: ActionDef<SetReorderPayload> = {
   permission: "inventory.edit",
   async preview(p) {
     const [cur] = await query<{ reorder_level: number }>(
-      `SELECT reorder_level FROM products WHERE id = ?1`,
+      `SELECT reorder_level FROM stockable_products WHERE id = ?1`,
       [p.product_id],
     );
     return {
@@ -133,7 +133,8 @@ const setReorder: ActionDef<SetReorderPayload> = {
   },
   async execute(p) {
     await dbExecute(
-      `UPDATE products SET reorder_level = ?1, updated_at = datetime('now') WHERE id = ?2`,
+      `UPDATE products SET reorder_level = ?1, updated_at = datetime('now')
+       WHERE id = ?2 AND id IN (SELECT id FROM stockable_products)`,
       [p.reorder_level, p.product_id],
     );
     return { ok: true, message: `Reorder level for ${p.product_name} set to ${p.reorder_level}.`, route: "/inventory" };
