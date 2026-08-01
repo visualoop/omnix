@@ -489,7 +489,13 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          # `yes` is killed by SIGPIPE once sdkmanager stops reading, which
+          # pipefail would otherwise report as a failed step. Disable pipefail
+          # only for this pipeline; `set -e` still fails the step when
+          # sdkmanager itself exits non-zero because it is the last command.
+          set +o pipefail
           yes | sdkmanager --licenses >/dev/null
+          set -o pipefail
           sdkmanager \
             "platform-tools" \
             "platforms;android-${ANDROID_API_LEVEL}" \
