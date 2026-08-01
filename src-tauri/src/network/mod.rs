@@ -37,6 +37,7 @@ const SERVICE_TYPE: &str = "_omnix._tcp.local.";
 pub struct ServerState {
     pub pool: SqlitePool,
     pub business_name: Arc<RwLock<String>>,
+    pub sync: Option<Arc<crate::sync_activation::SyncCoordinator>>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -92,6 +93,12 @@ pub fn build_router(state: ServerState) -> Router {
         .merge(typed::desktop_and_android_router())
         .merge(typed::browser_read_router())
         .route(
+            crate::sync_activation::SYNC_HTTP_PATH,
+            post(receive_sync_event).layer(DefaultBodyLimit::max(
+                crate::sync_contracts::MAX_PAYLOAD_BYTES as usize + 64 * 1024,
+            )),
+        )
+        .route(
             "/api/db/query",
             post(db_query)
                 .layer(DefaultBodyLimit::max(64 * 1024))
@@ -110,6 +117,52 @@ pub fn build_router(state: ServerState) -> Router {
                 )),
         )
         .with_state(state)
+}
+
+#[derive(Debug, Serialize)]
+struct SyncApiError {
+    code: &'static str,
+}
+
+impl IntoResponse for SyncApiError {
+    fn into_response(self) -> Response {
+        let status = match self.code {
+            "sync_not_configured" => StatusCode::SERVICE_UNAVAILABLE,
+            "epoch_fenced" => StatusCode::CONFLICT,
+            "invalid_envelope" | "signature_invalid" => StatusCode::UNPROCESSABLE_ENTITY,
+            "authorization_denied" => StatusCode::FORBIDDEN,
+            _ => StatusCode::INTERNAL_SERVER_ERROR,
+        };
+        (status, Json(self)).into_response()
+    }
+}
+
+async fn receive_sync_event(
+    State(state): State<ServerState>,
+    Json(envelope): Json<crate::sync_activation::WireEnvelope>,
+) -> Result<Json<crate::sync_activation::WireReceipt>, SyncApiError> {
+    let coordinator = state.sync.as_ref().ok_or(SyncApiError {
+        code: "sync_not_configured",
+    })?;
+    coordinator
+        .receive(&envelope)
+        .await
+        .map(Json)
+        .map_err(|error| {
+            use crate::sync_activation::SyncActivationError;
+            let code = match error {
+                SyncActivationError::EpochFenced => "epoch_fenced",
+                SyncActivationError::AuthorizationDenied | SyncActivationError::KeyInactive => {
+                    "authorization_denied"
+                }
+                SyncActivationError::SignatureInvalid => "signature_invalid",
+                SyncActivationError::InvalidEnvelope(_) | SyncActivationError::Json(_) => {
+                    "invalid_envelope"
+                }
+                _ => "sync_apply_failed",
+            };
+            SyncApiError { code }
+        })
 }
 
 async fn health(State(state): State<ServerState>) -> Json<JsonValue> {
@@ -506,6 +559,7 @@ mod tests {
         let app = build_router(ServerState {
             pool: pool.clone(),
             business_name: Arc::new(RwLock::new("Test business".to_string())),
+            sync: None,
         });
         let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
         let address = listener.local_addr().unwrap();

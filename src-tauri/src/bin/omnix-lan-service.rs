@@ -137,6 +137,9 @@ mod windows_impl {
             .connect(&url)
             .await
             .map_err(|e| format!("open db: {}", e))?;
+        omnix_lib::install_sync_capture(&pool)
+            .await
+            .map_err(|e| format!("activate sync capture: {e}"))?;
 
         // Read config from the settings + business tables.
         let port_row: Option<String> =
@@ -176,9 +179,16 @@ mod windows_impl {
             port, business_name
         );
 
+        let sync = omnix_lib::sync_activation::coordinator_from_environment(pool.clone())
+            .await
+            .map_err(|error| format!("configure branch sync: {error}"))?;
+        if let Some(coordinator) = sync.clone() {
+            omnix_lib::sync_activation::start_dispatcher(coordinator);
+        }
         let server_state = omnix_lib::network::ServerState {
             pool: pool.clone(),
             business_name: std::sync::Arc::new(parking_lot::RwLock::new(business_name.clone())),
+            sync,
         };
         let handle = omnix_lib::network::start_server(server_state, port)
             .await

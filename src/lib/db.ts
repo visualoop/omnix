@@ -1,4 +1,5 @@
 import Database from "@tauri-apps/plugin-sql";
+import { invoke } from "@tauri-apps/api/core";
 import { fetch } from "@tauri-apps/plugin-http";
 import {
   assertBranchContextWritable,
@@ -76,6 +77,9 @@ async function tuneSqlite(conn: Database): Promise<void> {
 /** Load the local SQLite database with production tuning applied once. */
 async function loadTuned(): Promise<Database> {
   const conn = await Database.load("sqlite:omnix.db");
+  // Migrations are complete when Database.load resolves. Install the reviewed
+  // persistent branch-capture triggers before exposing this handle to services.
+  await invoke<number>("initialize_sync_capture");
   await tuneSqlite(conn);
   return conn;
 }

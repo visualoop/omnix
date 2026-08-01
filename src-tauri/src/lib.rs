@@ -6,6 +6,7 @@ mod mesh_contracts;
 #[cfg(target_os = "android")]
 mod mobile;
 pub mod network;
+pub mod sync_activation;
 mod sync_contracts;
 // mod telemetry; // Phase 10 — activate when website/telemetry endpoint is live
 
@@ -14,6 +15,13 @@ use tauri_plugin_sql::{Migration, MigrationKind};
 /// Wrap a fatal startup error, write it to a crash log, show a MessageBox,
 /// and exit cleanly — instead of the normal Rust panic that silently kills
 /// a windows-subsystem GUI binary.
+
+/// Activate durable branch mutation capture for a migrated database.
+pub async fn install_sync_capture(pool: &sqlx::SqlitePool) -> Result<usize, String> {
+    sync_activation::install_capture_triggers(pool)
+        .await
+        .map_err(|error| error.to_string())
+}
 fn report_fatal(err: &str) {
     let log_path = std::env::var("LOCALAPPDATA")
         .ok()
@@ -729,6 +737,12 @@ fn run_inner() {
             sql: include_str!("../migrations/103_read_only_web_sessions.sql"),
             kind: MigrationKind::Up,
         },
+        Migration {
+            version: 104,
+            description: "Activate branch sync capture, LAN routing, and HQ projections",
+            sql: include_str!("../migrations/104_sync_activation.sql"),
+            kind: MigrationKind::Up,
+        },
     ];
 
     let builder = tauri::Builder::default()
@@ -851,6 +865,7 @@ fn run_inner() {
             commands::cloud_backup_has_session_key,
             commands::cloud_backup_auto_upload,
             commands::apply_cloud_restore,
+            commands::initialize_sync_capture,
             commands::start_lan_server,
             commands::stop_lan_server,
             commands::lan_server_status,
