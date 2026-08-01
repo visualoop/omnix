@@ -179,6 +179,143 @@ pub struct CompleteInbox<'a> {
 }
 
 #[derive(Clone, Debug)]
+pub struct RejectInbox<'a> {
+    pub event_id: &'a str,
+    pub receiver_node_id: &'a str,
+    pub source_node_id: &'a str,
+    pub branch_id: &'a str,
+    pub hq_epoch: i64,
+    pub branch_epoch: i64,
+    pub source_sequence: i64,
+    pub entity_type: &'a str,
+    pub entity_id: &'a str,
+    pub conflict_id: &'a str,
+    pub conflict_class: &'a str,
+    pub detail: &'a str,
+    pub dead_letter_id: &'a str,
+    pub payload_sha256: &'a [u8],
+    pub receipt_sha256: &'a [u8],
+    pub at: &'a str,
+}
+
+/// Atomically records a verified but unresolvable domain conflict, advances the
+/// source cursor, and creates a stable rejected receipt. This prevents one bad
+/// event from permanently blocking every later sequence while preserving an
+/// explicit operator workflow.
+pub async fn reject_inbox_apply_in_tx(
+    tx: &mut Transaction<'_, Sqlite>,
+    rejected: &RejectInbox<'_>,
+) -> SyncDbResult<StoredReceipt> {
+    require_current_fence_in_tx(
+        tx,
+        rejected.branch_id,
+        rejected.hq_epoch,
+        rejected.branch_epoch,
+    )
+    .await?;
+    if rejected.payload_sha256.len() != 32 || rejected.receipt_sha256.len() != 32 {
+        return Err(SyncDbError::InvalidInput("rejection digest"));
+    }
+    if let Some(existing) = load_receipt_in_tx(tx, rejected.event_id).await? {
+        if existing.receipt_sha256 == rejected.receipt_sha256 {
+            return Ok(existing);
+        }
+        return Err(SyncDbError::ReceiptMismatch);
+    }
+    let transitioned = sqlx::query(
+        "UPDATE sync_inbox
+         SET state = 'applied', validated_at = ?8, applied_at = ?8,
+             application_result = 'rejected'
+         WHERE event_id = ?1 AND receiver_node_id = ?2 AND source_node_id = ?3
+           AND branch_id = ?4 AND hq_epoch = ?5 AND branch_epoch = ?6
+           AND source_sequence = ?7 AND state IN ('received','validated')",
+    )
+    .bind(rejected.event_id)
+    .bind(rejected.receiver_node_id)
+    .bind(rejected.source_node_id)
+    .bind(rejected.branch_id)
+    .bind(rejected.hq_epoch)
+    .bind(rejected.branch_epoch)
+    .bind(rejected.source_sequence)
+    .bind(rejected.at)
+    .execute(&mut **tx)
+    .await?;
+    if transitioned.rows_affected() != 1 {
+        return Err(SyncDbError::TerminalState);
+    }
+    let contiguous = advance_cursor_in_tx(
+        tx,
+        rejected.receiver_node_id,
+        rejected.source_node_id,
+        rejected.branch_id,
+        rejected.hq_epoch,
+        rejected.branch_epoch,
+        rejected.source_sequence,
+        rejected.at,
+    )
+    .await?;
+    sqlx::query(
+        "INSERT INTO sync_conflicts (
+             id, event_id, class, entity_type, entity_id, remote_digest,
+             detail, status, created_at
+         ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, 'open', ?8)",
+    )
+    .bind(rejected.conflict_id)
+    .bind(rejected.event_id)
+    .bind(rejected.conflict_class)
+    .bind(rejected.entity_type)
+    .bind(rejected.entity_id)
+    .bind(rejected.payload_sha256)
+    .bind(rejected.detail)
+    .bind(rejected.at)
+    .execute(&mut **tx)
+    .await?;
+    sqlx::query(
+        "INSERT INTO sync_dead_letters (
+             id, direction, event_id, class, retryable, attempts,
+             payload_sha256, diagnostic, failed_at
+         ) VALUES (?1, 'inbox', ?2, ?3, 0, 1, ?4, ?5, ?6)",
+    )
+    .bind(rejected.dead_letter_id)
+    .bind(rejected.event_id)
+    .bind(rejected.conflict_class)
+    .bind(rejected.payload_sha256)
+    .bind(rejected.detail)
+    .bind(rejected.at)
+    .execute(&mut **tx)
+    .await?;
+    sqlx::query(
+        "INSERT INTO sync_receipts (
+             event_id, receiver_node_id, hq_epoch, branch_epoch,
+             source_sequence, contiguous_sequence, outcome, conflict_class,
+             receipt_sha256, recorded_at
+         ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, 'rejected', ?7, ?8, ?9)",
+    )
+    .bind(rejected.event_id)
+    .bind(rejected.receiver_node_id)
+    .bind(rejected.hq_epoch)
+    .bind(rejected.branch_epoch)
+    .bind(rejected.source_sequence)
+    .bind(contiguous)
+    .bind(rejected.conflict_class)
+    .bind(rejected.receipt_sha256)
+    .bind(rejected.at)
+    .execute(&mut **tx)
+    .await?;
+    sqlx::query(
+        "UPDATE sync_inbox SET state = 'completed', completed_at = ?2
+         WHERE event_id = ?1 AND state = 'applied'",
+    )
+    .bind(rejected.event_id)
+    .bind(rejected.at)
+    .execute(&mut **tx)
+    .await?;
+    load_receipt_in_tx(tx, rejected.event_id)
+        .await?
+        .ok_or(SyncDbError::ReceiptMismatch)
+}
+
+#[derive(Clone, Debug)]
 pub struct SnapshotCursor<'a> {
     pub source_node_id: &'a str,
     pub contiguous_sequence: i64,
@@ -1187,4 +1324,61 @@ pub async fn update_recovery_state(
         return Err(SyncDbError::TerminalState);
     }
     Ok(())
+}
+
+/// Predicts the contiguous cursor that `complete_inbox_apply_in_tx` will record
+/// for an observed sequence. This is read-only and lets the service hash the
+/// exact receipt before cursor, receipt, audit, and business projection commit.
+pub async fn preview_contiguous_sequence_in_tx(
+    tx: &mut Transaction<'_, Sqlite>,
+    receiver_node_id: &str,
+    source_node_id: &str,
+    branch_id: &str,
+    hq_epoch: i64,
+    branch_epoch: i64,
+    observed_sequence: i64,
+) -> SyncDbResult<i64> {
+    if observed_sequence < 1 {
+        return Err(SyncDbError::InvalidInput("cursor sequence"));
+    }
+    let current: Option<CursorRow> = sqlx::query_as(
+        "SELECT contiguous_sequence FROM sync_cursors
+         WHERE receiver_node_id = ?1 AND source_node_id = ?2 AND branch_id = ?3
+           AND hq_epoch = ?4 AND branch_epoch = ?5",
+    )
+    .bind(receiver_node_id)
+    .bind(source_node_id)
+    .bind(branch_id)
+    .bind(hq_epoch)
+    .bind(branch_epoch)
+    .fetch_optional(&mut **tx)
+    .await?;
+    let mut contiguous = current.map_or(0, |row| row.contiguous_sequence);
+    if observed_sequence <= contiguous || observed_sequence > contiguous + 1 {
+        return Ok(contiguous);
+    }
+    contiguous = observed_sequence;
+    loop {
+        let next = contiguous
+            .checked_add(1)
+            .ok_or(SyncDbError::InvalidInput("cursor overflow"))?;
+        let observed: Option<(i64,)> = sqlx::query_as(
+            "SELECT 1 FROM sync_cursor_gaps
+             WHERE receiver_node_id = ?1 AND source_node_id = ?2 AND branch_id = ?3
+               AND hq_epoch = ?4 AND branch_epoch = ?5 AND observed_sequence = ?6",
+        )
+        .bind(receiver_node_id)
+        .bind(source_node_id)
+        .bind(branch_id)
+        .bind(hq_epoch)
+        .bind(branch_epoch)
+        .bind(next)
+        .fetch_optional(&mut **tx)
+        .await?;
+        if observed.is_none() {
+            break;
+        }
+        contiguous = next;
+    }
+    Ok(contiguous)
 }

@@ -40,6 +40,23 @@ fn db_url(app: &tauri::AppHandle) -> Result<String, String> {
     Ok(format!("sqlite:{}", path.display()))
 }
 
+/// Install the reviewed persistent capture triggers after SQL migrations finish.
+/// The command accepts no SQL, identity, branch, or key material from IPC.
+#[tauri::command]
+pub async fn initialize_sync_capture(app: tauri::AppHandle) -> Result<u64, String> {
+    let url = db_url(&app)?;
+    let pool = SqlitePoolOptions::new()
+        .max_connections(1)
+        .connect(&url)
+        .await
+        .map_err(|error| format!("Failed to open DB for sync activation: {error}"))?;
+    let installed = crate::sync_activation::install_capture_triggers(&pool)
+        .await
+        .map_err(|error| format!("Failed to activate branch sync capture: {error}"))?;
+    pool.close().await;
+    u64::try_from(installed).map_err(|_| "Sync trigger count overflow".to_string())
+}
+
 #[tauri::command]
 pub async fn start_lan_server(
     app: tauri::AppHandle,
@@ -59,6 +76,9 @@ pub async fn start_lan_server(
         .connect(&url)
         .await
         .map_err(|e| format!("Failed to open DB: {}", e))?;
+    crate::sync_activation::install_capture_triggers(&pool)
+        .await
+        .map_err(|e| format!("Failed to activate branch sync capture: {e}"))?;
 
     let browser_port = match read_only_port {
         Some(browser_port) if browser_port != 0 && browser_port != port => browser_port,
@@ -73,9 +93,16 @@ pub async fn start_lan_server(
         })?,
     };
     let business_name_state = Arc::new(parking_lot::RwLock::new(business_name.clone()));
+    let sync = crate::sync_activation::coordinator_from_environment(pool.clone())
+        .await
+        .map_err(|error| format!("Failed to configure branch sync: {error}"))?;
+    if let Some(coordinator) = sync.clone() {
+        crate::sync_activation::start_dispatcher(coordinator);
+    }
     let server_state = ServerState {
         pool: pool.clone(),
         business_name: business_name_state,
+        sync,
     };
 
     let handle = start_server(server_state, port).await?;
