@@ -197,3 +197,24 @@ describe("read-only web projection boundary", () => {
     );
   });
 });
+
+
+describe("browser authorization login", () => {
+  it("resolves /web/login and redeems a desktop-issued code with same-origin credentials", async () => {
+    expect(resolveWebRoute("/web/login")).toEqual({ id: "login" });
+    const fetchSpy = vi.fn(async () => new Response(JSON.stringify({ authorized: true }), {
+      status: 200,
+      headers: { "content-type": "application/json" },
+    }));
+    const { redeemBrowserAuthorization } = await import("@/web/api");
+    await redeemBrowserAuthorization("AAAA-BBBB-CCCC-DDDD-EEEE-FFFF-0000-1111", fetchSpy);
+    expect(fetchSpy).toHaveBeenCalledTimes(1);
+    expect(String(fetchSpy.mock.calls[0]?.[0])).toContain("/api/web/v1/session?code=");
+    expect(fetchSpy.mock.calls[0]?.[1]).toMatchObject({
+      method: "GET",
+      credentials: "same-origin",
+      cache: "no-store",
+      redirect: "error",
+    });
+  });
+});

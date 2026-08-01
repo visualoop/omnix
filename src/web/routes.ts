@@ -1,6 +1,7 @@
 import { WEB_REPORT_DEFINITIONS, WEB_ROUTE_DEFINITIONS, type ReportId, type WebRouteDefinition } from "@/web/contracts";
 
 export type WebRouteMatch =
+  | { readonly id: "login" }
   | { readonly id: "home" }
   | { readonly id: "branches" }
   | { readonly id: "reports" }
@@ -26,6 +27,7 @@ function decodedSegment(value: string): string | null {
 
 export function resolveWebRoute(pathname: string): WebRouteMatch | null {
   if (pathname.includes("?") || pathname.includes("#") || pathname.includes("\\")) return null;
+  if (pathname === "/web/login" || pathname === "/web/login/") return { id: "login" };
   if (pathname === "/web" || pathname === "/web/") return { id: "home" };
   if (pathname === "/web/branches") return { id: "branches" };
   if (pathname === "/web/reports") return { id: "reports" };
@@ -47,6 +49,7 @@ export function resolveWebRoute(pathname: string): WebRouteMatch | null {
 }
 
 export function routeDefinitionFor(match: WebRouteMatch): WebRouteDefinition {
+  if (match.id === "login") throw new Error("Login does not expose a reporting capability.");
   const definitionId = match.id === "report" ? "report" : match.id;
   const definition = WEB_ROUTE_DEFINITIONS.find((candidate) => candidate.id === definitionId);
   if (!definition) throw new Error(`Missing web route capability for ${definitionId}`);

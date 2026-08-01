@@ -62,6 +62,28 @@ function safeSegment(value: string, label: string): string {
   return value;
 }
 
+export async function redeemBrowserAuthorization(
+  code: string,
+  fetchImplementation: FetchImplementation = fetch,
+): Promise<void> {
+  const normalized = code.trim();
+  if (!/^[A-Fa-f0-9 -]{32,48}$/.test(normalized)) {
+    throw new WebApiError(400, "Enter the complete authorization code from the desktop administrator.");
+  }
+  const response = await fetchImplementation(`/api/web/v1/session?${new URLSearchParams({ code: normalized })}`, {
+    method: "GET",
+    credentials: "same-origin",
+    cache: "no-store",
+    headers: { Accept: "application/json" },
+    redirect: "error",
+  });
+  if (!response.ok) {
+    throw new WebApiError(response.status, response.status === 401
+      ? "This code has expired or was already used. Ask the administrator for a new one."
+      : "Browser access could not be authorized.");
+  }
+}
+
 export function createReadonlyWebApi(fetchImplementation: FetchImplementation = fetch): ReadonlyWebApi {
   async function getJson<T>(path: string, params?: URLSearchParams): Promise<T> {
     const url = params && params.size > 0 ? `${path}?${params.toString()}` : path;

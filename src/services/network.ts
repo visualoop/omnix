@@ -4,7 +4,31 @@ import { fetch } from "@tauri-apps/plugin-http";
 export interface ServerStatus {
   running: boolean;
   url: string | null;
+  read_only_url: string | null;
   mdns_active: boolean;
+}
+
+export interface IssuedBrowserAuthorization {
+  grantId: string;
+  authorizationCode: string;
+  userId: string;
+  displayName: string;
+  deviceLabel: string;
+  role: "viewer" | "manager";
+  assignedBranchIds: string[];
+  permissions: string[];
+  grantExpiresAt: string;
+  sessionExpiresAt: string;
+}
+
+export interface BrowserSessionAdminRow {
+  id: string;
+  displayName: string;
+  deviceLabel: string;
+  state: "pending" | "active" | "redeemed" | "expired" | "revoked";
+  issuedAt: string;
+  expiresAt: string;
+  revokedAt: string | null;
 }
 
 export interface PairingCodeInfo {
@@ -126,6 +150,28 @@ export async function getServerStatus(): Promise<ServerStatus> {
   return invoke<ServerStatus>("lan_server_status");
 }
 
+
+export async function issueReadOnlyWebAuthorization(input: {
+  administratorUserId: string;
+  userId: string;
+  deviceLabel: string;
+  ttlSeconds: number;
+}): Promise<IssuedBrowserAuthorization> {
+  return invoke<IssuedBrowserAuthorization>("issue_read_only_web_authorization", input);
+}
+
+export async function listReadOnlyWebAuthorizations(
+  administratorUserId: string,
+): Promise<BrowserSessionAdminRow[]> {
+  return invoke<BrowserSessionAdminRow[]>("list_read_only_web_authorizations", { administratorUserId });
+}
+
+export async function revokeReadOnlyWebAuthorization(
+  administratorUserId: string,
+  authorizationId: string,
+): Promise<void> {
+  return invoke<void>("revoke_read_only_web_authorization", { administratorUserId, authorizationId });
+}
 export async function generatePairingCode(): Promise<PairingCodeInfo> {
   return invoke<PairingCodeInfo>("generate_pairing_code");
 }

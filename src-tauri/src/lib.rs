@@ -723,6 +723,12 @@ fn run_inner() {
             sql: include_str!("../migrations/102_command_api_runtime.sql"),
             kind: MigrationKind::Up,
         },
+        Migration {
+            version: 103,
+            description: "Read-only browser authorization grants and revocation indexes",
+            sql: include_str!("../migrations/103_read_only_web_sessions.sql"),
+            kind: MigrationKind::Up,
+        },
     ];
 
     let builder = tauri::Builder::default()
@@ -851,6 +857,9 @@ fn run_inner() {
             commands::generate_pairing_code,
             commands::list_paired_devices,
             commands::revoke_paired_device,
+            commands::issue_read_only_web_authorization,
+            commands::list_read_only_web_authorizations,
+            commands::revoke_read_only_web_authorization,
             commands::discover_lan_servers,
             commands::open_cash_drawer,
             commands::read_weight_scale,
