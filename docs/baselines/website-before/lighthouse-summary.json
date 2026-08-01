@@ -1,0 +1,41 @@
+{
+  "capturedAt": "2026-07-19T16:53:00Z",
+  "url": "https://omnix.co.ke/ke",
+  "runsPerFormFactor": 1,
+  "tool": "Lighthouse CI 0.15.1",
+  "desktop": {
+    "scores": {
+      "performance": 0.76,
+      "accessibility": 0.94,
+      "bestPractices": 1,
+      "seo": 0.92
+    },
+    "metrics": {
+      "firstContentfulPaint": "0.9 s",
+      "largestContentfulPaint": "2.4 s",
+      "totalBlockingTime": "170 ms",
+      "cumulativeLayoutShift": "0.008",
+      "speedIndex": "2.8 s"
+    }
+  },
+  "mobile": {
+    "scores": {
+      "performance": 0.53,
+      "accessibility": 0.94,
+      "bestPractices": 1,
+      "seo": 0.92
+    },
+    "metrics": {
+      "firstContentfulPaint": "1.2 s",
+      "largestContentfulPaint": "6.3 s",
+      "totalBlockingTime": "1080 ms",
+      "cumulativeLayoutShift": "0",
+      "speedIndex": "3.7 s"
+    }
+  },
+  "limitations": [
+    "Single-run directional baseline, not a statistically stable performance result.",
+    "Collected against production, while visual screenshots were collected against local development.",
+    "Container required Playwright Chromium plus --no-sandbox."
+  ]
+}

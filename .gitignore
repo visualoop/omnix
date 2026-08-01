@@ -60,3 +60,6 @@ __pycache__/
 .vercel
 .env*
 scripts/.preview/
+
+# Local Lighthouse CI reports (committed summaries live under docs/baselines/)
+.lighthouseci/
