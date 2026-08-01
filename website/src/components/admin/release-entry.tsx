@@ -9,6 +9,16 @@ interface ReleaseLike {
   exeUrl: string | null
   msiUrl: string | null
   signature?: string | null
+  androidPlatform: string | null
+  androidApkUrl: string | null
+  androidAabUrl: string | null
+  androidApkSize: number | null
+  sha256Apk: string | null
+  androidSigningCertificateSha256: string | null
+}
+
+function formatBytes(bytes: number | null): string {
+  return bytes ? `${(bytes / 1024 / 1024).toFixed(1)} MB` : 'size unavailable'
 }
 
 /**
@@ -54,6 +64,25 @@ export function ReleaseEntry({ r, isLatest = false }: { r: ReleaseLike; isLatest
             {r.notes.split('\n')[0]}
           </div>
         )}
+        {r.androidPlatform === 'android' && r.androidApkUrl ? (
+          <details className="text-[10px] text-[var(--color-fg-subtle)]">
+            <summary className="w-fit cursor-pointer font-mono uppercase tracking-[0.14em] hover:text-[var(--color-accent)]">
+              Android · {formatBytes(r.androidApkSize)} · verification
+            </summary>
+            <dl className="mt-2 grid max-w-[72ch] gap-1 font-mono">
+              <div>
+                <dt className="inline text-[var(--color-fg-muted)]">APK SHA-256: </dt>
+                <dd className="inline break-all">{r.sha256Apk ?? 'unavailable'}</dd>
+              </div>
+              <div>
+                <dt className="inline text-[var(--color-fg-muted)]">Signing certificate: </dt>
+                <dd className="inline break-all">
+                  {r.androidSigningCertificateSha256 ?? 'unavailable'}
+                </dd>
+              </div>
+            </dl>
+          </details>
+        ) : null}
       </div>
 
       <div className="flex items-center gap-1.5 text-[10px] font-mono shrink-0">
@@ -79,6 +108,30 @@ export function ReleaseEntry({ r, isLatest = false }: { r: ReleaseLike; isLatest
           >
             <Package weight="regular" className="size-3" />
             .msi
+          </a>
+        )}
+        {r.androidApkUrl && (
+          <a
+            href={r.androidApkUrl}
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex items-center gap-1 rounded-sm border border-[var(--color-border)] px-1.5 py-0.5 hover:border-[var(--color-accent-line)] hover:text-[var(--color-accent)] text-[var(--color-fg-muted)] transition-colors"
+            title="Signed universal Android installer"
+          >
+            <DownloadSimple weight="regular" className="size-3" />
+            .apk
+          </a>
+        )}
+        {r.androidAabUrl && (
+          <a
+            href={r.androidAabUrl}
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex items-center gap-1 rounded-sm border border-[var(--color-border)] px-1.5 py-0.5 hover:border-[var(--color-accent-line)] hover:text-[var(--color-accent)] text-[var(--color-fg-muted)] transition-colors"
+            title="Signed Android App Bundle"
+          >
+            <Package weight="regular" className="size-3" />
+            .aab
           </a>
         )}
         <time className="text-[var(--color-fg-subtle)] tabular-nums ml-2">

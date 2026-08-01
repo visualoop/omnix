@@ -27,6 +27,10 @@
  *     forcePublish: true,                     // ignored — always publish
  *   }
  *
+ * Android CI sends platform="android" plus package/version identity, APK/AAB
+ * URLs, byte sizes, SHA-256 digests, and the signing certificate fingerprint.
+ * Those fields are stored beside (not instead of) the desktop artifacts.
+ *
  * Auth: header `x-system-token: $RELEASE_INGEST_TOKEN`. The CI secret
  * is named `PAYLOAD_SYSTEM_TOKEN` for backwards compat — read either
  * env var to make the cutover seamless. Constant-time compare to
@@ -54,6 +58,16 @@ interface IngestBody {
   sha256Nsis?: unknown
   sha256Msi?: unknown
   updaterSignature?: unknown
+  platform?: unknown
+  androidPackageId?: unknown
+  androidVersionCode?: unknown
+  androidApkUrl?: unknown
+  androidAabUrl?: unknown
+  androidApkSize?: unknown
+  androidAabSize?: unknown
+  sha256Apk?: unknown
+  sha256Aab?: unknown
+  androidSigningCertificateSha256?: unknown
   title?: unknown
   summary?: unknown
 }
@@ -84,6 +98,28 @@ const SEMVER_RE = /^\d+\.\d+\.\d+(-[\w.]+)?$/
 
 function asString(v: unknown): string | undefined {
   return typeof v === 'string' && v.trim().length > 0 ? v.trim() : undefined
+}
+
+function asPositiveInteger(v: unknown): number | undefined {
+  return typeof v === 'number' && Number.isSafeInteger(v) && v > 0 ? v : undefined
+}
+
+function asSha256(v: unknown): string | undefined {
+  const value = asString(v)?.toLowerCase()
+  return value && /^[0-9a-f]{64}$/.test(value) ? value : undefined
+}
+
+function asAndroidArtifactUrl(v: unknown): string | undefined {
+  const value = asString(v)
+  if (!value) return undefined
+  try {
+    const url = new URL(value)
+    return url.protocol === 'https:' && url.hostname === 'media.omnix.co.ke'
+      ? url.toString()
+      : undefined
+  } catch {
+    return undefined
+  }
 }
 
 export async function POST(req: Request) {
@@ -121,6 +157,7 @@ export async function POST(req: Request) {
   const title = asString(body.title)
   const summary = asString(body.summary)
   const variant = asString(body.variant)
+  const platform = asString(body.platform)
 
   // Synthesise the markdown notes column from title + summary. The
   // /downloads page reads notes.split('\n')[0] as the headline.
@@ -146,6 +183,80 @@ export async function POST(req: Request) {
     .from(releases)
     .where(eq(releases.version, version))
     .limit(1))[0]
+
+  if (platform === 'android') {
+    const androidPackageId = asString(body.androidPackageId)
+    const androidVersionCode = asPositiveInteger(body.androidVersionCode)
+    const androidApkUrl = asAndroidArtifactUrl(body.androidApkUrl)
+    const androidAabUrl = asAndroidArtifactUrl(body.androidAabUrl)
+    const androidApkSize = asPositiveInteger(body.androidApkSize)
+    const androidAabSize = asPositiveInteger(body.androidAabSize)
+    const sha256Apk = asSha256(body.sha256Apk)
+    const sha256Aab = asSha256(body.sha256Aab)
+    const androidSigningCertificateSha256 = asSha256(
+      body.androidSigningCertificateSha256,
+    )
+
+    if (
+      androidPackageId !== 'co.ke.omnix.app' ||
+      androidVersionCode === undefined ||
+      androidApkUrl === undefined ||
+      androidAabUrl === undefined ||
+      androidApkSize === undefined ||
+      androidAabSize === undefined ||
+      sha256Apk === undefined ||
+      sha256Aab === undefined ||
+      androidSigningCertificateSha256 === undefined
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            'invalid Android release metadata — require Omnix package identity, media.omnix.co.ke HTTPS URLs, positive sizes, and SHA-256 values',
+        },
+        { status: 400 },
+      )
+    }
+
+    const androidValues = {
+      channel,
+      androidPlatform: 'android',
+      androidPackageId,
+      androidVersionCode,
+      androidApkUrl,
+      androidAabUrl,
+      androidApkSize,
+      androidAabSize,
+      sha256Apk,
+      sha256Aab,
+      androidSigningCertificateSha256,
+    } as const
+
+    await db
+      .insert(releases)
+      .values({
+        id,
+        version,
+        notes,
+        ...androidValues,
+      })
+      .onConflictDoUpdate({
+        target: releases.version,
+        set: androidValues,
+      })
+
+    return NextResponse.json(
+      {
+        ok: true,
+        action: existing ? 'updated' : 'created',
+        version,
+        channel,
+        variant,
+        platform: 'android',
+        androidApkUrl,
+      },
+      { status: 200 },
+    )
+  }
 
   // Build the merged metadata.variants object.
   type VariantUrls = { exe?: string; msi?: string; signature?: string }

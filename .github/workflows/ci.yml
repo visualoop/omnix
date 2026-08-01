@@ -535,7 +535,7 @@ jobs:
           test -f src-tauri/gen/android/app/build.gradle.kts
           node scripts/verify-android-overlay.mjs --generated
 
-      - name: Apply release identity and Gradle signing to the generated project
+      - name: Apply release identity to the generated Android properties
         shell: bash
         env:
           VERSION: ${{ steps.release.outputs.version }}
@@ -544,46 +544,31 @@ jobs:
           set -euo pipefail
           node <<'NODE'
           const fs = require('node:fs')
-          const file = 'src-tauri/gen/android/app/build.gradle.kts'
+          const file = 'src-tauri/gen/android/app/tauri.properties'
           let source = fs.readFileSync(file, 'utf8')
-          const expectedId = process.env.ANDROID_PACKAGE_ID
-          if (!source.includes(`applicationId = "${expectedId}"`)) {
-            throw new Error(`generated Android applicationId is not ${expectedId}`)
+          const replacements = {
+            'tauri.android.versionCode': process.env.VERSION_CODE,
+            'tauri.android.versionName': process.env.VERSION,
           }
-          if (!/versionCode\s*=\s*\d+/.test(source) || !/versionName\s*=\s*"[^"]+"/.test(source)) {
-            throw new Error('generated Gradle file has no recognizable versionCode/versionName')
+          for (const [key, value] of Object.entries(replacements)) {
+            const pattern = new RegExp(`^${key.replaceAll('.', '\\.')}=.*$`, 'm')
+            if (!pattern.test(source)) throw new Error(`${file} is missing ${key}`)
+            source = source.replace(pattern, `${key}=${value}`)
           }
-          source = source
-            .replace(/versionCode\s*=\s*\d+/, `versionCode = ${process.env.VERSION_CODE}`)
-            .replace(/versionName\s*=\s*"[^"]+"/, `versionName = "${process.env.VERSION}"`)
-
-          const buildTypes = /^(\s*)buildTypes\s*\{/m
-          const match = source.match(buildTypes)
-          if (!match) throw new Error('generated Gradle file has no buildTypes block')
-          const indent = match[1]
-          const signing = `${indent}signingConfigs {\n${indent}    create("release") {\n${indent}        storeFile = file(System.getenv("ANDROID_KEYSTORE_PATH"))\n${indent}        storePassword = System.getenv("ANDROID_KEYSTORE_PASSWORD")\n${indent}        keyAlias = System.getenv("ANDROID_KEY_ALIAS")\n${indent}        keyPassword = System.getenv("ANDROID_KEY_PASSWORD")\n${indent}    }\n${indent}}\n\n`
-          source = source.replace(buildTypes, `${signing}${match[0]}`)
-          const releaseBlock = /getByName\("release"\)\s*\{/
-          if (!releaseBlock.test(source)) throw new Error('generated Gradle file has no getByName("release") build type')
-          source = source.replace(releaseBlock, '$&\n' + indent + '        signingConfig = signingConfigs.getByName("release")')
           fs.writeFileSync(file, source)
           NODE
 
-      - name: Build signed universal APK
+      - name: Build signed universal APK and AAB
         env:
           VITE_OMNIX_VARIANT: pro
-        run: pnpm tauri android build --apk
-
-      - name: Build signed AAB for later Play distribution
-        env:
-          VITE_OMNIX_VARIANT: pro
-        run: pnpm tauri android build --aab
+        run: pnpm tauri android build --ci --apk --aab --target aarch64 --target armv7 --target i686 --target x86_64
 
       - name: Collect, verify, and checksum Android artifacts
         id: artifacts
         shell: bash
         env:
           VERSION: ${{ steps.release.outputs.version }}
+          EXPECTED_CERT_SHA256: ${{ steps.keystore.outputs.cert_sha256 }}
         run: |
           set -euo pipefail
           mapfile -t APKS < <(find src-tauri/gen/android/app/build/outputs/apk -type f -path '*/release/*' -name '*.apk' | sort)
@@ -598,7 +583,15 @@ jobs:
           cp "${APKS[0]}" "release-assets/$APK_NAME"
           cp "${AABS[0]}" "release-assets/$AAB_NAME"
 
-          "${ANDROID_SDK_ROOT}/build-tools/${ANDROID_BUILD_TOOLS}/apksigner" verify --verbose --print-certs "release-assets/$APK_NAME"
+          APK_VERIFY=$("${ANDROID_SDK_ROOT}/build-tools/${ANDROID_BUILD_TOOLS}/apksigner" verify --verbose --print-certs "release-assets/$APK_NAME")
+          printf '%s\n' "$APK_VERIFY"
+          CERT_SHA256=$(printf '%s\n' "$APK_VERIFY" \
+            | awk -F': ' '/Signer #1 certificate SHA-256 digest:/{gsub(":", "", $2); print tolower($2); exit}')
+          [[ "$CERT_SHA256" =~ ^[0-9a-f]{64}$ ]] || { echo "apksigner did not report a valid certificate SHA-256" >&2; exit 1; }
+          [[ "$CERT_SHA256" == "$EXPECTED_CERT_SHA256" ]] || {
+            echo "APK signing certificate does not match the release keystore" >&2
+            exit 1
+          }
           # Android app-signing certificates are normally self-signed. Verify
           # the AAB's JAR signature without jarsigner's unrelated PKI strictness.
           jarsigner -verify -verbose -certs "release-assets/$AAB_NAME"
@@ -613,6 +606,7 @@ jobs:
           echo "aab_sha256=$(sha256sum "release-assets/$AAB_NAME" | awk '{print $1}')" >> "$GITHUB_OUTPUT"
           echo "apk_size=$(stat -c '%s' "release-assets/$APK_NAME")" >> "$GITHUB_OUTPUT"
           echo "aab_size=$(stat -c '%s' "release-assets/$AAB_NAME")" >> "$GITHUB_OUTPUT"
+          echo "cert_sha256=$CERT_SHA256" >> "$GITHUB_OUTPUT"
 
       - name: Create Android release metadata
         shell: bash
@@ -626,7 +620,7 @@ jobs:
           AAB_SHA256: ${{ steps.artifacts.outputs.aab_sha256 }}
           APK_SIZE: ${{ steps.artifacts.outputs.apk_size }}
           AAB_SIZE: ${{ steps.artifacts.outputs.aab_size }}
-          CERT_SHA256: ${{ steps.keystore.outputs.cert_sha256 }}
+          CERT_SHA256: ${{ steps.artifacts.outputs.cert_sha256 }}
           PUBLIC_BASE: ${{ vars.S3_PUBLIC_URL || 'https://media.omnix.co.ke' }}
         run: |
           set -euo pipefail
@@ -705,7 +699,7 @@ jobs:
           AAB_SHA256: ${{ steps.artifacts.outputs.aab_sha256 }}
           APK_SIZE: ${{ steps.artifacts.outputs.apk_size }}
           AAB_SIZE: ${{ steps.artifacts.outputs.aab_size }}
-          CERT_SHA256: ${{ steps.keystore.outputs.cert_sha256 }}
+          CERT_SHA256: ${{ steps.artifacts.outputs.cert_sha256 }}
           PUBLIC_BASE: ${{ vars.S3_PUBLIC_URL || 'https://media.omnix.co.ke' }}
         run: |
           set -euo pipefail
@@ -740,9 +734,7 @@ jobs:
           cat "$RUNNER_TEMP/release-sync.json"
           [[ "$HTTP_CODE" == "200" ]] || { echo "release metadata sync failed: HTTP $HTTP_CODE" >&2; exit 1; }
 
-          # Intentional activation guard: today's route ignores Android fields.
-          # The coordinator must extend it to persist metadata.android and return
-          # this acknowledgment before this staged workflow can ship.
+          # Require the API to acknowledge the exact R2 APK URL before the job succeeds.
           jq -e --arg apkUrl "$APK_URL" \
             '.ok == true and .platform == "android" and .androidApkUrl == $apkUrl' \
             "$RUNNER_TEMP/release-sync.json" >/dev/null

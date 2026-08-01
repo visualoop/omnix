@@ -16,6 +16,36 @@ val tauriProperties = Properties().apply {
 android {
     compileSdk = 35
     namespace = "co.ke.omnix.app"
+
+    // Release signing. Credentials never live in the repository: CI decodes the
+    // keystore from ANDROID_KEYSTORE_BASE64 and exports these variables, and a
+    // maintainer can export the same four locally to produce an identical
+    // signed build. When they are absent the release build stays unsigned so
+    // ordinary development and CI dry runs still work.
+    val omnixKeystorePath: String? = System.getenv("ANDROID_KEYSTORE_PATH")
+    val omnixKeystorePassword: String? = System.getenv("ANDROID_KEYSTORE_PASSWORD")
+    val omnixKeyAlias: String? = System.getenv("ANDROID_KEY_ALIAS")
+    val omnixKeyPassword: String? = System.getenv("ANDROID_KEY_PASSWORD")
+    val omnixSigningReady = !omnixKeystorePath.isNullOrBlank() &&
+        !omnixKeystorePassword.isNullOrBlank() &&
+        !omnixKeyAlias.isNullOrBlank() &&
+        !omnixKeyPassword.isNullOrBlank() &&
+        file(omnixKeystorePath).exists()
+
+    if (omnixSigningReady) {
+        signingConfigs {
+            create("release") {
+                storeFile = file(omnixKeystorePath!!)
+                storePassword = omnixKeystorePassword
+                keyAlias = omnixKeyAlias
+                keyPassword = omnixKeyPassword
+                enableV1Signing = true
+                enableV2Signing = true
+                enableV3Signing = true
+            }
+        }
+    }
+
     defaultConfig {
         manifestPlaceholders["usesCleartextTraffic"] = "false"
         applicationId = "co.ke.omnix.app"
@@ -38,6 +68,9 @@ android {
             }
         }
         getByName("release") {
+            if (omnixSigningReady) {
+                signingConfig = signingConfigs.getByName("release")
+            }
             isMinifyEnabled = true
             proguardFiles(
                 *fileTree(".") { include("**/*.pro") }

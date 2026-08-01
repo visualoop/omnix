@@ -56,7 +56,7 @@ Stable release tags use `vMAJOR.MINOR.PATCH`. The Android `versionName` is the t
 versionCode = MAJOR × 1,000,000 + MINOR × 1,000 + PATCH
 ```
 
-Minor and patch are constrained to `0..999`; the result must be `1..2,100,000,000`. A release version must never move backwards. For example, `v0.72.4` maps to `72004`, and `v1.0.0` maps to `1000000`. The staged workflow rejects prerelease tags because beta/RC ordering needs a separate versionCode allocation policy before such AABs can be uploaded to Play.
+Minor and patch are constrained to `0..999`; the result must be `1..2,100,000,000`. A release version must never move backwards. For example, `v0.73.0` maps to `73000`, and `v1.0.0` maps to `1000000`. The staged workflow rejects prerelease tags because beta/RC ordering needs a separate versionCode allocation policy before such AABs can be uploaded to Play.
 
 The coordinator must compare the computed code with the latest persisted Android code in the website release record before activation. The Android-aware ingest endpoint must reject `versionCode <= latest Android versionCode` for a different release. Idempotent retries of the same tag/code are allowed.
 
@@ -116,9 +116,9 @@ CI continues authenticating with `x-system-token` using the existing `PAYLOAD_SY
   "platform": "android",
   "variant": "android",
   "androidPackageId": "co.ke.omnix.app",
-  "androidVersionCode": 72004,
-  "androidApkUrl": "https://media.omnix.co.ke/releases/v0.72.4/android/Omnix-0.72.4-android-universal.apk",
-  "androidAabUrl": "https://media.omnix.co.ke/releases/v0.72.4/android/Omnix-0.72.4-android.aab",
+  "androidVersionCode": 73000,
+  "androidApkUrl": "https://media.omnix.co.ke/releases/v0.73.0/android/Omnix-0.73.0-android-universal.apk",
+  "androidAabUrl": "https://media.omnix.co.ke/releases/v0.73.0/android/Omnix-0.73.0-android.aab",
   "androidApkSize": 0,
   "androidAabSize": 0,
   "sha256Apk": "<64 lowercase hex characters>",
@@ -144,13 +144,13 @@ Return `204` if there is no newer compatible Android release. Otherwise return a
 ```json
 {
   "platform": "android",
-  "version": "0.72.4",
-  "versionCode": 72004,
+  "version": "0.73.0",
+  "versionCode": 73000,
   "packageId": "co.ke.omnix.app",
   "notes": "...",
   "publishedAt": "2026-07-31T12:00:00Z",
   "apk": {
-    "url": "https://media.omnix.co.ke/releases/v0.72.4/android/Omnix-0.72.4-android-universal.apk",
+    "url": "https://media.omnix.co.ke/releases/v0.73.0/android/Omnix-0.73.0-android-universal.apk",
     "size": 0,
     "sha256": "<64 lowercase hex characters>",
     "signingCertificateSha256": "<64 lowercase hex characters>"

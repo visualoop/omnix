@@ -318,6 +318,92 @@
   font-size: 0.9rem;
   line-height: 1.65;
 }
+.androidDownload {
+  display: grid;
+  gap: var(--space-4);
+  margin-block-start: var(--space-5);
+  border-block: 1px solid var(--color-accent-line);
+  padding-block: var(--space-5);
+}
+.androidReleaseMeta {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+  font-family: var(--font-mono);
+}
+.androidReleaseMeta span {
+  color: var(--color-fg-subtle);
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.androidReleaseMeta strong {
+  color: var(--color-fg);
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+.apkAction {
+  display: inline-flex;
+  min-height: 2.75rem;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  border-radius: var(--radius-sm);
+  background: var(--color-accent);
+  color: var(--color-accent-foreground);
+  padding-inline: var(--space-4);
+  font-size: 0.82rem;
+  font-weight: 750;
+  transition:
+    background-color var(--duration-ui) var(--ease-out),
+    transform var(--duration-fast) var(--ease-out);
+}
+.apkAction:hover {
+  background: var(--color-accent-hover);
+}
+.apkAction:active {
+  transform: scale(0.98);
+}
+.apkAction:focus-visible {
+  outline: 3px solid var(--color-accent);
+  outline-offset: 3px;
+}
+.apkAction svg {
+  width: 1rem;
+  height: 1rem;
+}
+.checksum {
+  display: grid;
+  gap: var(--space-2);
+}
+.checksum span {
+  color: var(--color-fg-subtle);
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+}
+.checksum code {
+  color: var(--color-fg-muted);
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+.androidDownload p,
+.androidUnavailable {
+  margin: 0;
+  color: var(--color-fg-subtle);
+  font-size: 0.72rem;
+  line-height: 1.55;
+}
+.androidUnavailable {
+  margin-block-start: var(--space-5);
+  border-block: 1px solid var(--color-border);
+  padding-block: var(--space-4);
+}
 .clientDetails {
   margin-block-start: var(--space-5);
   border-block-start: 1px solid var(--color-border);
@@ -594,7 +680,8 @@
 @media (prefers-reduced-motion: reduce) {
   .primaryAction,
   .secondaryAction,
-  .dashboardAction {
+  .dashboardAction,
+  .apkAction {
     transition: none;
   }
 }

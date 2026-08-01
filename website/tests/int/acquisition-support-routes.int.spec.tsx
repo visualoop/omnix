@@ -10,13 +10,13 @@ const downloadsCss = read('src/app/[locale]/(frontend)/downloads/downloads.modul
 const migrationCss = read('src/app/[locale]/(frontend)/migration/migration.module.css')
 
 describe('Task 14 downloads acquisition route', () => {
-  it('keeps installers behind customer sign-in and explains all five purchased editions', () => {
+  it('keeps Windows installers behind customer sign-in and explains all five purchased editions', () => {
     for (const phrase of [
       'Install after purchase.',
       'customer dashboard',
       'Customer sign-in required',
       'Activation still required',
-      'No installer files or protected release addresses are published',
+      'Windows installer files and protected desktop release addresses are not published',
       'Assistance does not bypass sign-in, licence activation, device limits',
     ]) {
       expect(downloadsSource).toContain(phrase)
@@ -35,6 +35,18 @@ describe('Task 14 downloads acquisition route', () => {
     expect(downloadsSource).not.toMatch(/github\.com|releases\/download|\.exe\b|\.msi\b|Omnix Pro/i)
     expect(downloadsSource).not.toMatch(/free trial|start trial|\/buy\?variant/i)
     expect(downloadsSource).not.toContain("import('@/db')")
+  })
+
+  it('reads the current Android artifact and publishes its APK checksum from the release record', () => {
+    expect(downloadsSource).toContain("import { db, releases } from '@/db'")
+    expect(downloadsSource).toContain('releases.androidApkUrl')
+    expect(downloadsSource).toContain('releases.sha256Apk')
+    expect(downloadsSource).toContain('href={androidRelease.apkUrl}')
+    expect(downloadsSource).toContain('Download Android APK')
+    expect(downloadsSource).toContain('<code>{androidRelease.sha256}</code>')
+    expect(downloadsSource).toContain('not distributed through')
+    expect(downloadsSource).toContain('the Google Play Store')
+    expect(downloadsSource).not.toMatch(/https:\/\/[^'"`]*\.apk/i)
   })
 
   it('uses localized demo primaries, configured WhatsApp secondaries, and route metadata', () => {

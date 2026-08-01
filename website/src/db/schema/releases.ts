@@ -1,8 +1,8 @@
 /**
- * Releases — desktop installer manifest. Read by the auto-updater on every
- * heartbeat. Editable from the new admin dashboard.
+ * Releases — desktop and Android release manifest. Desktop fields remain the
+ * Tauri updater contract; nullable Android fields are populated by signed CI.
  */
-import { pgTable, text, timestamp, jsonb } from 'drizzle-orm/pg-core'
+import { integer, jsonb, pgTable, text, timestamp } from 'drizzle-orm/pg-core'
 
 export const releases = pgTable('releases', {
   id: text('id').primaryKey(),
@@ -15,5 +15,15 @@ export const releases = pgTable('releases', {
   dmgUrl: text('dmg_url'),
   appImageUrl: text('app_image_url'),
   signature: text('signature'),                            // tauri-updater signature
+  androidPlatform: text('android_platform'),               // android when a signed APK exists
+  androidPackageId: text('android_package_id'),
+  androidVersionCode: integer('android_version_code'),
+  androidApkUrl: text('android_apk_url'),
+  androidAabUrl: text('android_aab_url'),
+  androidApkSize: integer('android_apk_size'),
+  androidAabSize: integer('android_aab_size'),
+  sha256Apk: text('sha256_apk'),
+  sha256Aab: text('sha256_aab'),
+  androidSigningCertificateSha256: text('android_signing_certificate_sha256'),
   metadata: jsonb('metadata'),
 })

@@ -1,7 +1,9 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
+import { and, desc, eq, isNotNull } from 'drizzle-orm'
 
 import { Icon } from '@/components/icons'
+import { db, releases } from '@/db'
 import { buildAlternatesLanguages } from '@/lib/hreflang'
 import { buildSocialMetadata } from '@/lib/seo-metadata'
 import { getSiteSettings } from '@/lib/site-settings'
@@ -151,9 +153,42 @@ function whatsappHref(base: string | null): string | null {
   return `${base}${separator}text=${encodeURIComponent('Hi Omnix, I would like to book a demo and understand installation for my business.')}`
 }
 
+function formatMegabytes(bytes: number): string {
+  return `${(bytes / 1024 / 1024).toFixed(1)} MB`
+}
+
+async function getLatestAndroidRelease() {
+  try {
+    return (
+      await db
+        .select({
+          version: releases.version,
+          apkUrl: releases.androidApkUrl,
+          apkSize: releases.androidApkSize,
+          sha256: releases.sha256Apk,
+        })
+        .from(releases)
+        .where(
+          and(
+            eq(releases.channel, 'stable'),
+            isNotNull(releases.androidApkUrl),
+          ),
+        )
+        .orderBy(desc(releases.publishedAt))
+        .limit(1)
+    )[0]
+  } catch (error) {
+    console.error('[downloads] Android release lookup failed:', error)
+    return undefined
+  }
+}
+
 export default async function DownloadsPage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params
-  const settings = await getSiteSettings()
+  const [settings, androidRelease] = await Promise.all([
+    getSiteSettings(),
+    getLatestAndroidRelease(),
+  ])
   const demoHref = `/${locale}/contact?type=demo`
   const whatsapp = whatsappHref(settings.whatsappUrl)
 
@@ -222,7 +257,8 @@ export default async function DownloadsPage({ params }: { params: Promise<{ loca
                 Open customer sign-in <Icon.ArrowRight aria-hidden weight="bold" />
               </Link>
               <p className={styles.protectionNote}>
-                No installer files or protected release addresses are published on this page.
+                Windows installer files and protected desktop release addresses are not published
+                on this page.
               </p>
             </aside>
           </div>
@@ -263,6 +299,42 @@ export default async function DownloadsPage({ params }: { params: Promise<{ loca
                     </div>
                   </header>
                   <p className={styles.clientPurpose}>{client.purpose}</p>
+                  {client.id === 'android' ? (
+                    androidRelease?.apkUrl && androidRelease.sha256 ? (
+                      <div className={styles.androidDownload}>
+                        <div className={styles.androidReleaseMeta}>
+                          <span>Current signed release</span>
+                          <strong>
+                            v{androidRelease.version}
+                            {androidRelease.apkSize
+                              ? ` · ${formatMegabytes(androidRelease.apkSize)}`
+                              : ''}
+                          </strong>
+                        </div>
+                        <a
+                          className={styles.apkAction}
+                          href={androidRelease.apkUrl}
+                          rel="noopener noreferrer"
+                        >
+                          Download Android APK
+                          <Icon.Download aria-hidden weight="bold" />
+                        </a>
+                        <div className={styles.checksum}>
+                          <span>SHA-256</span>
+                          <code>{androidRelease.sha256}</code>
+                        </div>
+                        <p>
+                          Install this APK from the Omnix website. Omnix is not distributed through
+                          the Google Play Store.
+                        </p>
+                      </div>
+                    ) : (
+                      <div className={styles.androidUnavailable}>
+                        The signed Android release is being prepared. Return here for the official
+                        Omnix website download.
+                      </div>
+                    )
+                  ) : null}
                   <div className={styles.clientDetails}>
                     <div>
                       <h4>Requirements</h4>
