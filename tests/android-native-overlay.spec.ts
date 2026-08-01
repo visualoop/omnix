@@ -102,3 +102,42 @@ describe("Android least-privilege Tauri leaves", () => {
     expect(platform.app.security.capabilities).toEqual(["android-minimal"]);
   });
 });
+
+
+describe("Android native scanner and direct APK services", () => {
+  it("keeps reviewed native sources mirrored into generated Android output", () => {
+    for (const [source, generated] of [
+      ["src-tauri/mobile/android-overlay/OmnixMobilePlugin.kt", "src-tauri/gen/android/app/src/main/java/co/ke/omnix/app/mobile/OmnixMobilePlugin.kt"],
+      ["src-tauri/mobile/android-overlay/BarcodeCaptureSession.kt", "src-tauri/gen/android/app/src/main/java/co/ke/omnix/app/mobile/BarcodeCaptureSession.kt"],
+      ["src-tauri/mobile/android-overlay/DirectApkUpdater.kt", "src-tauri/gen/android/app/src/main/java/co/ke/omnix/app/mobile/DirectApkUpdater.kt"],
+      ["src-tauri/mobile/android-overlay/MainActivity.kt", "src-tauri/gen/android/app/src/main/java/co/ke/omnix/app/MainActivity.kt"],
+    ]) {
+      expect(read(generated)).toBe(read(source));
+    }
+  });
+
+  it("uses CameraX with bundled ML Kit and releases capture on cancellation or pause", () => {
+    const scanner = read("src-tauri/mobile/android-overlay/BarcodeCaptureSession.kt");
+    const plugin = read("src-tauri/mobile/android-overlay/OmnixMobilePlugin.kt");
+    expect(scanner).toContain("ProcessCameraProvider");
+    expect(scanner).toContain("BarcodeScanning.getClient");
+    expect(scanner).toContain("STRATEGY_KEEP_ONLY_LATEST");
+    expect(scanner).toContain("cameraProvider?.unbindAll()");
+    expect(plugin).toContain("scannerCapture.cancel()");
+    expect(plugin).not.toContain("fun scannerScan(invoke: Invoke) = invoke.resolve(null)");
+  });
+
+  it("pins, downloads, hashes and signer-verifies updates before explicit installer handoff", () => {
+    const updater = read("src-tauri/mobile/android-overlay/DirectApkUpdater.kt");
+    const plugin = read("src-tauri/mobile/android-overlay/OmnixMobilePlugin.kt");
+    expect(updater).toContain("c7f91eb28f7b6c6b23781382dc30b8c360cb2780d8c6b74db9ff07013fcd08bb");
+    expect(updater).toContain("https://omnix.co.ke/api/releases/latest");
+    expect(updater).toContain('MessageDigest.getInstance("SHA-256")');
+    expect(updater).toContain("getPackageArchiveInfo");
+    expect(updater).toContain("GET_SIGNING_CERTIFICATES");
+    expect(updater).toContain("FileProvider.getUriForFile");
+    expect(updater).toContain("installer.component = ComponentName");
+    expect(plugin).not.toContain('fun apkUpdateStage(invoke: Invoke) = invoke.reject');
+    expect(plugin).not.toContain('fun apkUpdateInstall(invoke: Invoke) = invoke.reject');
+  });
+});

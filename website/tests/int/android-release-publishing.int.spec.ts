@@ -65,4 +65,22 @@ describe('signed Android release publishing contract', () => {
     expect(entry).toContain('.apk')
     expect(entry).toContain('.aab')
   })
+  it('serves the pinned native Android update manifest from the version endpoint', () => {
+    const endpoint = read('src/app/api/releases/latest/route.ts')
+    for (const field of [
+      'releaseId',
+      'versionName',
+      'versionCode',
+      'downloadUrl',
+      'sha256',
+      'signingCertificateSha256',
+      'sizeBytes',
+    ]) {
+      expect(endpoint).toContain(field)
+    }
+    expect(endpoint).toContain("url.searchParams.get('platform') === 'android'")
+    expect(endpoint).toContain("android.androidPackageId !== 'co.ke.omnix.app'")
+    expect(endpoint).toContain('c7f91eb28f7b6c6b23781382dc30b8c360cb2780d8c6b74db9ff07013fcd08bb')
+    expect(endpoint).toContain("'Cache-Control': 'no-store'")
+  })
 })

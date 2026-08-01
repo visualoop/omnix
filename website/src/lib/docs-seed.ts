@@ -253,6 +253,12 @@ Android may ask you to allow your browser to install unknown apps. Allow that br
 
 Keep the installed app when updating. A newer APK signed by Omnix installs over it and keeps app data. Don't use APK mirrors, renamed packages, or files sent through an unverified chat. The Play Store doesn't currently carry Omnix.
 
+## Install an update from inside Omnix
+
+A direct-APK build checks the Omnix website release endpoint before it downloads anything. When a newer release is available, Omnix downloads it to the app's private storage, checks the published byte size and SHA-256, and verifies that the APK signing certificate is the pinned Omnix release certificate and matches the installed app. A file that fails any check is not offered to Android's installer.
+
+Tap **Install update** after verification. Android still owns the final package-installer confirmation. If Android asks whether Omnix may install unknown apps, allow Omnix, return to the app, and tap **Install update** again. Denying or leaving that screen keeps the verified APK staged and does not block POS or other offline work. Play-distributed builds do not request this permission and use Play-managed updates instead.
+
 ## First-run enrolment
 
 Open Omnix on Android and choose enrolment. On the Windows desktop hub, an owner or authorised manager creates a mobile enrolment for the staff member and branch. Scan the QR code or enter the one-time code shown by the hub, then confirm the business, user, and allowed branches on the phone.
@@ -267,7 +273,7 @@ Signing out removes the active user session. Revoking a device is different: an 
 
 ## Sell from mobile POS
 
-Open **POS**, confirm the branch named at the top, then search for an item or scan its barcode when camera scanning is available on the device. Add quantities, review the cart, choose one of the payment methods enabled for that branch, and complete the sale.
+Open **POS**, confirm the branch named at the top, then search for an item or tap the barcode scanner. On first use, Android asks for camera permission. Omnix opens its own CameraX capture view and uses the barcode model bundled in the app, so scanning does not hand data to an external scanner app or require a Play Services download. Point the camera at the requested barcode; the first valid result returns to POS. Tap **Cancel**, leave the app, or deny camera permission to stop capture and release the camera. Manual item search remains available either way. Add quantities, review the cart, choose one of the payment methods enabled for that branch, and complete the sale.
 
 A sale always belongs to one branch. The app won't complete a sale while **All Branches** is selected because stock, shifts, receipt numbering, and payment records need a single source branch. Switch to the selling branch first.
 

@@ -67,6 +67,10 @@ describe('application downloads and customer guides', () => {
       'Work offline',
       'Reports and PDF sharing',
       'Share PDF',
+      'Install an update from inside Omnix',
+      'pinned Omnix release certificate',
+      'CameraX capture view',
+      'Manual item search remains available',
     ]) {
       expect(body).toContain(phrase)
     }
