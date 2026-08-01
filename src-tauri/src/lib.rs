@@ -711,6 +711,12 @@ fn run_inner() {
             sql: include_str!("../migrations/100_read_only_web.sql"),
             kind: MigrationKind::Up,
         },
+        Migration {
+            version: 101,
+            description: "Backfill and repair user branch assignments",
+            sql: include_str!("../migrations/101_branch_assignment_backfill.sql"),
+            kind: MigrationKind::Up,
+        },
     ];
 
     let builder = tauri::Builder::default()

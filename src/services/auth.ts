@@ -1,5 +1,6 @@
 import { invoke } from "@tauri-apps/api/core";
 import { query, execute } from "@/lib/db";
+import { getOrRepairUserBranches } from "@/services/branches";
 import {
   BUILT_IN_ROLE_IDS,
   LEGACY_SYSTEM_ROLE_IDS,
@@ -63,6 +64,13 @@ export interface SetupInput {
   password: string;
 }
 
+async function assignInitialBranch(userId: string): Promise<void> {
+  const branches = await getOrRepairUserBranches(userId);
+  if (branches.length === 0) {
+    throw new Error("No active branch is available for this user");
+  }
+}
+
 /** Run the initial setup: create business + admin user. Idempotent. */
 export async function runSetup(input: SetupInput): Promise<{ business: Business; user: User }> {
   const already = await isSetupComplete();
@@ -98,6 +106,7 @@ export async function runSetup(input: SetupInput): Promise<{ business: Business;
      VALUES (?1, ?2, ?3, 'owner', ?4, 1)`,
     [userId, input.username, input.owner_name, passwordHash]
   );
+  await assignInitialBranch(userId);
   await replaceDirectBuiltInRole(userId, "role_owner");
 
   const business = (await query<Business>("SELECT * FROM business WHERE id = ?1", [businessId]))[0];
@@ -221,6 +230,7 @@ export async function createUser(input: CreateUserInput): Promise<User> {
      VALUES (?1, ?2, ?3, ?4, ?5, 1)`,
     [id, input.username, input.full_name, selectedRole.legacyRole, hash]
   );
+  await assignInitialBranch(id);
   await replaceDirectBuiltInRole(id, selectedRoleId);
   const users = await query<User>(
     "SELECT id, username, full_name, role, active FROM users WHERE id = ?1",

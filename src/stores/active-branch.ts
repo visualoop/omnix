@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import { getUserBranches, type Branch } from "@/services/branches";
+import { getOrRepairUserBranches, type Branch } from "@/services/branches";
 import {
   advanceBranchContext,
   setBranchContextReadOnly,
@@ -51,7 +51,7 @@ export const useActiveBranch = create<ActiveBranchState>()(
       loadForUser: async (userId) => {
         const requestVersion = ++branchLoadVersion;
         try {
-          const branches = await getUserBranches(userId);
+          const branches = await getOrRepairUserBranches(userId);
           if (requestVersion !== branchLoadVersion) return;
 
           const previousId = get().active?.id;

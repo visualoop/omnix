@@ -1,7 +1,7 @@
 /**
  * Branches service — multi-location support.
  */
-import { query, execute } from "@/lib/db";
+import { query, execute, transaction } from "@/lib/db";
 import { getCountryFieldMetadata } from "@/lib/countries";
 import { useCountry } from "@/stores/country";
 
@@ -127,25 +127,118 @@ export async function getUserBranches(userId: string): Promise<Branch[]> {
   );
 }
 
-export async function assignUserToBranch(userId: string, branchId: string, isPrimary = false): Promise<void> {
-  await execute(
-    `INSERT OR REPLACE INTO user_branches (user_id, branch_id, is_primary)
-     VALUES (?1, ?2, ?3)`,
-    [userId, branchId, isPrimary ? 1 : 0],
+/**
+ * Resolve legacy missing branch access without widening deliberate revocations.
+ * Only real, active rows are eligible: the active default branch, or the sole
+ * active branch when no active default exists. The chosen row is persisted.
+ */
+export async function getOrRepairUserBranches(userId: string): Promise<Branch[]> {
+  const assigned = await getUserBranches(userId);
+  if (assigned.length > 0) return assigned;
+
+  const candidates = await query<Branch>(
+    `WITH preferred_branch AS (
+       SELECT id
+       FROM branches
+       WHERE active = 1 AND is_default = 1
+       ORDER BY created_at, id
+       LIMIT 1
+     ),
+     single_active_branch AS (
+       SELECT MIN(id) AS id
+       FROM branches
+       WHERE active = 1
+       HAVING COUNT(*) = 1
+     ),
+     candidate AS (
+       SELECT id FROM preferred_branch
+       UNION ALL
+       SELECT id FROM single_active_branch
+       WHERE NOT EXISTS (SELECT 1 FROM preferred_branch)
+       LIMIT 1
+     )
+     SELECT b.*
+     FROM branches b
+     JOIN candidate ON candidate.id = b.id
+     WHERE NOT EXISTS (
+       SELECT 1
+       FROM user_branch_assignment_revocations revoked
+       WHERE revoked.user_id = ?1
+     )`,
+    [userId],
   );
-  if (isPrimary) {
-    await execute(
-      `UPDATE user_branches SET is_primary = 0 WHERE user_id = ?1 AND branch_id != ?2`,
-      [userId, branchId],
-    );
-  }
+  const candidate = candidates[0];
+  if (!candidate) return [];
+
+  // Re-check the revocation marker inside the mutation to avoid granting
+  // access if an administrator revoked the user during the preceding read.
+  await execute(
+    `INSERT OR IGNORE INTO user_branches (user_id, branch_id, is_primary)
+     SELECT ?1, ?2, 1
+     WHERE NOT EXISTS (
+       SELECT 1 FROM user_branch_assignment_revocations WHERE user_id = ?1
+     )`,
+    [userId, candidate.id],
+  );
+  return getUserBranches(userId);
+}
+
+export async function assignUserToBranch(userId: string, branchId: string, isPrimary = false): Promise<void> {
+  await transaction([
+    {
+      sql: `DELETE FROM user_branch_assignment_revocations WHERE user_id = ?1`,
+      params: [userId],
+    },
+    {
+      sql: `INSERT INTO user_branches (user_id, branch_id, is_primary)
+            SELECT ?1, ?2,
+                   CASE WHEN ?3 = 1 OR NOT EXISTS (
+                     SELECT 1 FROM user_branches WHERE user_id = ?1
+                   ) THEN 1 ELSE 0 END
+            ON CONFLICT(user_id, branch_id) DO UPDATE SET
+              is_primary = CASE
+                WHEN excluded.is_primary = 1 THEN 1
+                ELSE user_branches.is_primary
+              END`,
+      params: [userId, branchId, isPrimary ? 1 : 0],
+    },
+    ...(isPrimary ? [{
+      sql: `UPDATE user_branches
+            SET is_primary = CASE WHEN branch_id = ?2 THEN 1 ELSE 0 END
+            WHERE user_id = ?1`,
+      params: [userId, branchId],
+    }] : []),
+  ]);
 }
 
 export async function removeUserFromBranch(userId: string, branchId: string): Promise<void> {
-  await execute(
-    `DELETE FROM user_branches WHERE user_id = ?1 AND branch_id = ?2`,
-    [userId, branchId],
-  );
+  await transaction([
+    {
+      sql: `DELETE FROM user_branches WHERE user_id = ?1 AND branch_id = ?2`,
+      params: [userId, branchId],
+    },
+    {
+      sql: `UPDATE user_branches
+            SET is_primary = CASE WHEN branch_id = (
+              SELECT branch_id
+              FROM user_branches
+              WHERE user_id = ?1
+              ORDER BY is_primary DESC, granted_at, branch_id
+              LIMIT 1
+            ) THEN 1 ELSE 0 END
+            WHERE user_id = ?1`,
+      params: [userId],
+    },
+    {
+      sql: `INSERT INTO user_branch_assignment_revocations (user_id, revoked_at)
+            SELECT ?1, datetime('now')
+            WHERE NOT EXISTS (
+              SELECT 1 FROM user_branches WHERE user_id = ?1
+            )
+            ON CONFLICT(user_id) DO UPDATE SET revoked_at = excluded.revoked_at`,
+      params: [userId],
+    },
+  ]);
 }
 
 

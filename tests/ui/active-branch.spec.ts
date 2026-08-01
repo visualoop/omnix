@@ -8,7 +8,7 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock("@/services/branches", () => ({
-  getUserBranches: mocks.getUserBranches,
+  getOrRepairUserBranches: mocks.getUserBranches,
 }));
 
 vi.mock("@/stores/auth", () => ({
@@ -91,6 +91,7 @@ describe("active branch state", () => {
       loaded: true,
     });
     expect(getActiveBranchId()).toBeNull();
+    expect(() => requireActiveBranchId()).toThrow("No active branch is assigned");
     expect(mocks.loadPermissions).toHaveBeenCalledTimes(1);
   });
 

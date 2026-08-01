@@ -607,7 +607,6 @@ function BranchAssignmentBlock({ userId }: { userId: string }) {
   };
 
   if (loading) return null;
-  if (branches.length <= 1) return null;
 
   return (
     <div className="border-t border-border pt-4 space-y-3">
