@@ -32,6 +32,10 @@ const required = [
   "src-tauri/mobile/android-overlay/omnix_file_paths.xml",
   "src-tauri/mobile/android-overlay/omnix_network_security_config.xml",
   "src-tauri/mobile/android-overlay/permissions.toml",
+  "src-tauri/mobile/android-overlay/OmnixMobilePlugin.kt",
+  "src-tauri/mobile/android-overlay/BarcodeCaptureSession.kt",
+  "src-tauri/mobile/android-overlay/DirectApkUpdater.kt",
+  "src-tauri/mobile/android-overlay/MainActivity.kt",
   "src-tauri/src/mobile/mod.rs",
   "src/platform/android-contract.ts",
   "src/platform/android-adapters.ts",
@@ -96,11 +100,30 @@ if (generatedMode) {
   const generatedRequired = [
     "src-tauri/gen/android/app/build.gradle.kts",
     "src-tauri/gen/android/app/src/main/AndroidManifest.xml",
+    "src-tauri/gen/android/app/src/directApk/AndroidManifest.xml",
+    "src-tauri/gen/android/app/src/main/java/co/ke/omnix/app/MainActivity.kt",
     "src-tauri/gen/android/app/src/main/java/co/ke/omnix/app/mobile/OmnixMobilePlugin.kt",
+    "src-tauri/gen/android/app/src/main/java/co/ke/omnix/app/mobile/BarcodeCaptureSession.kt",
+    "src-tauri/gen/android/app/src/main/java/co/ke/omnix/app/mobile/DirectApkUpdater.kt",
   ];
   generatedRequired.forEach(requireFile);
-} else if (existsSync(generated)) {
-  fail("generated Android project exists before approved x86_64 initialization");
+  const mirrors = [
+    ["src-tauri/mobile/android-overlay/MainActivity.kt", "src-tauri/gen/android/app/src/main/java/co/ke/omnix/app/MainActivity.kt"],
+    ["src-tauri/mobile/android-overlay/OmnixMobilePlugin.kt", "src-tauri/gen/android/app/src/main/java/co/ke/omnix/app/mobile/OmnixMobilePlugin.kt"],
+    ["src-tauri/mobile/android-overlay/BarcodeCaptureSession.kt", "src-tauri/gen/android/app/src/main/java/co/ke/omnix/app/mobile/BarcodeCaptureSession.kt"],
+    ["src-tauri/mobile/android-overlay/DirectApkUpdater.kt", "src-tauri/gen/android/app/src/main/java/co/ke/omnix/app/mobile/DirectApkUpdater.kt"],
+  ];
+  for (const [source, output] of mirrors) {
+    if (existsSync(resolve(root, output)) && read(source) !== read(output)) fail(`generated native source drifted: ${output}`);
+  }
+  if (existsSync(resolve(root, "src-tauri/gen/android/app/src/main/AndroidManifest.xml")) &&
+      read("src-tauri/gen/android/app/src/main/AndroidManifest.xml").includes("REQUEST_INSTALL_PACKAGES")) {
+    fail("generated base/AAB manifest contains direct-APK installer permission");
+  }
+  if (existsSync(resolve(root, "src-tauri/gen/android/app/src/directApk/AndroidManifest.xml")) &&
+      !read("src-tauri/gen/android/app/src/directApk/AndroidManifest.xml").includes("REQUEST_INSTALL_PACKAGES")) {
+    fail("generated direct APK permission is missing");
+  }
 }
 
 if (failures.length > 0) {

@@ -1,6 +1,6 @@
 # Reviewed Android native overlay
 
-This directory is review source, **not generated Android output**. `src-tauri/gen/android/**` remains absent until an approved x86_64 host passes preflight. Do not copy guessed generated files, install toolchains here, accept licences here, or run any iOS command.
+This directory is the reviewed source of the Android overlay. The generated Android project mirrors these files after initialization; edit the reviewed Kotlin files first, copy them into `src-tauri/gen/android/**`, and use the verifier to reject drift. Do not install toolchains here, accept licences here, or run any iOS command.
 
 ## Source-state checks
 
@@ -20,7 +20,7 @@ pnpm tauri android init --ci --skip-targets-install
 ## Overlay map after initialization
 
 1. Merge `android-settings.gradle.kts.snippet`, `android-dependencies.gradle.kts.snippet`, and `release-signing.gradle.kts.snippet` into `src-tauri/gen/android/app/build.gradle.kts`. Keep each coordinate exactly pinned. Do not replace the generated Gradle file.
-2. Implement `NATIVE_CONTRACT.md` at `src-tauri/gen/android/app/src/main/java/co/ke/omnix/app/mobile/OmnixMobilePlugin.kt` and focused helpers in the same package. The Rust bridge is `src-tauri/src/mobile/mod.rs` and registers `co.ke.omnix.app.mobile.OmnixMobilePlugin`.
+2. Copy `OmnixMobilePlugin.kt`, `BarcodeCaptureSession.kt`, and `DirectApkUpdater.kt` into `src-tauri/gen/android/app/src/main/java/co/ke/omnix/app/mobile/`, and copy `MainActivity.kt` into the parent app package. These files implement `NATIVE_CONTRACT.md`; `scripts/verify-android-overlay.mjs --generated` compares every mirror byte-for-byte. The Rust bridge is `src-tauri/src/mobile/mod.rs` and registers `co.ke.omnix.app.mobile.OmnixMobilePlugin`.
 3. Merge `AndroidManifest.xml.snippet` into the base manifest. Copy `omnix_file_paths.xml` and `omnix_network_security_config.xml` to generated `res/xml/`. Apply `AndroidManifest.direct-apk.xml` only to the direct-APK product flavor/source set; it must not enter an AAB.
 4. Copy `permissions.toml` into the generated plugin permission source, regenerate Tauri schemas, and then make the coordinator capability patch. The active capability remains `core:default` until those identifiers exist.
 5. Retain `NOTICE-WIREGUARD` and `THIRD_PARTY_NOTICES.md` in release notices. Legal approval of the bundled ML Kit terms and generated transitive report is a release gate.
