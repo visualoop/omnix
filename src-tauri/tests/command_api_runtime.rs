@@ -125,6 +125,7 @@ async fn fixture(access: &str) -> Fixture {
     let app = build_router(ServerState {
         pool: pool.clone(),
         business_name: Arc::new(RwLock::new("Runtime test".to_string())),
+        sync: None,
     });
     let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
     let address = listener.local_addr().unwrap();
