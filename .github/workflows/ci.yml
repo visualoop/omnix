@@ -652,7 +652,7 @@ jobs:
             --arg aabSha256 "$AAB_SHA256" \
             --arg signingCertificateSha256 "$CERT_SHA256" \
             --arg publishedAt "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
-            '{version, versionCode, packageId, apkUrl, aabUrl, apkSize, aabSize, apkSha256, aabSha256, signingCertificateSha256, publishedAt}' \
+            '{$version, $versionCode, $packageId, $apkUrl, $aabUrl, $apkSize, $aabSize, $apkSha256, $aabSha256, $signingCertificateSha256, $publishedAt}' \
             > release-assets/android-release.json
           jq -e . release-assets/android-release.json >/dev/null
 
@@ -739,7 +739,7 @@ jobs:
             --arg signingCertificateSha256 "$CERT_SHA256" \
             --arg title "Omnix v$VERSION for Android" \
             --arg summary "Signed universal APK for direct distribution; signed AAB retained for later Play use." \
-            '{version, variant, platform, channel, gitTag, androidPackageId: $packageId, androidVersionCode: $versionCode, androidApkUrl: $apkUrl, androidAabUrl: $aabUrl, androidApkSize: $apkSize, androidAabSize: $aabSize, sha256Apk: $apkSha256, sha256Aab: $aabSha256, androidSigningCertificateSha256: $signingCertificateSha256, title, summary, forcePublish: true}')
+            '{$version, $variant, $platform, $channel, $gitTag, androidPackageId: $packageId, androidVersionCode: $versionCode, androidApkUrl: $apkUrl, androidAabUrl: $aabUrl, androidApkSize: $apkSize, androidAabSize: $aabSize, sha256Apk: $apkSha256, sha256Aab: $aabSha256, androidSigningCertificateSha256: $signingCertificateSha256, $title, $summary, forcePublish: true}')
 
           HTTP_CODE=$(curl --silent --show-error --output "$RUNNER_TEMP/release-sync.json" --write-out '%{http_code}' \
             --request POST "$RELEASE_BASE_URL/api/releases-sync" \
