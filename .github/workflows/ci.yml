@@ -8,9 +8,15 @@ on:
   workflow_dispatch:
     inputs:
       release_version:
-        description: "Optional: tag a release (e.g. v0.1.3). Leave blank to build artifacts only."
+        description: "Optional: existing or new release tag (for example v0.74.0). Leave blank to build artifacts only."
         required: false
         type: string
+      release_variant:
+        description: "Desktop variant to publish. Select one to repair an incomplete existing release."
+        required: true
+        default: all
+        type: choice
+        options: [all, dawa, retail, hospitality, hardware, salon]
 
 # Dedupe runs by commit SHA so retagging or force-pushing same commit
 # doesn't cause concurrent duplicate work.
@@ -23,7 +29,54 @@ env:
   CARGO_INCREMENTAL: 0
 
 jobs:
+  # Run the shared Rust suite once, before every desktop variant. Keeping tests
+  # outside the matrix prevents one designated variant from being the only
+  # installer omitted when shared code fails. `pnpm build` is required because
+  # Tauri's build.rs validates the configured ../dist bundle resource even for
+  # `cargo test --lib`.
+  rust-tests:
+    runs-on: windows-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout release source
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.release_version || github.ref }}
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          run_install: false
+
+      - name: Setup Node (with pnpm cache)
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: pnpm
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache Rust test artifacts
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+          key: tests
+
+      - name: Install frontend dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build configured frontend resource
+        env:
+          VITE_OMNIX_VARIANT: dawa
+        run: pnpm build
+
+      - name: Run shared Rust unit tests
+        working-directory: src-tauri
+        run: cargo test --lib --locked
+
   build:
+    needs: rust-tests
     runs-on: windows-latest
     timeout-minutes: 60
     permissions:
@@ -35,11 +88,13 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        variant: [dawa, retail, hospitality, hardware, salon]
+        variant: ${{ fromJSON(inputs.release_variant != '' && inputs.release_variant != 'all' && format('["{0}"]', inputs.release_variant) || '["dawa","retail","hospitality","hardware","salon"]') }}
 
     steps:
-      - name: Checkout
+      - name: Checkout release source
         uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.release_version || github.ref }}
 
       # Decide if this run produces a GitHub Release.
       # Yes when: pushing a tag like v1.2.3 OR workflow_dispatch with release_version.
@@ -78,17 +133,13 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
 
       - name: Cache Rust build artifacts
-        # Five variants build in parallel and all share the same Cargo.lock,
-        # so without save-if they race to write the same cache key on
-        # GitHub's cache backend → some randomly fail with "Unable to
-        # reserve cache". Restrict saves to the 'pro' job; the others read
-        # the (already-warm) cache. Worst case the matrix takes ~1 extra
-        # minute on a cold cache.
+        # The Cargo.lock is shared, but each variant has an independent cache
+        # key. Every job may therefore save safely; no variant is a single
+        # point of failure for cache publication.
         uses: swatinem/rust-cache@v2
         with:
           workspaces: src-tauri
-          key: ${{ matrix.variant }}
-          save-if: ${{ matrix.variant == 'dawa' }}
+          key: build-${{ matrix.variant }}
 
       - name: Install frontend dependencies
         run: pnpm install --frozen-lockfile
@@ -103,11 +154,6 @@ jobs:
         env:
           VITE_OMNIX_VARIANT: ${{ matrix.variant }}
         run: pnpm exec tsc --noEmit
-
-      - name: Run Rust unit tests (dawa only — same Rust code for all variants)
-        if: matrix.variant == 'dawa'
-        working-directory: src-tauri
-        run: cargo test --lib
 
       # Resolve the per-variant Tauri config (Pro uses the base config).
       - name: Resolve Tauri config flag
@@ -203,9 +249,8 @@ jobs:
 
       # ─── Notify Payload (omnix.co.ke) so the in-app updater + downloads page
       #     pick up the release per variant. R2 mirror is keyed by variant.
-      - name: Notify Payload (variant=${{ matrix.variant }})
+      - name: Notify and verify release API (variant=${{ matrix.variant }})
         if: steps.ctx.outputs.is_release == 'true'
-        continue-on-error: true
         shell: bash
         env:
           PAYLOAD_SYSTEM_TOKEN: ${{ secrets.PAYLOAD_SYSTEM_TOKEN }}
@@ -225,8 +270,8 @@ jobs:
           set -e
 
           if [ -z "$PAYLOAD_SYSTEM_TOKEN" ]; then
-            echo "PAYLOAD_SYSTEM_TOKEN secret is not configured — skipping Payload notify."
-            exit 0
+            echo "ERROR: PAYLOAD_SYSTEM_TOKEN is required for a published desktop release." >&2
+            exit 1
           fi
 
           NSIS=$(ls release-assets/*-setup.exe 2>/dev/null | head -1)
@@ -327,6 +372,28 @@ jobs:
           cat /tmp/payload-resp.json || true
           echo
           [ "$HTTP_CODE" = "200" ] || { echo "Payload notify failed (HTTP $HTTP_CODE)"; exit 1; }
+          jq -e --arg variant "$VARIANT" --arg exe "$NSIS_URL" \
+            '.ok == true and .variant == $variant and .desktop.exe == $exe and .desktop.signatureStored == true' \
+            /tmp/payload-resp.json >/dev/null || {
+              echo "Payload response did not confirm the exact variant URL and signature" >&2
+              exit 1
+            }
+
+          # Exercise the same endpoint installed clients poll. The response
+          # must contain this exact installer and the signature generated by
+          # Tauri; a 204 or an empty/mismatched signature fails the release.
+          VERIFY_URL="$PAYLOAD_BASE/api/releases-latest?variant=$VARIANT&license=0.0.0"
+          VERIFY_CODE=$(curl -sS -o /tmp/updater-resp.json -w "%{http_code}" "$VERIFY_URL")
+          echo "Updater verification ($VERIFY_CODE):"
+          cat /tmp/updater-resp.json || true
+          echo
+          [ "$VERIFY_CODE" = "200" ] || { echo "Updater manifest unavailable for $VARIANT (HTTP $VERIFY_CODE)" >&2; exit 1; }
+          jq -e --arg exe "$(node -e 'process.stdout.write(encodeURI(process.argv[1]))' "$NSIS_URL")" --arg sig "$SIGNATURE" \
+            '.platforms["windows-x86_64"].url == $exe and .platforms["windows-x86_64"].signature == $sig' \
+            /tmp/updater-resp.json >/dev/null || {
+              echo "Updater manifest URL or signature does not match the signed artifact" >&2
+              exit 1
+            }
 
   # ─── R2 retention: keep only the latest N release versions ──────────────
   # Installers are large; without pruning the omnix-media bucket grows without
@@ -377,7 +444,7 @@ jobs:
           echo "Retention complete — $(grep -c . /tmp/del.txt) old version(s) removed."
 
   android-release:
-    if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.release_version != '')
+    if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.release_version != '' && (inputs.release_variant == '' || inputs.release_variant == 'all'))
     # Android's Gradle tooling and tauri android init must run on x86_64.
     # The ARM64 development host is not a supported release builder.
     runs-on: ubuntu-24.04

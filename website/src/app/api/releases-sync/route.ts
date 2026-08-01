@@ -10,8 +10,8 @@
  * doesn't have a column for them):
  *   {
  *     version: "0.7.16",                      // required, semver
- *     variant: "pro" | "dawa" | ...,          // ignored — schema is
- *                                              //   single-installer
+ *     variant: "pro" | "dawa" | ...,          // required for desktop;
+ *                                              // stored under metadata.variants
  *     majorVersion: 0,                        // ignored
  *     channel: "stable" | "beta" | "nightly", // optional, default stable
  *     gitTag: "v0.7.16",                      // ignored
@@ -43,7 +43,7 @@
 
 import { NextResponse } from 'next/server'
 import { db, releases } from '@/db'
-import { eq } from 'drizzle-orm'
+import { eq, sql } from 'drizzle-orm'
 import { timingSafeEqual } from 'node:crypto'
 
 export const dynamic = 'force-dynamic'
@@ -165,16 +165,10 @@ export async function POST(req: Request) {
 
   // ── Per-variant merge logic ────────────────────────────────
   //
-  // CI calls this endpoint 5 times in parallel (one per matrix variant).
-  // The naive write-and-overwrite pattern means whichever variant
-  // finishes last wins, and the public /downloads page renders that
-  // variant's URL for every card.
-  //
-  // Fix: each variant's call merges into metadata.variants[variant],
-  // never overwriting other variants. The top-level exeUrl / msiUrl
-  // always points at the canonical Pro build (it's what the Tauri
-  // auto-updater pulls). Other variants' URLs live in metadata.variants
-  // for the per-variant card grid on /downloads.
+  // CI calls this endpoint once per matrix variant. Every call must merge its
+  // signed installer into metadata.variants without replacing entries written
+  // by another job. The atomic JSONB conflict update below performs that merge
+  // against the row version locked by PostgreSQL.
 
   // UPSERT on version (unique constraint).
   const id = `rel_${version}_${channel}`
@@ -258,76 +252,108 @@ export async function POST(req: Request) {
     )
   }
 
-  // Build the merged metadata.variants object.
-  type VariantUrls = { exe?: string; msi?: string; signature?: string }
-  const existingMeta = (existing?.metadata ?? {}) as {
-    variants?: Record<string, VariantUrls>
-    sha256?: { exe?: string; msi?: string }
-    gitTag?: string
-  }
-  const variantsMap = { ...(existingMeta.variants ?? {}) } as Record<string, VariantUrls>
-  if (variant) {
-    variantsMap[variant] = {
-      exe: exeUrl ?? variantsMap[variant]?.exe,
-      msi: msiUrl ?? variantsMap[variant]?.msi,
-      // v0.27.2 fix: persist the per-variant Tauri updater signature so
-      // /api/releases-latest can return it. Previously we only wrote
-      // the top-level `signature` column when variant='pro' — but Pro
-      // isn't in the CI matrix, so every release since v0.16.4 shipped
-      // with an empty signature and auto-updates silently didn't verify.
-      signature: signature ?? variantsMap[variant]?.signature,
-    }
-  }
-
-  const metadata = {
-    ...existingMeta,
-    variants: variantsMap,
-    sha256: {
-      ...(existingMeta.sha256 ?? {}),
-      ...(asString(body.sha256Nsis) ? { exe: asString(body.sha256Nsis) } : {}),
-      ...(asString(body.sha256Msi) ? { msi: asString(body.sha256Msi) } : {}),
-    },
-    gitTag: asString(body.gitTag) ?? existingMeta.gitTag,
-    source: 'ci-notify',
-    syncedAt: new Date().toISOString(),
-  }
-
-  // Top-level exeUrl/msiUrl ONLY get written when the canonical Pro
-  // build calls in. Other variants merge into the variants map but
-  // don't touch the canonical URLs (which power the auto-updater).
-  const isCanonicalPro = variant === 'pro' || !variant
-
-  if (existing) {
-    const updateValues: Record<string, unknown> = {
-      channel,
-      ...(notes !== undefined ? { notes } : {}),
-      ...(isCanonicalPro && exeUrl !== undefined ? { exeUrl } : {}),
-      ...(isCanonicalPro && msiUrl !== undefined ? { msiUrl } : {}),
-      ...(isCanonicalPro && signature !== undefined ? { signature } : {}),
-      metadata,
-    }
-    await db
-      .update(releases)
-      .set(updateValues)
-      .where(eq(releases.version, version))
+  const desktopVariants = ['pro', 'dawa', 'retail', 'hospitality', 'hardware', 'salon'] as const
+  if (!variant || !desktopVariants.some((candidate) => candidate === variant)) {
     return NextResponse.json(
-      { ok: true, action: 'updated', version, channel, variant },
-      { status: 200 },
+      { error: 'invalid or missing desktop `variant`' },
+      { status: 400 },
     )
   }
+  if (!exeUrl || !signature) {
+    return NextResponse.json(
+      { error: 'desktop releases require an NSIS URL and updater signature' },
+      { status: 400 },
+    )
+  }
+  for (const [field, value] of [
+    ['windowsNsisUrl', exeUrl],
+    ['windowsMsiUrl', msiUrl],
+  ] as const) {
+    if (!value) continue
+    try {
+      if (new URL(value).protocol !== 'https:') throw new Error('not HTTPS')
+    } catch {
+      return NextResponse.json({ error: `invalid HTTPS ${field}` }, { status: 400 })
+    }
+  }
 
-  await db.insert(releases).values({
-    id,
-    version,
-    channel,
-    notes,
-    exeUrl: isCanonicalPro ? exeUrl : undefined,
-    msiUrl: isCanonicalPro ? msiUrl : undefined,
-    signature: isCanonicalPro ? signature : undefined,
-    metadata,
-  })
+  const variantAssets = {
+    exe: exeUrl,
+    ...(msiUrl ? { msi: msiUrl } : {}),
+    signature,
+  }
+  const sha256 = {
+    ...(asString(body.sha256Nsis) ? { exe: asString(body.sha256Nsis) } : {}),
+    ...(asString(body.sha256Msi) ? { msi: asString(body.sha256Msi) } : {}),
+  }
+  const syncMetadata = {
+    source: 'ci-notify',
+    syncedAt: new Date().toISOString(),
+    ...(asString(body.gitTag) ? { gitTag: asString(body.gitTag) } : {}),
+  }
+  const initialMetadata = {
+    variants: { [variant]: variantAssets },
+    sha256,
+    ...syncMetadata,
+  }
+
+  // Each matrix job writes a different key in metadata.variants. Perform the
+  // nested JSONB merge in the conflict UPDATE itself so concurrent notifications
+  // cannot overwrite variants read before another job committed.
+  const mergedMetadata = sql`(
+    jsonb_set(
+      jsonb_set(
+        coalesce(${releases.metadata}, '{}'::jsonb),
+        '{variants}',
+        coalesce(${releases.metadata}->'variants', '{}'::jsonb)
+          || jsonb_build_object(
+            ${variant},
+            coalesce(${releases.metadata}->'variants'->${variant}, '{}'::jsonb)
+              || ${JSON.stringify(variantAssets)}::jsonb
+          )
+      ),
+      '{sha256}',
+      coalesce(${releases.metadata}->'sha256', '{}'::jsonb)
+        || ${JSON.stringify(sha256)}::jsonb
+    ) || ${JSON.stringify(syncMetadata)}::jsonb
+  )`
+
+  const isCanonicalPro = variant === 'pro'
+  await db
+    .insert(releases)
+    .values({
+      id,
+      version,
+      channel,
+      notes,
+      exeUrl: isCanonicalPro ? exeUrl : undefined,
+      msiUrl: isCanonicalPro ? msiUrl : undefined,
+      signature: isCanonicalPro ? signature : undefined,
+      metadata: initialMetadata,
+    })
+    .onConflictDoUpdate({
+      target: releases.version,
+      set: {
+        channel,
+        ...(notes !== undefined ? { notes } : {}),
+        ...(isCanonicalPro ? { exeUrl, msiUrl, signature } : {}),
+        metadata: mergedMetadata,
+      },
+    })
+
   return NextResponse.json(
-    { ok: true, action: 'created', version, channel, variant },
+    {
+      ok: true,
+      action: existing ? 'updated' : 'created',
+      version,
+      channel,
+      variant,
+      desktop: {
+        exe: exeUrl,
+        msi: msiUrl ?? null,
+        signatureStored: true,
+      },
+    },
     { status: 200 },
   )
 }
