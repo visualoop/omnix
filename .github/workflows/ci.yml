@@ -665,6 +665,11 @@ jobs:
           echo "ANDROID_KEY_ALIAS=$KEY_ALIAS" >> "$GITHUB_ENV"
           echo "ANDROID_KEY_PASSWORD=$KEY_PASSWORD" >> "$GITHUB_ENV"
 
+      - name: Generate deterministic Pro launcher resources
+        env:
+          VITE_OMNIX_VARIANT: pro
+        run: pnpm icons
+
       - name: Verify the committed Android project and reviewed overlay
         shell: bash
         run: |

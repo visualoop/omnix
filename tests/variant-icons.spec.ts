@@ -9,7 +9,7 @@ import { existsSync, readFileSync, statSync } from "node:fs";
 import { resolve } from "node:path";
 import { createHash } from "node:crypto";
 
-const VARIANTS = ["pro", "dawa", "retail", "hospitality", "hardware"] as const;
+const VARIANTS = ["pro", "dawa", "retail", "hospitality", "hardware", "salon"] as const;
 const FILES = [
   "32x32.png",
   "64x64.png",
@@ -17,6 +17,23 @@ const FILES = [
   "128x128@2x.png",
   "256x256.png",
   "icon.ico",
+  "android/mipmap-mdpi/ic_launcher.png",
+  "android/mipmap-mdpi/ic_launcher_round.png",
+  "android/mipmap-mdpi/ic_launcher_foreground.png",
+  "android/mipmap-hdpi/ic_launcher.png",
+  "android/mipmap-hdpi/ic_launcher_round.png",
+  "android/mipmap-hdpi/ic_launcher_foreground.png",
+  "android/mipmap-xhdpi/ic_launcher.png",
+  "android/mipmap-xhdpi/ic_launcher_round.png",
+  "android/mipmap-xhdpi/ic_launcher_foreground.png",
+  "android/mipmap-xxhdpi/ic_launcher.png",
+  "android/mipmap-xxhdpi/ic_launcher_round.png",
+  "android/mipmap-xxhdpi/ic_launcher_foreground.png",
+  "android/mipmap-xxxhdpi/ic_launcher.png",
+  "android/mipmap-xxxhdpi/ic_launcher_round.png",
+  "android/mipmap-xxxhdpi/ic_launcher_foreground.png",
+  "android/mipmap-anydpi-v26/ic_launcher.xml",
+  "android/values/ic_launcher_background.xml",
 ];
 
 function variantPath(variant: string, file: string): string {
@@ -30,8 +47,8 @@ describe("variant icons — pipeline output", () => {
         const p = variantPath(v, f);
         expect(existsSync(p), `missing ${v}/${f}`).toBe(true);
         const size = statSync(p).size;
-        // Even the 32x32.png should be > 500 bytes if the SVG rendered correctly.
-        expect(size, `${v}/${f} is suspiciously small (${size}B)`).toBeGreaterThan(500);
+        const minimumSize = f.endsWith(".xml") ? 100 : 500;
+        expect(size, `${v}/${f} is suspiciously small (${size}B)`).toBeGreaterThan(minimumSize);
       }
     }
   });
@@ -42,6 +59,14 @@ describe("variant icons — pipeline output", () => {
       return createHash("sha256").update(buf).digest("hex");
     });
     expect(new Set(hashes).size, "two variants produced identical PNGs — accent swap likely failed").toBe(VARIANTS.length);
+  });
+
+  it("each variant produces a distinct Android launcher", () => {
+    const hashes = VARIANTS.map((v) => {
+      const buf = readFileSync(variantPath(v, "android/mipmap-xxxhdpi/ic_launcher.png"));
+      return createHash("sha256").update(buf).digest("hex");
+    });
+    expect(new Set(hashes).size, "two variants produced identical Android launchers").toBe(VARIANTS.length);
   });
 
   it("each variant produces a distinct icon.ico", () => {
