@@ -752,6 +752,12 @@ fn run_inner() {
             sql: include_str!("../migrations/105_stockable_products.sql"),
             kind: MigrationKind::Up,
         },
+        Migration {
+            version: 106,
+            description: "Publish the Private Mesh hub endpoint",
+            sql: include_str!("../migrations/106_mesh_hub_endpoint.sql"),
+            kind: MigrationKind::Up,
+        },
     ];
 
     let builder = tauri::Builder::default()
@@ -896,6 +902,7 @@ fn run_inner() {
             commands::windows_service_status,
             commands::private_mesh_status,
             commands::install_private_mesh,
+            commands::publish_private_mesh_hub_endpoint,
             commands::request_private_mesh_enrollment,
             commands::apply_private_mesh_configuration,
             commands::rotate_private_mesh_key,

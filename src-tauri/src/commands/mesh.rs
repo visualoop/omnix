@@ -9,13 +9,18 @@ use std::path::{Path, PathBuf};
 use serde::{Deserialize, Serialize};
 use tauri::Manager;
 
+#[cfg(windows)]
+use crate::mesh_contracts::{
+    assess_hub_reachability, Endpoint, EndpointClass, MeshError, NatClass, PeerLifecycle,
+    PortReachability, ReachabilityObservation, RevocationReason, RotationStatus,
+};
 use crate::mesh_contracts::{
     evaluate_enrollment, EnrollmentDecision, EnrollmentPolicy, EnrollmentRequest, KeyId, NodeId,
     UnixMillis, WireGuardKey,
 };
+use crate::mesh_windows::TunnelState;
 #[cfg(windows)]
-use crate::mesh_contracts::{PeerLifecycle, RevocationReason, RotationStatus};
-use crate::mesh_windows::{DesiredTunnelConfig, TunnelState};
+use crate::mesh_windows::{enrolled_device_tunnel_config, hub_tunnel_config, MeshPeer};
 
 #[cfg(windows)]
 const HELPER_FILE: &str = "omnix-mesh-service.exe";
@@ -45,6 +50,27 @@ struct StoredMeshState {
 
 #[derive(Clone, Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
+pub struct HubEndpointStatus {
+    pub host: String,
+    pub port: u16,
+    pub published_at: String,
+    pub observed_public_address: Option<String>,
+    pub udp_reachability: &'static str,
+    pub nat_class: &'static str,
+    pub warning: Option<&'static str>,
+    pub observed_at: Option<String>,
+    pub observation_requirement: &'static str,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct PublishHubEndpointInput {
+    pub host: String,
+    pub port: u16,
+}
+
+#[derive(Clone, Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct PrivateMeshStatus {
     pub available: bool,
     pub installed: bool,
@@ -56,6 +82,8 @@ pub struct PrivateMeshStatus {
     pub updated_at: Option<String>,
     pub route_scope: &'static str,
     pub requires_elevation: bool,
+    pub is_hub: bool,
+    pub hub_endpoint: Option<HubEndpointStatus>,
 }
 
 #[derive(Clone, Debug, Deserialize)]
@@ -78,9 +106,10 @@ pub enum MeshRevocationReason {
 }
 
 #[tauri::command]
-pub async fn private_mesh_status() -> Result<PrivateMeshStatus, String> {
+pub async fn private_mesh_status(app: tauri::AppHandle) -> Result<PrivateMeshStatus, String> {
     #[cfg(not(windows))]
     {
+        let _ = app;
         Ok(PrivateMeshStatus {
             available: false,
             installed: false,
@@ -92,6 +121,8 @@ pub async fn private_mesh_status() -> Result<PrivateMeshStatus, String> {
             updated_at: None,
             route_scope: "private_omnix_subnet_only",
             requires_elevation: true,
+            is_hub: false,
+            hub_endpoint: None,
         })
     }
     #[cfg(windows)]
@@ -109,6 +140,7 @@ pub async fn private_mesh_status() -> Result<PrivateMeshStatus, String> {
                 .map(|state| state.state)
                 .unwrap_or(TunnelState::Installed)
         };
+        let (is_hub, hub_endpoint) = load_hub_endpoint_status(&app).await?;
         Ok(PrivateMeshStatus {
             available: true,
             installed,
@@ -120,6 +152,8 @@ pub async fn private_mesh_status() -> Result<PrivateMeshStatus, String> {
             updated_at: stored.map(|state| state.updated_at),
             route_scope: "private_omnix_subnet_only",
             requires_elevation: true,
+            is_hub,
+            hub_endpoint,
         })
     }
 }
@@ -137,7 +171,109 @@ pub async fn install_private_mesh(app: tauri::AppHandle) -> Result<PrivateMeshSt
     {
         let helper = staged_helper(&app)?;
         run_elevated(&helper, "/install")?;
-        private_mesh_status().await
+        private_mesh_status(app.clone()).await
+    }
+}
+
+#[tauri::command]
+pub async fn publish_private_mesh_hub_endpoint(
+    app: tauri::AppHandle,
+    input: PublishHubEndpointInput,
+) -> Result<PrivateMeshStatus, String> {
+    #[cfg(not(windows))]
+    {
+        let _ = app;
+        let _ = input;
+        Err("Private Mesh endpoint publication is available only on Windows".to_owned())
+    }
+    #[cfg(windows)]
+    {
+        let endpoint =
+            Endpoint::parse_public(&input.host, input.port).map_err(endpoint_validation_message)?;
+        let status = private_mesh_status(app.clone()).await?;
+        if !status.installed {
+            return Err("Install Private Mesh before publishing the hub endpoint".to_owned());
+        }
+        let current_key = status
+            .current_key
+            .as_ref()
+            .ok_or_else(|| "The hub's DPAPI-protected WireGuard key is unavailable".to_owned())?;
+        let pool = sqlx::sqlite::SqlitePoolOptions::new()
+            .max_connections(1)
+            .connect(&mesh_db_url(&app)?)
+            .await
+            .map_err(|_| "Could not open mesh metadata storage".to_owned())?;
+        let node_id = crate::db::mesh::local_hq_node_id(&pool)
+            .await
+            .map_err(|_| "Could not load the local HQ node".to_owned())?
+            .ok_or_else(|| {
+                "Only the configured HQ hub can publish a Private Mesh endpoint".to_owned()
+            })?;
+        let hub = crate::db::mesh::local_hub_tunnel_metadata(&pool, &node_id)
+            .await
+            .map_err(|_| "Could not load the hub mesh allocation".to_owned())?
+            .ok_or_else(|| {
+                "Allocate the HQ hub's Private Mesh address before publishing its endpoint"
+                    .to_owned()
+            })?;
+        let peer_rows = crate::db::mesh::active_hub_tunnel_peers(&pool, &node_id, &hub.ipv4_pool)
+            .await
+            .map_err(|_| "Could not load active Private Mesh peers".to_owned())?;
+        let peers = peer_rows
+            .into_iter()
+            .map(|peer| MeshPeer {
+                public_key: peer.public_key,
+                allowed_ips: vec![format!("{}/{}", peer.ipv4_address, peer.prefix_length)],
+                endpoint: None,
+                persistent_keepalive_seconds: None,
+            })
+            .collect();
+        let configuration = hub_tunnel_config(
+            &hub.ipv4_pool,
+            &format!("{}/{}", hub.ipv4_address, hub.prefix_length),
+            endpoint.port,
+            peers,
+        )
+        .map_err(|error| error.to_string())?;
+
+        let published_at = chrono::Utc::now();
+        let rotate_at =
+            published_at + chrono::Duration::days(crate::mesh_windows::DEFAULT_ROTATION_DAYS);
+        crate::db::mesh::register_windows_peer_key(
+            &pool,
+            &node_id,
+            &current_key.key_id,
+            &current_key.public_key,
+            &current_key.custody_ref,
+            &current_key.created_at,
+            &rotate_at.to_rfc3339(),
+        )
+        .await
+        .map_err(|_| "Could not register the hub's public WireGuard key".to_owned())?;
+
+        let inbox = mesh_data_dir()?.join("desired-tunnel.inbox.json");
+        std::fs::write(
+            inbox,
+            serde_json::to_vec_pretty(&configuration)
+                .map_err(|_| "invalid hub mesh configuration".to_owned())?,
+        )
+        .map_err(|_| "could not stage the public hub mesh configuration".to_owned())?;
+        run_installed_helper("/apply")?;
+
+        let saved = crate::db::mesh::save_hub_endpoint(
+            &pool,
+            &node_id,
+            &endpoint.host_text(),
+            endpoint.port,
+            &published_at.to_rfc3339(),
+        )
+        .await
+        .map_err(|_| "Could not save the published hub endpoint".to_owned())?;
+        pool.close().await;
+        if !saved {
+            return Err("The local HQ hub record is no longer active".to_owned());
+        }
+        private_mesh_status(app.clone()).await
     }
 }
 
@@ -156,7 +292,7 @@ pub struct MeshEnrollmentRequestStatus {
 pub async fn request_private_mesh_enrollment(
     app: tauri::AppHandle,
 ) -> Result<MeshEnrollmentRequestStatus, String> {
-    let status = private_mesh_status().await?;
+    let status = private_mesh_status(app.clone()).await?;
     let key = status
         .current_key
         .ok_or_else(|| "Install Private Mesh before requesting enrollment".to_owned())?;
@@ -237,21 +373,16 @@ pub async fn request_private_mesh_enrollment(
 pub async fn apply_private_mesh_configuration(
     app: tauri::AppHandle,
     approval: MeshEnrollmentApproval,
-    configuration: DesiredTunnelConfig,
 ) -> Result<PrivateMeshStatus, String> {
     #[cfg(not(windows))]
     {
         let _ = app;
         let _ = approval;
-        let _ = configuration;
         Err("Private Mesh configuration is available only on Windows".to_owned())
     }
     #[cfg(windows)]
     {
-        configuration
-            .validate()
-            .map_err(|error| error.to_string())?;
-        let status = private_mesh_status().await?;
+        let status = private_mesh_status(app.clone()).await?;
         let current = status
             .current_key
             .as_ref()
@@ -282,9 +413,6 @@ pub async fn apply_private_mesh_configuration(
             || approved.node_id != approval.node_id
             || approved.key_id != approval.key_id
             || approved.public_key != approval.public_key
-            || configuration.mesh_pool != approved.ipv4_pool
-            || configuration.interface_address
-                != format!("{}/{}", approved.ipv4_address, approved.prefix_length)
         {
             return Err("The HQ approval does not match this device allocation".to_owned());
         }
@@ -322,6 +450,33 @@ pub async fn apply_private_mesh_configuration(
             return Err(format!("HQ enrollment approval was rejected: {decision:?}"));
         }
 
+        let hub = crate::db::mesh::hub_peer_metadata(&pool, &approved.ipv4_pool)
+            .await
+            .map_err(|_| "Could not load the HQ Private Mesh endpoint".to_owned())?
+            .ok_or_else(|| {
+                "HQ must enrol its Private Mesh key and publish a reachable endpoint before devices can connect"
+                    .to_owned()
+            })?;
+        let hub_port = u16::try_from(hub.endpoint_port)
+            .map_err(|_| "The published HQ UDP port is invalid".to_owned())?;
+        let hub_endpoint = Endpoint::parse_public(&hub.endpoint_host, hub_port)
+            .map_err(endpoint_validation_message)?;
+        let device_nat_class =
+            crate::db::mesh::latest_nat_class(&pool, &approved.node_id, &activated_at.to_rfc3339())
+                .await
+                .map_err(|_| "Could not load device reachability metadata".to_owned())?
+                .as_deref()
+                .map(parse_nat_class)
+                .unwrap_or(NatClass::Unknown);
+        let configuration = enrolled_device_tunnel_config(
+            &approved.ipv4_pool,
+            &format!("{}/{}", approved.ipv4_address, approved.prefix_length),
+            &hub.public_key,
+            &hub_endpoint,
+            device_nat_class,
+        )
+        .map_err(|error| error.to_string())?;
+
         let inbox = mesh_data_dir()?.join("desired-tunnel.inbox.json");
         std::fs::write(
             inbox,
@@ -355,19 +510,20 @@ pub async fn apply_private_mesh_configuration(
                     .to_owned(),
             );
         }
-        private_mesh_status().await
+        private_mesh_status(app.clone()).await
     }
 }
 
 #[tauri::command]
-pub async fn rotate_private_mesh_key() -> Result<PrivateMeshStatus, String> {
+pub async fn rotate_private_mesh_key(app: tauri::AppHandle) -> Result<PrivateMeshStatus, String> {
     #[cfg(not(windows))]
     {
+        let _ = app;
         Err("Private Mesh key rotation is available only on Windows".to_owned())
     }
     #[cfg(windows)]
     {
-        let status = private_mesh_status().await?;
+        let status = private_mesh_status(app.clone()).await?;
         let key = status
             .current_key
             .as_ref()
@@ -387,19 +543,20 @@ pub async fn rotate_private_mesh_key() -> Result<PrivateMeshStatus, String> {
             return Err("The current mesh key is not eligible for rotation".to_owned());
         }
         run_installed_helper("/rotate")?;
-        private_mesh_status().await
+        private_mesh_status(app.clone()).await
     }
 }
 
 #[tauri::command]
-pub async fn promote_private_mesh_key() -> Result<PrivateMeshStatus, String> {
+pub async fn promote_private_mesh_key(app: tauri::AppHandle) -> Result<PrivateMeshStatus, String> {
     #[cfg(not(windows))]
     {
+        let _ = app;
         Err("Private Mesh key promotion is available only on Windows".to_owned())
     }
     #[cfg(windows)]
     {
-        let status = private_mesh_status().await?;
+        let status = private_mesh_status(app.clone()).await?;
         let current = status
             .current_key
             .as_ref()
@@ -424,7 +581,7 @@ pub async fn promote_private_mesh_key() -> Result<PrivateMeshStatus, String> {
             )
             .map_err(|error| format!("{error:?}"))?;
         run_installed_helper("/promote-next-key")?;
-        private_mesh_status().await
+        private_mesh_status(app.clone()).await
     }
 }
 
@@ -441,7 +598,7 @@ pub async fn revoke_private_mesh(
     }
     #[cfg(windows)]
     {
-        let status = private_mesh_status().await?;
+        let status = private_mesh_status(app.clone()).await?;
         let key = status
             .current_key
             .as_ref()
@@ -475,7 +632,7 @@ pub async fn revoke_private_mesh(
         .map_err(|_| "Could not persist terminal mesh revocation".to_owned())?;
         pool.close().await;
         run_installed_helper("/revoke")?;
-        private_mesh_status().await
+        private_mesh_status(app.clone()).await
     }
 }
 
@@ -601,6 +758,132 @@ fn service_query() -> Result<(bool, bool), String> {
         output.status.success(),
         output.status.success() && text.contains("RUNNING"),
     ))
+}
+
+#[cfg(windows)]
+async fn load_hub_endpoint_status(
+    app: &tauri::AppHandle,
+) -> Result<(bool, Option<HubEndpointStatus>), String> {
+    let pool = sqlx::sqlite::SqlitePoolOptions::new()
+        .max_connections(1)
+        .connect(&mesh_db_url(app)?)
+        .await
+        .map_err(|_| "Could not open mesh metadata storage".to_owned())?;
+    let Some(node_id) = crate::db::mesh::local_hq_node_id(&pool)
+        .await
+        .map_err(|_| "Could not load the local HQ node".to_owned())?
+    else {
+        pool.close().await;
+        return Ok((false, None));
+    };
+    let Some(published) = crate::db::mesh::published_hub_endpoint(&pool, &node_id)
+        .await
+        .map_err(|_| "Could not load the published hub endpoint".to_owned())?
+    else {
+        pool.close().await;
+        return Ok((true, None));
+    };
+    let port = u16::try_from(published.port)
+        .map_err(|_| "The published hub UDP port is invalid".to_owned())?;
+    let endpoint =
+        Endpoint::parse_public(&published.host, port).map_err(endpoint_validation_message)?;
+    let observation = crate::db::mesh::latest_endpoint_observation(
+        &pool,
+        &published.node_id,
+        &published.host,
+        port,
+        &chrono::Utc::now().to_rfc3339(),
+    )
+    .await
+    .map_err(|_| "Could not load hub reachability evidence".to_owned())?;
+    pool.close().await;
+
+    let evidence = observation
+        .as_ref()
+        .map(|observation| ReachabilityObservation {
+            observed_public_address: observation
+                .observed_public_address
+                .as_deref()
+                .and_then(|address| address.parse().ok())
+                .filter(|address| crate::mesh_contracts::is_public_ipv4(*address)),
+            observed_port: u16::try_from(observation.endpoint_port).unwrap_or(0),
+            nat_class: parse_nat_class(&observation.nat_class),
+            endpoint_class: parse_endpoint_class(&observation.endpoint_class),
+            verified: observation.verified,
+        });
+    let reachability = assess_hub_reachability(&endpoint, evidence.as_ref());
+    Ok((
+        true,
+        Some(HubEndpointStatus {
+            host: endpoint.host_text(),
+            port: endpoint.port,
+            published_at: published.published_at,
+            observed_public_address: reachability
+                .observed_public_address
+                .map(|address| address.to_string()),
+            udp_reachability: port_reachability_name(reachability.port_reachability),
+            nat_class: nat_class_name(reachability.nat_class),
+            warning: reachability.warning,
+            observed_at: observation.map(|value| value.observed_at),
+            observation_requirement: "Unknown until a trusted internet-side observer completes a WireGuard handshake against this exact host and UDP port; Omnix does not call a public IP or port-check service.",
+        }),
+    ))
+}
+
+#[cfg(windows)]
+fn endpoint_validation_message(error: MeshError) -> String {
+    match error {
+        MeshError::InvalidPort => "UDP listen port must be between 1 and 65535".to_owned(),
+        MeshError::NonPublicEndpoint => "Use a public IPv4 address. Private, loopback, link-local and carrier-grade NAT addresses cannot be published".to_owned(),
+        MeshError::InvalidDnsName => "Enter a fully qualified DDNS hostname such as hq.example.co.ke, or a public IPv4 address".to_owned(),
+        _ => "The hub endpoint is invalid".to_owned(),
+    }
+}
+
+#[cfg(windows)]
+fn parse_endpoint_class(value: &str) -> EndpointClass {
+    match value {
+        "direct_lan" => EndpointClass::DirectLan,
+        "direct_public" => EndpointClass::DirectPublic,
+        "nat_traversal" => EndpointClass::NatTraversal,
+        "relay_required" => EndpointClass::RelayRequired,
+        _ => EndpointClass::Unreachable,
+    }
+}
+
+#[cfg(windows)]
+fn parse_nat_class(value: &str) -> NatClass {
+    match value {
+        "open_internet" => NatClass::OpenInternet,
+        "full_cone" => NatClass::FullCone,
+        "address_restricted" => NatClass::AddressRestricted,
+        "port_restricted" => NatClass::PortRestricted,
+        "symmetric" => NatClass::Symmetric,
+        "carrier_grade" => NatClass::CarrierGrade,
+        _ => NatClass::Unknown,
+    }
+}
+
+#[cfg(windows)]
+fn port_reachability_name(value: PortReachability) -> &'static str {
+    match value {
+        PortReachability::Reachable => "reachable",
+        PortReachability::Unreachable => "unreachable",
+        PortReachability::Unknown => "unknown",
+    }
+}
+
+#[cfg(windows)]
+fn nat_class_name(value: NatClass) -> &'static str {
+    match value {
+        NatClass::OpenInternet => "open_internet",
+        NatClass::FullCone => "full_cone",
+        NatClass::AddressRestricted => "address_restricted",
+        NatClass::PortRestricted => "port_restricted",
+        NatClass::Symmetric => "symmetric",
+        NatClass::CarrierGrade => "carrier_grade",
+        NatClass::Unknown => "unknown",
+    }
 }
 
 fn current_time_millis() -> Result<u64, String> {

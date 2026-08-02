@@ -3,6 +3,201 @@
 
 use sqlx::SqlitePool;
 
+#[derive(Clone, Debug, sqlx::FromRow)]
+pub struct PublishedHubEndpoint {
+    pub node_id: String,
+    pub host: String,
+    pub port: i64,
+    pub published_at: String,
+}
+
+#[derive(Clone, Debug, sqlx::FromRow)]
+pub struct LatestEndpointObservation {
+    pub endpoint_host: String,
+    pub endpoint_port: i64,
+    pub observed_public_address: Option<String>,
+    pub endpoint_class: String,
+    pub nat_class: String,
+    pub observed_at: String,
+    pub expires_at: String,
+    pub verified: bool,
+}
+
+#[derive(Clone, Debug, sqlx::FromRow)]
+pub struct HubPeerMetadata {
+    pub public_key: String,
+    pub endpoint_host: String,
+    pub endpoint_port: i64,
+}
+
+pub async fn local_hq_node_id(pool: &SqlitePool) -> Result<Option<String>, sqlx::Error> {
+    sqlx::query_scalar(
+        "SELECT n.id
+         FROM sync_branch_routes r
+         JOIN sync_nodes n ON n.id = r.local_node_id
+         WHERE r.enabled = 1 AND n.role = 'hq' AND n.key_status <> 'revoked'
+           AND n.deleted_at IS NULL
+         ORDER BY r.updated_at DESC LIMIT 1",
+    )
+    .fetch_optional(pool)
+    .await
+}
+
+pub async fn save_hub_endpoint(
+    pool: &SqlitePool,
+    node_id: &str,
+    host: &str,
+    port: u16,
+    published_at: &str,
+) -> Result<bool, sqlx::Error> {
+    let result = sqlx::query(
+        "UPDATE sync_nodes
+         SET mesh_endpoint_host = ?1, mesh_endpoint_port = ?2,
+             mesh_endpoint_published_at = ?3
+         WHERE id = ?4 AND role = 'hq' AND deleted_at IS NULL",
+    )
+    .bind(host)
+    .bind(i64::from(port))
+    .bind(published_at)
+    .bind(node_id)
+    .execute(pool)
+    .await?;
+    Ok(result.rows_affected() == 1)
+}
+
+pub async fn published_hub_endpoint(
+    pool: &SqlitePool,
+    node_id: &str,
+) -> Result<Option<PublishedHubEndpoint>, sqlx::Error> {
+    sqlx::query_as(
+        "SELECT id AS node_id, mesh_endpoint_host AS host,
+                mesh_endpoint_port AS port,
+                mesh_endpoint_published_at AS published_at
+         FROM sync_nodes
+         WHERE id = ?1 AND role = 'hq' AND deleted_at IS NULL
+           AND mesh_endpoint_host IS NOT NULL
+           AND mesh_endpoint_port IS NOT NULL
+           AND mesh_endpoint_published_at IS NOT NULL",
+    )
+    .bind(node_id)
+    .fetch_optional(pool)
+    .await
+}
+
+pub async fn latest_endpoint_observation(
+    pool: &SqlitePool,
+    node_id: &str,
+    endpoint_host: &str,
+    endpoint_port: u16,
+    now: &str,
+) -> Result<Option<LatestEndpointObservation>, sqlx::Error> {
+    sqlx::query_as(
+        "SELECT endpoint_host, endpoint_port, observed_public_address,
+                endpoint_class, nat_class, observed_at, expires_at, verified
+         FROM mesh_endpoint_observations
+         WHERE node_id = ?1 AND endpoint_host = ?2 AND endpoint_port = ?3
+           AND expires_at > ?4
+         ORDER BY verified DESC, observed_at DESC LIMIT 1",
+    )
+    .bind(node_id)
+    .bind(endpoint_host)
+    .bind(i64::from(endpoint_port))
+    .bind(now)
+    .fetch_optional(pool)
+    .await
+}
+
+pub async fn hub_peer_metadata(
+    pool: &SqlitePool,
+    mesh_pool: &str,
+) -> Result<Option<HubPeerMetadata>, sqlx::Error> {
+    sqlx::query_as(
+        "SELECT k.public_key, n.mesh_endpoint_host AS endpoint_host,
+                n.mesh_endpoint_port AS endpoint_port
+         FROM mesh_sites s
+         JOIN mesh_allocations a ON a.site_id = s.id AND a.state = 'active'
+         JOIN sync_nodes n ON n.id = a.node_id AND n.role = 'hq'
+                          AND n.key_status <> 'revoked' AND n.deleted_at IS NULL
+         JOIN mesh_peer_keys k ON k.node_id = n.id AND k.status = 'current'
+         WHERE s.role = 'hq' AND s.ipv4_pool = ?1 AND s.state = 'active'
+           AND s.deleted_at IS NULL AND n.mesh_endpoint_host IS NOT NULL
+           AND n.mesh_endpoint_port IS NOT NULL
+         ORDER BY a.host_number LIMIT 1",
+    )
+    .bind(mesh_pool)
+    .fetch_optional(pool)
+    .await
+}
+
+pub async fn latest_nat_class(
+    pool: &SqlitePool,
+    node_id: &str,
+    now: &str,
+) -> Result<Option<String>, sqlx::Error> {
+    sqlx::query_scalar(
+        "SELECT nat_class FROM mesh_endpoint_observations
+         WHERE node_id = ?1 AND expires_at > ?2
+         ORDER BY verified DESC, observed_at DESC LIMIT 1",
+    )
+    .bind(node_id)
+    .bind(now)
+    .fetch_optional(pool)
+    .await
+}
+
+#[derive(Clone, Debug, sqlx::FromRow)]
+pub struct LocalHubTunnelMetadata {
+    pub ipv4_pool: String,
+    pub ipv4_address: String,
+    pub prefix_length: i64,
+}
+
+#[derive(Clone, Debug, sqlx::FromRow)]
+pub struct HubTunnelPeer {
+    pub public_key: String,
+    pub ipv4_address: String,
+    pub prefix_length: i64,
+}
+
+pub async fn local_hub_tunnel_metadata(
+    pool: &SqlitePool,
+    node_id: &str,
+) -> Result<Option<LocalHubTunnelMetadata>, sqlx::Error> {
+    sqlx::query_as(
+        "SELECT s.ipv4_pool, a.ipv4_address, a.prefix_length
+         FROM mesh_sites s
+         JOIN mesh_allocations a ON a.site_id = s.id AND a.node_id = ?1
+                                AND a.state = 'active'
+         WHERE s.role = 'hq' AND s.state = 'active' AND s.deleted_at IS NULL
+         LIMIT 1",
+    )
+    .bind(node_id)
+    .fetch_optional(pool)
+    .await
+}
+
+pub async fn active_hub_tunnel_peers(
+    pool: &SqlitePool,
+    hub_node_id: &str,
+    mesh_pool: &str,
+) -> Result<Vec<HubTunnelPeer>, sqlx::Error> {
+    sqlx::query_as(
+        "SELECT k.public_key, a.ipv4_address, a.prefix_length
+         FROM mesh_sites s
+         JOIN mesh_allocations a ON a.site_id = s.id AND a.state = 'active'
+         JOIN mesh_peer_keys k ON k.node_id = a.node_id AND k.status = 'current'
+         JOIN sync_nodes n ON n.id = a.node_id AND n.key_status <> 'revoked'
+                          AND n.deleted_at IS NULL
+         WHERE s.ipv4_pool = ?1 AND s.state = 'active' AND s.deleted_at IS NULL
+           AND a.node_id <> ?2
+         ORDER BY s.site_number, a.host_number",
+    )
+    .bind(mesh_pool)
+    .bind(hub_node_id)
+    .fetch_all(pool)
+    .await
+}
+
 pub async fn register_windows_peer_key(
     pool: &SqlitePool,
     node_id: &str,
@@ -276,4 +471,52 @@ pub async fn record_windows_key_revocation(
         .await?;
     }
     transaction.commit().await
+}
+
+#[cfg(test)]
+mod tests {
+    use sqlx::sqlite::SqlitePoolOptions;
+
+    use super::{published_hub_endpoint, save_hub_endpoint};
+
+    #[tokio::test]
+    async fn published_endpoint_round_trips_on_the_hq_node_record() {
+        let pool = SqlitePoolOptions::new()
+            .max_connections(1)
+            .connect("sqlite::memory:")
+            .await
+            .unwrap();
+        sqlx::raw_sql(
+            "CREATE TABLE sync_nodes (
+                id TEXT PRIMARY KEY,
+                role TEXT NOT NULL,
+                deleted_at TEXT,
+                mesh_endpoint_host TEXT,
+                mesh_endpoint_port INTEGER,
+                mesh_endpoint_published_at TEXT
+             );
+             INSERT INTO sync_nodes (id, role) VALUES ('hq-node', 'hq');",
+        )
+        .execute(&pool)
+        .await
+        .unwrap();
+
+        assert!(save_hub_endpoint(
+            &pool,
+            "hq-node",
+            "hq-west.ddns.example.co.ke",
+            51_820,
+            "2026-08-02T09:30:00Z",
+        )
+        .await
+        .unwrap());
+        let endpoint = published_hub_endpoint(&pool, "hq-node")
+            .await
+            .unwrap()
+            .unwrap();
+        assert_eq!(endpoint.node_id, "hq-node");
+        assert_eq!(endpoint.host, "hq-west.ddns.example.co.ke");
+        assert_eq!(endpoint.port, 51_820);
+        assert_eq!(endpoint.published_at, "2026-08-02T09:30:00Z");
+    }
 }

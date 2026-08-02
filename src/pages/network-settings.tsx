@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { confirm } from "@/components/ui/confirm-dialog";
 import {
   Check,
@@ -45,11 +45,13 @@ import {
   setLegacyTrustedLanEnabled,
   getPrivateMeshStatus,
   installPrivateMesh,
+  publishPrivateMeshHubEndpoint,
   requestPrivateMeshEnrollment,
   rotatePrivateMeshKey,
   promotePrivateMeshKey,
   revokePrivateMesh,
   type PrivateMeshStatus,
+  type HubNatClass,
   type MeshEnrollmentRequestStatus,
   type NetworkMode,
   type BrowserCertificateState,
@@ -158,11 +160,20 @@ export function NetworkSettingsPage() {
 function PrivateMeshPanel() {
   const [status, setStatus] = useState<PrivateMeshStatus | null>(null);
   const [enrollment, setEnrollment] = useState<MeshEnrollmentRequestStatus | null>(null);
-  const [busy, setBusy] = useState<"install" | "enroll" | "rotate" | "promote" | "revoke" | null>(null);
+  const [endpointHost, setEndpointHost] = useState("");
+  const [endpointPort, setEndpointPort] = useState("51820");
+  const endpointInitialised = useRef(false);
+  const [busy, setBusy] = useState<"install" | "publish" | "enroll" | "rotate" | "promote" | "revoke" | null>(null);
 
   const load = async () => {
     try {
-      setStatus(await getPrivateMeshStatus());
+      const next = await getPrivateMeshStatus();
+      setStatus(next);
+      if (!endpointInitialised.current && next.isHub) {
+        setEndpointHost(next.hubEndpoint?.host ?? "");
+        setEndpointPort(String(next.hubEndpoint?.port ?? 51820));
+        endpointInitialised.current = true;
+      }
     } catch (error) {
       toast.error(`Could not read Private Mesh status: ${String(error)}`);
     }
@@ -185,6 +196,32 @@ function PrivateMeshPanel() {
     try {
       setStatus(await installPrivateMesh());
       toast.success("Private Mesh installed");
+    } catch (error) {
+      toast.error(String(error));
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const publishEndpoint = async () => {
+    const port = Number(endpointPort);
+    if (!endpointHost.trim() || !Number.isInteger(port) || port < 1 || port > 65535) {
+      toast.error("Enter a public IPv4 or DDNS hostname and a UDP port from 1 to 65535");
+      return;
+    }
+    const approved = await confirm({
+      title: status?.hubEndpoint ? "Update the hub endpoint?" : "Publish the hub endpoint?",
+      description: "Windows will request administrator approval, set this WireGuard UDP listen port, and restart Private Mesh. Existing Omnix traffic routes remain limited to the private mesh subnet.",
+      confirmText: status?.hubEndpoint ? "Update endpoint" : "Publish endpoint",
+    });
+    if (!approved) return;
+    setBusy("publish");
+    try {
+      const next = await publishPrivateMeshHubEndpoint(endpointHost.trim(), port);
+      setStatus(next);
+      setEndpointHost(next.hubEndpoint?.host ?? endpointHost.trim());
+      setEndpointPort(String(next.hubEndpoint?.port ?? port));
+      toast.success("Hub endpoint published");
     } catch (error) {
       toast.error(String(error));
     } finally {
@@ -278,6 +315,101 @@ function PrivateMeshPanel() {
 
       {status?.available === false && (
         <p className="mt-3 text-xs text-muted-foreground">Private Mesh service installation is available on Windows.</p>
+      )}
+
+      {status?.installed && status.isHub && status.state !== "revoked" && (
+        <div className="mt-4 border-t border-border pt-4">
+          <div className="flex items-start justify-between gap-6">
+            <div className="max-w-xl">
+              <p className="text-xs font-semibold">Hub endpoint</p>
+              <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                Publish the public address that branch devices dial. Use a fixed public IPv4 or a
+                DDNS hostname when the ISP changes your address.
+              </p>
+            </div>
+            {status.hubEndpoint && (
+              <Badge variant="outline" className="font-mono text-[10px]">
+                {status.hubEndpoint.host}:{status.hubEndpoint.port}
+              </Badge>
+            )}
+          </div>
+
+          <div className="mt-4 max-w-xl space-y-3">
+            <Field label="Public IPv4 or DDNS hostname">
+              <Input
+                value={endpointHost}
+                onChange={(event) => setEndpointHost(event.target.value)}
+                placeholder="hq.example.co.ke"
+                className="font-mono"
+                autoCapitalize="none"
+                autoCorrect="off"
+                spellCheck={false}
+              />
+            </Field>
+            <Field label="WireGuard UDP listen port">
+              <Input
+                type="number"
+                min={1}
+                max={65535}
+                value={endpointPort}
+                onChange={(event) => setEndpointPort(event.target.value)}
+                className="max-w-48 font-mono"
+              />
+            </Field>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => { void publishEndpoint(); }}
+              disabled={busy !== null || !endpointHost.trim()}
+            >
+              {busy === "publish" ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <Network className="mr-1.5 h-3.5 w-3.5" />}
+              {status.hubEndpoint ? "Update endpoint" : "Publish endpoint"}
+            </Button>
+          </div>
+
+          <div className="mt-4 grid gap-x-6 gap-y-3 border-y border-border py-3 text-xs sm:grid-cols-3">
+            <div>
+              <p className="text-muted-foreground">Observed public address</p>
+              <p className="mt-1 font-mono text-foreground">
+                {status.hubEndpoint?.observedPublicAddress ?? "Not observed"}
+              </p>
+            </div>
+            <div>
+              <p className="text-muted-foreground">UDP reachability</p>
+              <p className="mt-1 font-medium text-foreground">
+                {reachabilityLabel(status.hubEndpoint?.udpReachability)}
+              </p>
+            </div>
+            <div>
+              <p className="text-muted-foreground">Connection type</p>
+              <p className="mt-1 font-medium text-foreground">
+                {natClassLabel(status.hubEndpoint?.natClass)}
+              </p>
+            </div>
+          </div>
+
+          {status.hubEndpoint?.warning ? (
+            <div className="mt-3 border-l-2 border-amber-500 pl-3 text-xs leading-5">
+              <p className="font-medium text-amber-800 dark:text-amber-300">Port forwarding will not work on this line</p>
+              <p className="mt-0.5 text-muted-foreground">{status.hubEndpoint.warning}</p>
+            </div>
+          ) : (
+            <div className="mt-3 border-l-2 border-primary/40 pl-3 text-xs leading-5 text-muted-foreground">
+              <p className="font-medium text-foreground">Router setup</p>
+              <p>
+                Reserve this hub’s LAN address, then forward UDP port {endpointPort || "51820"} on
+                the router to the same port on this computer. Allow that UDP port through Windows
+                Firewall. TCP forwarding is not required.
+              </p>
+            </div>
+          )}
+
+          {status.hubEndpoint?.udpReachability === "unknown" && (
+            <p className="mt-3 text-[11px] leading-4 text-muted-foreground">
+              {status.hubEndpoint.observationRequirement}
+            </p>
+          )}
+        </div>
       )}
 
       {status?.installed && status.state !== "revoked" && (
@@ -809,6 +941,26 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
       {children}
     </div>
   );
+}
+
+function reachabilityLabel(value: "reachable" | "unreachable" | "unknown" | undefined): string {
+  switch (value) {
+    case "reachable": return "Reachable";
+    case "unreachable": return "Not reachable";
+    default: return "Unknown";
+  }
+}
+
+function natClassLabel(value: HubNatClass | undefined): string {
+  switch (value) {
+    case "open_internet": return "Open internet";
+    case "full_cone": return "Full-cone NAT";
+    case "address_restricted": return "Address-restricted NAT";
+    case "port_restricted": return "Port-restricted NAT";
+    case "symmetric": return "Symmetric NAT";
+    case "carrier_grade": return "Carrier-grade NAT";
+    default: return "Unknown";
+  }
 }
 
 function certificateStateLabel(state: BrowserCertificateState): string {

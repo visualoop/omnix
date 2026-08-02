@@ -783,11 +783,16 @@ async fn capture_triggers_install_on_the_complete_registered_schema() {
 
 #[test]
 fn migration_and_runtime_schema_never_define_private_key_columns() {
-    let schema = include_str!("../migrations/104_sync_activation.sql").to_ascii_lowercase();
-    assert!(!schema.contains("private_key text"));
-    assert!(!schema.contains("preshared_key text"));
-    assert!(schema.contains("lan_http"));
+    let runtime_schema = include_str!("../migrations/104_sync_activation.sql").to_ascii_lowercase();
+    let endpoint_schema =
+        include_str!("../migrations/106_mesh_hub_endpoint.sql").to_ascii_lowercase();
+    for schema in [&runtime_schema, &endpoint_schema] {
+        assert!(!schema.contains("private_key text"));
+        assert!(!schema.contains("preshared_key text"));
+    }
+    assert!(runtime_schema.contains("lan_http"));
+    assert!(endpoint_schema.contains("mesh_endpoint_host"));
     assert!(Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("migrations/104_sync_activation.sql")
+        .join("migrations/106_mesh_hub_endpoint.sql")
         .exists());
 }

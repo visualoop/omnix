@@ -368,6 +368,67 @@ fn nat_and_endpoint_classification_is_conservative() {
     assert_eq!(mesh::classify_nat(&cgnat), mesh::NatClass::CarrierGrade);
 }
 
+#[test]
+fn public_hub_endpoint_accepts_ipv4_and_normalized_ddns() {
+    let ipv4 = mesh::Endpoint::parse_public("41.90.64.12", 51_820).unwrap();
+    assert_eq!(ipv4.render(), "41.90.64.12:51820");
+
+    let ddns = mesh::Endpoint::parse_public(" HQ-West.DDNS.Example.co.ke ", 51_821).unwrap();
+    assert_eq!(ddns.render(), "hq-west.ddns.example.co.ke:51821");
+}
+
+#[test]
+fn public_hub_endpoint_rejects_private_cgnat_malformed_and_zero_port() {
+    for host in ["10.0.0.8", "172.20.1.4", "192.168.1.20", "100.70.2.3"] {
+        assert_eq!(
+            mesh::Endpoint::parse_public(host, 51_820),
+            Err(mesh::MeshError::NonPublicEndpoint)
+        );
+    }
+    for host in ["hq", "999.2.3.4", "-hq.example.co.ke", "hq..example.co.ke"] {
+        assert_eq!(
+            mesh::Endpoint::parse_public(host, 51_820),
+            Err(mesh::MeshError::InvalidDnsName)
+        );
+    }
+    assert_eq!(
+        mesh::Endpoint::parse_public("hq.example.co.ke", 0),
+        Err(mesh::MeshError::InvalidPort)
+    );
+}
+
+#[test]
+fn reachability_requires_verified_external_evidence_and_warns_for_cgnat() {
+    let endpoint = mesh::Endpoint::parse_public("hq.example.co.ke", 51_820).unwrap();
+    let unverified = mesh::ReachabilityObservation {
+        observed_public_address: Some(Ipv4Addr::new(41, 90, 64, 12)),
+        observed_port: 51_820,
+        nat_class: mesh::NatClass::FullCone,
+        endpoint_class: mesh::EndpointClass::NatTraversal,
+        verified: false,
+    };
+    let unknown = mesh::assess_hub_reachability(&endpoint, Some(&unverified));
+    assert_eq!(unknown.observed_public_address, None);
+    assert_eq!(unknown.port_reachability, mesh::PortReachability::Unknown);
+    assert_eq!(unknown.nat_class, mesh::NatClass::Unknown);
+
+    let cgnat = mesh::ReachabilityObservation {
+        observed_public_address: Some(Ipv4Addr::new(41, 90, 64, 12)),
+        observed_port: 51_820,
+        nat_class: mesh::NatClass::CarrierGrade,
+        endpoint_class: mesh::EndpointClass::RelayRequired,
+        verified: true,
+    };
+    let assessed = mesh::assess_hub_reachability(&endpoint, Some(&cgnat));
+    assert_eq!(
+        assessed.port_reachability,
+        mesh::PortReachability::Unreachable
+    );
+    assert_eq!(assessed.nat_class, mesh::NatClass::CarrierGrade);
+    assert!(assessed.warning.unwrap().contains("port forwarding cannot"));
+    assert!(assessed.warning.unwrap().contains("relay"));
+}
+
 fn policy() -> mesh::EnrollmentPolicy {
     mesh::EnrollmentPolicy {
         request_ttl_ms: 60_000,
