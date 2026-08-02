@@ -28,6 +28,16 @@ pub enum ReadOnlyWebDbError {
     Forbidden(&'static str),
     #[error("{0}")]
     NotFound(&'static str),
+    #[error("browser authorization code was not found")]
+    AuthorizationCodeUnknown,
+    #[error("browser authorization code has expired")]
+    AuthorizationCodeExpired,
+    #[error("browser authorization code was already used")]
+    AuthorizationCodeAlreadyUsed,
+    #[error("browser authorization code was revoked")]
+    AuthorizationCodeRevoked,
+    #[error("browser authorization user is inactive")]
+    AuthorizationUserInactive,
     #[error("database operation failed")]
     Database(#[from] sqlx::Error),
     #[error("stored browser authorization is invalid")]
@@ -254,19 +264,30 @@ pub async fn redeem_authorization(
     let mut transaction = pool.begin().await?;
     let grant = sqlx::query(
         "SELECT g.id, g.user_id, g.role, g.assigned_branch_ids_json, g.permissions_json, \
-                g.device_label, g.issued_at_unix_seconds, g.session_expires_at_unix_seconds \
+                g.device_label, g.issued_at_unix_seconds, g.session_expires_at_unix_seconds, \
+                g.grant_expires_at_unix_seconds, g.redeemed_at, g.revoked_at, u.active AS user_active \
          FROM web_read_session_grants g JOIN users u ON u.id = g.user_id \
-         WHERE g.code_hash = ?1 AND g.redeemed_at IS NULL AND g.revoked_at IS NULL \
-           AND g.grant_expires_at_unix_seconds > ?2 \
-           AND g.session_expires_at_unix_seconds > ?2 AND u.active = 1 LIMIT 1",
+         WHERE g.code_hash = ?1 LIMIT 1",
     )
     .bind(token_hash(&normalized))
-    .bind(now)
     .fetch_optional(&mut *transaction)
     .await?
-    .ok_or(ReadOnlyWebDbError::NotFound(
-        "This browser authorization code is invalid, expired, or already used.",
-    ))?;
+    .ok_or(ReadOnlyWebDbError::AuthorizationCodeUnknown)?;
+
+    if grant.try_get::<Option<String>, _>("revoked_at")?.is_some() {
+        return Err(ReadOnlyWebDbError::AuthorizationCodeRevoked);
+    }
+    if grant.try_get::<Option<String>, _>("redeemed_at")?.is_some() {
+        return Err(ReadOnlyWebDbError::AuthorizationCodeAlreadyUsed);
+    }
+    if grant.try_get::<i64, _>("grant_expires_at_unix_seconds")? <= now
+        || grant.try_get::<i64, _>("session_expires_at_unix_seconds")? <= now
+    {
+        return Err(ReadOnlyWebDbError::AuthorizationCodeExpired);
+    }
+    if grant.try_get::<i64, _>("user_active")? != 1 {
+        return Err(ReadOnlyWebDbError::AuthorizationUserInactive);
+    }
 
     let grant_id: String = grant.try_get("id")?;
     let raw_token = random_hex(32);
@@ -280,9 +301,7 @@ pub async fn redeem_authorization(
     .execute(&mut *transaction)
     .await?;
     if updated.rows_affected() != 1 {
-        return Err(ReadOnlyWebDbError::NotFound(
-            "This browser authorization code is invalid, expired, or already used.",
-        ));
+        return Err(ReadOnlyWebDbError::AuthorizationCodeAlreadyUsed);
     }
     sqlx::query(
         "INSERT INTO web_read_sessions \

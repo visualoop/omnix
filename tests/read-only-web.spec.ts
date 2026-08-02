@@ -217,4 +217,21 @@ describe("browser authorization login", () => {
       redirect: "error",
     });
   });
+
+  it("surfaces the server's actionable one-time-code failure", async () => {
+    const fetchSpy = vi.fn(async () => new Response(JSON.stringify({
+      error: {
+        code: "CODE_ALREADY_USED",
+        message: "This one-time code has already been used. Ask the administrator to issue a new code for this browser.",
+      },
+    }), {
+      status: 409,
+      headers: { "content-type": "application/json" },
+    }));
+    const { redeemBrowserAuthorization } = await import("@/web/api");
+    await expect(redeemBrowserAuthorization(
+      "AAAA-BBBB-CCCC-DDDD-EEEE-FFFF-0000-1111",
+      fetchSpy,
+    )).rejects.toThrow("This one-time code has already been used");
+  });
 });

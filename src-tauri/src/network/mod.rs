@@ -9,6 +9,7 @@
 // Production clients use authenticated /api/v1/commands/* and bounded /api/v1/reads/* routes.
 // Legacy routes require the documented trusted-LAN flag and hashed legacy token scope.
 
+pub mod lan_tls;
 pub mod read_only_policy;
 pub mod read_only_web;
 mod typed;
@@ -421,11 +422,14 @@ pub struct ServerHandle {
 pub struct ReadOnlyServerHandle {
     pub addr: SocketAddr,
     pub shutdown_tx: tokio::sync::oneshot::Sender<()>,
+    pub renewal_shutdown_tx: tokio::sync::oneshot::Sender<()>,
+    pub tls_status: Arc<RwLock<lan_tls::BrowserTlsStatus>>,
 }
 
 pub async fn start_read_only_server(
     state: read_only_web::ReadOnlyWebState,
     port: u16,
+    tls_config: lan_tls::LanTlsConfig,
 ) -> Result<ReadOnlyServerHandle, String> {
     let addr: SocketAddr = format!("0.0.0.0:{port}")
         .parse()
@@ -434,20 +438,125 @@ pub async fn start_read_only_server(
         .await
         .map_err(|error| format!("Failed to bind read-only browser listener {addr}: {error}"))?;
     let actual_addr = listener.local_addr().map_err(|error| error.to_string())?;
+    let listener = listener
+        .into_std()
+        .map_err(|error| format!("Failed to prepare browser TLS listener: {error}"))?;
     let app = read_only_web::build_read_only_web_router(state);
+    let material = lan_tls::initial_tls_material(&tls_config).await?;
+    let rustls = material.rustls.clone();
+    let tls_status = Arc::new(RwLock::new(material.status));
+    let server_handle = axum_server::Handle::new();
+    let shutdown_handle = server_handle.clone();
+    let tls_server = axum_server::from_tcp_rustls(listener, rustls)
+        .map_err(|error| format!("Failed to configure browser TLS listener: {error}"))?;
     let (shutdown_tx, shutdown_rx) = tokio::sync::oneshot::channel::<()>();
 
     tokio::spawn(async move {
-        let _ = axum::serve(listener, app)
-            .with_graceful_shutdown(async {
-                let _ = shutdown_rx.await;
-            })
-            .await;
+        tokio::spawn(async move {
+            let _ = shutdown_rx.await;
+            shutdown_handle.graceful_shutdown(Some(std::time::Duration::from_secs(3)));
+        });
+        if let Err(error) = tls_server
+            .handle(server_handle)
+            .serve(app.into_make_service())
+            .await
+        {
+            log::error!("read-only browser TLS listener stopped: {error}");
+        }
+    });
+
+    let renewal_rustls = material.rustls;
+    let renewal_status = tls_status.clone();
+    let (renewal_shutdown_tx, mut renewal_shutdown_rx) = tokio::sync::oneshot::channel::<()>();
+    tokio::spawn(async move {
+        let mut interval = tokio::time::interval(std::time::Duration::from_secs(
+            lan_tls::RENEWAL_CHECK_SECONDS,
+        ));
+        loop {
+            tokio::select! {
+                _ = &mut renewal_shutdown_rx => break,
+                _ = interval.tick() => {
+                    let now = chrono::Utc::now().timestamp();
+                    if !lan_tls::renewal_due(&tls_config, now) {
+                        continue;
+                    }
+                    let previous = renewal_status.read().certificate_state;
+                    renewal_status.write().certificate_state = lan_tls::renewal_started(previous);
+                    match lan_tls::renew_managed_certificate(&tls_config).await {
+                        Ok(next) => {
+                            match renewal_rustls
+                                .reload_from_pem_file(&next.cert_path, &next.key_path)
+                                .await
+                            {
+                                Ok(()) => *renewal_status.write() = next.status,
+                                Err(error) => {
+                                    log::error!("managed LAN certificate reload failed: {error}");
+                                    let previous_was_trusted = matches!(
+                                        previous,
+                                        lan_tls::CertificateState::Trusted
+                                            | lan_tls::CertificateState::TrustedRenewalDue
+                                            | lan_tls::CertificateState::TrustedRenewalDelayed
+                                            | lan_tls::CertificateState::TrustedRenewing
+                                    );
+                                    renewal_status.write().certificate_state =
+                                        lan_tls::renewal_transition(
+                                            previous,
+                                            false,
+                                            previous_was_trusted,
+                                        );
+                                }
+                            }
+                        }
+                        Err(error) => {
+                            // The helper URL, credential, CSR, and key are never included here.
+                            log::warn!("managed LAN certificate renewal delayed: {error}");
+                            let still_valid = renewal_status
+                                .read()
+                                .certificate_expires_at
+                                .as_deref()
+                                .and_then(|value| chrono::DateTime::parse_from_rfc3339(value).ok())
+                                .is_some_and(|value| value.timestamp() > now);
+                            if still_valid {
+                                renewal_status.write().certificate_state =
+                                    lan_tls::renewal_transition(previous, false, true);
+                                continue;
+                            }
+                            match lan_tls::initial_tls_material(&tls_config).await {
+                                Ok(fallback) => {
+                                    match renewal_rustls
+                                        .reload_from_pem_file(&fallback.cert_path, &fallback.key_path)
+                                        .await
+                                    {
+                                        Ok(()) => *renewal_status.write() = fallback.status,
+                                        Err(reload_error) => {
+                                            log::error!(
+                                                "local LAN certificate fallback reload failed: {reload_error}"
+                                            );
+                                            renewal_status.write().certificate_state =
+                                                lan_tls::renewal_transition(previous, false, false);
+                                        }
+                                    }
+                                }
+                                Err(fallback_error) => {
+                                    log::error!(
+                                        "local LAN certificate fallback unavailable: {fallback_error}"
+                                    );
+                                    renewal_status.write().certificate_state =
+                                        lan_tls::renewal_transition(previous, false, false);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
     });
 
     Ok(ReadOnlyServerHandle {
         addr: actual_addr,
         shutdown_tx,
+        renewal_shutdown_tx,
+        tls_status,
     })
 }
 

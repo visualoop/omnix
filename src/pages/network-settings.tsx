@@ -7,6 +7,7 @@ import {
   Cpu as Server,
   DeviceMobile as Smartphone,
   MagnifyingGlass as Search,
+  LockKey as Lock,
   Network,
   Power,
   Power as PowerOff,
@@ -40,6 +41,7 @@ import {
   getLegacyTrustedLanEnabled,
   setLegacyTrustedLanEnabled,
   type NetworkMode,
+  type BrowserCertificateState,
   type ServerStatus,
   type PairedDevice,
   type DiscoveredServer,
@@ -163,7 +165,7 @@ function ModeCard({
 }
 
 function MasterPanel({ businessName }: { businessName: string }) {
-  const [status, setStatus] = useState<ServerStatus>({ running: false, url: null, read_only_url: null, mdns_active: false });
+  const [status, setStatus] = useState<ServerStatus>({ running: false, url: null, read_only_url: null, mdns_active: false, browser_tls: null });
   const [port, setPort] = useState(8765);
   const [devices, setDevices] = useState<PairedDevice[]>([]);
   const [pairingCode, setPairingCode] = useState<PairingCodeInfo | null>(null);
@@ -198,7 +200,7 @@ function MasterPanel({ businessName }: { businessName: string }) {
     setBusy(true);
     try {
       await stopServer();
-      setStatus({ running: false, url: null, read_only_url: null, mdns_active: false });
+      setStatus({ running: false, url: null, read_only_url: null, mdns_active: false, browser_tls: null });
       toast.success("Server stopped");
     } catch (e) {
       toast.error("Failed to stop: " + e);
@@ -279,6 +281,47 @@ function MasterPanel({ businessName }: { businessName: string }) {
             )}
           </div>
         </div>
+
+        {status.running && status.browser_tls && (
+          <div className="mt-4 border-t border-border/80 pt-4">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div className="flex items-start gap-2.5">
+                <Lock className="mt-0.5 size-4 text-blue-600" aria-hidden="true" />
+                <div>
+                  <p className="text-xs font-semibold">Browser report connection</p>
+                  <p className="mt-1 font-mono text-[11px] text-muted-foreground">
+                    {status.browser_tls.scheme} · {status.browser_tls.hostname}
+                  </p>
+                </div>
+              </div>
+              <Badge variant="outline">{certificateStateLabel(status.browser_tls.certificateState)}</Badge>
+            </div>
+            <dl className="mt-3 grid gap-2 text-xs sm:grid-cols-[8rem_1fr]">
+              <dt className="text-muted-foreground">SHA-256 fingerprint</dt>
+              <dd className="break-all font-mono text-[10px] leading-4">{status.browser_tls.certificateFingerprint}</dd>
+              {status.browser_tls.certificateExpiresAt && (
+                <>
+                  <dt className="text-muted-foreground">Certificate expires</dt>
+                  <dd>{new Date(status.browser_tls.certificateExpiresAt).toLocaleString(intlLocale(), { day: "2-digit", month: "short", year: "numeric" })}</dd>
+                </>
+              )}
+            </dl>
+            {status.browser_tls.certificateState.startsWith("self_signed") ? (
+              <div className="mt-3 border-l-2 border-amber-500 pl-3 text-xs leading-5 text-muted-foreground">
+                <span className="font-medium text-foreground">One-time browser trust required.</span>{" "}
+                Open the Reports address on each browser, compare its certificate fingerprint with the value above, then trust it only when they match. The warning remains until this step is completed or a managed certificate is issued.
+              </div>
+            ) : status.browser_tls.certificateState === "trusted_renewal_delayed" ? (
+              <div className="mt-3 border-l-2 border-amber-500 pl-3 text-xs leading-5 text-muted-foreground">
+                The trusted certificate is still valid, but automatic renewal is delayed. Check this hub’s internet connection and certificate-helper configuration.
+              </div>
+            ) : (
+              <p className="mt-3 text-xs leading-5 text-muted-foreground">
+                This certificate is trusted by standard browsers. Renewal runs automatically on the hub.
+              </p>
+            )}
+          </div>
+        )}
 
         {!status.running && (
           <div className="mt-4 flex items-end gap-2">
@@ -578,4 +621,15 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
       {children}
     </div>
   );
+}
+
+function certificateStateLabel(state: BrowserCertificateState): string {
+  switch (state) {
+    case "trusted": return "Trusted certificate";
+    case "trusted_renewal_due": return "Trusted · renewal due";
+    case "trusted_renewing": return "Trusted · renewing";
+    case "trusted_renewal_delayed": return "Trusted · renewal delayed";
+    case "self_signed_managed_pending": return "Private · managed certificate pending";
+    case "self_signed": return "Private certificate";
+  }
 }

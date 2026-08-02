@@ -1,11 +1,28 @@
 import { invoke } from "@tauri-apps/api/core";
 import { fetch } from "@tauri-apps/plugin-http";
 
+export type BrowserCertificateState =
+  | "trusted"
+  | "trusted_renewal_due"
+  | "trusted_renewing"
+  | "trusted_renewal_delayed"
+  | "self_signed"
+  | "self_signed_managed_pending";
+
+export interface BrowserTlsStatus {
+  scheme: "https";
+  hostname: string;
+  certificateState: BrowserCertificateState;
+  certificateFingerprint: string;
+  certificateExpiresAt: string | null;
+}
+
 export interface ServerStatus {
   running: boolean;
   url: string | null;
   read_only_url: string | null;
   mdns_active: boolean;
+  browser_tls: BrowserTlsStatus | null;
 }
 
 export interface IssuedBrowserAuthorization {

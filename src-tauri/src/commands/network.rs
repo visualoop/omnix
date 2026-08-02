@@ -32,6 +32,7 @@ pub struct ServerStatus {
     pub url: Option<String>,
     pub read_only_url: Option<String>,
     pub mdns_active: bool,
+    pub browser_tls: Option<crate::network::lan_tls::BrowserTlsStatus>,
 }
 
 fn db_url(app: &tauri::AppHandle) -> Result<String, String> {
@@ -40,6 +41,13 @@ fn db_url(app: &tauri::AppHandle) -> Result<String, String> {
     Ok(format!("sqlite:{}", path.display()))
 }
 
+fn url_host(host: &str) -> String {
+    if host.contains(':') && !host.starts_with('[') {
+        format!("[{host}]")
+    } else {
+        host.to_string()
+    }
+}
 /// Install the reviewed persistent capture triggers after SQL migrations finish.
 /// The command accepts no SQL, identity, branch, or key material from IPC.
 #[tauri::command]
@@ -107,9 +115,16 @@ pub async fn start_lan_server(
 
     let handle = start_server(server_state, port).await?;
     let local_ip = local_ip_address::local_ip()
-        .map(|ip| ip.to_string())
-        .unwrap_or_else(|_| "127.0.0.1".to_string());
-    let read_only_origin = format!("http://{local_ip}:{browser_port}");
+        .unwrap_or_else(|_| std::net::IpAddr::V4(std::net::Ipv4Addr::LOCALHOST));
+    let tls_config = crate::network::lan_tls::LanTlsConfig::from_environment(
+        app.path()
+            .app_data_dir()
+            .map_err(|error| error.to_string())?
+            .join("lan-tls"),
+        local_ip,
+    );
+    let read_only_host = tls_config.advertised_hostname();
+    let read_only_origin = format!("https://{}:{browser_port}", url_host(&read_only_host));
     let mut read_only_state = ReadOnlyWebState::new(pool, read_only_origin.clone(), business_name);
     if let Ok(resource_dir) = app.path().resource_dir() {
         let packaged_assets = resource_dir.join("web-dist");
@@ -117,18 +132,24 @@ pub async fn start_lan_server(
             read_only_state = read_only_state.with_asset_root(packaged_assets);
         }
     }
-    let read_only_handle = match start_read_only_server(read_only_state, browser_port).await {
-        Ok(read_only_handle) => read_only_handle,
-        Err(error) => {
-            if let Some(daemon) = handle.mdns_handle {
-                let _ = daemon.shutdown();
+    let read_only_handle =
+        match start_read_only_server(read_only_state, browser_port, tls_config).await {
+            Ok(read_only_handle) => read_only_handle,
+            Err(error) => {
+                if let Some(daemon) = handle.mdns_handle {
+                    let _ = daemon.shutdown();
+                }
+                let _ = handle.shutdown_tx.send(());
+                return Err(error);
             }
-            let _ = handle.shutdown_tx.send(());
-            return Err(error);
-        }
-    };
-    let public_url = format!("http://{}:{}", local_ip, handle.addr.port());
+        };
+    let public_url = format!(
+        "http://{}:{}",
+        url_host(&local_ip.to_string()),
+        handle.addr.port()
+    );
     let mdns = handle.mdns_handle.is_some();
+    let browser_tls = read_only_handle.tls_status.read().clone();
 
     *state.server.lock() = Some(handle);
     *state.read_only_server.lock() = Some(read_only_handle);
@@ -138,6 +159,7 @@ pub async fn start_lan_server(
         url: Some(public_url),
         read_only_url: Some(read_only_origin),
         mdns_active: mdns,
+        browser_tls: Some(browser_tls),
     })
 }
 
@@ -146,6 +168,7 @@ pub async fn stop_lan_server(state: tauri::State<'_, Arc<NetworkState>>) -> Resu
     let handle = state.server.lock().take();
     let read_only_handle = state.read_only_server.lock().take();
     if let Some(handle) = read_only_handle {
+        let _ = handle.renewal_shutdown_tx.send(());
         let _ = handle.shutdown_tx.send(());
     }
     if let Some(h) = handle {
@@ -163,18 +186,29 @@ pub fn lan_server_status(state: tauri::State<'_, Arc<NetworkState>>) -> ServerSt
     match &*server {
         Some(h) => {
             let local_ip = local_ip_address::local_ip()
-                .map(|ip| ip.to_string())
-                .unwrap_or_else(|_| "127.0.0.1".to_string());
-            let read_only_url = state
-                .read_only_server
-                .lock()
-                .as_ref()
-                .map(|web| format!("http://{}:{}", local_ip, web.addr.port()));
+                .unwrap_or_else(|_| std::net::IpAddr::V4(std::net::Ipv4Addr::LOCALHOST));
+            let read_only = state.read_only_server.lock();
+            let browser_tls = read_only.as_ref().map(|web| web.tls_status.read().clone());
+            let read_only_url = read_only.as_ref().and_then(|web| {
+                browser_tls.as_ref().map(|tls| {
+                    format!(
+                        "{}://{}:{}",
+                        tls.scheme,
+                        url_host(&tls.hostname),
+                        web.addr.port()
+                    )
+                })
+            });
             ServerStatus {
                 running: true,
-                url: Some(format!("http://{}:{}", local_ip, h.addr.port())),
+                url: Some(format!(
+                    "http://{}:{}",
+                    url_host(&local_ip.to_string()),
+                    h.addr.port()
+                )),
                 read_only_url,
                 mdns_active: h.mdns_handle.is_some(),
+                browser_tls,
             }
         }
         None => ServerStatus {
@@ -182,6 +216,7 @@ pub fn lan_server_status(state: tauri::State<'_, Arc<NetworkState>>) -> ServerSt
             url: None,
             read_only_url: None,
             mdns_active: false,
+            browser_tls: None,
         },
     }
 }

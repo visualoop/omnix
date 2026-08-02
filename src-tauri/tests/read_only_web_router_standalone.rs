@@ -99,6 +99,39 @@ fn headers(origin: &str) -> HeaderMap {
     headers
 }
 
+async fn redeem_request(
+    address: std::net::SocketAddr,
+    code: &str,
+    origin: Option<&str>,
+    fetch_site: Option<&str>,
+) -> reqwest::Response {
+    let client = reqwest::Client::new();
+    let mut request = client.get(format!(
+        "http://{address}/api/web/v1/session?{}",
+        url_query_code(code)
+    ));
+    if let Some(origin) = origin {
+        request = request.header("origin", origin);
+    }
+    if let Some(fetch_site) = fetch_site {
+        request = request.header("sec-fetch-site", fetch_site);
+    }
+    request.send().await.unwrap()
+}
+
+fn url_query_code(code: &str) -> String {
+    format!("code={}", code.replace(' ', "%20"))
+}
+
+async fn error_code(response: reqwest::Response) -> (reqwest::StatusCode, String, String) {
+    let status = response.status();
+    let body: Value = response.json().await.unwrap();
+    (
+        status,
+        body["error"]["code"].as_str().unwrap().to_string(),
+        body["error"]["message"].as_str().unwrap().to_string(),
+    )
+}
 #[tokio::test]
 async fn desktop_authorization_redeems_once_sets_cookie_and_revokes() {
     let (pool, state) = fixture().await;
@@ -155,7 +188,7 @@ async fn desktop_authorization_redeems_once_sets_cookie_and_revokes() {
         .send()
         .await
         .unwrap();
-    assert_eq!(reused.status(), 401);
+    assert_eq!(reused.status(), 409);
 
     let token = cookie.split_once('=').unwrap().1;
     let session_id: String =
@@ -176,6 +209,224 @@ async fn desktop_authorization_redeems_once_sets_cookie_and_revokes() {
         .await
         .unwrap();
     assert_eq!(revoked.status(), 401);
+    task.abort();
+}
+
+#[tokio::test]
+async fn redemption_returns_specific_actionable_failure_reasons() {
+    let (pool, state) = fixture().await;
+    let app = build_read_only_web_router(state);
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let address = listener.local_addr().unwrap();
+    let task = tokio::spawn(async move { axum::serve(listener, app).await.unwrap() });
+    let now = chrono::Utc::now().timestamp();
+
+    let malformed =
+        error_code(redeem_request(address, "not-a-code", Some(ORIGIN), Some("same-origin")).await)
+            .await;
+    assert_eq!(malformed.0, 400);
+    assert_eq!(malformed.1, "CODE_FORMAT_INVALID");
+    assert!(malformed.2.contains("format"));
+
+    let unknown = error_code(
+        redeem_request(
+            address,
+            "AAAA-BBBB-CCCC-DDDD-EEEE-FFFF-0000-1111",
+            Some(ORIGIN),
+            Some("same-origin"),
+        )
+        .await,
+    )
+    .await;
+    assert_eq!(unknown.0, 401);
+    assert_eq!(unknown.1, "CODE_INVALID");
+    assert!(unknown.2.contains("not recognized"));
+
+    let origin_grant =
+        read_only_web_db::issue_authorization(&pool, "user-1", "user-1", "Origin test", 3600, now)
+            .await
+            .unwrap();
+    let wrong_origin = error_code(
+        redeem_request(
+            address,
+            &origin_grant.authorization_code,
+            Some("https://192.168.1.50:39420"),
+            Some("same-origin"),
+        )
+        .await,
+    )
+    .await;
+    assert_eq!(wrong_origin.0, 403);
+    assert_eq!(wrong_origin.1, "ORIGIN_MISMATCH");
+    assert!(wrong_origin.2.contains("scheme, hostname, and port"));
+    let wrong_fetch_site = error_code(
+        redeem_request(
+            address,
+            &origin_grant.authorization_code,
+            Some(ORIGIN),
+            Some("cross-site"),
+        )
+        .await,
+    )
+    .await;
+    assert_eq!(wrong_fetch_site.0, 403);
+    assert_eq!(wrong_fetch_site.1, "FETCH_SITE_REJECTED");
+    assert!(wrong_fetch_site.2.contains("same-origin"));
+
+    let missing_fetch_site = error_code(
+        redeem_request(
+            address,
+            &origin_grant.authorization_code,
+            Some(ORIGIN),
+            None,
+        )
+        .await,
+    )
+    .await;
+    assert_eq!(missing_fetch_site.0, 403);
+    assert_eq!(missing_fetch_site.1, "FETCH_SITE_REJECTED");
+
+    let expired =
+        read_only_web_db::issue_authorization(&pool, "user-1", "user-1", "Expired test", 3600, now)
+            .await
+            .unwrap();
+    sqlx::query(
+        "UPDATE web_read_session_grants SET grant_expires_at_unix_seconds = ?1 WHERE id = ?2",
+    )
+    .bind(now - 1)
+    .bind(&expired.grant_id)
+    .execute(&pool)
+    .await
+    .unwrap();
+    let expired_error = error_code(
+        redeem_request(
+            address,
+            &expired.authorization_code,
+            Some(ORIGIN),
+            Some("same-origin"),
+        )
+        .await,
+    )
+    .await;
+    assert_eq!(expired_error.0, 401);
+    assert_eq!(expired_error.1, "CODE_EXPIRED");
+
+    let revoked =
+        read_only_web_db::issue_authorization(&pool, "user-1", "user-1", "Revoked test", 3600, now)
+            .await
+            .unwrap();
+    sqlx::query("UPDATE web_read_session_grants SET revoked_at = datetime('now') WHERE id = ?1")
+        .bind(&revoked.grant_id)
+        .execute(&pool)
+        .await
+        .unwrap();
+    let revoked_error = error_code(
+        redeem_request(
+            address,
+            &revoked.authorization_code,
+            Some(ORIGIN),
+            Some("same-origin"),
+        )
+        .await,
+    )
+    .await;
+    assert_eq!(revoked_error.0, 403);
+    assert_eq!(revoked_error.1, "CODE_REVOKED");
+
+    let used =
+        read_only_web_db::issue_authorization(&pool, "user-1", "user-1", "Used test", 3600, now)
+            .await
+            .unwrap();
+    assert_eq!(
+        redeem_request(
+            address,
+            &used.authorization_code,
+            Some(ORIGIN),
+            Some("same-origin")
+        )
+        .await
+        .status(),
+        200
+    );
+    let used_error = error_code(
+        redeem_request(
+            address,
+            &used.authorization_code,
+            Some(ORIGIN),
+            Some("same-origin"),
+        )
+        .await,
+    )
+    .await;
+    assert_eq!(used_error.0, 409);
+    assert_eq!(used_error.1, "CODE_ALREADY_USED");
+
+    let inactive = read_only_web_db::issue_authorization(
+        &pool,
+        "user-1",
+        "user-1",
+        "Inactive test",
+        3600,
+        now,
+    )
+    .await
+    .unwrap();
+    sqlx::query("UPDATE users SET active = 0 WHERE id = 'user-1'")
+        .execute(&pool)
+        .await
+        .unwrap();
+    let inactive_error = error_code(
+        redeem_request(
+            address,
+            &inactive.authorization_code,
+            Some(ORIGIN),
+            Some("same-origin"),
+        )
+        .await,
+    )
+    .await;
+    assert_eq!(inactive_error.0, 403);
+    assert_eq!(inactive_error.1, "VIEWER_DISABLED");
+    sqlx::query("UPDATE users SET active = 1 WHERE id = 'user-1'")
+        .execute(&pool)
+        .await
+        .unwrap();
+
+    let database_failure = read_only_web_db::issue_authorization(
+        &pool,
+        "user-1",
+        "user-1",
+        "Database test",
+        3600,
+        now,
+    )
+    .await
+    .unwrap();
+    sqlx::query("DROP TABLE web_read_sessions")
+        .execute(&pool)
+        .await
+        .unwrap();
+    let internal = redeem_request(
+        address,
+        &database_failure.authorization_code,
+        Some(ORIGIN),
+        Some("same-origin"),
+    )
+    .await;
+    assert_eq!(internal.status(), 503);
+    let internal_body: Value = internal.json().await.unwrap();
+    assert_eq!(
+        internal_body["error"]["code"],
+        "HUB_DATABASE_UPDATE_REQUIRED"
+    );
+    assert!(internal_body["error"]["message"]
+        .as_str()
+        .unwrap()
+        .contains("Update and restart Omnix"));
+    assert!(internal_body["error"]["supportReference"]
+        .as_str()
+        .is_some());
+
     task.abort();
 }
 
@@ -293,12 +544,19 @@ async fn login_and_deep_links_serve_only_the_web_document() {
 
 #[test]
 fn cookie_contract_is_httponly_strict_bounded_and_hashes_tokens() {
-    let value = session_cookie_header(TOKEN, MAX_SESSION_SECONDS, true).unwrap();
-    let value = value.to_str().unwrap();
-    assert!(value.contains("HttpOnly"));
-    assert!(value.contains("SameSite=Strict"));
-    assert!(value.contains("Path=/"));
-    assert!(value.contains("Secure"));
+    let https = session_cookie_header(TOKEN, MAX_SESSION_SECONDS, true).unwrap();
+    let https = https.to_str().unwrap();
+    assert!(https.contains("HttpOnly"));
+    assert!(https.contains("SameSite=Strict"));
+    assert!(https.contains("Path=/"));
+    assert!(https.contains("Secure"));
+
+    let http = session_cookie_header(TOKEN, MAX_SESSION_SECONDS, false).unwrap();
+    let http = http.to_str().unwrap();
+    assert!(http.contains("HttpOnly"));
+    assert!(http.contains("SameSite=Strict"));
+    assert!(!http.contains("Secure"));
+
     assert!(!session_token_hash(TOKEN).contains(TOKEN));
     assert!(session_cookie_header("short", 60, false).is_err());
     assert!(session_cookie_header(TOKEN, MAX_SESSION_SECONDS + 1, false).is_err());

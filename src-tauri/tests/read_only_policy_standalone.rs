@@ -236,22 +236,22 @@ fn every_allowlisted_projection_authorizes_with_its_exact_query_shape() {
 
 #[test]
 fn same_origin_evidence_is_mandatory_and_cross_origin_is_rejected() {
+    // A plain-HTTP bare-IP origin is valid when it exactly matches the trusted
+    // listener origin. TLS affects cookie transport, not this equality rule.
+    assert!(authorize(manager(), request("GET", "/api/web/v1/profile", &[]), 150).is_ok());
+
     let mut policy_request = request("GET", "/api/web/v1/profile", &[]);
     policy_request.origin.origin_header = Some("https://evil.example");
-    assert_eq!(
-        authorize(manager(), policy_request, 150).unwrap_err().kind,
-        PolicyErrorKind::Forbidden
-    );
+    let mismatch = authorize(manager(), policy_request, 150).unwrap_err();
+    assert_eq!(mismatch.kind, PolicyErrorKind::Forbidden);
+    assert!(mismatch.message.contains("scheme, hostname, and port"));
 
     let mut missing_fetch_metadata = request("GET", "/api/web/v1/profile", &[]);
     missing_fetch_metadata.origin.origin_header = None;
     missing_fetch_metadata.origin.sec_fetch_site = None;
-    assert_eq!(
-        authorize(manager(), missing_fetch_metadata, 150)
-            .unwrap_err()
-            .kind,
-        PolicyErrorKind::Forbidden
-    );
+    let missing = authorize(manager(), missing_fetch_metadata, 150).unwrap_err();
+    assert_eq!(missing.kind, PolicyErrorKind::Forbidden);
+    assert!(missing.message.contains("same-origin"));
 
     let same_origin_without_origin_header = PolicyRequest {
         origin: RequestOrigin {

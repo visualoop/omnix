@@ -5,7 +5,7 @@
 //! starts + stops it via services.msc / sc.exe / Task Manager.
 //!
 //! What it does:
-//!   1. On start: open %APPDATA%\com.omnix.pos\omnix.db, read the persisted
+//!   1. On start: open %APPDATA%\co.ke.omnix.app\omnix.db, read the persisted
 //!      network mode + port + business name from the `settings` table.
 //!   2. If mode == 'master', bind the axum LAN server on the configured port.
 //!   3. Handle service control events (Stop, Shutdown, Interrogate).
@@ -119,11 +119,12 @@ mod windows_impl {
     async fn start_lan_server_headless() -> std::result::Result<(), String> {
         use sqlx::sqlite::SqlitePoolOptions;
 
-        // Locate omnix.db (Tauri default: %APPDATA%\com.omnix.pos\omnix.db)
+        // Use the desktop application's stable Tauri identity. The old service
+        // path (`com.omnix.pos`) was a separate database and could not redeem
+        // grants issued by the desktop app.
         let app_data = std::env::var("APPDATA").map_err(|e| format!("APPDATA env: {}", e))?;
-        let db_path = std::path::Path::new(&app_data)
-            .join("com.omnix.pos")
-            .join("omnix.db");
+        let app_dir = std::path::Path::new(&app_data).join(omnix_lib::APP_IDENTIFIER);
+        let db_path = app_dir.join("omnix.db");
         if !db_path.exists() {
             return Err(format!(
                 "omnix.db not found at {} — open the app once as a user to initialise it",
@@ -197,13 +198,22 @@ mod windows_impl {
             .checked_add(1)
             .ok_or_else(|| "paired-device port leaves no read-only browser port".to_string())?;
         let advertised_ip = local_ip_address::local_ip()
-            .map(|ip| ip.to_string())
-            .unwrap_or_else(|_| "127.0.0.1".to_string());
-        let origin = format!("http://{advertised_ip}:{read_only_port}");
+            .unwrap_or_else(|_| std::net::IpAddr::V4(std::net::Ipv4Addr::LOCALHOST));
+        let tls_config = omnix_lib::network::lan_tls::LanTlsConfig::from_environment(
+            app_dir.join("lan-tls"),
+            advertised_ip,
+        );
+        let advertised_host = tls_config.advertised_hostname();
+        let url_host = if advertised_host.contains(':') {
+            format!("[{advertised_host}]")
+        } else {
+            advertised_host
+        };
+        let origin = format!("https://{url_host}:{read_only_port}");
         let read_only_state =
             omnix_lib::network::read_only_web::ReadOnlyWebState::new(pool, origin, business_name);
         let read_only_handle =
-            omnix_lib::network::start_read_only_server(read_only_state, read_only_port)
+            omnix_lib::network::start_read_only_server(read_only_state, read_only_port, tls_config)
                 .await
                 .map_err(|e| format!("bind read-only browser server: {e}"))?;
 
