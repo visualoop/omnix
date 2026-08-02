@@ -120,6 +120,7 @@ export const DOC_CONTENT_ROUTES = [
   '/[locale]/docs/android-app',
   '/[locale]/docs/browser-companion',
   '/[locale]/docs/private-mesh',
+  '/[locale]/docs/remote-access-setup',
 ] as const
 
 export const API_ROUTE_GROUPS = {

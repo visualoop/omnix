@@ -349,10 +349,20 @@ If the branch address still doesn't open, restart the branch service from the hu
   {
     slug: 'private-mesh',
     title: 'Omnix Private Mesh',
-    excerpt: 'Connect enrolled Omnix devices through the bundled WireGuard tunnel without routing ordinary internet traffic.',
+    excerpt: 'Connect enrolled Windows and Android devices through the bundled WireGuard tunnel after making the hub reachable.',
     category: 'Integrations',
     icon: 'ShieldCheck',
-    body: `Omnix Private Mesh gives enrolled Omnix devices a private route to approved branch services when they aren't on the branch LAN. WireGuard is bundled inside Omnix. You don't need a separate WireGuard app, VPN subscription, or WireGuard account.
+    body: `Omnix Private Mesh gives enrolled Omnix devices a private route to approved branch services when they aren't on the branch LAN. WireGuard is bundled in the Windows and Android apps. You don't need a separate WireGuard app, a VPN subscription, or a WireGuard account.
+
+The tunnel encrypts traffic, authenticates each enrolled peer, and routes only the private Omnix subnet. It does not make the hub reachable by itself.
+
+## Same-network use needs no router setup
+
+A phone on the same branch Wi-Fi as the Windows hub can connect over the LAN. You don't need port forwarding, DDNS, a public address, or Private Mesh for that same-network connection.
+
+Remote access is different. A phone on mobile data must be able to dial the hub's WireGuard UDP port. Reserve the hub's LAN address, forward that UDP port in the branch router, and use DDNS if the public address changes. Follow [Set up remote access](/docs/remote-access-setup) before testing away from the branch.
+
+If the branch internet line is behind carrier-grade NAT, port forwarding cannot reach it. Omnix does not currently operate a relay, so that line needs a public address from the internet provider or a different connection before direct remote access can work.
 
 ## What the mesh routes
 
@@ -362,29 +372,126 @@ This is split routing, not a whole-phone consumer VPN. Omnix doesn't use the tun
 
 ## Android permission
 
-The first time Omnix enables Private Mesh, Android shows its system VPN permission dialog. Accept it once so Android can create the Omnix tunnel. The prompt comes from Android, even though WireGuard is already bundled in Omnix. While the tunnel is connected, Android keeps a persistent **Omnix Private Mesh** notification. That notification is required for the foreground VPN service and cannot be dismissed until the tunnel stops.
+The first time you connect Private Mesh, Android shows its system VPN permission dialog. Accept it once so Android can create the Omnix tunnel. The prompt comes from Android even though WireGuard is already bundled in Omnix. While the tunnel is connected, Android keeps a persistent **Omnix Private Mesh** notification. Android requires that notification for the foreground VPN service, and it remains until the tunnel stops.
 
-Android can ask again after the app is reinstalled, its storage is cleared, the VPN permission is reset or revoked, or another VPN takes over Android's single VPN slot. Don't install another VPN app to answer this prompt. If you deny it, the app can still work on the branch LAN, but it can't use Private Mesh until permission is granted.
+Android can ask again after the app is reinstalled, its storage is cleared, VPN permission is reset or revoked, or another VPN takes over Android's single VPN slot. Don't install another VPN app to answer this prompt. If you deny it, Omnix can still work on the branch LAN, but Private Mesh stays off until permission is granted.
 
 ## Connect a phone
 
-Enrol the phone through the Windows desktop hub first. The enrolment supplies the device identity and approved branch routes. Open **Profile** on Android, confirm the active branch, then tap **Connect Private Mesh**. The control shows the current mesh state and changes to **Disconnect Private Mesh** while the tunnel is running.
+Set up internet reachability first, then enrol the phone through the Windows desktop hub. The enrolment supplies the device identity and approved branch routes. Open **Profile** on Android, confirm the active branch, then tap **Connect Private Mesh**. The control shows the current mesh state and changes to **Disconnect Private Mesh** while the tunnel is running.
 
-When the phone leaves branch Wi-Fi, Omnix can use the private route for approved branch traffic. The foreground tunnel follows normal handoffs between Wi-Fi and mobile data, rechecks the connection after Doze, and restores a tunnel you left enabled after the phone restarts. If the tunnel is reconnecting, wait for the connected state before expecting a fresh branch total. Pending offline work stays on the phone until a branch connection returns.
-
-The desktop hub approves each device key. Omnix rotates that key through a bounded overlap period, then blocks the retired key. Revoking the device is terminal: Android stops the tunnel and removes its Keystore credential when the signed enrolment state reaches the phone.
+Test the first remote connection with Wi-Fi switched off on the phone. Wait for **Connected**, then refresh branch data or run a sync. Seeing **Connected** is not enough if the hub service itself is stopped, so confirm that fresh branch data arrives.
 
 ## Security boundaries
 
 Each phone needs its own enrolment. Revoke a lost or retired device from the Windows hub so it can no longer join the mesh. A device still needs Omnix user and branch permission after the tunnel connects. Network reachability alone doesn't grant access to business records.
 
-Private Mesh doesn't make the browser companion a public website. The initial browser companion remains read-only and LAN-only. Read [Connect the browser companion](/docs/browser-companion) for its network requirements.
+Forward only the WireGuard UDP port shown by Omnix. Do not expose the browser companion, branch service, database, or another Omnix port on the public internet. The browser companion remains read-only and LAN-only. Read [Connect the browser companion](/docs/browser-companion) for its network requirements.
 
 ## Troubleshooting
 
-If Private Mesh won't connect, check that Android granted VPN permission, another always-on VPN isn't taking the device's single VPN slot, and the phone has working internet. Then open **Profile** and retry.
+The app reports a specific mesh state instead of treating every failure as the same problem. [Set up remote access](/docs/remote-access-setup#understand-each-app-state) explains **Mesh not configured**, **Connecting**, **Connected**, **Hub unreachable**, **VPN permission denied**, and **Mesh unavailable**.`,
+  },
+  {
+    slug: 'remote-access-setup',
+    title: 'Set up Omnix remote access',
+    excerpt: 'Publish the hub endpoint, reserve its LAN address, forward WireGuard UDP, allow it through Windows Firewall, and test from mobile data.',
+    category: 'Integrations',
+    icon: 'Globe',
+    body: `Remote access lets an enrolled Omnix Android device reach its Windows hub through Private Mesh while it is away from the branch. WireGuard is bundled in the Windows and Android apps, but it cannot make an unreachable hub dialable. You must publish the hub endpoint and configure the branch router and Windows Firewall.
 
-A connected tunnel with an unavailable branch usually means the Windows hub or its branch service is off. Check the hub before removing and repeating enrolment.`,
+If the phone is on the same Wi-Fi or wired network as the hub, stop here. Same-network use needs none of this. Keep the hub running and connect both devices to the branch router.
+
+## Check for a public IPv4 address first
+
+1. Sign in to the branch router and open **Status**, **Internet**, or **WAN**. Write down its WAN IPv4 address.
+2. From a browser using that same branch connection, open an external “what is my IP” service and note the IPv4 address it reports.
+3. Compare the two addresses exactly.
+
+If they match, the router has a public IPv4 address and can receive a direct port forward. If they differ, the connection is behind carrier-grade NAT, or CGNAT. Port forwarding cannot work on that line because the provider has another NAT layer in front of the branch router.
+
+A WAN address in \`10.0.0.0/8\`, \`172.16.0.0/12\`, \`192.168.0.0/16\`, or \`100.64.0.0/10\` is not a public IPv4 address. Ask the internet provider for a public or static IPv4 address that accepts inbound UDP. If the provider cannot supply one, use another connection. A relay could cross CGNAT, but Omnix does not have a relay today.
+
+## Publish the reachable endpoint in Omnix
+
+On the Windows hub, open **Settings**, then **Network**, then **Omnix Private Mesh**. Enter the host that Android should dial:
+
+- use the public IPv4 address if it is static
+- use a DDNS hostname if the public address changes
+
+Enter the WireGuard UDP port and publish the endpoint. Record the port. You will use that same number for the router's external port, internal port, and Windows Firewall rule.
+
+Windows asks for administrator approval when you publish a different endpoint. Approve the Windows UAC prompt. Omnix changes the WireGuard listener and restarts the Private Mesh helper, so the tunnel may be unavailable briefly. Cancelling elevation leaves the new listener unpublished.
+
+The panel shows the published host and port. That is configuration, not proof that the internet can reach the hub. **Observed public address** stays **Not observed**, while **UDP reachability** and **Connection type** stay **Unknown**, until Omnix has verified external evidence. Omnix does not infer success from the address you typed.
+
+## Reserve a static LAN address for the hub
+
+Open the router's **LAN** or **DHCP Server** settings. Find **Address Reservation**, **DHCP Reservation**, **Static Lease**, or the equivalent setting. Bind the Windows hub's network adapter MAC address to its current LAN IPv4 address, then save.
+
+Reconnect the hub or renew its DHCP lease. Confirm that Windows receives the reserved address. Without the reservation, a router restart could assign a different address and leave the forwarding rule pointing at the wrong device.
+
+## Forward the same UDP port to the hub
+
+Open **NAT**, **Port Forwarding**, **Port Mapping**, or **Virtual Server** in the router and add one rule:
+
+- protocol: **UDP** only
+- external or public port: the WireGuard UDP port published in Omnix
+- internal or private port: the same port
+- destination or server address: the hub's reserved LAN IPv4 address
+- status: enabled
+
+Save the rule. No TCP forward is needed. Do not forward the browser companion, branch service, database, or any other Omnix port to the internet.
+
+## Allow the UDP port through Windows Firewall
+
+First set the branch connection to a **Private network** in Windows. Then open **Windows Security**, **Firewall & network protection**, **Advanced settings**, **Inbound Rules**, and **New Rule**. Choose **Port**, select **UDP**, enter the published WireGuard port under **Specific local ports**, choose **Allow the connection**, and apply the rule to the hub's active network profile. Name it \`Omnix Private Mesh\`.
+
+If an Omnix firewall rule for that exact UDP port already exists and is enabled for the active profile, don't add a duplicate. A rule for TCP or a different port does not help.
+
+## Router setting names used in Kenya
+
+Safaricom-supplied routers vary by manufacturer. Use **LAN** or **DHCP** plus **Address Reservation** or **Static Lease** for the hub address. The forwarding page is usually named **NAT**, **Forward Rules**, **Port Mapping**, **Port Forwarding**, or **Virtual Server**. If the provider login hides those controls, ask Safaricom whether the line has a public IPv4 address and whether customer UDP forwarding is enabled.
+
+Zuku also supplies more than one router type. Look under **LAN Setup** or **DHCP** for the reservation, then **Advanced**, **NAT**, **Port Forwarding**, or **Virtual Server** for the UDP rule. If the WAN address differs from the external address, ask Zuku for public IPv4 service. Changing more settings on the router will not bypass CGNAT.
+
+On a generic TP-Link router, use **DHCP Server** and **Address Reservation** for the hub. Add the UDP rule under **NAT Forwarding** and **Virtual Servers** or **Port Forwarding**. TP-Link firmware names differ, so follow those standard section names rather than instructions written for another model.
+
+On MikroTik RouterOS, open **IP**, **DHCP Server**, **Leases** and make the hub lease static. Under **IP**, **Firewall**, **NAT**, add a \`dstnat\` rule for protocol \`udp\` and the published destination port on the WAN interface or WAN interface list. Set the action to \`dst-nat\` and send it to the hub's reserved address and the same port. Confirm the forward chain permits traffic accepted by that destination-NAT rule.
+
+## Use DDNS for a changing public address
+
+A changing public address will eventually make a published numeric endpoint stale. Configure **Dynamic DNS** or **DDNS** in the router, or run a DDNS updater on an always-on branch machine. Confirm that the hostname resolves to the IPv4 address reported by the external service.
+
+Return to **Settings**, **Network**, **Omnix Private Mesh** and publish the DDNS hostname with the same UDP port. Approve elevation again so Omnix can update the listener and restart the helper. The router forward and Windows Firewall rule do not change because the port remains the same.
+
+## Test away from the branch
+
+1. Leave Omnix and its Private Mesh helper running on the Windows hub.
+2. Check that the hub still has its reserved LAN address. Confirm the UDP forwarding and firewall rules are enabled.
+3. Enrol and approve the Android device in Omnix.
+4. Switch off Wi-Fi on the phone so it is using mobile data, then tap **Connect Private Mesh**.
+5. Accept Android's VPN permission prompt if this is the first connection. Wait for **Connected** and check for the persistent **Omnix Private Mesh** notification.
+6. Refresh branch data or run a sync. A fresh result is the useful proof that Android reached the hub through the tunnel.
+
+Test from mobile data, not the branch Wi-Fi. Some routers cannot loop their public endpoint back into the same LAN. Online port checkers are often poor UDP tests as well.
+
+## Understand each app state
+
+- **Mesh not configured** means the device has no complete mesh setup. Install Private Mesh on the Windows hub, publish its host and UDP port, then enrol and approve Android. Same-network use can still work.
+- **Connecting** means Android started the tunnel and is waiting for the hub. If it stays here, check mobile internet, the published host, DDNS, the UDP port, router forwarding, Windows Firewall, and whether the helper is running.
+- **Connected** means the tunnel connected. Refresh branch data or complete a sync before treating remote access as verified. If no fresh data arrives, check the branch service on the hub.
+- **Hub unreachable** means Android cannot get a usable response from the published endpoint. Check hub power, the helper, DDNS, the reserved LAN address, Windows Firewall, and the UDP forward. Repeat the WAN-versus-external-address comparison. Port forwarding cannot fix CGNAT.
+- **VPN permission denied** means Android did not allow Omnix to create the tunnel. Tap **Connect Private Mesh** again and accept Android's system VPN prompt. If it does not reappear, open Android's VPN settings. Disconnect another always-on VPN if it holds Android's VPN slot.
+- **Mesh unavailable** means this build or device cannot start the bundled mesh service. Private Mesh is implemented on supported Windows hubs and Android clients. It is not available in the browser companion or on iOS. Update Omnix, restart the device, and complete the Windows Private Mesh installation and UAC prompt. Contact Omnix support if the state remains.
+- **Not observed** under **Observed public address** means Omnix has no verified external address observation yet. It does not mean the typed host is wrong, and it does not prove the port is reachable.
+- **Unknown** under **UDP reachability** or **Connection type** means there is not enough verified external evidence to classify the line. Check the router WAN address yourself, finish the UDP forward and firewall rule, then test with Android on mobile data. Do not read **Unknown** as success.
+
+## What Android changes
+
+Android asks for VPN permission once when Private Mesh first connects. It can ask again after the app is reinstalled, its storage is cleared, permission is revoked, or another VPN takes over. While connected, Android shows a persistent **Omnix Private Mesh** notification.
+
+Only the private Omnix subnet goes through the tunnel. Ordinary browsing, messaging, video, banking, updates, and payment traffic keep using the phone's normal Wi-Fi or mobile route. The tunnel encrypts Omnix traffic and authenticates enrolled peers. WireGuard is bundled, so there is no WireGuard account to create and no separate WireGuard app to install.`,
   },
 
   // ─── SCAFFOLDS (20) ───────────────────────────────────────────────────
