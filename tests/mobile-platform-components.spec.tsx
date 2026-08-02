@@ -199,6 +199,7 @@ describe("MobileProfile", () => {
       ["Change PIN", "change-pin"],
       ["Set up biometrics", "request-biometric"],
       ["Allow notifications", "request-notifications"],
+      ["Disconnect Private Mesh", "disconnect-private-mesh"],
       ["Clear local cache", "clear-cache"],
       ["Re-enrol this device", "re-enrol-device"],
       ["Revoke this device", "revoke-device"],

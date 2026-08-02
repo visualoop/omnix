@@ -84,10 +84,12 @@ describe('application downloads and customer guides', () => {
     expect(mesh).toContain('Android shows its system VPN permission dialog')
     expect(mesh).toContain('Accept it once')
     expect(mesh).toContain('persistent **Omnix Private Mesh** notification')
+    expect(mesh).toContain('tap **Connect Private Mesh**')
 
     const android = docBySlug('android-app')!.body
     expect(android).toContain('system VPN permission prompt once')
     expect(android).toContain('persistent **Omnix Private Mesh** notification')
+    expect(android).toContain('**Connect Private Mesh** control')
 
     const browser = docBySlug('browser-companion')!.body
     expect(browser).toContain('read-only')

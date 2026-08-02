@@ -15,6 +15,7 @@ export interface MobileProfileProps {
   readonly onSelectBranch: (branchId: string) => void;
   readonly onAction: (action: MobileProfileAction) => void;
   readonly onSignOut: () => void;
+  readonly meshActionPending?: boolean;
 }
 
 function permissionStateLabel(state: NativePermissionState): string {
@@ -57,6 +58,7 @@ export function MobileProfile({
   onSelectBranch,
   onAction,
   onSignOut,
+  meshActionPending = false,
 }: MobileProfileProps) {
   const account = model.accountDevice.account;
   const security = model.accountDevice.security;
@@ -218,7 +220,17 @@ export function MobileProfile({
         </CardContent>
       </Card>
 
-      <AccountDeviceCard model={model.accountDevice} locale={model.locale} />
+      <AccountDeviceCard
+        model={model.accountDevice}
+        locale={model.locale}
+        meshEnrollmentReady={model.meshEnrollmentReady}
+        meshActionPending={meshActionPending}
+        onMeshAction={() => onAction(
+          model.accountDevice.mesh.state === "connected" || model.accountDevice.mesh.state === "degraded"
+            ? "disconnect-private-mesh"
+            : "connect-private-mesh",
+        )}
+      />
 
       <Card>
         <CardHeader>

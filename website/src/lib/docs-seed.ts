@@ -269,7 +269,7 @@ When the approved enrolment first enables Private Mesh, Android shows its system
 
 ## Profile and device controls
 
-Open **Profile** to check the signed-in user, role, business, active branch, connection state, pending sync count, app version, and device enrolment. The same area provides the controls to lock the app, retry a sync, or sign out.
+Open **Profile** to check the signed-in user, role, business, active branch, connection state, pending sync count, app version, and device enrolment. An approved phone also has a visible **Connect Private Mesh** control there; while connected, the same control becomes **Disconnect Private Mesh**. The same area provides the controls to lock the app, retry a sync, or sign out.
 
 Signing out removes the active user session. Revoking a device is different: an owner does that from the Windows hub when a phone is lost, replaced, or no longer allowed to connect. Revocation stops later sync. It doesn't erase a lost phone remotely, so keep Android's own screen lock enabled.
 
@@ -368,7 +368,7 @@ Android can ask again after the app is reinstalled, its storage is cleared, the 
 
 ## Connect a phone
 
-Enrol the phone through the Windows desktop hub first. The enrolment supplies the device identity and approved branch routes. Open **Profile** on Android to check the mesh and branch connection state.
+Enrol the phone through the Windows desktop hub first. The enrolment supplies the device identity and approved branch routes. Open **Profile** on Android, confirm the active branch, then tap **Connect Private Mesh**. The control shows the current mesh state and changes to **Disconnect Private Mesh** while the tunnel is running.
 
 When the phone leaves branch Wi-Fi, Omnix can use the private route for approved branch traffic. The foreground tunnel follows normal handoffs between Wi-Fi and mobile data, rechecks the connection after Doze, and restores a tunnel you left enabled after the phone restarts. If the tunnel is reconnecting, wait for the connected state before expecting a fresh branch total. Pending offline work stays on the phone until a branch connection returns.
 

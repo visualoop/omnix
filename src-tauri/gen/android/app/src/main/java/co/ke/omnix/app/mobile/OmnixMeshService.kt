@@ -13,7 +13,9 @@ import android.net.ConnectivityManager
 import android.net.Network
 import android.net.VpnService
 import android.os.Build
+import android.os.Handler
 import android.os.IBinder
+import android.os.Looper
 import android.os.PowerManager
 import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
@@ -53,6 +55,7 @@ private const val EXTRA_ACCOUNT = "account"
 private const val EXTRA_BRANCH = "branch"
 private const val EXTRA_ENROLLMENT = "enrollment"
 private const val TUNNEL_NAME = "omnix-mesh"
+private const val LIFECYCLE_RECHECK_MILLIS = 60_000L
 private val SAFE_ID = Regex("^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$")
 private val HOSTNAME = Regex("^(?=.{1,253}$)(?:[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?\\.)*[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?$")
 
@@ -117,6 +120,7 @@ private data class Enrollment(
     val endpoint: String,
     val allowedIps: List<String>,
     val keepaliveSeconds: Int,
+    val retiredKeyId: String?,
 ) {
     companion object {
         fun read(context: Context, accountId: String, branchId: String, enrollmentId: String): Enrollment {
@@ -142,12 +146,14 @@ private data class Enrollment(
 
             val currentKeyId = requiredId(token, "keyId")
             var keyId = currentKeyId
+            var retiredKeyId: String? = null
             var expectedPublicKey = token.optString("devicePublicKey").takeIf(String::isNotBlank)
             if (lifecycle == "rotation_pending") {
                 val deadline = Instant.parse(token.getString("rotationDeadline"))
                 val activateNext = token.optBoolean("activateNextKey", false)
                 if (activateNext) {
                     keyId = requiredId(token, "nextKeyId")
+                    retiredKeyId = currentKeyId
                     expectedPublicKey = token.optString("nextDevicePublicKey").takeIf(String::isNotBlank)
                 } else {
                     require(!Instant.now().isAfter(deadline)) { "Private Mesh key rotation is required" }
@@ -188,6 +194,7 @@ private data class Enrollment(
                 endpoint = endpoint,
                 allowedIps = allowedIps,
                 keepaliveSeconds = keepalive,
+                retiredKeyId = retiredKeyId,
             )
         }
 
@@ -285,6 +292,11 @@ private object MeshKeyCustody {
             token.optString(field).takeIf(SAFE_ID::matches)?.let { store.deleteEntry(alias(accountId, it)) }
         }
     }
+
+    fun retire(accountId: String, keyId: String?) {
+        if (keyId == null) return
+        KeyStore.getInstance(KEYSTORE).apply { load(null) }.deleteEntry(alias(accountId, keyId))
+    }
 }
 
 private class OmnixTunnel : Tunnel {
@@ -301,6 +313,7 @@ internal object OmnixMeshRuntime {
     @Volatile private var backend: GoBackend? = null
     @Volatile private var active: Enrollment? = null
     @Volatile private var publicState = PublicMeshState()
+    @Volatile private var applicationContext: Context? = null
 
     fun availability(context: Context): Pair<Boolean, String?> = try {
         if (VpnService.prepare(context) == null) true to null else false to "vpn"
@@ -309,6 +322,10 @@ internal object OmnixMeshRuntime {
     }
 
     fun status(context: Context): PublicMeshState {
+        applicationContext = context.applicationContext
+        if (active == null && publicState == PublicMeshState()) {
+            publicState = readPublic(context)
+        }
         val enrollment = active
         val currentBackend = backend
         if (enrollment != null && currentBackend != null && currentBackend.getState(tunnel) == Tunnel.State.UP) {
@@ -351,6 +368,7 @@ internal object OmnixMeshRuntime {
                 active = enrollment
                 rememberDesired(context, enrollment)
                 currentBackend.setState(tunnel, Tunnel.State.UP, config)
+                MeshKeyCustody.retire(accountId, enrollment.retiredKeyId)
                 publicState = PublicMeshState("connected", enrollment.nodeId, enrollment.hubName, null)
                 persistPublic(context, publicState)
                 publicState
@@ -396,6 +414,7 @@ internal object OmnixMeshRuntime {
                 if (currentBackend.getState(tunnel) == Tunnel.State.UP) currentBackend.setState(tunnel, Tunnel.State.DOWN, null)
                 val config = buildConfig(enrollment, MeshKeyCustody.keyPair(enrollment.accountId, enrollment.keyId))
                 currentBackend.setState(tunnel, Tunnel.State.UP, config)
+                MeshKeyCustody.retire(enrollment.accountId, enrollment.retiredKeyId)
             } catch (_: Exception) {
                 publicState = publicState.copy(state = "degraded")
                 persistPublic(context, publicState)
@@ -419,8 +438,18 @@ internal object OmnixMeshRuntime {
         }
     }
 
+    fun reconcileConsent(context: Context) {
+        applicationContext = context.applicationContext
+        if (desired(context) && VpnService.prepare(context) != null) {
+            stop(context, forget = false)
+        }
+    }
+
     fun onBackendState(state: Tunnel.State) {
-        if (state == Tunnel.State.DOWN && active != null) publicState = publicState.copy(state = "degraded")
+        if (state == Tunnel.State.DOWN && active != null) {
+            publicState = publicState.copy(state = "degraded")
+            applicationContext?.let { persistPublic(it, publicState) }
+        }
     }
 
     private fun buildConfig(enrollment: Enrollment, keyPair: KeyPair): Config {
@@ -460,6 +489,16 @@ internal object OmnixMeshRuntime {
             .putString("lastHandshakeAt", state.lastHandshakeAt)
             .apply()
     }
+
+    private fun readPublic(context: Context): PublicMeshState {
+        val state = context.getSharedPreferences(MESH_STATE, Context.MODE_PRIVATE)
+        return PublicMeshState(
+            state = state.getString("publicState", null) ?: "disabled",
+            nodeId = state.getString("nodeId", null),
+            hubName = state.getString("hubName", null),
+            lastHandshakeAt = state.getString("lastHandshakeAt", null),
+        )
+    }
 }
 
 /** Keeps the VPN process foreground and reconnects it after Doze or a default-network handoff. */
@@ -467,6 +506,14 @@ class OmnixMeshService : Service() {
     private val connectivity by lazy { getSystemService(ConnectivityManager::class.java) }
     private val power by lazy { getSystemService(PowerManager::class.java) }
     private var networkCallback: ConnectivityManager.NetworkCallback? = null
+    private val lifecycleHandler = Handler(Looper.getMainLooper())
+    private val lifecycleCheck = object : Runnable {
+        override fun run() {
+            OmnixMeshRuntime.reconcileConsent(this@OmnixMeshService)
+            OmnixMeshRuntime.enforceLifecycle(this@OmnixMeshService)
+            lifecycleHandler.postDelayed(this, LIFECYCLE_RECHECK_MILLIS)
+        }
+    }
     private val idleReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
             if (intent.action == PowerManager.ACTION_DEVICE_IDLE_MODE_CHANGED && !power.isDeviceIdleMode) {
@@ -484,6 +531,7 @@ class OmnixMeshService : Service() {
             override fun onAvailable(network: Network) = OmnixMeshRuntime.networkChanged(this@OmnixMeshService)
             override fun onLost(network: Network) = OmnixMeshRuntime.networkChanged(this@OmnixMeshService)
         }.also { connectivity.registerDefaultNetworkCallback(it) }
+        lifecycleHandler.postDelayed(lifecycleCheck, LIFECYCLE_RECHECK_MILLIS)
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -503,6 +551,7 @@ class OmnixMeshService : Service() {
     }
 
     override fun onDestroy() {
+        lifecycleHandler.removeCallbacks(lifecycleCheck)
         networkCallback?.let { runCatching { connectivity.unregisterNetworkCallback(it) } }
         runCatching { unregisterReceiver(idleReceiver) }
         super.onDestroy()
