@@ -406,6 +406,11 @@ jobs:
             "$BODY_FILE" >/dev/null
           NSIS_URL=$(jq -r '.windowsNsisUrl' "$BODY_FILE")
           SIGNATURE=$(jq -r '.updaterSignature' "$BODY_FILE")
+          # The payload this job publishes is the authority for which version it
+          # is syncing; this job has no release-context step of its own.
+          VERSION=$(jq -r '.version' "$BODY_FILE")
+          [ -n "$VERSION" ] && [ "$VERSION" != "null" ] || {
+            echo "release sync payload has no version" >&2; exit 1; }
 
           echo "POSTing release metadata for $VARIANT → $PAYLOAD_BASE/api/releases-sync"
           HTTP_CODE=$(curl --silent --show-error --output /tmp/payload-resp.json --write-out '%{http_code}' \
