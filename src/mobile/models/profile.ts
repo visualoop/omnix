@@ -24,6 +24,8 @@ export type MobileProfileAction =
   | "change-pin"
   | "request-biometric"
   | "request-notifications"
+  | "connect-private-mesh"
+  | "disconnect-private-mesh"
   | "clear-cache"
   | "re-enrol-device"
   | "revoke-device";
@@ -58,6 +60,7 @@ export interface MobileProfileModel {
   readonly country: OperationalContext["country"];
   readonly currency: OperationalContext["currency"];
   readonly locale: string;
+  readonly meshEnrollmentReady: boolean;
   readonly sections: readonly MobileProfileSectionId[];
 }
 
@@ -65,6 +68,7 @@ export interface CreateMobileProfileInput {
   readonly context: OperationalContext;
   readonly accountDevice: AccountDeviceModel;
   readonly activeModules: readonly string[];
+  readonly meshEnrollmentReady?: boolean;
 }
 
 export function createMobileProfileModel(
@@ -93,6 +97,7 @@ export function createMobileProfileModel(
     country: input.context.country,
     currency: input.context.currency,
     locale: input.context.locale,
+    meshEnrollmentReady: input.meshEnrollmentReady ?? false,
     sections: MOBILE_PROFILE_SECTIONS,
   };
 }

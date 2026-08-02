@@ -1,4 +1,5 @@
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import type { AccountDeviceModel } from "@/mobile/models/account-device";
 import { connectionLabel } from "@/mobile/models/account-device";
@@ -6,6 +7,9 @@ import { connectionLabel } from "@/mobile/models/account-device";
 export interface AccountDeviceCardProps {
   readonly model: AccountDeviceModel;
   readonly locale: string;
+  readonly meshEnrollmentReady?: boolean;
+  readonly meshActionPending?: boolean;
+  readonly onMeshAction?: () => void;
 }
 
 function availabilityLabel(state: AccountDeviceModel["security"]["secureStorage"]): string {
@@ -39,7 +43,21 @@ function formatTimestamp(value: string | null, locale: string): string {
   }).format(timestamp);
 }
 
-export function AccountDeviceCard({ model, locale }: AccountDeviceCardProps) {
+export function AccountDeviceCard({
+  model,
+  locale,
+  meshEnrollmentReady = false,
+  meshActionPending = false,
+  onMeshAction,
+}: AccountDeviceCardProps) {
+  const meshCanStop = model.mesh.state === "connected" || model.mesh.state === "degraded";
+  const meshBusy = meshActionPending || model.mesh.state === "starting";
+  const meshActionLabel = meshBusy
+    ? "Connecting…"
+    : meshCanStop
+      ? "Disconnect Private Mesh"
+      : "Connect Private Mesh";
+
   return (
     <Card>
       <CardHeader>
@@ -59,8 +77,6 @@ export function AccountDeviceCard({ model, locale }: AccountDeviceCardProps) {
           <dd>{model.device.osVersion}</dd>
           <dt className="text-muted-foreground">Secure storage</dt>
           <dd>{availabilityLabel(model.security.secureStorage)}</dd>
-          <dt className="text-muted-foreground">Private Mesh</dt>
-          <dd>{meshLabel(model.mesh.state)}</dd>
           <dt className="text-muted-foreground">Mesh hub</dt>
           <dd>{model.mesh.hubName ?? "Not connected"}</dd>
           <dt className="text-muted-foreground">Last mesh handshake</dt>
@@ -68,6 +84,31 @@ export function AccountDeviceCard({ model, locale }: AccountDeviceCardProps) {
           <dt className="text-muted-foreground">Last successful sync</dt>
           <dd className="font-mono text-xs">{formatTimestamp(model.sync.lastSuccessfulAt, locale)}</dd>
         </dl>
+
+        <div className="border-t border-border pt-3" aria-labelledby="private-mesh-control-title">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <p id="private-mesh-control-title" className="font-medium">Private Mesh</p>
+              <p className="mt-1 max-w-64 text-xs leading-5 text-muted-foreground">
+                {meshEnrollmentReady || meshCanStop
+                  ? "Reach this branch over its private Omnix route. Other apps keep using the normal internet connection."
+                  : "Ask the branch hub administrator to approve this device before connecting."}
+              </p>
+            </div>
+            <Badge variant="outline">{meshLabel(model.mesh.state)}</Badge>
+          </div>
+          {onMeshAction ? (
+            <Button
+              type="button"
+              variant={meshCanStop ? "outline" : "default"}
+              className="mt-3 w-full active:scale-[0.98]"
+              disabled={meshBusy || (!meshEnrollmentReady && !meshCanStop)}
+              onClick={onMeshAction}
+            >
+              {meshActionLabel}
+            </Button>
+          ) : null}
+        </div>
 
         <div className="border-t border-border pt-3">
           <div className="flex items-end justify-between gap-3">

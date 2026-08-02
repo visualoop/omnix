@@ -176,5 +176,8 @@ describe("Android WireGuard private mesh", () => {
     expect(service).toContain('lifecycle == "rotation_pending"');
     expect(service).toContain('lifecycle == "revoked"');
     expect(service).toContain("MeshKeyCustody.revoke");
+    expect(service).toContain("LIFECYCLE_RECHECK_MILLIS");
+    expect(service).toContain("reconcileConsent");
+    expect(service).toContain("MeshKeyCustody.retire");
   });
 });

@@ -218,6 +218,7 @@ function AndroidAuthenticatedApp({ runtime, hubConfig, onHubConfigChange }: Andr
   const [accountDevice, setAccountDevice] = useState<AccountDeviceModel | null>(null);
   const [typedInventory, setTypedInventory] = useState<AndroidInventoryItem[]>([]);
   const [nativeError, setNativeError] = useState<string | null>(null);
+  const [meshActionPending, setMeshActionPending] = useState(false);
   const historyIndex = useRef(0);
   historyIndex.current = typeof window.history.state?.idx === "number"
     ? window.history.state.idx
@@ -407,10 +408,43 @@ function AndroidAuthenticatedApp({ runtime, hubConfig, onHubConfigChange }: Andr
     context,
     accountDevice,
     activeModules: ["core", activeModule],
+    meshEnrollmentReady: hubConfig.meshEnrollmentId !== null,
   }) : null;
   const posEnabled = routes.some((route) => route.id === "pos" && route.access === "full");
 
   const handleProfileAction = async (action: MobileProfileAction) => {
+    if (action === "connect-private-mesh" || action === "disconnect-private-mesh") {
+      if (!activeBranch) {
+        toast.error("Choose an assigned branch before connecting Private Mesh");
+        return;
+      }
+      if (action === "connect-private-mesh" && !hubConfig.meshEnrollmentId) {
+        toast.error("This device still needs Private Mesh approval from the branch hub");
+        return;
+      }
+      setMeshActionPending(true);
+      try {
+        const mesh = action === "connect-private-mesh"
+          ? await adapters.mesh.start({
+              accountId: user.id,
+              branchId: activeBranch.id,
+              enrollmentId: hubConfig.meshEnrollmentId!,
+            })
+          : (await adapters.mesh.stop(), {
+              state: "disabled" as const,
+              nodeId: null,
+              hubName: null,
+              lastHandshakeAt: null,
+            });
+        setAccountDevice((current) => current ? createAccountDeviceModel({ ...current, mesh }) : current);
+        toast.success(action === "connect-private-mesh" ? "Private Mesh connected" : "Private Mesh disconnected");
+      } catch (error) {
+        toast.error(error instanceof Error ? error.message : "Private Mesh could not change connection state");
+      } finally {
+        setMeshActionPending(false);
+      }
+      return;
+    }
     if (action === "request-biometric") {
       const state = await adapters.biometrics.requestPermission();
       toast.info(state === "granted" ? "Biometric access is ready" : "Biometric access was not enabled");
@@ -457,6 +491,7 @@ function AndroidAuthenticatedApp({ runtime, hubConfig, onHubConfigChange }: Andr
             }}
             onAction={(action) => { void handleProfileAction(action); }}
             onSignOut={() => { void handleSignOut(); }}
+            meshActionPending={meshActionPending}
           />
         ) : <LoadingState label="Loading account profile…" />} />
         <Route path="*" element={<Navigate to="/mobile" replace />} />

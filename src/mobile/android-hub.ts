@@ -28,6 +28,8 @@ export interface AndroidHubConfig {
   readonly branches: readonly AndroidHubBranch[];
   readonly countryCode: CountryCode;
   readonly activeModule: ModuleId;
+  /** Opaque native secure-storage record id for the currently enrolled branch. */
+  readonly meshEnrollmentId: string | null;
   readonly session: AndroidHubSession | null;
 }
 
@@ -214,6 +216,7 @@ export async function pairAndroidHub(
     branches,
     countryCode: country(result.country_code),
     activeModule: moduleId(result.active_module),
+    meshEnrollmentId: null,
     session: null,
   };
   try {
@@ -259,8 +262,12 @@ export async function loginAndroidHub(
   const assignedBranchIds = stringList(result.assignedBranchIds, "Assigned branches").map((id) => uuid(id, "Assigned branch id"));
   const activeBranchId = uuid(result.branchId, "Active branch id");
   if (!assignedBranchIds.includes(activeBranchId)) throw new Error("The hub returned an invalid branch assignment");
+  const meshEnrollmentId = result.meshEnrollmentId == null
+    ? null
+    : uuid(result.meshEnrollmentId, "Private Mesh enrollment id");
   const next: AndroidHubConfig = {
     ...config,
+    meshEnrollmentId,
     session: {
       accessToken: text(result.accessToken, "Access token", 512),
       user: {
@@ -293,6 +300,9 @@ export function parseAndroidHubConfig(value: string): AndroidHubConfig {
     branches,
     countryCode: country(raw.countryCode),
     activeModule: moduleId(raw.activeModule),
+    meshEnrollmentId: raw.meshEnrollmentId == null
+      ? null
+      : uuid(raw.meshEnrollmentId, "Saved Private Mesh enrollment id"),
     session: null,
   };
   if (raw.session === null || raw.session === undefined) return base;
@@ -448,6 +458,7 @@ export async function selectAndroidHubBranch(
   }
   const next: AndroidHubConfig = {
     ...config,
+    meshEnrollmentId: branchId === config.session.activeBranchId ? config.meshEnrollmentId : null,
     session: { ...config.session, activeBranchId: branchId },
   };
   await bridge.save(JSON.stringify(next));

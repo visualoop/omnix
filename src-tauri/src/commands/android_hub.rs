@@ -227,6 +227,10 @@ mod tests {
     fn public_addresses_are_not_hub_addresses() {
         assert!(private_address("192.168.1.20".parse().unwrap()));
         assert!(private_address("10.10.0.4".parse().unwrap()));
+        // The reviewed Omnix mesh pool is RFC1918, so it remains reachable without
+        // widening this transport to arbitrary internet destinations.
+        assert!(private_address("10.87.42.1".parse().unwrap()));
         assert!(!private_address("8.8.8.8".parse().unwrap()));
+        assert!(!private_address("1.1.1.1".parse().unwrap()));
     }
 }
