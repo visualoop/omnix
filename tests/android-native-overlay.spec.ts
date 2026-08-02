@@ -150,9 +150,13 @@ describe("Android WireGuard private mesh", () => {
     const service = read("src-tauri/mobile/android-overlay/OmnixMeshService.kt");
     const activity = read("src-tauri/mobile/android-overlay/MainActivity.kt");
     expect(plugin).toContain("VpnService.prepare(activity)");
+    expect(plugin).toContain('PublicMeshState("permission-denied")');
     expect(plugin).toContain("OmnixMeshRuntime.start");
     expect(plugin).not.toContain("Private Mesh enrollment is unavailable");
     expect(activity).toContain("ActivityResultContracts.StartActivityForResult()");
+    expect(service).toContain('PublicMeshState("starting", enrollment.nodeId');
+    expect(service).not.toContain('PublicMeshState("connected", enrollment.nodeId');
+    expect(service).toContain('state = "offline"');
     expect(service).toContain("class OmnixMeshService : Service()");
     expect(service).toContain("startForeground(MESH_NOTIFICATION_ID, notification())");
     expect(service).toContain("setOngoing(true)");

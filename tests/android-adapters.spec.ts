@@ -85,6 +85,21 @@ describe("Android Tauri adapter", () => {
     unsubscribe();
     expect(bridge.listeners.has(ANDROID_EVENTS.backRequested)).toBe(false);
   });
+
+  it("keeps VPN consent denial distinct from a disabled tunnel", async () => {
+    const bridge = new FakeBridge();
+    bridge.results.set(ANDROID_COMMANDS.meshAvailability, { state: "permission-required", permission: "vpn" });
+    bridge.results.set(ANDROID_COMMANDS.meshStatus, {
+      state: "permission-denied",
+      nodeId: null,
+      hubName: null,
+      lastHandshakeAt: null,
+    });
+    const adapters = createAndroidPlatformAdapters(bridge);
+
+    await expect(adapters.mesh.availability()).resolves.toEqual({ state: "permission-required", permission: "vpn" });
+    await expect(adapters.mesh.status()).resolves.toMatchObject({ state: "permission-denied" });
+  });
 });
 
 describe("direct APK update request validation", () => {

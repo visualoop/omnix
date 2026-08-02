@@ -3,6 +3,8 @@ import type { User } from "@/services/auth";
 import type { Branch } from "@/services/branches";
 import type { ModuleId } from "@/stores/active-module";
 import type { CountryCode } from "@/lib/countries";
+import { createAndroidPlatformAdapters } from "@/platform/android-adapters";
+import type { MeshStatus } from "@/platform/adapters";
 
 export interface AndroidHubBranch {
   readonly id: string;
@@ -20,9 +22,29 @@ export interface AndroidHubSession {
   readonly expiresAt: string;
 }
 
+export interface AndroidPrivateMeshEnrollment {
+  readonly version: 1;
+  readonly enrollmentId: string;
+  readonly status: "approved" | "active";
+  readonly nodeId: string;
+  readonly hubName: string;
+  readonly keyId: string;
+  readonly devicePublicKey?: string;
+  readonly interfaceAddress: string;
+  readonly meshSubnet: string;
+  readonly peerPublicKey: string;
+  readonly endpoint: string;
+  readonly allowedIps: readonly string[];
+  readonly persistentKeepaliveSeconds: number;
+  readonly hubAddress: string;
+}
+
 export interface AndroidHubConfig {
   readonly version: 1;
+  /** Current typed API transport. Once configured, this is the hub's Private Mesh address. */
   readonly baseUrl: string;
+  /** Address used only for initial same-LAN enrollment and diagnostics. */
+  readonly lanBaseUrl: string;
   readonly nodeId: string;
   readonly businessName: string;
   readonly branches: readonly AndroidHubBranch[];
@@ -58,6 +80,30 @@ export const TAURI_ANDROID_HUB_BRIDGE: AndroidHubBridge = {
   load: () => invoke("android_hub_config_get"),
   save: (value) => invoke("android_hub_config_set", { value }),
   clear: () => invoke("android_hub_config_clear"),
+};
+
+export interface AndroidPrivateMeshBridge {
+  configure(input: {
+    accountId: string;
+    branchId: string;
+    enrollment: AndroidPrivateMeshEnrollment;
+  }): Promise<void>;
+  start(input: { accountId: string; branchId: string; enrollmentId: string }): Promise<MeshStatus>;
+}
+
+export const TAURI_ANDROID_PRIVATE_MESH_BRIDGE: AndroidPrivateMeshBridge = {
+  configure: async ({ accountId, branchId, enrollment }) => {
+    const adapters = createAndroidPlatformAdapters();
+    await adapters.secureStorage.set(
+      { namespace: "mesh", accountId, name: enrollment.enrollmentId },
+      JSON.stringify({
+        ...enrollment,
+        accountId,
+        branchId,
+      }),
+    );
+  },
+  start: (request) => createAndroidPlatformAdapters().mesh.start(request),
 };
 
 export type AndroidFirstRunFailure = "hub-unreachable" | "pairing-rejected" | "database-unavailable" | "storage-unavailable";
@@ -123,6 +169,97 @@ function userRole(value: unknown): User["role"] {
 function stringList(value: unknown, label: string, max = 100): string[] {
   if (!Array.isArray(value) || value.length > max) throw new Error(`${label} is invalid`);
   return [...new Set(value.map((item) => text(item, label, 256)))];
+}
+
+function identifier(value: unknown, label: string): string {
+  const normalized = text(value, label, 128);
+  if (!/^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/.test(normalized)) throw new Error(`${label} is invalid`);
+  return normalized;
+}
+
+function wireGuardKey(value: unknown, label: string): string {
+  const normalized = text(value, label, 44);
+  if (!/^[A-Za-z0-9+/]{43}=$/.test(normalized)) throw new Error(`${label} is invalid`);
+  return normalized;
+}
+
+interface ParsedIpv4Cidr {
+  readonly address: number;
+  readonly prefix: number;
+  readonly text: string;
+}
+
+function ipv4Cidr(value: unknown, label: string): ParsedIpv4Cidr {
+  const normalized = text(value, label, 32);
+  const match = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})\/(\d{1,2})$/.exec(normalized);
+  if (!match) throw new Error(`${label} is invalid`);
+  const octets = match.slice(1, 5).map(Number);
+  const prefix = Number(match[5]);
+  if (octets.some((part) => part < 0 || part > 255) || prefix < 1 || prefix > 32) {
+    throw new Error(`${label} is invalid`);
+  }
+  const address = (((octets[0] << 24) >>> 0) + (octets[1] << 16) + (octets[2] << 8) + octets[3]) >>> 0;
+  return { address, prefix, text: normalized };
+}
+
+function privateIpv4(address: number): boolean {
+  const first = address >>> 24;
+  const second = address >>> 16 & 0xff;
+  return first === 10 || (first === 172 && second >= 16 && second <= 31) || (first === 192 && second === 168);
+}
+
+function cidrContains(pool: ParsedIpv4Cidr, route: ParsedIpv4Cidr): boolean {
+  if (route.prefix < pool.prefix) return false;
+  const mask = pool.prefix === 32 ? 0xffffffff : (0xffffffff << (32 - pool.prefix)) >>> 0;
+  return (pool.address & mask) === (route.address & mask);
+}
+
+function privateMeshEnrollment(value: unknown, expectedNodeId: string): AndroidPrivateMeshEnrollment {
+  const raw = record(value, "Private Mesh enrollment");
+  const meshSubnet = ipv4Cidr(raw.meshSubnet, "Private Mesh subnet");
+  const interfaceAddress = ipv4Cidr(raw.interfaceAddress, "Private Mesh address");
+  const hubAddress = ipv4Cidr(`${text(raw.hubAddress, "Private Mesh hub address", 15)}/32`, "Private Mesh hub address");
+  if (meshSubnet.prefix !== 16 || !privateIpv4(meshSubnet.address) || interfaceAddress.prefix !== 32 ||
+      !cidrContains(meshSubnet, interfaceAddress) || !cidrContains(meshSubnet, hubAddress)) {
+    throw new Error("Private Mesh routes are outside the approved private subnet");
+  }
+  const allowedIps = stringList(raw.allowedIps, "Private Mesh routes", 32).map((route) => ipv4Cidr(route, "Private Mesh route"));
+  if (allowedIps.length === 0 || allowedIps.some((route) => !privateIpv4(route.address) || !cidrContains(meshSubnet, route))) {
+    throw new Error("Private Mesh routes are invalid");
+  }
+  const endpoint = text(raw.endpoint, "Private Mesh endpoint", 320);
+  const endpointMatch = /^(?:(?:\d{1,3}\.){3}\d{1,3}|(?=.{1,253}:)[A-Za-z0-9](?:[A-Za-z0-9.-]*[A-Za-z0-9])?):(\d{1,5})$/.exec(endpoint);
+  const endpointPort = endpointMatch ? Number(endpointMatch[1]) : 0;
+  if (!endpointMatch || endpointPort < 1 || endpointPort > 65_535) throw new Error("Private Mesh endpoint is invalid");
+  const keepalive = raw.persistentKeepaliveSeconds;
+  if (!Number.isInteger(keepalive) || (keepalive as number) < 1 || (keepalive as number) > 120) {
+    throw new Error("Private Mesh keepalive is invalid");
+  }
+  const nodeId = uuid(raw.nodeId, "Private Mesh node id");
+  if (nodeId !== expectedNodeId) throw new Error("Private Mesh enrollment belongs to another device");
+  if (raw.status !== "approved" && raw.status !== "active") throw new Error("Private Mesh enrollment is not approved");
+  return {
+    version: 1,
+    enrollmentId: uuid(raw.enrollmentId, "Private Mesh enrollment id"),
+    status: raw.status,
+    nodeId,
+    hubName: text(raw.hubName, "Private Mesh hub name", 256),
+    keyId: identifier(raw.keyId, "Private Mesh key id"),
+    ...(raw.devicePublicKey == null ? {} : { devicePublicKey: wireGuardKey(raw.devicePublicKey, "Private Mesh device key") }),
+    interfaceAddress: interfaceAddress.text,
+    meshSubnet: meshSubnet.text,
+    peerPublicKey: wireGuardKey(raw.peerPublicKey, "Private Mesh hub key"),
+    endpoint,
+    allowedIps: allowedIps.map((route) => route.text),
+    persistentKeepaliveSeconds: keepalive as number,
+    hubAddress: text(raw.hubAddress, "Private Mesh hub address", 15),
+  };
+}
+
+function privateMeshHubUrl(lanBaseUrl: string, hubAddress: string): string {
+  const url = new URL(lanBaseUrl);
+  url.hostname = hubAddress;
+  return url.toString().replace(/\/$/, "");
 }
 
 function normalizedBaseUrl(host: string, port: string): string {
@@ -211,6 +348,7 @@ export async function pairAndroidHub(
   const config: AndroidHubConfig = {
     version: 1,
     baseUrl,
+    lanBaseUrl: baseUrl,
     nodeId: uuid(result.node_id, "Paired node id"),
     businessName: text(result.business_name, "Business name", 160),
     branches,
@@ -231,6 +369,7 @@ export async function loginAndroidHub(
   config: AndroidHubConfig,
   input: { username: string; password: string; branchId: string },
   bridge: AndroidHubBridge = TAURI_ANDROID_HUB_BRIDGE,
+  meshBridge: AndroidPrivateMeshBridge = TAURI_ANDROID_PRIVATE_MESH_BRIDGE,
 ): Promise<AndroidHubConfig> {
   if (!config.branches.some((candidate) => candidate.id === input.branchId)) {
     throw new Error("Choose a branch advertised by this hub");
@@ -262,16 +401,18 @@ export async function loginAndroidHub(
   const assignedBranchIds = stringList(result.assignedBranchIds, "Assigned branches").map((id) => uuid(id, "Assigned branch id"));
   const activeBranchId = uuid(result.branchId, "Active branch id");
   if (!assignedBranchIds.includes(activeBranchId)) throw new Error("The hub returned an invalid branch assignment");
-  const meshEnrollmentId = result.meshEnrollmentId == null
+  const userId = uuid(result.userId, "User id");
+  const meshEnrollment = result.meshEnrollment == null
     ? null
-    : uuid(result.meshEnrollmentId, "Private Mesh enrollment id");
+    : privateMeshEnrollment(result.meshEnrollment, config.nodeId);
   const next: AndroidHubConfig = {
     ...config,
-    meshEnrollmentId,
+    baseUrl: meshEnrollment ? privateMeshHubUrl(config.lanBaseUrl, meshEnrollment.hubAddress) : config.lanBaseUrl,
+    meshEnrollmentId: meshEnrollment?.enrollmentId ?? null,
     session: {
       accessToken: text(result.accessToken, "Access token", 512),
       user: {
-        id: uuid(result.userId, "User id"),
+        id: userId,
         username: input.username.trim(),
         full_name: text(result.fullName, "Full name", 160),
         role: userRole(result.role),
@@ -284,7 +425,19 @@ export async function loginAndroidHub(
       expiresAt: text(result.expiresAt, "Session expiry", 64),
     },
   };
-  await bridge.save(JSON.stringify(next));
+  try {
+    if (meshEnrollment) {
+      await meshBridge.configure({ accountId: userId, branchId: activeBranchId, enrollment: meshEnrollment });
+    }
+    await bridge.save(JSON.stringify(next));
+  } catch (error) {
+    throw new AndroidHubError("storage-unavailable", error instanceof Error ? error.message : "Private Mesh enrollment could not be protected");
+  }
+  if (meshEnrollment) {
+    // A denied VPN prompt is a public mesh status, not a failed account login.
+    // The authenticated UI exposes it and lets the user retry deliberately.
+    await meshBridge.start({ accountId: userId, branchId: activeBranchId, enrollmentId: meshEnrollment.enrollmentId }).catch(() => undefined);
+  }
   return next;
 }
 
@@ -295,6 +448,9 @@ export function parseAndroidHubConfig(value: string): AndroidHubConfig {
   const base: AndroidHubConfig = {
     version: 1,
     baseUrl: text(raw.baseUrl, "Saved hub address", 2048),
+    lanBaseUrl: raw.lanBaseUrl == null
+      ? text(raw.baseUrl, "Saved hub address", 2048)
+      : text(raw.lanBaseUrl, "Saved LAN hub address", 2048),
     nodeId: uuid(raw.nodeId, "Saved node id"),
     businessName: text(raw.businessName, "Saved business name", 160),
     branches,
@@ -349,7 +505,7 @@ export async function clearAndroidHubSession(
   config: AndroidHubConfig,
   bridge: AndroidHubBridge = TAURI_ANDROID_HUB_BRIDGE,
 ): Promise<AndroidHubConfig> {
-  const next = { ...config, session: null };
+  const next = { ...config, baseUrl: config.lanBaseUrl, session: null };
   await bridge.save(JSON.stringify(next));
   return next;
 }

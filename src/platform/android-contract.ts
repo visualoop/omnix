@@ -184,7 +184,7 @@ export function validateMeshStatus(value: unknown): MeshStatus {
     "Android mesh response",
   );
   const state = requiredString(result.state, "Mesh state", 32);
-  if (!["disabled", "starting", "connected", "degraded", "offline"].includes(state)) {
+  if (!["disabled", "permission-denied", "starting", "connected", "degraded", "offline"].includes(state)) {
     throw new Error("Mesh state is invalid");
   }
   const nullable = (field: string): string | null => result[field] === null

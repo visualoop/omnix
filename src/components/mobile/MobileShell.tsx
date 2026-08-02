@@ -11,9 +11,10 @@ export interface MobileShellProps {
 export function MobileShell({ model, children, onNavigate }: MobileShellProps) {
   return (
     <div
-      className="flex min-h-[100dvh] flex-col bg-background text-foreground"
+      className="h-dvh overflow-y-auto overscroll-contain bg-background text-foreground"
       data-form-factor={model.formFactor}
     >
+      <div className="flex min-h-full flex-col">
       <header className="sticky top-0 z-20 border-b border-border bg-background/95 px-4 pb-3 pt-[max(12px,env(safe-area-inset-top))] backdrop-blur-sm">
         <div
           className="mx-auto flex w-full max-w-3xl items-center justify-between gap-3"
@@ -33,7 +34,7 @@ export function MobileShell({ model, children, onNavigate }: MobileShellProps) {
         </div>
       </header>
 
-      <main id="mobile-main-content" className="mx-auto w-full max-w-3xl flex-1 px-4 py-5 pb-24">
+      <main id="mobile-main-content" className="mx-auto w-full max-w-3xl flex-1 px-4 py-5 pb-[calc(6rem+env(safe-area-inset-bottom))]">
         {children}
       </main>
 
@@ -64,6 +65,7 @@ export function MobileShell({ model, children, onNavigate }: MobileShellProps) {
           })}
         </div>
       </nav>
+      </div>
     </div>
   );
 }

@@ -4,6 +4,7 @@ import { axe } from "vitest-axe";
 import * as matchers from "vitest-axe/matchers";
 import { MobileHome } from "@/components/mobile/MobileHome";
 import { MobileShell } from "@/components/mobile/MobileShell";
+import { AccountDeviceCard } from "@/components/mobile/AccountDeviceCard";
 import { MobileProfile } from "@/components/mobile/MobileProfile";
 import { createMobileShellModel } from "@/mobile/shell";
 import { createMobileHomeModel } from "@/mobile/models/home";
@@ -212,6 +213,28 @@ describe("MobileProfile", () => {
     expect(signOut).toHaveBeenCalledOnce();
   });
 
+
+  it.each([
+    { label: "Not configured", mesh: { ...accountDevice.mesh, state: "disabled" as const }, configured: false, availability: { state: "available" as const }, action: "Waiting for hub approval" },
+    { label: "Connecting", mesh: { ...accountDevice.mesh, state: "starting" as const }, configured: true, availability: { state: "available" as const }, action: "Retrying…" },
+    { label: "Connected", mesh: { ...accountDevice.mesh, state: "connected" as const }, configured: true, availability: { state: "available" as const }, action: "Disconnect Private Mesh" },
+    { label: "Hub unreachable", mesh: { ...accountDevice.mesh, state: "offline" as const }, configured: true, availability: { state: "available" as const }, action: "Retry connection" },
+    { label: "VPN permission denied", mesh: { ...accountDevice.mesh, state: "permission-denied" as const }, configured: true, availability: { state: "permission-required" as const, permission: "vpn" as const }, action: "Allow VPN and retry" },
+    { label: "Mesh unavailable", mesh: { ...accountDevice.mesh, state: "disabled" as const }, configured: true, availability: { state: "unavailable" as const, reason: "WireGuard is unavailable" }, action: "Private Mesh unavailable" },
+  ])("shows Private Mesh state: $label", ({ label, mesh, configured, availability, action }) => {
+    render(
+      <AccountDeviceCard
+        model={{ ...accountDevice, mesh }}
+        locale="en-KE"
+        meshEnrollmentReady={configured}
+        meshAvailability={availability}
+        onMeshAction={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText(label)).toBeDefined();
+    expect(screen.getByRole("button", { name: action })).toBeDefined();
+  });
   it("has no automated accessibility violations", async () => {
     const model = createMobileProfileModel({
       context: operationalContext,

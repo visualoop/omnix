@@ -239,8 +239,95 @@ pub async fn register_windows_peer_key(
     .bind(created_at)
     .bind(rotate_at)
     .execute(&mut *transaction)
+
     .await?;
     transaction.commit().await
+}
+
+#[derive(Clone, Debug, sqlx::FromRow)]
+pub struct AndroidEnrollmentMetadata {
+    pub enrollment_id: String,
+    pub enrollment_status: String,
+    pub node_id: String,
+    pub hub_name: String,
+    pub key_id: String,
+    pub device_public_key: String,
+    pub interface_address: String,
+    pub prefix_length: i64,
+    pub mesh_subnet: String,
+    pub hub_public_key: String,
+    pub endpoint_host: String,
+    pub endpoint_port: i64,
+    pub hub_address: String,
+}
+
+/// Reads the latest approved Android allocation plus the endpoint published by
+/// the authoritative HQ node. Device tunnel generation remains owned by the
+/// shared Private Mesh configuration builder.
+pub async fn android_enrollment_metadata(
+    pool: &SqlitePool,
+    node_id: &str,
+    branch_id: &str,
+    now: &str,
+) -> Result<Option<AndroidEnrollmentMetadata>, sqlx::Error> {
+    let schema_ready: Option<i64> = sqlx::query_scalar(
+        "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'mesh_enrollments'",
+    )
+    .fetch_optional(pool)
+    .await?;
+    if schema_ready.is_none() {
+        return Ok(None);
+    }
+    sqlx::query_as(
+        "SELECT e.id AS enrollment_id, e.status AS enrollment_status,
+                e.node_id, b.name AS hub_name,
+                e.wireguard_key_id AS key_id,
+                e.wireguard_public_key AS device_public_key,
+                client.ipv4_address AS interface_address,
+                client.prefix_length,
+                site.ipv4_pool AS mesh_subnet,
+                hub_key.public_key AS hub_public_key,
+                hub_node.mesh_endpoint_host AS endpoint_host,
+                hub_node.mesh_endpoint_port AS endpoint_port,
+                hub.ipv4_address AS hub_address
+         FROM mesh_enrollments e
+         JOIN sync_nodes device ON device.id = e.node_id
+                               AND device.role = 'android'
+                               AND device.branch_id = ?2
+                               AND device.key_status <> 'revoked'
+                               AND device.deleted_at IS NULL
+         JOIN mesh_allocations client ON client.id = e.requested_allocation_id
+                                     AND client.node_id = e.node_id
+                                     AND client.state = 'active'
+         JOIN mesh_sites site ON site.id = client.site_id
+                             AND site.branch_id = ?2
+                             AND site.state = 'active'
+                             AND site.deleted_at IS NULL
+         JOIN branches b ON b.id = ?2 AND b.active = 1
+         JOIN sync_branch_routes route ON route.branch_id = ?2 AND route.enabled = 1
+         JOIN sync_nodes hub_node ON hub_node.id = route.local_node_id
+                                  AND hub_node.role = 'hq'
+                                  AND hub_node.key_status <> 'revoked'
+                                  AND hub_node.deleted_at IS NULL
+                                  AND hub_node.mesh_endpoint_host IS NOT NULL
+                                  AND hub_node.mesh_endpoint_port IS NOT NULL
+         JOIN mesh_allocations hub ON hub.node_id = hub_node.id
+                                  AND hub.site_id = site.id
+                                  AND hub.state = 'active'
+         JOIN mesh_peer_keys hub_key ON hub_key.node_id = hub_node.id
+                                    AND hub_key.status = 'current'
+         WHERE e.node_id = ?1
+           AND (e.status = 'consumed'
+                OR (e.status = 'approved' AND e.expires_at > ?3))
+         ORDER BY CASE e.status WHEN 'consumed' THEN 0 ELSE 1 END,
+                  e.approved_at DESC
+         LIMIT 1",
+    )
+    .bind(node_id)
+    .bind(branch_id)
+    .bind(now)
+    .fetch_optional(pool)
+    .await
 }
 
 #[cfg(windows)]

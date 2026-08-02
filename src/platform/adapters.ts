@@ -2,7 +2,8 @@ export type NativePermission =
   | "camera"
   | "biometric"
   | "notifications"
-  | "sharing";
+  | "sharing"
+  | "vpn";
 
 export type NativePermissionState =
   | "granted"
@@ -134,6 +135,7 @@ export interface NotificationAdapter extends NativePermissionAdapter {
 
 export type MeshConnectionState =
   | "disabled"
+  | "permission-denied"
   | "starting"
   | "connected"
   | "degraded"
