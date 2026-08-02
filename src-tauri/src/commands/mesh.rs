@@ -685,7 +685,16 @@ fn staged_helper(app: &tauri::AppHandle) -> Result<PathBuf, String> {
         .join("wireguard")
         .join(HELPER_FILE);
     helper.is_file().then_some(helper).ok_or_else(|| {
-        "Private Mesh resources are absent; reinstall a signed Omnix Windows release".to_owned()
+        // Do not tell the operator to reinstall: the tunnel is an optional
+        // bundled component and no published installer currently contains it,
+        // because staging requires a Windows code-signing certificate that is
+        // not configured. Reinstalling or redownloading cannot change that, so
+        // say what is actually true and what has to happen instead.
+        "Private Mesh is not included in this build. The bundled WireGuard \
+tunnel is only added to installers once Windows code signing is configured, \
+so reinstalling or redownloading will not add it. Same-network multi-device \
+use does not need Private Mesh and keeps working."
+            .to_owned()
     })
 }
 
