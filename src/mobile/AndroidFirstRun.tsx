@@ -3,7 +3,6 @@ import {
   ArrowClockwise,
   CheckCircle,
   DesktopTower,
-  MagnifyingGlass,
   PlugsConnected,
   WarningCircle,
   WifiHigh,
@@ -123,8 +122,8 @@ export function AndroidFirstRun({ initialDiagnostic = null, onPaired }: AndroidF
   };
 
   return (
-    <main className="min-h-dvh bg-background text-foreground">
-      <div className="mx-auto flex min-h-dvh w-full max-w-lg flex-col px-5 pb-8 pt-[max(2rem,env(safe-area-inset-top))]">
+    <main className="h-dvh overflow-y-auto overscroll-contain bg-background text-foreground">
+      <div className="mx-auto flex min-h-full w-full max-w-lg flex-col px-5 pb-[max(2rem,env(safe-area-inset-bottom))] pt-[max(2rem,env(safe-area-inset-top))]">
         <header className="border-b border-border pb-6">
           <div className="flex items-center gap-2 font-mono text-[11px] uppercase tracking-[0.16em] text-muted-foreground">
             <span className="grid size-6 place-items-center rounded-[5px] bg-primary text-[10px] font-bold text-primary-foreground">OX</span>
@@ -146,8 +145,12 @@ export function AndroidFirstRun({ initialDiagnostic = null, onPaired }: AndroidF
                 <p className="mt-0.5 text-[11px] text-muted-foreground">Discovered on this Wi-Fi by mDNS</p>
               </div>
               <Button type="button" variant="outline" size="sm" onClick={() => void discover()} disabled={searching}>
-                {searching ? <MagnifyingGlass className="size-4" /> : <ArrowClockwise className="size-4" />}
-                {searching ? "Searching" : "Search again"}
+                {searching ? (
+                  <ArrowClockwise className="size-4 motion-safe:animate-spin" />
+                ) : (
+                  <ArrowClockwise className="size-4" />
+                )}
+                {searching ? "Searching…" : "Search again"}
               </Button>
             </div>
 
@@ -268,8 +271,8 @@ export function AndroidHubLogin({ config, onAuthenticated, onChangeHub }: Androi
   };
 
   return (
-    <main className="min-h-dvh bg-background text-foreground">
-      <div className="mx-auto flex min-h-dvh w-full max-w-md flex-col px-5 pb-8 pt-[max(2rem,env(safe-area-inset-top))]">
+    <main className="h-dvh overflow-y-auto overscroll-contain bg-background text-foreground">
+      <div className="mx-auto flex min-h-full w-full max-w-md flex-col px-5 pb-[max(2rem,env(safe-area-inset-bottom))] pt-[max(2rem,env(safe-area-inset-top))]">
         <header className="border-b border-border pb-6">
           <div className="flex items-center gap-2 font-mono text-[11px] uppercase tracking-[0.16em] text-primary">
             <CheckCircle className="size-4" weight="fill" /> Paired with {config.businessName}
