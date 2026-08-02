@@ -424,20 +424,35 @@ jobs:
               exit 1
             }
 
-          # Exercise the endpoint installed clients poll. It must return this
-          # exact URL and Tauri signature; 204 or any mismatch fails loudly.
+          # Exercise the endpoint installed clients poll. It answers with the
+          # newest release, so a repair run for an older version must not demand
+          # that version's artifact back. Compare what it returned:
+          #   same version  -> assert this exact URL and Tauri signature
+          #   newer version -> a later release exists; only require a healthy 200
+          #   older/missing -> fail loudly
           VERIFY_URL="$PAYLOAD_BASE/api/releases-latest?variant=$VARIANT&license=0.0.0"
           VERIFY_CODE=$(curl --silent --show-error --output /tmp/updater-resp.json --write-out '%{http_code}' "$VERIFY_URL")
           echo "Updater verification ($VERIFY_CODE):"
           cat /tmp/updater-resp.json || true
           echo
           [ "$VERIFY_CODE" = "200" ] || { echo "Updater manifest unavailable for $VARIANT (HTTP $VERIFY_CODE)" >&2; exit 1; }
-          jq -e --arg exe "$(node -e 'process.stdout.write(encodeURI(process.argv[1]))' "$NSIS_URL")" --arg sig "$SIGNATURE" \
-            '.platforms["windows-x86_64"].url == $exe and .platforms["windows-x86_64"].signature == $sig' \
-            /tmp/updater-resp.json >/dev/null || {
-              echo "Updater manifest URL or signature does not match the signed artifact" >&2
-              exit 1
-            }
+          SERVED_VERSION=$(jq -r '.version // empty' /tmp/updater-resp.json)
+          [ -n "$SERVED_VERSION" ] || { echo "Updater manifest has no version for $VARIANT" >&2; exit 1; }
+          NEWEST=$(printf '%s\n%s\n' "$SERVED_VERSION" "$VERSION" | sort -V | tail -1)
+          if [ "$SERVED_VERSION" = "$VERSION" ]; then
+            jq -e --arg exe "$(node -e 'process.stdout.write(encodeURI(process.argv[1]))' "$NSIS_URL")" --arg sig "$SIGNATURE" \
+              '.platforms["windows-x86_64"].url == $exe and .platforms["windows-x86_64"].signature == $sig' \
+              /tmp/updater-resp.json >/dev/null || {
+                echo "Updater manifest URL or signature does not match the signed artifact" >&2
+                exit 1
+              }
+            echo "Updater serves $VARIANT $VERSION with the exact signed artifact"
+          elif [ "$NEWEST" = "$SERVED_VERSION" ]; then
+            echo "Updater serves newer $VARIANT $SERVED_VERSION; $VERSION metadata was stored and verified in the sync response"
+          else
+            echo "Updater serves older $VARIANT $SERVED_VERSION than the $VERSION just synced" >&2
+            exit 1
+          fi
 
   # ─── R2 retention: keep only the latest N release versions ──────────────
   # Installers are large; without pruning the omnix-media bucket grows without
