@@ -45,6 +45,8 @@ aes-gcm = "0.10"
 flate2 = "1"
 hex = "0.4"
 base64 = "0.22"
+x25519-dalek = { version = "=2.0.1", features = ["static_secrets"] }
+zeroize = "=1.8.2"
 sysinfo = "0.32"
 
 # Auto-updater
@@ -91,3 +93,8 @@ windows-service = "0.7"
 [[bin]]
 name = "omnix-lan-service"
 path = "src/bin/omnix-lan-service.rs"
+
+# Fixed-purpose elevated helper and WireGuard tunnel service host.
+[[bin]]
+name = "omnix-mesh-service"
+path = "src/bin/omnix-mesh-service.rs"

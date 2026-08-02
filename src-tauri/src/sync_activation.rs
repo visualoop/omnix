@@ -1354,14 +1354,33 @@ async fn due_destinations(pool: &SqlitePool) -> SyncResult<Vec<String>> {
 }
 
 async fn peer_endpoint(pool: &SqlitePool, destination: &str) -> SyncResult<String> {
-    sqlx::query_scalar(
-        "SELECT endpoint_url FROM sync_peer_routes
-         WHERE destination_node_id = ?1 AND enabled = 1 AND transport_kind = 'lan_http'",
+    let route: Option<(String, String)> = sqlx::query_as(
+        "SELECT endpoint_url, transport_kind FROM sync_peer_routes
+         WHERE destination_node_id = ?1 AND enabled = 1
+           AND transport_kind IN ('lan_http', 'private_mesh')",
     )
     .bind(destination)
     .fetch_optional(pool)
-    .await?
-    .ok_or(SyncActivationError::MissingRoute)
+    .await?;
+    let (endpoint, transport_kind) = route.ok_or(SyncActivationError::MissingRoute)?;
+    if transport_kind == "private_mesh" {
+        let pool_cidr: String = sqlx::query_scalar(
+            "SELECT ipv4_pool FROM mesh_sites
+             WHERE state = 'active' AND deleted_at IS NULL
+             ORDER BY site_number LIMIT 1",
+        )
+        .fetch_optional(pool)
+        .await?
+        .ok_or(SyncActivationError::MissingRoute)?;
+        crate::mesh_windows::validate_private_mesh_endpoint_url(&endpoint, &pool_cidr).map_err(
+            |_| {
+                SyncActivationError::Transport(
+                    "Private Mesh endpoint is outside the selected pool".to_owned(),
+                )
+            },
+        )?;
+    }
+    Ok(endpoint)
 }
 
 async fn local_dispatcher_node(pool: &SqlitePool, destination: &str) -> SyncResult<String> {

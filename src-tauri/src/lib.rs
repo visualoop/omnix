@@ -2,7 +2,8 @@ mod command_api;
 mod commands;
 mod db;
 mod license;
-mod mesh_contracts;
+pub mod mesh_contracts;
+pub mod mesh_windows;
 #[cfg(target_os = "android")]
 mod mobile;
 pub mod network;
@@ -893,6 +894,13 @@ fn run_inner() {
             commands::install_windows_service,
             commands::uninstall_windows_service,
             commands::windows_service_status,
+            commands::private_mesh_status,
+            commands::install_private_mesh,
+            commands::request_private_mesh_enrollment,
+            commands::apply_private_mesh_configuration,
+            commands::rotate_private_mesh_key,
+            commands::promote_private_mesh_key,
+            commands::revoke_private_mesh,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
