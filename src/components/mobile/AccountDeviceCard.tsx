@@ -1,13 +1,16 @@
+import { ArrowClockwise } from "@phosphor-icons/react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import type { AccountDeviceModel } from "@/mobile/models/account-device";
+import type { AdapterAvailability } from "@/platform/adapters";
 import { connectionLabel } from "@/mobile/models/account-device";
 
 export interface AccountDeviceCardProps {
   readonly model: AccountDeviceModel;
   readonly locale: string;
   readonly meshEnrollmentReady?: boolean;
+  readonly meshAvailability?: AdapterAvailability;
   readonly meshActionPending?: boolean;
   readonly onMeshAction?: () => void;
 }
@@ -18,12 +21,61 @@ function availabilityLabel(state: AccountDeviceModel["security"]["secureStorage"
   return "Unavailable";
 }
 
-function meshLabel(state: AccountDeviceModel["mesh"]["state"]): string {
-  if (state === "connected") return "Connected";
-  if (state === "degraded") return "Limited";
-  if (state === "starting") return "Connecting";
-  if (state === "offline") return "Offline";
-  return "Not enabled";
+interface PrivateMeshSurface {
+  readonly label: string;
+  readonly detail: string;
+  readonly action: string;
+  readonly canRetry: boolean;
+}
+
+function privateMeshSurface(
+  state: AccountDeviceModel["mesh"]["state"],
+  configured: boolean,
+  availability: AdapterAvailability,
+  pending: boolean,
+): PrivateMeshSurface {
+  if (!configured) return {
+    label: "Not configured",
+    detail: "Ask the branch hub administrator to approve and publish Private Mesh for this device.",
+    action: "Waiting for hub approval",
+    canRetry: false,
+  };
+  if (availability.state === "unavailable") return {
+    label: "Mesh unavailable",
+    detail: availability.reason,
+    action: "Private Mesh unavailable",
+    canRetry: false,
+  };
+  if (pending || state === "starting") return {
+    label: "Connecting",
+    detail: "Opening the private route and waiting for the hub to complete a WireGuard handshake.",
+    action: "Retrying…",
+    canRetry: false,
+  };
+  if (state === "permission-denied" || availability.state === "permission-required") return {
+    label: "VPN permission denied",
+    detail: "Android must allow Omnix to create the private VPN. No other app traffic enters this tunnel.",
+    action: "Allow VPN and retry",
+    canRetry: true,
+  };
+  if (state === "connected") return {
+    label: "Connected",
+    detail: "The hub is reachable through its private Omnix address. Other apps keep using the normal internet connection.",
+    action: "Disconnect Private Mesh",
+    canRetry: true,
+  };
+  if (state === "degraded" || state === "offline") return {
+    label: "Hub unreachable",
+    detail: "The private route is open, but the hub has not completed a recent handshake. Check the hub endpoint and office internet.",
+    action: "Retry connection",
+    canRetry: true,
+  };
+  return {
+    label: "Not connected",
+    detail: "Private Mesh is configured and ready to connect over Wi-Fi or mobile data.",
+    action: "Connect Private Mesh",
+    canRetry: true,
+  };
 }
 
 function formatBytes(value: number): string {
@@ -47,16 +99,12 @@ export function AccountDeviceCard({
   model,
   locale,
   meshEnrollmentReady = false,
+  meshAvailability = { state: "available" },
   meshActionPending = false,
   onMeshAction,
 }: AccountDeviceCardProps) {
-  const meshCanStop = model.mesh.state === "connected" || model.mesh.state === "degraded";
-  const meshBusy = meshActionPending || model.mesh.state === "starting";
-  const meshActionLabel = meshBusy
-    ? "Connecting…"
-    : meshCanStop
-      ? "Disconnect Private Mesh"
-      : "Connect Private Mesh";
+  const meshCanStop = model.mesh.state === "connected";
+  const surface = privateMeshSurface(model.mesh.state, meshEnrollmentReady || meshCanStop, meshAvailability, meshActionPending);
 
   return (
     <Card>
@@ -90,22 +138,24 @@ export function AccountDeviceCard({
             <div>
               <p id="private-mesh-control-title" className="font-medium">Private Mesh</p>
               <p className="mt-1 max-w-64 text-xs leading-5 text-muted-foreground">
-                {meshEnrollmentReady || meshCanStop
-                  ? "Reach this branch over its private Omnix route. Other apps keep using the normal internet connection."
-                  : "Ask the branch hub administrator to approve this device before connecting."}
+                {surface.detail}
               </p>
             </div>
-            <Badge variant="outline">{meshLabel(model.mesh.state)}</Badge>
+            <Badge variant="outline">{surface.label}</Badge>
           </div>
           {onMeshAction ? (
             <Button
               type="button"
               variant={meshCanStop ? "outline" : "default"}
               className="mt-3 w-full active:scale-[0.98]"
-              disabled={meshBusy || (!meshEnrollmentReady && !meshCanStop)}
+              disabled={!surface.canRetry}
+              aria-busy={meshActionPending || model.mesh.state === "starting"}
               onClick={onMeshAction}
             >
-              {meshActionLabel}
+              {meshActionPending || model.mesh.state === "starting" ? (
+                <ArrowClockwise className="size-4 motion-safe:animate-spin" aria-hidden="true" />
+              ) : null}
+              {surface.action}
             </Button>
           ) : null}
         </div>

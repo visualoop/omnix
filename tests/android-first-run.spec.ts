@@ -3,10 +3,14 @@ import {
   AndroidHubError,
   diagnosticFor,
   loadAndroidHub,
+  loginAndroidHub,
   pairAndroidHub,
   type AndroidHubBridge,
+  type AndroidHubConfig,
+  type AndroidPrivateMeshBridge,
   type AndroidHubResponse,
 } from "@/mobile/android-hub";
+const USER = "33333333-3333-4333-8333-333333333333";
 
 const NODE = "11111111-1111-4111-8111-111111111111";
 const BRANCH = "22222222-2222-4222-8222-222222222222";
@@ -98,5 +102,82 @@ describe("Android first run", () => {
       retryable: true,
     });
     expect(new AndroidHubError("database-unavailable", diagnostic.message).kind).toBe("database-unavailable");
+  });
+
+  it("protects the peer configuration, starts the tunnel, and switches hub traffic to its mesh address", async () => {
+    const hubKey = Buffer.alloc(32, 11).toString("base64");
+    const deviceKey = Buffer.alloc(32, 7).toString("base64");
+    const config: AndroidHubConfig = {
+      version: 1,
+      baseUrl: "http://192.168.1.20:8765",
+      lanBaseUrl: "http://192.168.1.20:8765",
+      nodeId: NODE,
+      businessName: "Afya Pharmacy",
+      branches: [{ id: BRANCH, code: "MAIN", name: "Main Branch" }],
+      countryCode: "KE",
+      activeModule: "dawa",
+      meshEnrollmentId: null,
+      session: null,
+    };
+    const hub = bridge({ responses: [{
+      status: 200,
+      body: {
+        accessToken: "a".repeat(48),
+        userId: USER,
+        fullName: "Alice Kinoti",
+        role: "manager",
+        branchId: BRANCH,
+        assignedBranchIds: [BRANCH],
+        permissions: ["inventory.view"],
+        enabledModules: ["core", "dawa"],
+        expiresAt: "2026-08-02T20:00:00Z",
+        meshEnrollment: {
+          enrollmentId: "44444444-4444-4444-8444-444444444444",
+          status: "approved",
+          nodeId: NODE,
+          hubName: "Nairobi HQ",
+          keyId: "android-key-1",
+          devicePublicKey: deviceKey,
+          interfaceAddress: "10.73.42.2/32",
+          meshSubnet: "10.73.0.0/16",
+          peerPublicKey: hubKey,
+          endpoint: "hq-west.ddns.example.co.ke:51820",
+          allowedIps: ["10.73.0.0/16"],
+          persistentKeepaliveSeconds: 25,
+          hubAddress: "10.73.0.1",
+        },
+      },
+    }] });
+    const mesh: AndroidPrivateMeshBridge = {
+      configure: vi.fn().mockResolvedValue(undefined),
+      start: vi.fn().mockResolvedValue({ state: "starting", nodeId: NODE, hubName: "Nairobi HQ", lastHandshakeAt: null }),
+    };
+
+    const authenticated = await loginAndroidHub(
+      config,
+      { username: "alice", password: "correct horse", branchId: BRANCH },
+      hub,
+      mesh,
+    );
+
+    expect(mesh.configure).toHaveBeenCalledWith(expect.objectContaining({
+      accountId: USER,
+      branchId: BRANCH,
+      enrollment: expect.objectContaining({
+        interfaceAddress: "10.73.42.2/32",
+        peerPublicKey: hubKey,
+        endpoint: "hq-west.ddns.example.co.ke:51820",
+        allowedIps: ["10.73.0.0/16"],
+        persistentKeepaliveSeconds: 25,
+      }),
+    }));
+    expect(mesh.start).toHaveBeenCalledWith({
+      accountId: USER,
+      branchId: BRANCH,
+      enrollmentId: "44444444-4444-4444-8444-444444444444",
+    });
+    expect(authenticated.baseUrl).toBe("http://10.73.0.1:8765");
+    expect(authenticated.lanBaseUrl).toBe("http://192.168.1.20:8765");
+    expect(hub.savedValues.at(-1)).not.toContain(hubKey);
   });
 });

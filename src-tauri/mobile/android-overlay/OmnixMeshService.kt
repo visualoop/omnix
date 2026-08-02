@@ -314,38 +314,51 @@ internal object OmnixMeshRuntime {
     @Volatile private var active: Enrollment? = null
     @Volatile private var publicState = PublicMeshState()
     @Volatile private var applicationContext: Context? = null
+    @Volatile private var connectionStartedAtMillis = 0L
 
-    fun availability(context: Context): Pair<Boolean, String?> = try {
+    fun availability(context: Context): Pair<Boolean, String?> =
         if (VpnService.prepare(context) == null) true to null else false to "vpn"
-    } catch (_: Exception) {
-        false to "vpn"
-    }
 
     fun status(context: Context): PublicMeshState {
         applicationContext = context.applicationContext
         if (active == null && publicState == PublicMeshState()) {
             publicState = readPublic(context)
         }
+        if (desired(context) && VpnService.prepare(context) != null) {
+            publicState = publicState.copy(state = "permission-denied")
+            persistPublic(context, publicState)
+            return publicState
+        }
         val enrollment = active
         val currentBackend = backend
         if (enrollment != null && currentBackend != null && currentBackend.getState(tunnel) == Tunnel.State.UP) {
             val latest = runCatching {
-                currentBackend.getStatistics(tunnel).peers().mapNotNull { peer ->
-                    currentBackend.getStatistics(tunnel).peer(peer)?.latestHandshakeEpochMillis()?.takeIf { it > 0 }
+                val statistics = currentBackend.getStatistics(tunnel)
+                statistics.peers().mapNotNull { peer ->
+                    statistics.peer(peer)?.latestHandshakeEpochMillis()?.takeIf { it > 0 }
                 }.maxOrNull()
             }.getOrNull()
-            if (latest != null) {
-                publicState = publicState.copy(state = if (System.currentTimeMillis() - latest <= 180_000) "connected" else "degraded", lastHandshakeAt = Instant.ofEpochMilli(latest).toString())
-                persistPublic(context, publicState)
+            val now = System.currentTimeMillis()
+            publicState = when {
+                latest != null && now - latest <= 180_000 -> publicState.copy(
+                    state = "connected",
+                    lastHandshakeAt = Instant.ofEpochMilli(latest).toString(),
+                )
+                latest != null -> publicState.copy(
+                    state = "degraded",
+                    lastHandshakeAt = Instant.ofEpochMilli(latest).toString(),
+                )
+                connectionStartedAtMillis > 0 && now - connectionStartedAtMillis >= 20_000 ->
+                    publicState.copy(state = "offline", lastHandshakeAt = null)
+                else -> publicState.copy(state = "starting", lastHandshakeAt = null)
             }
-        } else if (desired(context) && VpnService.prepare(context) != null) {
-            publicState = publicState.copy(state = "disabled")
             persistPublic(context, publicState)
         }
         return publicState
     }
 
     fun start(context: Context, accountId: String, branchId: String, enrollmentId: String, complete: (Result<PublicMeshState>) -> Unit = {}) {
+        connectionStartedAtMillis = System.currentTimeMillis()
         publicState = PublicMeshState("starting")
         persistPublic(context, publicState)
         executor.execute {
@@ -369,12 +382,12 @@ internal object OmnixMeshRuntime {
                 rememberDesired(context, enrollment)
                 currentBackend.setState(tunnel, Tunnel.State.UP, config)
                 MeshKeyCustody.retire(accountId, enrollment.retiredKeyId)
-                publicState = PublicMeshState("connected", enrollment.nodeId, enrollment.hubName, null)
+                publicState = PublicMeshState("starting", enrollment.nodeId, enrollment.hubName, null)
                 persistPublic(context, publicState)
                 publicState
             }.onFailure {
                 active = null
-                publicState = PublicMeshState("disabled")
+                publicState = PublicMeshState("offline")
                 persistPublic(context, publicState)
                 forgetDesired(context)
                 context.stopService(Intent(context, OmnixMeshService::class.java))
@@ -387,6 +400,7 @@ internal object OmnixMeshRuntime {
             complete(runCatching {
                 backend?.let { if (it.getState(tunnel) == Tunnel.State.UP) it.setState(tunnel, Tunnel.State.DOWN, null) }
                 active = null
+                connectionStartedAtMillis = 0L
                 publicState = PublicMeshState()
                 persistPublic(context, publicState)
                 if (forget) forgetDesired(context)
@@ -407,16 +421,21 @@ internal object OmnixMeshRuntime {
 
     fun networkChanged(context: Context) {
         if (!desired(context) || !reconnecting.compareAndSet(false, true)) return
+        connectionStartedAtMillis = System.currentTimeMillis()
+        publicState = publicState.copy(state = "starting", lastHandshakeAt = null)
+        persistPublic(context, publicState)
         executor.execute {
             try {
                 val enrollment = active ?: return@execute
                 val currentBackend = backend ?: return@execute
                 if (currentBackend.getState(tunnel) == Tunnel.State.UP) currentBackend.setState(tunnel, Tunnel.State.DOWN, null)
+                publicState = publicState.copy(state = "starting", lastHandshakeAt = null)
+                persistPublic(context, publicState)
                 val config = buildConfig(enrollment, MeshKeyCustody.keyPair(enrollment.accountId, enrollment.keyId))
                 currentBackend.setState(tunnel, Tunnel.State.UP, config)
                 MeshKeyCustody.retire(enrollment.accountId, enrollment.retiredKeyId)
             } catch (_: Exception) {
-                publicState = publicState.copy(state = "degraded")
+                publicState = publicState.copy(state = "offline")
                 persistPublic(context, publicState)
             } finally {
                 reconnecting.set(false)
@@ -441,12 +460,21 @@ internal object OmnixMeshRuntime {
     fun reconcileConsent(context: Context) {
         applicationContext = context.applicationContext
         if (desired(context) && VpnService.prepare(context) != null) {
-            stop(context, forget = false)
+            publicState = publicState.copy(state = "permission-denied")
+            persistPublic(context, publicState)
+            executor.execute {
+                runCatching {
+                    backend?.let { if (it.getState(tunnel) == Tunnel.State.UP) it.setState(tunnel, Tunnel.State.DOWN, null) }
+                }
+                active = null
+                connectionStartedAtMillis = 0L
+                context.stopService(Intent(context, OmnixMeshService::class.java))
+            }
         }
     }
 
     fun onBackendState(state: Tunnel.State) {
-        if (state == Tunnel.State.DOWN && active != null) {
+        if (state == Tunnel.State.DOWN && active != null && publicState.state !in setOf("starting", "permission-denied")) {
             publicState = publicState.copy(state = "degraded")
             applicationContext?.let { persistPublic(it, publicState) }
         }

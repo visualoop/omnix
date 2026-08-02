@@ -16,6 +16,7 @@ pub enum MeshError {
     InvalidHost,
     InvalidPort,
     InvalidDnsName,
+    NonPublicEndpoint,
     InvalidKey,
     InvalidAllowedIp,
     InvalidPolicy,
@@ -132,9 +133,61 @@ impl Endpoint {
         Ok(Self { host, port })
     }
 
+    /// Parses an endpoint that another site can dial over the public internet.
+    /// Private, carrier-grade, loopback, link-local and reserved IPv4 ranges
+    /// are rejected. DNS names must be fully qualified; resolution is left to
+    /// WireGuard so DDNS updates continue to work.
+    pub fn parse_public(host: &str, port: u16) -> Result<Self, MeshError> {
+        let host = host.trim();
+        if host.is_empty() {
+            return Err(MeshError::InvalidDnsName);
+        }
+        if let Ok(address) = host.parse::<Ipv4Addr>() {
+            if !is_public_ipv4(address) {
+                return Err(MeshError::NonPublicEndpoint);
+            }
+            return Self::new(EndpointHost::Ipv4(address), port);
+        }
+        if host
+            .bytes()
+            .all(|byte| byte.is_ascii_digit() || byte == b'.')
+            || !host.contains('.')
+        {
+            return Err(MeshError::InvalidDnsName);
+        }
+        Self::new(EndpointHost::Dns(host.to_ascii_lowercase()), port)
+    }
+
+    pub fn host_text(&self) -> String {
+        match &self.host {
+            EndpointHost::Ipv4(address) => address.to_string(),
+            EndpointHost::Dns(name) => name.clone(),
+        }
+    }
+
+    pub fn render(&self) -> String {
+        format!("{}:{}", self.host_text(), self.port)
+    }
+
     fn is_private_ipv4(&self) -> bool {
         matches!(self.host, EndpointHost::Ipv4(address) if is_private(address))
     }
+}
+
+pub fn is_public_ipv4(address: Ipv4Addr) -> bool {
+    let [first, second, third, _] = address.octets();
+    !is_private(address)
+        && !is_carrier_grade_nat(address)
+        && !address.is_unspecified()
+        && !address.is_loopback()
+        && !address.is_link_local()
+        && !address.is_multicast()
+        && !address.is_broadcast()
+        && !address.is_documentation()
+        && first != 0
+        && first < 224
+        && !(first == 192 && second == 0 && third == 0)
+        && !(first == 198 && matches!(second, 18 | 19))
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -229,6 +282,83 @@ pub fn classify_endpoint(
     } else {
         EndpointClass::Unreachable
     }
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum PortReachability {
+    Reachable,
+    Unreachable,
+    Unknown,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct ReachabilityObservation {
+    pub observed_public_address: Option<Ipv4Addr>,
+    pub observed_port: u16,
+    pub nat_class: NatClass,
+    pub endpoint_class: EndpointClass,
+    pub verified: bool,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct HubReachability {
+    pub observed_public_address: Option<Ipv4Addr>,
+    pub port_reachability: PortReachability,
+    pub nat_class: NatClass,
+    pub warning: Option<&'static str>,
+}
+
+/// Assesses only independently verified evidence. A configured endpoint alone
+/// never proves that an inbound UDP handshake can reach the hub.
+pub fn assess_hub_reachability(
+    endpoint: &Endpoint,
+    observation: Option<&ReachabilityObservation>,
+) -> HubReachability {
+    let Some(observation) = observation.filter(|observation| observation.verified) else {
+        return HubReachability {
+            observed_public_address: None,
+            port_reachability: PortReachability::Unknown,
+            nat_class: NatClass::Unknown,
+            warning: None,
+        };
+    };
+    let port_reachability = if observation.observed_port != endpoint.port {
+        PortReachability::Unknown
+    } else if matches!(
+        observation.endpoint_class,
+        EndpointClass::DirectPublic | EndpointClass::NatTraversal
+    ) {
+        PortReachability::Reachable
+    } else if matches!(
+        observation.endpoint_class,
+        EndpointClass::RelayRequired | EndpointClass::Unreachable
+    ) {
+        PortReachability::Unreachable
+    } else {
+        PortReachability::Unknown
+    };
+    HubReachability {
+        observed_public_address: observation.observed_public_address,
+        port_reachability,
+        nat_class: observation.nat_class,
+        warning: nat_warning(observation.nat_class),
+    }
+}
+
+pub fn nat_warning(nat_class: NatClass) -> Option<&'static str> {
+    match nat_class {
+        NatClass::CarrierGrade => Some(
+            "This line is behind carrier-grade NAT. Router port forwarding cannot make the hub reachable; a relay or a public address from the ISP is required.",
+        ),
+        _ => None,
+    }
+}
+
+/// Unknown is treated conservatively because most branch devices sit behind a
+/// router; periodic keepalive is harmless on an open path and preserves NAT
+/// mappings when external classification has not arrived yet.
+pub fn nat_requires_persistent_keepalive(nat_class: NatClass) -> bool {
+    nat_class != NatClass::OpenInternet
 }
 
 #[derive(Clone, Eq, PartialEq)]

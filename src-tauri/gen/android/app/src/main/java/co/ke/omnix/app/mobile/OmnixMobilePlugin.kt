@@ -384,16 +384,21 @@ class OmnixMobilePlugin(private val activity: Activity) : Plugin(activity) {
 
     @Command
     fun meshAvailability(invoke: Invoke) {
-        val (granted, permission) = OmnixMeshRuntime.availability(activity)
-        invoke.resolve(if (granted) {
-            availability("available")
-        } else {
-            availability("permission-required", permission = permission ?: "vpn")
-        })
+        try {
+            val (granted, permission) = OmnixMeshRuntime.availability(activity)
+            invoke.resolve(if (granted) {
+                availability("available")
+            } else {
+                availability("permission-required", permission = permission ?: "vpn")
+            })
+        } catch (_: Exception) {
+            invoke.resolve(availability("unavailable", "The embedded Private Mesh backend is unavailable"))
+        }
     }
 
     @Command
     fun meshStatus(invoke: Invoke) {
+        OmnixMeshRuntime.reconcileConsent(activity)
         OmnixMeshRuntime.enforceLifecycle(activity)
         invoke.resolve(OmnixMeshRuntime.status(activity).json())
     }
@@ -435,7 +440,7 @@ class OmnixMobilePlugin(private val activity: Activity) : Plugin(activity) {
             if (granted && VpnService.prepare(activity) == null) {
                 begin()
             } else {
-                invoke.resolve(PublicMeshState("disabled").json())
+                invoke.resolve(PublicMeshState("permission-denied").json())
             }
         }
     }

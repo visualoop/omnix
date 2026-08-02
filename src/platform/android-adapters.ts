@@ -61,10 +61,10 @@ function availability(value: unknown): AdapterAvailability {
   if (value.state === "permission-required") {
     const result = exactRecord(value, ["state", "permission"], "Android availability response");
     const permission = requiredString(result.permission, "Android permission", 32);
-    if (!["camera", "biometric", "notifications", "sharing"].includes(permission)) {
+    if (!["camera", "biometric", "notifications", "sharing", "vpn"].includes(permission)) {
       throw new Error("Android availability permission is invalid");
     }
-    return { state: "permission-required", permission: permission as "camera" | "biometric" | "notifications" | "sharing" };
+    return { state: "permission-required", permission: permission as "camera" | "biometric" | "notifications" | "sharing" | "vpn" };
   }
   if (value.state === "unavailable") {
     const result = exactRecord(value, ["state", "reason"], "Android availability response");

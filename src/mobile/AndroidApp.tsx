@@ -26,6 +26,7 @@ import { createMobileShellModel } from "@/mobile/shell";
 import { registerMobileLifecycle } from "@/mobile/lifecycle";
 import { createAndroidPlatformAdapters } from "@/platform/android-adapters";
 import { createOperationalContext, type LaunchCountry } from "@/platform/operational-context";
+import type { AdapterAvailability } from "@/platform/adapters";
 import type { RuntimeCapabilities } from "@/platform/runtime";
 import { getPermissionsForRole } from "@/lib/permissions";
 import { getCountry } from "@/lib/countries";
@@ -218,6 +219,10 @@ function AndroidAuthenticatedApp({ runtime, hubConfig, onHubConfigChange }: Andr
   const [accountDevice, setAccountDevice] = useState<AccountDeviceModel | null>(null);
   const [typedInventory, setTypedInventory] = useState<AndroidInventoryItem[]>([]);
   const [nativeError, setNativeError] = useState<string | null>(null);
+  const [meshAvailability, setMeshAvailability] = useState<AdapterAvailability>({
+    state: "unavailable",
+    reason: "Checking Private Mesh availability…",
+  });
   const [meshActionPending, setMeshActionPending] = useState(false);
   const historyIndex = useRef(0);
   historyIndex.current = typeof window.history.state?.idx === "number"
@@ -276,14 +281,16 @@ function AndroidAuthenticatedApp({ runtime, hubConfig, onHubConfigChange }: Andr
 
     void (async () => {
       try {
-        const [secureStorage, biometrics, biometricPermission, notificationPermission, mesh, storage] = await Promise.all([
+        const [secureStorage, biometrics, biometricPermission, notificationPermission, currentMeshAvailability, mesh, storage] = await Promise.all([
           adapters.secureStorage.availability().catch(() => unavailable("Android Keystore is unavailable")),
           adapters.biometrics.availability().catch(() => ({ status: unavailable("Biometrics are unavailable"), kinds: [], enrolled: false })),
           adapters.biometrics.permission().catch(() => "unavailable" as const),
           adapters.notifications.permission().catch(() => "unavailable" as const),
-          adapters.mesh.status().catch(() => ({ state: "disabled" as const, nodeId: null, hubName: null, lastHandshakeAt: null })),
+          adapters.mesh.availability().catch(() => unavailable("Private Mesh is unavailable on this Android build")),
+          adapters.mesh.status().catch(() => ({ state: "offline" as const, nodeId: null, hubName: null, lastHandshakeAt: null })),
           navigator.storage?.estimate().catch(() => ({ usage: 0, quota: 0 })) ?? Promise.resolve({ usage: 0, quota: 0 }),
         ]);
+        if (!cancelled) setMeshAvailability(currentMeshAvailability);
 
         let deviceId = `android-${user.id}`;
         if (secureStorage.state === "available") {
@@ -345,6 +352,36 @@ function AndroidAuthenticatedApp({ runtime, hubConfig, onHubConfigChange }: Andr
 
     return () => { cancelled = true; };
   }, [activeBranch?.name, adapters, context, user]);
+
+  useEffect(() => {
+    if (!user || !hubConfig.meshEnrollmentId) return;
+    let cancelled = false;
+    const refreshMesh = async () => {
+      const [availability, status] = await Promise.all([
+        adapters.mesh.availability().catch(() => ({ state: "unavailable" as const, reason: "Private Mesh is unavailable on this Android build" })),
+        adapters.mesh.status().catch(() => ({ state: "offline" as const, nodeId: null, hubName: null, lastHandshakeAt: null })),
+      ]);
+      if (cancelled) return;
+      setMeshAvailability(availability);
+      setAccountDevice((current) => current ? createAccountDeviceModel({ ...current, mesh: status }) : current);
+    };
+    const onNetworkChange = () => { void refreshMesh(); };
+    const onVisibilityChange = () => {
+      if (document.visibilityState === "visible") void refreshMesh();
+    };
+    window.addEventListener("online", onNetworkChange);
+    window.addEventListener("offline", onNetworkChange);
+    document.addEventListener("visibilitychange", onVisibilityChange);
+    const timer = window.setInterval(() => { void refreshMesh(); }, 5_000);
+    void refreshMesh();
+    return () => {
+      cancelled = true;
+      window.clearInterval(timer);
+      window.removeEventListener("online", onNetworkChange);
+      window.removeEventListener("offline", onNetworkChange);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+    };
+  }, [adapters, hubConfig.meshEnrollmentId, user]);
 
   useEffect(() => {
     if (!activeBranch?.id || !context) {
@@ -423,6 +460,12 @@ function AndroidAuthenticatedApp({ runtime, hubConfig, onHubConfigChange }: Andr
         return;
       }
       setMeshActionPending(true);
+      if (action === "connect-private-mesh") {
+        setAccountDevice((current) => current ? createAccountDeviceModel({
+          ...current,
+          mesh: { ...current.mesh, state: "starting" },
+        }) : current);
+      }
       try {
         const mesh = action === "connect-private-mesh"
           ? await adapters.mesh.start({
@@ -436,10 +479,22 @@ function AndroidAuthenticatedApp({ runtime, hubConfig, onHubConfigChange }: Andr
               hubName: null,
               lastHandshakeAt: null,
             });
+        const availability = await adapters.mesh.availability().catch(() => ({
+          state: "unavailable" as const,
+          reason: "Private Mesh is unavailable on this Android build",
+        }));
+        setMeshAvailability(availability);
         setAccountDevice((current) => current ? createAccountDeviceModel({ ...current, mesh }) : current);
-        toast.success(action === "connect-private-mesh" ? "Private Mesh connected" : "Private Mesh disconnected");
+        if (action === "disconnect-private-mesh") toast.success("Private Mesh disconnected");
+        else if (mesh.state === "permission-denied") toast.info("Allow the Android VPN prompt to connect Private Mesh");
+        else if (mesh.state === "connected") toast.success("Private Mesh connected");
+        else toast.info("Private Mesh is connecting to the branch hub");
       } catch (error) {
-        toast.error(error instanceof Error ? error.message : "Private Mesh could not change connection state");
+        setAccountDevice((current) => current ? createAccountDeviceModel({
+          ...current,
+          mesh: { ...current.mesh, state: "offline" },
+        }) : current);
+        toast.error(error instanceof Error ? error.message : "Private Mesh could not reach the branch hub");
       } finally {
         setMeshActionPending(false);
       }
@@ -491,6 +546,7 @@ function AndroidAuthenticatedApp({ runtime, hubConfig, onHubConfigChange }: Andr
             }}
             onAction={(action) => { void handleProfileAction(action); }}
             onSignOut={() => { void handleSignOut(); }}
+            meshAvailability={meshAvailability}
             meshActionPending={meshActionPending}
           />
         ) : <LoadingState label="Loading account profile…" />} />

@@ -8,13 +8,14 @@ import type {
   MobileProfileAction,
   MobileProfileModel,
 } from "@/mobile/models/profile";
-import type { NativePermissionState } from "@/platform/adapters";
+import type { AdapterAvailability, NativePermissionState } from "@/platform/adapters";
 
 export interface MobileProfileProps {
   readonly model: MobileProfileModel;
   readonly onSelectBranch: (branchId: string) => void;
   readonly onAction: (action: MobileProfileAction) => void;
   readonly onSignOut: () => void;
+  readonly meshAvailability?: AdapterAvailability;
   readonly meshActionPending?: boolean;
 }
 
@@ -58,6 +59,7 @@ export function MobileProfile({
   onSelectBranch,
   onAction,
   onSignOut,
+  meshAvailability = { state: "available" },
   meshActionPending = false,
 }: MobileProfileProps) {
   const account = model.accountDevice.account;
@@ -224,9 +226,10 @@ export function MobileProfile({
         model={model.accountDevice}
         locale={model.locale}
         meshEnrollmentReady={model.meshEnrollmentReady}
+        meshAvailability={meshAvailability}
         meshActionPending={meshActionPending}
         onMeshAction={() => onAction(
-          model.accountDevice.mesh.state === "connected" || model.accountDevice.mesh.state === "degraded"
+          model.accountDevice.mesh.state === "connected"
             ? "disconnect-private-mesh"
             : "connect-private-mesh",
         )}

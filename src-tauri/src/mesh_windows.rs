@@ -13,6 +13,8 @@ use serde::{Deserialize, Serialize};
 use x25519_dalek::{PublicKey, StaticSecret};
 use zeroize::Zeroizing;
 
+use crate::mesh_contracts::{nat_requires_persistent_keepalive, Endpoint, NatClass};
+
 pub const MESH_SERVICE_NAME: &str = "WireGuardTunnel$omnix-mesh";
 pub const MESH_TUNNEL_NAME: &str = "omnix-mesh";
 pub const DEFAULT_ROTATION_DAYS: i64 = 90;
@@ -190,12 +192,8 @@ pub struct DesiredTunnelConfig {
 
 impl DesiredTunnelConfig {
     pub fn validate(&self) -> Result<(), MeshWindowsError> {
-        if self.schema_version != 1 || self.peers.is_empty() {
-            return Err(if self.peers.is_empty() {
-                MeshWindowsError::MissingPeer
-            } else {
-                MeshWindowsError::InvalidRoute
-            });
+        if self.schema_version != 1 {
+            return Err(MeshWindowsError::InvalidRoute);
         }
         let pool = Ipv4Network::parse(&self.mesh_pool)?;
         if pool.prefix_length != 16
@@ -267,6 +265,56 @@ impl DesiredTunnelConfig {
         }
         Ok(Zeroizing::new(lines.join("\r\n") + "\r\n"))
     }
+}
+
+/// Builds the installable configuration delivered to an approved device. The
+/// interface address comes from its allocation; the sole peer is the current
+/// HQ key at the operator-published endpoint. The only route is the selected
+/// Omnix private /16.
+pub fn enrolled_device_tunnel_config(
+    mesh_pool: &str,
+    assigned_mesh_address: &str,
+    hub_public_key: &str,
+    hub_endpoint: &Endpoint,
+    device_nat_class: NatClass,
+) -> Result<DesiredTunnelConfig, MeshWindowsError> {
+    let configuration = DesiredTunnelConfig {
+        schema_version: 1,
+        mesh_pool: mesh_pool.to_owned(),
+        interface_address: assigned_mesh_address.to_owned(),
+        listen_port: None,
+        key_slot: KeySlot::Current,
+        peers: vec![MeshPeer {
+            public_key: hub_public_key.to_owned(),
+            allowed_ips: vec![mesh_pool.to_owned()],
+            endpoint: Some(hub_endpoint.render()),
+            persistent_keepalive_seconds: nat_requires_persistent_keepalive(device_nat_class)
+                .then_some(25),
+        }],
+    };
+    configuration.validate()?;
+    Ok(configuration)
+}
+
+/// Builds the hub listener configuration from public peer metadata. A newly
+/// installed hub may listen before its first peer is approved. Every later peer
+/// route is its assigned /32 inside the selected Omnix pool.
+pub fn hub_tunnel_config(
+    mesh_pool: &str,
+    assigned_mesh_address: &str,
+    listen_port: u16,
+    peers: Vec<MeshPeer>,
+) -> Result<DesiredTunnelConfig, MeshWindowsError> {
+    let configuration = DesiredTunnelConfig {
+        schema_version: 1,
+        mesh_pool: mesh_pool.to_owned(),
+        interface_address: assigned_mesh_address.to_owned(),
+        listen_port: Some(listen_port),
+        key_slot: KeySlot::Current,
+        peers,
+    };
+    configuration.validate()?;
+    Ok(configuration)
 }
 
 /// Validate that a typed sync HTTP endpoint is routed only through the selected
@@ -523,6 +571,61 @@ mod tests {
             config.peers[0].allowed_ips = vec![invalid.to_owned()];
             assert_eq!(config.validate(), Err(MeshWindowsError::InvalidRoute));
         }
+    }
+
+    #[test]
+    fn enrolled_device_config_contains_hub_endpoint_key_address_and_keepalive() {
+        let endpoint = Endpoint::parse_public("hq-west.ddns.example.co.ke", 51_820).unwrap();
+        let config = enrolled_device_tunnel_config(
+            "10.73.0.0/16",
+            "10.73.42.2/32",
+            &key(11),
+            &endpoint,
+            NatClass::PortRestricted,
+        )
+        .unwrap();
+        assert_eq!(config.interface_address, "10.73.42.2/32");
+        assert_eq!(config.peers[0].public_key, key(11));
+        assert_eq!(config.peers[0].allowed_ips, vec!["10.73.0.0/16"]);
+        assert_eq!(
+            config.peers[0].endpoint.as_deref(),
+            Some("hq-west.ddns.example.co.ke:51820")
+        );
+        assert_eq!(config.peers[0].persistent_keepalive_seconds, Some(25));
+
+        let rendered = config
+            .render(&PrivateKeyMaterial::from_bytes([12; 32]))
+            .unwrap();
+        assert!(rendered.contains(&format!("PublicKey = {}", key(11))));
+        assert!(rendered.contains("Address = 10.73.42.2/32"));
+        assert!(rendered.contains("Endpoint = hq-west.ddns.example.co.ke:51820"));
+        assert!(rendered.contains("PersistentKeepalive = 25"));
+        assert!(rendered.contains("AllowedIPs = 10.73.0.0/16"));
+        assert!(!rendered.contains("0.0.0.0/0"));
+        assert!(!rendered.contains("::/0"));
+    }
+
+    #[test]
+    fn published_hub_config_listens_on_udp_port_with_private_peer_routes_only() {
+        let config = hub_tunnel_config(
+            "10.73.0.0/16",
+            "10.73.0.1/32",
+            51_820,
+            vec![MeshPeer {
+                public_key: key(13),
+                allowed_ips: vec!["10.73.42.2/32".to_owned()],
+                endpoint: None,
+                persistent_keepalive_seconds: None,
+            }],
+        )
+        .unwrap();
+        let rendered = config
+            .render(&PrivateKeyMaterial::from_bytes([14; 32]))
+            .unwrap();
+        assert!(rendered.contains("ListenPort = 51820"));
+        assert!(rendered.contains("AllowedIPs = 10.73.42.2/32"));
+        assert!(!rendered.contains("0.0.0.0/0"));
+        assert!(!rendered.contains("::/0"));
     }
 
     #[test]

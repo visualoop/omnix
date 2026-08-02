@@ -31,7 +31,8 @@ use crate::command_api::idempotency::{
 };
 use crate::command_api::local_auth::{
     authenticate_branch_local, BranchLocalAuthenticationStore, BranchLocalLoginV1,
-    IssuedLocalSession, LocalCredentialRecord, LocalPasswordVerifier, MAX_LOCAL_SESSION_TTL,
+    BranchLocalMeshEnrollmentV1, IssuedLocalSession, LocalAccessV1, LocalCredentialRecord,
+    LocalPasswordVerifier, MAX_LOCAL_SESSION_TTL,
 };
 use crate::command_api::pilot_inventory::{
     handle_inventory_alerts_read, handle_set_reorder_level, InventoryAlertRow,
@@ -46,6 +47,8 @@ use crate::command_api::projections::{
     TillShiftRowV1,
 };
 use crate::db::command_api as db;
+use crate::mesh_contracts::{Endpoint, NatClass};
+use crate::mesh_windows::enrolled_device_tunnel_config;
 use crate::network::ServerState;
 
 #[derive(Debug)]
@@ -247,13 +250,73 @@ impl LocalPasswordVerifier for ArgonVerifier {
     }
 }
 
+fn android_mesh_enrollment(
+    metadata: crate::db::mesh::AndroidEnrollmentMetadata,
+) -> Result<BranchLocalMeshEnrollmentV1, CommandApiError> {
+    let prefix = u8::try_from(metadata.prefix_length)
+        .map_err(|_| CommandApiError::StorageUnavailable)?;
+    let port = u16::try_from(metadata.endpoint_port)
+        .map_err(|_| CommandApiError::StorageUnavailable)?;
+    let interface_ip = metadata
+        .interface_address
+        .parse::<std::net::Ipv4Addr>()
+        .map_err(|_| CommandApiError::StorageUnavailable)?;
+    let hub_ip = metadata
+        .hub_address
+        .parse::<std::net::Ipv4Addr>()
+        .map_err(|_| CommandApiError::StorageUnavailable)?;
+    if prefix != 32 || !interface_ip.is_private() || !hub_ip.is_private() {
+        return Err(CommandApiError::StorageUnavailable);
+    }
+    let endpoint = Endpoint::parse_public(&metadata.endpoint_host, port)
+        .map_err(|_| CommandApiError::StorageUnavailable)?;
+    let configuration = enrolled_device_tunnel_config(
+        &metadata.mesh_subnet,
+        &format!("{interface_ip}/{prefix}"),
+        &metadata.hub_public_key,
+        &endpoint,
+        NatClass::Unknown,
+    )
+    .map_err(|_| CommandApiError::StorageUnavailable)?;
+    let peer = configuration
+        .peers
+        .first()
+        .cloned()
+        .ok_or(CommandApiError::StorageUnavailable)?;
+    Ok(BranchLocalMeshEnrollmentV1 {
+        enrollment_id: metadata.enrollment_id,
+        status: if metadata.enrollment_status == "consumed" {
+            "active".to_string()
+        } else {
+            "approved".to_string()
+        },
+        node_id: metadata.node_id,
+        hub_name: metadata.hub_name,
+        key_id: metadata.key_id,
+        device_public_key: metadata.device_public_key,
+        interface_address: configuration.interface_address,
+        mesh_subnet: configuration.mesh_pool,
+        peer_public_key: peer.public_key,
+        endpoint: peer.endpoint.ok_or(CommandApiError::StorageUnavailable)?,
+        allowed_ips: peer.allowed_ips,
+        persistent_keepalive_seconds: peer
+            .persistent_keepalive_seconds
+            .ok_or(CommandApiError::StorageUnavailable)?,
+        hub_address: hub_ip.to_string(),
+    })
+}
+
 async fn branch_local_login(
     State(state): State<ServerState>,
     body: Bytes,
 ) -> Result<Json<impl Serialize>, TypedApiError> {
     let request: BranchLocalLoginV1 = decode(&body)?;
-    let mut store = LocalStore { pool: state.pool };
-    let result = wait(async move {
+    let android = request.requested_access == LocalAccessV1::Android;
+    let node_id = request.node_id.clone();
+    let branch_id = request.branch_id.clone();
+    let pool = state.pool.clone();
+    let mut store = LocalStore { pool: pool.clone() };
+    let mut result = wait(async move {
         authenticate_branch_local(
             &request,
             &mut store,
@@ -261,8 +324,22 @@ async fn branch_local_login(
             Utc::now(),
             MAX_LOCAL_SESSION_TTL,
         )
-    });
-    result.map(Json).map_err(Into::into)
+    })?;
+    if android {
+        let metadata = crate::db::mesh::android_enrollment_metadata(
+            &pool,
+            &node_id,
+            &branch_id,
+            &Utc::now().to_rfc3339(),
+        )
+        .await
+        .map_err(|_| TypedApiError(CommandApiError::StorageUnavailable))?;
+        result.mesh_enrollment = metadata
+            .map(android_mesh_enrollment)
+            .transpose()
+            .map_err(TypedApiError)?;
+    }
+    Ok(Json(result))
 }
 
 macro_rules! command_handler {
@@ -402,6 +479,7 @@ pub fn browser_read_router() -> Router<ServerState> {
         .route(
             "/api/v1/reads/inventory/reorder-alerts",
             limited(post(inventory_reorder_alerts), 8 * 1024),
+
         )
         .layer(configured_browser_cors())
 }
@@ -445,5 +523,36 @@ mod tests {
             .collect::<Vec<_>>();
         manifest.sort_unstable();
         assert_eq!(mounted, manifest);
+    }
+
+    #[test]
+    fn android_enrollment_uses_shared_device_tunnel_configuration() {
+        use base64::Engine;
+
+        let device_key = base64::engine::general_purpose::STANDARD.encode([7_u8; 32]);
+        let hub_key = base64::engine::general_purpose::STANDARD.encode([11_u8; 32]);
+        let enrollment = super::android_mesh_enrollment(crate::db::mesh::AndroidEnrollmentMetadata {
+            enrollment_id: "11111111-1111-4111-8111-111111111111".to_string(),
+            enrollment_status: "approved".to_string(),
+            node_id: "22222222-2222-4222-8222-222222222222".to_string(),
+            hub_name: "Nairobi HQ".to_string(),
+            key_id: "android-key-1".to_string(),
+            device_public_key: device_key,
+            interface_address: "10.73.42.2".to_string(),
+            prefix_length: 32,
+            mesh_subnet: "10.73.0.0/16".to_string(),
+            hub_public_key: hub_key.clone(),
+            endpoint_host: "hq-west.ddns.example.co.ke".to_string(),
+            endpoint_port: 51_820,
+            hub_address: "10.73.0.1".to_string(),
+        })
+        .unwrap();
+
+        assert_eq!(enrollment.interface_address, "10.73.42.2/32");
+        assert_eq!(enrollment.peer_public_key, hub_key);
+        assert_eq!(enrollment.endpoint, "hq-west.ddns.example.co.ke:51820");
+        assert_eq!(enrollment.allowed_ips, vec!["10.73.0.0/16"]);
+        assert_eq!(enrollment.persistent_keepalive_seconds, 25);
+        assert_eq!(enrollment.hub_address, "10.73.0.1");
     }
 }

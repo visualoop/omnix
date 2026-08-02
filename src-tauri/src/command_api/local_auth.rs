@@ -44,6 +44,24 @@ impl LocalAccessV1 {
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct BranchLocalMeshEnrollmentV1 {
+    pub enrollment_id: String,
+    pub status: String,
+    pub node_id: String,
+    pub hub_name: String,
+    pub key_id: String,
+    pub device_public_key: String,
+    pub interface_address: String,
+    pub mesh_subnet: String,
+    pub peer_public_key: String,
+    pub endpoint: String,
+    pub allowed_ips: Vec<String>,
+    pub persistent_keepalive_seconds: u16,
+    pub hub_address: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct BranchLocalLoginResultV1 {
     pub schema_version: u16,
     pub session_id: String,
@@ -60,6 +78,8 @@ pub struct BranchLocalLoginResultV1 {
     pub expires_at: DateTime<Utc>,
     pub authentication_level: String,
     pub branch_local: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub mesh_enrollment: Option<BranchLocalMeshEnrollmentV1>,
 }
 
 /// Server-loaded credential record. It is not serializable and must never leave the host.
@@ -217,6 +237,7 @@ where
         expires_at: issued.session.expires_at,
         authentication_level: "user".to_string(),
         branch_local: true,
+        mesh_enrollment: None,
     })
 }
 
