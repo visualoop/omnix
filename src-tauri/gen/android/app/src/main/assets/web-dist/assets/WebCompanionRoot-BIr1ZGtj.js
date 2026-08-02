@@ -1,0 +1,1 @@
+import{r,j as o}from"./theme-bX0OAJwv.js";import{r as t,W as e}from"./WebCompanionApp-DZp5Eg2G.js";import"./omnix-logo-8ESxnthN.js";import"./input-DLXg0fEG.js";import"./PlugsConnected.es-EKfnoVWx.js";function a(){return r.useEffect(()=>{t()},[]),o.jsx(e,{})}export{a as WebCompanionRoot};

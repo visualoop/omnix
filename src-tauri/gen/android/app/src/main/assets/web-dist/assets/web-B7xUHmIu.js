@@ -1,0 +1,1 @@
+import{e as r,a as t,j as e,b as o}from"./theme-bX0OAJwv.js";import{r as s,W as a}from"./WebCompanionApp-DZp5Eg2G.js";import"./omnix-logo-8ESxnthN.js";import"./input-DLXg0fEG.js";import"./PlugsConnected.es-EKfnoVWx.js";r();s();t.createRoot(document.getElementById("root")).render(e.jsx(o.StrictMode,{children:e.jsx(a,{})}));

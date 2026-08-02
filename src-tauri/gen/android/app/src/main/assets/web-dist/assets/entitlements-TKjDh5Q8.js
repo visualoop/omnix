@@ -1,0 +1,1 @@
+import{g as o}from"./theme-bX0OAJwv.js";const n=!0,t=["dawa","retail","hardware","hospitality"],d=o(e=>({modules:[...t],loaded:n,setModules:r=>e({modules:r,loaded:!0})}));function s(e){return!0}function i(){return[...t]}export{t as ALL_MODULES,i as entitledModules,s as isModuleEntitled,d as useEntitlements};

@@ -1,0 +1,29 @@
+import{fO as d,cg as E}from"./pos-sale-nZJpkHao.js";import"./theme-bX0OAJwv.js";import"./input-DLXg0fEG.js";import"./desktop-J23ks67K.js";function S(){return crypto.randomUUID().replace(/-/g,"").slice(0,16)}async function f(n){const e=await d(`SELECT COALESCE(MAX(CAST(SUBSTR(entry_number, 9) AS INTEGER)), 0) AS n
+     FROM journal_entries WHERE entry_number LIKE ?1`,[`JE-${n}-%`]),c=Number(e[0]?.n??0)+1;return`JE-${n}-${String(c).padStart(6,"0")}`}async function b(n){if(!n.lines||n.lines.length<2)throw new Error("Journal entry requires at least 2 lines");let e=0,c=0;for(const t of n.lines){if(t.debit<0||t.credit<0)throw new Error("Debit/credit must be non-negative");if(t.debit>0&&t.credit>0)throw new Error("A line cannot be both debit and credit");e+=t.debit,c+=t.credit}if(Math.abs(e-c)>.005)throw new Error(`Journal not balanced: debit ${e.toFixed(2)} != credit ${c.toFixed(2)}`);const i=Array.from(new Set(n.lines.map(t=>t.account_code))),o=i.map((t,s)=>`?${s+1}`).join(","),a=await d(`SELECT code FROM chart_of_accounts WHERE code IN (${o})`,i),r=new Set(a.map(t=>t.code));for(const t of i)if(!r.has(t))throw new Error(`Unknown account: ${t}`);const l=S(),_=n.entry_date.slice(0,4),y=await f(_);await E(`INSERT INTO journal_entries
+      (id, entry_number, entry_date, description, source_kind, source_id, posted, posted_at, posted_by, created_at)
+     VALUES (?1, ?2, ?3, ?4, ?5, ?6, 1, datetime('now'), ?7, datetime('now'))`,[l,y,n.entry_date,n.description,n.source_kind??null,n.source_id??null,n.posted_by??null]);let u=0;for(const t of n.lines)u++,await E(`INSERT INTO journal_lines
+        (id, entry_id, line_no, account_code, debit, credit, description, cost_centre)
+       VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)`,[S(),l,u,t.account_code,t.debit,t.credit,t.description??null,t.cost_centre??null]);return l}async function O(n,e,c){const[i]=await d("SELECT description, entry_number FROM journal_entries WHERE id = ?1 AND posted = 1",[n]);if(!i)throw new Error("Journal entry not found or not posted");const o=await d("SELECT account_code, debit, credit, description FROM journal_lines WHERE entry_id = ?1 ORDER BY line_no",[n]),a=await b({entry_date:e,description:`Reversal of ${i.entry_number}: ${i.description}`,source_kind:"reversal",source_id:n,posted_by:c,lines:o.map(r=>({account_code:r.account_code,debit:r.credit,credit:r.debit,description:r.description??void 0}))});return await E("UPDATE journal_entries SET reversed_by = ?2 WHERE id = ?1",[n,a]),a}async function p(n){const e=n??new Date().toISOString().slice(0,10);return d(`SELECT
+        c.code,
+        c.name,
+        c.type,
+        COALESCE(SUM(l.debit), 0) AS total_debit,
+        COALESCE(SUM(l.credit), 0) AS total_credit,
+        COALESCE(SUM(l.debit) - SUM(l.credit), 0) AS balance
+     FROM chart_of_accounts c
+     LEFT JOIN journal_lines l ON l.account_code = c.code
+     LEFT JOIN journal_entries e ON e.id = l.entry_id AND e.posted = 1 AND e.entry_date <= ?1
+     WHERE c.active = 1
+     GROUP BY c.code
+     HAVING total_debit > 0 OR total_credit > 0
+     ORDER BY c.code`,[e])}async function N(n){const e=n??new Date().toISOString().slice(0,10),c=await p(e),[i]=await d(`SELECT
+        COALESCE(SUM(CASE WHEN c.type = 'revenue' THEN l.credit - l.debit ELSE 0 END), 0)
+      - COALESCE(SUM(CASE WHEN c.type = 'expense' THEN l.debit - l.credit ELSE 0 END), 0)
+        AS earnings
+     FROM journal_lines l
+     JOIN chart_of_accounts c ON c.code = l.account_code
+     JOIN journal_entries e ON e.id = l.entry_id AND e.posted = 1
+       AND e.entry_date <= ?1 AND strftime('%Y', e.entry_date) = strftime('%Y', ?1)`,[e]),o=c.filter(t=>t.type==="asset"),a=c.filter(t=>t.type==="liability"),r=c.filter(t=>t.type==="equity"),l=o.reduce((t,s)=>t+s.balance,0),_=a.reduce((t,s)=>t+(s.total_credit-s.total_debit),0),u=r.reduce((t,s)=>t+(s.total_credit-s.total_debit),0)+(i?.earnings??0);return{as_of:e,assets:o,liabilities:a,equity:r,total_assets:l,total_liabilities:_,total_equity:u,balanced:Math.abs(l-(_+u))<.01,current_year_earnings:i?.earnings??0}}async function h(n,e){const[c]=await d("SELECT id FROM journal_entries WHERE source_kind = 'sale' AND source_id = ?1",[n]);if(c)return null;const i=e.total-e.tax,o=[];e.cash>0&&o.push({account_code:"1000",debit:e.cash,credit:0,description:"Cash sale"}),e.mpesa>0&&o.push({account_code:"1010",debit:e.mpesa,credit:0,description:"M-Pesa sale"}),e.bank>0&&o.push({account_code:"1020",debit:e.bank,credit:0,description:"Bank sale"}),e.ar>0&&o.push({account_code:"1100",debit:e.ar,credit:0,description:"Credit sale (AR)"});const a=[];i>0&&a.push({account_code:"4000",debit:0,credit:i,description:"Sales revenue"}),e.tax>0&&a.push({account_code:"2100",debit:0,credit:e.tax,description:"VAT payable"});const r=[];return e.cogs>0&&(r.push({account_code:"5000",debit:e.cogs,credit:0,description:"COGS"}),r.push({account_code:"1200",debit:0,credit:e.cogs,description:"Inventory"})),o.length===0||a.length===0?null:b({entry_date:e.entry_date,description:`Sale ${n}`,source_kind:"sale",source_id:n,posted_by:e.posted_by,lines:[...o,...a,...r]})}async function C(n,e){const[c]=await d("SELECT id FROM journal_entries WHERE source_kind = 'expense' AND source_id = ?1",[n]);if(c)return null;const i={cash:"1000",mpesa:"1010",bank:"1020",petty_cash:"1000"}[e.payment_source];return b({entry_date:e.entry_date,description:`Expense ${n}`,source_kind:"expense",source_id:n,posted_by:e.posted_by,lines:[{account_code:e.expense_account,debit:e.amount,credit:0,description:"Expense"},{account_code:i,debit:0,credit:e.amount,description:"Payment"}]})}async function L(){return d(`SELECT code, name, type, parent_code, is_system, active, description
+     FROM chart_of_accounts
+     WHERE active = 1
+     ORDER BY code`)}export{N as getBalanceSheet,p as getTrialBalance,L as listAccounts,C as postExpenseToGL,b as postJournal,h as postSaleToGL,O as reverseJournal};
