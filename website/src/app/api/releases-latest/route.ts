@@ -2,7 +2,7 @@ import { desc } from 'drizzle-orm'
 import { db, releases } from '@/db'
 import {
   isDesktopVariant,
-  resolveDesktopUpdate,
+  resolveDesktopUpdate, resolveDesktopUpdateFromReleases,
   type DesktopRelease,
 } from '@/lib/desktop-updater'
 
@@ -38,10 +38,11 @@ export function createReleasesLatestHandler(loadReleases: LoadReleases = loadRec
     const requestUrl = new URL(req.url)
     const rawVariant = requestUrl.searchParams.get('variant')?.toLowerCase() ?? 'pro'
     if (!isDesktopVariant(rawVariant)) {
-      return Response.json(
-        { error: `unknown desktop variant ${rawVariant}` },
-        { status: 400, headers: responseHeaders('invalid-variant') },
-      )
+      // Tauri's updater cannot parse an error body; it reports "update server
+      // returned an unexpected json" and surfaces that to the customer. Every
+      // non-update outcome is therefore 204 with a diagnostic header.
+      console.error('[releases-latest] unknown desktop variant', { variant: rawVariant })
+      return new Response(null, { status: 204, headers: responseHeaders('invalid-variant') })
     }
 
     const currentVersion = requestUrl.searchParams.get('license') ?? ''
@@ -53,24 +54,21 @@ export function createReleasesLatestHandler(loadReleases: LoadReleases = loadRec
       rows = await loadReleases()
     } catch (error) {
       console.error('[releases-latest] database read failed', { variant: rawVariant, error })
-      return Response.json(
-        { error: 'release metadata is temporarily unavailable', variant: rawVariant },
-        { status: 503, headers: responseHeaders('database-error') },
-      )
+      return new Response(null, { status: 204, headers: responseHeaders('database-error') })
     }
 
-    const latest =
-      rows.find((row) => row.channel === channel) ??
-      rows.find((row) => row.channel === 'stable') ??
-      rows[0]
+    const channelRows = rows.filter((row) => row.channel === channel)
+    const candidates = channelRows.length > 0 ? channelRows : rows.filter((row) => row.channel === 'stable')
+    const latest = candidates[0] ?? rows[0]
     if (!latest) {
-      return Response.json(
-        { error: 'no desktop release is published', variant: rawVariant },
-        { status: 404, headers: responseHeaders('no-release') },
-      )
+      return new Response(null, { status: 204, headers: responseHeaders('no-release') })
     }
 
-    const resolution = resolveDesktopUpdate(latest, rawVariant, currentVersion)
+    const resolution = resolveDesktopUpdateFromReleases(
+      candidates.length > 0 ? candidates : rows,
+      rawVariant,
+      currentVersion,
+    )
     if (resolution.status === 'up-to-date') {
       return new Response(null, { status: 204, headers: responseHeaders('up-to-date') })
     }
@@ -82,15 +80,7 @@ export function createReleasesLatestHandler(loadReleases: LoadReleases = loadRec
         variant: rawVariant,
         missing: resolution.missing,
       })
-      return Response.json(
-        {
-          error: `release metadata is incomplete for variant ${rawVariant}`,
-          version: latest.version,
-          variant: rawVariant,
-          missing: resolution.missing,
-        },
-        { status: 503, headers: responseHeaders('missing-assets') },
-      )
+      return new Response(null, { status: 204, headers: responseHeaders('missing-assets') })
     }
 
     return Response.json(resolution.manifest, {

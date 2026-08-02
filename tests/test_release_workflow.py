@@ -15,7 +15,9 @@ assert any(run == "pnpm build" for run in rust_runs), "Tauri test build.rs requi
 assert any(run == "cargo test --lib --locked" for run in rust_runs)
 
 build = jobs["build"]
-assert build.get("needs") == "rust-tests", "all desktop variants must share the same test gate"
+build_needs = build.get("needs")
+build_needs = [build_needs] if isinstance(build_needs, str) else list(build_needs or [])
+assert "rust-tests" in build_needs, "all desktop variants must share the same test gate"
 build_steps = build["steps"]
 assert not any("cargo test" in step.get("run", "") for step in build_steps), (
     "a single matrix variant must not own shared Rust tests"

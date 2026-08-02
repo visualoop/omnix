@@ -16,7 +16,7 @@ Private Mesh adds routes only inside the selected private Omnix `/16`. The rende
 
 ## Release staging (no committed DLLs)
 
-`src-tauri/tauri.windows.conf.json` declares the generated Windows resources. The ignored `src-tauri/wireguard/staged/windows-x86_64/` directory is populated only by:
+`src-tauri/tauri.mesh.conf.json` (deliberately not named `tauri.windows.conf.json`, which Tauri would auto-merge into every Windows build) declares the generated Windows resources. The ignored `src-tauri/wireguard/staged/windows-x86_64/` directory is populated only by:
 
 ```powershell
 ./scripts/prepare-wireguard-windows.ps1 -Release

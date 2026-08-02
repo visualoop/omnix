@@ -52,18 +52,41 @@ describe('/api/releases-latest', () => {
     expect(response.headers.get('x-omnix-updater-status')).toBe('up-to-date')
   })
 
-  it('reports missing variant assets instead of silently claiming no update', async () => {
+  it('stays parseable when variant assets are missing, and reports it in a header', async () => {
     const GET = createReleasesLatestHandler(async () => [release])
 
     const response = await GET(request('variant=retail&license=0.73.0'))
 
-    expect(response.status).toBe(503)
+    // Tauri's updater cannot parse an error body: any JSON that is not a
+    // manifest surfaces to the customer as "update server returned an
+    // unexpected json". Incompleteness is reported out-of-band instead.
+    expect(response.status).toBe(204)
     expect(response.headers.get('x-omnix-updater-status')).toBe('missing-assets')
-    await expect(response.json()).resolves.toEqual({
-      error: 'release metadata is incomplete for variant retail',
-      version: '0.74.0',
-      variant: 'retail',
-      missing: ['installer', 'signature'],
+    await expect(response.text()).resolves.toBe('')
+  })
+
+  it('offers the newest release that actually has assets for the variant', async () => {
+    // An Android-only or failed desktop release creates a row with no
+    // installer; desktop clients must still be offered the last good build.
+    const incomplete = { ...release, id: 'rel-newer', version: '0.75.0', metadata: {} }
+    const complete = {
+      ...release,
+      id: 'rel-good',
+      version: '0.74.1',
+      metadata: {
+        variants: {
+          retail: { exe: 'https://media.omnix.co.ke/releases/v0.74.1/retail/setup.exe', signature: 'sig-retail' },
+        },
+      },
+    }
+    const GET = createReleasesLatestHandler(async () => [incomplete, complete])
+
+    const response = await GET(request('variant=retail&license=0.70.0'))
+
+    expect(response.status).toBe(200)
+    await expect(response.json()).resolves.toMatchObject({
+      version: '0.74.1',
+      platforms: { 'windows-x86_64': { signature: 'sig-retail' } },
     })
   })
 })

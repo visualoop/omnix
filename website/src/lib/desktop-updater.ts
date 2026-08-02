@@ -71,6 +71,34 @@ function variantAssets(metadata: unknown, variant: DesktopVariant): DesktopVaria
 }
 
 /**
+ * Pick the newest release that can actually be installed by this variant.
+ *
+ * A release row may exist with no desktop assets for a given variant: an
+ * Android-only release creates a row, and a failed desktop build leaves one
+ * incomplete. Offering nothing in that case would strand every desktop client
+ * on an older build, so fall back to the newest release that does carry a
+ * complete signed installer for the requested variant.
+ */
+export function resolveDesktopUpdateFromReleases(
+  releases: readonly DesktopRelease[],
+  variant: DesktopVariant,
+  currentVersion: string,
+): DesktopUpdateResolution {
+  const ordered = [...releases].sort((a, b) => compareDesktopVersions(b.version, a.version))
+  if (ordered.length === 0) return { status: 'missing-assets', missing: ['installer', 'signature'] }
+
+  let firstMissing: DesktopUpdateResolution | undefined
+  for (const release of ordered) {
+    const resolution = resolveDesktopUpdate(release, variant, currentVersion)
+    // The newest release decides whether the client is already current.
+    if (resolution.status === 'up-to-date') return resolution
+    if (resolution.status === 'update') return resolution
+    firstMissing ??= resolution
+  }
+  return firstMissing ?? { status: 'missing-assets', missing: ['installer', 'signature'] }
+}
+
+/**
  * Resolve an update without ever crossing variant boundaries. A missing URL or
  * signature is an operational error, not "no update"; only an up-to-date
  * client receives 204 from the route.

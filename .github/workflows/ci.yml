@@ -123,6 +123,10 @@ jobs:
           WINDOWS_CODE_SIGNING_PASSWORD: ${{ secrets.WINDOWS_CODE_SIGNING_PASSWORD }}
         run: |
           $isRelease = ('${{ github.event_name }}' -eq 'push' -and '${{ github.ref }}' -like 'refs/tags/v*') -or ('${{ inputs.release_version }}' -ne '')
+          if (-not $env:WINDOWS_CODE_SIGNING_CERT -or -not $env:WINDOWS_CODE_SIGNING_PASSWORD) {
+            Write-Host '::notice::Private Mesh staging skipped: WINDOWS_CODE_SIGNING_CERT/PASSWORD not configured. Installers build without the bundled tunnel.'
+            exit 0
+          }
           ./scripts/prepare-wireguard-windows.ps1 -Release:$isRelease
 
       - name: Upload verified Private Mesh resources
@@ -227,7 +231,18 @@ jobs:
           if [ "${{ matrix.variant }}" = "pro" ]; then
             echo "flag=" >> $GITHUB_OUTPUT
           else
-            echo "flag=--config src-tauri/tauri.${{ matrix.variant }}.conf.json" >> $GITHUB_OUTPUT
+            CFG="--config src-tauri/tauri.${{ matrix.variant }}.conf.json"
+          # Private Mesh resources are optional. tauri.mesh.conf.json is
+          # deliberately NOT named tauri.windows.conf.json, which Tauri would
+          # auto-merge into every Windows build and fail when the gitignored
+          # staged tunnel is absent.
+          if [ -f "src-tauri/wireguard/staged/windows-x86_64/wireguard.dll" ]; then
+            CFG="$CFG --config src-tauri/tauri.mesh.conf.json"
+            echo "Private Mesh resources staged; bundling the tunnel"
+          else
+            echo "Private Mesh resources absent; building without the tunnel"
+          fi
+          echo "flag=$CFG" >> $GITHUB_OUTPUT
           fi
 
       - name: Build & sign Tauri app (${{ matrix.variant }})
