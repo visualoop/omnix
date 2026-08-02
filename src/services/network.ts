@@ -312,6 +312,27 @@ export interface MeshPublicKey {
   createdAt: string;
 }
 
+export type HubNatClass =
+  | "open_internet"
+  | "full_cone"
+  | "address_restricted"
+  | "port_restricted"
+  | "symmetric"
+  | "carrier_grade"
+  | "unknown";
+
+export interface HubEndpointStatus {
+  host: string;
+  port: number;
+  publishedAt: string;
+  observedPublicAddress: string | null;
+  udpReachability: "reachable" | "unreachable" | "unknown";
+  natClass: HubNatClass;
+  warning: string | null;
+  observedAt: string | null;
+  observationRequirement: string;
+}
+
 export interface PrivateMeshStatus {
   available: boolean;
   installed: boolean;
@@ -323,6 +344,8 @@ export interface PrivateMeshStatus {
   updatedAt: string | null;
   routeScope: "private_omnix_subnet_only";
   requiresElevation: boolean;
+  isHub: boolean;
+  hubEndpoint: HubEndpointStatus | null;
 }
 
 export interface MeshEnrollmentRequestStatus {
@@ -347,6 +370,12 @@ export async function getPrivateMeshStatus(): Promise<PrivateMeshStatus> {
 
 export async function installPrivateMesh(): Promise<PrivateMeshStatus> {
   return invoke<PrivateMeshStatus>("install_private_mesh");
+}
+
+export async function publishPrivateMeshHubEndpoint(host: string, port: number): Promise<PrivateMeshStatus> {
+  return invoke<PrivateMeshStatus>("publish_private_mesh_hub_endpoint", {
+    input: { host, port },
+  });
 }
 
 export async function requestPrivateMeshEnrollment(): Promise<MeshEnrollmentRequestStatus> {
