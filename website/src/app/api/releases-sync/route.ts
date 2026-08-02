@@ -1,8 +1,8 @@
 /**
  * POST /api/releases-sync
  *
- * CI calls this on every successful build — see
- * .github/workflows/ci.yml step 'Notify Payload'. The path was named
+ * CI calls this after every successful desktop build — see the
+ * `sync-desktop-metadata` job in .github/workflows/ci.yml. The path was named
  * back when Payload CMS owned the releases collection; we kept the
  * same URL after migrating to Drizzle so CI didn't need a change.
  *
@@ -19,8 +19,8 @@
  *     windowsMsiUrl: "https://...",           // → msi_url
  *     windowsNsisSize: 53000000,              // ignored (no column)
  *     windowsMsiSize: 51000000,               // ignored
- *     sha256Nsis: "abc...",                   // → metadata.sha256.exe
- *     sha256Msi: "def...",                    // → metadata.sha256.msi
+ *     sha256Nsis: "abc...",                   // → metadata.variants.<variant>.sha256.exe
+ *     sha256Msi: "def...",                    // → metadata.variants.<variant>.sha256.msi
  *     updaterSignature: "...",                // → signature
  *     title: "Omnix v0.7.16",                 // → notes (first line)
  *     summary: "Bug fixes...",                // → notes (rest)
@@ -43,8 +43,9 @@
 
 import { NextResponse } from 'next/server'
 import { db, releases } from '@/db'
-import { eq, sql } from 'drizzle-orm'
-import { timingSafeEqual } from 'node:crypto'
+import { eq } from 'drizzle-orm'
+import { randomUUID, timingSafeEqual } from 'node:crypto'
+import { buildDesktopMetadataMergeSql } from '@/lib/release-metadata-sql'
 
 export const dynamic = 'force-dynamic'
 
@@ -122,7 +123,7 @@ function asAndroidArtifactUrl(v: unknown): string | undefined {
   }
 }
 
-export async function POST(req: Request) {
+async function handlePost(req: Request) {
   const auth = checkToken(req)
   if (!auth.ok) {
     return NextResponse.json({ error: auth.reason }, { status: 401 })
@@ -277,14 +278,15 @@ export async function POST(req: Request) {
     }
   }
 
+  const sha256 = {
+    ...(asString(body.sha256Nsis) ? { exe: asString(body.sha256Nsis) } : {}),
+    ...(asString(body.sha256Msi) ? { msi: asString(body.sha256Msi) } : {}),
+  }
   const variantAssets = {
     exe: exeUrl,
     ...(msiUrl ? { msi: msiUrl } : {}),
     signature,
-  }
-  const sha256 = {
-    ...(asString(body.sha256Nsis) ? { exe: asString(body.sha256Nsis) } : {}),
-    ...(asString(body.sha256Msi) ? { msi: asString(body.sha256Msi) } : {}),
+    ...(Object.keys(sha256).length > 0 ? { sha256 } : {}),
   }
   const syncMetadata = {
     source: 'ci-notify',
@@ -293,30 +295,17 @@ export async function POST(req: Request) {
   }
   const initialMetadata = {
     variants: { [variant]: variantAssets },
-    sha256,
     ...syncMetadata,
   }
 
   // Each matrix job writes a different key in metadata.variants. Perform the
   // nested JSONB merge in the conflict UPDATE itself so concurrent notifications
   // cannot overwrite variants read before another job committed.
-  const mergedMetadata = sql`(
-    jsonb_set(
-      jsonb_set(
-        coalesce(${releases.metadata}, '{}'::jsonb),
-        '{variants}',
-        coalesce(${releases.metadata}->'variants', '{}'::jsonb)
-          || jsonb_build_object(
-            ${variant},
-            coalesce(${releases.metadata}->'variants'->${variant}, '{}'::jsonb)
-              || ${JSON.stringify(variantAssets)}::jsonb
-          )
-      ),
-      '{sha256}',
-      coalesce(${releases.metadata}->'sha256', '{}'::jsonb)
-        || ${JSON.stringify(sha256)}::jsonb
-    ) || ${JSON.stringify(syncMetadata)}::jsonb
-  )`
+  const mergedMetadata = buildDesktopMetadataMergeSql({
+    variant,
+    variantAssets,
+    syncMetadata,
+  })
 
   const isCanonicalPro = variant === 'pro'
   await db
@@ -356,4 +345,35 @@ export async function POST(req: Request) {
     },
     { status: 200 },
   )
+}
+
+export async function POST(req: Request) {
+  let requestId = 'unassigned'
+  try {
+    requestId = randomUUID()
+    return await handlePost(req)
+  } catch (error) {
+    const diagnostic =
+      error instanceof Error
+        ? { name: error.name, message: error.message, stack: error.stack }
+        : { name: 'UnknownError', message: String(error) }
+
+    // Do not include headers or the request body: both can contain the ingest
+    // token or signed release data. The correlation ID and stack are enough to
+    // connect the sanitised response to server logs.
+    console.error('[releases-sync] unhandled POST failure', {
+      requestId,
+      method: req.method,
+      path: '/api/releases-sync',
+      error: diagnostic,
+    })
+
+    return NextResponse.json(
+      {
+        error: 'release metadata sync failed',
+        requestId,
+      },
+      { status: 500 },
+    )
+  }
 }

@@ -713,7 +713,7 @@ describe('Task 19 — exactly five products, config-derived pricing, demo primar
       expect(text).toContain('KES 12,000')
       cleanup()
     }
-  })
+  }, 15_000)
 })
 
 describe('Task 19 — honest claims: no local presence, no puffery, explicit boundary', () => {

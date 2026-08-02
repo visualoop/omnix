@@ -247,19 +247,16 @@ jobs:
             release-assets/*.exe
             release-assets/*.exe.sig
 
-      # ─── Notify Payload (omnix.co.ke) so the in-app updater + downloads page
-      #     pick up the release per variant. R2 mirror is keyed by variant.
-      - name: Notify and verify release API (variant=${{ matrix.variant }})
+      # ─── Artifact publication remains part of the desktop build job. It is
+      #     intentionally independent from website metadata availability.
+      - name: Mirror release assets to R2 and prepare metadata
         if: steps.ctx.outputs.is_release == 'true'
         shell: bash
         env:
-          PAYLOAD_SYSTEM_TOKEN: ${{ secrets.PAYLOAD_SYSTEM_TOKEN }}
-          PAYLOAD_BASE: ${{ vars.PAYLOAD_BASE_URL || 'https://omnix.co.ke' }}
           VERSION: ${{ steps.ctx.outputs.version }}
           TAG: ${{ steps.ctx.outputs.tag }}
           REPO: ${{ github.repository }}
           VARIANT: ${{ matrix.variant }}
-          # R2 mirror (so installers stay public after the repo goes private)
           S3_ACCESS_KEY_ID: ${{ secrets.S3_ACCESS_KEY_ID }}
           S3_SECRET_ACCESS_KEY: ${{ secrets.S3_SECRET_ACCESS_KEY }}
           S3_ENDPOINT: ${{ vars.S3_ENDPOINT || secrets.S3_ENDPOINT }}
@@ -267,16 +264,11 @@ jobs:
           S3_REGION: ${{ vars.S3_REGION || 'auto' }}
           S3_PUBLIC_URL: ${{ vars.S3_PUBLIC_URL || 'https://media.omnix.co.ke' }}
         run: |
-          set -e
+          set -euo pipefail
 
-          if [ -z "$PAYLOAD_SYSTEM_TOKEN" ]; then
-            echo "ERROR: PAYLOAD_SYSTEM_TOKEN is required for a published desktop release." >&2
-            exit 1
-          fi
-
-          NSIS=$(ls release-assets/*-setup.exe 2>/dev/null | head -1)
-          MSI=$(ls release-assets/*.msi 2>/dev/null | head -1)
-          NSIS_SIG_FILE=$(ls release-assets/*-setup.exe.sig 2>/dev/null | head -1)
+          NSIS=$(find release-assets -maxdepth 1 -type f -name '*-setup.exe' -print -quit)
+          MSI=$(find release-assets -maxdepth 1 -type f -name '*.msi' -print -quit)
+          NSIS_SIG_FILE=$(find release-assets -maxdepth 1 -type f -name '*-setup.exe.sig' -print -quit)
 
           if [ -z "$NSIS" ] || [ -z "$NSIS_SIG_FILE" ]; then
             echo "ERROR: NSIS installer or signature missing in release-assets/" >&2
@@ -285,9 +277,10 @@ jobs:
           fi
 
           NSIS_NAME=$(basename "$NSIS")
-          MSI_NAME=$(basename "$MSI" 2>/dev/null || echo "")
+          MSI_NAME=$(basename "${MSI:-}" 2>/dev/null || echo "")
 
-          # ── Mirror to R2 (media.omnix.co.ke) under per-variant prefix
+          # Mirror to R2 under a per-version, per-variant prefix. If R2 is not
+          # configured, metadata points at the already-published GitHub assets.
           if [ -n "${S3_ACCESS_KEY_ID:-}" ] && [ -n "${S3_SECRET_ACCESS_KEY:-}" ] && [ -n "${S3_ENDPOINT:-}" ] && [ -n "${S3_BUCKET:-}" ]; then
             export AWS_ACCESS_KEY_ID="$S3_ACCESS_KEY_ID"
             export AWS_SECRET_ACCESS_KEY="$S3_SECRET_ACCESS_KEY"
@@ -296,11 +289,11 @@ jobs:
             R2_PREFIX="releases/$TAG/$VARIANT"
             echo "Mirroring $VARIANT installer → r2://$S3_BUCKET/$R2_PREFIX/"
 
-            aws s3 cp "$NSIS"          "s3://$S3_BUCKET/$R2_PREFIX/$NSIS_NAME"          --endpoint-url "$S3_ENDPOINT" --content-type application/octet-stream --no-progress
-            aws s3 cp "$NSIS_SIG_FILE" "s3://$S3_BUCKET/$R2_PREFIX/${NSIS_NAME}.sig"    --endpoint-url "$S3_ENDPOINT" --content-type text/plain --no-progress
-            if [ -n "$MSI" ]; then
+            aws s3 cp "$NSIS"          "s3://$S3_BUCKET/$R2_PREFIX/$NSIS_NAME"       --endpoint-url "$S3_ENDPOINT" --content-type application/octet-stream --no-progress
+            aws s3 cp "$NSIS_SIG_FILE" "s3://$S3_BUCKET/$R2_PREFIX/${NSIS_NAME}.sig" --endpoint-url "$S3_ENDPOINT" --content-type text/plain --no-progress
+            if [ -n "${MSI:-}" ]; then
               aws s3 cp "$MSI" "s3://$S3_BUCKET/$R2_PREFIX/$MSI_NAME" --endpoint-url "$S3_ENDPOINT" --content-type application/octet-stream --no-progress
-              MSI_SIG_FILE=$(ls "${MSI}.sig" 2>/dev/null | head -1)
+              MSI_SIG_FILE=$(find release-assets -maxdepth 1 -type f -name "${MSI_NAME}.sig" -print -quit)
               [ -n "$MSI_SIG_FILE" ] && aws s3 cp "$MSI_SIG_FILE" "s3://$S3_BUCKET/$R2_PREFIX/${MSI_NAME}.sig" --endpoint-url "$S3_ENDPOINT" --content-type text/plain --no-progress
             fi
 
@@ -310,7 +303,7 @@ jobs:
             echo "✓ R2 NSIS_URL=$NSIS_URL"
             [ -n "$MSI_URL" ] && echo "✓ R2 MSI_URL=$MSI_URL"
           else
-            echo "⚠ R2 secrets missing — falling back to GitHub release URLs"
+            echo "⚠ R2 secrets missing — using GitHub release URLs"
             NSIS_URL="https://github.com/$REPO/releases/download/$TAG/$NSIS_NAME"
             MSI_URL=""
             [ -n "$MSI_NAME" ] && MSI_URL="https://github.com/$REPO/releases/download/$TAG/$MSI_NAME"
@@ -318,18 +311,16 @@ jobs:
 
           NSIS_SIZE=$(stat -c '%s' "$NSIS" 2>/dev/null || stat -f '%z' "$NSIS")
           MSI_SIZE=0
-          [ -n "$MSI" ] && MSI_SIZE=$(stat -c '%s' "$MSI" 2>/dev/null || stat -f '%z' "$MSI")
-
+          [ -n "${MSI:-}" ] && MSI_SIZE=$(stat -c '%s' "$MSI" 2>/dev/null || stat -f '%z' "$MSI")
           NSIS_SHA=$(sha256sum "$NSIS" 2>/dev/null | awk '{print $1}' || shasum -a 256 "$NSIS" | awk '{print $1}')
           MSI_SHA=""
-          [ -n "$MSI" ] && MSI_SHA=$(sha256sum "$MSI" 2>/dev/null | awk '{print $1}' || shasum -a 256 "$MSI" | awk '{print $1}')
-
+          [ -n "${MSI:-}" ] && MSI_SHA=$(sha256sum "$MSI" 2>/dev/null | awk '{print $1}' || shasum -a 256 "$MSI" | awk '{print $1}')
           SIGNATURE=$(cat "$NSIS_SIG_FILE")
           MAJOR="${VERSION%%.*}"
           CHANNEL=stable
           [[ "$TAG" == *-* ]] && CHANNEL=beta
 
-          BODY=$(jq -n \
+          jq -n \
             --arg version "$VERSION" \
             --argjson major "$MAJOR" \
             --arg channel "$CHANNEL" \
@@ -360,30 +351,83 @@ jobs:
               title: $title,
               summary: $summary,
               forcePublish: true
-            } | with_entries(select(.value != null))')
+            } | with_entries(select(.value != null))' \
+            > release-assets/release-sync.json
+          jq -e '.version and .variant and .windowsNsisUrl and .updaterSignature' release-assets/release-sync.json >/dev/null
 
-          echo "POSTing release $VARIANT $VERSION → $PAYLOAD_BASE/api/releases-sync"
-          HTTP_CODE=$(curl -s -o /tmp/payload-resp.json -w "%{http_code}" \
-            -X POST "$PAYLOAD_BASE/api/releases-sync" \
-            -H "x-system-token: $PAYLOAD_SYSTEM_TOKEN" \
-            -H "Content-Type: application/json" \
-            -d "$BODY")
+      - name: Upload desktop metadata sync payload
+        if: steps.ctx.outputs.is_release == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: desktop-release-sync-${{ matrix.variant }}
+          path: release-assets/release-sync.json
+          if-no-files-found: error
+          retention-days: 30
+
+  # Metadata publication is isolated from artifact publication. When the API is
+  # unavailable, the signed installers remain a successful build and this job
+  # fails visibly. GitHub's "Re-run failed jobs" can then retry only this matrix
+  # using the retained payload artifacts from the successful build matrix.
+  sync-desktop-metadata:
+    needs: build
+    if: >-
+      (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')) ||
+      (github.event_name == 'workflow_dispatch' && inputs.release_version != '')
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        variant: ${{ fromJSON(inputs.release_variant != '' && inputs.release_variant != 'all' && format('["{0}"]', inputs.release_variant) || '["dawa","retail","hospitality","hardware","salon"]') }}
+    steps:
+      - name: Download desktop metadata sync payload
+        uses: actions/download-artifact@v4
+        with:
+          name: desktop-release-sync-${{ matrix.variant }}
+          path: release-sync
+
+      - name: Synchronise and verify release metadata (variant=${{ matrix.variant }})
+        shell: bash
+        env:
+          PAYLOAD_SYSTEM_TOKEN: ${{ secrets.PAYLOAD_SYSTEM_TOKEN }}
+          PAYLOAD_BASE: ${{ vars.PAYLOAD_BASE_URL || 'https://omnix.co.ke' }}
+          VARIANT: ${{ matrix.variant }}
+        run: |
+          set -euo pipefail
+
+          if [ -z "${PAYLOAD_SYSTEM_TOKEN:-}" ]; then
+            echo "ERROR: PAYLOAD_SYSTEM_TOKEN is required for desktop metadata synchronisation." >&2
+            exit 1
+          fi
+
+          BODY_FILE="release-sync/release-sync.json"
+          jq -e --arg variant "$VARIANT" \
+            '.variant == $variant and .windowsNsisUrl and .updaterSignature' \
+            "$BODY_FILE" >/dev/null
+          NSIS_URL=$(jq -r '.windowsNsisUrl' "$BODY_FILE")
+          SIGNATURE=$(jq -r '.updaterSignature' "$BODY_FILE")
+
+          echo "POSTing release metadata for $VARIANT → $PAYLOAD_BASE/api/releases-sync"
+          HTTP_CODE=$(curl --silent --show-error --output /tmp/payload-resp.json --write-out '%{http_code}' \
+            --request POST "$PAYLOAD_BASE/api/releases-sync" \
+            --header "x-system-token: $PAYLOAD_SYSTEM_TOKEN" \
+            --header 'Content-Type: application/json' \
+            --data-binary "@$BODY_FILE")
           echo "Response ($HTTP_CODE):"
           cat /tmp/payload-resp.json || true
           echo
-          [ "$HTTP_CODE" = "200" ] || { echo "Payload notify failed (HTTP $HTTP_CODE)"; exit 1; }
+          [ "$HTTP_CODE" = "200" ] || { echo "Metadata sync failed (HTTP $HTTP_CODE)" >&2; exit 1; }
           jq -e --arg variant "$VARIANT" --arg exe "$NSIS_URL" \
             '.ok == true and .variant == $variant and .desktop.exe == $exe and .desktop.signatureStored == true' \
             /tmp/payload-resp.json >/dev/null || {
-              echo "Payload response did not confirm the exact variant URL and signature" >&2
+              echo "Metadata response did not confirm the exact variant URL and signature" >&2
               exit 1
             }
 
-          # Exercise the same endpoint installed clients poll. The response
-          # must contain this exact installer and the signature generated by
-          # Tauri; a 204 or an empty/mismatched signature fails the release.
+          # Exercise the endpoint installed clients poll. It must return this
+          # exact URL and Tauri signature; 204 or any mismatch fails loudly.
           VERIFY_URL="$PAYLOAD_BASE/api/releases-latest?variant=$VARIANT&license=0.0.0"
-          VERIFY_CODE=$(curl -sS -o /tmp/updater-resp.json -w "%{http_code}" "$VERIFY_URL")
+          VERIFY_CODE=$(curl --silent --show-error --output /tmp/updater-resp.json --write-out '%{http_code}' "$VERIFY_URL")
           echo "Updater verification ($VERIFY_CODE):"
           cat /tmp/updater-resp.json || true
           echo
@@ -404,7 +448,7 @@ jobs:
   prune-r2:
     needs: build
     runs-on: ubuntu-latest
-    if: github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v'))
+    if: (github.event_name == 'workflow_dispatch' && inputs.release_version != '') || (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v'))
     env:
       KEEP: "2"
       S3_ACCESS_KEY_ID: ${{ secrets.S3_ACCESS_KEY_ID }}
