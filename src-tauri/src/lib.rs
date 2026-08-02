@@ -96,6 +96,15 @@ fn ensure_app_data_dir() {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    // rustls 0.23 refuses to guess a crypto provider when more than one is
+    // compiled in, and both aws-lc-rs (via axum-server) and ring (via reqwest)
+    // end up in the tree. Without this, the first TLS use fails with "could not
+    // automatically determine the process-level CryptoProvider", which broke the
+    // in-app updater. Install one explicitly, before any TLS client or server.
+    // Ignore the error: a second install attempt is harmless and means another
+    // component already chose a provider.
+    let _ = rustls::crypto::ring::default_provider().install_default();
+
     // Install panic hook so unwinding panics get logged + visible
     std::panic::set_hook(Box::new(|info| {
         let msg = format!(

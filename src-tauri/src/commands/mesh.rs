@@ -718,6 +718,21 @@ fn run_installed_helper(operation: &str) -> Result<(), String> {
     run_elevated(&installed_helper()?, operation)
 }
 
+/// Windows console applications spawned from a GUI process flash a console
+/// window. `private_mesh_status` is polled while the Network panel is open, so
+/// without this every poll produced a visible terminal that looked like
+/// malware. 0x0800_0000 is CREATE_NO_WINDOW.
+#[cfg(windows)]
+const CREATE_NO_WINDOW: u32 = 0x0800_0000;
+
+#[cfg(windows)]
+fn quiet_command(program: &str) -> std::process::Command {
+    use std::os::windows::process::CommandExt;
+    let mut command = std::process::Command::new(program);
+    command.creation_flags(CREATE_NO_WINDOW);
+    command
+}
+
 #[cfg(windows)]
 fn run_elevated(helper: &Path, operation: &str) -> Result<(), String> {
     if !matches!(
@@ -731,7 +746,7 @@ fn run_elevated(helper: &Path, operation: &str) -> Result<(), String> {
         "$p = Start-Process -FilePath '{}' -ArgumentList '{}' -Verb RunAs -Wait -PassThru; exit $p.ExitCode",
         helper, operation
     );
-    let status = std::process::Command::new("powershell.exe")
+    let status = quiet_command("powershell.exe")
         .args([
             "-NoProfile",
             "-NonInteractive",
@@ -749,7 +764,7 @@ fn run_elevated(helper: &Path, operation: &str) -> Result<(), String> {
 
 #[cfg(windows)]
 fn service_query() -> Result<(bool, bool), String> {
-    let output = std::process::Command::new("sc.exe")
+    let output = quiet_command("sc.exe")
         .args(["query", SERVICE_NAME])
         .output()
         .map_err(|_| "Could not query the Private Mesh service".to_owned())?;

@@ -137,7 +137,14 @@ function text(value: unknown, label: string, max = 256): string {
 
 function uuid(value: unknown, label: string): string {
   const normalized = text(value, label, 64);
-  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(normalized)) {
+  // Identifiers are opaque to this client: it never parses them, it only echoes
+  // them back to the hub that issued them. Demanding UUID v4 rejected real
+  // installs, because migration 016 seeded the first branch as the literal
+  // "default-branch" and older device rows predate UUID ids. The hub already
+  // paired and consumed the single-use code by this point, so a strict check
+  // here produced a successful pairing that the phone reported as failed.
+  // Accept any safe opaque identifier and let the hub remain authoritative.
+  if (!/^[A-Za-z0-9][A-Za-z0-9._:-]{0,63}$/.test(normalized)) {
     throw new Error(`${label} is invalid`);
   }
   return normalized;

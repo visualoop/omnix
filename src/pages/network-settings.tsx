@@ -181,8 +181,20 @@ function PrivateMeshPanel() {
 
   useEffect(() => {
     void load();
-    const refresh = window.setInterval(() => { void load(); }, 5_000);
-    return () => window.clearInterval(refresh);
+    // Reading mesh status shells out to the Windows service controller, so a
+    // tight poll is expensive and was visibly spawning processes. Refresh
+    // slowly, and only while this window is actually being looked at.
+    const refresh = window.setInterval(() => {
+      if (document.visibilityState === "visible") void load();
+    }, 30_000);
+    const onVisible = () => {
+      if (document.visibilityState === "visible") void load();
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      window.clearInterval(refresh);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
   }, []);
 
   const install = async () => {

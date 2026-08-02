@@ -1,6 +1,6 @@
 [package]
 name = "omnix"
-version = "0.76.0"
+version = "0.76.1"
 description = "Omnix — The desktop ERP for Kenyan businesses"
 authors = ["Omnix"]
 edition = "2021"
@@ -57,7 +57,7 @@ tauri-plugin-process = "2"
 axum = "0.7"
 axum-server = { version = "=0.8.0", features = ["tls-rustls"] }
 rcgen = { version = "=0.13.2", features = ["pem"] }
-rustls = "=0.23.40"
+rustls = { version = "=0.23.40", features = ["ring"] }
 rustls-pemfile = "=2.2.0"
 webpki-roots = "=1.0.7"
 tower-http = { version = "0.6", features = ["cors"] }
