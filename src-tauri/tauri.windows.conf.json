@@ -1,0 +1,14 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "bundle": {
+    "resources": {
+      "wireguard/staged/windows-x86_64/tunnel.dll": "wireguard/tunnel.dll",
+      "wireguard/staged/windows-x86_64/wireguard.dll": "wireguard/wireguard.dll",
+      "wireguard/staged/windows-x86_64/omnix-mesh-service.exe": "wireguard/omnix-mesh-service.exe",
+      "wireguard/staged/windows-x86_64/artifact-manifest.json": "wireguard/artifact-manifest.json",
+      "wireguard/staged/windows-x86_64/windows-embeddable-dll-service.toml": "wireguard/windows-embeddable-dll-service.toml",
+      "wireguard/staged/windows-x86_64/THIRD_PARTY_NOTICES.md": "wireguard/THIRD_PARTY_NOTICES.md",
+      "wireguard/staged/windows-x86_64/LICENSE-MIT-WIREGUARD-WINDOWS.txt": "wireguard/LICENSE-MIT-WIREGUARD-WINDOWS.txt"
+    }
+  }
+}

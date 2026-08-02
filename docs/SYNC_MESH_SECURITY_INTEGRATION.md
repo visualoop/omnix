@@ -1,6 +1,6 @@
 # Sync and private-mesh contracts: security and integration
 
-Status: persistence and dependency-integration leaves complete, deliberately unregistered. The files `src-tauri/src/sync_contracts.rs` and `src-tauri/src/mesh_contracts.rs` remain pure Rust policy modules. Migration `099_sync_mesh.sql`, the unregistered `src-tauri/src/db/sync.rs` query leaf, and WireGuard manifests now exist, but no Tauri command, privileged adapter, installer hook, or Android build dependency is wired. They must not be treated as deployed security controls until the coordinator work below is complete.
+Status: sync persistence, activation, and dependency integration are registered. The Windows Private Mesh adapter is implemented behind `cfg(windows)`, staged through a pinned/checksummed/AuthentiCode-gated release job, exposed in Network settings, and routed through `SyncTransport`; real SCM/DPAPI/driver/handshake behavior still requires the Windows verification matrix in `WINDOWS_PRIVATE_MESH.md`. Android remains a separate native-host integration.
 
 ## Security boundary
 

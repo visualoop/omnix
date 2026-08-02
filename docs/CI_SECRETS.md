@@ -36,14 +36,19 @@ to an **empty string** (just leave the value blank when creating it).
 
 If you regenerate with a password, update this secret to match.
 
-## Optional Secrets (future)
+## Windows Private Mesh release secrets
 
 ### `WINDOWS_CODE_SIGNING_CERT` / `WINDOWS_CODE_SIGNING_PASSWORD`
 
-Not currently used. When Omnix gets an EV code-signing certificate (recommended once you start
-selling, ~$300-500/year) these will sign the `.msi` and `.exe` so Windows SmartScreen doesn't
-warn users. Update `build.yml` and `release.yml` to use `signtool` or the `windows-codesigning`
-GitHub action.
+Required for a customer release that bundles Omnix Private Mesh. `WINDOWS_CODE_SIGNING_CERT` is
+the base64-encoded PFX and `WINDOWS_CODE_SIGNING_PASSWORD` unlocks it. The verified staging job
+uses the certificate to Authenticode-sign `tunnel.dll` and `omnix-mesh-service.exe`; it preserves
+and verifies the official WireGuard signature on `wireguard.dll`. Release staging fails closed if
+the secrets are absent or any signature is not trusted.
+
+Pull-request artifact builds use a runner-local development certificate so checksum/build wiring
+can be tested. Those artifacts are not customer releases and their helper will not pass trust
+verification on a customer machine.
 
 ---
 

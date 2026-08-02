@@ -11,6 +11,9 @@ import {
   Power,
   Power as PowerOff,
   Radio,
+  ShieldCheck,
+  Key,
+  ArrowsClockwise,
   Trash as Trash2,
   WarningCircle as AlertCircle,
   WifiHigh as Wifi,
@@ -39,6 +42,14 @@ import {
   pingMaster,
   getLegacyTrustedLanEnabled,
   setLegacyTrustedLanEnabled,
+  getPrivateMeshStatus,
+  installPrivateMesh,
+  requestPrivateMeshEnrollment,
+  rotatePrivateMeshKey,
+  promotePrivateMeshKey,
+  revokePrivateMesh,
+  type PrivateMeshStatus,
+  type MeshEnrollmentRequestStatus,
   type NetworkMode,
   type ServerStatus,
   type PairedDevice,
@@ -99,6 +110,8 @@ export function NetworkSettingsPage() {
         </p>
       </div>
 
+      <PrivateMeshPanel />
+
       {/* Mode selector */}
       <div className="grid grid-cols-3 gap-3">
         <ModeCard
@@ -109,6 +122,7 @@ export function NetworkSettingsPage() {
           description="Single device. Default for most pharmacies."
           onClick={() => handleModeChange("standalone")}
         />
+
         <ModeCard
           mode="master"
           active={mode === "master"}
@@ -136,6 +150,180 @@ export function NetworkSettingsPage() {
         </div>
       )}
     </div>
+  );
+}
+
+function PrivateMeshPanel() {
+  const [status, setStatus] = useState<PrivateMeshStatus | null>(null);
+  const [enrollment, setEnrollment] = useState<MeshEnrollmentRequestStatus | null>(null);
+  const [busy, setBusy] = useState<"install" | "enroll" | "rotate" | "promote" | "revoke" | null>(null);
+
+  const load = async () => {
+    try {
+      setStatus(await getPrivateMeshStatus());
+    } catch (error) {
+      toast.error(`Could not read Private Mesh status: ${String(error)}`);
+    }
+  };
+
+  useEffect(() => {
+    void load();
+    const refresh = window.setInterval(() => { void load(); }, 5_000);
+    return () => window.clearInterval(refresh);
+  }, []);
+
+  const install = async () => {
+    const approved = await confirm({
+      title: "Install Omnix Private Mesh?",
+      description: "Windows will request administrator approval. Omnix will install its signed tunnel driver and background service for this computer.",
+      confirmText: "Continue to UAC",
+    });
+    if (!approved) return;
+    setBusy("install");
+    try {
+      setStatus(await installPrivateMesh());
+      toast.success("Private Mesh installed");
+    } catch (error) {
+      toast.error(String(error));
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const enroll = async () => {
+    setBusy("enroll");
+    try {
+      const request = await requestPrivateMeshEnrollment();
+      setEnrollment(request);
+      toast.success("Enrollment request created; waiting for HQ approval");
+    } catch (error) {
+      toast.error(String(error));
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const rotate = async () => {
+    setBusy("rotate");
+    try {
+      setStatus(await rotatePrivateMeshKey());
+      toast.success("New key generated; the current key remains valid during approval");
+    } catch (error) {
+      toast.error(String(error));
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const promote = async () => {
+    setBusy("promote");
+    try {
+      setStatus(await promotePrivateMeshKey());
+      toast.success("Rotated key is now active");
+    } catch (error) {
+      toast.error(String(error));
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const revoke = async () => {
+    const approved = await confirm({
+      title: "Revoke this device from Private Mesh?",
+      description: "This is terminal for the current credential. The tunnel stops immediately and the protected key is deleted.",
+      confirmText: "Revoke device",
+      variant: "destructive",
+    });
+    if (!approved) return;
+    setBusy("revoke");
+    try {
+      setStatus(await revokePrivateMesh("administrative"));
+      setEnrollment(null);
+      toast.success("Private Mesh credential revoked");
+    } catch (error) {
+      toast.error(String(error));
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const stateLabel = status?.state.replace(/_/g, " ") ?? "Checking";
+  const active = status?.running === true;
+
+  return (
+    <section className="border-y border-border py-4" aria-labelledby="private-mesh-heading">
+      <div className="flex items-start justify-between gap-6">
+        <div className="min-w-0">
+          <div className="flex items-center gap-2">
+            <ShieldCheck className="h-4 w-4 text-primary" />
+            <h2 id="private-mesh-heading" className="text-sm font-semibold">Omnix Private Mesh</h2>
+            <Badge variant={active ? "default" : "secondary"} className="capitalize">
+              {stateLabel}
+            </Badge>
+          </div>
+          <p className="mt-1.5 max-w-xl text-xs leading-5 text-muted-foreground">
+            Encrypted branch sync without a WireGuard account or separate VPN app. Only the assigned
+            Omnix private subnet is routed; internet and payment traffic stay on the normal connection.
+          </p>
+        </div>
+        {!status?.installed && (
+          <Button size="sm" onClick={() => { void install(); }} disabled={busy !== null || status?.available === false}>
+            {busy === "install" ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <ShieldCheck className="mr-1.5 h-3.5 w-3.5" />}
+            Install Private Mesh
+          </Button>
+        )}
+      </div>
+
+      {status?.available === false && (
+        <p className="mt-3 text-xs text-muted-foreground">Private Mesh service installation is available on Windows.</p>
+      )}
+
+      {status?.installed && status.state !== "revoked" && (
+        <div className="mt-4 grid gap-3 border-l-2 border-primary/40 pl-4 sm:grid-cols-[1fr_auto]">
+          <div>
+            <p className="text-xs font-medium">Device credential</p>
+            <p className="mt-1 font-mono text-[11px] text-muted-foreground">
+              {status.currentKey?.keyId ?? "Protected key ready; enrollment not started"}
+            </p>
+            {enrollment && (
+              <p className="mt-1 text-xs text-amber-700 dark:text-amber-400">
+                Waiting for HQ approval · expires {new Date(enrollment.expiresAt).toLocaleTimeString(intlLocale(), { hour: "2-digit", minute: "2-digit" })}
+              </p>
+            )}
+          </div>
+          <div className="flex flex-wrap items-center justify-end gap-2">
+            {!enrollment && !status.running && (
+              <Button size="sm" variant="outline" onClick={() => { void enroll(); }} disabled={busy !== null}>
+                {busy === "enroll" ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <Key className="mr-1.5 h-3.5 w-3.5" />}
+                Enrol device
+              </Button>
+            )}
+            {status.currentKey && !status.nextKey && (
+              <Button size="sm" variant="outline" onClick={() => { void rotate(); }} disabled={busy !== null}>
+                <ArrowsClockwise className="mr-1.5 h-3.5 w-3.5" /> Rotate key
+              </Button>
+            )}
+            {status.nextKey && (
+              <Button size="sm" variant="outline" onClick={() => { void promote(); }} disabled={busy !== null}>
+                <Check className="mr-1.5 h-3.5 w-3.5" /> Activate approved key
+              </Button>
+            )}
+            <Button size="sm" variant="ghost" onClick={() => { void revoke(); }} disabled={busy !== null} className="text-destructive hover:text-destructive">
+              <Trash2 className="mr-1.5 h-3.5 w-3.5" /> Revoke
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {status?.lastError && (
+        <p className="mt-3 flex items-start gap-2 text-xs text-destructive">
+          <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" /> {status.lastError}
+        </p>
+      )}
+      <p className="mt-3 font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
+        Route boundary · Private Omnix subnet only · Administrator approval required for system changes
+      </p>
+    </section>
   );
 }
 

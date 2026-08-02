@@ -276,3 +276,74 @@ export async function getConnectionStatus(): Promise<ConnectionStatus> {
     business_name: ping.business,
   };
 }
+
+export type PrivateMeshState =
+  | "not_installed"
+  | "installed"
+  | "awaiting_enrollment"
+  | "starting"
+  | "running"
+  | "degraded"
+  | "rotation_pending"
+  | "revoked"
+  | "stopped";
+
+export interface MeshPublicKey {
+  keyId: string;
+  publicKey: string;
+  custodyRef: string;
+  createdAt: string;
+}
+
+export interface PrivateMeshStatus {
+  available: boolean;
+  installed: boolean;
+  running: boolean;
+  state: PrivateMeshState;
+  currentKey: MeshPublicKey | null;
+  nextKey: MeshPublicKey | null;
+  lastError: string | null;
+  updatedAt: string | null;
+  routeScope: "private_omnix_subnet_only";
+  requiresElevation: boolean;
+}
+
+export interface MeshEnrollmentRequestStatus {
+  enrollmentId: string;
+  nodeId: string;
+  keyId: string;
+  publicKey: string;
+  status: "pending_hq_approval";
+  expiresAt: string;
+}
+
+export type MeshRevocationReason =
+  | "device_lost"
+  | "device_replaced"
+  | "compromised"
+  | "authorization_removed"
+  | "administrative";
+
+export async function getPrivateMeshStatus(): Promise<PrivateMeshStatus> {
+  return invoke<PrivateMeshStatus>("private_mesh_status");
+}
+
+export async function installPrivateMesh(): Promise<PrivateMeshStatus> {
+  return invoke<PrivateMeshStatus>("install_private_mesh");
+}
+
+export async function requestPrivateMeshEnrollment(): Promise<MeshEnrollmentRequestStatus> {
+  return invoke<MeshEnrollmentRequestStatus>("request_private_mesh_enrollment");
+}
+
+export async function rotatePrivateMeshKey(): Promise<PrivateMeshStatus> {
+  return invoke<PrivateMeshStatus>("rotate_private_mesh_key");
+}
+
+export async function promotePrivateMeshKey(): Promise<PrivateMeshStatus> {
+  return invoke<PrivateMeshStatus>("promote_private_mesh_key");
+}
+
+export async function revokePrivateMesh(reason: MeshRevocationReason): Promise<PrivateMeshStatus> {
+  return invoke<PrivateMeshStatus>("revoke_private_mesh", { reason });
+}

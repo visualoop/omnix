@@ -1,39 +1,59 @@
-schema_version = 1
+schema_version = 2
 component = "wireguard-windows-embeddable-dll-service"
 platform = "windows"
-integration_status = "source-pinned-artifacts-not-yet-bundled"
+integration_status = "bundled-through-verified-release-staging"
 
 [source]
 project = "WireGuard for Windows"
 official_repository = "https://git.zx2c4.com/wireguard-windows"
 mirror_repository = "https://github.com/WireGuard/wireguard-windows"
 revision = "4e6726c23ae9c5cb58e0c9910f3b7515621d133d"
+source_archive_url = "https://git.zx2c4.com/wireguard-windows/snapshot/wireguard-windows-4e6726c23ae9c5cb58e0c9910f3b7515621d133d.tar.xz"
+source_archive_sha256 = "24a33b83e8d0962f849a43657d52c58c4157ec9f87cef83754027dfb8804689c"
 source_subdirectory = "embeddable-dll-service"
 upstream_documentation = "https://git.zx2c4.com/wireguard-windows/about/embeddable-dll-service/README.md"
 license = "MIT"
 license_file = "LICENSE-MIT-WIREGUARD-WINDOWS.txt"
 
+[wireguard_nt]
+version = "1.1"
+official_archive_url = "https://download.wireguard.com/wireguard-nt/wireguard-nt-1.1.zip"
+official_archive_sha256 = "dceb30a9bc4be48cce0f74160fc88a585a2c2627366e8f846fc6658f9038dace"
+amd64_dll_sha256 = "b1b85e072c45d81358be29d94c599dc76652f912be8c0f0a41e2d5d89a6461d3"
+
 [build]
 entrypoint = "embeddable-dll-service/build.bat"
-required_outputs = ["tunnel.dll", "wireguard.dll"]
-architectures = ["x86_64", "x86", "arm64"]
-network_during_release_build = "forbidden-after-source-and-toolchain-prefetch"
+required_outputs = ["tunnel.dll", "wireguard.dll", "omnix-mesh-service.exe", "artifact-manifest.json"]
+release_architecture = "x86_64"
+network_during_release_build = "the two verified archives above plus dependency bootstrap URLs executed by the exact pinned upstream build.bat; review that script before changing the revision"
+staging_script = "scripts/prepare-wireguard-windows.ps1"
 
 [checksum_policy]
 algorithm = "sha256"
 mode = "deny-unlisted"
 source_revision_must_match = true
 require_authenticode_for_pe_binaries = true
-require_detached_release_manifest_signature = true
 require_hash_before_staging = true
 require_hash_recheck_before_install = true
 allow_placeholder_hashes = false
-# Artifact digests are intentionally absent until deterministic release artifacts
-# are built and reviewed. Packaging MUST fail while this list is empty.
-approved_artifacts = []
+release_inventory = "artifact-manifest.json"
+release_inventory_authorization = "the exact DLL hashes are compiled into and enforced by the Authenticode-signed omnix-mesh-service.exe"
+
+[[checksum_policy.approved_artifacts]]
+name = "wireguard.dll"
+architecture = "amd64"
+provenance = "official WireGuardNT 1.1 SDK"
+sha256 = "b1b85e072c45d81358be29d94c599dc76652f912be8c0f0a41e2d5d89a6461d3"
+
+[generated_artifacts]
+names = ["tunnel.dll", "omnix-mesh-service.exe"]
+provenance = "tunnel.dll is built from the pinned official source archive; the helper is built from this repository"
+hash_authority = "exact post-signing SHA-256 values are embedded in the Authenticode-signed helper and recorded in artifact-manifest.json"
+reject_unrecorded_output = true
 
 [service]
-name_prefix = "OmnixPrivateMesh$"
+name = "WireGuardTunnel$omnix-mesh"
+logical_name = "omnix-mesh"
 service_type = "SERVICE_WIN32_OWN_PROCESS"
 start_type = "SERVICE_AUTO_START"
 dependencies = ["Nsi", "TcpIp"]
@@ -44,10 +64,10 @@ untrusted_tunnel_names_allowed = false
 untrusted_process_arguments_allowed = false
 
 [key_custody]
-generation = "one independent WireGuard keypair per device"
-private_key_provider = "Windows CNG"
+generation = "one independent X25519 WireGuard keypair per device using OS CSPRNG"
+private_key_provider = "Windows CNG through Rust OsRng"
 private_key_wrapping = "DPAPI LocalMachine with service-SID-restricted ACL"
-database_value = "opaque key_custody_ref only"
+database_value = "opaque key_custody_ref and public key only"
 export_private_key = false
 copy_keys_between_devices = false
 allow_private_key_in_sqlite = false
