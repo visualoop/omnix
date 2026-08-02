@@ -12,6 +12,9 @@ mod sync_contracts;
 
 use tauri_plugin_sql::{Migration, MigrationKind};
 
+/// Stable Tauri application identity used for the shared desktop/service data directory.
+pub const APP_IDENTIFIER: &str = "co.ke.omnix.app";
+
 /// Wrap a fatal startup error, write it to a crash log, show a MessageBox,
 /// and exit cleanly — instead of the normal Rust panic that silently kills
 /// a windows-subsystem GUI binary.
@@ -80,13 +83,12 @@ fn report_fatal(err: &str) {
 /// tries to open it. The plugin opens at $APPDATA/<identifier>/omnix.db
 /// but does NOT create the parent directory itself.
 fn ensure_app_data_dir() {
-    let identifier = "co.ke.omnix.app";
     if let Ok(appdata) = std::env::var("APPDATA") {
-        let dir = std::path::PathBuf::from(&appdata).join(identifier);
+        let dir = std::path::PathBuf::from(&appdata).join(APP_IDENTIFIER);
         let _ = std::fs::create_dir_all(&dir);
     }
     if let Ok(localdata) = std::env::var("LOCALAPPDATA") {
-        let dir = std::path::PathBuf::from(&localdata).join(identifier);
+        let dir = std::path::PathBuf::from(&localdata).join(APP_IDENTIFIER);
         let _ = std::fs::create_dir_all(&dir);
     }
 }
@@ -894,4 +896,17 @@ fn run_inner() {
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
+}
+
+#[cfg(test)]
+mod application_identity_tests {
+    use super::APP_IDENTIFIER;
+
+    #[test]
+    fn shared_app_data_identifier_matches_tauri_configuration() {
+        let config: serde_json::Value =
+            serde_json::from_str(include_str!("../tauri.conf.json")).unwrap();
+        assert_eq!(config["identifier"], APP_IDENTIFIER);
+        assert_ne!(APP_IDENTIFIER, "com.omnix.pos");
+    }
 }

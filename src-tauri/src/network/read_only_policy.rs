@@ -469,15 +469,25 @@ pub fn assert_active_read_only_session(
 }
 
 pub fn assert_same_origin(origin: RequestOrigin<'_>) -> Result<(), PolicyError> {
-    if origin.expected_origin.is_empty()
-        || origin.sec_fetch_site != Some("same-origin")
-        || origin
-            .origin_header
-            .is_some_and(|header| header != origin.expected_origin)
+    if origin.expected_origin.is_empty() {
+        return Err(PolicyError::new(
+            PolicyErrorKind::Forbidden,
+            "The hub browser origin is not configured.",
+        ));
+    }
+    if origin.sec_fetch_site != Some("same-origin") {
+        return Err(PolicyError::new(
+            PolicyErrorKind::Forbidden,
+            "This browser did not confirm a same-origin request. Open the exact Reports login address shown in Network settings.",
+        ));
+    }
+    if origin
+        .origin_header
+        .is_some_and(|header| header != origin.expected_origin)
     {
         return Err(PolicyError::new(
             PolicyErrorKind::Forbidden,
-            "Cross-origin browser requests are not allowed.",
+            "This page origin does not match the hub. Open the exact scheme, hostname, and port shown in Network settings.",
         ));
     }
     Ok(())

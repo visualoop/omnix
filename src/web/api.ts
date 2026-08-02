@@ -78,9 +78,34 @@ export async function redeemBrowserAuthorization(
     redirect: "error",
   });
   if (!response.ok) {
-    throw new WebApiError(response.status, response.status === 401
-      ? "This code has expired or was already used. Ask the administrator for a new one."
-      : "Browser access could not be authorized.");
+    const fallback = response.status === 401
+      ? "This code is invalid or expired. Ask the administrator for a new one."
+      : "Browser access could not be authorized.";
+    throw new WebApiError(response.status, await responseErrorMessage(response, fallback));
+  }
+}
+
+async function responseErrorMessage(response: Response, fallback: string): Promise<string> {
+  const contentType = response.headers.get("content-type")?.toLowerCase() ?? "";
+  if (!contentType.includes("application/json")) return fallback;
+  const declaredLength = Number(response.headers.get("content-length") ?? "0");
+  if (declaredLength > 16 * 1024) return fallback;
+  try {
+    const body = await response.text();
+    if (new TextEncoder().encode(body).byteLength > 16 * 1024) return fallback;
+    const parsed = JSON.parse(body) as {
+      error?: { message?: unknown; supportReference?: unknown };
+    };
+    if (typeof parsed.error?.message !== "string" || !parsed.error.message.trim()) {
+      return fallback;
+    }
+    const reference = typeof parsed.error.supportReference === "string"
+      && /^[0-9a-f-]{36}$/i.test(parsed.error.supportReference)
+      ? ` Reference: ${parsed.error.supportReference}.`
+      : "";
+    return `${parsed.error.message}${reference}`;
+  } catch {
+    return fallback;
   }
 }
 

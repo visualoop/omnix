@@ -1,7 +1,7 @@
 //! Dedicated Axum surface for the LAN browser reporting companion.
 //!
-//! This module is intentionally not registered from `network/mod.rs`. It must
-//! run on a separate listener from the legacy paired-device/raw-SQL router.
+//! This router is intentionally mounted only on its dedicated listener. It is
+//! never merged into the legacy paired-device/raw-SQL router.
 //! Every endpoint is an exact GET route, resolves an HttpOnly session, passes
 //! through `read_only_policy`, executes one fixed projection, and serializes a
 //! bounded typed response.
@@ -230,6 +230,9 @@ async fn redeem_browser_authorization(
         expected_origin: &state.expected_origin,
         origin_header,
         sec_fetch_site: fetch_site,
+    })
+    .map_err(|error| {
+        WebHttpError::redemption_policy(error, &state.expected_origin, origin_header, fetch_site)
     })?;
     let query = parse_query(uri.query().unwrap_or_default())?;
     if query.len() != 1 || query[0].0 != "code" {
@@ -241,13 +244,73 @@ async fn redeem_browser_authorization(
         web_db::redeem_authorization(&state.pool, &query[0].1, chrono::Utc::now().timestamp())
             .await
             .map_err(|error| match error {
-                web_db::ReadOnlyWebDbError::Invalid(message) => WebHttpError::bad_request(message),
-                web_db::ReadOnlyWebDbError::Forbidden(message) => WebHttpError::forbidden(message),
-                web_db::ReadOnlyWebDbError::NotFound(message) => {
-                    WebHttpError::unauthorized(message)
+                web_db::ReadOnlyWebDbError::Invalid(message) => {
+                    WebHttpError::redemption_rejected(
+                        StatusCode::BAD_REQUEST,
+                        "CODE_FORMAT_INVALID",
+                        message,
+                    )
                 }
-                web_db::ReadOnlyWebDbError::Database(_) | web_db::ReadOnlyWebDbError::Corrupt => {
-                    WebHttpError::internal("The browser session could not be authorized.")
+                web_db::ReadOnlyWebDbError::AuthorizationCodeUnknown => {
+                    WebHttpError::redemption_rejected(
+                        StatusCode::UNAUTHORIZED,
+                        "CODE_INVALID",
+                        "This code is not recognized. Check every character or ask the administrator for a new code.",
+                    )
+                }
+                web_db::ReadOnlyWebDbError::AuthorizationCodeExpired => {
+                    WebHttpError::redemption_rejected(
+                        StatusCode::UNAUTHORIZED,
+                        "CODE_EXPIRED",
+                        "This code expired before it was used. Ask the administrator to issue a new code.",
+                    )
+                }
+                web_db::ReadOnlyWebDbError::AuthorizationCodeAlreadyUsed => {
+                    WebHttpError::redemption_rejected(
+                        StatusCode::CONFLICT,
+                        "CODE_ALREADY_USED",
+                        "This one-time code has already been used. Ask the administrator to issue a new code for this browser.",
+                    )
+                }
+                web_db::ReadOnlyWebDbError::AuthorizationCodeRevoked => {
+                    WebHttpError::redemption_rejected(
+                        StatusCode::FORBIDDEN,
+                        "CODE_REVOKED",
+                        "This browser authorization was revoked. Ask the administrator to issue a new code.",
+                    )
+                }
+                web_db::ReadOnlyWebDbError::AuthorizationUserInactive => {
+                    WebHttpError::redemption_rejected(
+                        StatusCode::FORBIDDEN,
+                        "VIEWER_DISABLED",
+                        "The assigned viewer account is inactive. Ask the administrator to activate it or choose another reporting user.",
+                    )
+                }
+                web_db::ReadOnlyWebDbError::Forbidden(message) => {
+                    WebHttpError::redemption_rejected(
+                        StatusCode::FORBIDDEN,
+                        "AUTHORIZATION_FORBIDDEN",
+                        message,
+                    )
+                }
+                web_db::ReadOnlyWebDbError::NotFound(message) => {
+                    WebHttpError::redemption_rejected(
+                        StatusCode::UNAUTHORIZED,
+                        "CODE_INVALID",
+                        message,
+                    )
+                }
+                web_db::ReadOnlyWebDbError::Database(error) => {
+                    WebHttpError::redemption_database(error)
+                }
+                web_db::ReadOnlyWebDbError::Corrupt => {
+                    WebHttpError::with_support_reference(
+                        StatusCode::INTERNAL_SERVER_ERROR,
+                        "redeem_corrupt",
+                        "AUTHORIZATION_STATE_INVALID",
+                        "The stored browser authorization is invalid. Ask the administrator to issue a new code. If it happens again, contact Omnix support.",
+                        None,
+                    )
                 }
             })?;
     let cookie = session_cookie_header(
@@ -362,9 +425,13 @@ async fn load_session(pool: &SqlitePool, raw_token: &str) -> Result<StoredSessio
     web_db::load_session(pool, raw_token, chrono::Utc::now().timestamp())
         .await
         .map_err(|error| match error {
-            web_db::ReadOnlyWebDbError::Database(_) => {
-                WebHttpError::internal("The browser session could not be loaded.")
-            }
+            web_db::ReadOnlyWebDbError::Database(error) => WebHttpError::with_support_reference(
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "load_browser_session",
+                "SESSION_LOAD_FAILED",
+                "The hub could not load this browser session. Try again; if it continues, contact Omnix support.",
+                Some(&error),
+            ),
             _ => WebHttpError::unauthorized("A valid browser session is required."),
         })
 }
@@ -476,7 +543,8 @@ fn hex_digit(value: u8) -> Result<u8, WebHttpError> {
 pub struct WebHttpError {
     status: StatusCode,
     code: &'static str,
-    message: &'static str,
+    message: String,
+    support_reference: Option<String>,
 }
 
 impl WebHttpError {
@@ -485,50 +553,216 @@ impl WebHttpError {
             web_db::ReadOnlyWebDbError::Invalid(message) => Self::bad_request(message),
             web_db::ReadOnlyWebDbError::Forbidden(message) => Self::forbidden(message),
             web_db::ReadOnlyWebDbError::NotFound(message) => Self::not_found(message),
-            web_db::ReadOnlyWebDbError::Database(_) | web_db::ReadOnlyWebDbError::Corrupt => {
-                Self::internal("The read projection could not be loaded.")
-            }
+            web_db::ReadOnlyWebDbError::Database(error) => Self::with_support_reference(
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "read_projection",
+                "REPORT_DATABASE_ERROR",
+                "The report could not be loaded. Try again; if it continues, contact Omnix support.",
+                Some(&error),
+            ),
+            web_db::ReadOnlyWebDbError::Corrupt => Self::with_support_reference(
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "read_projection_corrupt",
+                "SESSION_STATE_INVALID",
+                "The stored browser session is invalid. Ask the administrator to issue a new code.",
+                None,
+            ),
+            web_db::ReadOnlyWebDbError::AuthorizationCodeUnknown
+            | web_db::ReadOnlyWebDbError::AuthorizationCodeExpired
+            | web_db::ReadOnlyWebDbError::AuthorizationCodeAlreadyUsed
+            | web_db::ReadOnlyWebDbError::AuthorizationCodeRevoked
+            | web_db::ReadOnlyWebDbError::AuthorizationUserInactive => Self::with_support_reference(
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "unexpected_authorization_state",
+                "AUTHORIZATION_STATE_INVALID",
+                "The report could not be loaded. Ask the administrator to issue a new code.",
+                None,
+            ),
         }
     }
 
-    fn bad_request(message: &'static str) -> Self {
+    fn with_code(status: StatusCode, code: &'static str, message: impl Into<String>) -> Self {
         Self {
-            status: StatusCode::BAD_REQUEST,
-            code: "BAD_QUERY",
-            message,
+            status,
+            code,
+            message: message.into(),
+            support_reference: None,
         }
     }
-    fn unauthorized(message: &'static str) -> Self {
+
+    fn bad_request(message: impl Into<String>) -> Self {
+        Self::with_code(StatusCode::BAD_REQUEST, "BAD_QUERY", message)
+    }
+
+    fn unauthorized(message: impl Into<String>) -> Self {
+        Self::with_code(StatusCode::UNAUTHORIZED, "SESSION_EXPIRED", message)
+    }
+
+    fn forbidden(message: impl Into<String>) -> Self {
+        Self::with_code(StatusCode::FORBIDDEN, "FORBIDDEN", message)
+    }
+
+    fn not_found(message: impl Into<String>) -> Self {
+        Self::with_code(StatusCode::NOT_FOUND, "NOT_FOUND", message)
+    }
+
+    fn internal(message: impl Into<String>) -> Self {
+        Self::with_code(StatusCode::INTERNAL_SERVER_ERROR, "INTERNAL", message)
+    }
+
+    fn redemption_rejected(
+        status: StatusCode,
+        code: &'static str,
+        message: impl Into<String>,
+    ) -> Self {
+        let support_reference = uuid::Uuid::new_v4().to_string();
+        log::warn!(
+            "browser support_reference={} operation=redeem_authorization outcome=rejected reason={}",
+            support_reference,
+            code
+        );
         Self {
-            status: StatusCode::UNAUTHORIZED,
-            code: "SESSION_EXPIRED",
-            message,
+            status,
+            code,
+            message: message.into(),
+            support_reference: Some(support_reference),
         }
     }
-    fn forbidden(message: &'static str) -> Self {
+
+    fn redemption_policy(
+        error: PolicyError,
+        expected_origin: &str,
+        request_origin: Option<&str>,
+        sec_fetch_site: Option<&str>,
+    ) -> Self {
+        let code = if expected_origin.is_empty() {
+            "HUB_ORIGIN_NOT_CONFIGURED"
+        } else if sec_fetch_site != Some("same-origin") {
+            "FETCH_SITE_REJECTED"
+        } else {
+            "ORIGIN_MISMATCH"
+        };
+        let response = Self::redemption_rejected(StatusCode::FORBIDDEN, code, error.message);
+        if let Some(reference) = response.support_reference.as_deref() {
+            log::warn!(
+                "browser support_reference={} operation=redeem_authorization expected_origin={:?} request_origin={:?} sec_fetch_site={:?}",
+                reference,
+                expected_origin,
+                request_origin,
+                sec_fetch_site
+            );
+        }
+        response
+    }
+
+    fn redemption_database(error: sqlx::Error) -> Self {
+        let database_message = error
+            .as_database_error()
+            .map(|value| value.message().to_ascii_lowercase())
+            .unwrap_or_default();
+        if database_message.contains("no such table") || database_message.contains("no such column")
+        {
+            return Self::with_support_reference(
+                StatusCode::SERVICE_UNAVAILABLE,
+                "redeem_authorization",
+                "HUB_DATABASE_UPDATE_REQUIRED",
+                "The hub database is not ready for browser access. Update and restart Omnix, then ask for a new code.",
+                Some(&error),
+            );
+        }
+        if database_message.contains("database is locked")
+            || database_message.contains("database is busy")
+            || matches!(&error, sqlx::Error::PoolTimedOut)
+        {
+            return Self::with_support_reference(
+                StatusCode::SERVICE_UNAVAILABLE,
+                "redeem_authorization",
+                "HUB_DATABASE_BUSY",
+                "The hub database is busy. Wait a moment and try this code again.",
+                Some(&error),
+            );
+        }
+        Self::with_support_reference(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "redeem_authorization",
+            "SESSION_STORE_FAILED",
+            "The hub could not store this browser session. Restart Omnix and ask for a new code. If it continues, contact Omnix support.",
+            Some(&error),
+        )
+    }
+
+    fn with_support_reference(
+        status: StatusCode,
+        operation: &'static str,
+        code: &'static str,
+        message: impl Into<String>,
+        error: Option<&sqlx::Error>,
+    ) -> Self {
+        let support_reference = uuid::Uuid::new_v4().to_string();
+        if let Some(error) = error {
+            if let Some(database_error) = error.as_database_error() {
+                log::error!(
+                    "browser support_reference={} operation={} reason={} sqlx_class=database code={:?} message={}",
+                    support_reference,
+                    operation,
+                    code,
+                    database_error.code(),
+                    database_error.message()
+                );
+            } else {
+                log::error!(
+                    "browser support_reference={} operation={} reason={} sqlx_class={}",
+                    support_reference,
+                    operation,
+                    code,
+                    sqlx_error_class(error)
+                );
+            }
+        } else {
+            log::error!(
+                "browser support_reference={} operation={} reason={} internal_state_error",
+                support_reference,
+                operation,
+                code
+            );
+        }
         Self {
-            status: StatusCode::FORBIDDEN,
-            code: "FORBIDDEN",
-            message,
+            status,
+            code,
+            message: message.into(),
+            support_reference: Some(support_reference),
         }
     }
-    fn not_found(message: &'static str) -> Self {
-        Self {
-            status: StatusCode::NOT_FOUND,
-            code: "NOT_FOUND",
-            message,
-        }
-    }
-    fn internal(message: &'static str) -> Self {
-        Self {
-            status: StatusCode::INTERNAL_SERVER_ERROR,
-            code: "INTERNAL",
-            message,
-        }
-    }
+
     fn database(error: sqlx::Error) -> Self {
-        let _ = error;
-        Self::internal("The read projection could not be loaded.")
+        Self::with_support_reference(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "read_projection_query",
+            "REPORT_DATABASE_ERROR",
+            "The report could not be loaded. Try again; if it continues, contact Omnix support.",
+            Some(&error),
+        )
+    }
+}
+
+fn sqlx_error_class(error: &sqlx::Error) -> &'static str {
+    match error {
+        sqlx::Error::Configuration(_) => "configuration",
+        sqlx::Error::Database(_) => "database",
+        sqlx::Error::Io(_) => "io",
+        sqlx::Error::Tls(_) => "tls",
+        sqlx::Error::Protocol(_) => "protocol",
+        sqlx::Error::RowNotFound => "row_not_found",
+        sqlx::Error::TypeNotFound { .. } => "type_not_found",
+        sqlx::Error::ColumnIndexOutOfBounds { .. } => "column_index_out_of_bounds",
+        sqlx::Error::ColumnNotFound(_) => "column_not_found",
+        sqlx::Error::ColumnDecode { .. } => "column_decode",
+        sqlx::Error::Decode(_) => "decode",
+        sqlx::Error::PoolTimedOut => "pool_timed_out",
+        sqlx::Error::PoolClosed => "pool_closed",
+        sqlx::Error::WorkerCrashed => "worker_crashed",
+        sqlx::Error::Migrate(_) => "migrate",
+        _ => "other",
     }
 }
 
@@ -542,7 +776,8 @@ impl From<PolicyError> for WebHttpError {
             PolicyErrorKind::OutputTooLarge => Self {
                 status: StatusCode::PAYLOAD_TOO_LARGE,
                 code: "OUTPUT_TOO_LARGE",
-                message: error.message,
+                message: error.message.to_string(),
+                support_reference: None,
             },
         }
     }
@@ -550,7 +785,13 @@ impl From<PolicyError> for WebHttpError {
 
 impl IntoResponse for WebHttpError {
     fn into_response(self) -> Response {
-        let body = json!({ "error": { "code": self.code, "message": self.message } });
+        let body = json!({
+            "error": {
+                "code": self.code,
+                "message": self.message,
+                "supportReference": self.support_reference,
+            }
+        });
         let mut response = (self.status, axum::Json(body)).into_response();
         let headers = response.headers_mut();
         headers.insert(
