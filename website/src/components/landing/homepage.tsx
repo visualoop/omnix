@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { getMarketProfile } from '@/config/market-profiles'
 import { DecorativeVideo } from '@/components/marketing/decorative-video'
 import { FAQJsonLd } from '@/components/seo/jsonld'
+import { ShowcaseImage } from './ShowcaseImage'
 import styles from './homepage.module.css'
 
 export interface HomepageMedia {
@@ -121,14 +122,6 @@ export function Homepage({
                   </a>
                 ) : null}
               </div>
-              <dl className={styles.counterNotes} aria-label={`${profile.country} market context`}>
-                {profile.facts.map((fact) => (
-                  <div key={fact.label}>
-                    <dt>{fact.label}</dt>
-                    <dd>{fact.value}</dd>
-                  </div>
-                ))}
-              </dl>
             </div>
 
             <div className={styles.heroMedia} data-media-state={hasHeroMedia ? 'approved' : 'empty'}>
@@ -142,8 +135,14 @@ export function Homepage({
                 />
               ) : heroMedia ? (
                 // Approved records reach this component only through getSlotImage.
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={heroMedia.url} alt={heroMedia.alt} width={960} height={720} />
+                <ShowcaseImage
+                  src={heroMedia.url}
+                  alt={heroMedia.alt}
+                  width={1360}
+                  height={720}
+                  loading="eager"
+                  priority="high"
+                />
               ) : (
                 <div className={styles.heroEmpty}>
                   <span className={styles.emptyCode}>Guided product view</span>
@@ -152,6 +151,15 @@ export function Homepage({
                 </div>
               )}
             </div>
+
+              <dl className={styles.counterNotes} aria-label={`${profile.country} market context`}>
+                {profile.facts.map((fact) => (
+                  <div key={fact.label}>
+                    <dt>{fact.label}</dt>
+                    <dd>{fact.value}</dd>
+                  </div>
+                ))}
+              </dl>
           </div>
         </div>
       </section>
@@ -188,7 +196,7 @@ export function Homepage({
                       {media ? (
                         // Approved records reach this component only through getSlotImage.
                         // eslint-disable-next-line @next/next/no-img-element
-                        <img src={media.url} alt={media.alt} loading="lazy" width={800} height={500} />
+                        <ShowcaseImage src={media.url} alt={media.alt} width={1360} height={720} />
                       ) : (
                         <div className={styles.productEmpty}>
                           <span>{product.name}</span>

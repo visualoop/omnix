@@ -146,26 +146,158 @@
   font-weight: 650;
 }
 
+/* The frame hugs the screenshot. Previously a fixed min-height combined with
+   `height: 100%` on the image, which resolves to auto without a definite parent
+   height, left the surface colour showing below the image: 287px of dead space
+   at 1440 and 156px at 390. The frame now has no intrinsic height of its own. */
 .heroMedia {
-  min-height: 21rem;
+  align-self: start;
   overflow: clip;
   border: 1px solid var(--color-border-strong);
   border-radius: var(--radius-xl);
-  background: var(--color-surface);
 }
 
-.heroMedia img,
-.heroMedia video,
+.heroMedia :is(img, video),
 .productMedia img {
   display: block;
   width: 100%;
-  height: 100%;
-  object-fit: cover;
+  height: auto;
+}
+
+/* The whole still is the affordance for inspecting it full size. */
+.mediaTrigger {
+  position: relative;
+  display: block;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: zoom-in;
+}
+
+.mediaTrigger:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 3px;
+}
+
+.showcaseImage {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.inspectLabel {
+  position: absolute;
+  right: var(--space-3);
+  bottom: var(--space-3);
+  border-radius: var(--radius-sm);
+  background: var(--color-fg);
+  padding: var(--space-2) var(--space-3);
+  color: var(--color-bg);
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  opacity: 0;
+  transition: opacity 160ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+.mediaTrigger:is(:hover, :focus-visible) .inspectLabel {
+  opacity: 1;
+}
+
+.lightboxOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  background: color-mix(in oklab, var(--color-fg) 88%, transparent);
+}
+
+.lightboxContent {
+  position: fixed;
+  inset: 0;
+  z-index: 61;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding: clamp(var(--space-4), 4vw, var(--space-8));
+}
+
+.lightboxContent[data-input-method='pointer'] {
+  animation: lightboxIn 180ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+@keyframes lightboxIn {
+  from {
+    opacity: 0;
+    transform: scale(0.97);
+  }
+}
+
+.lightboxToolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+}
+
+.lightboxTitle {
+  margin: 0;
+  color: var(--color-bg);
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.lightboxClose {
+  display: inline-flex;
+  min-height: 2.75rem;
+  align-items: center;
+  gap: var(--space-2);
+  border: 1px solid color-mix(in oklab, var(--color-bg) 40%, transparent);
+  border-radius: var(--radius-sm);
+  background: none;
+  padding-inline: var(--space-4);
+  color: var(--color-bg);
+  font-size: 0.82rem;
+  cursor: pointer;
+}
+
+.lightboxClose:focus-visible {
+  outline: 2px solid var(--color-bg);
+  outline-offset: 2px;
+}
+
+.lightboxFigure {
+  display: flex;
+  min-height: 0;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  margin: 0;
+}
+
+.lightboxFigure img {
+  max-width: 100%;
+  max-height: 100%;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lightboxContent[data-input-method='pointer'] {
+    animation: none;
+  }
+  .inspectLabel {
+    transition: none;
+  }
 }
 
 .heroEmpty {
   display: flex;
-  min-height: inherit;
+  min-height: 21rem;
   flex-direction: column;
   justify-content: space-between;
   gap: var(--space-8);
@@ -301,10 +433,10 @@
 }
 
 .productMedia {
-  min-height: 11rem;
+  align-self: start;
   overflow: clip;
+  border: 1px solid var(--color-border-strong);
   border-radius: var(--radius-lg);
-  background: var(--color-surface-2);
 }
 
 .productEmpty {
@@ -593,12 +725,10 @@
   }
 
   .productBody {
-    grid-template-columns: minmax(0, 1.4fr) minmax(15rem, 0.75fr);
-    align-items: center;
+    grid-template-columns: minmax(0, 1fr);
     padding-inline: var(--space-4);
   }
 
-  .productMedia,
   .productEmpty {
     min-height: 13rem;
   }
@@ -624,17 +754,28 @@
 }
 
 @media (min-width: 60rem) {
+  /* The screenshot is the proof, so it gets the full container width below the
+     copy rather than a 22rem side column that rendered it 480px wide and
+     illegible. No min-height: the frame is sized by the image. */
   .heroGrid {
-    grid-template-columns: minmax(0, 1.15fr) minmax(22rem, 0.85fr);
+    grid-template-columns: minmax(0, 1fr);
+    gap: clamp(var(--space-10), 5vw, var(--space-16));
   }
 
-  .heroMedia {
-    min-height: 34rem;
+  /* 12ch suited a narrow side column; full-width it produced a four-line
+     headline that pushed the screenshot out of the first viewport. */
+  .heroTitle {
+    max-width: 30ch;
+    font-size: clamp(3.4rem, 5vw, 4.6rem);
+  }
+
+  .counterNotes {
+    margin-block-start: var(--space-10);
   }
 
   .productBody {
-    grid-template-columns: minmax(0, 1.55fr) minmax(18rem, 0.7fr);
-    gap: var(--space-16);
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-10);
   }
 }
 

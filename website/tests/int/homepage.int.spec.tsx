@@ -1,4 +1,4 @@
-import { cleanup, render, screen } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, describe, expect, it } from 'vitest'
 
 import { HOMEPAGE_PRODUCTS, Homepage } from '@/components/landing/homepage'
@@ -102,5 +102,83 @@ describe('Task 9 homepage acquisition', () => {
     )
     expect(screen.queryByLabelText('Unpaired product video')).toBeNull()
     expect(screen.getByAltText('Approved POS sale screen')).not.toBeNull()
+  })
+
+  it('makes every showcase still openable full size', () => {
+    render(
+      <Homepage
+        locale="ke"
+        heroMedia={{ url: 'https://media.omnix.co.ke/hero.webp', alt: 'Omnix dashboard' }}
+        productMedia={{
+          pharmacy: { url: 'https://media.omnix.co.ke/pharmacy.webp', alt: 'Pharmacy screen' },
+          retail: { url: 'https://media.omnix.co.ke/retail.webp', alt: 'Retail screen' },
+        }}
+      />,
+    )
+
+    const triggers = screen.getAllByRole('button', { name: /^Open full-size view:/ })
+    expect(triggers).toHaveLength(3)
+    expect(triggers.map((t) => t.getAttribute('aria-label'))).toContain(
+      'Open full-size view: Omnix dashboard',
+    )
+  })
+
+  it('opens the full-size view on click and exposes it as a modal', () => {
+    render(
+      <Homepage
+        locale="ke"
+        heroMedia={{ url: 'https://media.omnix.co.ke/hero.webp', alt: 'Omnix dashboard' }}
+      />,
+    )
+
+    expect(screen.queryByRole('dialog')).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Open full-size view: Omnix dashboard' }))
+
+    const dialog = screen.getByRole('dialog')
+    expect(dialog.getAttribute('aria-modal')).toBe('true')
+    expect(screen.getByText('Full-size view: Omnix dashboard')).toBeTruthy()
+    // The dialog shows the same approved asset, not a substitute.
+    expect(dialog.querySelector('img')?.getAttribute('src')).toBe(
+      'https://media.omnix.co.ke/hero.webp',
+    )
+  })
+
+  it('opens from the keyboard and restores focus to the trigger on Escape', async () => {
+    render(
+      <Homepage
+        locale="ke"
+        heroMedia={{ url: 'https://media.omnix.co.ke/hero.webp', alt: 'Omnix dashboard' }}
+      />,
+    )
+
+    const trigger = screen.getByRole('button', { name: 'Open full-size view: Omnix dashboard' })
+    act(() => trigger.focus())
+    fireEvent.keyDown(trigger, { key: 'Enter' })
+    expect(screen.getByRole('dialog')).toBeTruthy()
+
+    fireEvent.keyDown(document.activeElement ?? document.body, { key: 'Escape' })
+    expect(screen.queryByRole('dialog')).toBeNull()
+    // Radix returns focus on a microtask after unmount, so wait rather than assume.
+    await waitFor(() => expect(document.activeElement).toBe(trigger))
+  })
+
+  it('keeps a closable control inside the full-size view', () => {
+    render(
+      <Homepage
+        locale="ke"
+        heroMedia={{ url: 'https://media.omnix.co.ke/hero.webp', alt: 'Omnix dashboard' }}
+      />,
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: 'Open full-size view: Omnix dashboard' }))
+    fireEvent.click(screen.getByRole('button', { name: /close/i }))
+    expect(screen.queryByRole('dialog')).toBeNull()
+  })
+
+  it('never makes an empty media slot look clickable', () => {
+    render(<Homepage locale="ke" />)
+
+    expect(screen.queryAllByRole('button', { name: /^Open full-size view:/ })).toHaveLength(0)
+    expect(screen.getByText('No stock image substituted')).toBeTruthy()
   })
 })
