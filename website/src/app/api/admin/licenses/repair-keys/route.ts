@@ -1,3 +1,4 @@
+import { timingSafeEqual } from 'node:crypto'
 import { headers } from 'next/headers'
 import { and, eq } from 'drizzle-orm'
 import { auditLog, db, licenses, withDbTransaction } from '@/db'
@@ -33,6 +34,32 @@ async function requireAdmin() {
   return { error: null, session }
 }
 
+/**
+ * One-off operator token, used to run this repair once from outside a browser
+ * session. Absent in normal operation: when LICENSE_KEY_REPAIR_TOKEN is unset
+ * or empty this path is closed entirely and only a platform_admin session is
+ * accepted. Remove the variable once the repair has run.
+ */
+async function hasOperatorToken(): Promise<boolean> {
+  const expected = process.env.LICENSE_KEY_REPAIR_TOKEN
+  if (!expected) return false
+
+  const presented = (await headers()).get('authorization')?.replace(/^Bearer\s+/i, '') ?? ''
+  if (presented.length === 0) return false
+
+  const a = Buffer.from(presented)
+  const b = Buffer.from(expected)
+  return a.length === b.length && timingSafeEqual(a, b)
+}
+
+/** Either a platform_admin session or the one-off operator token. */
+async function authorise() {
+  if (await hasOperatorToken()) return { error: null, actorId: null as string | null }
+  const a = await requireAdmin()
+  if (a.error) return { error: a.error, actorId: null }
+  return { error: null, actorId: a.session!.user.id }
+}
+
 async function loadPlan() {
   const rows = (await db
     .select({ id: licenses.id, variant: licenses.variant, licenseKey: licenses.licenseKey })
@@ -41,7 +68,7 @@ async function loadPlan() {
 }
 
 export async function GET() {
-  const a = await requireAdmin()
+  const a = await authorise()
   if (a.error) return a.error
 
   const plan = await loadPlan()
@@ -55,7 +82,7 @@ export async function GET() {
 }
 
 export async function POST() {
-  const a = await requireAdmin()
+  const a = await authorise()
   if (a.error) return a.error
 
   const plan = await loadPlan()
@@ -85,7 +112,7 @@ export async function POST() {
 
     await tx.insert(auditLog).values({
       id: createId(),
-      actorId: a.session!.user.id,
+      actorId: a.actorId,
       action: 'license.key_canonicalised',
       resource: `license:${plan.map((c) => c.id).join(',')}`,
       // The old keys are the only way back, so they belong in the audit trail.
