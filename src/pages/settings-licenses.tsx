@@ -394,7 +394,7 @@ export function SettingsLicensesPage() {
           <Input
             value={draftKey}
             onChange={(e) => setDraftKey(e.target.value.toUpperCase())}
-            placeholder="OMNIX-XXXX-XXXX-XXXX-XXXX"
+            placeholder="OMNIX-DAWA-XXXX-XXXX-XXXX"
             className="flex-1 font-mono"
           />
           <Button onClick={handleAdd} disabled={adding || !draftKey.trim()}>
