@@ -1,6 +1,6 @@
 import { and, eq, desc, isNotNull } from 'drizzle-orm'
 import { db, releases } from '@/db'
-import { isDesktopVariant, resolveDesktopUpdate } from '@/lib/desktop-updater'
+import { GET as resolveDesktopRequest } from '../../releases-latest/route'
 
 const PINNED_ANDROID_RELEASE_CERTIFICATE =
   'c7f91eb28f7b6c6b23781382dc30b8c360cb2780d8c6b74db9ff07013fcd08bb'
@@ -63,49 +63,14 @@ export async function GET(req: Request) {
     )
   }
 
-  const variant = url.searchParams.get('variant')?.toLowerCase()
-  if (!variant || !isDesktopVariant(variant)) {
-    return Response.json(
-      { error: 'a valid desktop `variant` query parameter is required' },
-      { status: 400, headers: { 'Cache-Control': 'no-store' } },
-    )
-  }
-
-  const rows = await db
-    .select()
-    .from(releases)
-    .where(eq(releases.channel, channel))
-    .orderBy(desc(releases.publishedAt))
-    .limit(1)
-  const release = rows[0]
-
-  if (!release) {
-    return Response.json({ error: 'no release published' }, { status: 404 })
-  }
-
-  const resolution = resolveDesktopUpdate(release, variant, '')
-  if (resolution.status === 'missing-assets') {
-    console.error('[releases/latest] incomplete desktop variant metadata', {
-      releaseId: release.id,
-      version: release.version,
-      variant,
-      missing: resolution.missing,
-    })
-    return Response.json(
-      {
-        error: `release metadata is incomplete for variant ${variant}`,
-        version: release.version,
-        missing: resolution.missing,
-      },
-      { status: 503, headers: { 'Cache-Control': 'no-store' } },
-    )
-  }
-
-  // An empty current version can never resolve as up-to-date.
-  if (resolution.status !== 'update') {
-    return new Response(null, { status: 204 })
-  }
-  return Response.json(resolution.manifest, {
-    headers: { 'Cache-Control': 'no-store' },
-  })
+  // Desktop updates resolve through the hardened handler behind
+  // /api/releases-latest. This path used to carry a second copy that answered
+  // 400/404/503 with a JSON body, which Tauri cannot parse — it surfaces
+  // "update server returned an unexpected json" to the customer. That copy also
+  // read only the newest release, so it had no fallback: the Android-only
+  // v0.77.0 made it report every desktop variant as broken with HTTP 503 even
+  // though v0.76.1 had complete signed installers. One resolver, one contract:
+  // only a real manifest returns 200, every other outcome is 204 with
+  // X-Omnix-Updater-Status.
+  return resolveDesktopRequest(req)
 }
