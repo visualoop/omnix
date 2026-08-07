@@ -46,7 +46,22 @@ function Assert-Sha256([string]$Path, [string]$Expected) {
 function Assert-Authenticode([string]$Path) {
   $signature = Get-AuthenticodeSignature -LiteralPath $Path
   if ($signature.Status -ne "Valid") {
-    throw "Authenticode validation failed for $Path ($($signature.Status))"
+    # UnknownError almost always means the signing certificate does not chain to
+    # a trusted root. A self-signed code-signing certificate cannot satisfy this
+    # gate, and crucially it cannot satisfy the SAME check that
+    # omnix-mesh-service.rs runs on the customer's machine before installing the
+    # DLLs. Bundling a tunnel signed that way would ship a feature that refuses
+    # to start, so this fails loudly instead. Supply a CA-issued (OV/EV) code
+    # signing certificate, or pin the expected signer thumbprint in BOTH this
+    # script and the runtime verifier before relaxing it.
+    $hint = if ($signature.Status -eq "UnknownError") {
+      "`nThe signature is present but its certificate does not chain to a trusted root." +
+      "`nSigner: $($signature.SignerCertificate.Subject)" +
+      "`nThumbprint: $($signature.SignerCertificate.Thumbprint)" +
+      "`nWINDOWS_CODE_SIGNING_CERT must be a CA-issued code signing certificate; a" +
+      "`nself-signed one also fails the runtime check in omnix-mesh-service.rs."
+    } else { "" }
+    throw "Authenticode validation failed for $Path ($($signature.Status))$hint"
   }
   return $signature.SignerCertificate.Subject
 }

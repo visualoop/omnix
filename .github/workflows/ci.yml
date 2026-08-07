@@ -138,7 +138,13 @@ jobs:
           retention-days: 2
 
   build:
+    # prepare-wireguard is ordered before this job but is NOT allowed to gate it.
+    # The bundled Private Mesh tunnel is optional: when staging fails the
+    # installers must still ship without it, because a failed tunnel must never
+    # cost customers the whole release. The artifact download below is already
+    # continue-on-error, so a missing staging directory degrades cleanly.
     needs: [rust-tests, prepare-wireguard]
+    if: ${{ !cancelled() && needs.rust-tests.result == 'success' }}
     runs-on: windows-latest
     timeout-minutes: 60
     permissions:
