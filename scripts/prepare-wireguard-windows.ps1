@@ -110,6 +110,20 @@ if ($CertificateBase64 -and $CertificatePassword) {
   [IO.File]::WriteAllBytes($pfxPath, [Convert]::FromBase64String($CertificateBase64))
   $securePassword = ConvertTo-SecureString $CertificatePassword -AsPlainText -Force
   $certificate = Import-PfxCertificate -FilePath $pfxPath -CertStoreLocation Cert:\CurrentUser\My -Password $securePassword
+
+  # A signature is only worth staging if it will still verify on the customer's
+  # machine: omnix-mesh-service.rs runs the same Get-AuthenticodeSignature check
+  # before installing these DLLs. A self-signed certificate cannot chain to a
+  # trusted root there, so bundling a tunnel signed with one would ship a feature
+  # that refuses to start. Detect that here and report it as "cannot bundle"
+  # (exit 90) rather than failing the release, which is what CI maps to a skip.
+  $chain = New-Object System.Security.Cryptography.X509Certificates.X509Chain
+  $chain.ChainPolicy.RevocationMode = "NoCheck"
+  if (-not $chain.Build($certificate)) {
+    $reasons = ($chain.ChainStatus | ForEach-Object { $_.Status }) -join ", "
+    Write-Host "::warning::Private Mesh tunnel not bundled: the code signing certificate does not chain to a trusted root ($reasons). Subject: $($certificate.Subject). The same check runs on the customer's machine before the DLLs install, so a self-signed certificate would ship a tunnel that cannot start. Supply a CA-issued (OV/EV) code signing certificate, or pin the expected signer thumbprint in this script and in omnix-mesh-service.rs."
+    exit 90
+  }
 } elseif ($CertificateBase64 -or $CertificatePassword) {
   throw "Both WINDOWS_CODE_SIGNING_CERT and WINDOWS_CODE_SIGNING_PASSWORD are required"
 } elseif ($Release) {
