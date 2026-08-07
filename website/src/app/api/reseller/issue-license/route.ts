@@ -31,6 +31,7 @@ import { auth } from '@/lib/auth'
 import { newReference, initTransaction } from '@/lib/paystack'
 import { pricingFor, type SupportedCurrency } from '@/config/pricing'
 import { createId } from '@/lib/ids'
+import { generateLicenseKey } from '@/lib/license-key'
 import { modulesForVariant } from '@/lib/license-modules'
 
 export const runtime = 'nodejs'
@@ -45,12 +46,6 @@ interface Body {
   country?: string
   currency?: string
   variant?: string
-}
-
-function makeLicenseKey(variant: Variant): string {
-  const short = variant === 'hospitality' ? 'HOSP' : variant === 'hardware' ? 'HW' : variant.toUpperCase()
-  const seg = () => crypto.randomBytes(2).toString('hex').toUpperCase()
-  return `OMNIX-${short}-${seg()}-${seg()}-${seg()}`
 }
 
 function generatePassword(len = 10): string {
@@ -132,7 +127,7 @@ export async function POST(req: NextRequest) {
   await db.insert(licenses).values({
     id: licenseId,
     userId: customerId,
-    licenseKey: makeLicenseKey(variant),
+    licenseKey: generateLicenseKey(variant),
     variant,
     tier: 'trial',
     status: 'trial',

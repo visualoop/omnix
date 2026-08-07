@@ -21,11 +21,12 @@
 import { query, execute } from "@/lib/db"
 import { fetch as tauriFetch } from "@tauri-apps/plugin-http"
 import { VARIANT } from "@/lib/variant"
+import { normalizeLicenseKey } from "../../website/src/lib/license-key-format"
 
 const SYNC_ENDPOINT = "https://omnix.co.ke/api/licensing/sync"
 const ACTIVATE_ENDPOINT = "https://omnix.co.ke/api/licensing/activate"
 
-export type LicenseVariant = "pro" | "dawa" | "retail" | "hospitality" | "hardware"
+export type LicenseVariant = "pro" | "dawa" | "retail" | "hospitality" | "hardware" | "salon"
 
 export interface LocalLicense {
   license_key: string
@@ -172,7 +173,9 @@ export async function setActiveLicenseKey(key: string): Promise<void> {
             ? "hardware"
             : row.variant === "hospitality"
               ? "hospitality"
-              : "dawa"
+              : row.variant === "salon"
+                ? "salon"
+                : "dawa"
   await execute(
     `INSERT INTO settings (key, value, category)
      VALUES ('app.active_module', ?1, 'app')
@@ -287,7 +290,15 @@ export async function activateLicense(input: {
   // activate e.g. a Hospitality key on the Retail installer. Callers
   // can override (e.g. tests) but the binary's value is the right
   // default.
-  const payload = { ...input, variant: input.variant ?? VARIANT }
+  const normalized = normalizeLicenseKey(input.licenseKey)
+  if (!normalized) {
+    return { ok: false, code: "invalid_key_format", error: "Invalid licence key format" }
+  }
+  const payload = {
+    ...input,
+    licenseKey: normalized.canonicalKey,
+    variant: input.variant ?? VARIANT,
+  }
   const resp = await tauriFetch(ACTIVATE_ENDPOINT, {
     method: "POST",
     headers: { "content-type": "application/json" },
@@ -315,6 +326,7 @@ export async function activateLicense(input: {
     return { ok: false, code: data.code, error: data.error ?? `HTTP ${resp.status}` }
   }
   const e = data.entitlements!
+  const storedKey = normalizeLicenseKey(e.licenseKey)?.canonicalKey ?? normalized.canonicalKey
   await execute(
     `INSERT INTO local_licenses (
         license_key, variant, tier, status, modules,
@@ -336,7 +348,7 @@ export async function activateLicense(input: {
         last_synced_at = datetime('now'),
         last_verified_at = datetime('now')`,
     [
-      e.licenseKey,
+      storedKey,
       e.variant,
       e.status === "trial" ? "trial" : e.variant === "pro" ? "business" : "starter",
       e.status,
@@ -351,10 +363,10 @@ export async function activateLicense(input: {
   // Auto-set as active when adding the first licence; otherwise leave
   // the user's current selection untouched.
   const current = await getActiveLicenseKey()
-  if (!current) await setActiveLicenseKey(e.licenseKey)
+  if (!current) await setActiveLicenseKey(storedKey)
 
   const row = (
-    await query<LocalLicense>(`SELECT * FROM local_licenses WHERE license_key = ?1`, [e.licenseKey])
+    await query<LocalLicense>(`SELECT * FROM local_licenses WHERE license_key = ?1`, [storedKey])
   )[0]
   return { ok: true, license: row }
 }
@@ -380,6 +392,7 @@ export function describeOwnedVariants(variants: LicenseVariant[]): string {
     retail: "Retail",
     hospitality: "Hospitality",
     hardware: "Hardware",
+    salon: "Salon & Spa",
   }
   const ordered = [...new Set(variants)].sort()
   return ordered.map((v) => labels[v]).join(" + ")

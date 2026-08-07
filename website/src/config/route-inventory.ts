@@ -130,6 +130,7 @@ export const API_ROUTE_GROUPS = {
     '/api/admin/licenses/[id]',
     '/api/admin/licenses/[id]/mark-paid',
     '/api/admin/licenses/[id]/sweep-orphans',
+    '/api/admin/licenses/repair-keys',
     '/api/admin/machines/[id]/update-policy',
     '/api/admin/media',
     '/api/admin/module-videos',

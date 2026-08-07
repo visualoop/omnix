@@ -19,6 +19,7 @@ import {
   AdminSelectFilter,
 } from '@/components/admin/data-controls'
 import { DeleteLicenseButton } from '@/components/admin/delete-license-button'
+import { RepairLicenseKeysButton } from '@/components/admin/repair-license-keys-button'
 
 export const metadata = { title: 'Admin · Licences' }
 export const dynamic = 'force-dynamic'
@@ -135,6 +136,7 @@ export default async function AdminLicensesPage({
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <AdminSearch placeholder="Search by licence key or customer email…" />
         <div className="flex items-center gap-4">
+          <RepairLicenseKeysButton />
           <AdminSelectFilter paramName="status" label="Status" options={STATUS_OPTIONS} />
           <AdminSelectFilter paramName="variant" label="Variant" options={VARIANT_OPTIONS} />
         </div>

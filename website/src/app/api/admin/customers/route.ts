@@ -33,6 +33,7 @@ import { and, eq } from 'drizzle-orm'
 import crypto from 'node:crypto'
 import { db, user, licenses, auditLog } from '@/db'
 import { createId } from '@/lib/ids'
+import { generateLicenseKey } from '@/lib/license-key'
 import { modulesForVariant } from '@/lib/license-modules'
 import { auth } from '@/lib/auth'
 
@@ -67,12 +68,6 @@ function generatePassword(len = 10): string {
     out += alphabet[crypto.randomInt(0, alphabet.length)]
   }
   return out
-}
-
-function makeLicenseKey(variant: Variant): string {
-  const shortVariant = variant === 'hospitality' ? 'HOSP' : variant === 'hardware' ? 'HW' : variant.toUpperCase()
-  const seg = () => crypto.randomBytes(2).toString('hex').toUpperCase()
-  return `OMNIX-${shortVariant}-${seg()}-${seg()}-${seg()}`
 }
 
 export async function POST(req: NextRequest) {
@@ -142,7 +137,7 @@ export async function POST(req: NextRequest) {
     const licenseId = createId()
     const now = new Date()
     const trialEnd = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000)
-    const licenseKey = makeLicenseKey(requestedVariant)
+    const licenseKey = generateLicenseKey(requestedVariant)
     await db.insert(licenses).values({
       id: licenseId,
       userId: createdUserId,

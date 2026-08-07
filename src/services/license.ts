@@ -2,6 +2,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { fetch } from "@tauri-apps/plugin-http";
 import { query, execute } from "@/lib/db";
 import { VARIANT } from "@/lib/variant";
+import { normalizeLicenseKey } from "../../website/src/lib/license-key-format";
 
 /**
  * Omnix licensing server base URL. Override with VITE_OMNIX_API at build time
@@ -54,6 +55,7 @@ export function licensePayloadModules(p: Pick<LicensePayload, "modules" | "feat"
     else if (f === "retail") out.push("retail");
     else if (f === "hardware") out.push("hardware");
     else if (f === "hospitality") out.push("hospitality");
+    else if (f === "salon") out.push("salon");
   }
   return out.length > 0 ? out : ["dawa"];
 }
@@ -160,15 +162,12 @@ async function activateOnline(
  *   typically > 400 chars). Issued by the legacy licensing tool, RSA-verified
  *   in Rust by `verify_license_key`. Works offline.
  */
-function isCompactKey(key: string): boolean {
-  const cleaned = key.replace(/\s+/g, "").toUpperCase();
-  // Compact format: 4–6 segments separated by '-', each segment 2–10 chars,
-  // and no '.' separator (which RSA-signed keys always have).
-  if (cleaned.includes(".")) return false;
-  const parts = cleaned.split("-").filter((p) => p.length > 0);
-  if (parts.length < 4 || parts.length > 6) return false;
-  if (parts[0] !== "OMNIX") return false;
-  return cleaned.length <= 40;
+/**
+ * Return whether a key has an accepted compact (server-validated) shape.
+ * This checks format only; the licensing server remains authoritative.
+ */
+export function isCompactKey(key: string): boolean {
+  return normalizeLicenseKey(key) !== null;
 }
 
 /** Activate a license key on this machine (online-first, offline fallback). */
@@ -182,11 +181,13 @@ export async function activateLicense(key: string): Promise<{ ok: boolean; error
     return { ok: false, error: "License already activated on a different machine" };
   }
 
-  if (isCompactKey(cleaned)) {
+  const normalizedCompact = normalizeLicenseKey(cleaned);
+  if (normalizedCompact) {
+    const compactKey = normalizedCompact.canonicalKey;
     // ── Server-validated path ─────────────────────────────────
     // No offline signature on these keys — the website-issued key only
     // means anything once /api/licensing/activate accepts it.
-    const online = await activateOnline(cleaned, machine.fingerprint);
+    const online = await activateOnline(compactKey, machine.fingerprint);
     if (!online) {
       return {
         ok: false,
@@ -217,8 +218,8 @@ export async function activateLicense(key: string): Promise<{ ok: boolean; error
           machine_fingerprint, activated_at, last_verified_at)
          VALUES ('active', ?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, datetime('now'), datetime('now'))`,
         [
-          cleaned,
-          cleaned, // use the key itself as kid
+          compactKey,
+          compactKey, // use the canonical key itself as kid
           customerName,
           customerEmail,
           new Date().toISOString(),
@@ -239,7 +240,7 @@ export async function activateLicense(key: string): Promise<{ ok: boolean; error
       return { ok: false, error: `Server accepted the key but local storage rejected it: ${msg}` };
     }
 
-    await logActivationEvent(cleaned, "activated", null);
+    await logActivationEvent(compactKey, "activated", null);
     return { ok: true };
   }
 
@@ -492,15 +493,9 @@ function parseModules(active: ActiveLicense): string[] {
  *   OMNIX-HW-…        → "hardware"
  *   OMNIX-PRO-…       → null (Pro unlocks any; caller decides)
  */
-function moduleFromKeyPrefix(key: string): string | null {
-  const parts = key.replace(/\s+/g, "").toUpperCase().split("-");
-  if (parts[0] !== "OMNIX" || parts.length < 2) return null;
-  const tag = parts[1];
-  if (tag === "RETAIL") return "retail";
-  if (tag === "DAWA") return "dawa";
-  if (tag === "HOSP" || tag === "HOSPITALITY") return "hospitality";
-  if (tag === "HW" || tag === "HARDWARE") return "hardware";
-  return null;
+export function moduleFromKeyPrefix(key: string): string | null {
+  const normalized = normalizeLicenseKey(key);
+  return normalized?.variant === "pro" ? null : normalized?.variant ?? null;
 }
 
 /** Modules unlocked by the active license/trial. Empty when not activated. */

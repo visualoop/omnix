@@ -7,6 +7,7 @@ import { useAuthStore } from "@/stores/auth";
 import { useF11Fullscreen } from "@/hooks/use-f11-fullscreen";
 import { useFullscreenStore } from "@/stores/fullscreen";
 import { WindowTitlebar, TITLEBAR_HEIGHT_PX } from "@/components/layout/window-titlebar";
+import { PreShellFrame } from "@/components/pre-shell-frame";
 import { useAutoUpdate } from "@/hooks/use-auto-update";
 import { useLanAutostart } from "@/hooks/use-lan-autostart";
 import { useAlertScanner } from "@/hooks/use-alert-scanner";
@@ -277,9 +278,11 @@ function AppContent() {
   // Wait until we've checked the DB at least once
   if (!setupChecked) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="h-6 w-6 rounded-full border-2 border-primary border-t-transparent animate-spin" />
-      </div>
+      <PreShellFrame title="Starting Omnix">
+        <div className="flex min-h-full items-center justify-center" role="status" aria-label="Starting Omnix">
+          <div className="h-6 w-6 rounded-full border-2 border-primary border-t-transparent animate-spin" />
+        </div>
+      </PreShellFrame>
     );
   }
 
@@ -287,10 +290,9 @@ function AppContent() {
   if (!isSetupComplete) {
     return (
       <BrowserRouter>
-        <WindowTitlebar />
-        <div style={{ marginTop: TITLEBAR_HEIGHT_PX }}>
+        <PreShellFrame title="Setup">
           <SetupWizard />
-        </div>
+        </PreShellFrame>
         <Toaster position="bottom-right" />
         <ConfirmDialogHost />
       </BrowserRouter>
@@ -301,10 +303,9 @@ function AppContent() {
   if (!user) {
     return (
       <BrowserRouter>
-        <WindowTitlebar />
-        <div style={{ marginTop: TITLEBAR_HEIGHT_PX }}>
+        <PreShellFrame title="Sign in">
           <LoginPage />
-        </div>
+        </PreShellFrame>
         <Toaster position="bottom-right" />
       </BrowserRouter>
     );

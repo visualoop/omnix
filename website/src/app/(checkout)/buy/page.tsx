@@ -13,6 +13,7 @@ import { auth } from '@/lib/auth'
 import { db, licenses } from '@/db'
 import { decideBuyDestination, isValidMachineId, resolvePublicVariant } from '@/lib/buy-resolver'
 import { createId } from '@/lib/ids'
+import { generateLicenseKey } from '@/lib/license-key'
 
 export const metadata = { title: 'Buy Omnix' }
 
@@ -101,7 +102,7 @@ export default async function BuyEntryPage({
   await db.insert(licenses).values({
     id: newId,
     userId: customerId!,
-    licenseKey: `OMX-${decision.variant.toUpperCase()}-${newId.slice(0, 4).toUpperCase()}-${newId.slice(4, 8).toUpperCase()}-${newId.slice(8, 12).toUpperCase()}`,
+    licenseKey: generateLicenseKey(decision.variant),
     variant: decision.variant,
     tier: 'trial',
     status: 'trial',

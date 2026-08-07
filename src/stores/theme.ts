@@ -2,8 +2,8 @@
  * theme.ts — combined theme store.
  *
  * Two independent axes:
- *   • `palette`  — the theme name (classic, cream, nordic, sepia, slate, meadow).
- *                  Sets data-theme on <html>. CSS blocks in index.css match.
+ *   • `palette`  — the theme name. Sets data-theme on <html>; matching
+ *                  light and dark CSS blocks live in index.css.
  *   • `mode`     — light / dark / system. Sets the .dark class on <html>.
  *                  "system" follows the OS colour scheme.
  *
@@ -11,7 +11,7 @@
  * `omnix.palette` for palette so both survive reload.
  */
 import { create } from "zustand";
-import { VARIANT } from "@/lib/variant";
+import { VARIANT, type Variant } from "@/lib/variant";
 
 export const THEMES = [
   { id: "classic",  name: "Classic",  description: "Warm off-white • slate dark. The default." },
@@ -32,6 +32,20 @@ export const THEMES = [
 export type PaletteId = typeof THEMES[number]["id"];
 export type Mode = "light" | "dark" | "system";
 
+const DEFAULT_PALETTE_BY_VARIANT: Record<Variant, PaletteId> = {
+  pro: "classic", // Restrained warm slate suits the broad, cross-trade ERP.
+  dawa: "ocean", // Clinical cyan and navy give pharmacy its medical identity.
+  retail: "meadow", // Calm forest tones support long, high-traffic till shifts.
+  hospitality: "espresso", // Coffee and dining warmth fits restaurants, bars, and lodges.
+  hardware: "slate", // Hue-free industrial grey reflects tools, steel, and equipment.
+  salon: "blossom", // Blush pink keeps the established salon and spa identity.
+};
+
+/** Pure helper so build-time variants can be verified without mutating VARIANT. */
+export function defaultPaletteForVariant(variant: Variant): PaletteId {
+  return DEFAULT_PALETTE_BY_VARIANT[variant];
+}
+
 interface ThemeState {
   /** Legacy: "light" | "dark" | "system". Keep this name so existing
    *  callers keep working — but it now describes light/dark mode only. */
@@ -51,9 +65,12 @@ const readLocal = <T,>(key: string, fallback: T): T => {
   }
 };
 
+const readPalette = (variant: Variant): PaletteId =>
+  readLocal<PaletteId>("omnix.palette", defaultPaletteForVariant(variant));
+
 export const useThemeStore = create<ThemeState>((set) => ({
   theme: readLocal<Mode>("omnix-theme", "dark"),
-  palette: readLocal<PaletteId>("omnix.palette", VARIANT === "salon" ? "blossom" : "classic"),
+  palette: readPalette(VARIANT),
   setTheme: (theme) => {
     try { localStorage.setItem("omnix-theme", theme); } catch { /* noop */ }
     applyMode(theme);
@@ -85,11 +102,12 @@ export function applyPalette(palette: PaletteId): void {
 
 /**
  * Call once during app bootstrap so persisted preferences apply BEFORE
- * React first paint. Prevents flash of default theme.
+ * React first paint. Prevents flash of default theme. The variant parameter
+ * keeps the build-time default explicit and lets tests cover every binary.
  */
-export function bootstrapTheme(): void {
+export function bootstrapTheme(variant: Variant = VARIANT): void {
   applyMode(readLocal<Mode>("omnix-theme", "dark"));
-  applyPalette(readLocal<PaletteId>("omnix.palette", VARIANT === "salon" ? "blossom" : "classic"));
+  applyPalette(readPalette(variant));
   // Follow OS-level colour scheme changes if the user is on "system".
   if (typeof window !== "undefined" && window.matchMedia) {
     window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => {
@@ -102,5 +120,5 @@ export function bootstrapTheme(): void {
 // Kick off on module load — belt and suspenders alongside main.tsx bootstrap.
 if (typeof window !== "undefined") {
   applyMode(readLocal<Mode>("omnix-theme", "dark"));
-  applyPalette(readLocal<PaletteId>("omnix.palette", VARIANT === "salon" ? "blossom" : "classic"));
+  applyPalette(readPalette(VARIANT));
 }

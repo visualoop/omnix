@@ -5,6 +5,7 @@ import {
 import { getLicenseStatus, revalidateLicense, type LicenseStatus } from "@/services/license";
 import { useEntitlements } from "@/stores/entitlements";
 import { LicenseActivationPage } from "@/pages/license-activation";
+import { PreShellFrame } from "@/components/pre-shell-frame";
 
 interface Props {
   children: ReactNode;
@@ -88,9 +89,11 @@ export function LicenseGuard({ children }: Props) {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-      </div>
+      <PreShellFrame title="Checking licence">
+        <div className="flex min-h-full items-center justify-center" role="status" aria-label="Checking licence">
+          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+        </div>
+      </PreShellFrame>
     );
   }
 
@@ -98,7 +101,11 @@ export function LicenseGuard({ children }: Props) {
     // After the user activates from the activation page, the onActivated
     // callback below re-runs fetchStatus() — which sets activated=true,
     // children mount, no spinner.
-    return <LicenseActivationPage onActivated={fetchStatus} />;
+    return (
+      <PreShellFrame title="Licence activation">
+        <LicenseActivationPage onActivated={fetchStatus} />
+      </PreShellFrame>
+    );
   }
 
   return <>{children}</>;

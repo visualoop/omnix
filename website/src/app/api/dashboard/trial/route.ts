@@ -3,6 +3,7 @@ import { eq, and } from 'drizzle-orm'
 import { auth } from '@/lib/auth'
 import { db, licenses, auditLog } from '@/db'
 import { createId } from '@/lib/ids'
+import { generateLicenseKey } from '@/lib/license-key'
 
 export const dynamic = 'force-dynamic'
 
@@ -61,7 +62,7 @@ export async function POST(req: Request) {
   const now = new Date()
   const trialEndsAt = new Date(now.getTime() + TRIAL_DAYS * 24 * 60 * 60 * 1000)
   const id = createId()
-  const licenseKey = makeLicenseKey(variant)
+  const licenseKey = generateLicenseKey(variant)
 
   await db.insert(licenses).values({
     id,
@@ -92,36 +93,4 @@ export async function POST(req: Request) {
     existed: false,
     license: { id, licenseKey, variant, status: 'trial', trialEndsAt },
   })
-}
-
-/**
- * Generate a license key in the format the desktop validator expects:
- *   OMNIX-<VARIANT>-XXXX-XXXX-XXXX
- *
- * Variant prefixes (from src/lib/variant.ts variantLicensePrefix):
- *   dawa        → OMNIX-DAWA
- *   retail      → OMNIX-RETAIL
- *   hospitality → OMNIX-HOSP
- *   hardware    → OMNIX-HW
- *
- * The key format is identical for trial and paid licences. The trial vs
- * active state is tracked in the `status` column. The desktop validator
- * accepts any well-formed OMNIX- key and asks the website for status.
- */
-function makeLicenseKey(variant: Variant): string {
-  const variantSuffix: Record<Variant, string> = {
-    dawa: 'DAWA',
-    retail: 'RETAIL',
-    hospitality: 'HOSP',
-    hardware: 'HW',
-    salon: 'SALON',
-  }
-  const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
-  const groups: string[] = []
-  for (let i = 0; i < 3; i++) {
-    let g = ''
-    for (let j = 0; j < 4; j++) g += alphabet[Math.floor(Math.random() * alphabet.length)]
-    groups.push(g)
-  }
-  return `OMNIX-${variantSuffix[variant]}-${groups.join('-')}`
 }

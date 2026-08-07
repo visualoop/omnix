@@ -18,15 +18,22 @@ import {
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import {
-  getMachineInfo, activateLicense, getTrialState,
+  getMachineInfo, activateLicense, getTrialState, getLicenseKey,
   type MachineInfo, type TrialState,
 } from "@/services/license";
+import {
+  checkOnlineLicenseStatus,
+  expiredPurchaseCopy,
+  selectActivationNotice,
+  variantPrice,
+  type OnlineLicenseStatus,
+} from "@/services/license-status";
 import { OmnixLogo } from "@/components/omnix-logo";
 import { APP_NAME, BRAND } from "@/lib/brand";
-import { IS_PRO, LOCKED_MODULE, LICENSE_PREFIX } from "@/lib/variant";
+import { IS_PRO, LOCKED_MODULE, LICENSE_PREFIX, VARIANT } from "@/lib/variant";
 
-// One-time price for this build's variant. Pro = 150k, trade variants = 50k.
-const VARIANT_PRICE = IS_PRO ? "KES 150,000" : "KES 30,000";
+// One-time price for this build's variant. Pro = 150k, trade variants = 30k.
+export const VARIANT_PRICE = variantPrice(VARIANT);
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
@@ -47,6 +54,8 @@ const FEATURES = [
 export function LicenseActivationPage({ onActivated }: Props) {
   const [machine, setMachine] = useState<MachineInfo | null>(null);
   const [trial, setTrial] = useState<TrialState | null>(null);
+  const [onlineStatus, setOnlineStatus] = useState<OnlineLicenseStatus | null>(null);
+  const [hasStoredLicense, setHasStoredLicense] = useState(false);
   const [key, setKey] = useState("");
   const [activating, setActivating] = useState(false);
   // Trade variants: lock the trial to the binary's module. Pro picks dawa as default.
@@ -57,10 +66,32 @@ export function LicenseActivationPage({ onActivated }: Props) {
   const [copied, setCopied] = useState(false);
 
   useEffect(() => {
-    Promise.all([getMachineInfo(), getTrialState()]).then(([m, t]) => {
-      setMachine(m);
-      setTrial(t);
-    });
+    let cancelled = false;
+
+    void (async () => {
+      try {
+        const [nextMachine, nextTrial, storedKey] = await Promise.all([
+          getMachineInfo(),
+          getTrialState(),
+          getLicenseKey(),
+        ]);
+        if (cancelled) return;
+
+        setMachine(nextMachine);
+        setTrial(nextTrial);
+        setHasStoredLicense(Boolean(storedKey));
+
+        const status = await checkOnlineLicenseStatus(nextMachine.fingerprint, storedKey);
+        if (!cancelled) setOnlineStatus(status);
+      } catch (statusError) {
+        console.warn("[license] status check unavailable:", statusError);
+        if (!cancelled) setOnlineStatus({ kind: "unreachable" });
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const cleanedKey = key.replace(/\s+/g, "");
@@ -128,23 +159,23 @@ export function LicenseActivationPage({ onActivated }: Props) {
     }
   };
 
-  const trialAlreadyUsed = trial?.consumed && !trial?.active;
-  const trialActive = trial?.active === true;
+  const notice = selectActivationNotice({
+    online: onlineStatus,
+    trial,
+    hasStoredLicense,
+  });
+  const purchaseCopy = notice.kind === "expired"
+    ? expiredPurchaseCopy(notice.source, VARIANT_PRICE)
+    : null;
 
   return (
-    <div className="glass-canvas min-h-screen w-full">
-      {/* Decorative ambient orbs (sit BEHIND glass cards, give the canvas depth) */}
-      <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">
-        <div className="absolute -top-32 -left-32 h-96 w-96 rounded-full bg-primary/15 blur-[140px]" />
-        <div className="absolute -bottom-40 -right-32 h-[28rem] w-[28rem] rounded-full bg-blue-500/10 blur-[160px]" />
-      </div>
-
-      <div className="relative z-10 mx-auto grid min-h-screen w-full max-w-6xl grid-cols-1 gap-8 px-6 py-10 lg:grid-cols-[1.1fr_1fr] lg:items-center lg:gap-12 lg:px-12">
+    <div className="glass-canvas min-h-full w-full">
+      <div className="relative z-10 mx-auto grid min-h-full w-full max-w-6xl grid-cols-1 gap-8 px-6 py-10 lg:grid-cols-[1.1fr_1fr] lg:items-center lg:gap-12 lg:px-12">
         {/* ─── LEFT: Hero ─────────────────────────────────────── */}
         <div className="flex flex-col gap-8">
           {/* Brand chip */}
           <div className="flex items-center gap-3">
-            <div className="glass rounded-2xl p-2.5">
+            <div className="glass rounded-md p-2.5">
               <OmnixLogo size={32} />
             </div>
             <div>
@@ -160,7 +191,7 @@ export function LicenseActivationPage({ onActivated }: Props) {
             </div>
             <h1 className="text-[40px] font-semibold tracking-tight leading-[1.05] text-foreground lg:text-[44px]">
               The operating system for<br />
-              <span className="bg-gradient-to-r from-primary to-blue-500 bg-clip-text text-transparent">your business.</span>
+              <span className="text-primary">your business.</span>
             </h1>
             <p className="max-w-md text-[15px] leading-relaxed text-muted-foreground">
               POS, inventory, accounting, and KRA compliance in one Windows app that
@@ -169,11 +200,11 @@ export function LicenseActivationPage({ onActivated }: Props) {
           </div>
 
           {/* Feature grid in glass */}
-          <div className="glass rounded-glass-lg p-5">
+          <div className="glass rounded-md p-5">
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               {FEATURES.map((f) => (
                 <div key={f.label} className="flex items-start gap-3">
-                  <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-border bg-muted/20">
+                  <div className="grid h-10 w-10 shrink-0 place-items-center rounded-md border border-border bg-muted/20">
                     <f.icon className="h-5 w-5 text-foreground/80" />
                   </div>
                   <div className="min-w-0">
@@ -191,7 +222,7 @@ export function LicenseActivationPage({ onActivated }: Props) {
               { dot: "bg-emerald-500", label: "Offline-first SQLite" },
               { dot: "bg-blue-500", label: "Auto-updates" },
               { dot: "bg-amber-500", label: "LAN sync" },
-              { dot: "bg-violet-500", label: "Single-key activation" },
+              { dot: "bg-primary", label: "Single-key activation" },
             ].map((p) => (
               <span key={p.label} className="inline-flex items-center gap-1.5 rounded-full glass-thin px-2.5 py-1 text-[11px] text-muted-foreground">
                 <span className={cn("h-1.5 w-1.5 rounded-full", p.dot)} />
@@ -202,13 +233,13 @@ export function LicenseActivationPage({ onActivated }: Props) {
         </div>
 
         {/* ─── RIGHT: Activation panel ─────────────────────────── */}
-        <div className="glass-thick rounded-glass-xl p-6 lg:p-7">
+        <div className="glass-thick rounded-md p-6 lg:p-7">
           <div className="space-y-5">
-            {/* Trial CTA — direct user to website to fetch their trial key */}
-            {!trialAlreadyUsed && !trialActive && (
+            {/* Trial CTA — shown only when neither local nor server state indicates prior use. */}
+            {notice.kind === "trial-offer" && (
               <div className="space-y-3">
                 <div className="flex items-center gap-3">
-                  <div className="grid h-10 w-10 place-items-center rounded-xl bg-primary/12 text-primary ring-1 ring-inset ring-primary/15">
+                  <div className="grid h-10 w-10 place-items-center rounded-md bg-primary/12 text-primary ring-1 ring-inset ring-primary/15">
                     <Zap className="h-4 w-4" />
                   </div>
                   <div>
@@ -230,7 +261,7 @@ export function LicenseActivationPage({ onActivated }: Props) {
                       window.open(url.toString(), "_blank", "noopener,noreferrer");
                     }
                   }}
-                  className="w-full h-11 rounded-xl cursor-pointer"
+                  className="w-full h-11 rounded-md cursor-pointer"
                 >
                   <ExternalLink className="h-4 w-4 mr-2" />
                   Get your trial key on {BRAND.company.domain}
@@ -241,57 +272,82 @@ export function LicenseActivationPage({ onActivated }: Props) {
               </div>
             )}
 
+            {notice.kind === "checking" && (
+              <div className="flex items-start gap-3 rounded-md border border-border p-4" role="status">
+                <Loader2 className="mt-0.5 h-4 w-4 shrink-0 animate-spin text-muted-foreground" />
+                <div>
+                  <div className="text-[13px] font-medium">Checking licence status</div>
+                  <div className="mt-0.5 text-[11px] text-muted-foreground">
+                    You can enter and activate a key below while this check runs.
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {notice.kind === "unknown" && (
+              <div className="flex items-start gap-3 rounded-md border border-border p-4">
+                <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
+                <div>
+                  <div className="text-[13px] font-medium">Licence status could not be confirmed</div>
+                  <div className="mt-0.5 text-[11px] text-muted-foreground">
+                    The licensing server is unreachable. No expiry has been assumed; manual key activation remains available below.
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {notice.kind === "attention" && (
+              <div className="flex items-start gap-3 rounded-md border border-amber-500/30 bg-amber-500/8 p-4">
+                <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" />
+                <div>
+                  <div className="text-[13px] font-medium">Licence needs attention</div>
+                  <div className="mt-0.5 text-[11px] text-muted-foreground">{notice.message}</div>
+                </div>
+              </div>
+            )}
+
             {/* Trial active */}
-            {trialActive && trial && (
+            {notice.kind === "trial-active" && (
               <div className="space-y-3">
-                <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/8 p-4 flex items-center gap-3">
-                  <div className="grid h-10 w-10 place-items-center rounded-xl bg-emerald-500/15 text-emerald-600 dark:text-emerald-400">
+                <div className="rounded-md border border-emerald-500/30 bg-emerald-500/8 p-4 flex items-center gap-3">
+                  <div className="grid h-10 w-10 place-items-center rounded-md bg-emerald-500/15 text-emerald-600 dark:text-emerald-400">
                     <Clock className="h-4 w-4" />
                   </div>
                   <div className="flex-1">
-                    <div className="text-[13px] font-medium">Trial active — {trial.days_remaining} days remaining</div>
+                    <div className="text-[13px] font-medium">Trial active — {notice.daysRemaining} days remaining</div>
                     <div className="text-[11px] text-muted-foreground">Lock in your licence now — paste the key below when you receive it.</div>
                   </div>
                   <Button size="sm" variant="outline" onClick={onActivated} className="cursor-pointer">Continue</Button>
                 </div>
-                {/* Buy CTA — opens website in default browser, pre-fills machine ID */}
-                <div className="rounded-2xl glass-thin p-4 flex items-center gap-3">
-                  <div className="grid h-10 w-10 place-items-center rounded-xl bg-primary/12 text-primary ring-1 ring-inset ring-primary/15">
+                <div className="rounded-md border border-border p-4 flex items-center gap-3">
+                  <div className="grid h-10 w-10 place-items-center rounded-md bg-primary/12 text-primary ring-1 ring-inset ring-primary/15">
                     <Sparkles className="h-4 w-4" />
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="text-[13px] font-medium leading-tight">Ready to keep going?</div>
                     <div className="text-[11px] text-muted-foreground leading-snug mt-0.5">
-                      Buy now — {VARIANT_PRICE} once, no subscription. Your key arrives instantly via email.
+                      Buy now — {VARIANT_PRICE} once, no subscription. Your key arrives via email.
                     </div>
                   </div>
-                  <Button
-                    size="sm"
-                    onClick={openBuyPage}
-                    className="rounded-xl cursor-pointer shadow-native"
-                  >
+                  <Button size="sm" onClick={openBuyPage} className="rounded-md cursor-pointer">
                     Buy now <ExternalLink className="h-3 w-3 ml-1" />
                   </Button>
                 </div>
               </div>
             )}
 
-            {/* Trial expired */}
-            {trialAlreadyUsed && (
+            {/* Server-confirmed lapsed licence or locally consumed trial. */}
+            {notice.kind === "expired" && purchaseCopy && (
               <div className="space-y-3">
-                <div className="rounded-2xl border border-amber-500/30 bg-amber-500/8 p-4 flex items-start gap-3">
+                <div className="rounded-md border border-amber-500/30 bg-amber-500/8 p-4 flex items-start gap-3">
                   <Clock className="h-4 w-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
                   <div className="flex-1">
-                    <div className="text-[13px] font-medium">Trial used on this machine</div>
-                    <div className="text-[11px] text-muted-foreground mt-0.5">Enter a licence below to continue, or buy a new one — {VARIANT_PRICE} once.</div>
+                    <div className="text-[13px] font-medium">{purchaseCopy.title}</div>
+                    <div className="text-[11px] text-muted-foreground mt-0.5">{purchaseCopy.description}</div>
                   </div>
                 </div>
-                <Button
-                  size="sm"
-                  onClick={openBuyPage}
-                  className="w-full h-10 rounded-xl shadow-native cursor-pointer"
-                >
-                  Buy a licence <ExternalLink className="h-3 w-3 ml-1.5" />
+                <Button size="sm" onClick={openBuyPage} className="w-full h-10 rounded-md cursor-pointer">
+                  {purchaseCopy.action} <ExternalLink className="h-3 w-3 ml-1.5" />
                 </Button>
               </div>
             )}
@@ -300,7 +356,7 @@ export function LicenseActivationPage({ onActivated }: Props) {
             <div className="flex items-center gap-3">
               <div className="flex-1 h-px bg-border/50" />
               <span className="text-[10px] text-muted-foreground uppercase tracking-[0.14em] font-medium">
-                {trialActive ? "Or activate now" : trialAlreadyUsed ? "Enter licence" : "Have a licence?"}
+                {notice.kind === "trial-active" ? "Or activate now" : notice.kind === "expired" ? "Enter licence" : "Have a licence?"}
               </span>
               <div className="flex-1 h-px bg-border/50" />
             </div>
@@ -316,14 +372,14 @@ export function LicenseActivationPage({ onActivated }: Props) {
                 onChange={(e) => { setKey(e.target.value); setError(null); }}
                 onPaste={handlePaste}
                 placeholder={`${LICENSE_PREFIX}-XXXX-XXXX-XXXX`}
-                className="w-full min-h-[110px] rounded-xl glass-thin p-3 text-[11.5px] font-mono leading-relaxed resize-y focus:outline-none focus:ring-2 focus:ring-primary/40 transition"
+                className="w-full min-h-[110px] rounded-md glass-thin p-3 text-[11.5px] font-mono leading-relaxed resize-y focus:outline-none focus:ring-2 focus:ring-primary/40 transition"
                 spellCheck={false}
               />
               {key && cleanedKey.length < 20 && (
                 <p className="text-[11px] text-muted-foreground">Key looks short — make sure you copied it all.</p>
               )}
               {error && (
-                <div className="rounded-xl border border-red-500/40 bg-red-500/8 p-2.5 flex items-start gap-2">
+                <div className="rounded-md border border-red-500/40 bg-red-500/8 p-2.5 flex items-start gap-2">
                   <AlertCircle className="h-3.5 w-3.5 text-red-600 dark:text-red-400 shrink-0 mt-0.5" />
                   <p className="text-[12px] text-red-700 dark:text-red-300 leading-relaxed">{error}</p>
                 </div>
@@ -331,8 +387,8 @@ export function LicenseActivationPage({ onActivated }: Props) {
               <Button
                 onClick={handleActivate}
                 disabled={!canActivate}
-                variant={trialAlreadyUsed ? "default" : "outline"}
-                className="w-full h-10 rounded-xl cursor-pointer"
+                variant={notice.kind === "expired" ? "default" : "outline"}
+                className="w-full h-10 rounded-md cursor-pointer"
               >
                 {activating ? (
                   <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Activating…</>
@@ -344,8 +400,8 @@ export function LicenseActivationPage({ onActivated }: Props) {
 
             {/* Machine ID — collapsible glass row */}
             {machine && (
-              <details className="group rounded-xl glass-thin">
-                <summary className="cursor-pointer list-none px-3.5 py-2.5 flex items-center gap-2 text-[12px] font-medium hover:bg-foreground/[0.03] rounded-xl transition-colors">
+              <details className="group rounded-md glass-thin">
+                <summary className="cursor-pointer list-none px-3.5 py-2.5 flex items-center gap-2 text-[12px] font-medium hover:bg-foreground/[0.03] rounded-md transition-colors">
                   <Cpu className="h-3.5 w-3.5 text-muted-foreground" />
                   Machine ID for support
                   <ArrowRight className="h-3 w-3 ml-auto text-muted-foreground transition-transform group-open:rotate-90" />

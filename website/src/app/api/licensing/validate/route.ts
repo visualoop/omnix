@@ -1,7 +1,12 @@
-import { eq } from 'drizzle-orm'
+import { eq, inArray } from 'drizzle-orm'
 import { db, licenses, machines } from '@/db'
 import { effectiveModules } from '@/lib/license-modules'
 import { ensureMigrated } from '@/lib/auto-migrate'
+import {
+  licenseKeyLookupCandidates,
+  normalizeLicenseKey,
+  pickLicenseKeyMatch,
+} from '@/lib/license-key-format'
 
 /**
  * /api/licensing/validate — desktop-compatible heartbeat.
@@ -38,7 +43,15 @@ export async function POST(req: Request) {
     return Response.json({ status: 'invalid', message: 'licenseKey + machineId required' }, { status: 400 })
   }
 
-  const lic = (await db.select().from(licenses).where(eq(licenses.licenseKey, body.licenseKey)).limit(1))[0]
+  const normalizedKey = normalizeLicenseKey(body.licenseKey)
+  if (!normalizedKey) {
+    return Response.json({ status: 'invalid', message: 'invalid licence key format' }, { status: 400 })
+  }
+  const matchingLicenses = await db
+    .select()
+    .from(licenses)
+    .where(inArray(licenses.licenseKey, licenseKeyLookupCandidates(normalizedKey.submittedKey)))
+  const lic = pickLicenseKeyMatch(matchingLicenses, body.licenseKey)
   if (!lic) {
     return Response.json({ status: 'invalid', message: 'licence not found' }, { status: 404 })
   }

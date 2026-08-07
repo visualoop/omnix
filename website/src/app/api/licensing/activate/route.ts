@@ -27,12 +27,17 @@
  * Idempotent re-activation: same key + same machineId returns a new
  * authToken and refreshes the activation row without consuming a seat.
  */
-import { and, eq, count, isNull, sql } from 'drizzle-orm'
+import { and, eq, count, inArray, isNull, sql } from 'drizzle-orm'
 import crypto from 'node:crypto'
 import { db, licenses, machines, activations, user } from '@/db'
 import { createId } from '@/lib/ids'
 import { effectiveModules } from '@/lib/license-modules'
 import { ensureMigrated } from '@/lib/auto-migrate'
+import {
+  licenseKeyLookupCandidates,
+  normalizeLicenseKey,
+  pickLicenseKeyMatch,
+} from '@/lib/license-key-format'
 
 export const dynamic = 'force-dynamic'
 
@@ -55,6 +60,7 @@ type ResultCode =
   | 'ok'
   | 'reactivated'
   | 'unknown_key'
+  | 'invalid_key_format'
   | 'not_your_key'
   | 'cross_user_conflict'
   | 'machine_owned_by_another'
@@ -82,9 +88,16 @@ export async function POST(req: Request) {
   }
 
   // ── Gate 1: licence exists ──────────────────────────────────────
-  const lic = (
-    await db.select().from(licenses).where(eq(licenses.licenseKey, body.licenseKey)).limit(1)
-  )[0]
+  const normalizedKey = normalizeLicenseKey(body.licenseKey)
+  if (!normalizedKey) {
+    return reject('invalid_key_format', 400, 'Invalid licence key format.')
+  }
+  const keyCandidates = licenseKeyLookupCandidates(normalizedKey.submittedKey)
+  const matchingLicenses = await db
+    .select()
+    .from(licenses)
+    .where(inArray(licenses.licenseKey, keyCandidates))
+  const lic = pickLicenseKeyMatch(matchingLicenses, body.licenseKey)
   if (!lic) {
     return reject('unknown_key', 404, 'Licence not recognised. Check the key or contact support.')
   }
@@ -135,7 +148,7 @@ export async function POST(req: Request) {
   if (body.variant) {
     const requested = body.variant.toLowerCase()
     const owned = lic.variant.toLowerCase()
-    const VALID_VARIANTS = ['pro', 'dawa', 'retail', 'hardware', 'hospitality'] as const
+    const VALID_VARIANTS = ['pro', 'dawa', 'retail', 'hardware', 'hospitality', 'salon'] as const
     const mismatch =
       VALID_VARIANTS.includes(requested as (typeof VALID_VARIANTS)[number]) &&
       owned !== requested &&
@@ -342,7 +355,7 @@ function camelOK({
       majorVersionCap: lic.majorVersionCap,
       status: lic.status,
       variant: lic.variant,
-      licenseKey: lic.licenseKey,
+      licenseKey: normalizeLicenseKey(lic.licenseKey)?.canonicalKey ?? lic.licenseKey,
     },
   })
 }

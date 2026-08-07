@@ -1,79 +1,75 @@
-/**
- * License-key format tests.
- *
- * The desktop validator expects keys in the shape
- *   OMNIX-<VARIANT>-XXXX-XXXX-XXXX
- *
- * where <VARIANT> is one of PRO / DAWA / RETAIL / HOSP / HW. The test
- * imports the generator from the trial route and asserts it produces a
- * key the desktop will accept.
- */
-import { describe, it, expect } from 'vitest'
+import { describe, expect, it } from 'vitest'
+import { generateLicenseKey, type LicenseKeyVariant } from '@/lib/license-key'
+import {
+  isCanonicalLicenseKey,
+  licenseKeyLookupCandidates,
+  normalizeLicenseKey,
+} from '@/lib/license-key-format'
+import { canonicalizeLicenseKeyForRepair } from '@/lib/license-key-repair'
 
-// We can't import the route's makeLicenseKey directly because Next route
-// modules don't export it. Re-implement the contract here as a small
-// helper so we keep both honest.
-function makeLicenseKey(variant: 'pro' | 'dawa' | 'retail' | 'hospitality' | 'hardware'): string {
-  const suffix: Record<string, string> = {
-    pro: 'PRO', dawa: 'DAWA', retail: 'RETAIL', hospitality: 'HOSP', hardware: 'HW',
-  }
-  const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
-  const groups: string[] = []
-  for (let i = 0; i < 3; i++) {
-    let g = ''
-    for (let j = 0; j < 4; j++) g += alphabet[Math.floor(Math.random() * alphabet.length)]
-    groups.push(g)
-  }
-  return `OMNIX-${suffix[variant]}-${groups.join('-')}`
-}
+const VARIANTS: LicenseKeyVariant[] = [
+  'pro',
+  'dawa',
+  'retail',
+  'hospitality',
+  'hardware',
+  'salon',
+]
 
-describe('License key generator', () => {
-  it('starts with OMNIX-', () => {
-    expect(makeLicenseKey('pro')).toMatch(/^OMNIX-/)
-    expect(makeLicenseKey('dawa')).toMatch(/^OMNIX-/)
+describe('canonical license-key generator', () => {
+  it.each(VARIANTS)('generates a canonical %s key', (variant) => {
+    const key = generateLicenseKey(variant)
+    const normalized = normalizeLicenseKey(key)
+
+    expect(isCanonicalLicenseKey(key)).toBe(true)
+    expect(normalized).toMatchObject({ canonicalKey: key, variant })
+    expect(key.split('-')).toHaveLength(5)
+    expect(key.split('-').slice(2)).toEqual([
+      expect.stringMatching(/^[A-HJ-NP-Z2-9]{4}$/),
+      expect.stringMatching(/^[A-HJ-NP-Z2-9]{4}$/),
+      expect.stringMatching(/^[A-HJ-NP-Z2-9]{4}$/),
+    ])
+  })
+})
+
+describe('legacy license-key compatibility', () => {
+  it.each([
+    ['OMX-HARDWARE-822A-B882-4B60', 'OMNIX-HW-822A-B882-4B60', 'hardware'],
+    ['OMX-DAWA-CD28-4CAB-52D4', 'OMNIX-DAWA-CD28-4CAB-52D4', 'dawa'],
+  ] as const)('normalizes live key %s', (legacy, canonical, variant) => {
+    expect(normalizeLicenseKey(legacy)).toMatchObject({ canonicalKey: canonical, variant })
+    expect(licenseKeyLookupCandidates(legacy)).toEqual(expect.arrayContaining([legacy, canonical]))
+    expect(canonicalizeLicenseKeyForRepair(legacy)).toBe(canonical)
   })
 
-  it('encodes the variant in the second segment', () => {
-    expect(makeLicenseKey('pro')).toMatch(/^OMNIX-PRO-/)
-    expect(makeLicenseKey('dawa')).toMatch(/^OMNIX-DAWA-/)
-    expect(makeLicenseKey('retail')).toMatch(/^OMNIX-RETAIL-/)
-    expect(makeLicenseKey('hospitality')).toMatch(/^OMNIX-HOSP-/)
-    expect(makeLicenseKey('hardware')).toMatch(/^OMNIX-HW-/)
+  it('rejects junk, RSA-shaped keys, wrong segment counts, and over-long input', () => {
+    expect(normalizeLicenseKey('junk')).toBeNull()
+    expect(normalizeLicenseKey('OMNIX-DAWA-AAAA.BBBB-CCCC')).toBeNull()
+    expect(normalizeLicenseKey('OMNIX-DAWA-AAAA-BBBB')).toBeNull()
+    expect(normalizeLicenseKey(`OMNIX-DAWA-${'A'.repeat(80)}`)).toBeNull()
+  })
+})
+
+
+describe('license-key repair planning', () => {
+  it('is idempotent once all rows are canonical', async () => {
+    const { buildLicenseKeyRepairPlan } = await import('@/lib/license-key-repair')
+    expect(buildLicenseKeyRepairPlan([
+      { id: 'one', variant: 'dawa', licenseKey: 'OMNIX-DAWA-CD28-4CAB-52D4' },
+    ])).toEqual([])
   })
 
-  it('appends three 4-char groups', () => {
-    const k = makeLicenseKey('pro')
-    const parts = k.split('-')
-    // OMNIX, PRO, AAAA, BBBB, CCCC
-    expect(parts.length).toBe(5)
-    expect(parts[2]).toMatch(/^[A-Z2-9]{4}$/)
-    expect(parts[3]).toMatch(/^[A-Z2-9]{4}$/)
-    expect(parts[4]).toMatch(/^[A-Z2-9]{4}$/)
-  })
-
-  it('avoids ambiguous chars (no I, O, 0, 1)', () => {
-    // Generate many keys and check no banned chars appear.
-    const bad = /[IO01]/
-    for (let i = 0; i < 50; i++) {
-      const k = makeLicenseKey('hardware')
-      const random = k.split('-').slice(2).join('')
-      expect(random).not.toMatch(bad)
-    }
-  })
-
-  it('matches the desktop variantLicensePrefix mapping', () => {
-    // From src/lib/variant.ts variantLicensePrefix:
-    //   pro → OMNIX-PRO     dawa → OMNIX-DAWA     retail → OMNIX-RETAIL
-    //   hospitality → OMNIX-HOSP                  hardware → OMNIX-HW
-    const cases: Array<[Parameters<typeof makeLicenseKey>[0], string]> = [
-      ['pro', 'OMNIX-PRO'],
-      ['dawa', 'OMNIX-DAWA'],
-      ['retail', 'OMNIX-RETAIL'],
-      ['hospitality', 'OMNIX-HOSP'],
-      ['hardware', 'OMNIX-HW'],
-    ]
-    for (const [variant, prefix] of cases) {
-      expect(makeLicenseKey(variant).startsWith(prefix + '-')).toBe(true)
-    }
+  it('flags a canonical collision with a different existing row', async () => {
+    const { buildLicenseKeyRepairPlan } = await import('@/lib/license-key-repair')
+    const plan = buildLicenseKeyRepairPlan([
+      { id: 'legacy', variant: 'dawa', licenseKey: 'OMX-DAWA-CD28-4CAB-52D4' },
+      { id: 'canonical', variant: 'dawa', licenseKey: 'OMNIX-DAWA-CD28-4CAB-52D4' },
+    ])
+    expect(plan).toHaveLength(1)
+    expect(plan[0]).toMatchObject({
+      id: 'legacy',
+      newKey: 'OMNIX-DAWA-CD28-4CAB-52D4',
+      issue: expect.stringContaining('already belongs to row canonical'),
+    })
   })
 })

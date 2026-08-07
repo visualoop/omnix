@@ -17,7 +17,7 @@
  * the OS. The buttons opt out via their own click handlers.
  */
 import { useEffect, useState } from "react";
-import { useLocation } from "react-router-dom";
+import { useInRouterContext, useLocation } from "react-router-dom";
 import { Minus, Square, X, CopySimple } from "@phosphor-icons/react";
 import { ModuleLogo } from "@/components/module-logos";
 import { cn } from "@/lib/utils";
@@ -166,6 +166,7 @@ interface Props {
 export function WindowTitlebar({ title, hidden, extras }: Props) {
   const [api, setApi] = useState<WinApi | null>(null);
   const [maxed, setMaxed] = useState(false);
+  const hasRouter = useInRouterContext();
 
   useEffect(() => {
     let cleanup: (() => void) | null = null;
@@ -207,7 +208,11 @@ export function WindowTitlebar({ title, hidden, extras }: Props) {
        *  a `title` (e.g. "Kitchen Display"), it becomes the route
        *  label suffix so the strip reads
        *  "Omnix Hospitality · Kitchen Display". */}
-      <ModuleIdentity title={title} />
+      {hasRouter ? (
+        <RouterModuleIdentity title={title} />
+      ) : (
+        <ModuleIdentity title={title} pathname={window.location.pathname} />
+      )}
 
       {/* Centre — draggable spacer. The route label already lives on the
        *  left inside ModuleIdentity, so keep the centre empty for a
@@ -261,8 +266,12 @@ export function WindowTitlebar({ title, hidden, extras }: Props) {
  * (e.g. "Hospitality" on an "Omnix Hospitality" build), the suffix is
  * dropped to avoid "Omnix Hospitality · Hospitality".
  */
-function ModuleIdentity({ title }: { title?: string }) {
+function RouterModuleIdentity({ title }: { title?: string }) {
   const location = useLocation();
+  return <ModuleIdentity title={title} pathname={location.pathname} />;
+}
+
+function ModuleIdentity({ title, pathname }: { title?: string; pathname: string }) {
   const moduleId = useCurrentModuleId();
   const [labelTick, setLabelTick] = useState(0);
   useEffect(() => {
@@ -271,7 +280,7 @@ function ModuleIdentity({ title }: { title?: string }) {
     return () => window.removeEventListener("titlebar:label", handler);
   }, []);
   void labelTick;
-  const derived = routeLabelFromPath(location.pathname);
+  const derived = routeLabelFromPath(pathname);
   const label = title ?? derived;
   const brandTail = BRAND.name.split(/\s+/).pop() ?? "";
   const suppress = label && brandTail && label.toLowerCase() === brandTail.toLowerCase();

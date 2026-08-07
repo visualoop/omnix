@@ -31,7 +31,8 @@ vi.mock("@/lib/variant", () => ({
 import { invoke } from "@tauri-apps/api/core";
 import { fetch } from "@tauri-apps/plugin-http";
 import { query, execute } from "@/lib/db";
-import { activateLicense } from "@/services/license";
+import { activateLicense, isCompactKey, moduleFromKeyPrefix } from "@/services/license";
+import { generateLicenseKey, type LicenseKeyVariant } from "../website/src/lib/license-key";
 
 const COMPACT_KEYS = [
   "OMNIX-PRO-9F3K-7TQX-2B4Z",
@@ -116,6 +117,21 @@ describe("activateLicense — compact key (server-validated)", () => {
     );
   });
 
+  it.each([
+    ["OMX-HARDWARE-822A-B882-4B60", "OMNIX-HW-822A-B882-4B60"],
+    ["OMX-DAWA-CD28-4CAB-52D4", "OMNIX-DAWA-CD28-4CAB-52D4"],
+  ] as const)("activates broken live key %s as canonical %s", async (legacyKey, canonicalKey) => {
+    (fetch as unknown as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ ok: true, entitlements: { modules: ["core"], maxDevices: 1 } }),
+    });
+
+    await expect(activateLicense(legacyKey)).resolves.toMatchObject({ ok: true });
+    const request = (fetch as unknown as ReturnType<typeof vi.fn>).mock.calls[0];
+    expect(JSON.parse(request[1].body as string).licenseKey).toBe(canonicalKey);
+    expect(invoke).not.toHaveBeenCalledWith("verify_license", expect.anything());
+  });
+
   it("rejects a compact key when server is unreachable (no offline fallback)", async () => {
     (fetch as unknown as ReturnType<typeof vi.fn>).mockRejectedValueOnce(new Error("network"));
     const result = await activateLicense("OMNIX-DAWA-4NJP-JPP0-3KJ6");
@@ -158,5 +174,43 @@ describe("activateLicense — RSA-signed key (legacy offline path)", () => {
     expect(result.ok).toBe(true);
     // RSA verification WAS called this time (long key)
     expect(invoke).toHaveBeenCalledWith("verify_license", { key: RSA_KEY });
+  });
+});
+
+
+describe("compact key format contract", () => {
+  it.each([
+    ["OMX-HARDWARE-822A-B882-4B60", "hardware"],
+    ["OMX-DAWA-CD28-4CAB-52D4", "dawa"],
+  ] as const)("accepts broken live legacy key %s and maps it to %s", (key, variant) => {
+    expect(isCompactKey(key)).toBe(true);
+    expect(moduleFromKeyPrefix(key)).toBe(variant);
+  });
+
+  it.each([
+    ["OMNIX-RETAIL-MK32-63EB-5DQN", "retail"],
+    ["OMNIX-HOSP-Y4DC-BUAA-9KD8", "hospitality"],
+    ["OMNIX-SALON-ZEAL-AP83-QU9W", "salon"],
+  ] as const)("accepts canonical live key %s and maps it to %s", (key, variant) => {
+    expect(isCompactKey(key)).toBe(true);
+    expect(moduleFromKeyPrefix(key)).toBe(variant);
+  });
+
+  it.each(["pro", "dawa", "retail", "hospitality", "hardware", "salon"] as LicenseKeyVariant[])(
+    "accepts every website-generated %s key",
+    (variant) => {
+      expect(isCompactKey(generateLicenseKey(variant))).toBe(true);
+    },
+  );
+
+  it.each([
+    "junk",
+    "OMNIX-DAWA-AAAA-BBBB",
+    "OMNIX-DAWA-AAAA-BBBB-CCCC-DDDD",
+    "OMNIX-eyJraWQiOiJYWFgiLCJuYW1lIjoiVGVzdCJ9.AABBCCDD",
+    `OMNIX-DAWA-${"A".repeat(80)}`,
+  ])("rejects non-compact input %s", (key) => {
+    expect(isCompactKey(key)).toBe(false);
+    expect(moduleFromKeyPrefix(key)).toBeNull();
   });
 });
